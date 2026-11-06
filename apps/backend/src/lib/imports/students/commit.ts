@@ -183,7 +183,7 @@ export async function commitStudentImport(
       }
 
       if (season) {
-        // D-16.7, on Plan 7's rules (one writer — enrollStudentInSeason):
+        // D-16.7, on Plan 7's rules (one writer — enrollStudentsInSeason):
         //  - one enrolment per student per season, ever. An existing row —
         //    ACTIVE, WITHDRAWN or COMPLETED — is left entirely alone and the
         //    row is reported `skipped`, the bulk form of Plan 7's 409
@@ -207,9 +207,8 @@ export async function commitStudentImport(
         }
       }
     },
-    // Generous but bounded. The create path is three statements regardless of
-    // size; only the `enroll` loop scales with the number of EXISTING
-    // students in the batch, which is the smaller number in practice.
+    // Generous but bounded. Neither the create path nor `seatStudents` grows its
+    // statement count with the batch; each statement just carries more rows.
     { timeout: 30_000 },
   );
 

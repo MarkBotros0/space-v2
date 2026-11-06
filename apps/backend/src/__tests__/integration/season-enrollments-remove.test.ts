@@ -104,11 +104,41 @@ describe("DELETE /seasons/:id/enrollments/:userId", () => {
     expect(await db.groupStudent.count({ where: { seasonId: withAttempt.target } })).toBe(1);
   });
 
+  it("refuses has_work for an attendance row, and leaves it and the row alone", async () => {
+    const { target, student } = await placed("DRAFT");
+    const session = await db.session.create({
+      data: { seasonId: target, title: "One", startsAt: new Date(Date.UTC(2099, 0, 2)) },
+    });
+    await db.attendance.create({ data: { sessionId: session.id, studentUserId: student.id, status: "PRESENT" } });
+    const res = await remove(target, student.id);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("has_work");
+    expect(await rowOf(target, student.id)).not.toBeNull();
+    expect(await db.attendance.count({ where: { sessionId: session.id } })).toBe(1);
+  });
+
+  it("refuses has_work for a paper grade, and leaves it and the row alone", async () => {
+    const { target, student } = await placed("DRAFT");
+    const quiz = await db.quiz.create({ data: { seasonId: target, title: "Paper" } });
+    await db.quizGrade.create({ data: { quizId: quiz.id, studentUserId: student.id, score: 7 } });
+    const res = await remove(target, student.id);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("has_work");
+    expect(await rowOf(target, student.id)).not.toBeNull();
+    expect(await db.quizGrade.count({ where: { quizId: quiz.id } })).toBe(1);
+  });
+
   it("ignores work in another season", async () => {
     const { target, student } = await placed("DRAFT");
     const elsewhere = await season("COMPLETED");
     const assignment = await db.assignment.create({ data: { seasonId: elsewhere, title: "Essay" } });
     await db.submission.create({ data: { publicId: randomUUID(), assignmentId: assignment.id, studentUserId: student.id } });
+    const session = await db.session.create({
+      data: { seasonId: elsewhere, title: "One", startsAt: new Date(Date.UTC(2099, 0, 2)) },
+    });
+    await db.attendance.create({ data: { sessionId: session.id, studentUserId: student.id, status: "PRESENT" } });
+    const quiz = await db.quiz.create({ data: { seasonId: elsewhere, title: "Paper" } });
+    await db.quizGrade.create({ data: { quizId: quiz.id, studentUserId: student.id, score: 7 } });
     expect((await remove(target, student.id)).status).toBe(200);
   });
 });

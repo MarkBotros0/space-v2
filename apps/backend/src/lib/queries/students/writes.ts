@@ -36,8 +36,8 @@ export type StudentCreateTarget =
  * `role` is forced, never taken from input: no importer and no form can
  * create anything but a STUDENT (spec R47).
  *
- * THREE STATEMENTS FOR THE WHOLE BATCH — createManyAndReturn, then one
- * createMany for profiles and one for enrolments. v1 issued two or three
+ * A FLAT STATEMENT COUNT FOR THE WHOLE BATCH — createManyAndReturn, one
+ * createMany for profiles and `enrollStudentsInSeason` for enrolments. v1 issued two or three
  * statements per row, each in its own transaction (R45/R46), which is why its
  * commit could not be atomic. This shape is what makes D-16.5's
  * all-or-nothing 2000-row import affordable inside one transaction.
@@ -93,59 +93,50 @@ export async function createStudentRows(
   });
 
   if (target.kind === "season") {
-    await tx.seasonEnrollment.createMany({
-      data: inputs.map((i) => ({
-        studentUserId: idFor(i.email),
-        seasonId: target.seasonId,
-        status: "ACTIVE" as const,
-      })),
-    });
+    await enrollStudentsInSeason(
+      tx,
+      target.seasonId,
+      inputs.map((i) => ({ studentUserId: idFor(i.email) })),
+    );
   }
 
   return created;
 }
 
-/**
- * Enrol one student in one season — Plan 7's `POST /students/:id/enrollments`
- * rules, in the one place both that route and the bulk importer call
- * (D-16.7/D-16.8; spec 06 D1/R2):
- *
- *  - one enrolment per student per season, EVER: an existing row of any
- *    status is "already_enrolled" and is not touched (a WITHDRAWN row is
- *    history, not an obstacle — re-admission is not invented here);
- *  - entry is always ACTIVE (R47);
- *  - the student's sessions go stale in the same transaction, so their
- *    derived current-season claim is re-read on the next refresh.
- *
- * It decides nothing about who may join: its callers run `lib/roles`'s check in
- * their transaction first (`seatStudents`). `override` records a super letting
- * this person in past a block.
- *
- * A concurrent caller can still lose the unique-index race (P2002); the
- * caller's existing P2002 handling answers it (409 already_enrolled on the
- * route, 409 import_conflict on the importer, whose transaction rolls back).
- */
-export async function enrollStudentInSeason(
-  tx: Prisma.TransactionClient,
-  studentUserId: number,
-  seasonId: number,
-  override?: { byId: number; at: Date },
-): Promise<"enrolled" | "already_enrolled"> {
-  const existing = await tx.seasonEnrollment.findUnique({
-    where: { studentUserId_seasonId: { studentUserId, seasonId } },
-    select: { id: true },
-  });
-  if (existing) return "already_enrolled";
+export type NewEnrollment = {
+  studentUserId: number;
+  /** A super let this person in past a block. */
+  override?: { byId: number; at: Date };
+};
 
-  await tx.seasonEnrollment.create({
-    data: {
-      studentUserId,
+/**
+ * The ONE write that enrols existing or new students in a season — Plan 7's
+ * rules (D-16.7/D-16.8; spec 06 D1/R2): entry is always ACTIVE (R47), and
+ * everyone's sessions go stale in the same transaction, so their derived
+ * current-season claim is re-read on the next refresh. Two statements for the
+ * whole batch, however large.
+ *
+ * It decides nothing about who may join: `seatStudents` in `lib/roles` runs the
+ * check and, under the people's locks, keeps out anyone with a row here. One
+ * enrolment per student per season, EVER: a row of any status is never touched
+ * (a WITHDRAWN row is history, not an obstacle). A concurrent writer that holds
+ * no lock can still lose the unique-index race (P2002); the caller's P2002
+ * handling answers it and the whole transaction rolls back.
+ */
+export async function enrollStudentsInSeason(
+  tx: Prisma.TransactionClient,
+  seasonId: number,
+  rows: NewEnrollment[],
+): Promise<void> {
+  if (rows.length === 0) return;
+  await tx.seasonEnrollment.createMany({
+    data: rows.map((r) => ({
+      studentUserId: r.studentUserId,
       seasonId,
-      status: "ACTIVE",
-      overrideById: override?.byId ?? null,
-      overrideAt: override?.at ?? null,
-    },
+      status: "ACTIVE" as const,
+      overrideById: r.override?.byId ?? null,
+      overrideAt: r.override?.at ?? null,
+    })),
   });
-  await markSessionsStale(tx, [studentUserId]);
-  return "enrolled";
+  await markSessionsStale(tx, rows.map((r) => r.studentUserId));
 }

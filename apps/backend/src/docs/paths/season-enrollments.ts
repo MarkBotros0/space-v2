@@ -61,7 +61,7 @@ export const seasonEnrollmentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: conflict("`not_found` — no such season, or the person has no row in it."),
-        409: conflict("`not_draft`; `has_work` if they have any submission or quiz attempt in this season; `not_active` for a dropped or completed row."),
+        409: conflict("`not_draft`; `has_work` if they have any submission, quiz attempt, attendance row or quiz grade in this season; `not_active` for a dropped or completed row."),
       },
     },
   },

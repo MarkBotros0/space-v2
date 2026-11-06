@@ -63,7 +63,7 @@ export async function addSeasonEnrollments(req: Request, res: Response) {
         override: { userIds: overrideUserIds, actorId: user.userId, actorIsSuper: isSuper(user) },
       });
     },
-    // One enrolment is three statements; the batch can be 500 people.
+    // The statements are flat, but each reads or writes up to 500 people's rows.
     { timeout: 30_000 },
   );
 
@@ -127,8 +127,18 @@ export async function removeSeasonEnrollment(req: Request, res: Response) {
       where: { studentUserId: userId, quiz: { seasonId } },
       select: { id: true },
     });
-    if (submission || attempt) {
-      return { code: "has_work", message: "This person has already handed in work in this season." };
+    const attendance = await tx.attendance.findFirst({
+      where: { studentUserId: userId, session: { seasonId } },
+      select: { id: true },
+    });
+    const grade = await tx.quizGrade.findFirst({
+      where: { studentUserId: userId, quiz: { seasonId } },
+      select: { id: true },
+    });
+    // Refused, not deleted along with the row: a record left behind couldn't be
+    // cleared once they're off the roster, and re-adding them would revive it.
+    if (submission || attempt || attendance || grade) {
+      return { code: "has_work", message: "This person already has work or attendance recorded in this season." };
     }
 
     await tx.groupStudent.deleteMany({ where: { seasonId, studentUserId: userId } });

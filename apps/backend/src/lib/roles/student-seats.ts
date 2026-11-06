@@ -1,7 +1,7 @@
 import type { Standing } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonStatus } from "../../generated/prisma/enums";
-import { enrollStudentInSeason } from "../queries/students/writes";
+import { enrollStudentsInSeason, type NewEnrollment } from "../queries/students/writes";
 import { activeRolesFor, lockPeople, type ActiveRole } from "./active-role";
 import { seatRefusal, type SeatPerson, type SeatRefusal } from "./seat-rules";
 import { describeBlock, loadStandings, standingsFrom, type StandingSeason } from "./standing";
@@ -93,7 +93,7 @@ export type SeatStudentsResult = {
  * The one check-and-write for student seats: locks the people, reads them,
  * refuses whoever can't join, then writes. A refusal writes nothing for anyone
  * unless `partial`, where each person stands alone (a sheet's rows report one
- * by one). All the reads are one set for the whole batch. `season` comes from
+ * by one). The statement count doesn't grow with the batch. `season` comes from
  * `readSeatSeason`, so its lock is taken before the people's.
  *
  * An override is recorded only on someone actually blocked: left on anyone else
@@ -137,16 +137,12 @@ export async function seatStudents(
 
   const overridden: number[] = [];
   const at = new Date();
-  for (const userId of toSeat) {
-    const blocked = standings.get(userId)!.kind === "blocked";
-    await enrollStudentInSeason(
-      tx,
-      userId,
-      season.id,
-      blocked && options.override ? { byId: options.override.actorId, at } : undefined,
-    );
-    if (blocked) overridden.push(userId);
-  }
+  const rows = toSeat.map((studentUserId): NewEnrollment => {
+    if (standings.get(studentUserId)!.kind !== "blocked" || !options.override) return { studentUserId };
+    overridden.push(studentUserId);
+    return { studentUserId, override: { byId: options.override.actorId, at } };
+  });
+  await enrollStudentsInSeason(tx, season.id, rows);
   return { seated: toSeat, overridden, refused };
 }
 

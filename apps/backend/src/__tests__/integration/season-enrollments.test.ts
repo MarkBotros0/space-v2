@@ -4,8 +4,8 @@
 import request from "supertest";
 
 import { db } from "../../db/client";
-import { checkStudentSeat, readSeatSeason } from "../../lib/roles";
-import { createTestUser } from "./fixtures";
+import { checkStudentSeat, readSeatSeason, seatStudents } from "../../lib/roles";
+import { createTestUser, testEmail } from "./fixtures";
 import {
   add,
   adminTokenOf,
@@ -297,5 +297,42 @@ describe("checkStudentSeat", () => {
       code: "already_in_role",
       message: "Sara is already leading a group in GBV 2026",
     });
+  });
+});
+
+describe("seatStudents at scale", () => {
+  it("seats 200 people with one insert and one stale stamp, inside the default transaction limit", async () => {
+    const target = await season("DRAFT");
+    const people = await db.user.createManyAndReturn({
+      data: Array.from({ length: 200 }, (_, i) => ({
+        email: testEmail(`se-many-${i}`),
+        name: `Many ${i}`,
+        role: "STUDENT" as const,
+      })),
+      select: { id: true },
+    });
+    const ids = people.map((p) => p.id);
+
+    // No `timeout` here on purpose: Prisma's default 5s is the bound being pinned.
+    const { seated, insertCalls, createCalls, staleCalls } = await db.$transaction(async (tx) => {
+      const insert = jest.spyOn(tx.seasonEnrollment, "createMany");
+      const create = jest.spyOn(tx.seasonEnrollment, "create");
+      const stale = jest.spyOn(tx.user, "updateMany");
+      const seatSeason = (await readSeatSeason(tx, target))!;
+      const result = await seatStudents(tx, seatSeason, ids);
+      return {
+        seated: result.seated,
+        insertCalls: insert.mock.calls.length,
+        createCalls: create.mock.calls.length,
+        staleCalls: stale.mock.calls.length,
+      };
+    });
+
+    expect(seated).toHaveLength(200);
+    expect(insertCalls).toBe(1);
+    expect(createCalls).toBe(0);
+    expect(staleCalls).toBe(1);
+    expect(await rowsIn(target)).toBe(200);
+    // Season and users carry the test prefix, so cleanupTestData takes these rows too.
   });
 });

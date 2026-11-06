@@ -63,7 +63,7 @@ function alreadyEnrolled(res: Response) {
 }
 
 /**
- * R2 / R47 / D1 live in enrollStudentInSeason, which the bulk importer calls too
+ * R2 / R47 / D1 live in enrollStudentsInSeason, which the bulk importer reaches too
  * (Plan 17 D-16.8): one enrolment per student per season, EVER (a WITHDRAWN row
  * is history, not an obstacle); entry always ACTIVE; the student's sessions go
  * stale so the derived current season is re-read. Who may join is `seatStudents`.

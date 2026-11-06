@@ -10,7 +10,8 @@ export { loadStudentAttendanceHistory, loadStudentSubmissions } from "./history"
 export { loadStudentDetail, type StudentDetail, type StudentDetailView } from "./detail";
 export {
   createStudentRows,
-  enrollStudentInSeason,
+  enrollStudentsInSeason,
+  type NewEnrollment,
   type NewStudentInput,
   type StudentCreateTarget,
 } from "./writes";
