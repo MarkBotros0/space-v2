@@ -20,6 +20,7 @@ import { writeFileSync } from "node:fs";
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
 import { seedActivity } from "./seed-sweep/activity";
+import { seedCommunityScenario } from "./seed-sweep/community";
 import { seedAlumniScenario, seedMentorScenario, seedSuperScenario } from "./seed-sweep/more-roles";
 import { seedPeople } from "./seed-sweep/people";
 import { seedAdminScenario, seedLeaderScenario, seedStudentScenario } from "./seed-sweep/scenarios";
@@ -52,9 +53,12 @@ async function main(): Promise<void> {
   await seedSuperScenario(people);
   await seedMentorScenario(people);
   await seedAlumniScenario(people);
+  const community = await seedCommunityScenario(people);
 
   const { student, alumni, leader, admin, superUser, mentor } = people;
-  const roles = { student, alumni, leader, admin, super: superUser, mentor };
+  // `dropped` is scenarios.ts's student3; the others are the community-model states.
+  const dropped = await db.user.findFirstOrThrow({ where: { email: "student3@sweep.jpc.test" } });
+  const roles = { student, alumni, leader, admin, super: superUser, mentor, ...community, dropped };
   const users = Object.fromEntries(
     Object.entries(roles).map(([role, u]) => [role, { email: u.email, name: u.name }]),
   );

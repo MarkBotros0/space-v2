@@ -1,0 +1,45 @@
+# UI sweep s55 — Results of a finished season as a super admin, the corrections sheet with the keyboard, and Today. Read-only: nothing is saved, the flow only
+# opens, scrolls, types and looks.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${SUPER_EMAIL}
+- evalScript: ${output.year = new Date().getFullYear() - 1}
+- openLink: spacev2://seasons/gbv-${output.year}
+- extendedWaitUntil:
+    visible: 'Code: gbv-.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s55-01-finished-season-detail
+- openLink: spacev2://seasons/gbv-${output.year}/results
+- extendedWaitUntil:
+    visible: 'Fady Finished'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s55-02-results
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Fady Finished'
+- extendedWaitUntil:
+    visible: 'Save result'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s55-03-result-sheet
+- tapOn: 'Reason'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s55-04-result-sheet-kbd
+- hideKeyboard
+- openLink: spacev2://dashboard
+- extendedWaitUntil:
+    visible: '(?i)needs action'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s55-05-today-overdue-callout
