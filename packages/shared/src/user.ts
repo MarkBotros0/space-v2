@@ -65,10 +65,8 @@ export type UserAdminSeason = z.infer<typeof userAdminSeasonSchema>;
 export const userDetailSchema = userListItemSchema.extend({
   invite: inviteStateSchema.nullable(),
   /**
-   * The (non-deleted) seasons this user administers. A role change away from
-   * ADMIN deletes these rows, and only a SUPER re-adding them one season at a
-   * time (season detail → Admins) restores them, so the edit screen names
-   * them in its confirmation first.
+   * The (non-deleted) seasons this user administers. Changing the account's
+   * role never touches these rows; they're managed from the season.
    */
   adminSeasons: z.array(userAdminSeasonSchema),
 });
@@ -79,6 +77,13 @@ export type UserDetail = z.infer<typeof userDetailSchema>;
  * v1 captured CURRENT_YEAR at module load and refused January graduates until
  * the server restarted (R37).
  */
+/**
+ * The roles an account can hold. Admin and leader come from season rows, so
+ * nothing writes them to `User.role`; read schemas keep all five.
+ */
+export const userWriteRoleSchema = z.enum(["SUPER", "MENTOR", "STUDENT"]);
+export type UserWriteRole = z.infer<typeof userWriteRoleSchema>;
+
 function checkUserFields(
   v: { role: UserRole; graduationYear: number | null },
   ctx: z.RefinementCtx,
@@ -108,7 +113,7 @@ export const createUserRequestSchema = z
     // Trimmed and lower-cased, as the importer normalises (normaliseEmail):
     // "Foo@x.com" and "foo@x.com" are one person, never two accounts.
     email: z.string().trim().toLowerCase().email("Must be a valid email."),
-    role: userRoleSchema,
+    role: userWriteRoleSchema,
     graduationYear: z.number().int().nullable().default(null),
     /**
      * Must be `true` when `role` is SUPER (Plan 10 Decision 13 — spec 11 D7
@@ -126,6 +131,10 @@ export type CreateUserBody = z.output<typeof createUserRequestSchema>;
  * `.strict()` refuses it rather than stripping it. `confirmSuper` must be
  * `true` for a role change TO SUPER — spec 11 D7 rec 3: a SUPER grant cannot
  * be a mis-tapped picker item.
+ *
+ * `role` still parses all five because the form sends back the derived role it
+ * was shown; the route refuses anything but that value for ADMIN and LEADER.
+ * It narrows to `userWriteRoleSchema` when the form stops offering them.
  */
 export const updateUserRequestSchema = z
   .object({

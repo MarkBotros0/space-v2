@@ -32,7 +32,7 @@ export const groupPaths = {
       tags: ["Groups"],
       summary: "Leaders a group form may pick from",
       description:
-        "Season-admin (of any season) or SUPER only. Live LEADER users, name-ordered. Interim: spec 05 puts this behind the user directory (Plan 9), which may replace this route.",
+        "Season-admin (of any season) or SUPER only. Live alumni with no active role, name-ordered. Interim: `GET /api/v1/seasons/{id}/staff-candidates` replaces it once the group form moves there.",
       responses: {
         200: ok(
           {
@@ -47,7 +47,7 @@ export const groupPaths = {
               },
             },
           },
-          "Leader users.",
+          "The people who can be picked.",
         ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -88,7 +88,7 @@ export const groupPaths = {
       tags: ["Groups"],
       summary: "Delete a group",
       description:
-        "Season-admin only. Designed rather than ported: v1's delete action was unreachable (C12). Refuses with 409 `group_has_sole_targets` while any live non-all-groups assignment targets only this group, so none is left visible to nobody. Otherwise, in one transaction that re-checks that condition: unassigns every enrolment pointing at the group, deletes its leaders, memberships and target rows, and hard-deletes the group. Returns `{ deleted: true, orphanedStudentIds }`.",
+        "Season-admin only. Designed rather than ported: v1's delete action was unreachable (C12). Its leaders refresh into their new role, still signed in. Refuses with 409 `group_has_sole_targets` while any live non-all-groups assignment targets only this group, so none is left visible to nobody. Otherwise, in one transaction that re-checks that condition: unassigns every enrolment pointing at the group, deletes its leaders, memberships and target rows, and hard-deletes the group. Returns `{ deleted: true, orphanedStudentIds }`.",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -126,7 +126,7 @@ export const groupPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: {
-          description: "`name_taken`, `invalid_leader` or `not_enrolled`.",
+          description: "`name_taken`, `not_enrolled`, or why a newly added leader can't serve: `not_alumnus`, `permanent_role`, `user_inactive`, `season_finished`, `already_in_role` or `leader_has_group`.",
           content: { "application/json": { schema: errorResponse } },
         },
       },

@@ -2,16 +2,20 @@ import { Router, type Request, type Response } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
+import { markSessionsStale } from "../lib/auth/session-validity";
 import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
 import {
+  applyLeaderChange,
   listMyGroups,
   loadGroupImpact,
+  planLeaderChange,
   setGroupStudents,
   validateGroupWrite,
 } from "../lib/queries/groups";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfAnySeason, isAdminOfSeason } from "../lib/rbac";
+import { freeAlumni, refusalStatus } from "../lib/roles";
 import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
@@ -58,41 +62,41 @@ groupsRouter.patch("/:id", async (req, res) => {
   const { leaderIds, studentIds } = parsed.data;
   const refusal = await validateGroupWrite(
     group.seasonId,
-    { ...parsed.data, leaderIds: leaderIds ?? [], studentIds: studentIds ?? [] },
+    { name: parsed.data.name, studentIds: studentIds ?? [] },
     id,
   );
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
-  await db.$transaction(async (tx) => {
+  const seatRefusal = await db.$transaction(async (tx) => {
+    let change = null;
+    if (leaderIds !== undefined) {
+      const plan = await planLeaderChange(tx, group.seasonId, id, leaderIds);
+      if (plan.refusal) return plan.refusal;
+      change = plan.change;
+    }
     await tx.group.update({
       where: { id },
-      data: { name: parsed.data.name, description: parsed.data.description ?? null },
+      // Absent keeps it, null clears it: `PATCH { name }` is a rename.
+      data: { name: parsed.data.name, description: parsed.data.description },
     });
-    if (leaderIds !== undefined) {
-      await tx.groupLeader.deleteMany({ where: { groupId: id, userId: { notIn: leaderIds } } });
-      if (leaderIds.length > 0) {
-        await tx.groupLeader.createMany({
-          data: leaderIds.map((userId) => ({ groupId: id, userId })),
-          skipDuplicates: true,
-        });
-      }
-    }
+    if (change) await applyLeaderChange(tx, id, change);
     if (studentIds !== undefined) await setGroupStudents(tx, group.seasonId, id, studentIds);
+    return null;
   });
+  if (seatRefusal) return apiError(res, seatRefusal.code, seatRefusal.message, refusalStatus(seatRefusal));
 
   return apiOk(res, { id });
 });
 
 /**
- * Leader picker for the group form (Plan 6 D-16.14). Interim: spec 05 §7
- * puts this behind domain 11's GET /users?role=, which lands in Plan 9 — it
- * may replace this route and repoint useLeaderOptions.
+ * Leader picker for the group form, until the form moves to
+ * GET /seasons/:id/staff-candidates and this goes.
  */
 groupsRouter.get("/leader-options", async (req, res) => {
   const user = requireUser(req);
   if (!isAdminOfAnySeason(user)) return forbidden(res);
   const leaders = await db.user.findMany({
-    where: { role: "LEADER", deletedAt: null },
+    where: freeAlumni,
     orderBy: { name: "asc" },
     select: { id: true, name: true, email: true },
   });
@@ -213,7 +217,9 @@ groupsRouter.delete("/:id", async (req, res) => {
       if (soleCount > 0) throw new GroupHasSoleTargetsError(soleCount);
 
       const orphaned = await tx.seasonEnrollment.findMany({ where: { groupId: id }, select: { studentUserId: true } });
+      const leaders = await tx.groupLeader.findMany({ where: { groupId: id }, select: { userId: true } });
       await tx.groupLeader.deleteMany({ where: { groupId: id } });
+      await markSessionsStale(tx, leaders.map((l) => l.userId));
       await tx.groupStudent.deleteMany({ where: { groupId: id } });
       await tx.seasonEnrollment.updateMany({ where: { groupId: id }, data: { groupId: null } });
       await tx.assignmentTarget.deleteMany({ where: { groupId: id } });

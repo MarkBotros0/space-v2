@@ -9,7 +9,7 @@ export type ActiveRole = {
 };
 
 /** Only an ACTIVE season gives a role: a draft hasn't started, a finished one has ended. */
-const ACTIVE_SEASON = { status: "ACTIVE", deletedAt: null } as const;
+export const ACTIVE_SEASON = { status: "ACTIVE", deletedAt: null } as const;
 const SEASON_FIELDS = { id: true, code: true, title: true } as const;
 
 /**

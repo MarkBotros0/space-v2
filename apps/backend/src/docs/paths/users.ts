@@ -48,7 +48,11 @@ export const userPaths = {
               properties: {
                 name: { type: "string", minLength: 2, maxLength: 120 },
                 email: { type: "string", format: "email" },
-                role: { $ref: "#/components/schemas/UserRole" },
+                role: {
+                  type: "string",
+                  enum: ["SUPER", "MENTOR", "STUDENT"],
+                  description: "ADMIN or LEADER is `400 role_from_seasons`: they come from season rows.",
+                },
                 graduationYear: { type: ["integer", "null"], minimum: 1990 },
                 confirmSuper: { type: "boolean", description: "Must be true when `role` is SUPER." },
               },
@@ -132,7 +136,7 @@ export const userPaths = {
       tags: ["Users"],
       summary: "Edit a user's name, role and graduation year (SUPER only)",
       description:
-        "A full replace of `{ name, role, graduationYear }` (email is not editable; unknown keys are refused). LEADER, ADMIN and MENTOR require a graduationYear (alumni-only roles).\n\n**A role change is a revocation.** In one transaction: a demoted ADMIN loses their SeasonAdmin rows, a demoted LEADER their GroupLeader rows, a user landing on STUDENT gets a StudentProfile, and every live refresh token of the target is revoked — so the old claims cannot be re-minted. Access tokens already issued live out their 15-minute TTL.\n\nGuards: changing your own role is `409 cannot_change_own_role` (renaming yourself is fine); granting SUPER needs `confirmSuper: true` (`400 confirm_super_required`); demoting the only active SUPER is `409 last_super` (the active SUPER rows are locked FOR UPDATE inside the transaction, so two concurrent demotions cannot both pass). Answers with the same `UserDetail` GET returns.\n\nA soft-deleted (deactivated) target is `404 not_found` (REG-104); GET and reactivate still reach it.",
+        "A full replace of `{ name, role, graduationYear }` (email is not editable; unknown keys are refused). MENTOR requires a graduationYear.\n\n**The account holds SUPER, MENTOR or STUDENT; admin and leader come from season rows.** `role` is compared with the derived role GET returns. Sending that same value is not a change, even when the stored role differs, and leaves the stored role alone. Any other ADMIN or LEADER is `400 role_from_seasons`. Someone holding a row in a DRAFT or ACTIVE season can't move to SUPER or MENTOR, and a derived ADMIN or LEADER can't move to STUDENT: `409 has_season_role` until they're removed from that season. No role change deletes a season row.\n\n**A real change is a revocation.** In one transaction: a user landing on STUDENT gets a StudentProfile, and every live refresh token of the target is revoked, so the old claims cannot be re-minted. Access tokens already issued end at once (`sessionsValidFrom`).\n\nGuards: changing your own role is `409 cannot_change_own_role` (renaming yourself is fine); granting SUPER needs `confirmSuper: true` (`400 confirm_super_required`); demoting the only active SUPER is `409 last_super` (the active SUPER rows are locked FOR UPDATE inside the transaction, so two concurrent demotions cannot both pass). Answers with the same `UserDetail` GET returns.\n\nA soft-deleted (deactivated) target is `404 not_found` (REG-104); GET and reactivate still reach it.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -158,7 +162,7 @@ export const userPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`cannot_change_own_role` or `last_super`."),
+        409: conflict("`cannot_change_own_role`, `last_super` or `has_season_role`."),
       },
     },
   },

@@ -13,6 +13,8 @@ import {
   pendingInvitesResponseSchema,
   updateProfileRequestSchema,
   updateUserRequestSchema,
+  userRoleSchema,
+  userWriteRoleSchema,
   userDetailSchema,
 } from "../index";
 
@@ -41,11 +43,15 @@ describe("createUserRequestSchema", () => {
     expect(parsed.name).toBe("Padded");
   });
 
-  it("enforces the alumni-only rule for LEADER/ADMIN/MENTOR (spec 11 R2/R3)", () => {
-    const refused = createUserRequestSchema.safeParse({ ...valid, role: "LEADER" });
+  it("enforces the alumni-only rule for MENTOR (spec 11 R2/R3)", () => {
+    const refused = createUserRequestSchema.safeParse({ ...valid, role: "MENTOR" });
     expect(refused.success).toBe(false);
-    const ok = createUserRequestSchema.safeParse({ ...valid, role: "LEADER", graduationYear: 2020 });
+    const ok = createUserRequestSchema.safeParse({ ...valid, role: "MENTOR", graduationYear: 2020 });
     expect(ok.success).toBe(true);
+  });
+
+  it.each(["ADMIN", "LEADER"])("refuses %s: it comes from season rows", (role) => {
+    expect(createUserRequestSchema.safeParse({ ...valid, role, graduationYear: 2020 }).success).toBe(false);
   });
 
   it("evaluates the graduation-year upper bound per call, not at module load (R37)", () => {
@@ -196,5 +202,12 @@ describe("user detail carries the seasons a demotion would remove", () => {
     expect(
       userDetailSchema.safeParse({ ...detail, adminSeasons: [{ id: 1, code: "gbv-2026", title: "GBV 2026" }] }).success,
     ).toBe(true);
+  });
+});
+
+describe("userWriteRoleSchema", () => {
+  it("allows only the roles an account can hold; the read schema keeps all five", () => {
+    expect(userWriteRoleSchema.options).toEqual(["SUPER", "MENTOR", "STUDENT"]);
+    expect(userRoleSchema.options).toEqual(["SUPER", "ADMIN", "LEADER", "STUDENT", "MENTOR"]);
   });
 });

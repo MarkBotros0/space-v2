@@ -171,20 +171,6 @@ describe("PATCH /api/v1/users/:id", () => {
     expect(res.status).toBe(400);
   });
 
-  it("demoting a LEADER removes their group leadership", async () => {
-    const season = await createTestSeason();
-    const leader = await createTestUser("edge-demote-leader", "LEADER");
-    const group = await db.group.create({ data: { seasonId: season.id, name: "Edge group" }, select: { id: true } });
-    await db.groupLeader.create({ data: { groupId: group.id, userId: leader.id } });
-
-    const res = await request(app)
-      .patch(`/api/v1/users/${leader.id}`)
-      .set(auth(superToken))
-      .send({ name: "Test edge-demote-leader", role: "MENTOR", graduationYear: 2015 });
-    expect(res.status).toBe(200);
-    expect(await db.groupLeader.count({ where: { userId: leader.id } })).toBe(0);
-  });
-
   it("a same-role edit keeps scopes and refresh tokens", async () => {
     const season = await createTestSeason();
     const admin = await createTestUser("edge-rename-admin", "ADMIN");
@@ -227,7 +213,6 @@ describe("POST /api/v1/users", () => {
 
   it("requires a graduation year for staff roles (alumni only) and a sane range for anyone", async () => {
     for (const [body, message] of [
-      [{ role: "LEADER", graduationYear: null }, "Required for this role."],
       [{ role: "MENTOR" }, "Required for this role."],
       [{ role: "STUDENT", graduationYear: 1989 }, "Must be between 1990"],
       [{ role: "STUDENT", graduationYear: new Date().getFullYear() + 1 }, "Must be between 1990"],
@@ -279,7 +264,7 @@ describe("POST /api/v1/users", () => {
     const res = await request(app)
       .post("/api/v1/users")
       .set(auth(superToken))
-      .send({ name: "New Leader", email: testEmail("edge-new-leader"), role: "LEADER", graduationYear: 2015 });
+      .send({ name: "New Mentor", email: testEmail("edge-new-mentor"), role: "MENTOR", graduationYear: 2015 });
     expect(res.status).toBe(201);
     expect(await db.studentProfile.count({ where: { userId: res.body.data.userId } })).toBe(0);
   });

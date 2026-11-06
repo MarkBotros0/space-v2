@@ -6,9 +6,9 @@
 const mockDb = {
   user: { findUnique: jest.fn(), findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
   inviteToken: { create: jest.fn(), updateMany: jest.fn(), findFirst: jest.fn() },
-  seasonAdmin: { findMany: jest.fn(), deleteMany: jest.fn() },
-  groupLeader: { findMany: jest.fn(), deleteMany: jest.fn() },
-  seasonEnrollment: { findMany: jest.fn() },
+  seasonAdmin: { findMany: jest.fn(), findFirst: jest.fn(), deleteMany: jest.fn() },
+  groupLeader: { findMany: jest.fn(), findFirst: jest.fn(), deleteMany: jest.fn() },
+  seasonEnrollment: { findMany: jest.fn(), findFirst: jest.fn() },
   studentProfile: { upsert: jest.fn(), updateMany: jest.fn() },
   refreshToken: { updateMany: jest.fn() },
   $transaction: jest.fn(),
@@ -170,26 +170,27 @@ describe("POST /users", () => {
 
 describe("account changes leave an audit line", () => {
   it("role change", async () => {
-    mockDb.user.findUnique
-      .mockResolvedValueOnce({ id: 7, role: "ADMIN", deletedAt: null })
-      .mockResolvedValue(listRow);
+    mockDb.user.findUnique.mockResolvedValue({ ...listRow, role: "STUDENT" });
     const res = await request(app)
       .patch("/api/v1/users/7")
       .set(auth())
       .send({ name: "Pat", role: "MENTOR", graduationYear: 2015 });
     expect(res.status).toBe(200);
-    expect(mockDb.seasonAdmin.deleteMany).toHaveBeenCalledWith({ where: { userId: 7 } });
+    expect(mockDb.seasonAdmin.deleteMany).not.toHaveBeenCalled();
+    expect(mockDb.groupLeader.deleteMany).not.toHaveBeenCalled();
+    expect(mockDb.user.update.mock.calls[0][0].data.role).toBe("MENTOR");
     expect(info).toHaveBeenCalledWith("[audit] user.role_change actor=1 subject=7");
-    // Plan 18 M13: the demoted user's live access tokens end now, in the
+    // Plan 18 M13: the changed user's live access tokens end now, in the
     // same transaction as the refresh revocation.
     expect(mockInvalidateSessions).toHaveBeenCalledWith(mockDb, 7);
   });
 
-  it("no line for a rename alone", async () => {
-    mockDb.user.findUnique
-      .mockResolvedValueOnce({ id: 7, role: "ADMIN", deletedAt: null })
-      .mockResolvedValue(listRow);
-    await request(app).patch("/api/v1/users/7").set(auth()).send({ name: "Pat B", role: "ADMIN", graduationYear: 2015 });
+  it("no line for a rename alone, sending back the derived role", async () => {
+    mockDb.user.findUnique.mockResolvedValue({ ...listRow, role: "ADMIN" });
+    mockDb.seasonAdmin.findMany.mockResolvedValue([{ userId: 7, seasonId: 4, season: { status: "ACTIVE" } }]);
+    const res = await request(app).patch("/api/v1/users/7").set(auth()).send({ name: "Pat B", role: "ADMIN", graduationYear: 2015 });
+    expect(res.status).toBe(200);
+    expect(mockDb.user.update.mock.calls[0][0].data).not.toHaveProperty("role");
     expect(info).not.toHaveBeenCalled();
     expect(mockInvalidateSessions).not.toHaveBeenCalled();
   });

@@ -68,10 +68,10 @@ describe("/users/new (spec 11 §9)", () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<NewUserScreen />);
 
-    fireEvent.changeText(screen.getByLabelText("Name"), "Leader Person");
+    fireEvent.changeText(screen.getByLabelText("Name"), "Mentor Person");
     fireEvent.changeText(screen.getByLabelText("Email"), "l@jpc.test");
     fireEvent.press(screen.getByLabelText("Role"));
-    fireEvent.press(await screen.findByText("Leader"));
+    fireEvent.press(await screen.findByText("Mentor"));
     fireEvent.press(screen.getByText("Create and send invite"));
 
     await waitFor(() =>

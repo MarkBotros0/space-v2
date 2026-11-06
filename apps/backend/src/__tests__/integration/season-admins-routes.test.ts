@@ -35,7 +35,8 @@ beforeAll(async () => {
   const superUser = await createTestUser("sa-super", "SUPER");
   const callerAdmin = await createTestUser("sa-caller-admin", "ADMIN");
   const leader = await createTestUser("sa-leader", "LEADER");
-  const target = await createTestUser("sa-target", "ADMIN");
+  const target = await createTestUser("sa-target", "STUDENT");
+  await db.user.update({ where: { id: target.id }, data: { graduationYear: 2020 } });
   targetId = target.id;
   targetEmail = target.email;
   leaderId = leader.id;
@@ -62,14 +63,14 @@ describe("season admin routes", () => {
     expect(await db.seasonAdmin.count({ where: { seasonId, userId: targetId } })).toBe(0);
   });
 
-  it("refuses a user who is not an ADMIN, writing nothing", async () => {
+  it("refuses someone who hasn't graduated, writing nothing", async () => {
     const res = await request(app).post(path()).set(as(superToken)).send({ userId: leaderId });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("not_an_admin");
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("not_alumnus");
     expect(await db.seasonAdmin.count({ where: { seasonId, userId: leaderId } })).toBe(0);
   });
 
-  it("adds an admin (201), revokes their refresh tokens, and is idempotent (200)", async () => {
+  it("adds an admin (201), keeps their refresh tokens, and is idempotent (200)", async () => {
     const targetToken = await login(app, targetEmail);
     expect(targetToken).toBeTruthy();
     expect(await db.refreshToken.count({ where: { userId: targetId, revokedAt: null } })).toBeGreaterThan(0);
@@ -77,7 +78,7 @@ describe("season admin routes", () => {
     const first = await request(app).post(path()).set(as(superToken)).send({ userId: targetId });
     expect(first.status).toBe(201);
     expect(first.body.data.admins.map((a: { userId: number }) => a.userId)).toContain(targetId);
-    expect(await db.refreshToken.count({ where: { userId: targetId, revokedAt: null } })).toBe(0);
+    expect(await db.refreshToken.count({ where: { userId: targetId, revokedAt: null } })).toBeGreaterThan(0);
 
     const again = await request(app).post(path()).set(as(superToken)).send({ userId: targetId });
     expect(again.status).toBe(200);

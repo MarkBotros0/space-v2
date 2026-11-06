@@ -43,10 +43,50 @@ const userIdParam = {
   schema: { type: "integer", minimum: 1 },
 } as const;
 
-const REVOKE_NOTE =
-  "A change revokes every refresh token the user holds, so their `seasonAdminIds` claim is re-derived at their next sign-in; an access token already issued keeps the old claim for at most 15 minutes. Each real change writes one `[audit]` log line; a no-op writes nothing.";
+const STALE_NOTE =
+  "A change marks the person's sessions stale (`sessionsValidFrom`): their refresh token stays valid and the next refresh re-reads `seasonAdminIds`, so nobody is signed out. Each real change writes one `[audit]` log line; a no-op writes nothing.";
 
 export const seasonAdminPaths = {
+  "/api/v1/seasons/{id}/staff-candidates": {
+    get: {
+      tags: ["Seasons"],
+      summary: "Who can be picked to serve (SUPER or that season's admin)",
+      description:
+        "Live alumni with no active role, in name order. A role in a draft doesn't count. Name and last season only: a season admin sees nothing else of anyone's earlier seasons.",
+      parameters: [idParam],
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            required: ["people"],
+            properties: {
+              people: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["id", "name", "lastSeason"],
+                  properties: {
+                    id: { type: "integer" },
+                    name: { type: "string" },
+                    lastSeason: {
+                      type: ["object", "null"],
+                      required: ["title"],
+                      properties: { title: { type: "string" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "The candidates.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: conflict("`not_found` — no such season, or it is deleted."),
+      },
+    },
+  },
   "/api/v1/seasons/{id}/admins": {
     get: {
       tags: ["Seasons"],
@@ -63,7 +103,7 @@ export const seasonAdminPaths = {
     post: {
       tags: ["Seasons"],
       summary: "Add a season admin (SUPER)",
-      description: `Idempotent: adding an existing admin answers 200 with the unchanged list and writes nothing. Only an active user whose role is ADMIN can be added. ${REVOKE_NOTE}`,
+      description: `Idempotent: adding an existing admin answers 200 with the unchanged list and writes nothing. Only a live alumnus with no other active role can be added; a draft's roles and leading in this same season don't clash. ${STALE_NOTE}`,
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -80,12 +120,13 @@ export const seasonAdminPaths = {
       responses: {
         200: list("Already an admin — the list, unchanged."),
         201: list("Added — the list as it now stands."),
-        400: conflict(
-          "`bad_request` (path or body), `not_an_admin` (the user's role is not ADMIN), or `user_inactive` (the account is deactivated).",
-        ),
+        400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: conflict("`not_found` — no such season (or it is deleted), or no such user."),
+        409: conflict(
+          "`not_alumnus`, `permanent_role` (a SUPER or MENTOR), `user_inactive`, `season_finished`, or `already_in_role`, with the reason in words: \"Mina is already leading a group in GBV 2026\".",
+        ),
       },
     },
   },
@@ -93,7 +134,7 @@ export const seasonAdminPaths = {
     delete: {
       tags: ["Seasons"],
       summary: "Remove a season admin (SUPER)",
-      description: `Idempotent: removing someone who is not an admin answers 200 with the unchanged list. No role or activation check, so a deactivated admin's row can be cleaned up. ${REVOKE_NOTE}`,
+      description: `Idempotent: removing someone who is not an admin answers 200 with the unchanged list. No role or activation check, so a deactivated admin's row can be cleaned up. ${STALE_NOTE}`,
       parameters: [idParam, userIdParam],
       responses: {
         200: list("The list as it now stands."),

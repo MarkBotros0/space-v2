@@ -1,11 +1,12 @@
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
+import { markSessionsStale } from "../../auth/session-validity";
+import { lockPeople, refuseNewSeats, type SeatRefusal } from "../../roles";
 import { seasonRosterMember } from "../season-participants";
 
 export interface GroupWriteInput {
   name: string;
   description?: string | null;
-  leaderIds: number[];
   studentIds: number[];
 }
 
@@ -31,25 +32,13 @@ export async function validateGroupWrite(
     return { code: "name_taken", message: "A group in this season already has that name." };
   }
 
-  if (input.leaderIds.length > 0) {
-    // A GroupLeader row populates the groupLeaderIds claim, and isLeaderOfGroup
-    // now pairs that claim with the LEADER role — so naming a student here
-    // would produce a grant that grants nothing, which is a confusing dead row
-    // rather than a hole. Refusing it outright keeps the two consistent.
-    const eligible = await db.user.findMany({
-      where: { id: { in: input.leaderIds }, role: "LEADER" },
-      select: { id: true },
-    });
-    if (eligible.length !== new Set(input.leaderIds).size) {
-      return { code: "invalid_leader", message: "Every leader must be a user with the leader role." };
-    }
-  }
-
   if (input.studentIds.length > 0) {
-    // Enrolled in *this* season. v1's group form checked nothing here, so it
-    // could enrol a student in a season they were never admitted to.
+    // On *this* season's roster. v1's group form checked nothing here, so it
+    // could enrol a student in a season they were never admitted to. The
+    // roster is what the form lists, so it never sends a WITHDRAWN member or
+    // one whose role changed; `setGroupStudents` must not move them either.
     const enrolled = await db.seasonEnrollment.findMany({
-      where: { seasonId, studentUserId: { in: input.studentIds } },
+      where: { seasonId, studentUserId: { in: input.studentIds }, ...seasonRosterMember },
       select: { studentUserId: true },
     });
     if (enrolled.length !== new Set(input.studentIds).size) {
@@ -61,6 +50,55 @@ export async function validateGroupWrite(
   }
 
   return null;
+}
+
+/** Who a group's save adds and removes as leaders. */
+export type LeaderChange = { added: number[]; removed: number[] };
+
+/**
+ * Check a group's new leader list, before writing anything. `groupId` is null
+ * for a group not created yet. Only people being added are checked, so saving a
+ * group whose leader is unchanged never re-checks them and an old row can't
+ * block the form. Call inside the transaction that then applies the change.
+ */
+export async function planLeaderChange(
+  tx: Prisma.TransactionClient,
+  seasonId: number,
+  groupId: number | null,
+  leaderIds: number[],
+): Promise<{ refusal: SeatRefusal } | { refusal: null; change: LeaderChange }> {
+  const current =
+    groupId === null
+      ? []
+      : (await tx.groupLeader.findMany({ where: { groupId }, select: { userId: true } })).map((l) => l.userId);
+  const added = [...new Set(leaderIds)].filter((id) => !current.includes(id));
+  const removed = current.filter((id) => !leaderIds.includes(id));
+
+  await lockPeople(tx, [...added, ...removed]);
+  const season = await tx.season.findUniqueOrThrow({
+    where: { id: seasonId },
+    select: { id: true, status: true },
+  });
+  const refusal = await refuseNewSeats(tx, added, { kind: "leader", season });
+  return refusal ? { refusal } : { refusal: null, change: { added, removed } };
+}
+
+/** Write a planned change. Whoever it touches refreshes into the new role, signed in. */
+export async function applyLeaderChange(
+  tx: Prisma.TransactionClient,
+  groupId: number,
+  { added, removed }: LeaderChange,
+): Promise<void> {
+  if (removed.length > 0) {
+    await tx.groupLeader.deleteMany({ where: { groupId, userId: { in: removed } } });
+  }
+  if (added.length > 0) {
+    await tx.groupLeader.createMany({
+      data: added.map((userId) => ({ groupId, userId })),
+      skipDuplicates: true,
+    });
+  }
+  await markSessionsStale(tx, [...added, ...removed]);
 }
 
 /**

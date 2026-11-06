@@ -148,9 +148,9 @@ describe("GET /api/v1/users/:id", () => {
 });
 
 describe("PATCH /api/v1/users/:id — role change is revocation (spec 11 D3, ruling C7)", () => {
-  it("demoting an ADMIN deletes their SeasonAdmin rows and kills their refresh token", async () => {
+  it("a real change keeps finished season rows and kills their refresh token", async () => {
     const target = await createTestUser("demote-me", "ADMIN");
-    const season = await createTestSeason();
+    const season = await createTestSeason({ status: "COMPLETED" });
     await db.seasonAdmin.create({ data: { seasonId: season.id, userId: target.id } });
 
     // A live session for the target, captured before the demotion.
@@ -163,13 +163,13 @@ describe("PATCH /api/v1/users/:id — role change is revocation (spec 11 D3, rul
     const res = await request(app)
       .patch(`/api/v1/users/${target.id}`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "Test demote-me", role: "STUDENT", graduationYear: 2015 });
+      .send({ name: "Test demote-me", role: "MENTOR", graduationYear: 2015 });
     expect(res.status).toBe(200);
-    expect(res.body.data.role).toBe("STUDENT");
+    expect(res.body.data.role).toBe("MENTOR");
 
-    // The scope rows are gone — isAdminOfSeason has nothing left to admit.
+    // A finished season's rows are history: no role change deletes them.
     const scopeRows = await db.seasonAdmin.count({ where: { userId: target.id } });
-    expect(scopeRows).toBe(0);
+    expect(scopeRows).toBe(1);
 
     // And the old session cannot rotate: the claims cannot outlive the change.
     const rotate = await request(app)

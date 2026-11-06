@@ -3,12 +3,14 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
+import { derivedRoleOf, loadScopes } from "../../lib/auth/scopes";
 import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { findExistingByEmail } from "../../lib/imports/students/validation";
 import { deliverInvite, issueInvite } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
+import { liveSeasonRole, lockPeople } from "../../lib/roles";
 import { isLastActiveSuper, lockActiveSuperIds } from "../../lib/super-guard";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import {
@@ -17,6 +19,11 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { requireSuper } from "./super-only";
 import { loadUserDetail } from "./views";
+
+const isSeasonRole = (role: unknown): role is "ADMIN" | "LEADER" => role === "ADMIN" || role === "LEADER";
+
+const roleFromSeasons = (res: Response) =>
+  apiError(res, "role_from_seasons", "Admin and leader come from seasons, not from the account.", 400);
 
 export async function getUser(req: Request, res: Response) {
   const user = requireSuper(req, res);
@@ -35,6 +42,11 @@ export async function updateUser(req: Request, res: Response) {
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
 
+  // Before the schema, whose graduation-year rule would answer first. Sending
+  // the derived role back is not a change: the form shows it and has no other.
+  const sentRole: unknown = req.body?.role;
+  if (isSeasonRole(sentRole) && sentRole !== (await loadScopes(id)).role) return roleFromSeasons(res);
+
   const parsed = updateUserRequestSchema.safeParse(req.body);
   if (!parsed.success) {
     return apiError(
@@ -45,9 +57,16 @@ export async function updateUser(req: Request, res: Response) {
   const body = parsed.data;
 
   const outcome = await db.$transaction(async (tx) => {
+    // A SUPER's demotion locks every SUPER before this person alone: two
+    // demotions each holding their own row and waiting on the other's would deadlock.
+    const before = await tx.user.findUnique({ where: { id }, select: { role: true } });
+    const lockedSuperIds =
+      before?.role === "SUPER" && body.role !== "SUPER" ? await lockActiveSuperIds(tx) : null;
+
+    await lockPeople(tx, [id]);
     const target = await tx.user.findUnique({
       where: { id },
-      select: { id: true, role: true, deletedAt: true },
+      select: { id: true, name: true, role: true, deletedAt: true },
     });
     // REG-104: a deactivated account is not an edit target. GET and reactivate
     // still reach it; only this write refuses.
@@ -55,7 +74,11 @@ export async function updateUser(req: Request, res: Response) {
       return { fail: ["not_found", "User not found.", 404] as const };
     }
 
-    const roleChanged = body.role !== target.role;
+    // Against the role the form was shown, not the stored one: a stored ADMIN
+    // with only finished rows reads STUDENT, and saving that changes nothing.
+    // ADMIN or LEADER got here only by matching it, so they never change anything.
+    const currentRole = await derivedRoleOf(tx, target);
+    const roleChanged = !isSeasonRole(body.role) && body.role !== currentRole;
 
     // D7 rec 1: you cannot change your own role — the lockout guard v1's
     // updateUserAction lacked (R50). Renaming yourself stays allowed.
@@ -79,7 +102,7 @@ export async function updateUser(req: Request, res: Response) {
     // (Decision 16), not merely counted — a count alone lets two concurrent
     // demotions both pass under READ COMMITTED.
     if (roleChanged && target.role === "SUPER") {
-      const activeSuperIds = await lockActiveSuperIds(tx);
+      const activeSuperIds = lockedSuperIds ?? (await lockActiveSuperIds(tx));
       if (isLastActiveSuper(activeSuperIds, id)) {
         return {
           fail: ["last_super", "This is the only active SUPER account.", 409] as const,
@@ -87,29 +110,38 @@ export async function updateUser(req: Request, res: Response) {
       }
     }
 
-    if (roleChanged) {
-      // D3 — fix the write, not the predicate: demotion cascades to the scope
-      // tables so loadScopes has nothing to return on the next refresh...
-      if (target.role === "ADMIN") {
-        await tx.seasonAdmin.deleteMany({ where: { userId: id } });
+    // SUPER and MENTOR hold no seasons. A derived ADMIN or LEADER can't become
+    // a STUDENT here either: the rows are the role, so saving would change nothing.
+    if (roleChanged && (body.role !== "STUDENT" || isSeasonRole(currentRole))) {
+      const held = await liveSeasonRole(tx, id);
+      if (held) {
+        return {
+          fail: [
+            "has_season_role",
+            `${target.name} has a role in ${held.seasonTitle}. Remove them from that season first.`,
+            409,
+          ] as const,
+        };
       }
-      if (target.role === "LEADER") {
-        await tx.groupLeader.deleteMany({ where: { userId: id } });
-      }
-      // ...and a promotion to STUDENT finally gets a profile (R46: v1 left
-      // promoted users with a null activeSeasonId forever).
-      if (body.role === "STUDENT") {
-        await tx.studentProfile.upsert({
-          where: { userId: id },
-          update: {},
-          create: { userId: id },
-        });
-      }
+    }
+
+    // A move to STUDENT finally gets a profile (R46: v1 left promoted users
+    // with a null activeSeasonId forever).
+    if (roleChanged && body.role === "STUDENT") {
+      await tx.studentProfile.upsert({
+        where: { userId: id },
+        update: {},
+        create: { userId: id },
+      });
     }
 
     await tx.user.update({
       where: { id },
-      data: { name: body.name, role: body.role, graduationYear: body.graduationYear },
+      data: {
+        name: body.name,
+        graduationYear: body.graduationYear,
+        ...(roleChanged ? { role: body.role } : {}),
+      },
     });
 
     if (roleChanged) {
@@ -200,6 +232,9 @@ export async function reactivateUser(req: Request, res: Response) {
 export async function createUser(req: Request, res: Response) {
   const user = requireSuper(req, res);
   if (!user) return;
+
+  // Before the schema, whose graduation-year rule would answer first.
+  if (isSeasonRole(req.body?.role)) return roleFromSeasons(res);
 
   const parsed = createUserRequestSchema.safeParse(req.body);
   if (!parsed.success) {

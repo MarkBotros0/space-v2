@@ -18,9 +18,9 @@ export interface GroupFormValues {
  * Create/edit a group (v1 group-form.tsx: Name, Description, Leaders and
  * Students as MultiSelects; spec 05 §9), on `FormScreen`'s pinned save bar with the server message as its hint. Students
  * are picked from the season ROSTER (ACTIVE enrolments, C9), never the global
- * student table. The server validates leaders are LEADERs and students are
- * enrolled (Plan 2's validateGroupWrite) and returns name_taken /
- * invalid_leader / not_enrolled, shown verbatim via `message`. Saving
+ * student table. The server checks newly added leaders against the one-role
+ * rule and students against the roster, and its refusal is shown verbatim via
+ * `message`. Saving
  * REPLACES the group's leader and student lists (spec 05 R30) — the form says
  * so (V2-ONLY hints on students who are in another group).
  */

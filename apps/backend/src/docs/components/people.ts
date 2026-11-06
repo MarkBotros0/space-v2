@@ -131,7 +131,7 @@ export const peopleSchemas = {
     type: "object",
     required: ["name"],
     description:
-      "v1's schema covered name and description only — leaderIds and studentIds were read straight off the raw body with no eligibility check. Since a GroupLeader row populates the groupLeaderIds claim, an unvalidated leader list is a privilege path rather than a data-quality problem.",
+      "v1's schema covered name and description only — leaderIds and studentIds were read straight off the raw body with no eligibility check. Since a GroupLeader row populates the groupLeaderIds claim, an unvalidated leader list is a privilege path rather than a data-quality problem. On PATCH an absent key leaves that field alone; `description: null` clears it.",
     properties: {
       name: { type: "string", minLength: 2, maxLength: 80 },
       description: { type: ["string", "null"], maxLength: 2000 },
@@ -139,14 +139,14 @@ export const peopleSchemas = {
         type: "array",
         maxItems: 20,
         items: { type: "integer" },
-        description: "Must all be users with the LEADER role. Replaces the current set.",
+        description: "Replaces the current set on POST and, when sent, on PATCH. Everyone being added must be a live alumnus with no other active role and no other group in this season (409 `not_alumnus`, `already_in_role`, `leader_has_group`, ...; 404 `not_found` for no such user); a leader who stays is not re-checked. Whoever is added or removed refreshes into the new role, still signed in.",
       },
       studentIds: {
         type: "array",
         maxItems: 500,
         items: { type: "integer" },
         description:
-          "Must all already be enrolled in the season. Replaces the current roster; a student dropped from the list keeps their enrolment and loses only the group pointer.",
+          "Must all be on the season's roster: a WITHDRAWN member or one who is no longer a student is 409 `not_enrolled`. Replaces the current roster; a student dropped from the list keeps their enrolment and loses only the group pointer.",
       },
     },
   },

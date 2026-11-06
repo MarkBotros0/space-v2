@@ -237,7 +237,7 @@ export const seasonPaths = {
         404: errRef("NotFound"),
         409: {
           description:
-            "`name_taken`, `invalid_leader` (a named leader lacks the LEADER role) or `not_enrolled` (a named student is not in this season).",
+            "`name_taken`, `not_enrolled` (a named student is not on this season's roster), or why a named leader can't serve: `not_alumnus`, `permanent_role`, `user_inactive`, `season_finished`, `already_in_role` or `leader_has_group`.",
           content: { "application/json": { schema: errorResponse } },
         },
       },

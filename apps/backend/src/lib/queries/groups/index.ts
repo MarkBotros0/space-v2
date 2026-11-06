@@ -11,8 +11,10 @@ export {
   type SeasonRosterRow,
 } from "./read";
 export {
+  applyLeaderChange,
   assignStudentsToGroups,
   GroupOutsideSeasonError,
+  planLeaderChange,
   setGroupStudents,
   unassignStudentsFromGroups,
   validateGroupWrite,

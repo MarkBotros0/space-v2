@@ -120,7 +120,8 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
   }
 
   it("creates a group with leaders and students", async () => {
-    const leader2 = await createTestUser("leader2", "LEADER");
+    const leader2 = await createTestUser("leader2", "STUDENT");
+    await db.user.update({ where: { id: leader2.id }, data: { graduationYear: 2020 } });
     const s1 = await newStudentEnrolled("new-s1");
 
     const res = await request(app)
@@ -142,7 +143,7 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
     expect(mirror?.groupId).toBe(res.body.data.id);
   });
 
-  it("refuses a leader who is not a leader", async () => {
+  it("refuses a leader who hasn't graduated", async () => {
     // v1 read leaderIds off the raw body. A GroupLeader row is a token claim,
     // so an unvalidated list here is a privilege path, not a typo.
     const student = await newStudentEnrolled("not-a-leader");
@@ -152,7 +153,7 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
       .send({ name: "Bad leaders", leaderIds: [student.id] });
 
     expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("invalid_leader");
+    expect(res.body.error.code).toBe("not_alumnus");
   });
 
   it("refuses a student who is not enrolled in the season", async () => {
@@ -195,11 +196,13 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
       },
     });
 
+    // Since community model Build 2 a WITHDRAWN member can't be named at all.
     const created = await request(app)
       .post(`/api/v1/seasons/${seasonId}/groups`)
       .set("authorization", `Bearer ${superToken}`)
       .send({ name: "History group", studentIds: [quitter.id] });
-    expect(created.status).toBe(201);
+    expect(created.status).toBe(409);
+    expect(created.body.error.code).toBe("not_enrolled");
 
     const after = await db.seasonEnrollment.findUnique({
       where: { studentUserId_seasonId: { studentUserId: quitter.id, seasonId } },
@@ -208,7 +211,7 @@ describe("POST /api/v1/seasons/:id/groups and PATCH /api/v1/groups/:id", () => {
     expect(after).toMatchObject({
       status: "WITHDRAWN",
       dropReason: "moved away",
-      groupId: created.body.data.id,
+      groupId: null,
     });
   });
 

@@ -84,7 +84,7 @@ export type GroupDetail = z.infer<typeof groupDetailSchema>;
 /** POST /seasons/:id/groups (201) and PATCH /groups/:id. */
 export const groupRefResponseSchema = z.object({ id: z.number() });
 
-/** GET /groups/leader-options (D-16.14) — interim until domain 11's user directory. */
+/** GET /groups/leader-options: alumni with no active role, until the group form moves to staff-candidates. */
 export const leaderOptionSchema = z.object({
   id: z.number(),
   name: z.string().nullable(),

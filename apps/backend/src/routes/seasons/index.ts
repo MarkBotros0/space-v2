@@ -21,6 +21,7 @@ import { duplicateSeason } from "./duplicate";
 import { endSeason, getSeasonEndCheck } from "./end";
 import { getSeasonResults, listOverdueSeasons, updateSeasonResult } from "./results";
 import { getSeasonRoster, saveGroupAssignments } from "./roster";
+import { listStaffCandidates } from "./staff-candidates";
 
 /**
  * Seasons: the season rows themselves, duplication, the child collections
@@ -55,6 +56,8 @@ seasonsRouter.post("/:id/assignments", requireAuth, createSeasonAssignment);
 seasonsRouter.get("/:id/admins", requireAuth, listSeasonAdmins);
 seasonsRouter.post("/:id/admins", requireAuth, addSeasonAdmin);
 seasonsRouter.delete("/:id/admins/:userId", requireAuth, removeSeasonAdmin);
+
+seasonsRouter.get("/:id/staff-candidates", requireAuth, listStaffCandidates);
 
 seasonsRouter.get("/:id/end-check", requireAuth, getSeasonEndCheck);
 seasonsRouter.post("/:id/end", requireAuth, endSeason);

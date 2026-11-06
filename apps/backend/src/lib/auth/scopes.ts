@@ -50,19 +50,19 @@ function usableGrants(admin: Grant[], leader: Grant[], hasActiveEnrolment: boole
   return { adminIds: keep(admin), leaderIds: keep(leader) };
 }
 
-async function readGrants(userIds: number[]) {
+async function readGrants(userIds: number[], client: Prisma.TransactionClient = db) {
   const [adminRows, leaderRows, enrolments] = await Promise.all([
-    db.seasonAdmin.findMany({
+    client.seasonAdmin.findMany({
       where: { userId: { in: userIds }, season: LIVE_SEASON },
       select: { userId: true, seasonId: true, season: { select: { status: true } } },
       orderBy: { seasonId: "asc" },
     }),
-    db.groupLeader.findMany({
+    client.groupLeader.findMany({
       where: { userId: { in: userIds }, group: { season: LIVE_SEASON } },
       select: { userId: true, groupId: true, group: { select: { season: { select: { status: true } } } } },
       orderBy: { groupId: "asc" },
     }),
-    db.seasonEnrollment.findMany({
+    client.seasonEnrollment.findMany({
       where: {
         studentUserId: { in: userIds },
         status: "ACTIVE",
@@ -119,6 +119,15 @@ export async function loadScopes(userId: number): Promise<Scopes & { role: UserR
     activeSeasonId: grants.activeSeasonId,
     graduationYear,
   };
+}
+
+/** One person's role as `loadScopes` gives it, read through the caller's transaction. */
+export async function derivedRoleOf(
+  tx: Prisma.TransactionClient,
+  person: { id: number; role: UserRole },
+): Promise<UserRole> {
+  if (isPermanentRole(person.role)) return person.role;
+  return deriveRole(person.role, (await readGrants([person.id], tx))(person.id));
 }
 
 /** `deriveRole` for a page of people, in one set of queries. Keyed by user id. */

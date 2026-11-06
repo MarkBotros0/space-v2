@@ -34,7 +34,7 @@ describe("User.sessionsValidFrom (Plan 18 M13)", () => {
     const res = await request(app)
       .patch(`/api/v1/users/${admin.id}`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ name: "Test m13-demoted", role: "LEADER", graduationYear: 2015 });
+      .send({ name: "Test m13-demoted", role: "MENTOR", graduationYear: 2015 });
     expect(res.status).toBe(200);
 
     const stale = await request(app).get("/api/v1/me").set("authorization", `Bearer ${before}`);
