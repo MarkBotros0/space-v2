@@ -189,6 +189,25 @@ describe("GET /seasons/:id/people-candidates", () => {
     expect(rowOf(await candidates(active), busy.id)).toMatchObject({ availability: "in_role", selectable: false });
   });
 
+  it("blocks an in-role person who is also blocked: unselectable on a draft, reason block first", async () => {
+    const gbv = await season("ACTIVE", "GBV", 2026);
+    const target = await season("DRAFT", "LEAD", 2027, "GBV");
+    const mina = await person("Mina Both");
+    await db.seasonEnrollment.create({ data: { seasonId: gbv, studentUserId: mina.id, status: "ACTIVE" } });
+    const admin = await createTestUser("pc-admin3", "ADMIN");
+    await db.seasonAdmin.create({ data: { seasonId: target, userId: admin.id } });
+
+    const asSuper = rowOf(await candidates(target), mina.id);
+    expect(asSuper).toMatchObject({
+      availability: "never_finished",
+      reason: "Hasn't finished GBV yet. Mina Both is already a student in GBV 2026",
+      selectable: false,
+      overridable: true,
+    });
+    const asAdmin = rowOf(await candidates(target, await login(app, admin.email)), mina.id);
+    expect(asAdmin).toMatchObject({ availability: "never_finished", selectable: false, overridable: false });
+  });
+
   it("keeps a blocked person unselectable while no override is on record", async () => {
     // An override lives on the person's enrolment row in this season (Task 5 writes it).
     const gbv26 = await season("COMPLETED", "GBV", 2026);

@@ -108,6 +108,22 @@ export async function listPeopleCandidates(req: Request, res: Response) {
       };
     }
     const role = roles.get(p.id);
+    const standing = standings.get(p.id)!;
+    if (standing.kind === "blocked") {
+      const didNotPass = standing.reason === "did_not_pass";
+      const block = didNotPass
+        ? `Did not pass ${standing.programSeasonTitle}`
+        : `Hasn't finished ${season.requiredProgram} yet`;
+      return {
+        ...base,
+        availability: didNotPass ? "did_not_pass" : "never_finished",
+        // The block comes first: it needs an override, the role only a draft.
+        reason: role ? `${block}. ${describeActiveRole(p.name, role)}` : block,
+        // An override lives on the enrolment row, and anyone with a row here is in_season above.
+        selectable: false,
+        overridable: callerIsSuper,
+      };
+    }
     if (role) {
       return {
         ...base,
@@ -115,20 +131,6 @@ export async function listPeopleCandidates(req: Request, res: Response) {
         reason: describeActiveRole(p.name, role),
         // A draft holds the person; the Start checklist catches the clash.
         selectable: season.status === "DRAFT",
-      };
-    }
-    const standing = standings.get(p.id)!;
-    if (standing.kind === "blocked") {
-      const didNotPass = standing.reason === "did_not_pass";
-      return {
-        ...base,
-        availability: didNotPass ? "did_not_pass" : "never_finished",
-        reason: didNotPass
-          ? `Did not pass ${standing.programSeasonTitle}`
-          : `Hasn't finished ${season.requiredProgram} yet`,
-        // An override lives on the enrolment row, and anyone with a row here is in_season above.
-        selectable: false,
-        overridable: callerIsSuper,
       };
     }
     if (standing.kind === "already_passed") {
