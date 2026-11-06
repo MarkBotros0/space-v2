@@ -19,7 +19,6 @@ const SECRET_RESULT = "seeded-result-reason-ZQX";
 const SECRET_DROP = "seeded-drop-reason-ZQX";
 const SECRET_NOTE = "seeded-quiz-note-ZQX";
 
-let student: number;
 let tokens: { student: string; mentor: string; stranger: string };
 const seasons = {} as Record<"passed" | "notPassed" | "completed" | "dropped" | "current" | "draft" | "deletedSeason", { id: number; code: string }>;
 let quizIds: { notTaken: number; progress: number; graded: number; submitted: number };
@@ -38,7 +37,6 @@ beforeAll(async () => {
   const s = await createTestUser("rec-student", "STUDENT");
   const mentor = await createTestUser("rec-mentor", "MENTOR");
   const stranger = await createTestUser("rec-stranger", "STUDENT");
-  student = s.id;
 
   const mk = (status: "ACTIVE" | "COMPLETED" | "DRAFT") => createTestSeason({ status });
   seasons.passed = await mk("COMPLETED");
