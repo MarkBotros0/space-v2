@@ -157,6 +157,28 @@ describe("a role in an ACTIVE season hides DRAFT grants", () => {
     });
   });
 
+  it("GET /seasons leaves out a draft an ACTIVE leader can't open, and keeps the seasons they can", async () => {
+    const active = await createTestSeason();
+    const draft = await createTestSeason({ status: "DRAFT" });
+    const finished = await createTestSeason({ status: "COMPLETED" });
+    const serving = await alumnus("dr-list-serving");
+    await makeLeader(serving.id, active.id);
+    await makeLeader(serving.id, draft.id);
+    await makeLeader(serving.id, finished.id);
+    const draftOnly = await alumnus("dr-list-draft-only");
+    await makeLeader(draftOnly.id, draft.id);
+
+    const seasonIds = async (email: string) => {
+      const res = await request(app)
+        .get("/api/v1/seasons")
+        .set("authorization", `Bearer ${(await signIn(email)).accessToken}`);
+      expect(res.status).toBe(200);
+      return (res.body.data.seasons as { id: number }[]).map((s) => s.id);
+    };
+    expect(await seasonIds(serving.email)).toEqual([active.id]);
+    expect(await seasonIds(draftOnly.email)).toEqual([draft.id]);
+  });
+
   it("Review Focus 4: draft access arrives on refresh once the other season ends, with no new sign-in", async () => {
     const seasonA = await createTestSeason();
     const seasonB = await createTestSeason({ status: "DRAFT" });

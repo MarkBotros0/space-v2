@@ -39,9 +39,11 @@ export async function listSeasons(req: Request, res: Response) {
           ? {
               // A former leader has no access to a finished season, so it must
               // not be listed: Today would pick it and get a 403 on every open.
+              // The claim, not the rows: loadScopes hides a draft from someone
+              // leading in an ACTIVE season, and canAccessSeason reads it too.
               deletedAt: null,
               status: { in: ["DRAFT", "ACTIVE"] },
-              groups: { some: { leaders: { some: { userId: user.userId } } } },
+              groups: { some: { id: { in: user.groupLeaderIds } } },
             }
           : { deletedAt: null, enrollments: { some: { studentUserId: user.userId } } };
 
