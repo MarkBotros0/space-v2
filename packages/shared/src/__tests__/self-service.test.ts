@@ -119,6 +119,8 @@ describe("privacy-strict read contracts", () => {
   it("seasonHistoryRowSchema fails loudly on any submissions/feedback field (R34)", () => {
     const row = {
       seasonId: 1,
+      code: "gbv-2025",
+      outcome: "PASSED",
       title: "GBV 2025",
       startDate: "2025-02-01T00:00:00.000Z",
       endDate: "2025-06-30T00:00:00.000Z",

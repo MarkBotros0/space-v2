@@ -13,6 +13,8 @@ const get = apiClient.get as jest.Mock;
 
 const row = {
   seasonId: 3,
+  code: "gbv-2025",
+  outcome: "COMPLETED",
   title: "GBV 2025",
   startDate: "2025-02-01T00:00:00.000Z",
   endDate: "2025-06-30T00:00:00.000Z",

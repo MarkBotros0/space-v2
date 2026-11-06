@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { seasonStatusSchema } from "./enums";
+import { seasonOutcomeSchema } from "./season-lifecycle";
 import { isoDaySchema } from "./org-time";
 
 // Response shapes for the mobile client.
@@ -150,10 +151,12 @@ export const seasonHistoryCurriculumItemSchema = z.object({
 export const seasonHistoryRowSchema = z
   .object({
     seasonId: z.number(),
+    code: z.string(),
     title: z.string(),
     startDate: z.string(),
     endDate: z.string(),
     groupName: z.string().nullable(),
+    outcome: seasonOutcomeSchema,
     attendancePct: z.number().int().min(0).max(100),
     curriculum: z.array(seasonHistoryCurriculumItemSchema),
   })

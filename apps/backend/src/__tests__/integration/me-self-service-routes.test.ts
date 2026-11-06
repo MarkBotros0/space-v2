@@ -159,10 +159,10 @@ describe("GET /api/v1/me/season-history (spec 02 R33–R41)", () => {
     expect(res.body.data.seasons[0].curriculum[0].dayKey).toBe("2098-03-02");
   });
 
-  it("carries attendance % and curriculum only — no submissions, feedback or notes (R34)", async () => {
+  it("carries attendance %, curriculum and outcome only — no submissions, feedback or notes (R34)", async () => {
     const res = await get("/api/v1/me/season-history", studentToken);
     expect(Object.keys(res.body.data.seasons[0]).sort()).toEqual(
-      ["attendancePct", "curriculum", "endDate", "groupName", "seasonId", "startDate", "title"].sort(),
+      ["attendancePct", "code", "curriculum", "endDate", "groupName", "outcome", "seasonId", "startDate", "title"].sort(),
     );
   });
 

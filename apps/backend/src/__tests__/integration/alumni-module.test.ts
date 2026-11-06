@@ -39,6 +39,20 @@ describe("alumni reads", () => {
     ]);
   });
 
+  it("history rows carry code and outcome, and the past season opens as a record", async () => {
+    const hist = await request(app).get("/api/v1/me/season-history").set(asAlumnus());
+    expect(hist.status).toBe(200);
+    expect(hist.body.data.seasons.length).toBeGreaterThan(0);
+    for (const row of hist.body.data.seasons) {
+      expect(typeof row.code).toBe("string");
+      expect(["PASSED", "NOT_PASSED", "COMPLETED", "DROPPED"]).toContain(row.outcome);
+    }
+    const first = hist.body.data.seasons[0];
+    const rec = await request(app).get(`/api/v1/me/seasons/${first.seasonId}`).set(asAlumnus());
+    expect(rec.status).toBe(200);
+    expect(rec.body.data.record.outcome).toBe(first.outcome);
+  });
+
   it("sees alumni-only events that current students cannot", async () => {
     await expectStatuses(app, w.tokens.alumnus, [
       ["get", `/api/v1/events/${w.eventAlumniId}`, 200],

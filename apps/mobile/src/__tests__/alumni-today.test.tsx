@@ -26,6 +26,8 @@ const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve
 
 const row = (seasonId: number, title: string, groupName: string | null = "Group A") => ({
   seasonId,
+  code: `season-${seasonId}`,
+  outcome: "COMPLETED",
   title,
   startDate: "2025-01-05T00:00:00.000Z",
   endDate: "2025-03-20T00:00:00.000Z",

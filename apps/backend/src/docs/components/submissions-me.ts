@@ -90,9 +90,11 @@ export const submissionsMeSchemas = {
   SeasonHistoryRow: {
     type: "object",
     additionalProperties: false,
-    description: "A past enrollment — attendance % and curriculum ONLY (spec 02 R34: no submissions, feedback or notes, by design).",
+    description: "A past enrollment — attendance %, curriculum and outcome ONLY (spec 02 R34: no submissions, feedback, notes or reasons, by design).",
     properties: {
       seasonId: { type: "integer" },
+      code: { type: "string" },
+      outcome: { type: "string", enum: ["PASSED", "NOT_PASSED", "COMPLETED", "DROPPED"] },
       title: { type: "string" },
       startDate: { type: "string", format: "date-time" },
       endDate: { type: "string", format: "date-time" },
@@ -107,6 +109,52 @@ export const submissionsMeSchemas = {
             title: { type: "string" },
             startsAt: { type: "string", format: "date-time" },
             dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-calendar day (ruling X13)." },
+          },
+        },
+      },
+    },
+  },
+  SeasonRecord: {
+    type: "object",
+    additionalProperties: false,
+    description: "One past season in full, read-only. Never carries result or drop reasons, feedback or notes.",
+    properties: {
+      season: {
+        type: "object",
+        properties: {
+          id: { type: "integer" },
+          code: { type: "string" },
+          title: { type: "string" },
+          startDate: { type: "string", format: "date-time" },
+          endDate: { type: "string", format: "date-time" },
+        },
+      },
+      outcome: { type: "string", enum: ["PASSED", "NOT_PASSED", "COMPLETED", "DROPPED"] },
+      groupName: { type: ["string", "null"] },
+      attendancePct: { type: "integer", minimum: 0, maximum: 100 },
+      assignments: { type: "array", items: { type: "object", description: "Student assignment list item." } },
+      quizzes: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            title: { type: "string" },
+            kind: { type: "string", enum: ["PAPER", "ONLINE"] },
+            status: { type: "string", enum: ["NOT_TAKEN", "IN_PROGRESS", "SUBMITTED", "GRADED"] },
+            score: { type: ["integer", "null"], description: "Null until graded." },
+          },
+        },
+      },
+      attendance: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            sessionId: { type: "integer" },
+            title: { type: "string" },
+            startsAt: { type: "string", format: "date-time" },
+            status: { type: ["string", "null"], enum: ["PRESENT", "ABSENT", "LATE", null] },
           },
         },
       },

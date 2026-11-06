@@ -23,13 +23,14 @@ import {
   loadSeasonStaffDashboard,
   loadStudentDashboard,
 } from "../lib/queries/dashboard";
-import { loadMyAttendance, loadMyProfile, loadMySeason, loadSeasonHistory } from "../lib/queries/me";
+import { loadMyProfile } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
 import { makeLimiter } from "../lib/rate-limit";
 import { isAlumnus } from "../lib/rbac";
 import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { meDevicesRouter } from "./me-devices";
+import { meSeasonReadsRouter } from "./me-season-reads";
 import { forbidden } from "./respond";
 
 // Closes spec 18 R31: v1's current-password check was an unthrottled online
@@ -42,6 +43,7 @@ const passwordLimiter = makeLimiter({
 
 export const meRouter = Router();
 meRouter.use(meDevicesRouter);
+meRouter.use(meSeasonReadsRouter);
 
 const ME_SELECT = {
   id: true, name: true, email: true, role: true, avatarPath: true,
@@ -221,29 +223,6 @@ meRouter.delete("/", requireAuth, async (req, res) => {
 });
 
 const STUDENTS_ONLY = "This is only available to students and alumni.";
-
-/*
- * Student self-service reads (Plan 11). requireAuth per route (ruling X5).
- * Role STUDENT covers alumni too (role stays STUDENT, graduationYear set).
- * Staff get 403, not an empty shape: a staff client calling these is a bug.
- */
-meRouter.get("/season-history", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
-  return apiOk(res, { seasons: await loadSeasonHistory(user) });
-});
-
-meRouter.get("/season", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
-  return apiOk(res, { season: await loadMySeason(user) });
-});
-
-meRouter.get("/attendance", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
-  return apiOk(res, await loadMyAttendance(user));
-});
 
 const OWN_PROFILE_KEYS: ReadonlySet<string> = new Set(OWN_PROFILE_FIELDS);
 
