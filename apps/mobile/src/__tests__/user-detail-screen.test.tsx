@@ -96,7 +96,17 @@ describe("UserDetailScreen", () => {
     expect(toast.success).toHaveBeenCalledWith("Changes saved.");
   });
 
-  it("names the seasons an ADMIN loses before a role change, and saves only on confirm", async () => {
+  it("offers Super, Mentor and Student, never Admin or Leader", async () => {
+    renderWithProviders(<UserDetailScreen />);
+    await screen.findByText("Edit Detail Dan");
+    fireEvent.press(screen.getByLabelText("Role"));
+    expect(await screen.findByText("Mentor")).toBeTruthy();
+    expect(screen.getByText("Super")).toBeTruthy();
+    expect(screen.queryByText("Admin")).toBeNull();
+    expect(screen.queryByText("Leader")).toBeNull();
+  });
+
+  it("shows a season role as read-only text, and saves without sending a role", async () => {
     get.mockResolvedValue({
       data: {
         data: {
@@ -105,41 +115,25 @@ describe("UserDetailScreen", () => {
           graduationYear: 2015,
           status: "active",
           invite: null,
-          adminSeasons: [
-            { id: 1, code: "gbv-2026", title: "GBV 2026" },
-            { id: 2, code: "gbv-2025", title: "GBV 2025" },
-          ],
+          adminSeasons: [{ id: 1, code: "gbv-2026", title: "GBV 2026" }],
         },
       },
     });
-    let confirm: (() => void) | undefined;
-    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => {
-      confirm = buttons?.find((b) => b.style !== "cancel")?.onPress as () => void;
-    });
-    patch.mockResolvedValue({ data: { data: { ...detail, role: "MENTOR", graduationYear: 2015 } } });
+    const alertSpy = jest.spyOn(Alert, "alert");
+    patch.mockResolvedValue({ data: { data: { ...detail, name: "Renamed Dan", role: "ADMIN" } } });
     renderWithProviders(<UserDetailScreen />);
     await screen.findByText("Edit Detail Dan");
 
-    fireEvent.press(screen.getByLabelText("Role"));
-    fireEvent.press(await screen.findByText("Mentor"));
-    fireEvent.press(screen.getByText("Save changes"));
+    expect(screen.queryByLabelText("Role")).toBeNull();
+    expect(screen.getByText("Admin")).toBeTruthy();
+    expect(screen.getByText("Admin and leader come from the person's seasons.")).toBeTruthy();
 
+    fireEvent.changeText(screen.getByLabelText("Name"), "Renamed Dan");
+    fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() =>
-      expect(alertSpy).toHaveBeenCalledWith(
-        "Remove season admin rights?",
-        expect.stringContaining("GBV 2026, GBV 2025"),
-        expect.any(Array),
-      ),
+      expect(patch).toHaveBeenCalledWith("/api/v1/users/7", { name: "Renamed Dan", graduationYear: 2015 }),
     );
-    expect(patch).not.toHaveBeenCalled();
-    confirm?.();
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/users/7", {
-        name: "Detail Dan",
-        role: "MENTOR",
-        graduationYear: 2015,
-      }),
-    );
+    expect(alertSpy).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 
@@ -210,7 +204,7 @@ describe("UserDetailScreen", () => {
     await screen.findByText(/Invite expires/);
 
     fireEvent.press(screen.getByLabelText("Role"));
-    fireEvent.press(await screen.findByText("Leader"));
+    fireEvent.press(await screen.findByText("Mentor"));
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>

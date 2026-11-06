@@ -4,7 +4,7 @@ import {
   ALUMNI_ONLY_ROLES,
   createUserRequestSchema,
   updateUserRequestSchema,
-  userRoleSchema,
+  userWriteRoleSchema,
   type CreateUserBody,
   type UpdateUserBody,
   type UserRole,
@@ -13,6 +13,7 @@ import {
 import { FormScreen } from "../design/layout/form-screen";
 import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../design/ui";
 import { FormField } from "../design/ui/form-field";
+import { Text } from "../design/ui/text";
 import { firstErrorByField } from "../lib/form-errors";
 import { USER_ROLE_LABELS as ROLE_LABELS } from "../lib/user-role-labels";
 
@@ -69,6 +70,8 @@ export function UserForm({
 }) {
   const [v, setV] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Admin and leader come from season rows: shown as text, never offered or sent.
+  const fromSeasons = mode === "edit" && (initial.role === "ADMIN" || initial.role === "LEADER");
   const needsYear = ALUMNI_ONLY_ROLES.includes(v.role);
 
   const submit = () => {
@@ -96,7 +99,7 @@ export function UserForm({
     }
     const parsed = updateUserRequestSchema.safeParse({
       name: v.name,
-      role: v.role,
+      ...(fromSeasons ? {} : { role: v.role }),
       graduationYear,
     });
     if (!parsed.success) {
@@ -145,25 +148,31 @@ export function UserForm({
             />
           </FormField>
         ) : null}
-        <FormField label="Role" required error={errors.role}>
-          <Select
-            items={ROLE_LABELS}
-            disabled={readOnly}
-            value={v.role}
-            onValueChange={(role) => setV({ ...v, role: role as UserRole })}
-          >
-            <SelectTrigger accessibilityLabel="Role">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {userRoleSchema.options.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {ROLE_LABELS[r]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormField>
+        {fromSeasons ? (
+          <FormField label="Role" description="Admin and leader come from the person's seasons.">
+            <Text>{ROLE_LABELS[initial.role]}</Text>
+          </FormField>
+        ) : (
+          <FormField label="Role" required error={errors.role}>
+            <Select
+              items={ROLE_LABELS}
+              disabled={readOnly}
+              value={v.role}
+              onValueChange={(role) => setV({ ...v, role: role as UserRole })}
+            >
+              <SelectTrigger accessibilityLabel="Role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {userWriteRoleSchema.options.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        )}
         <FormField
           label="JPCS graduation year"
           required={needsYear}
@@ -184,7 +193,7 @@ export function UserForm({
           />
         </FormField>
 
-          {children}
+        {children}
       </View>
     </FormScreen>
   );

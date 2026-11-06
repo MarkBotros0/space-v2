@@ -64,6 +64,16 @@ describe("/users/new (spec 11 §9)", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
+  it("offers Super, Mentor and Student only", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<NewUserScreen />);
+    fireEvent.press(screen.getByLabelText("Role"));
+    expect(await screen.findByText("Mentor")).toBeTruthy();
+    expect(screen.getByText("Super")).toBeTruthy();
+    expect(screen.queryByText("Admin")).toBeNull();
+    expect(screen.queryByText("Leader")).toBeNull();
+  });
+
   it("requires a graduation year for alumni-only roles, using the shared schema's message (R2/R3)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<NewUserScreen />);

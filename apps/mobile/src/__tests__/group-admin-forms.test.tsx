@@ -114,10 +114,10 @@ function routeGets(extra: Record<string, unknown> = {}) {
       "/api/v1/seasons/7/roster": { roster },
       "/api/v1/seasons/by-code/s7": seasonDetail,
       "/api/v1/seasons/7": seasonDetail,
-      "/api/v1/groups/leader-options": {
-        leaders: [
-          { id: 5, name: "Lina", email: "lina@jpc.test" },
-          { id: 6, name: "Karim", email: "karim@jpc.test" },
+      "/api/v1/seasons/7/staff-candidates": {
+        people: [
+          { id: 6, name: "Karim", lastSeason: { title: "GBV 2025" } },
+          { id: 8, name: "Nora", lastSeason: null },
         ],
       },
       "/api/v1/groups/3": {
@@ -234,6 +234,77 @@ describe("/group/[id]/edit", () => {
         studentIds: [21, 22],
       }),
     );
+  });
+
+  it("offers the group's current leaders next to the candidates, so one can be unticked", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    mockParams = { id: "3" };
+    routeGets();
+    patch.mockResolvedValue({ data: { data: { id: 3 } } });
+    renderWithProviders(<EditGroupScreen />);
+
+    await screen.findByDisplayValue("Group A");
+    fireEvent.press(await screen.findByLabelText("Leaders"));
+    // Lina leads the group but is no candidate (she has a role); she is still listed, last season in words.
+    // (once as the ticked chip, once as the option)
+    expect((await screen.findAllByText("Lina")).length).toBe(2);
+    expect(screen.getByText("GBV 2025")).toBeTruthy();
+    fireEvent.press(screen.getAllByText("Lina")[1]!);
+    fireEvent.press(screen.getByText("Karim"));
+    fireEvent.press(screen.getByLabelText("Leaders"));
+    saveBar("Save changes");
+    await waitFor(() =>
+      expect(patch).toHaveBeenCalledWith(
+        "/api/v1/groups/3",
+        expect.objectContaining({ leaderIds: [6] }),
+      ),
+    );
+  });
+
+  it("offers a season admin as a leader: the signed-in admin themselves, and every admin to a SUPER", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 40, name: "Ada Admin" }));
+    mockParams = { id: "3" };
+    routeGets();
+    const own = renderWithProviders(<EditGroupScreen />);
+    await screen.findByDisplayValue("Group A");
+    fireEvent.press(await screen.findByLabelText("Leaders"));
+    expect(await screen.findByText("Ada Admin")).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/admins");
+    own.unmount();
+
+    useSessionStore.setState(makeSession("SUPER"));
+    routeGets({
+      "/api/v1/seasons/7/admins": {
+        admins: [
+          { userId: 41, name: "Bo Admin", email: "bo@jpc.test", assignedAt: "2099-01-02T00:00:00.000Z", assignedByName: null },
+        ],
+      },
+    });
+    renderWithProviders(<EditGroupScreen />);
+    await screen.findByDisplayValue("Group A");
+    fireEvent.press(await screen.findByLabelText("Leaders"));
+    expect(await screen.findByText("Bo Admin")).toBeTruthy();
+  });
+
+  it("shows the server's message when saving is refused with already_in_role", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    mockParams = { id: "3" };
+    routeGets();
+    patch.mockRejectedValue(
+      Object.assign(new Error("409"), {
+        isAxiosError: true,
+        response: {
+          status: 409,
+          data: { error: { code: "already_in_role", message: "Karim is already leading a group in GBV 2026" } },
+        },
+      }),
+    );
+    renderWithProviders(<EditGroupScreen />);
+    await screen.findByDisplayValue("Group A");
+    saveBar("Save changes");
+    expect(
+      await within(screen.getByTestId("save-bar")).findByText("Karim is already leading a group in GBV 2026"),
+    ).toBeTruthy();
   });
 
   it("shows the delete impact, and the server's refusal while an assignment targets only this group", async () => {

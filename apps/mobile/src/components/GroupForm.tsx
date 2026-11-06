@@ -1,11 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
-import { groupWriteRequestSchema } from "@space/shared";
+import { groupWriteRequestSchema, type GroupDetail } from "@space/shared";
 
 import { FormScreen } from "../design/layout/form-screen";
 import { FormField, Input, MultiSelect, Textarea } from "../design/ui";
-import { useLeaderOptions, useSeasonRoster, type GroupWriteInput } from "../hooks/use-group-admin";
+import { useSeasonRoster, type GroupWriteInput } from "../hooks/use-group-admin";
+import { useSeasonAdmins, useStaffCandidates } from "../hooks/use-season-admins";
 import { firstErrorByField } from "../lib/form-errors";
+import { useSessionStore } from "../store/session";
 
 export interface GroupFormValues {
   name: string;
@@ -23,6 +25,11 @@ export interface GroupFormValues {
  * `message`. Saving
  * REPLACES the group's leader and student lists (spec 05 R30) — the form says
  * so (V2-ONLY hints on students who are in another group).
+ *
+ * Leaders come from the season's staff candidates (alumni with no active
+ * role), plus the group's current leaders so one can be unticked, plus the
+ * season's own admins, who may lead (a SUPER reads the admins list; a season
+ * admin offers themselves, the one admin they can see).
  */
 export function GroupForm({
   title,
@@ -31,6 +38,7 @@ export function GroupForm({
   seasonId,
   groupId,
   initial,
+  currentLeaders = [],
   submitLabel,
   submitting,
   message,
@@ -43,12 +51,17 @@ export function GroupForm({
   seasonId: number;
   groupId: number | null;
   initial: GroupFormValues;
+  /** The group's leaders now (`detail.leaders`); none when creating. */
+  currentLeaders?: GroupDetail["leaders"];
   submitLabel: string;
   submitting: boolean;
   message: string | null;
   onSubmit: (body: GroupWriteInput) => void;
 }) {
-  const leaders = useLeaderOptions(true);
+  const leaders = useStaffCandidates(seasonId, { enabled: true });
+  const me = useSessionStore((st) => st.user);
+  const scopes = useSessionStore((st) => st.scopes);
+  const seasonAdmins = useSeasonAdmins(seasonId, { enabled: me?.role === "SUPER" });
   const roster = useSeasonRoster(seasonId);
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -72,11 +85,15 @@ export function GroupForm({
     onSubmit(body);
   };
 
-  const leaderOptions = (leaders.data ?? []).map((l) => ({
-    value: String(l.id),
-    label: l.name ?? l.email,
-    description: l.email,
-  }));
+  const leaderOptions = leaderChoices(
+    leaders.data ?? [],
+    currentLeaders,
+    me?.role === "SUPER"
+      ? (seasonAdmins.data ?? []).map((a) => ({ id: a.userId, name: a.name }))
+      : me?.role === "ADMIN" && scopes?.seasonAdminIds.includes(seasonId)
+        ? [{ id: me.id, name: me.name }]
+        : [],
+  );
   const studentOptions = (roster.data ?? []).map((r) => {
     const hint =
       r.groupId !== null && r.groupId !== groupId
@@ -170,4 +187,30 @@ export function GroupForm({
       </View>
     </FormScreen>
   );
+}
+
+interface Choice {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+/**
+ * One option per person, by name: the candidates (last season as the
+ * description), this group's current leaders (so they can be unticked) and the
+ * season's admins. A person in more than one list keeps the first description.
+ */
+function leaderChoices(
+  candidates: { id: number; name: string; lastSeason: { title: string } | null }[],
+  current: { id: number; name: string | null; email?: string }[],
+  admins: { id: number; name: string }[],
+): Choice[] {
+  const byId = new Map<number, Choice>();
+  const add = (id: number, label: string, description?: string) => {
+    if (!byId.has(id)) byId.set(id, { value: String(id), label, description });
+  };
+  for (const c of candidates) add(c.id, c.name, c.lastSeason?.title);
+  for (const l of current) add(l.id, l.name ?? l.email ?? "Unnamed", "Leads this group");
+  for (const a of admins) add(a.id, a.name, "Season admin");
+  return [...byId.values()].sort((a, b) => a.label.localeCompare(b.label));
 }

@@ -52,16 +52,8 @@ const pat = {
   assignedByName: "Su",
 };
 
-const userRow = (id: number, name: string, deletedAt: string | null = null) => ({
-  id,
-  name,
-  email: `${name.split(" ")[0]!.toLowerCase()}@jpc.test`,
-  role: "ADMIN",
-  graduationYear: 2010,
-  lastLoginAt: null,
-  deletedAt,
-  status: deletedAt ? "inactive" : "active",
-});
+const person = (id: number, name: string) => ({ id, name, lastSeason: { title: "GBV 2025" } });
+const candidates = (...people: ReturnType<typeof person>[]) => Promise.resolve({ data: { data: { people } } });
 
 let admins: (typeof pat)[];
 
@@ -73,22 +65,14 @@ beforeEach(() => {
     if (url === "/api/v1/seasons/by-code/s7") return Promise.resolve({ data: { data: detail } });
     if (url === "/api/v1/seasons/7/sessions") return Promise.resolve({ data: { data: { sessions: [] } } });
     if (url === "/api/v1/seasons/7/admins") return Promise.resolve({ data: { data: { admins } } });
-    if (url === "/api/v1/users?role=ADMIN")
-      return Promise.resolve({
-        data: {
-          data: {
-            users: [userRow(21, "Pat Admin"), userRow(22, "Rana Admin"), userRow(23, "Gone Admin", "2099-01-01")],
-            nextCursor: null,
-            total: 3,
-          },
-        },
-      });
+    if (url === "/api/v1/seasons/7/staff-candidates")
+      return candidates(person(21, "Pat Admin"), person(22, "Rana Admin"));
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 });
 
 describe("Admins card on the SUPER season detail", () => {
-  it("lists the admins and offers only active ADMIN users who aren't one yet", async () => {
+  it("lists the admins and offers the staff candidates who aren't one yet", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<SeasonDetailScreen />);
 
@@ -106,16 +90,8 @@ describe("Admins card on the SUPER season detail", () => {
     useSessionStore.setState(makeSession("SUPER"));
     const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
     get.mockImplementation((url: string) =>
-      url === "/api/v1/users?role=ADMIN"
-        ? Promise.resolve({
-            data: {
-              data: {
-                users: [userRow(21, "Pat Admin"), userRow(22, "Rana Admin"), userRow(24, "Sam Admin")],
-                nextCursor: null,
-                total: 3,
-              },
-            },
-          })
+      url === "/api/v1/seasons/7/staff-candidates"
+        ? candidates(person(21, "Pat Admin"), person(22, "Rana Admin"), person(24, "Sam Admin"))
         : base(url),
     );
     let client: QueryClient | undefined;
@@ -208,7 +184,7 @@ describe("Admins card on the SUPER season detail", () => {
 
     fireEvent.press(await screen.findByLabelText("Remove Pat Admin"));
     expect(screen.getByText("Remove admin?")).toBeTruthy();
-    expect(screen.getByText("Pat Admin will no longer be able to administer TEST 2099. They'll be signed out and need to sign in again.")).toBeTruthy();
+    expect(screen.getByText("Pat Admin will no longer be able to administer TEST 2099.")).toBeTruthy();
     expect(del).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByText("Remove"));
@@ -223,6 +199,6 @@ describe("Admins card on the SUPER season detail", () => {
     expect(await screen.findByText("Save changes")).toBeTruthy();
     expect(screen.queryByText("Admins")).toBeNull();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/admins");
-    expect(get).not.toHaveBeenCalledWith("/api/v1/users?role=ADMIN");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/staff-candidates");
   });
 });

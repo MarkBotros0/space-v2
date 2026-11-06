@@ -47,7 +47,6 @@ describe("reads a season admin is allowed", () => {
       ["get", `/api/v1/groups/${w.groupAId}`, 200],
       ["get", `/api/v1/groups/${w.groupBId}`, 200],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 200],
-      ["get", "/api/v1/groups/leader-options", 200],
       ["get", `/api/v1/students/${w.ids.studentA}`, 200],
       ["get", `/api/v1/students/${w.ids.studentB}`, 200],
       ["get", `/api/v1/students/${w.ids.studentA}/notes`, 200],

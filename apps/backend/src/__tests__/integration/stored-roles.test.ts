@@ -109,13 +109,40 @@ describe("PATCH /users/:id", () => {
   it.each([
     ["ADMIN", seatAdmin],
     ["LEADER", seatLeader],
-  ] as const)("accepts the derived %s sent back unchanged, leaving the stored role alone", async (role, seat) => {
+  ] as const)("refuses the derived %s sent back too: the form sends no role for season roles", async (role, seat) => {
     const person = await alumnus("STUDENT");
     await seat(person.id, (await createTestSeason()).id);
     const res = await patch(person.id, { name: "Mina Two", role });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toEqual(ROLE_FROM_SEASONS);
+    expect(await stored(person.id)).toEqual({ role: "STUDENT", sessionsValidFrom: null, name: expect.any(String) });
+    expect((await stored(person.id)).name).not.toBe("Mina Two");
+  });
+
+  it.each([
+    ["ADMIN", seatAdmin],
+    ["LEADER", seatLeader],
+  ] as const)("saves a derived %s's name with no role, leaving the stored role and rows alone", async (role, seat) => {
+    const person = await alumnus("STUDENT");
+    await seat(person.id, (await createTestSeason()).id);
+    const res = await request(app)
+      .patch(`/api/v1/users/${person.id}`)
+      .set(as(superToken))
+      .send({ name: "Mina Two", graduationYear: 2020 });
     expect(res.status).toBe(200);
     expect(res.body.data.role).toBe(role);
     expect(await stored(person.id)).toEqual({ role: "STUDENT", sessionsValidFrom: null, name: "Mina Two" });
+  });
+
+  it("keeps the graduation-year rule for a derived ADMIN saved with no role", async () => {
+    const person = await alumnus("STUDENT");
+    await seatAdmin(person.id, (await createTestSeason()).id);
+    const res = await request(app)
+      .patch(`/api/v1/users/${person.id}`)
+      .set(as(superToken))
+      .send({ name: "Mina Two", graduationYear: null });
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toBe("Required for this role.");
   });
 
   it.each(["DRAFT", "ACTIVE"] as const)("refuses SUPER or MENTOR for someone holding a row in a %s season", async (status) => {

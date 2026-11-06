@@ -100,6 +100,7 @@ function EditGroupLoaded({ detail, roster }: { detail: GroupDetail; roster: Seas
         // the same set the server's setGroupStudents keeps or removes.
         studentIds: roster.filter((r) => r.groupId === detail.id).map((r) => r.userId),
       }}
+      currentLeaders={detail.leaders}
       submitLabel="Save changes"
       submitting={update.isPending}
       message={message}

@@ -319,22 +319,3 @@ describe("GET /seasons/:id/staff-candidates", () => {
     expect((await candidates(2147483000)).status).toBe(404);
   });
 });
-
-describe("GET /groups/leader-options, until Task 8 moves mobile off it", () => {
-  it("lists alumni with no active role, not stored LEADERs", async () => {
-    const free = await person("Free Alum");
-    const busy = await person("Busy");
-    await group(await season(), [busy.id]);
-    const storedLeader = await createTestUser("seats-stored-leader", "LEADER");
-
-    const res = await request(app).get("/api/v1/groups/leader-options").set(as(superToken));
-    expect(res.status).toBe(200);
-    const ids = (res.body.data.leaders as { id: number }[]).map((l) => l.id);
-    expect(ids).toContain(free.id);
-    expect(ids).not.toContain(busy.id);
-    expect(ids).not.toContain(storedLeader.id);
-    expect(res.body.data.leaders.find((l: { id: number }) => l.id === free.id)).toEqual({
-      id: free.id, name: "Free Alum", email: free.email,
-    });
-  });
-});

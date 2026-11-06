@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { derivedRoleOf, loadScopes } from "../../lib/auth/scopes";
+import { derivedRoleOf } from "../../lib/auth/scopes";
 import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { findExistingByEmail } from "../../lib/imports/students/validation";
@@ -15,6 +15,7 @@ import { isLastActiveSuper, lockActiveSuperIds } from "../../lib/super-guard";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import {
   createUserRequestSchema,
+  roleRequiresAlumnus,
   updateUserRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { requireSuper } from "./super-only";
@@ -42,10 +43,10 @@ export async function updateUser(req: Request, res: Response) {
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
 
-  // Before the schema, whose graduation-year rule would answer first. Sending
-  // the derived role back is not a change: the form shows it and has no other.
-  const sentRole: unknown = req.body?.role;
-  if (isSeasonRole(sentRole) && sentRole !== (await loadScopes(id)).role) return roleFromSeasons(res);
+  // Before the schema, whose graduation-year rule would answer first. The form
+  // sends no role for someone whose role comes from seasons, so ADMIN and
+  // LEADER are never valid here, not even the derived one.
+  if (isSeasonRole(req.body?.role)) return roleFromSeasons(res);
 
   const parsed = updateUserRequestSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -76,9 +77,14 @@ export async function updateUser(req: Request, res: Response) {
 
     // Against the role the form was shown, not the stored one: a stored ADMIN
     // with only finished rows reads STUDENT, and saving that changes nothing.
-    // ADMIN or LEADER got here only by matching it, so they never change anything.
+    // No role at all (a derived ADMIN or LEADER's form) is no change either.
     const currentRole = await derivedRoleOf(tx, target);
-    const roleChanged = !isSeasonRole(body.role) && body.role !== currentRole;
+    const roleChanged = body.role !== undefined && body.role !== currentRole;
+
+    // The schema can't check the year of a role it wasn't sent: that is the held one.
+    if (body.role === undefined && body.graduationYear === null && roleRequiresAlumnus(currentRole)) {
+      return { fail: ["bad_request", "Required for this role.", 400] as const };
+    }
 
     // D7 rec 1: you cannot change your own role — the lockout guard v1's
     // updateUserAction lacked (R50). Renaming yourself stays allowed.

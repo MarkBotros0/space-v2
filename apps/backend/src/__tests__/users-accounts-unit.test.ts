@@ -185,10 +185,10 @@ describe("account changes leave an audit line", () => {
     expect(mockInvalidateSessions).toHaveBeenCalledWith(mockDb, 7);
   });
 
-  it("no line for a rename alone, sending back the derived role", async () => {
+  it("no line for a rename alone, sending no role", async () => {
     mockDb.user.findUnique.mockResolvedValue({ ...listRow, role: "ADMIN" });
     mockDb.seasonAdmin.findMany.mockResolvedValue([{ userId: 7, seasonId: 4, season: { status: "ACTIVE" } }]);
-    const res = await request(app).patch("/api/v1/users/7").set(auth()).send({ name: "Pat B", role: "ADMIN", graduationYear: 2015 });
+    const res = await request(app).patch("/api/v1/users/7").set(auth()).send({ name: "Pat B", graduationYear: 2015 });
     expect(res.status).toBe(200);
     expect(mockDb.user.update.mock.calls[0][0].data).not.toHaveProperty("role");
     expect(info).not.toHaveBeenCalled();

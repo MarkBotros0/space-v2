@@ -6,11 +6,9 @@ import {
   groupDeleteResponseSchema,
   groupImpactSchema,
   groupRefResponseSchema,
-  leaderOptionSchema,
   seasonRosterRowSchema,
   type GroupAssignmentsRequest,
   type GroupImpact,
-  type LeaderOption,
   type SeasonRosterRow,
   type UserRole,
 } from "@space/shared";
@@ -24,7 +22,6 @@ export const SEASON_GROUPS_ROLES: readonly UserRole[] = ["ADMIN", "SUPER"];
 
 export type GroupWriteInput = z.input<typeof groupWriteRequestSchema>;
 
-const leaderListSchema = z.array(leaderOptionSchema);
 const rosterSchema = z.array(seasonRosterRowSchema);
 
 /**
@@ -38,17 +35,6 @@ function useInvalidateGroupData() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
   };
-}
-
-export function useLeaderOptions(enabled: boolean): UseQueryResult<LeaderOption[]> {
-  return useQuery({
-    queryKey: queryKeys.groups.leaderOptions(),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/groups/leader-options");
-      return leaderListSchema.parse(res.data.data.leaders);
-    },
-    enabled,
-  });
 }
 
 /** GET /seasons/:id/roster (D-16.11) — the grid, the group form's picker, and Plan 17's import screen. */

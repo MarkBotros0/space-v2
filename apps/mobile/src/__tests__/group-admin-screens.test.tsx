@@ -113,10 +113,10 @@ function routeGets(extra: Record<string, unknown> = {}) {
       "/api/v1/seasons/7/roster": { roster },
       "/api/v1/seasons/by-code/s7": seasonDetail,
       "/api/v1/seasons/7": seasonDetail,
-      "/api/v1/groups/leader-options": {
-        leaders: [
-          { id: 5, name: "Lina", email: "lina@jpc.test" },
-          { id: 6, name: "Karim", email: "karim@jpc.test" },
+      "/api/v1/seasons/7/staff-candidates": {
+        people: [
+          { id: 6, name: "Karim", lastSeason: { title: "GBV 2025" } },
+          { id: 8, name: "Nora", lastSeason: null },
         ],
       },
       "/api/v1/groups/3": {

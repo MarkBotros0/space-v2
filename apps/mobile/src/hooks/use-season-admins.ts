@@ -5,7 +5,12 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { seasonAdminListResponseSchema, type SeasonAdminItem } from "@space/shared";
+import {
+  seasonAdminListResponseSchema,
+  staffCandidatesResponseSchema,
+  type SeasonAdminItem,
+  type StaffCandidate,
+} from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
@@ -31,6 +36,24 @@ export function useSeasonAdmins(
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/seasons/${seasonId}/admins`);
       return seasonAdminListResponseSchema.parse(res.data.data).admins;
+    },
+    enabled: options.enabled && seasonId !== null,
+  });
+}
+
+/**
+ * GET /seasons/:id/staff-candidates — who can take a staff seat: live alumni
+ * with no active role. The caller passes `enabled` (season admins and SUPER).
+ */
+export function useStaffCandidates(
+  seasonId: number | null,
+  options: { enabled: boolean },
+): UseQueryResult<StaffCandidate[]> {
+  return useQuery({
+    queryKey: queryKeys.seasons.staffCandidates(seasonId),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/seasons/${seasonId}/staff-candidates`);
+      return staffCandidatesResponseSchema.parse(res.data.data).people;
     },
     enabled: options.enabled && seasonId !== null,
   });

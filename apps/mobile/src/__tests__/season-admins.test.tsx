@@ -23,8 +23,6 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 const del = apiClient.delete as jest.Mock;
 
-const SIGN_OUT = "They'll be signed out and need to sign in again.";
-
 const detail = {
   id: 7,
   code: "s7",
@@ -43,16 +41,16 @@ const detail = {
   groups: [],
 };
 const pat = { userId: 21, name: "Pat Admin", email: "pat@jpc.test", assignedAt: "2099-01-02T00:00:00.000Z", assignedByName: "Su" };
-const userRow = (id: number, name: string, deletedAt: string | null = null) => ({
+const person = (id: number, name: string, lastSeason: string | null) => ({
   id,
   name,
-  email: `${name.split(" ")[0]!.toLowerCase()}@jpc.test`,
-  role: "ADMIN",
-  graduationYear: 2010,
-  lastLoginAt: null,
-  deletedAt,
-  status: deletedAt ? "inactive" : "active",
+  lastSeason: lastSeason === null ? null : { title: lastSeason },
 });
+const refusal = (message: string) =>
+  Object.assign(new Error("409"), {
+    isAxiosError: true,
+    response: { status: 409, data: { error: { code: "already_in_role", message } } },
+  });
 
 let adminsFail: boolean;
 
@@ -65,13 +63,11 @@ beforeEach(() => {
     if (url === "/api/v1/seasons/7/sessions") return Promise.resolve({ data: { data: { sessions: [] } } });
     if (url === "/api/v1/seasons/7/admins")
       return adminsFail ? Promise.reject(new Error("boom")) : Promise.resolve({ data: { data: { admins: [pat] } } });
-    if (url === "/api/v1/users?role=ADMIN")
+    if (url === "/api/v1/seasons/7/staff-candidates")
       return Promise.resolve({
         data: {
           data: {
-            users: [userRow(21, "Pat Admin"), userRow(22, "Rana Admin"), userRow(23, "Gone Admin", "2099-01-01")],
-            nextCursor: null,
-            total: 3,
+            people: [person(21, "Pat Admin", "GBV 2025"), person(22, "Rana Admin", "GBV 2025"), person(23, "New Person", null)],
           },
         },
       });
@@ -92,18 +88,19 @@ describe("Admins section", () => {
     expect(screen.queryByText("ADMINS")).toBeNull();
   });
 
-  it("the picker excludes current admins and deactivated users", async () => {
+  it("the picker lists the staff candidates, minus current admins, with their last season", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByText("Pat Admin");
     await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
     fireEvent.press(screen.getByLabelText("Choose an admin"));
-    expect(screen.getAllByRole("menuitem")).toHaveLength(1);
+    expect(screen.getAllByRole("menuitem")).toHaveLength(2);
     expect(screen.getByText("Rana Admin")).toBeTruthy();
-    expect(screen.queryByText("Gone Admin")).toBeNull();
+    expect(screen.getByText("GBV 2025")).toBeTruthy();
+    expect(screen.getByText("New Person")).toBeTruthy();
   });
 
-  it("adding asks first, saying the person is signed out, then POSTs and toasts", async () => {
+  it("adding asks first, then POSTs and toasts", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     post.mockResolvedValue({
       data: { data: { admins: [pat, { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" }] } },
@@ -116,12 +113,27 @@ describe("Admins section", () => {
     fireEvent.press(screen.getByText("Add admin"));
 
     expect(screen.getByText("Add admin?")).toBeTruthy();
-    expect(screen.getByText(`Rana Admin will be able to administer TEST 2099. ${SIGN_OUT}`)).toBeTruthy();
+    expect(screen.getByText(`Rana Admin will be able to administer TEST 2099.`)).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByText("Add"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rana Admin can now administer TEST 2099."));
+  });
+
+  it("an already_in_role refusal shows the server's message", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    post.mockRejectedValue(refusal("Rana is already leading a group in GBV 2026"));
+    renderWithProviders(<SeasonDetailScreen />);
+    await screen.findByText("Pat Admin");
+    await waitFor(() => expect(screen.getByLabelText("Choose an admin")).not.toBeDisabled());
+    fireEvent.press(screen.getByLabelText("Choose an admin"));
+    fireEvent.press(screen.getByText("Rana Admin"));
+    fireEvent.press(screen.getByText("Add admin"));
+    fireEvent.press(screen.getByText("Add"));
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Rana is already leading a group in GBV 2026"),
+    );
   });
 
   it("cancelling the add dialog sends nothing", async () => {
@@ -137,14 +149,14 @@ describe("Admins section", () => {
     await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull());
   });
 
-  it("removing goes through the confirm dialog, saying the person is signed out", async () => {
+  it("removing goes through the confirm dialog", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     del.mockResolvedValue({ data: { data: { admins: [] } } });
     renderWithProviders(<SeasonDetailScreen />);
     fireEvent.press(await screen.findByLabelText("Remove Pat Admin"));
     expect(screen.getByText("Remove admin?")).toBeTruthy();
     expect(
-      screen.getByText(`Pat Admin will no longer be able to administer TEST 2099. ${SIGN_OUT}`),
+      screen.getByText(`Pat Admin will no longer be able to administer TEST 2099.`),
     ).toBeTruthy();
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Remove"));

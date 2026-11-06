@@ -14,8 +14,8 @@ import {
   validateGroupWrite,
 } from "../lib/queries/groups";
 import { seasonParticipant } from "../lib/queries/season-participants";
-import { isAdminOfAnySeason, isAdminOfSeason } from "../lib/rbac";
-import { freeAlumni, lockPeople, lockSeason, refusalStatus } from "../lib/roles";
+import { isAdminOfSeason } from "../lib/rbac";
+import { lockPeople, lockSeason, refusalStatus } from "../lib/roles";
 import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
@@ -86,21 +86,6 @@ groupsRouter.patch("/:id", async (req, res) => {
   if (seatRefusal) return apiError(res, seatRefusal.code, seatRefusal.message, refusalStatus(seatRefusal));
 
   return apiOk(res, { id });
-});
-
-/**
- * Leader picker for the group form, until the form moves to
- * GET /seasons/:id/staff-candidates and this goes.
- */
-groupsRouter.get("/leader-options", async (req, res) => {
-  const user = requireUser(req);
-  if (!isAdminOfAnySeason(user)) return forbidden(res);
-  const leaders = await db.user.findMany({
-    where: freeAlumni,
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, email: true },
-  });
-  return apiOk(res, { leaders });
 });
 
 groupsRouter.get("/:id", async (req, res) => {

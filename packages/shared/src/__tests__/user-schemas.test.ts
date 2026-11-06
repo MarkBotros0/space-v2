@@ -80,6 +80,23 @@ describe("updateUserRequestSchema", () => {
   });
 });
 
+describe("updateUserRequestSchema roles", () => {
+  const body = { name: "A B", graduationYear: 2020 };
+  it("takes SUPER, MENTOR or STUDENT, never a role that comes from season rows", () => {
+    for (const role of ["SUPER", "MENTOR", "STUDENT"]) {
+      expect(updateUserRequestSchema.safeParse({ ...body, role }).success).toBe(true);
+    }
+    for (const role of ["ADMIN", "LEADER"]) {
+      expect(updateUserRequestSchema.safeParse({ ...body, role }).success).toBe(false);
+    }
+  });
+
+  it("allows no role at all, still checking the year's bounds", () => {
+    expect(updateUserRequestSchema.safeParse(body).success).toBe(true);
+    expect(updateUserRequestSchema.safeParse({ name: "A B", graduationYear: 1800 }).success).toBe(false);
+  });
+});
+
 describe("self-scoped settings schemas", () => {
   it("updateProfileRequestSchema trims before validating (spec 18 R21/D7) and refuses a smuggled subject id", () => {
     expect(updateProfileRequestSchema.parse({ name: "  Bo B  " }).name).toBe("Bo B");

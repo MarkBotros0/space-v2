@@ -85,7 +85,7 @@ export const userWriteRoleSchema = z.enum(["SUPER", "MENTOR", "STUDENT"]);
 export type UserWriteRole = z.infer<typeof userWriteRoleSchema>;
 
 function checkUserFields(
-  v: { role: UserRole; graduationYear: number | null },
+  v: { role?: UserRole; graduationYear: number | null },
   ctx: z.RefinementCtx,
 ): void {
   if (v.graduationYear !== null) {
@@ -98,7 +98,7 @@ function checkUserFields(
       });
     }
   }
-  if (roleRequiresAlumnus(v.role) && v.graduationYear === null) {
+  if (v.role !== undefined && roleRequiresAlumnus(v.role) && v.graduationYear === null) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["graduationYear"],
@@ -132,14 +132,15 @@ export type CreateUserBody = z.output<typeof createUserRequestSchema>;
  * `true` for a role change TO SUPER — spec 11 D7 rec 3: a SUPER grant cannot
  * be a mis-tapped picker item.
  *
- * `role` still parses all five because the form sends back the derived role it
- * was shown; the route refuses anything but that value for ADMIN and LEADER.
- * It narrows to `userWriteRoleSchema` when the form stops offering them.
+ * `role` is SUPER, MENTOR or STUDENT, or absent: someone whose admin or leader
+ * role comes from season rows has no account role to edit, so their form sends
+ * none and the server leaves it alone (and checks the graduation year against
+ * the role they hold).
  */
 export const updateUserRequestSchema = z
   .object({
     name: z.string().trim().min(2, "At least 2 characters.").max(120, "At most 120 characters."),
-    role: userRoleSchema,
+    role: userWriteRoleSchema.optional(),
     graduationYear: z.number().int().nullable(),
     confirmSuper: z.boolean().optional(),
   })

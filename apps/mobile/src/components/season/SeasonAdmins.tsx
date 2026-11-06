@@ -8,27 +8,22 @@ import {
   useAddSeasonAdmin,
   useRemoveSeasonAdmin,
   useSeasonAdmins,
+  useStaffCandidates,
 } from "../../hooks/use-season-admins";
-import { useUsers } from "../../hooks/use-users";
 import { apiErrorMessage } from "../../lib/api-error";
 
 iconWithClassName(Trash2, UserPlus);
 
-/** Both changes revoke the person's refresh tokens (owner ruling), so both dialogs say so. */
-const SIGNED_OUT = "They'll be signed out and need to sign in again.";
-
-/** The users query the picker reads: ADMIN accounts only, server-filtered. */
-const ADMIN_FILTERS = { q: "", role: "ADMIN" } as const;
-
 /**
  * SUPER's "Admins" card on the season detail overview. V2-ONLY: v1 had no way
  * to create a SeasonAdmin row (owner decision). Lists the season's admins with
- * a confirmed remove, and adds one by picking from the users whose role is
- * ADMIN — the server refuses any other role, so the picker never offers one.
+ * a confirmed remove, and adds one by picking from the season's staff
+ * candidates (alumni with no active role). Seats don't sign anyone out: the
+ * person's next token refresh picks the role up. Task 10 replaces the picker.
  */
 export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seasonTitle: string }) {
   const admins = useSeasonAdmins(seasonId, { enabled: true });
-  const candidates = useUsers(ADMIN_FILTERS, { enabled: true });
+  const candidates = useStaffCandidates(seasonId, { enabled: true });
   const add = useAddSeasonAdmin(seasonId);
   const remove = useRemoveSeasonAdmin(seasonId);
   const [picked, setPicked] = useState<string | null>(null);
@@ -38,11 +33,9 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
   const current = useMemo(() => admins.data ?? [], [admins.data]);
   const options = useMemo(() => {
     const taken = new Set(current.map((a) => a.userId));
-    return (candidates.data?.pages ?? [])
-      .flatMap((p) => p.users)
-      // Deactivated accounts are refused server-side (user_inactive).
-      .filter((u) => u.deletedAt === null && !taken.has(u.id))
-      .map((u) => ({ value: String(u.id), label: u.name, description: u.email }));
+    return (candidates.data ?? [])
+      .filter((p) => !taken.has(p.id))
+      .map((p) => ({ value: String(p.id), label: p.name, description: p.lastSeason?.title }));
   }, [candidates.data, current]);
 
   const pickedOption = options.find((o) => o.value === picked);
@@ -129,8 +122,8 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         <View className="flex-col gap-2">
           <Combobox
             accessibilityLabel="Choose an admin"
-            placeholder={candidates.isPending ? "Loading admins…" : "Choose an admin…"}
-            emptyMessage="There are no other admins to add."
+            placeholder={candidates.isPending ? "Loading people…" : "Choose an admin…"}
+            emptyMessage="There is no one else to add."
             disabled={candidates.isPending || candidates.isError}
             options={options}
             value={picked}
@@ -138,7 +131,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
           />
           {candidates.isError ? (
             <Text variant="subhead" className="text-bad">
-              Couldn't load the users with the ADMIN role.
+              Couldn't load the people who can be added.
             </Text>
           ) : null}
           <View className="flex-row flex-wrap gap-2">
@@ -146,16 +139,6 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
               <UserPlus size={14} className="text-primary-foreground" />
               Add admin
             </Button>
-            {candidates.hasNextPage ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                disabled={candidates.isFetchingNextPage}
-                onPress={() => void candidates.fetchNextPage()}
-              >
-                {candidates.isFetchingNextPage ? "Loading…" : "Load more people"}
-              </Button>
-            ) : null}
           </View>
         </View>
       </View>
@@ -165,7 +148,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         title="Add admin?"
         description={
           pickedOption
-            ? `${pickedOption.label} will be able to administer ${seasonTitle}. ${SIGNED_OUT}`
+            ? `${pickedOption.label} will be able to administer ${seasonTitle}.`
             : undefined
         }
         confirmLabel="Add"
@@ -180,7 +163,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         title="Remove admin?"
         description={
           confirm
-            ? `${confirm.name} will no longer be able to administer ${seasonTitle}. ${SIGNED_OUT}`
+            ? `${confirm.name} will no longer be able to administer ${seasonTitle}.`
             : undefined
         }
         confirmLabel="Remove"

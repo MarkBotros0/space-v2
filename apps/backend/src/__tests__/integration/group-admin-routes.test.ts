@@ -12,22 +12,16 @@ let seasonId: number;
 let groupId: number;
 let otherGroupId: number;
 let soleAssignmentId: number;
-let leaderId: number;
 let studentIds: number[];
-let superToken: string;
 let adminToken: string;
-let idleAdminToken: string;
 let leaderToken: string;
 
 beforeAll(async () => {
   await cleanupTestData();
   seasonId = (await createTestSeason()).id;
 
-  const superUser = await createTestUser("super", "SUPER");
   const admin = await createTestUser("admin", "ADMIN");
-  const idleAdmin = await createTestUser("idle-admin", "ADMIN");
   const leader = await createTestUser("leader", "LEADER");
-  leaderId = leader.id;
   await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
 
   groupId = (
@@ -60,36 +54,13 @@ beforeAll(async () => {
     data: { seasonId, title: "Deleted sole", isAllGroups: false, deletedAt: new Date(), targets: { create: { groupId } } },
   });
 
-  superToken = await login(app, superUser.email);
   adminToken = await login(app, admin.email);
-  idleAdminToken = await login(app, idleAdmin.email);
   leaderToken = await login(app, leader.email);
 });
 
 afterAll(async () => {
   await cleanupTestData();
   await db.$disconnect();
-});
-
-describe("GET /api/v1/groups/leader-options (D-16.14)", () => {
-  it("lists alumni with no active role for a season admin and a SUPER", async () => {
-    const alum = await createTestUser("free-alum", "STUDENT");
-    await db.user.update({ where: { id: alum.id }, data: { graduationYear: 2020 } });
-    for (const t of [adminToken, superToken]) {
-      const res = await request(app).get("/api/v1/groups/leader-options").set("authorization", `Bearer ${t}`);
-      expect(res.status).toBe(200);
-      const ids = res.body.data.leaders.map((l: { id: number }) => l.id);
-      expect(ids).toContain(alum.id);
-      expect(ids).not.toContain(leaderId);
-      expect(ids).not.toEqual(expect.arrayContaining(studentIds));
-    }
-  });
-
-  it("refuses an ADMIN with no season and a LEADER", async () => {
-    for (const t of [idleAdminToken, leaderToken]) {
-      expect((await request(app).get("/api/v1/groups/leader-options").set("authorization", `Bearer ${t}`)).status).toBe(403);
-    }
-  });
 });
 
 describe("canManage on GET /api/v1/groups/:id (D-16.15)", () => {

@@ -84,14 +84,6 @@ export type GroupDetail = z.infer<typeof groupDetailSchema>;
 /** POST /seasons/:id/groups (201) and PATCH /groups/:id. */
 export const groupRefResponseSchema = z.object({ id: z.number() });
 
-/** GET /groups/leader-options: alumni with no active role, until the group form moves to staff-candidates. */
-export const leaderOptionSchema = z.object({
-  id: z.number(),
-  name: z.string().nullable(),
-  email: z.string(),
-});
-export type LeaderOption = z.infer<typeof leaderOptionSchema>;
-
 /** GET /groups/:id/impact — the confirmation v1 never had (spec 05 R45, D-16.13). */
 export const groupImpactSchema = z.object({
   /** ACTIVE enrolments that would lose their group. */

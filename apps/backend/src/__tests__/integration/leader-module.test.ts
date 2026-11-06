@@ -110,7 +110,6 @@ describe("reads a leader is refused", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/check-in`, 403],
       ["get", `/api/v1/sessions/${w.sessionId}/video-questions`, 403],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 403],
-      ["get", "/api/v1/groups/leader-options", 403],
       ["get", "/api/v1/reports/engagement", 403],
       ["get", "/api/v1/reports/organisation", 403],
       ["get", "/api/v1/users", 403],

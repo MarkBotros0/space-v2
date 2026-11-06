@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert } from "react-native";
-import type { UserDetail, UserRole } from "@space/shared";
+import type { UserDetail } from "@space/shared";
 
 import { UserForm } from "../../../src/components/UserForm";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
@@ -18,15 +18,6 @@ import { formatDate } from "../../../src/lib/format";
 import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
 import { parsePositiveInt } from "../../../src/lib/params";
 import { useSessionStore } from "../../../src/store/session";
-
-/**
- * The seasons a save would take admin rights away from: updateUser deletes
- * an ADMIN's SeasonAdmin rows whenever the role changes.
- */
-function adminSeasonsLostBy(data: UserDetail, nextRole: UserRole): string[] {
-  if (data.role !== "ADMIN" || nextRole === "ADMIN") return [];
-  return data.adminSeasons.map((s) => s.title);
-}
 
 /**
  * v1 super/users/[id]/edit (B5-4): "Edit {name}", the email under it, the
@@ -149,22 +140,6 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
           }
           doSave(false);
         };
-        const lost = adminSeasonsLostBy(data, submit.body.role);
-        if (lost.length > 0) {
-          // The server deletes their SeasonAdmin rows on this change. Changing the
-          // role back does not restore them (a season's Admins list can add them
-          // again, one by one), so say so, by name.
-          Alert.alert(
-            "Remove season admin rights?",
-            `${data.name || data.email} will stop being an admin of ${lost.join(", ")}. ` +
-              "Changing the role back later will not restore these assignments.",
-            [
-              { text: "Cancel", style: "cancel" },
-              { text: "Change role", style: "destructive", onPress: confirmSuperThenSave },
-            ],
-          );
-          return;
-        }
         confirmSuperThenSave();
       }}
     >

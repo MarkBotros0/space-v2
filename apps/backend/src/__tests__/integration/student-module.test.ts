@@ -102,7 +102,6 @@ describe("reads a student is refused", () => {
       ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 403],
       ["get", "/api/v1/submissions", 403],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 403],
-      ["get", "/api/v1/groups/leader-options", 403],
       ["get", `/api/v1/quizzes/${w.quizId}/grades`, 403],
       ["get", `/api/v1/quizzes/${w.quizId}/attempts`, 403],
       ["get", "/api/v1/reports/engagement", 403],

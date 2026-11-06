@@ -27,33 +27,6 @@ export const groupPaths = {
     },
   },
 
-  "/api/v1/groups/leader-options": {
-    get: {
-      tags: ["Groups"],
-      summary: "Leaders a group form may pick from",
-      description:
-        "Season-admin (of any season) or SUPER only. Live alumni with no active role, name-ordered. Interim: `GET /api/v1/seasons/{id}/staff-candidates` replaces it once the group form moves there.",
-      responses: {
-        200: ok(
-          {
-            type: "object",
-            properties: {
-              leaders: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: { id: { type: "integer" }, name: { type: ["string", "null"] }, email: { type: "string" } },
-                },
-              },
-            },
-          },
-          "The people who can be picked.",
-        ),
-        401: errRef("Unauthorized"),
-        403: errRef("Forbidden"),
-      },
-    },
-  },
   "/api/v1/groups/{id}/impact": {
     get: {
       tags: ["Groups"],
