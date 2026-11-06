@@ -100,7 +100,7 @@ describe("Admins section", () => {
     expect(screen.getAllByText("Pat Admin")).toHaveLength(1);
   });
 
-  it("tapping a person POSTs and toasts", async () => {
+  it("tapping a person asks first, then POSTs and toasts", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     post.mockResolvedValue({
       data: { data: { admins: [pat, { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" }] } },
@@ -109,6 +109,10 @@ describe("Admins section", () => {
     await screen.findByText("Pat Admin");
     fireEvent.press(screen.getByText("Add admin"));
     fireEvent.press(await screen.findByText("Rana Admin"));
+    expect(screen.getByText("Add admin?")).toBeTruthy();
+    expect(screen.getByText("Rana Admin will be able to administer TEST 2099.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Add"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rana Admin can now administer TEST 2099."));
   });
@@ -120,8 +124,20 @@ describe("Admins section", () => {
     await screen.findByText("Pat Admin");
     fireEvent.press(screen.getByText("Add admin"));
     fireEvent.press(await screen.findByText("Rana Admin"));
+    fireEvent.press(screen.getByText("Add"));
     expect(await screen.findByText("Rana is already leading a group in GBV 2026")).toBeTruthy();
     expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it("cancelling the add dialog sends nothing", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<SeasonDetailScreen />);
+    await screen.findByText("Pat Admin");
+    fireEvent.press(screen.getByText("Add admin"));
+    fireEvent.press(await screen.findByText("Rana Admin"));
+    fireEvent.press(screen.getByText("Cancel"));
+    expect(post).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull());
   });
 
   it("removing goes through the confirm dialog", async () => {

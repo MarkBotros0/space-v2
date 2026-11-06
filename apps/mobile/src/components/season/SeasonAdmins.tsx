@@ -93,6 +93,11 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         seasonId={seasonId}
         title="Add admin"
         excludeIds={takenIds}
+        confirm={(person) => ({
+          title: "Add admin?",
+          description: `${person.name} will be able to administer ${seasonTitle}.`,
+          confirmLabel: "Add",
+        })}
         onPick={async (person) => {
           await add.mutateAsync({ userId: person.id });
           toast.success(`${person.name} can now administer ${seasonTitle}.`);

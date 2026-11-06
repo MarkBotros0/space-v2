@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
@@ -85,6 +85,38 @@ describe("Admins card on the SUPER season detail", () => {
     expect(screen.getAllByText("Pat Admin")).toHaveLength(1);
   });
 
+  it("a person who leaves the list during the question does not leave the dialog armed for the next pick (final review M10)", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/seasons/by-code/s7") return Promise.resolve({ data: { data: detail } });
+      if (url === "/api/v1/seasons/7/sessions") return Promise.resolve({ data: { data: { sessions: [] } } });
+      if (url === "/api/v1/seasons/7/admins") return Promise.resolve({ data: { data: { admins } } });
+      if (url === "/api/v1/seasons/7/staff-candidates")
+        return candidates(person(21, "Pat Admin"), person(22, "Rana Admin"), person(24, "Sam Admin"));
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    let client: QueryClient | undefined;
+    const mount = QueryClient.prototype.mount;
+    jest.spyOn(QueryClient.prototype, "mount").mockImplementation(function (this: QueryClient) {
+      client = this;
+      return mount.call(this);
+    });
+    renderWithProviders(<SeasonDetailScreen />);
+    await screen.findByText("Pat Admin");
+    fireEvent.press(screen.getByText("Add admin"));
+    fireEvent.press(await screen.findByText("Rana Admin"));
+    expect(screen.getByText("Add admin?")).toBeTruthy();
+
+    // Someone else makes Rana an admin: she leaves the list while her dialog is open.
+    const rana = { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" };
+    act(() => client!.setQueryData(queryKeys.seasons.admins(7), [pat, rana]));
+    await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull());
+
+    fireEvent.press(await screen.findByText("Sam Admin"));
+    expect(screen.getByText("Sam Admin will be able to administer TEST 2099.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it("adds the tapped admin, toasts, and refreshes the season, users and dashboard", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     const invalidate = jest.spyOn(QueryClient.prototype, "invalidateQueries");
@@ -99,6 +131,7 @@ describe("Admins card on the SUPER season detail", () => {
     await screen.findByText("Pat Admin");
     fireEvent.press(screen.getByText("Add admin"));
     fireEvent.press(await screen.findByText("Rana Admin"));
+    fireEvent.press(screen.getByText("Add"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }),
@@ -127,6 +160,7 @@ describe("Admins card on the SUPER season detail", () => {
     await screen.findByText("Pat Admin");
     fireEvent.press(screen.getByText("Add admin"));
     fireEvent.press(await screen.findByText("Rana Admin"));
+    fireEvent.press(screen.getByText("Add"));
 
     expect(await screen.findByText("Only a user with the ADMIN role can administer a season.")).toBeTruthy();
   });

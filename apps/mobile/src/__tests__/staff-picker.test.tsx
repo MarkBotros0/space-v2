@@ -119,6 +119,7 @@ describe("adding a season admin (super)", () => {
     renderWithProviders(<SeasonDetailScreen />);
     fireEvent.press(await screen.findByText("Add admin"));
     fireEvent.press(await screen.findByText("Karim"));
+    fireEvent.press(screen.getByText("Add"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 6 }));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Karim can now administer GBV 2026."));
   });
@@ -130,6 +131,7 @@ describe("adding a season admin (super)", () => {
     renderWithProviders(<SeasonDetailScreen />);
     fireEvent.press(await screen.findByText("Add admin"));
     fireEvent.press(await screen.findByText("Karim"));
+    fireEvent.press(screen.getByText("Add"));
     expect(await screen.findByText("Karim is already leading a group in GBV 2026")).toBeTruthy();
     expect(screen.getByText("Nora")).toBeTruthy();
   });

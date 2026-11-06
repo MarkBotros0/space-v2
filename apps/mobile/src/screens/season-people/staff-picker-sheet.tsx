@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 
-import { GroupedList, ListRow, SearchField, Sheet, Skeleton, Text } from "../../design/ui";
+import { ConfirmDialog, GroupedList, ListRow, SearchField, Sheet, Skeleton, Text } from "../../design/ui";
 import { useStaffCandidates } from "../../hooks/use-season-admins";
 import { apiErrorMessage } from "../../lib/api-error";
 
@@ -24,6 +24,7 @@ export function StaffPickerSheet({
   onPick,
   excludeIds = [],
   extra = [],
+  confirm,
 }: {
   open: boolean;
   onClose: () => void;
@@ -32,7 +33,10 @@ export function StaffPickerSheet({
   onPick: (person: StaffPick) => void | Promise<void>;
   excludeIds?: number[];
   extra?: StaffPick[];
+  /** Asks "are you sure" before `onPick` runs (the admin sheet; leader picks wait for Save). */
+  confirm?: (person: StaffPick) => { title: string; description: string; confirmLabel: string };
 }) {
+  const [asking, setAsking] = useState<StaffPick | null>(null);
   const candidates = useStaffCandidates(seasonId, { enabled: open });
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +53,15 @@ export function StaffPickerSheet({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [candidates.data, extra, excludeIds, query]);
 
+  // The person can leave the list while the question is open (someone else added them):
+  // the dialog then hides and a later pick must not reopen it armed.
+  const askingStill = asking !== null && people.some((p) => p.id === asking.id) ? asking : null;
+  useEffect(() => {
+    if (asking !== null && askingStill === null) setAsking(null);
+  }, [asking, askingStill]);
+
   const close = () => {
+    setAsking(null);
     setQuery("");
     setError(null);
     onClose();
@@ -61,9 +73,11 @@ export function StaffPickerSheet({
     setError(null);
     try {
       await onPick(person);
+      setAsking(null);
       setQuery("");
       onClose();
     } catch (err) {
+      setAsking(null);
       setError(apiErrorMessage(err, "Couldn't add them."));
     } finally {
       setBusy(false);
@@ -78,8 +92,19 @@ export function StaffPickerSheet({
         query={query}
         onQuery={setQuery}
         error={error}
-        onPick={(p) => void choose(p)}
+        onPick={(p) => (confirm ? setAsking(p) : void choose(p))}
       />
+      {askingStill && confirm ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setAsking(null);
+          }}
+          {...confirm(askingStill)}
+          pending={busy}
+          onConfirm={() => choose(askingStill)}
+        />
+      ) : null}
     </Sheet>
   );
 }
