@@ -80,7 +80,7 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`email_taken` — also for a soft-deleted student's address, which stays reserved."),
+        409: conflict("`season_finished` when `seasonId` names a COMPLETED or ARCHIVED season, or `email_taken` — also for a soft-deleted student's address, which stays reserved."),
       },
     },
   },
@@ -128,7 +128,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Student detail, shaped by the caller's role",
       description:
-        "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, notes and per-row dropReason are absent) and why the subject never receives `notes`.",
+        "The row gate lives here: SUPER and MENTOR may read any student, the student may read themselves, an ADMIN a student ever enrolled in one of their seasons, a LEADER a student whose enrollment names one of their groups (C9). Everyone else gets 403; a soft-deleted or non-student id is 404.\n\nThe payload is narrowed per role, not just the access (C8): see `StudentDetail` for which profile fields exist on the wire for MENTOR/LEADER (phone, dateOfBirth, notes are absent) and why the subject never receives `notes`. Per-row `dropReason` is staff-only: null for MENTOR, LEADER and the student themselves.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentDetail" }, "The student."),

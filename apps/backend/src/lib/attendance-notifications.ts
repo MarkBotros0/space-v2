@@ -41,12 +41,15 @@ export async function flagLowAttendance(
     const groupId = await groupIdInSeason(studentUserId, session.seasonId);
     if (groupId === null) continue;
 
+    // Former staff have no access to a finished season, so a Super correcting
+    // its attendance must not name the student to them.
+    const liveSeason = { status: { in: ["DRAFT" as const, "ACTIVE" as const] } };
     const leaders = await db.groupLeader.findMany({
-      where: { groupId, user: { deletedAt: null } },
+      where: { groupId, group: { season: liveSeason }, user: { deletedAt: null } },
       select: { userId: true },
     });
     const admins = await db.seasonAdmin.findMany({
-      where: { seasonId: session.seasonId, user: { deletedAt: null } },
+      where: { seasonId: session.seasonId, season: liveSeason, user: { deletedAt: null } },
       select: { userId: true },
     });
     const adminIds = admins.map((a) => a.userId);

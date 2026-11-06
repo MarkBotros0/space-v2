@@ -36,9 +36,10 @@ export async function studentCheckIn(req: Request, res: Response) {
 
   const enrollment = await db.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId: user.userId, seasonId: session.seasonId } },
-    select: { status: true },
+    select: { status: true, season: { select: { status: true } } },
   });
-  if (!enrollment || enrollment.status !== "ACTIVE") {
+  // A draft's roster doesn't count yet, and the session's existence says nothing.
+  if (!enrollment || enrollment.status !== "ACTIVE" || enrollment.season.status !== "ACTIVE") {
     return apiError(res, "not_enrolled", "You're not enrolled in this season.", 403);
   }
 

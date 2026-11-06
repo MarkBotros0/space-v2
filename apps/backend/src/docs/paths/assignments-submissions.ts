@@ -8,7 +8,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Assignments"],
       summary: "Assignment detail",
       description:
-        "Season access alone is not enough: for a targeted assignment (`isAllGroups: false`), a STUDENT must also be in one of the targeted groups — resolved from their enrolment in *this* season, not from their current group membership.",
+        "Season access alone is not enough: for a targeted assignment (`isAllGroups: false`), a STUDENT must also be in one of the targeted groups — resolved from their enrolment in *this* season, not from their current group membership. A student's response says `readOnly: true` unless they hold an ACTIVE enrolment in an ACTIVE season: a draft's roster reads, but can't submit yet.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "The assignment."),

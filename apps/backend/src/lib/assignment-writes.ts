@@ -68,12 +68,13 @@ export function assignmentColumns(body: AssignmentWriteBody) {
 }
 
 /**
- * Who an assignment is given to: ACTIVE enrolments in the season, narrowed to
- * the targeted groups. v1 read GroupStudent for the targeted branch
+ * Who is told about an assignment: ACTIVE enrolments in an ACTIVE season (a
+ * draft's roster doesn't count yet, and can't act on it), narrowed to the
+ * targeted groups. v1 read GroupStudent for the targeted branch
  * (`assignment-actions.ts:177`) — ruling C9 forbids that: the enrolment is the
- * authority, GroupStudent only its per-season mirror. This is the same population
- * `loadAssignmentTracker` lists, so "who was notified" and "who the tracker
- * expects" are one answer.
+ * authority, GroupStudent only its per-season mirror. In a live season this is
+ * the population `loadAssignmentTracker` lists, so "who was notified" and "who
+ * the tracker expects" are one answer.
  */
 export async function targetedStudentIds(
   seasonId: number,
@@ -81,7 +82,12 @@ export async function targetedStudentIds(
   groupIds: number[],
 ): Promise<number[]> {
   const rows = await db.seasonEnrollment.findMany({
-    where: { seasonId, status: "ACTIVE", ...(isAllGroups ? {} : { groupId: { in: groupIds } }) },
+    where: {
+      seasonId,
+      status: "ACTIVE",
+      season: { status: "ACTIVE" },
+      ...(isAllGroups ? {} : { groupId: { in: groupIds } }),
+    },
     select: { studentUserId: true },
   });
   return Array.from(new Set(rows.map((r) => r.studentUserId)));

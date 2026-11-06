@@ -55,7 +55,7 @@ function ownSubmission(status: string) {
 
 beforeEach(() => {
   jest.resetAllMocks();
-  mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE" });
+  mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE", season: { status: "ACTIVE", deletedAt: null } });
   mockDb.submission.update.mockResolvedValue({});
   mockDb.submission.updateMany.mockResolvedValue({ count: 1 });
 });

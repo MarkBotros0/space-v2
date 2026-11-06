@@ -193,7 +193,7 @@ export const reportsImportsPaths = {
         "**Idempotent by email**, matched case-insensitively and stored exactly as sent: a re-run creates nothing. In-paste repeats are skipped. " +
         "`onExisting` is required. `skip` reproduces v1. `enroll` (season mode only) enrols an existing live STUDENT using the same rules as `POST /students/{id}/enrollments` (an existing enrolment of any status is left alone and reported `skipped`; the current season is derived from the enrolment) and writes no other field. A soft-deleted or staff address is always skipped. " +
         "Created accounts have no credential and no invite is sent. Outcomes are `created` / `skipped` / `enrolled`; there is no `failed`. " +
-        "404 `not_found` for a soft-deleted season; 409 `import_conflict` for a concurrent create (nothing was written; re-running is safe); 429.",
+        "404 `not_found` for a soft-deleted season; 409 `season_finished` for a COMPLETED or ARCHIVED season; 409 `import_conflict` for a concurrent create (nothing was written; re-running is safe); 429.",
       requestBody: { required: true, content: { "application/json": { schema: studentImportCommitBodyDoc } } },
       responses: {
         200: ok(studentImportResultDoc, "Per-row outcomes."),
@@ -201,7 +201,7 @@ export const reportsImportsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`import_conflict`."),
+        409: conflict("`import_conflict` or `season_finished`."),
         413: conflict("`payload_too_large`."),
         422: conflict("`import_rows_invalid`."),
         429: errRef("TooManyRequests"),

@@ -119,7 +119,9 @@ export async function canManageSessionVideo(
 }
 
 /**
- * A student with a live place in this season.
+ * A student with a live place in this season: an ACTIVE enrolment in an ACTIVE,
+ * non-deleted season. A draft's roster doesn't count until it starts, and a
+ * finished season is locked.
  *
  * Deliberately stricter than `canAccessSeason`, whose student branch accepts
  * any `SeasonEnrollment` row whatever its status. v1 gated the video answer and
@@ -135,9 +137,13 @@ export async function hasActiveEnrollment(user: SessionUser, seasonId: number): 
   if (user.role !== "STUDENT") return false;
   const enrollment = await db.seasonEnrollment.findUnique({
     where: { studentUserId_seasonId: { studentUserId: user.userId, seasonId } },
-    select: { status: true },
+    select: { status: true, season: { select: { status: true, deletedAt: true } } },
   });
-  return enrollment?.status === "ACTIVE";
+  return (
+    enrollment?.status === "ACTIVE" &&
+    enrollment.season.status === "ACTIVE" &&
+    enrollment.season.deletedAt === null
+  );
 }
 
 /** Which seasons a calendar request may read (Plan 6 D-16.7). */

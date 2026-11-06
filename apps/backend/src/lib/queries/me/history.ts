@@ -36,7 +36,9 @@ export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistor
     where: {
       studentUserId: user.userId,
       status: { not: "ACTIVE" },
-      season: { deletedAt: null }, // spec 02 D2 (diverges from v1 R38)
+      // Deleted: spec 02 D2 (diverges from v1 R38). DRAFT: being taken off a draft's
+      // roster is not a season the student finished or left.
+      season: { deletedAt: null, status: { not: "DRAFT" } },
     },
     orderBy: { enrolledAt: "desc" },
     select: {

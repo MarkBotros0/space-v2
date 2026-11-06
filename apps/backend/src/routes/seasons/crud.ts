@@ -37,7 +37,10 @@ export async function listSeasons(req: Request, res: Response) {
         ? { deletedAt: null, id: { in: user.seasonAdminIds } }
         : user.role === "LEADER"
           ? {
+              // A former leader has no access to a finished season, so it must
+              // not be listed: Today would pick it and get a 403 on every open.
               deletedAt: null,
+              status: { in: ["DRAFT", "ACTIVE"] },
               groups: { some: { leaders: { some: { userId: user.userId } } } },
             }
           : { deletedAt: null, enrollments: { some: { studentUserId: user.userId } } };
@@ -143,18 +146,22 @@ export async function createSeason(req: Request, res: Response) {
 type SeasonStatusValue = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
 
 /**
- * A season only finishes through End season (it records results and notifies),
- * and a finished season never reopens.
+ * The only moves are an unchanged status, DRAFT to ACTIVE and COMPLETED to or
+ * from ARCHIVED. A season only finishes through End season, which completes its
+ * enrolments: any other way (ACTIVE back to DRAFT, then COMPLETED) strands them
+ * ACTIVE in a finished season. A finished season never reopens.
  */
 function statusChangeError(from: SeasonStatusValue, to: SeasonStatusValue) {
   if (from === to) return null;
-  if (from === "ACTIVE" && (to === "COMPLETED" || to === "ARCHIVED")) {
+  if (from === "DRAFT") {
+    if (to === "ACTIVE") return null;
+    return { code: "invalid_status_change", message: "A draft season can only be started." };
+  }
+  if (from === "ACTIVE") {
     return { code: "use_end_season", message: "End the season instead of changing its status." };
   }
-  if ((from === "COMPLETED" || from === "ARCHIVED") && (to === "ACTIVE" || to === "DRAFT")) {
-    return { code: "season_finished", message: "A finished season cannot be reopened." };
-  }
-  return null;
+  if (to === "COMPLETED" || to === "ARCHIVED") return null;
+  return { code: "season_finished", message: "A finished season cannot be reopened." };
 }
 
 export async function updateSeason(req: Request, res: Response) {

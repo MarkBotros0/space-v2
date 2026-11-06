@@ -59,7 +59,7 @@ describe("notifyQuizPublished", () => {
     await notifyQuizPublished({ seasonId: 7, title: "Week 3 check" });
 
     expect(mockDb.seasonEnrollment.findMany).toHaveBeenCalledWith({
-      where: { seasonId: 7, status: "ACTIVE", studentUser: { deletedAt: null } },
+      where: { seasonId: 7, status: "ACTIVE", season: { status: "ACTIVE" }, studentUser: { deletedAt: null } },
       select: { studentUserId: true },
     });
     expect(mockNotify).toHaveBeenCalledWith([11, 12], {

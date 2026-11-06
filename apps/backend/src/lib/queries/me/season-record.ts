@@ -24,7 +24,7 @@ export async function loadSeasonRecord(
       studentUserId: user.userId,
       seasonId,
       status: { not: "ACTIVE" },
-      season: { deletedAt: null },
+      season: { deletedAt: null, status: { not: "DRAFT" } },
     },
     select: {
       status: true,

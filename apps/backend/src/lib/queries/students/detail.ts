@@ -114,8 +114,8 @@ export async function loadStudentDetail(
     enrolledAt: e.enrolledAt.toISOString(),
     completedAt: e.completedAt?.toISOString() ?? null,
     droppedAt: e.droppedAt?.toISOString() ?? null,
-    // Free-text personal data: withheld from the narrow roles.
-    dropReason: view === "public" ? null : e.dropReason,
+    // Private to staff: not even the student reads why they were dropped.
+    dropReason: view === "internal" ? e.dropReason : null,
     attendancePct: pctByEnrollment.get(e.id) ?? null,
   }));
 

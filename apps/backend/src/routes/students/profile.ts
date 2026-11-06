@@ -52,9 +52,12 @@ export async function createStudent(req: Request, res: Response) {
   if (body.seasonId != null) {
     const season = await db.season.findFirst({
       where: { id: body.seasonId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!season) return apiError(res, "not_found", "Season not found.", 404);
+    if (season.status === "COMPLETED" || season.status === "ARCHIVED") {
+      return apiError(res, "season_finished", "This season has finished.", 409);
+    }
   }
 
   // Friendly 409 first; the P2002 catch below converts the race loser to the

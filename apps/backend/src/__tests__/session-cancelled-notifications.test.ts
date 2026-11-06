@@ -53,7 +53,7 @@ describe("prepareSessionCancelledNotice", () => {
       select: { title: true, startsAt: true },
     });
     expect(mockDb.seasonEnrollment.findMany).toHaveBeenCalledWith({
-      where: { seasonId: 7, status: "ACTIVE", studentUser: { deletedAt: null } },
+      where: { seasonId: 7, status: "ACTIVE", season: { status: "ACTIVE" }, studentUser: { deletedAt: null } },
       select: { studentUserId: true },
     });
     expect(mockDb.groupLeader.findMany).toHaveBeenCalledWith({

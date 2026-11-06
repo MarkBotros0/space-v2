@@ -24,7 +24,7 @@ export interface SessionCancelledNotice {
  * session is record-keeping, and "Cancelled: … on <last week>" would tell
  * every student something false. No upcoming session → no notice.
  *
- * Recipients: every ACTIVE enrolment in the season (the SESSION_RESCHEDULED
+ * Recipients: every ACTIVE enrolment in an ACTIVE season (the SESSION_RESCHEDULED
  * audience — a session belongs to the whole season, not to a group) plus the
  * leaders of the season's groups, who would otherwise turn up to run it.
  * Deleted accounts are skipped.
@@ -50,7 +50,7 @@ export async function prepareSessionCancelledNotice(
 
     const [enrolled, leaders] = await Promise.all([
       db.seasonEnrollment.findMany({
-        where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
+        where: { seasonId, status: "ACTIVE", season: { status: "ACTIVE" }, studentUser: { deletedAt: null } },
         select: { studentUserId: true },
       }),
       db.groupLeader.findMany({

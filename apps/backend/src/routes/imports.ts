@@ -151,9 +151,12 @@ importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (r
     // row-scoped check goes in the SAME change as the widened gate (C8).
     const season = await db.season.findFirst({
       where: { id: body.seasonId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, status: true },
     });
     if (!season) return apiError(res, "not_found", "That season no longer exists.", 404);
+    if (season.status === "COMPLETED" || season.status === "ARCHIVED") {
+      return apiError(res, "season_finished", "This season has finished.", 409);
+    }
     target = { kind: "season", seasonId: season.id };
   } else {
     target = { kind: "alumni", graduationYear: body.graduationYear };

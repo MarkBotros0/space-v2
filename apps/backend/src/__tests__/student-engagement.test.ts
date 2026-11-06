@@ -28,6 +28,7 @@ import express from "express";
 import request from "supertest";
 
 import { computeEngagementForSeason } from "../lib/queries/engagement";
+import { seasonParticipant } from "../lib/queries/season-participants";
 import { studentEngagementRouter } from "../routes/engagement";
 
 const app = express().use("/students", studentEngagementRouter);
@@ -62,6 +63,6 @@ it("scores live students only", async () => {
   mockDb.seasonEnrollment.findMany.mockResolvedValue([]);
   await computeEngagementForSeason(8);
   expect(mockDb.seasonEnrollment.findMany.mock.calls[0][0].where).toEqual(
-    expect.objectContaining({ studentUser: { deletedAt: null }, status: "ACTIVE" }),
+    expect.objectContaining({ studentUser: { deletedAt: null }, ...seasonParticipant }),
   );
 });

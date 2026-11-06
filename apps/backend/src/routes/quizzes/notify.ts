@@ -49,7 +49,13 @@ export async function notifyQuizGraded(
 export async function notifyQuizPublished(quiz: { seasonId: number; title: string }): Promise<void> {
   await bestEffort("notify:QUIZ_PUBLISHED", async () => {
     const enrolled = await db.seasonEnrollment.findMany({
-      where: { seasonId: quiz.seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
+      where: {
+        seasonId: quiz.seasonId,
+        status: "ACTIVE",
+        // A draft's roster can't take the quiz yet, so there is nothing to tell them.
+        season: { status: "ACTIVE" },
+        studentUser: { deletedAt: null },
+      },
       select: { studentUserId: true },
     });
     await createNotificationsBulk(

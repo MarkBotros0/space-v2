@@ -39,7 +39,7 @@ it("finds the group through the session's season enrolment", async () => {
   });
   expect(mockDb.groupStudent.findUnique).not.toHaveBeenCalled();
   expect(mockDb.groupLeader.findMany).toHaveBeenCalledWith({
-    where: { groupId: 3, user: { deletedAt: null } },
+    where: { groupId: 3, group: { season: { status: { in: ["DRAFT", "ACTIVE"] } } }, user: { deletedAt: null } },
     select: { userId: true },
   });
   expect(mockNotify).toHaveBeenCalledWith([40], expect.objectContaining({ type: "LOW_ATTENDANCE_FLAG" }));

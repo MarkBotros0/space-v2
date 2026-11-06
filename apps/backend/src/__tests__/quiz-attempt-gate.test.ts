@@ -70,14 +70,14 @@ describe.each([
   });
 
   it("refuses an alumnus even with an ACTIVE enrolment row", async () => {
-    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE" });
+    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE", season: { status: "ACTIVE", deletedAt: null } });
     const res = await call(handler, student({ graduationYear: 2025 }), body);
     expect(res.statusCode).toBe(403);
     expect(mockDb.quizAttempt.findFirst).not.toHaveBeenCalled();
   });
 
   it("lets an ACTIVE student through to the attempt lookup", async () => {
-    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE" });
+    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE", season: { status: "ACTIVE", deletedAt: null } });
     const res = await call(handler, student(), body);
     expect(res.statusCode).not.toBe(403);
     expect(mockDb.quizAttempt.findFirst).toHaveBeenCalled();

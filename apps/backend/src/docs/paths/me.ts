@@ -261,7 +261,7 @@ export const mePaths = {
     get: {
       tags: ["Me"],
       summary: "The caller's past seasons (students and alumni)",
-      description: "Self only. Lists every enrollment that is not ACTIVE (finished or withdrawn), each with its season code and outcome. Soft-deleted seasons are hidden. Staff get 403.",
+      description: "Self only. Lists every enrollment that is not ACTIVE (finished or withdrawn), each with its season code and outcome. Soft-deleted and DRAFT seasons are hidden. Staff get 403.",
       responses: {
         200: ok({ type: "object", properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } } }, "Past seasons, most recent enrollment first."),
         401: errRef("Unauthorized"),
@@ -273,7 +273,7 @@ export const mePaths = {
     get: {
       tags: ["Me"],
       summary: "The caller's own read-only record of one past season (students and alumni)",
-      description: "404 when the caller has no finished enrollment in it, the enrollment is still ACTIVE, or the season is deleted. Staff get 403.",
+      description: "404 when the caller has no finished enrollment in it, the enrollment is still ACTIVE, or the season is deleted or a DRAFT. Staff get 403.",
       parameters: [{ name: "seasonId", in: "path", required: true, schema: { type: "integer" } }],
       responses: {
         200: ok({ type: "object", properties: { record: { $ref: "#/components/schemas/SeasonRecord" } } }, "The season record."),

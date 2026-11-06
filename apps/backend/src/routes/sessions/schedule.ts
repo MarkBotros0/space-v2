@@ -124,7 +124,7 @@ export async function updateSession(req: Request, res: Response) {
 
   if (delta !== 0) {
     const enrolled = await db.seasonEnrollment.findMany({
-      where: { seasonId: existing.seasonId, status: "ACTIVE" },
+      where: { seasonId: existing.seasonId, status: "ACTIVE", season: { status: "ACTIVE" } },
       select: { studentUserId: true },
     });
     // Best-effort: the reschedule has committed; a notification failure must

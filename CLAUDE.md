@@ -387,6 +387,10 @@ Build 1 exists.
   stale. Only Super reads and corrects results (`/seasons/:id/results`). `GET /seasons/overdue`
   feeds the Today callout for ACTIVE seasons past their end date. **Finished seasons are locked and
   never reopen**; their students still read their own work, read-only (responses carry `readOnly`).
+  A status change on an existing season is only DRAFT -> ACTIVE or COMPLETED <-> ARCHIVED; nothing
+  enrols into a finished season (`season_finished`). A draft's roster is not live: `readOnly`, no
+  submitting and no notifications until it starts, and being taken off one isn't History. Former staff
+  aren't listed the season (a leader's `GET /seasons`) or notified about its students.
 - **Who a roster lists.** After End every enrolment is COMPLETED, so a staff roster, count, report or
   export filtering on `status: "ACTIVE"` blanks out every finished season. Use `seasonParticipant`
   (`lib/queries/season-participants.ts`): ACTIVE in a live season, ACTIVE and COMPLETED in a finished

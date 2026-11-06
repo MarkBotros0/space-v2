@@ -325,7 +325,7 @@ export const sessionPaths = {
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: {
-          description: "`not_enrolled` — you have no ACTIVE enrolment in this session's season.",
+          description: "`not_enrolled` — you have no ACTIVE enrolment in this session's season, or the season isn't ACTIVE.",
           content: { "application/json": { schema: errorResponse } },
         },
         404: {

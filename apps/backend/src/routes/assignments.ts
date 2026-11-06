@@ -13,6 +13,7 @@ import {
 import {
   canAccessSeason,
   canManageAssignment,
+  hasActiveEnrollment,
   staffScopeForSeason,
 } from "../lib/permissions";
 import {
@@ -50,10 +51,10 @@ assignmentsRouter.get("/:id", async (req, res) => {
   if (user.role === "STUDENT") {
     const enrollment = await db.seasonEnrollment.findUnique({
       where: { studentUserId_seasonId: { studentUserId: user.userId, seasonId: assignment.seasonId } },
-      select: { status: true },
+      select: { id: true },
     });
     if (!enrollment) return forbidden(res);
-    readOnly = enrollment.status !== "ACTIVE";
+    readOnly = !(await hasActiveEnrollment(user, assignment.seasonId));
   } else if (!(await canAccessSeason(user, assignment.seasonId))) {
     return forbidden(res);
   }

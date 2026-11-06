@@ -221,7 +221,11 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   // notify. R14: recipients are that season's admins only.
   if (parsed.data.followUpFlagged && seasonId !== null) {
     const [admins, subject] = await Promise.all([
-      db.seasonAdmin.findMany({ where: { seasonId }, select: { userId: true } }),
+      // Former admins have no access to a finished season: never name its student to them.
+      db.seasonAdmin.findMany({
+        where: { seasonId, season: { status: { in: ["DRAFT", "ACTIVE"] } } },
+        select: { userId: true },
+      }),
       db.user.findUnique({ where: { id: studentUserId }, select: { name: true } }),
     ]);
     if (admins.length > 0) {
