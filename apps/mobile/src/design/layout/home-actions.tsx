@@ -5,6 +5,7 @@
  * user menu's theme toggle and sign-out. v1's PROFILE_HREF: students →
  * profile, every other role → settings. They were v1's top bar; since the
  * redesign they sit in Home's title row only (`Screen home`, ruling R13).
+ * The dev user switcher joins them when the backend enables it.
  */
 import { useRouter } from "expo-router";
 import { View } from "react-native";
@@ -20,6 +21,7 @@ import { initialsOf } from "../../lib/initials";
 import { routeForTarget } from "../../lib/notification-route";
 import { useSessionStore } from "../../store/session";
 import { useThemeMode } from "../theme/theme-mode";
+import { DevUserSwitcher } from "./dev-user-switcher";
 import { NotificationBell } from "./notification-bell";
 import { UserMenu } from "./user-menu";
 
@@ -39,6 +41,8 @@ export function HomeActions() {
   const name = user.name?.trim() || null;
   return (
     <View className="shrink-0 flex-row items-center gap-1">
+      {/* v1 parity: shows only on a DEV_USER_SWITCHER=1 backend. */}
+      <DevUserSwitcher />
       <NotificationBell
         items={items.map((n) => ({ ...n, linked: routeForTarget(n.target) !== null }))}
         unread={unread}

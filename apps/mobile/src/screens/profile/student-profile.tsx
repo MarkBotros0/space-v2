@@ -27,7 +27,13 @@ export function StudentProfile() {
       </Screen>
     );
   }
-  return <LoadedProfile profile={profile.data} refetch={() => void profile.refetch()} refreshing={profile.isRefetching} />;
+  return (
+    <LoadedProfile
+      profile={profile.data}
+      refetch={() => void profile.refetch()}
+      refreshing={profile.isRefetching}
+    />
+  );
 }
 
 function LoadedProfile({
@@ -93,14 +99,14 @@ function LoadedProfile({
           <ListSectionHeader>Your details</ListSectionHeader>
           <View className="rounded-group bg-surface p-4">{form.fields}</View>
         </View>
-        {/* Decision 1: name and email are not edited here (PATCH /me owns User.name). */}
+        {/* Name, phone, date of birth and address are edited in Settings → Profile details (PATCH /me). */}
         <GroupedList>
           <ListRow
-            title="Open settings"
-            subtitle="Change your name in Settings. To change your email, contact the JPC team."
+            title="Profile details"
+            subtitle="Name, phone, date of birth and address. To change your email, contact the JPC team."
             subtitleLines={3}
             chevron
-            onPress={() => router.push("/settings")}
+            onPress={() => router.push("/settings/profile")}
           />
         </GroupedList>
       </View>

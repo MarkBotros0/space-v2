@@ -1,12 +1,12 @@
 /**
  * The /more page (v1 src/components/layout/more-menu.tsx) on grouped rows: an
  * identity row (initials, name, role badge), the sidebar destinations that
- * are not tabs, Appearance with the theme toggle, and Sign out as a
- * destructive row. Rows navigate through onNavigate. Row icons come from the
+ * are not tabs, Appearance with the theme toggle, and Sign out and Delete
+ * account as destructive rows. Rows navigate through onNavigate. Row icons come from the
  * tab bar's map (NavIcon), so a destination looks the same in the bar and here.
  */
 import type { RoleNav, UserRole } from "@space/shared";
-import { LogOut } from "lucide-react-native";
+import { LogOut, Trash2 } from "lucide-react-native";
 import { View } from "react-native";
 
 import { moreItemsFor } from "../../lib/nav-routes";
@@ -19,7 +19,7 @@ import { ThemeToggle } from "../ui/theme-toggle";
 import { Screen } from "./screen";
 import { roleBadge } from "./user-menu";
 
-iconWithClassName(LogOut);
+iconWithClassName(LogOut, Trash2);
 
 /** v1: first letters of the first two name parts, else the role's initial. */
 function initialsFor(name: string | null, role: UserRole): string {
@@ -36,6 +36,7 @@ export function MoreMenu({
   nav,
   onNavigate,
   onSignOut,
+  onDeleteAccount,
 }: {
   role: UserRole;
   /** Set for a graduated student, whose badge reads ALUMNI. */
@@ -44,6 +45,8 @@ export function MoreMenu({
   nav: RoleNav;
   onNavigate: (href: string) => void;
   onSignOut: () => void;
+  /** Omitted: no Delete account row. */
+  onDeleteAccount?: () => void;
 }) {
   // The same list more-back.test.tsx walks: sidebar entries that are not a tab.
   const items = moreItemsFor(nav);
@@ -93,6 +96,16 @@ export function MoreMenu({
             leading={<LogOut size={20} className="text-bad" />}
             onPress={onSignOut}
           />
+          {onDeleteAccount ? (
+            <ListRow
+              title="Delete account"
+              subtitle="Removes your account and signs you out everywhere."
+              subtitleLines={2}
+              destructive
+              leading={<Trash2 size={20} className="text-bad" />}
+              onPress={onDeleteAccount}
+            />
+          ) : null}
         </GroupedList>
       </View>
     </Screen>

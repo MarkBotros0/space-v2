@@ -61,7 +61,7 @@ describe("detail screens push on a stack above the tabs", () => {
   it("a cold deep link to a pushed nav destination (/settings) also has Home underneath", async () => {
     const result = await renderRouter(appContext(), { initialUrl: "/settings" });
     expect(await screen.findByText("screen:/settings")).toBeTruthy();
-    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "settings"]);
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "settings/index"]);
 
     await act(() => router.back());
     expect(result.getPathname()).toBe("/dashboard");
@@ -116,7 +116,7 @@ describe("the tabs are one navigator, however a tab route is reached", () => {
     expect(await screen.findByText("screen:/student/[id]")).toBeTruthy();
 
     await act(() => router.push("/settings"));
-    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "student/[id]/index", "settings"]);
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "student/[id]/index", "settings/index"]);
     await act(() => router.back());
     expect(result.getPathname()).toBe("/student/1");
   });

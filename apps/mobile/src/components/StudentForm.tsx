@@ -105,6 +105,7 @@ export function StudentForm({
           <FormField label="Date of birth" error={errors.dateOfBirth}>
             <DatePicker
               accessibilityLabel="Date of birth"
+              startWith="year"
               value={dayToDate(values.dateOfBirth)}
               onChange={(d) => setField("dateOfBirth", format(d, "yyyy-MM-dd"))}
             />

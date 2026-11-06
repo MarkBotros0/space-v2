@@ -5,7 +5,10 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 const mockLogout = jest.fn(() => Promise.resolve());
 jest.mock("../hooks/use-session", () => ({ useLogout: () => mockLogout }));
-jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
+jest.mock("../design/ui/toaster", () => ({
+  toast: { success: jest.fn(), error: jest.fn() },
+  Toaster: () => null,
+}));
 
 import type { MyProfile } from "@space/shared";
 
@@ -35,21 +38,35 @@ const profile: MyProfile = {
 
 const attendance = {
   season: { id: 7, title: "GBV 2026", absenceBudgetMinutes: 180, absenceWeightMinutes: 90 },
-  budget: { minutesUsed: 105, budgetMinutes: 180, budgetPct: 58, remainingPct: 42, absentCount: 1, lateCount: 1 },
+  budget: {
+    minutesUsed: 105,
+    budgetMinutes: 180,
+    budgetPct: 58,
+    remainingPct: 42,
+    absentCount: 1,
+    lateCount: 1,
+  },
   streak: 3,
   sessions: [],
 };
 
 const selfEngagement = {
-  attendancePct: 62, submissionPct: 25, attendanceTotal: 8, attendancePresent: 5,
-  submissionsExpected: 4, submissionsCompleted: 1, seasonId: 7, seasonTitle: "GBV 2026",
+  attendancePct: 62,
+  submissionPct: 25,
+  attendanceTotal: 8,
+  attendancePresent: 5,
+  submissionsExpected: 4,
+  submissionsCompleted: 1,
+  seasonId: 7,
+  seasonTitle: "GBV 2026",
 };
 
 function routeGets(p: typeof profile = profile) {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/me/profile") return Promise.resolve({ data: { data: { profile: p } } });
     if (url === "/api/v1/me/attendance") return Promise.resolve({ data: { data: attendance } });
-    if (url === "/api/v1/students/1/engagement") return Promise.resolve({ data: { data: selfEngagement } });
+    if (url === "/api/v1/students/1/engagement")
+      return Promise.resolve({ data: { data: selfEngagement } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
@@ -75,8 +92,9 @@ describe("ProfileScreen — STUDENT", () => {
     expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
     expect(await screen.findByLabelText("Streak: 3")).toBeTruthy();
     expect(screen.getByLabelText("University").props.value).toBe("Cairo University");
-    // v1's DatePicker (PPP format) in place of a typed field.
-    expect(screen.getByLabelText("Date of birth")).toHaveTextContent("Apr 5, 2001");
+    // Phone and date of birth moved to Settings → Profile details (owner, 2026-11-06).
+    expect(screen.queryByLabelText("Date of birth")).toBeNull();
+    expect(screen.queryByLabelText("Phone")).toBeNull();
     // The student's own engagement (self arm): completed / expected.
     expect(await screen.findByLabelText("Assignments: 1/4")).toBeTruthy();
     expect(screen.getByText("YOUR DETAILS")).toBeTruthy();
@@ -105,53 +123,57 @@ describe("ProfileScreen — STUDENT", () => {
     expect(within(screen.getByTestId("screen-scroll")).queryByText("Save changes")).toBeNull();
   });
 
-  it("saves through PATCH /me/profile with its five fields only", async () => {
-    patch.mockResolvedValue({ data: { data: { profile: { ...profile, phone: "+20 122" } } } });
+  it("saves through PATCH /me/profile with its three academic fields only", async () => {
+    patch.mockResolvedValue({
+      data: { data: { profile: { ...profile, faculty: "Engineering" } } },
+    });
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.changeText(await screen.findByLabelText("Phone"), "+20 122");
+    fireEvent.changeText(await screen.findByLabelText("Faculty"), "Engineering");
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/me/profile", {
         university: "Cairo University",
-        faculty: null,
+        faculty: "Engineering",
         universityGraduationYear: null,
-        phone: "+20 122",
-        dateOfBirth: "2001-04-05",
       }),
     );
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Profile saved."));
   });
 
   it("enables Save only while something differs from what is saved", async () => {
-    patch.mockResolvedValue({ data: { data: { profile: { ...profile, phone: "+20 122" } } } });
+    patch.mockResolvedValue({ data: { data: { profile: { ...profile, faculty: "Arts" } } } });
     renderWithProviders(<ProfileScreen />);
-    const phone = await screen.findByLabelText("Phone");
+    const phone = await screen.findByLabelText("Faculty");
     const save = () => screen.getByRole("button", { name: "Save changes" });
 
     expect(save().props.accessibilityState?.disabled).toBe(true);
-    fireEvent.changeText(phone, "+20 122");
+    fireEvent.changeText(phone, "Arts");
     expect(save().props.accessibilityState?.disabled).toBeFalsy();
-    fireEvent.changeText(phone, "+20 100");
+    fireEvent.changeText(phone, "");
     expect(save().props.accessibilityState?.disabled).toBe(true);
 
-    fireEvent.changeText(phone, "+20 122");
+    fireEvent.changeText(phone, "Arts");
     fireEvent.press(save());
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Profile saved."));
     await waitFor(() => expect(save().props.accessibilityState?.disabled).toBe(true));
   });
 
-  it("sends the picked date of birth as the org-free yyyy-MM-dd string", async () => {
-    patch.mockResolvedValue({ data: { data: { profile: { ...profile, dateOfBirth: "2001-04-20" } } } });
+  it("sends the graduation year as a number", async () => {
+    patch.mockResolvedValue({
+      data: { data: { profile: { ...profile, universityGraduationYear: 2028 } } },
+    });
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.press(await screen.findByLabelText("Date of birth"));
-    fireEvent.press(screen.getByText("20"));
+    fireEvent.changeText(await screen.findByLabelText("Graduation year"), "2028");
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/me/profile", expect.objectContaining({ dateOfBirth: "2001-04-20" })),
+      expect(patch).toHaveBeenCalledWith(
+        "/api/v1/me/profile",
+        expect.objectContaining({ universityGraduationYear: 2028 }),
+      ),
     );
   });
 
@@ -159,22 +181,24 @@ describe("ProfileScreen — STUDENT", () => {
     patch.mockResolvedValue({ data: { data: { profile: { ...profile, notes: "internal" } } } });
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.changeText(await screen.findByLabelText("Phone"), "+20 122");
+    fireEvent.changeText(await screen.findByLabelText("Faculty"), "Arts");
     fireEvent.press(screen.getByText("Save changes"));
 
     expect(await screen.findByText("Couldn't save your profile.")).toBeTruthy();
   });
 
-  it("sends name changes to Settings (PATCH /me owns User.name)", async () => {
+  it("sends name, phone, birthday and address to Profile details (PATCH /me owns them)", async () => {
     renderWithProviders(<ProfileScreen />);
 
-    fireEvent.press(await screen.findByText("Open settings"));
+    fireEvent.press(await screen.findByText("Profile details"));
 
-    expect(mockPush).toHaveBeenCalledWith("/settings");
+    expect(mockPush).toHaveBeenCalledWith("/settings/profile");
   });
 
   it("shows no stats and runs no attendance query without an active season", async () => {
-    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null }, { name: "Mina Adel" }));
+    useSessionStore.setState(
+      makeSession("STUDENT", { activeSeasonId: null }, { name: "Mina Adel" }),
+    );
     renderWithProviders(<ProfileScreen />);
 
     expect(await screen.findByText("Mina Adel")).toBeTruthy();
@@ -202,7 +226,9 @@ describe("ProfileScreen — ALUMNI", () => {
 
 describe("ProfileScreen — MENTOR (Decision 2)", () => {
   it("is the account card with Settings and Sign out, and calls no student endpoint", async () => {
-    useSessionStore.setState(makeSession("MENTOR", {}, { name: "Maged Mentor", email: "maged@jpc.test" }));
+    useSessionStore.setState(
+      makeSession("MENTOR", {}, { name: "Maged Mentor", email: "maged@jpc.test" }),
+    );
 
     renderWithProviders(<ProfileScreen />);
 

@@ -42,7 +42,9 @@ it("PasswordInput toggles visibility with v1's labels", () => {
 
 it("Switch toggles", () => {
   const onCheckedChange = jest.fn();
-  render(<Switch accessibilityLabel="Email me" checked={false} onCheckedChange={onCheckedChange} />);
+  render(
+    <Switch accessibilityLabel="Email me" checked={false} onCheckedChange={onCheckedChange} />,
+  );
   fireEvent.press(screen.getByRole("switch"));
   expect(onCheckedChange).toHaveBeenCalledWith(true);
 });
@@ -94,7 +96,10 @@ it("Combobox filters and shows v1's empty message", () => {
       accessibilityLabel="Student"
       value={null}
       onChange={onChange}
-      options={[{ value: "1", label: "Sara" }, { value: "2", label: "Mina" }]}
+      options={[
+        { value: "1", label: "Sara" },
+        { value: "2", label: "Mina" },
+      ]}
     />,
   );
   fireEvent.press(screen.getByLabelText("Student"));
@@ -112,7 +117,10 @@ it("MultiSelect toggles several options (v1 onChange)", () => {
       accessibilityLabel="Tags"
       value={["a"]}
       onChange={onChange}
-      options={[{ value: "a", label: "Alpha" }, { value: "b", label: "Beta" }]}
+      options={[
+        { value: "a", label: "Alpha" },
+        { value: "b", label: "Beta" },
+      ]}
     />,
   );
   fireEvent.press(screen.getByLabelText("Tags"));
@@ -120,9 +128,11 @@ it("MultiSelect toggles several options (v1 onChange)", () => {
   expect(onChange).toHaveBeenCalledWith(["a", "b"]);
 });
 
-it('DatePicker shows the app format (Oct 14, 2026) and picks a day', () => {
+it("DatePicker shows the app format (Oct 14, 2026) and picks a day", () => {
   const onChange = jest.fn();
-  render(<DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={onChange} />);
+  render(
+    <DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={onChange} />,
+  );
   expect(screen.getByLabelText("Start")).toHaveTextContent("Oct 14, 2026");
   fireEvent.press(screen.getByLabelText("Start"));
   expect(screen.getByText("October 2026")).toBeTruthy();
@@ -131,7 +141,9 @@ it('DatePicker shows the app format (Oct 14, 2026) and picks a day', () => {
 });
 
 it("DatePicker weekday headers stay on one line and ignore font scaling (K4)", () => {
-  render(<DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={() => {}} />);
+  render(
+    <DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={() => {}} />,
+  );
   fireEvent.press(screen.getByLabelText("Start"));
   const heads = screen.getAllByTestId("date-picker-weekday");
   expect(heads).toHaveLength(7);
@@ -139,6 +151,42 @@ it("DatePicker weekday headers stay on one line and ignore font scaling (K4)", (
     expect(h.props.numberOfLines).toBe(1);
     expect(h.props.maxFontSizeMultiplier).toBe(1);
   }
+});
+
+it("DatePicker jumps to a far year through the title: years, then month, then day", () => {
+  const onChange = jest.fn();
+  render(
+    <DatePicker
+      accessibilityLabel="Date of birth"
+      value={new Date(2026, 9, 14)}
+      onChange={onChange}
+    />,
+  );
+  fireEvent.press(screen.getByLabelText("Date of birth"));
+  fireEvent.press(screen.getByLabelText("October 2026, choose month and year"));
+  expect(screen.getByText("2016 – 2027")).toBeTruthy();
+  fireEvent.press(screen.getByLabelText("Earlier years"));
+  fireEvent.press(screen.getByLabelText("Earlier years"));
+  expect(screen.getByText("1992 – 2003")).toBeTruthy();
+  fireEvent.press(screen.getByLabelText("1999"));
+  fireEvent.press(screen.getByLabelText("April 1999"));
+  expect(screen.getByText("April 1999")).toBeTruthy();
+  fireEvent.press(screen.getByText("5"));
+  const picked: Date = onChange.mock.calls[0][0];
+  expect([picked.getFullYear(), picked.getMonth(), picked.getDate()]).toEqual([1999, 3, 5]);
+});
+
+it('DatePicker startWith="year" opens an empty field on the year grid', () => {
+  render(
+    <DatePicker
+      accessibilityLabel="Date of birth"
+      value={null}
+      onChange={() => {}}
+      startWith="year"
+    />,
+  );
+  fireEvent.press(screen.getByLabelText("Date of birth"));
+  expect(screen.getByTestId("date-picker-years")).toBeTruthy();
 });
 
 it("TimePicker shows padded hour and minute", () => {

@@ -61,6 +61,8 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "event/[id]",
   "attention/sessions",
   "attention/at-risk",
+  "settings/notifications",
+  "settings/profile",
 ];
 
 /**

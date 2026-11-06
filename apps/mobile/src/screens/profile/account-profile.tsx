@@ -2,8 +2,8 @@ import { useRouter } from "expo-router";
 import { View } from "react-native";
 
 import { Screen } from "../../design/layout/screen";
-import { Button } from "../../design/ui/button";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { useDeleteAccountFlow } from "../../components/DeleteAccount";
 import { useLogout } from "../../hooks/use-session";
 import { useSessionStore } from "../../store/session";
 import { IdentityCard } from "./identity-card";
@@ -19,6 +19,7 @@ export function AccountProfile() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const logout = useLogout();
+  const deleteFlow = useDeleteAccountFlow();
 
   return (
     <Screen title="Profile">
@@ -26,11 +27,25 @@ export function AccountProfile() {
         {user ? <IdentityCard name={user.name} email={user.email} badge={user.role} /> : null}
         <GroupedList>
           <ListRow title="Settings" chevron index={0} onPress={() => router.push("/settings")} />
-          <ListRow title="Notifications" chevron index={1} onPress={() => router.push("/notifications")} />
+          <ListRow
+            title="Notifications"
+            chevron
+            index={1}
+            onPress={() => router.push("/notifications")}
+          />
         </GroupedList>
-        <Button variant="secondary" className="self-start" onPress={() => void logout()}>
-          Sign out
-        </Button>
+        {/* MENTOR has no More tab: the account actions are here too. */}
+        <GroupedList>
+          <ListRow title="Sign out" destructive onPress={() => void logout()} />
+          <ListRow
+            title="Delete account"
+            subtitle="Removes your account and signs you out everywhere."
+            subtitleLines={2}
+            destructive
+            onPress={deleteFlow.request}
+          />
+        </GroupedList>
+        {deleteFlow.dialog}
       </View>
     </Screen>
   );

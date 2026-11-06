@@ -8,16 +8,8 @@ import {
   type OwnProfileField,
 } from "@space/shared";
 
-import { format, isValid, parse } from "date-fns";
-
 import { Fieldset } from "../../design/forms/fieldset";
-import {
-  DatePicker,
-  FormField,
-  Input as InputV1,
-  Text as TextV1,
-  toast,
-} from "../../design/ui";
+import { FormField, Input as InputV1, Text as TextV1, toast } from "../../design/ui";
 import { useUpdateStudentProfile } from "../../hooks/use-self-service";
 import { apiErrorMessage } from "../../lib/api-error";
 
@@ -34,20 +26,21 @@ function toFormValues(p: MyProfile): FormValues {
   };
 }
 
+/** What this form edits. Phone and date of birth are in Settings → Profile
+ *  details (owner, 2026-11-06), with name and address — one editor per field. */
+const ACADEMIC_FIELDS = [
+  "university",
+  "faculty",
+  "universityGraduationYear",
+] as const satisfies readonly OwnProfileField[];
+
 function isOwnProfileField(key: string): key is OwnProfileField {
   return OWN_PROFILE_FIELDS.some((field) => field === key);
 }
 
-/** "2001-04-05" ↔ a local-midnight Date: no zone shift either way. */
-function dobToDate(value: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const date = parse(value, "yyyy-MM-dd", new Date());
-  return isValid(date) ? date : null;
-}
-
 /**
- * v1 student-form.tsx in its isSelf mode — the student's own fields (Decision 1):
- * date of birth, phone, university, faculty and university graduation year.
+ * v1 student-form.tsx in its isSelf mode — the student's own academic fields
+ * (Decision 1): university, faculty and university graduation year.
  * The fields and the save action are returned apart, so the screen can pin
  * Save in `FormScreen`'s footer instead of leaving it below the long form.
  */
@@ -62,7 +55,7 @@ export function useProfileForm(profile: MyProfile): {
   const [values, setValues] = useState<FormValues>(() => toFormValues(profile));
   // What the server holds: the opening values, then whatever the last save landed.
   const [saved, setSaved] = useState<FormValues>(() => toFormValues(profile));
-  const dirty = OWN_PROFILE_FIELDS.some((field) => values[field] !== saved[field]);
+  const dirty = ACADEMIC_FIELDS.some((field) => values[field] !== saved[field]);
   const [errors, setErrors] = useState<Partial<Record<OwnProfileField, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const set = (field: OwnProfileField) => (text: string) =>
@@ -71,7 +64,11 @@ export function useProfileForm(profile: MyProfile): {
   const save = () => {
     setSubmitError(null);
     // The year travels as a number; the text is "" or digits once valid.
-    const body = { ...values, universityGraduationYear: yearFromText(values.universityGraduationYear) };
+    const body = {
+      university: values.university,
+      faculty: values.faculty,
+      universityGraduationYear: yearFromText(values.universityGraduationYear),
+    };
     // The SAME schema the server runs — v1's client and server copies had
     // drifted (spec 06 R21); here they cannot.
     const parsed = updateOwnProfileInputSchema.safeParse(body);
@@ -99,25 +96,6 @@ export function useProfileForm(profile: MyProfile): {
 
   const fields = (
     <View className="flex-col gap-6">
-      <Fieldset legend="Personal">
-        <FormField label="Date of birth" error={errors.dateOfBirth}>
-          <DatePicker
-            accessibilityLabel="Date of birth"
-            value={dobToDate(values.dateOfBirth)}
-            onChange={(d) => set("dateOfBirth")(format(d, "yyyy-MM-dd"))}
-          />
-        </FormField>
-      </Fieldset>
-      <Fieldset legend="Contact">
-        <FormField label="Phone" error={errors.phone}>
-          <InputV1
-            accessibilityLabel="Phone"
-            keyboardType="phone-pad"
-            value={values.phone}
-            onChangeText={set("phone")}
-          />
-        </FormField>
-      </Fieldset>
       <Fieldset legend="Academic">
         <FormField label="University" error={errors.university}>
           <InputV1

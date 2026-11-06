@@ -109,6 +109,11 @@ client together under the proxy's IP. `MOBILE_APP_ORIGIN` — CORS origin
 allowed to call the API; default `"*"` (matches the app this backend was
 ported from).
 
+`DEV_USER_SWITCHER` — `"1"` turns on `/api/v1/dev/users` and `/dev/switch`,
+v1's passwordless sign-in as any active user, and the header switcher on Home
+(it only renders when the probe succeeds). Every `/dev` route is a 404
+otherwise. A testing aid: unset by default.
+
 **Sentry is opt-in on both sides.** It stays off until `SENTRY_DSN` (backend)
 or `EXPO_PUBLIC_SENTRY_DSN` (mobile, read only in `src/lib/app-config.ts`) is
 set. Report through `reportError` in each app's `lib/sentry.ts`, never
@@ -295,6 +300,20 @@ or changing a screen, run the `ui-sweep` skill (`.claude/skills/ui-sweep/`,
 `tools/ui-reference/ui-sweep.mjs`, flows in `apps/mobile/.maestro/sweep/`) and look at the shots
 before calling it done. Sweep flows never save anything. Maestro on Android often misses
 sonner-native toasts, so flows shoot toasts best-effort.
+
+### Settings and account (owner, 2026-11-06)
+
+- `/settings` is a hub with two pages: `settings/profile` (name, phone, date
+  of birth, address — `User` columns, PATCH /me, every role) and
+  `settings/notifications` (push first; the per-kind switches show only once
+  push is on for the phone).
+- No password form in the app: "Forgot password?" on sign-in is the only way
+  to set one. No "Sign out everywhere".
+- Sign out and Delete account (DELETE /me, a soft delete) live on More; on
+  Profile for MENTOR, who has no More tab.
+- The student Profile tab edits only university, faculty and university
+  graduation year (`StudentProfile.universityGraduationYear`, may be in the
+  future — not `User.graduationYear`, which marks a JPCS alumnus).
 
 ### Motion: keep it restrained (owner, 2026-11-06)
 

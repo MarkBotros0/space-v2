@@ -6,7 +6,10 @@ import type { NotificationPreferences as Prefs } from "@space/shared";
 import { Section } from "../design/settings/section";
 import { Button, Skeleton, Switch, Text } from "../design/ui";
 import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
-import { useNotificationPreferences, useUpdateNotificationPreferences } from "../hooks/use-notifications";
+import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from "../hooks/use-notifications";
 import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
 
@@ -74,7 +77,7 @@ const ORDER: (keyof Prefs)[] = [
 
 /** One honest sentence per push state. */
 const PUSH_COPY: Record<PushStatus | "idle", string> = {
-  idle: "Get alerted on this phone for anything you get notified about. The switches below choose which.",
+  idle: "Turn on push to get alerts on this phone. Then choose what you're notified about.",
   registered: "Push is on for this device.",
   unavailable: "Push isn't available on the server right now. Try again later.",
   denied: "Notifications are off for JPC Space in your phone's settings.",
@@ -97,61 +100,20 @@ export function NotificationPreferences() {
     update.mutate({ ...data, [key]: value });
   };
 
+  // Owner, 2026-11-06: the per-kind switches stay hidden until push is on for
+  // this phone — first the one decision (turn alerts on), then the detail.
+  const pushOn = pushToken !== null;
+
   return (
-    <>
-      <View className="flex-col gap-2">
-        <ListSectionHeader>Notifications</ListSectionHeader>
-        {isPending ? (
-          <View accessible accessibilityLabel="Loading" className="flex-col gap-3">
-            <Skeleton className="h-10" />
-            <Skeleton className="h-10" />
-            <Skeleton className="h-10" />
-          </View>
-        ) : isError || !data ? (
-          <View className="flex-col items-start gap-2 rounded-group bg-surface p-4">
-            <Text className="text-sm text-error-600 dark:text-error-400">
-              Couldn't load your notification settings.
-            </Text>
-            <Button variant="outline" size="sm" onPress={() => void refetch()}>
-              Try again
-            </Button>
-          </View>
-        ) : (
-          <GroupedList>
-            {ORDER.map((key) => (
-              <ListRow
-                key={key}
-                title={LABELS[key].label}
-                subtitle={LABELS[key].help}
-                subtitleLines={3}
-                trailing={
-                  <Switch
-                    accessibilityLabel={LABELS[key].label}
-                    checked={data[key]}
-                    onCheckedChange={(value) => toggle(key, value)}
-                    className={update.isPending ? "opacity-70" : undefined}
-                  />
-                }
-              />
-            ))}
-          </GroupedList>
-        )}
-        {/* Spec D4: the inbox row is always written; the switch governs the
-            outbound channels. Saying so is the difference between a setting
-            and a surprise. */}
-        <Text variant="caption" className="px-4 text-muted-foreground">
-          Changes save automatically. Turning one off stops the emails and push for that kind of notification. They will
-          still appear in your inbox — that is your history.
-        </Text>
-      </View>
+    <View className="flex-col gap-6">
       <Section title="Push notifications" description="Alerts on this device.">
         <View className="flex-col items-start gap-3">
           <Text className="text-sm text-muted-foreground">
-            {PUSH_COPY[pushStatus ?? (pushToken ? "registered" : "idle")]}
+            {PUSH_COPY[pushStatus ?? (pushOn ? "registered" : "idle")]}
           </Text>
           <Button
-            variant="outline"
-            disabled={enabling || pushToken !== null}
+            variant={pushOn ? "outline" : "primary"}
+            disabled={enabling || pushOn}
             onPress={() => {
               setEnabling(true);
               void enablePush()
@@ -160,10 +122,57 @@ export function NotificationPreferences() {
             }}
           >
             {/* Button labels are one line: the long forms ended in an ellipsis at 1.3x on a 360dp phone. */}
-            {pushToken ? "Push enabled" : "Enable push"}
+            {pushOn ? "Push enabled" : enabling ? "Enabling…" : "Enable push"}
           </Button>
         </View>
       </Section>
-    </>
+      {pushOn ? (
+        <View className="flex-col gap-2">
+          <ListSectionHeader>What you're notified about</ListSectionHeader>
+          {isPending ? (
+            <View accessible accessibilityLabel="Loading" className="flex-col gap-3">
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+              <Skeleton className="h-10" />
+            </View>
+          ) : isError || !data ? (
+            <View className="flex-col items-start gap-2 rounded-group bg-surface p-4">
+              <Text className="text-sm text-error-600 dark:text-error-400">
+                Couldn't load your notification settings.
+              </Text>
+              <Button variant="outline" size="sm" onPress={() => void refetch()}>
+                Try again
+              </Button>
+            </View>
+          ) : (
+            <GroupedList>
+              {ORDER.map((key) => (
+                <ListRow
+                  key={key}
+                  title={LABELS[key].label}
+                  subtitle={LABELS[key].help}
+                  subtitleLines={3}
+                  trailing={
+                    <Switch
+                      accessibilityLabel={LABELS[key].label}
+                      checked={data[key]}
+                      onCheckedChange={(value) => toggle(key, value)}
+                      className={update.isPending ? "opacity-70" : undefined}
+                    />
+                  }
+                />
+              ))}
+            </GroupedList>
+          )}
+          {/* Spec D4: the inbox row is always written; the switch governs the
+              outbound channels. Saying so is the difference between a setting
+              and a surprise. */}
+          <Text variant="caption" className="px-4 text-muted-foreground">
+            Changes save automatically. Turning one off stops the emails and push for that kind of
+            notification. They will still appear in your inbox — that is your history.
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }

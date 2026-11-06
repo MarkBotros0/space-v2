@@ -32,10 +32,25 @@ beforeEach(() => {
   jest.clearAllMocks();
   get.mockResolvedValue({ data: { data: { preferences: allTrue } } });
   put.mockResolvedValue({ data: { data: { preferences: allTrue } } });
+  // The switches only render once push is on for this phone.
+  useSessionStore.setState({ pushToken: "ExponentPushToken[x]" });
+});
+
+afterEach(() => {
+  useSessionStore.setState({ pushToken: null });
 });
 
 describe("NotificationPreferences", () => {
+  it("hides the per-kind switches until push is enabled on this phone", async () => {
+    useSessionStore.setState({ pushToken: null });
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByRole("button", { name: "Enable push" })).toBeTruthy();
+    expect(screen.queryByLabelText("New assignments")).toBeNull();
+    expect(screen.queryByText(/Changes save automatically/)).toBeNull();
+  });
+
   it("push button labels are short enough to never ellipsize at 1.3x", async () => {
+    useSessionStore.setState({ pushToken: null });
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByRole("button", { name: "Enable push" })).toBeTruthy();
     useSessionStore.setState({ pushToken: "ExponentPushToken[x]" });

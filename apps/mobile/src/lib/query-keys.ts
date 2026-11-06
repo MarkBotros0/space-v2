@@ -21,6 +21,10 @@ import type { RecurrenceScope } from "@space/shared";
  * One small factory per domain, added as screens are wired up.
  */
 export const queryKeys = {
+  dev: {
+    all: ["dev"] as const,
+    users: (q: string) => [...queryKeys.dev.all, "users", q] as const,
+  },
   reports: {
     all: ["reports"] as const,
     // The scope is part of the key: two seasons' summaries are different
@@ -45,8 +49,10 @@ export const queryKeys = {
   engagement: {
     all: ["engagement"] as const,
     // Nullable per this file's header convention — no -1 sentinel.
-    student: (studentId: number | null) => [...queryKeys.engagement.all, "student", { studentId }] as const,
-    season: (seasonId: number | null) => [...queryKeys.engagement.all, "season", { seasonId }] as const,
+    student: (studentId: number | null) =>
+      [...queryKeys.engagement.all, "student", { studentId }] as const,
+    season: (seasonId: number | null) =>
+      [...queryKeys.engagement.all, "season", { seasonId }] as const,
   },
   imports: {
     all: ["imports"] as const,
@@ -114,9 +120,11 @@ export const queryKeys = {
     // with a real student's cached detail (no -1 sentinel).
     detail: (id: number | null) => [...queryKeys.students.details(), { id }] as const,
     /** GET /students/:id/attendance (REG-83) — under details(), so student writes refresh it. */
-    attendance: (id: number | null) => [...queryKeys.students.details(), "attendance", { id }] as const,
+    attendance: (id: number | null) =>
+      [...queryKeys.students.details(), "attendance", { id }] as const,
     /** GET /students/:id/submissions (REG-83). */
-    submissions: (id: number | null) => [...queryKeys.students.details(), "submissions", { id }] as const,
+    submissions: (id: number | null) =>
+      [...queryKeys.students.details(), "submissions", { id }] as const,
   },
   seasons: {
     all: ["seasons"] as const,
@@ -152,7 +160,8 @@ export const queryKeys = {
     all: ["groups"] as const,
     mine: () => [...queryKeys.groups.all, "mine"] as const,
     detail: (id: number | null) => [...queryKeys.groups.all, "detail", id] as const,
-    bySeason: (seasonId: number | null) => [...queryKeys.groups.all, "season", { seasonId }] as const,
+    bySeason: (seasonId: number | null) =>
+      [...queryKeys.groups.all, "season", { seasonId }] as const,
     impact: (id: number | null) => [...queryKeys.groups.all, "impact", { id }] as const,
     leaderOptions: () => [...queryKeys.groups.all, "leaderOptions"] as const,
     /**
@@ -164,7 +173,8 @@ export const queryKeys = {
   },
   attendance: {
     all: ["attendance"] as const,
-    roster: (sessionId: number | null) => [...queryKeys.attendance.all, "roster", sessionId] as const,
+    roster: (sessionId: number | null) =>
+      [...queryKeys.attendance.all, "roster", sessionId] as const,
   },
   quizzes: {
     all: ["quizzes"] as const,
@@ -187,7 +197,8 @@ export const queryKeys = {
     seasonHistory: (activeSeasonId: number | null) =>
       [...queryKeys.me.all, "season-history", { activeSeasonId }] as const,
     season: (seasonId: number | null) => [...queryKeys.me.all, "season", { seasonId }] as const,
-    attendance: (seasonId: number | null) => [...queryKeys.me.all, "attendance", { seasonId }] as const,
+    attendance: (seasonId: number | null) =>
+      [...queryKeys.me.all, "attendance", { seasonId }] as const,
     profile: () => [...queryKeys.me.all, "profile"] as const,
   },
   videoQuiz: {

@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 
+import { useDeleteAccountFlow } from "../../../src/components/DeleteAccount";
 import { MoreMenu } from "../../../src/design/layout/more-menu";
 import { Screen } from "../../../src/design/layout/screen";
 import { useLogout } from "../../../src/hooks/use-session";
@@ -13,20 +14,25 @@ export default function MoreScreen() {
   const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
   const nav = useSessionStore((s) => s.nav());
   const logout = useLogout();
+  const deleteFlow = useDeleteAccountFlow();
 
   if (!user || !nav) return <Screen title="More">{null}</Screen>;
 
   return (
-    <MoreMenu
-      role={user.role}
-      graduationYear={graduationYear}
-      userName={user.name}
-      nav={nav}
-      onNavigate={(href) => {
-        const target = navHref(href);
-        if (target) router.push(target);
-      }}
-      onSignOut={() => void logout()}
-    />
+    <>
+      <MoreMenu
+        role={user.role}
+        graduationYear={graduationYear}
+        userName={user.name}
+        nav={nav}
+        onNavigate={(href) => {
+          const target = navHref(href);
+          if (target) router.push(target);
+        }}
+        onSignOut={() => void logout()}
+        onDeleteAccount={deleteFlow.request}
+      />
+      {deleteFlow.dialog}
+    </>
   );
 }
