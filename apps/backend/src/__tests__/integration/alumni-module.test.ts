@@ -66,16 +66,18 @@ describe("alumni reads", () => {
     expect(res.body.data.season).toBeNull();
   });
 
+  it("reads their own past season's assignment, read-only (COMPLETED enrolment)", async () => {
+    const res = await request(app).get(`/api/v1/assignments/${w.otherAssignmentId}`).set(asAlumnus());
+    expect(res.status).toBe(200);
+    expect(res.body.data.readOnly).toBe(true);
+  });
+
   it("refused: the current season, current students and the student dashboard", async () => {
     await expectStatuses(app, w.tokens.alumnus, [
       ["get", "/api/v1/me/dashboard", 403],
       ["get", `/api/v1/seasons/${w.seasonId}`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/sessions`, 403],
       ["get", `/api/v1/assignments/${w.assignmentId}`, 403],
-      // Their own past season's assignment too: a student reads an assignment
-      // only in the active season or with an ACTIVE enrolment (main 423ce932),
-      // and the alumnus's enrolment there is COMPLETED.
-      ["get", `/api/v1/assignments/${w.otherAssignmentId}`, 403],
       ["get", `/api/v1/sessions/${w.sessionId}/video-quiz`, 403],
       ["get", `/api/v1/groups/${w.groupAId}`, 403],
       ["get", `/api/v1/students/${w.ids.studentA}`, 403],

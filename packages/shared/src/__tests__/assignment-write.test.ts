@@ -133,7 +133,7 @@ describe("response additions", () => {
     dueAt: "2099-04-01T21:59:00.000Z", dueOrgDay: "2099-04-01", dueOrgTime: "23:59",
     isOverdue: false, isAllGroups: true, type: "STANDARD", forumMinWords: null,
     forumAllowComments: false, maxFileSizeMb: null, allowedMimeCategories: [],
-    groupIds: [], mySubmission: null, canManage: true,
+    groupIds: [], mySubmission: null, canManage: true, readOnly: false,
   };
 
   it("requires the server-derived org due fields on the detail (C4)", () => {
