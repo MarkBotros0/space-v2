@@ -57,12 +57,15 @@ export function isValidSeasonCode(code: string): boolean {
 }
 
 const CODE_MESSAGE = "Code must be 2–40 lowercase letters, numbers, and dashes.";
+export const OWN_PROGRAM_MESSAGE = "A season can't require its own program.";
 const DATE_ORDER_MESSAGE = "End date must be on or after start date.";
 
 const seasonWriteFields = z.object({
   /** Raw; slugified below. The max is only a payload sanity cap — the real bound applies to the slug. */
   code: z.string().max(200).optional(),
   program: z.string().min(1).max(60),
+  /** SUPER only, and only while the season is a draft. Undefined leaves it as it is. */
+  requiredProgram: z.string().trim().min(1).max(60).nullish(),
   year: z.number().int().min(2000).max(2100),
   description: z.string().max(2000).nullish(),
   startDate: z.string().datetime({ offset: true }),
@@ -87,6 +90,9 @@ export const seasonWriteRequestSchema = seasonWriteFields
     }
     if (new Date(v.endDate).getTime() < new Date(v.startDate).getTime()) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endDate"], message: DATE_ORDER_MESSAGE });
+    }
+    if (v.requiredProgram && v.requiredProgram === v.program) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["requiredProgram"], message: OWN_PROGRAM_MESSAGE });
     }
   });
 export type SeasonWriteBody = z.output<typeof seasonWriteRequestSchema>;

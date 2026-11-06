@@ -73,6 +73,44 @@ export async function attendancePctByEnrollment(
   return result;
 }
 
+/**
+ * `attendancePctByEnrollment` for many students at once: two queries however
+ * many people, same formula. Null when none of the season's sessions fell on
+ * or after the person's enrolment, so "no sessions" isn't shown as 0%.
+ */
+export async function attendancePctForEnrollments(
+  enrollments: { id: number; studentUserId: number; seasonId: number; enrolledAt: Date }[],
+): Promise<Map<number, number | null>> {
+  const result = new Map<number, number | null>();
+  if (enrollments.length === 0) return result;
+
+  const sessions = await db.session.findMany({
+    where: { seasonId: { in: [...new Set(enrollments.map((e) => e.seasonId))] }, startsAt: { lte: new Date() } },
+    select: { id: true, seasonId: true, startsAt: true },
+  });
+  const present = new Set(
+    (
+      await db.attendance.findMany({
+        where: {
+          studentUserId: { in: [...new Set(enrollments.map((e) => e.studentUserId))] },
+          sessionId: { in: sessions.map((x) => x.id) },
+          status: { in: ["PRESENT", "LATE"] },
+        },
+        select: { studentUserId: true, sessionId: true },
+      })
+    ).map((a) => `${a.studentUserId}:${a.sessionId}`),
+  );
+
+  for (const e of enrollments) {
+    const eligible = sessions.filter(
+      (x) => x.seasonId === e.seasonId && x.startsAt.getTime() >= e.enrolledAt.getTime(),
+    );
+    const attended = eligible.filter((x) => present.has(`${e.studentUserId}:${x.id}`)).length;
+    result.set(e.id, eligible.length > 0 ? Math.round((attended / eligible.length) * 100) : null);
+  }
+  return result;
+}
+
 const HISTORY_LIMIT = 100; // v1's `take: 100` on both lists
 
 /** `GET /students/:id/attendance` — newest sessions first, across readable seasons. */

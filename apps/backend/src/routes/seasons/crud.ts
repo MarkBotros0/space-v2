@@ -14,6 +14,7 @@ import { isAdminOfSeason, isMentor, isSuper } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import {
   SEASON_ADMIN_EDITABLE_FIELDS,
+  OWN_PROGRAM_MESSAGE,
   seasonAdminPatchSchema,
   seasonWriteRequestSchema,
 } from "../../../../../packages/shared/src/index";
@@ -109,6 +110,8 @@ function seasonColumns(body: SeasonWriteBody) {
     code: body.code,
     title: `${body.program} ${body.year}`,
     program: body.program,
+    // Undefined leaves the column alone on an update; create takes the default (null).
+    requiredProgram: body.requiredProgram,
     year: body.year,
     description: body.description ?? null,
     startDate: new Date(body.startDate),
@@ -173,7 +176,7 @@ export async function updateSeason(req: Request, res: Response) {
 
   const existing = await db.season.findFirst({
     where: { id, deletedAt: null },
-    select: { id: true, status: true },
+    select: { id: true, status: true, requiredProgram: true },
   });
   if (!existing) return apiError(res, "not_found", "Season not found.", 404);
 
@@ -184,6 +187,15 @@ export async function updateSeason(req: Request, res: Response) {
     const body = parsed.data;
     const clash = await db.season.findFirst({ where: { code: body.code, NOT: { id } }, select: { id: true } });
     if (clash) return codeTaken(res);
+    // The program may have changed under a requirement already set.
+    const requiredAfter = body.requiredProgram === undefined ? existing.requiredProgram : body.requiredProgram;
+    if (requiredAfter === body.program) {
+      return apiError(res, "bad_request", OWN_PROGRAM_MESSAGE, 400);
+    }
+    // Who may join is settled before the season starts.
+    if (body.requiredProgram !== undefined && body.requiredProgram !== existing.requiredProgram && existing.status !== "DRAFT") {
+      return apiError(res, "season_not_draft", "The required program can only change while the season is a draft.", 409);
+    }
     const blocked = statusChangeError(existing.status, body.status);
     if (blocked) return apiError(res, blocked.code, blocked.message, 409);
     try {

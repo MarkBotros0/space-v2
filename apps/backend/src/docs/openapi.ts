@@ -21,6 +21,7 @@ import { authPaths } from "./paths/auth";
 import { mePaths } from "./paths/me";
 import { seasonEndPaths } from "./paths/season-end";
 import { seasonPaths } from "./paths/seasons";
+import { peopleCandidatePaths } from "./paths/people-candidates";
 import { seasonAdminPaths, seasonAdminSchemas } from "./paths/season-admins";
 import { groupPaths } from "./paths/groups";
 import { userPaths } from "./paths/users";
@@ -133,6 +134,7 @@ export const openApiDocument = {
     ...seasonPaths,
     ...seasonEndPaths,
     ...seasonAdminPaths,
+    ...peopleCandidatePaths,
     ...groupPaths,
     ...userPaths,
     ...studentPaths,

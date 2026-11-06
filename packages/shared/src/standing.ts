@@ -1,0 +1,85 @@
+import { z } from "zod";
+
+// Standing: whether someone may join a season, from the results of the seasons
+// they finished. Pure, so the picker and every write share one rule.
+
+export type StandingHistoryRow = {
+  program: string;
+  seasonTitle: string;
+  /** When the enrolment finished; null while it hasn't. */
+  finishedAt: Date | null;
+  enrollmentStatus: "ACTIVE" | "COMPLETED" | "WITHDRAWN";
+  result: "PASSED" | "NOT_PASSED" | null;
+};
+
+export const standingSchema = z.object({
+  kind: z.enum(["ok", "blocked", "already_passed"]),
+  reason: z.enum(["did_not_pass", "never_finished"]).nullable(),
+  /** did_not_pass: the failed season; already_passed: the season passed. Otherwise null. */
+  programSeasonTitle: z.string().nullable(),
+});
+export type Standing = z.infer<typeof standingSchema>;
+
+/** Finished is a completed enrolment with a finish date. A drop never counts. */
+function latestFinished(history: StandingHistoryRow[], program: string): StandingHistoryRow | null {
+  let latest: StandingHistoryRow | null = null;
+  for (const row of history) {
+    if (row.program !== program || row.enrollmentStatus !== "COMPLETED" || !row.finishedAt) continue;
+    if (!latest || row.finishedAt.getTime() > latest.finishedAt!.getTime()) latest = row;
+  }
+  return latest;
+}
+
+/**
+ * `history` is the person's enrolments in finished seasons (the caller keeps
+ * only COMPLETED or ARCHIVED seasons). A finished row with no result is ok:
+ * nothing was recorded, so nothing blocks.
+ */
+export function standingFor(
+  season: { requiredProgram: string | null; targetProgram: string },
+  history: StandingHistoryRow[],
+): Standing {
+  if (season.requiredProgram !== null) {
+    const required = latestFinished(history, season.requiredProgram);
+    if (!required) return { kind: "blocked", reason: "never_finished", programSeasonTitle: null };
+    if (required.result === "NOT_PASSED") {
+      return { kind: "blocked", reason: "did_not_pass", programSeasonTitle: required.seasonTitle };
+    }
+  }
+  const target = latestFinished(history, season.targetProgram);
+  if (target?.result === "PASSED") {
+    return { kind: "already_passed", reason: null, programSeasonTitle: target.seasonTitle };
+  }
+  return { kind: "ok", reason: null, programSeasonTitle: null };
+}
+
+export const peopleCandidateSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  last: z
+    .object({
+      seasonTitle: z.string(),
+      outcome: z.enum(["PASSED", "NOT_PASSED", "DROPPED", "COMPLETED"]),
+      attendancePct: z.number().int().min(0).max(100).nullable(),
+    })
+    .nullable(),
+  availability: z.enum([
+    "available",
+    "already_passed",
+    "did_not_pass",
+    "never_finished",
+    "in_role",
+    "in_season",
+  ]),
+  reason: z.string().nullable(),
+  selectable: z.boolean(),
+  overridable: z.boolean(),
+});
+export type PeopleCandidate = z.infer<typeof peopleCandidateSchema>;
+
+/** `GET /seasons/:id/people-candidates` */
+export const peopleCandidatesResponseSchema = z.object({
+  season: z.object({ id: z.number(), title: z.string(), requiredProgram: z.string().nullable() }),
+  people: z.array(peopleCandidateSchema),
+});
+export type PeopleCandidatesResponse = z.infer<typeof peopleCandidatesResponseSchema>;

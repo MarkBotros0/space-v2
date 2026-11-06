@@ -161,6 +161,7 @@ model User {
   attendanceRecords    Attendance[]       @relation("AttendanceStudent")
   submissionsAsStudent Submission[]       @relation("SubmissionStudent")
   seasonEnrollments    SeasonEnrollment[] @relation("EnrollmentStudent")
+  enrollmentOverrides  SeasonEnrollment[] @relation("EnrollmentOverrideBy")
   engagementNotesAbout EngagementNote[]   @relation("EngagementNoteStudent")
 
   notifications            Notification[]
@@ -275,6 +276,7 @@ model Season {
   code           String       @unique // e.g. "gbv-2026" — URL identifier
   title          String // e.g. "GBV 2026" — display title
   program        String // e.g. "GBV" — the recurring program; groups a season's year history
+  requiredProgram String? // a program a student must have passed to join; SUPER-only, draft-only
   year           Int // e.g. 2026 — the cohort year within the program
   description    String?
   startDate      DateTime
@@ -391,6 +393,10 @@ model SeasonEnrollment {
   result        EnrollmentResult?
   resultReason  String?
   resultSetAt   DateTime?
+  // A SUPER let this person in past a block; null when nobody did.
+  overrideById  Int?
+  overrideBy    User?            @relation("EnrollmentOverrideBy", fields: [overrideById], references: [id], onDelete: SetNull)
+  overrideAt    DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 

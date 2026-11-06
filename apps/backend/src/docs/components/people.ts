@@ -118,6 +118,12 @@ export const peopleSchemas = {
     properties: {
       code: { type: "string", description: "Slugified server-side (v1 rules); defaults to '<program> <year>'. The slug must be 2–40 chars of a-z, 0-9 and inner dashes." },
       program: { type: "string", minLength: 1, maxLength: 60 },
+      requiredProgram: {
+        type: ["string", "null"],
+        maxLength: 60,
+        description:
+          "A program a student must have passed to join. SUPER only, and changeable only while the season is a draft (else 409 `season_not_draft`); omitted leaves it as it is, null clears it. Can't equal `program` (400, \"A season can't require its own program.\").",
+      },
       year: { type: "integer", minimum: 2000, maximum: 2100 },
       description: { type: ["string", "null"], maxLength: 2000 },
       startDate: { type: "string", format: "date-time" },

@@ -20,6 +20,7 @@ import {
 import { duplicateSeason } from "./duplicate";
 import { endSeason, getSeasonEndCheck } from "./end";
 import { getSeasonResults, listOverdueSeasons, updateSeasonResult } from "./results";
+import { listPeopleCandidates } from "./people-candidates";
 import { getSeasonRoster, saveGroupAssignments } from "./roster";
 import { listStaffCandidates } from "./staff-candidates";
 
@@ -58,6 +59,7 @@ seasonsRouter.post("/:id/admins", requireAuth, addSeasonAdmin);
 seasonsRouter.delete("/:id/admins/:userId", requireAuth, removeSeasonAdmin);
 
 seasonsRouter.get("/:id/staff-candidates", requireAuth, listStaffCandidates);
+seasonsRouter.get("/:id/people-candidates", requireAuth, listPeopleCandidates);
 
 seasonsRouter.get("/:id/end-check", requireAuth, getSeasonEndCheck);
 seasonsRouter.post("/:id/end", requireAuth, endSeason);
