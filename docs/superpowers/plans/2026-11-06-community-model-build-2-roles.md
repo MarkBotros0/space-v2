@@ -20,6 +20,8 @@
 - Never import `@prisma/client`. No `process.env` outside `src/lib/config.ts`. No `@/` alias. A value import of `packages/shared` from a route folder uses the relative path. Envelope `{data}` / `{error:{code,message}}`. Update `src/docs/` in the same commit as a route. Files stay at or under 400 lines.
 - Refusals are `409` with the reason in words, never a silent move: exact form `"Mina is already leading a group in GBV 2026"`.
 - UI: load `ui-ux-pro-max` before UI work; this repo's `CLAUDE.md` rules win where they differ. Use `design/ui` and `Screen`, with a pinned `SaveBar` in `footer`. Unavailable rows are never dimmed and reasons are in words, not colour. No new animations. **The owner moved the `ui-sweep` to the end of Build 3**; don't run it, but add new component states to the design catalogue.
+- **Never source `apps/backend/.env`** in a shell: its unquoted `&` echoes the database URL. Jest loads it itself.
+- One integration file: from `apps/backend`, `npx jest --config jest.integration.config.js --testPathPattern integration/<name>`. `pnpm --filter @space/backend test:integration -- <name>` does NOT filter; it starts the whole suite.
 - Integration tests run serially on staging. Run only the files a task names; the full suite runs once, in Task 13.
 - Build 3's flag doesn't exist yet, so "regular season" is every season here. Put the regular-season rule in one place so Build 3 changes one function.
 
@@ -62,7 +64,7 @@ Rules for `loadScopes`:
 
 - [ ] **Step 2: Run them; expect failures**
 
-`pnpm --filter @space/backend test:integration -- derived-role` and `pnpm --filter @space/backend test:unit -- convert-stored-roles`.
+`derived-role` (integration command in Global Constraints) and `pnpm --filter @space/backend test:unit -- convert-stored-roles`.
 
 - [ ] **Step 3: Implement**
 
@@ -112,7 +114,7 @@ A DRAFT season skips only the `already_in_role` line. Admin and leader in the sa
 - [ ] **Step 1: Write failing tests**, one per table row plus:
   - `admin and leader in one season is allowed`; `a draft seat is allowed while active elsewhere`; `a finished season's role doesn't count`; `a deleted season's role doesn't count`.
   - `two concurrent seats: exactly one wins` — two transactions run through `lockPeople` then a helper that checks and writes, assert one refusal (Review Focus 1).
-- [ ] **Step 2: Run; expect failure.** `pnpm --filter @space/backend test:integration -- one-role-rule`
+- [ ] **Step 2: Run; expect failure.** `one-role-rule` (integration command in Global Constraints)
 - [ ] **Step 3: Implement; run; commit.**
 
 ---
