@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { authUserSchema, userRoleSchema, type UserRole } from "./auth";
+import { addressFieldSchema, dateOfBirthFieldSchema, phoneFieldSchema } from "./contact-fields";
 
 /**
  * Roles only an alumnus (non-null graduationYear) may hold — v1's
@@ -151,16 +152,29 @@ export const activationResponseSchema = z.object({ deletedAt: z.string().nullabl
 export type ActivationResponse = z.infer<typeof activationResponseSchema>;
 
 /**
- * strict(): the v1 property "no settings action accepts a subject id" is
- * preserved by construction — a body carrying `userId` is a 400, not an
- * ignored field (spec 18 §4).
+ * PATCH /me — any role, any subset of the four keys, at least one.
+ * Absent = untouched; for phone/dateOfBirth/address "" or null clears
+ * (name cannot be cleared). strict(): the v1 property "no settings action
+ * accepts a subject id" is preserved by construction — a body carrying
+ * `userId` is a 400, not an ignored field (spec 18 §4).
  */
 export const updateProfileRequestSchema = z
   .object({
-    name: z.string().trim().min(2, "At least 2 characters.").max(120, "At most 120 characters."),
+    name: z
+      .string()
+      .trim()
+      .min(2, "At least 2 characters.")
+      .max(120, "At most 120 characters.")
+      .optional(),
+    phone: phoneFieldSchema,
+    dateOfBirth: dateOfBirthFieldSchema,
+    address: addressFieldSchema,
   })
-  .strict();
-export type UpdateProfileBody = z.infer<typeof updateProfileRequestSchema>;
+  .strict()
+  .refine((v) => Object.values(v).some((x) => x !== undefined), {
+    message: "Nothing to update.",
+  });
+export type UpdateProfileBody = z.input<typeof updateProfileRequestSchema>;
 
 /**
  * No `confirm` field — the typo guard is a client-side form rule (spec 18 §7).

@@ -41,13 +41,12 @@ function toNewStudentInput(row: StudentImportRow): NewStudentInput {
     name: row.name,
     email: row.email,
     university: row.university ?? null,
-    year: row.year ?? null,
+    faculty: row.faculty ?? null,
+    universityGraduationYear: row.universityGraduationYear ?? null,
     phone: row.phone ?? null,
     // Already normalised to `YYYY-MM-DDT00:00:00.000Z` by validateImportRow,
     // so this is UTC midnight and not the server's local midnight (D-16.11).
     dateOfBirth: row.dateOfBirth ? new Date(row.dateOfBirth) : null,
-    spiritualBackground: row.spiritualBackground ?? null,
-    gifts: row.gifts ?? null,
     notes: row.notes ?? null,
   };
 }

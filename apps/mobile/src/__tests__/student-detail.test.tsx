@@ -61,8 +61,8 @@ const base = {
 
 const publicProfile = {
   university: "Cairo University",
-  year: "3rd",
-  gifts: null,
+  faculty: "Engineering",
+  universityGraduationYear: 2027,
   activeSeasonId: 7,
   activeSeasonTitle: "Spring 2099",
   activeSeasonCode: "S99",
@@ -71,7 +71,6 @@ const internalProfile = {
   ...publicProfile,
   phone: "+20 100 000 0000",
   dateOfBirth: null,
-  spiritualBackground: null,
   notes: "Watch attendance",
 };
 
@@ -190,7 +189,7 @@ describe("StudentDetailScreen history (REG-83)", () => {
     };
     useSessionStore.setState(studentSession);
     get.mockResolvedValue({
-      data: { data: { ...base, profile: { ...publicProfile, phone: null, dateOfBirth: null, spiritualBackground: null } } },
+      data: { data: { ...base, profile: { ...publicProfile, phone: null, dateOfBirth: null } } },
     });
     renderWithProviders(<StudentDetailScreen />);
     await screen.findAllByText("Sara Student");
@@ -238,7 +237,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(screen.queryByText("Call")).toBeNull();
     expect(screen.queryByText("Phone")).toBeNull();
     expect(screen.queryByText("Date of birth")).toBeNull();
-    for (const label of ["University", "Year / faculty", "Gifts / interests"]) expect(screen.getByText(label)).toBeTruthy();
+    for (const label of ["University", "Faculty", "Graduation year"]) expect(screen.getByText(label)).toBeTruthy();
     expect(await screen.findByText("Attendance 2/4")).toBeTruthy();
     expect(screen.getByText("Submissions 2/2")).toBeTruthy();
     expect(screen.getByLabelText("Score: 75%")).toBeTruthy();

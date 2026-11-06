@@ -287,11 +287,10 @@ export interface MyProfileRow {
   graduationYear: number | null;
   activeSeasonTitle: string | null;
   university: string | null;
-  year: string | null;
+  faculty: string | null;
+  universityGraduationYear: number | null;
   phone: string | null;
   dateOfBirth: string | null;
-  spiritualBackground: string | null;
-  gifts: string | null;
 }
 
 /**
@@ -306,14 +305,13 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
       email: true,
       avatarPath: true,
       graduationYear: true,
+      phone: true,
+      dateOfBirth: true,
       studentProfile: {
         select: {
           university: true,
-          year: true,
-          phone: true,
-          dateOfBirth: true,
-          spiritualBackground: true,
-          gifts: true,
+          faculty: true,
+          universityGraduationYear: true,
           activeSeason: { select: { title: true, deletedAt: true } },
         },
       },
@@ -328,11 +326,11 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
     graduationYear: row.graduationYear,
     activeSeasonTitle: p?.activeSeason && p.activeSeason.deletedAt === null ? p.activeSeason.title : null,
     university: p?.university ?? null,
-    year: p?.year ?? null,
-    phone: p?.phone ?? null,
+    faculty: p?.faculty ?? null,
+    universityGraduationYear: p?.universityGraduationYear ?? null,
+    // Account-level (User) since 2026-11-06.
+    phone: row.phone,
     // A calendar date stored at UTC midnight (Plan 11 Decision 11).
-    dateOfBirth: p?.dateOfBirth ? p.dateOfBirth.toISOString().slice(0, 10) : null,
-    spiritualBackground: p?.spiritualBackground ?? null,
-    gifts: p?.gifts ?? null,
+    dateOfBirth: row.dateOfBirth ? row.dateOfBirth.toISOString().slice(0, 10) : null,
   };
 }

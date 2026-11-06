@@ -44,7 +44,8 @@ const activeRow = {
   email: "sara@jpc.test",
   avatarPath: null,
   university: "Cairo University",
-  year: "3rd",
+  faculty: "Engineering",
+  universityGraduationYear: 2027,
   graduationYear: null,
   activeSeasonTitle: "Spring 2099",
   currentGroupName: "Group A",
@@ -70,7 +71,7 @@ describe("StudentsScreen (active)", () => {
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText(/Spring 2099/)).toBeTruthy();
     expect(screen.getByText("1 student in your seasons")).toBeTruthy();
-    expect(screen.getByText("Cairo University · 3rd · Spring 2099 · Group A")).toBeTruthy();
+    expect(screen.getByText("Cairo University · Engineering · Spring 2099 · Group A")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=active");
   });
 

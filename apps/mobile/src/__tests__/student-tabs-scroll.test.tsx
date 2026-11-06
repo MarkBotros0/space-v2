@@ -34,7 +34,7 @@ describe("StudentDetailGrouped tab row", () => {
       graduationYear: null,
       currentGroup: null,
       enrollments: [],
-      profile: { university: null, year: null, gifts: null, activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null },
+      profile: { university: null, faculty: null, universityGraduationYear: null, activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null },
     } as never;
     renderWithProviders(<StudentDetailGrouped student={student} canWriteNote={false} />);
     const row = screen.UNSAFE_getAllByType(ScrollView).find((s) => s.props.horizontal)!;
@@ -49,7 +49,7 @@ describe("StudentDetailGrouped tab row", () => {
     const scrollTo = jest.spyOn(ScrollView.prototype as unknown as { scrollTo: () => void }, "scrollTo").mockImplementation(() => {});
     const student = {
       id: 21, name: "Sara", email: "s@jpc.test", avatarPath: null, graduationYear: null, currentGroup: null, enrollments: [],
-      profile: { university: null, year: null, gifts: null, activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null },
+      profile: { university: null, faculty: null, universityGraduationYear: null, activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null },
     } as never;
     renderWithProviders(<StudentDetailGrouped student={student} canWriteNote={false} />);
     const row = screen.UNSAFE_getAllByType(ScrollView).find((s) => s.props.horizontal)!;

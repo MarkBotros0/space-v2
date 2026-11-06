@@ -26,8 +26,8 @@ import { commitStudentImport, ImportRowsInvalidError } from "../lib/imports/stud
 
 const values = (name: string, email: string) => ({
   name, email,
-  university: null, year: null, phone: null, dateOfBirth: null,
-  spiritualBackground: null, gifts: null, notes: null,
+  university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null,
+  notes: null,
 });
 
 beforeEach(() => {

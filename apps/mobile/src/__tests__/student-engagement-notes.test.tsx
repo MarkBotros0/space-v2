@@ -48,14 +48,13 @@ const detail = {
   enrollments: [],
   profile: {
     university: null,
-    year: null,
-    gifts: null,
+    faculty: null,
+    universityGraduationYear: null,
     activeSeasonId: 7,
     activeSeasonTitle: "Spring 2099",
     activeSeasonCode: "S99",
     phone: null,
     dateOfBirth: null,
-    spiritualBackground: null,
     notes: null,
   },
 };

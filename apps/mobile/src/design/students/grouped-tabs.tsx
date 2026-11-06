@@ -13,7 +13,6 @@ import type { StudentDetail as StudentDetailData } from "../../hooks/use-student
 import { formatDate, formatDateTime, formatDayKey, formatSeasonDay, unbreakable } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
 import { NAV_ICONS } from "../icons/nav-icon";
-import { yearLabel } from "../../lib/year-label";
 import { InlineError } from "../layout/route-states";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
@@ -36,13 +35,12 @@ const caption = (...parts: (string | null | undefined | false)[]) => parts.filte
 export function GroupedProfileTab({ profile: p }: { profile: StudentDetailData["profile"] }) {
   const rows: [string, string | null][] = [
     ["University", p.university],
-    ["Year / faculty", yearLabel(p.year)],
-    ["Gifts / interests", p.gifts],
+    ["Faculty", p.faculty],
+    ["Graduation year", p.universityGraduationYear === null ? null : String(p.universityGraduationYear)],
   ];
   if ("phone" in p) rows.push(["Phone", p.phone]);
   if ("dateOfBirth" in p)
     rows.push(["Date of birth", p.dateOfBirth ? formatDayKey(dateOnlyFromIso(p.dateOfBirth)) : null]);
-  if ("spiritualBackground" in p) rows.push(["Spiritual background", p.spiritualBackground]);
   if ("notes" in p && p.notes) rows.push(["Internal notes", p.notes]);
   return (
     <GroupedList>

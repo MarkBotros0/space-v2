@@ -73,12 +73,15 @@ describe("studentFormFromDetail", () => {
       currentGroup: null,
       enrollments: [],
       profile: {
-        university: null, year: null, gifts: null,
+        university: null, faculty: null, universityGraduationYear: 2027,
         activeSeasonId: 7, activeSeasonTitle: "Spring 2099", activeSeasonCode: "S7",
-        phone: "+20 100", dateOfBirth: "2004-03-08T22:00:00.000Z", spiritualBackground: null,
+        phone: "+20 100", dateOfBirth: "2004-03-08T22:00:00.000Z",
         notes: "Watch attendance",
       },
     });
-    expect(values).toMatchObject({ dateOfBirth: "2004-03-09", phone: "+20 100", notes: "Watch attendance", seasonId: 7 });
+    expect(values).toMatchObject({
+      dateOfBirth: "2004-03-09", phone: "+20 100", notes: "Watch attendance", seasonId: 7,
+      universityGraduationYear: "2027",
+    });
   });
 });

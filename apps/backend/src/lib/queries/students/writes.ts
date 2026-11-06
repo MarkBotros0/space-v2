@@ -4,11 +4,11 @@ export interface NewStudentInput {
   name: string;
   email: string;
   university: string | null;
-  year: string | null;
+  faculty: string | null;
+  universityGraduationYear: number | null;
+  /** Written to User (account-level since 2026-11-06), not StudentProfile. */
   phone: string | null;
   dateOfBirth: Date | null;
-  spiritualBackground: string | null;
-  gifts: string | null;
   notes: string | null;
 }
 
@@ -60,6 +60,8 @@ export async function createStudentRows(
       email: i.email,
       role: "STUDENT" as const,
       graduationYear: target.kind === "alumni" ? target.graduationYear : null,
+      phone: i.phone,
+      dateOfBirth: i.dateOfBirth,
       passwordHash: null,
     })),
     select: { id: true, email: true },
@@ -86,11 +88,8 @@ export async function createStudentRows(
       // construction — the two definitions of "in this season" cannot drift.
       activeSeasonId: target.kind === "season" ? target.seasonId : null,
       university: i.university,
-      year: i.year,
-      phone: i.phone,
-      dateOfBirth: i.dateOfBirth,
-      spiritualBackground: i.spiritualBackground,
-      gifts: i.gifts,
+      faculty: i.faculty,
+      universityGraduationYear: i.universityGraduationYear,
       notes: i.notes,
     })),
   });

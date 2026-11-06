@@ -1,6 +1,6 @@
 /**
- * The staff payload's whole profile (spec 06 §4.2): university, year, gifts,
- * phone, date of birth, spiritual background and the internal notes. An empty
+ * The staff payload's whole profile (spec 06 §4.2): university, faculty,
+ * university graduation year, phone, date of birth and the internal notes. An empty
  * field reads "—" so staff can see what is missing; the internal notes carry
  * their staff-only caption because the student's own payload never has them.
  */
@@ -9,15 +9,14 @@ import { View } from "react-native";
 
 import type { StudentDetail } from "../../hooks/use-students";
 import { formatDayKey } from "../../lib/format";
-import { yearLabel } from "../../lib/year-label";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { Text } from "../../design/ui/text";
 
 export function AdminProfileSection({ profile: p }: { profile: StudentDetail["profile"] }) {
   const rows: [label: string, value: string | null][] = [
     ["University", p.university],
-    ["Year / faculty", yearLabel(p.year)],
-    ["Gifts / interests", p.gifts],
+    ["Faculty", p.faculty],
+    ["Graduation year", p.universityGraduationYear === null ? null : String(p.universityGraduationYear)],
   ];
   if ("phone" in p) rows.push(["Phone", p.phone]);
   if ("dateOfBirth" in p) {
@@ -26,7 +25,6 @@ export function AdminProfileSection({ profile: p }: { profile: StudentDetail["pr
       p.dateOfBirth ? formatDayKey(dateOnlyFromIso(p.dateOfBirth)) : null,
     ]);
   }
-  if ("spiritualBackground" in p) rows.push(["Spiritual background", p.spiritualBackground]);
   if ("notes" in p) {
     rows.push(["Internal notes", p.notes]);
   }

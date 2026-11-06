@@ -1,5 +1,6 @@
 import {
   studentImportRowSchema,
+  yearFromText,
   // NOTE: a VALUE import from @space/shared in a backend file MUST use this
   // relative path. `tsc` emits this file to dist/apps/backend/src/lib/imports/students/
   // without rewriting bare specifiers, and a runtime `require("@space/shared")`
@@ -38,10 +39,9 @@ const FIELD_MESSAGE: Record<string, string> = {
   name: "Name is missing or too short.",
   email: "Email is not valid.",
   university: "University is too long.",
-  year: "Year is too long.",
+  faculty: "Faculty is too long.",
+  universityGraduationYear: "Graduation year must be a whole year between 1950 and 2100.",
   phone: "Mobile No is too long.",
-  spiritualBackground: "Spiritual background is too long.",
-  gifts: "Gifts is too long.",
   notes: "Notes is too long.",
 };
 
@@ -74,6 +74,9 @@ export function validateImportRow(values: ImportCellValues): RowValidation {
 
   const parsed = studentImportRowSchema.safeParse({
     ...values,
+    // A whole number or nothing; "2027.5" or "Class of 27" fails the row.
+    universityGraduationYear:
+      values.universityGraduationYear === null ? null : yearFromText(values.universityGraduationYear),
     dateOfBirth:
       values.dateOfBirth === null ? null : `${values.dateOfBirth}T00:00:00.000Z`,
   });

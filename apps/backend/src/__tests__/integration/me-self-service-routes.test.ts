@@ -75,14 +75,17 @@ beforeAll(async () => {
     ],
   });
 
+  // Phone and date of birth are account-level (User) since 2026-11-06.
+  await db.user.update({
+    where: { id: student.id },
+    data: { phone: "+20 100 000 0000", dateOfBirth: new Date("2001-04-05T00:00:00.000Z") },
+  });
   // activeSeasonId is a token claim read at login — set it before logging in.
   await db.studentProfile.create({
     data: {
       userId: student.id,
       activeSeasonId: current.id,
       university: "Cairo University",
-      phone: "+20 100 000 0000",
-      dateOfBirth: new Date("2001-04-05T00:00:00.000Z"),
       notes: "STAFF ONLY — never sent to the subject",
     },
   });
@@ -304,25 +307,29 @@ describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
     request(app).patch("/api/v1/me/profile").set("authorization", `Bearer ${token}`).send(body as object);
 
   it("writes only the fields sent; '' clears to null (R26); returns the fresh row", async () => {
-    const res = await patch({ phone: "+20 122 222 2222", gifts: "" });
+    const res = await patch({ phone: "+20 122 222 2222", faculty: "", universityGraduationYear: 2030 });
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toMatchObject({
       phone: "+20 122 222 2222",
-      gifts: null,
+      faculty: null,
+      universityGraduationYear: 2030,
       university: "Cairo University", // untouched
     });
     const row = await db.studentProfile.findUnique({
       where: { userId: studentId },
-      select: { phone: true, gifts: true, notes: true },
+      select: { faculty: true, universityGraduationYear: true, notes: true },
     });
-    expect(row).toEqual({ phone: "+20 122 222 2222", gifts: null, notes: "STAFF ONLY — never sent to the subject" });
+    expect(row).toEqual({ faculty: null, universityGraduationYear: 2030, notes: "STAFF ONLY — never sent to the subject" });
+    // Phone lands on the User row (account-level).
+    const user = await db.user.findUnique({ where: { id: studentId }, select: { phone: true } });
+    expect(user?.phone).toBe("+20 122 222 2222");
   });
 
   it("stores a calendar date of birth at UTC midnight and reads it back unchanged (Decision 11)", async () => {
     const res = await patch({ dateOfBirth: "2002-07-09" });
     expect(res.status).toBe(200);
     expect(res.body.data.profile.dateOfBirth).toBe("2002-07-09");
-    const row = await db.studentProfile.findUnique({ where: { userId: studentId }, select: { dateOfBirth: true } });
+    const row = await db.user.findUnique({ where: { id: studentId }, select: { dateOfBirth: true } });
     expect(row?.dateOfBirth?.toISOString()).toBe("2002-07-09T00:00:00.000Z");
   });
 

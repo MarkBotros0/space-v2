@@ -3,9 +3,9 @@ import { View } from "react-native";
 import {
   OWN_PROFILE_FIELDS,
   updateOwnProfileInputSchema,
+  yearFromText,
   type MyProfile,
   type OwnProfileField,
-  type UpdateOwnProfileInput,
 } from "@space/shared";
 
 import { format, isValid, parse } from "date-fns";
@@ -16,7 +16,6 @@ import {
   FormField,
   Input as InputV1,
   Text as TextV1,
-  Textarea,
   toast,
 } from "../../design/ui";
 import { useUpdateStudentProfile } from "../../hooks/use-self-service";
@@ -27,11 +26,11 @@ type FormValues = Record<OwnProfileField, string>;
 function toFormValues(p: MyProfile): FormValues {
   return {
     university: p.university ?? "",
-    year: p.year ?? "",
+    faculty: p.faculty ?? "",
+    universityGraduationYear:
+      p.universityGraduationYear === null ? "" : String(p.universityGraduationYear),
     phone: p.phone ?? "",
     dateOfBirth: p.dateOfBirth ?? "",
-    spiritualBackground: p.spiritualBackground ?? "",
-    gifts: p.gifts ?? "",
   };
 }
 
@@ -47,7 +46,8 @@ function dobToDate(value: string): Date | null {
 }
 
 /**
- * v1 student-form.tsx in its isSelf mode — the six own columns (Decision 1).
+ * v1 student-form.tsx in its isSelf mode — the student's own fields (Decision 1):
+ * date of birth, phone, university, faculty and university graduation year.
  * The fields and the save action are returned apart, so the screen can pin
  * Save in `FormScreen`'s footer instead of leaving it below the long form.
  */
@@ -70,7 +70,8 @@ export function useProfileForm(profile: MyProfile): {
 
   const save = () => {
     setSubmitError(null);
-    const body: UpdateOwnProfileInput = values;
+    // The year travels as a number; the text is "" or digits once valid.
+    const body = { ...values, universityGraduationYear: yearFromText(values.universityGraduationYear) };
     // The SAME schema the server runs — v1's client and server copies had
     // drifted (spec 06 R21); here they cannot.
     const parsed = updateOwnProfileInputSchema.safeParse(body);
@@ -87,7 +88,7 @@ export function useProfileForm(profile: MyProfile): {
     }
     setErrors({});
     const sent = values;
-    update.mutate(body, {
+    update.mutate(parsed.data, {
       onSuccess: () => {
         setSaved(sent);
         toast.success("Profile saved.");
@@ -125,34 +126,26 @@ export function useProfileForm(profile: MyProfile): {
             onChangeText={set("university")}
           />
         </FormField>
-        <FormField label="Year / faculty" error={errors.year}>
+        <FormField label="Faculty" error={errors.faculty}>
           <InputV1
-            accessibilityLabel="Year / faculty"
-            placeholder="e.g. 3rd · Engineering"
-            value={values.year}
-            onChangeText={set("year")}
+            accessibilityLabel="Faculty"
+            placeholder="e.g. Engineering"
+            value={values.faculty}
+            onChangeText={set("faculty")}
           />
         </FormField>
-      </Fieldset>
-      <Fieldset legend="Spiritual background">
-        <FormField label="Notes" error={errors.spiritualBackground}>
-          <Textarea
-            accessibilityLabel="Notes"
-            numberOfLines={3}
-            placeholder="Church affiliation, baptism status, faith journey…"
-            value={values.spiritualBackground}
-            onChangeText={set("spiritualBackground")}
-          />
-        </FormField>
-      </Fieldset>
-      <Fieldset legend="Community">
-        <FormField label="Gifts / interests" error={errors.gifts}>
-          <Textarea
-            accessibilityLabel="Gifts / interests"
-            numberOfLines={2}
-            placeholder="e.g. worship, hospitality, mentoring younger students"
-            value={values.gifts}
-            onChangeText={set("gifts")}
+        <FormField
+          label="Graduation year"
+          description="Your university graduation year — it can be in the future."
+          error={errors.universityGraduationYear}
+        >
+          <InputV1
+            accessibilityLabel="Graduation year"
+            keyboardType="number-pad"
+            maxLength={4}
+            placeholder="e.g. 2027"
+            value={values.universityGraduationYear}
+            onChangeText={set("universityGraduationYear")}
           />
         </FormField>
       </Fieldset>

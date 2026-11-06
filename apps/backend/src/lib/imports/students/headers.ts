@@ -92,11 +92,10 @@ export function toCellValues(map: StudentHeaderMap, cells: string[]): ImportCell
     name: at(map.nameCol),
     email: at(map.emailCol),
     university: null,
-    year: null,
+    faculty: null,
+    universityGraduationYear: null,
     phone: null,
     dateOfBirth: null,
-    spiritualBackground: null,
-    gifts: null,
     notes: null,
   };
   for (const { col, field } of map.profileCols) {

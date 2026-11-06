@@ -39,18 +39,17 @@ export function studentImportTemplate(): ImportTemplate {
       target: "User.email",
       note: "Matching is case-insensitive; someone already in the system is skipped, never duplicated.",
     },
-    { label: "Mobile No", acceptedHeaders: ["phone", "mobile", "mobile no", "mobile no.", "mobile number", "phone number"], required: false, maxLength: 60, target: "StudentProfile.phone", note: null },
+    { label: "Mobile No", acceptedHeaders: ["phone", "mobile", "mobile no", "mobile no.", "mobile number", "phone number"], required: false, maxLength: 60, target: "User.phone", note: null },
     { label: "University", acceptedHeaders: ["university", "college"], required: false, maxLength: 160, target: "StudentProfile.university", note: null },
-    { label: "Year", acceptedHeaders: ["year"], required: false, maxLength: 40, target: "StudentProfile.year", note: "Stored as text — \"3rd\" and \"Year 3\" are both fine." },
-    { label: "Date of birth", acceptedHeaders: ["date of birth", "dob", "birthdate", "birth date"], required: false, maxLength: null, target: "StudentProfile.dateOfBirth", note: "YYYY-MM-DD only. Anything else fails the row rather than being guessed at." },
-    { label: "Spiritual background", acceptedHeaders: ["spiritual background"], required: false, maxLength: 4000, target: "StudentProfile.spiritualBackground", note: null },
-    { label: "Gifts", acceptedHeaders: ["gifts", "spiritual gifts"], required: false, maxLength: 2000, target: "StudentProfile.gifts", note: null },
+    { label: "Faculty", acceptedHeaders: ["faculty"], required: false, maxLength: 160, target: "StudentProfile.faculty", note: null },
+    { label: "Graduation year", acceptedHeaders: ["graduation year", "university graduation year", "grad year"], required: false, maxLength: null, target: "StudentProfile.universityGraduationYear", note: "The university graduation year, a whole year from 1950 to 2100; it may be in the future." },
+    { label: "Date of birth", acceptedHeaders: ["date of birth", "dob", "birthdate", "birth date"], required: false, maxLength: null, target: "User.dateOfBirth", note: "YYYY-MM-DD only. Anything else fails the row rather than being guessed at." },
     { label: "Notes", acceptedHeaders: ["notes"], required: false, maxLength: 4000, target: "StudentProfile.notes", note: "Staff-internal. Never shown to the student." },
   ];
 
   return {
     columns,
-    headerRow: ["name", "email", "Mobile No", "University", "Year", "Date of birth", "Spiritual background", "Gifts", "Notes"].join("\t"),
+    headerRow: ["name", "email", "Mobile No", "University", "Faculty", "Graduation year", "Date of birth", "Notes"].join("\t"),
     maxRows: IMPORT_MAX_ROWS,
     maxPasteChars: IMPORT_MAX_PASTE_CHARS,
     capabilities: { pasteText: true, fileUpload: false },

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { PHONE_MAX, universityGraduationYearFieldSchema } from "../contact-fields";
 import { emptyToNull } from "./empty-to-null";
 
 // ---------------------------------------------------------------------------
@@ -14,11 +15,11 @@ const studentWriteFields = {
   // here and "a@x" imported would otherwise be two accounts.
   email: z.string().trim().toLowerCase().email(),
   university: emptyToNull(160),
-  year: emptyToNull(40),
-  phone: emptyToNull(60),
+  faculty: emptyToNull(160),
+  universityGraduationYear: universityGraduationYearFieldSchema,
+  // User.phone / User.dateOfBirth since 2026-11-06; the wire is unchanged.
+  phone: emptyToNull(PHONE_MAX),
   dateOfBirth: z.string().datetime({ offset: true }).nullish(),
-  spiritualBackground: emptyToNull(4000),
-  gifts: emptyToNull(2000),
   notes: emptyToNull(4000),
 };
 

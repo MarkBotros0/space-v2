@@ -34,11 +34,10 @@ const profile: MyProfile = {
   graduationYear: 2025,
   activeSeasonTitle: null,
   university: "Cairo University",
-  year: null,
+  faculty: null,
+  universityGraduationYear: null,
   phone: null,
   dateOfBirth: null,
-  spiritualBackground: null,
-  gifts: null,
 };
 
 function serveProfile(p: Partial<MyProfile> | null = {}) {

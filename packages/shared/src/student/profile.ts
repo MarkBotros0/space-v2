@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { isoDaySchema } from "../org-time";
+import {
+  dateOfBirthFieldSchema,
+  phoneFieldSchema,
+  universityGraduationYearFieldSchema,
+} from "../contact-fields";
 import { emptyToNull } from "./empty-to-null";
 
 // ---------------------------------------------------------------------------
@@ -42,18 +47,21 @@ export function dateOnlyFromIso(iso: string | null): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * The StudentProfile columns a student edits about themselves — and nothing
- * else (Plan 11 Decision 1). `User.name` is Plan 9's PATCH /me; `User.email`
+ * The fields a student edits about themselves on PATCH /me/profile — and
+ * nothing else (Plan 11 Decision 1). `User.name` is PATCH /me; `User.email`
  * is staff-only (spec 18 D8); `notes` and `activeSeasonId` never (R23).
  * routes/students.ts's SELF_EDITABLE is narrowed to this same set.
+ *
+ * `phone` and `dateOfBirth` are User columns since 2026-11-06 (PATCH /me
+ * writes them too); they stay here so the student form saves in one call.
+ * `year`, `spiritualBackground` and `gifts` were dropped from the product.
  */
 export const OWN_PROFILE_FIELDS = [
   "university",
-  "year",
+  "faculty",
+  "universityGraduationYear",
   "phone",
   "dateOfBirth",
-  "spiritualBackground",
-  "gifts",
 ] as const;
 export type OwnProfileField = (typeof OWN_PROFILE_FIELDS)[number];
 
@@ -66,16 +74,11 @@ export type OwnProfileField = (typeof OWN_PROFILE_FIELDS)[number];
 export const updateOwnProfileInputSchema = z
   .object({
     university: emptyToNull(160),
-    year: emptyToNull(40),
-    phone: emptyToNull(60),
+    faculty: emptyToNull(160),
+    universityGraduationYear: universityGraduationYearFieldSchema,
+    phone: phoneFieldSchema,
     /** A calendar date, "YYYY-MM-DD" (Plan 11 Decision 11) — Plan 5's isoDaySchema, not a copy. */
-    dateOfBirth: z
-      .string()
-      .nullish()
-      .transform((v) => (v === "" ? null : v))
-      .pipe(isoDaySchema.nullish()),
-    spiritualBackground: emptyToNull(4000),
-    gifts: emptyToNull(2000),
+    dateOfBirth: dateOfBirthFieldSchema,
   })
   .strict();
 export type UpdateOwnProfileInput = z.input<typeof updateOwnProfileInputSchema>;
@@ -93,11 +96,10 @@ export const myProfileSchema = z
     graduationYear: z.number().int().nullable(),
     activeSeasonTitle: z.string().nullable(),
     university: z.string().nullable(),
-    year: z.string().nullable(),
+    faculty: z.string().nullable(),
+    universityGraduationYear: z.number().int().nullable(),
     phone: z.string().nullable(),
     dateOfBirth: isoDaySchema.nullable(),
-    spiritualBackground: z.string().nullable(),
-    gifts: z.string().nullable(),
   })
   .strict();
 export type MyProfile = z.infer<typeof myProfileSchema>;

@@ -32,8 +32,8 @@ const attendance = {
 
 const profile = {
   name: "Mina Adel", email: "mina@jpc.test", avatarPath: null, graduationYear: null,
-  activeSeasonTitle: "Spring", university: null, year: null, phone: "+20 122",
-  dateOfBirth: null, spiritualBackground: null, gifts: null,
+  activeSeasonTitle: "Spring", university: null, faculty: null,
+  universityGraduationYear: null, phone: "+20 122", dateOfBirth: null,
 };
 
 beforeEach(() => jest.clearAllMocks());

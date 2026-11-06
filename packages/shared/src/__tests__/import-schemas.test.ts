@@ -34,10 +34,10 @@ describe("studentImportRowSchema", () => {
 });
 
 describe("importCellValuesSchema", () => {
-  it("carries the nine flat cells the preview echoes back for resubmission", () => {
+  it("carries the eight flat cells the preview echoes back for resubmission", () => {
     const parsed = importCellValuesSchema.parse({
-      name: "A Student", email: "a@jpc.test", university: null, year: null,
-      phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null,
+      name: "A Student", email: "a@jpc.test", university: null, faculty: null,
+      universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null,
     });
     expect(parsed.name).toBe("A Student");
     // v1's nested `profile` object does not port (D-16.10).
@@ -46,7 +46,7 @@ describe("importCellValuesSchema", () => {
 });
 
 describe("studentImportCommitInputSchema", () => {
-  const rows = [{ rowNumber: 2, values: { name: "A", email: "a@jpc.test", university: null, year: null, phone: null, dateOfBirth: null, spiritualBackground: null, gifts: null, notes: null } }];
+  const rows = [{ rowNumber: 2, values: { name: "A", email: "a@jpc.test", university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }];
 
   it("requires onExisting — no default may be inherited by accident (D-16.7)", () => {
     const missing = studentImportCommitInputSchema.safeParse({ mode: "season", seasonId: 1, rows });
@@ -104,10 +104,15 @@ describe("the header vocabulary", () => {
     expect(IMPORT_NAME_HEADERS).toContain("name");
   });
 
-  it("keeps v1's profile aliases", () => {
+  it("keeps v1's profile aliases, less the dropped columns", () => {
     expect(IMPORT_PROFILE_ALIASES["mobile no."]).toBe("phone");
-    expect(IMPORT_PROFILE_ALIASES["spiritual gifts"]).toBe("gifts");
     expect(IMPORT_PROFILE_ALIASES.college).toBe("university");
     expect(IMPORT_PROFILE_ALIASES.dob).toBe("dateOfBirth");
+    expect(IMPORT_PROFILE_ALIASES.faculty).toBe("faculty");
+    expect(IMPORT_PROFILE_ALIASES["graduation year"]).toBe("universityGraduationYear");
+    // Dropped 2026-11-06: a sheet still carrying these lists them as unrecognised.
+    for (const gone of ["year", "gifts", "spiritual gifts", "spiritual background"]) {
+      expect(IMPORT_PROFILE_ALIASES[gone]).toBeUndefined();
+    }
   });
 });

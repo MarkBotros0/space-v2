@@ -53,7 +53,9 @@ export async function usersByEmail(emails: string[]) {
       role: true,
       passwordHash: true,
       graduationYear: true,
-      studentProfile: { select: { activeSeasonId: true, phone: true, university: true, dateOfBirth: true, notes: true } },
+      phone: true,
+      dateOfBirth: true,
+      studentProfile: { select: { activeSeasonId: true, university: true, faculty: true, universityGraduationYear: true, notes: true } },
       seasonEnrollments: { select: { seasonId: true, status: true, groupId: true } },
     },
   });

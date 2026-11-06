@@ -27,11 +27,10 @@ const profile: MyProfile = {
   graduationYear: null,
   activeSeasonTitle: "GBV 2026",
   university: "Cairo University",
-  year: null,
+  faculty: null,
+  universityGraduationYear: null,
   phone: "+20 100",
   dateOfBirth: "2001-04-05",
-  spiritualBackground: null,
-  gifts: null,
 };
 
 const attendance = {
@@ -106,7 +105,7 @@ describe("ProfileScreen — STUDENT", () => {
     expect(within(screen.getByTestId("screen-scroll")).queryByText("Save changes")).toBeNull();
   });
 
-  it("saves through PATCH /me/profile with the six fields only", async () => {
+  it("saves through PATCH /me/profile with its five fields only", async () => {
     patch.mockResolvedValue({ data: { data: { profile: { ...profile, phone: "+20 122" } } } });
     renderWithProviders(<ProfileScreen />);
 
@@ -116,11 +115,10 @@ describe("ProfileScreen — STUDENT", () => {
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/me/profile", {
         university: "Cairo University",
-        year: "",
+        faculty: null,
+        universityGraduationYear: null,
         phone: "+20 122",
         dateOfBirth: "2001-04-05",
-        spiritualBackground: "",
-        gifts: "",
       }),
     );
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Profile saved."));

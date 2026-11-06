@@ -235,14 +235,15 @@ export const peopleSchemas = {
 
   StudentListItem: {
     type: "object",
-    required: ["id", "name", "email", "avatarPath", "university", "year", "graduationYear", "activeSeasonTitle", "currentGroupName", "droppedEnrollment"],
+    required: ["id", "name", "email", "avatarPath", "university", "faculty", "universityGraduationYear", "graduationYear", "activeSeasonTitle", "currentGroupName", "droppedEnrollment"],
     properties: {
       id: { type: "integer" },
       name: { type: "string" },
       email: { type: "string" },
       avatarPath: { type: ["string", "null"] },
       university: { type: ["string", "null"] },
-      year: { type: ["string", "null"] },
+      faculty: { type: ["string", "null"] },
+      universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
       graduationYear: { type: ["integer", "null"] },
       activeSeasonTitle: { type: ["string", "null"] },
       currentGroupName: { type: ["string", "null"], description: "Advisory: the most recent GroupStudent membership, any season (C9)." },
@@ -316,7 +317,7 @@ export const peopleSchemas = {
   StudentDetail: {
     type: "object",
     description:
-      "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `public` (MENTOR, LEADER): university, year, gifts, activeSeasonId/Title/Code. `private` (the student themselves): public + phone, dateOfBirth, spiritualBackground. `internal` (SUPER, ADMIN): private + notes. The subject never receives `notes`.",
+      "Three role-shaped payloads share this envelope; only `profile` differs. **Fields withheld from a role are absent from the wire, not null.** `public` (MENTOR, LEADER): university, faculty, universityGraduationYear, activeSeasonId/Title/Code. `private` (the student themselves): public + phone, dateOfBirth (both read from the User row). `internal` (SUPER, ADMIN): private + notes. The subject never receives `notes`.",
     properties: {
       id: { type: "integer" },
       name: { type: "string" },
@@ -332,14 +333,13 @@ export const peopleSchemas = {
         type: "object",
         properties: {
           university: { type: ["string", "null"] },
-          year: { type: ["string", "null"] },
-          gifts: { type: ["string", "null"] },
+          faculty: { type: ["string", "null"] },
+          universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
           activeSeasonId: { type: ["integer", "null"] },
           activeSeasonTitle: { type: ["string", "null"] },
           activeSeasonCode: { type: ["string", "null"] },
           phone: { type: ["string", "null"], description: "private and internal shapes only." },
           dateOfBirth: { type: ["string", "null"], format: "date-time", description: "private and internal shapes only." },
-          spiritualBackground: { type: ["string", "null"], description: "private and internal shapes only." },
           notes: { type: ["string", "null"], description: "internal shape only (SUPER, ADMIN)." },
         },
       },

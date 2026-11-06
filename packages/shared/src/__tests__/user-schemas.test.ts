@@ -82,6 +82,28 @@ describe("self-scoped settings schemas", () => {
     expect(updateProfileRequestSchema.safeParse({ name: "Bo B", userId: 7 }).success).toBe(false);
   });
 
+  it("updateProfileRequestSchema is partial over name/phone/dateOfBirth/address, at least one key", () => {
+    expect(updateProfileRequestSchema.parse({ phone: " +20 1 " })).toEqual({ phone: "+20 1" });
+    expect(updateProfileRequestSchema.parse({ address: "", dateOfBirth: null })).toEqual({
+      address: null,
+      dateOfBirth: null,
+    });
+    expect(updateProfileRequestSchema.parse({ dateOfBirth: "1999-12-31" })).toEqual({ dateOfBirth: "1999-12-31" });
+    expect(updateProfileRequestSchema.safeParse({}).success).toBe(false);
+    expect(updateProfileRequestSchema.safeParse({ dateOfBirth: "1999-02-30" }).success).toBe(false);
+    expect(updateProfileRequestSchema.safeParse({ address: "a".repeat(301) }).success).toBe(false);
+    expect(updateProfileRequestSchema.safeParse({ phone: "1".repeat(61) }).success).toBe(false);
+    expect(updateProfileRequestSchema.safeParse({ name: null }).success).toBe(false);
+  });
+
+  it("meUserSchema parses a payload with or without the contact fields", () => {
+    const base = { id: 1, name: "A B", email: "a@jpc.test", role: "LEADER", avatarPath: null };
+    expect(meUserSchema.parse(base).phone).toBeUndefined();
+    expect(
+      meUserSchema.parse({ ...base, phone: "+20 1", dateOfBirth: "1999-12-31", address: null }),
+    ).toMatchObject({ phone: "+20 1", dateOfBirth: "1999-12-31", address: null });
+  });
+
   it("changePasswordRequestSchema carries no `confirm` (client-side rule, spec 18 §7)", () => {
     const ok = changePasswordRequestSchema.safeParse({
       currentPassword: "x", newPassword: "longenough",

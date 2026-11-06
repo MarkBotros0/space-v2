@@ -36,15 +36,15 @@ const enrollment = (seasonId: number) => ({
   attendancePct: null,
 });
 const publicProfile = {
-  university: null, year: null, gifts: null,
+  university: null, faculty: null, universityGraduationYear: null,
   activeSeasonId: 7, activeSeasonTitle: "Season 7", activeSeasonCode: "S7",
 };
 const detail = {
   id: 21, name: "Sara Student", email: "sara@jpc.test", avatarPath: null,
   graduationYear: null, currentGroup: null, enrollments: [enrollment(7)],
   profile: {
-    ...publicProfile, phone: "+20 111", dateOfBirth: null,
-    spiritualBackground: "Raised Orthodox", notes: "Watch attendance",
+    ...publicProfile, faculty: "Engineering", universityGraduationYear: 2027,
+    phone: "+20 111", dateOfBirth: null, notes: "Watch attendance",
   },
 };
 
@@ -65,7 +65,9 @@ describe("admin student detail", () => {
   it("shows every staff profile field, mail and call", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("Raised Orthodox")).toBeTruthy();
+    expect(await screen.findByText("Engineering")).toBeTruthy();
+    expect(screen.getByText("2027")).toBeTruthy();
+    expect(screen.queryByText("Spiritual background")).toBeNull();
     expect(screen.getByText("Watch attendance")).toBeTruthy();
     expect(screen.getByText("+20 111")).toBeTruthy();
     expect(screen.getByText("Email")).toBeTruthy();

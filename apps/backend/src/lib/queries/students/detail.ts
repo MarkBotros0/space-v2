@@ -37,14 +37,14 @@ export async function loadStudentDetail(
       email: true,
       avatarPath: true,
       graduationYear: true,
+      // Account-level since 2026-11-06; read only for the private/internal arms below.
+      phone: true,
+      dateOfBirth: true,
       studentProfile: {
         select: {
           university: true,
-          year: true,
-          phone: true,
-          dateOfBirth: true,
-          spiritualBackground: true,
-          gifts: true,
+          faculty: true,
+          universityGraduationYear: true,
           activeSeasonId: true,
           activeSeason: { select: { title: true, code: true } },
         },
@@ -133,8 +133,8 @@ export async function loadStudentDetail(
   };
   const publicProfile = {
     university: p?.university ?? null,
-    year: p?.year ?? null,
-    gifts: p?.gifts ?? null,
+    faculty: p?.faculty ?? null,
+    universityGraduationYear: p?.universityGraduationYear ?? null,
     activeSeasonId: p?.activeSeasonId ?? null,
     activeSeasonTitle: p?.activeSeason?.title ?? null,
     activeSeasonCode: p?.activeSeason?.code ?? null,
@@ -143,9 +143,8 @@ export async function loadStudentDetail(
 
   const privateProfile = {
     ...publicProfile,
-    phone: p?.phone ?? null,
-    dateOfBirth: p?.dateOfBirth?.toISOString() ?? null,
-    spiritualBackground: p?.spiritualBackground ?? null,
+    phone: row.phone,
+    dateOfBirth: row.dateOfBirth?.toISOString() ?? null,
   };
   if (view === "private") return { ...base, profile: privateProfile };
 

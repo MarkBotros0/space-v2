@@ -20,7 +20,7 @@ import { forbidden } from "../respond";
  * schema runs (a schema parse cannot distinguish "sent null" from "absent"
  * after the fact for refusal purposes — and refusal must name the key).
  *
- * - The subject edits their own StudentProfile columns only — the same six
+ * - The subject edits their own profile fields only — the same five
  *   PATCH /me/profile accepts (Plan 11 Decision 1). `name` belongs to
  *   PATCH /me and `email` is staff-only (spec 18 D2/D8: changing a login
  *   identifier without verification is an account-takeover primitive). Never
@@ -33,7 +33,7 @@ import { forbidden } from "../respond";
  * - SUPER: everything (allowlist `null` = unchecked).
  */
 const SELF_EDITABLE = new Set([
-  "university", "year", "phone", "dateOfBirth", "spiritualBackground", "gifts",
+  "university", "faculty", "universityGraduationYear", "phone", "dateOfBirth",
 ]);
 const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "name", "email", "notes"]);
 
@@ -79,11 +79,10 @@ export async function createStudent(req: Request, res: Response) {
             name: body.name,
             email: body.email,
             university: body.university ?? null,
-            year: body.year ?? null,
+            faculty: body.faculty ?? null,
+            universityGraduationYear: body.universityGraduationYear ?? null,
             phone: body.phone ?? null,
             dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-            spiritualBackground: body.spiritualBackground ?? null,
-            gifts: body.gifts ?? null,
             notes: body.notes ?? null,
           },
         ],
@@ -179,9 +178,10 @@ export async function updateStudent(req: Request, res: Response) {
   // Prisma treats `undefined` as "leave the column alone", which is exactly
   // this endpoint's PATCH contract — absent keys pass through untouched,
   // explicit nulls clear.
-  const profileData = {
-    university: body.university,
-    year: body.year,
+  // phone and dateOfBirth are User columns (account-level since 2026-11-06).
+  const userData = {
+    name: body.name,
+    email: body.email,
     phone: body.phone,
     dateOfBirth:
       body.dateOfBirth === undefined
@@ -189,8 +189,11 @@ export async function updateStudent(req: Request, res: Response) {
         : body.dateOfBirth
           ? new Date(body.dateOfBirth)
           : null,
-    spiritualBackground: body.spiritualBackground,
-    gifts: body.gifts,
+  };
+  const profileData = {
+    university: body.university,
+    faculty: body.faculty,
+    universityGraduationYear: body.universityGraduationYear,
     notes: body.notes,
     activeSeasonId: body.activeSeasonId,
   };
@@ -199,7 +202,7 @@ export async function updateStudent(req: Request, res: Response) {
     await db.$transaction(async (tx) => {
       await tx.user.update({
         where: { id },
-        data: { name: body.name, email: body.email },
+        data: userData,
       });
       // Upsert, not update: every creation path makes a profile row today,
       // but v1's unconditional update throws for a STUDENT without one
@@ -211,11 +214,8 @@ export async function updateStudent(req: Request, res: Response) {
         create: {
           userId: id,
           university: body.university ?? null,
-          year: body.year ?? null,
-          phone: body.phone ?? null,
-          dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-          spiritualBackground: body.spiritualBackground ?? null,
-          gifts: body.gifts ?? null,
+          faculty: body.faculty ?? null,
+          universityGraduationYear: body.universityGraduationYear ?? null,
           notes: body.notes ?? null,
           activeSeasonId: body.activeSeasonId ?? null,
         },

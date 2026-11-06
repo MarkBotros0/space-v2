@@ -48,8 +48,8 @@ const base = {
 };
 const publicProfile = {
   university: "Cairo University",
-  year: "3rd",
-  gifts: null,
+  faculty: "Engineering",
+  universityGraduationYear: 2027,
   activeSeasonId: 7,
   activeSeasonTitle: "Spring 2099",
   activeSeasonCode: "S99",
@@ -216,7 +216,7 @@ describe("StudentDetailScreen — STUDENT on their own record", () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 21 }));
     get.mockImplementation((url: string) =>
       url === "/api/v1/students/21"
-        ? ok({ ...base, profile: { ...publicProfile, phone: "+20 100", dateOfBirth: null, spiritualBackground: null } })
+        ? ok({ ...base, profile: { ...publicProfile, phone: "+20 100", dateOfBirth: null } })
         : Promise.reject(new Error(`unexpected GET ${url}`)),
     );
     renderWithProviders(<StudentDetailScreen />);

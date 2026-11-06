@@ -117,6 +117,12 @@ model User {
   // Set when a student graduates from JPCS. Doubles as the "is an alumnus" marker
   // and gates eligibility for LEADER/SEASON_ADMIN/MENTOR roles (only alumni may hold them).
   graduationYear Int?
+  // Account-level contact fields, for every role (owner 2026-11-06). Replace
+  // StudentProfile.phone/dateOfBirth, which stay in the table but are unused.
+  phone        String?
+  // A calendar day stored at UTC midnight.
+  dateOfBirth  DateTime?
+  address      String?
   avatarPath   String?
   lastLoginAt  DateTime?
   // Access tokens issued before this instant are refused by requireAuth (Plan
@@ -234,6 +240,13 @@ model StudentProfile {
   activeSeason   Season? @relation("StudentActiveSeason", fields: [activeSeasonId], references: [id], onDelete: SetNull)
 
   university          String?
+  faculty             String?
+  // The student's university graduation year (may be in the future). Not
+  // User.graduationYear, which is the JPCS-alumni marker.
+  universityGraduationYear Int?
+  // Unused since 2026-11-06 (owner): year was free text ("3rd · Engineering"),
+  // phone/dateOfBirth moved to User, spiritualBackground/gifts were dropped
+  // from the product. Kept in the table; no code reads or writes them.
   year                String?
   phone               String?
   dateOfBirth         DateTime?
