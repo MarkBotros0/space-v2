@@ -46,6 +46,14 @@ All paths below are relative to the server root. Everything except
 | POST | `/api/v1/submissions/:publicId/files` | **Disabled by default** — `503 uploads_disabled` unless `ENABLE_UPLOADS=true`. |
 | DELETE | `/api/v1/submissions/:publicId/files` | `?fileId=` — author only. |
 | GET | `/api/v1/submissions/:publicId/files/:fileId` | Streams the file. Not a port of v1 — see below. |
+| GET | `/api/v1/announcements` | News feed, newest first, 20 per page. `?cursor=` (`nextCursor` of the last page; a bad one is 400). `{ items, nextCursor }`. |
+| GET | `/api/v1/announcements/unread` | `{ count, latest }`: visible, unread, last 30 days, newer than the caller's account. |
+| GET | `/api/v1/announcements/targets` | Where the caller may post: `{ community, communityReach, seasons[] }`. COMMUNITY is SUPER only; seasons are ACTIVE ones the caller administers. |
+| GET | `/api/v1/announcements/:id` | A post with `canEdit`, `canDelete`, `seasonFinished`. 404 for one the caller can't read. |
+| POST | `/api/v1/announcements/:id/read` | Mark read. Idempotent, 204. |
+| POST | `/api/v1/announcements` | SUPER (community) or a season's admin (that season, ACTIVE only). 201 with the post; 409 `season_draft` / `season_finished`. Plain text; title 1-120, body 1-5000. Notifies the audience. |
+| PATCH | `/api/v1/announcements/:id` | `{ title?, body? }`. Author, SUPER or the season's admin. 409 `season_finished`. |
+| DELETE | `/api/v1/announcements/:id` | Per `canDelete`. 204. |
 
 Every response is `{ "data": ... }` on success or
 `{ "error": { "code", "message" } }` on failure, including 400/401/404/429/500

@@ -13,6 +13,7 @@
 import { errorResponse } from "./helpers";
 import { videoEventsForumSchemas } from "./components/video-events-forum";
 import { enumsNotificationsNotesSchemas } from "./components/enums-notifications-notes";
+import { announcementSchemas } from "./components/announcements";
 import { quizSchemas } from "./components/quizzes";
 import { peopleSchemas } from "./components/people";
 import { sessionsAssignmentsSchemas } from "./components/sessions-assignments";
@@ -34,6 +35,7 @@ import { sessionPaths } from "./paths/sessions";
 import { assignmentsSubmissionsPaths } from "./paths/assignments-submissions";
 import { quizAuthoringPaths } from "./paths/quizzes-authoring";
 import { quizAttemptsPaths } from "./paths/quizzes-attempts";
+import { announcementPaths } from "./paths/announcements";
 import { forumEventsPaths } from "./paths/forum-events";
 import { videoQuizPaths } from "./paths/video-quiz";
 import { reportsImportsPaths } from "./paths/reports-imports";
@@ -85,6 +87,7 @@ export const openApiDocument = {
     { name: "Video quiz", description: "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)" },
     { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
     { name: "Events", description: "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)" },
+    { name: "News", description: "Announcements: a community-wide or per-season feed, unread count, and posting by SUPER and season admins" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
     { name: "Follow-ups", description: "A mentor's follow-ups, the daily reminder and the mentor's Home figures" },
     { name: "Imports", description: "Paste-first bulk entry: SUPER student importer and season-scoped group importer (preview, then commit)" },
@@ -129,6 +132,7 @@ export const openApiDocument = {
       ...sessionsAssignmentsSchemas,
       ...submissionsMeSchemas,
       ...seasonAdminSchemas,
+      ...announcementSchemas,
     },
   },
 
@@ -151,6 +155,7 @@ export const openApiDocument = {
     ...quizAuthoringPaths,
     ...quizAttemptsPaths,
     ...forumEventsPaths,
+    ...announcementPaths,
     ...videoQuizPaths,
     ...reportsImportsPaths,
   },
