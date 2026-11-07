@@ -4,16 +4,22 @@
  * testing. Renders nothing unless the backend has DEV_USER_SWITCHER=1 (the
  * /dev/users probe answers 404 otherwise). Native: v1's dropdown becomes a
  * sheet with a search, because the list is the whole user table.
+ *
+ * Switching takes two round trips (/dev/switch, then /me), a few seconds on a
+ * cold server. From the tap until it lands, the picked row shows a spinner and
+ * "Signing in…", the line under the title says who, and every other row is
+ * dimmed and inert, so nobody taps a second user thinking nothing happened.
  */
 import type { DevSwitchUser, UserRole } from "@space/shared";
 import { useRouter } from "expo-router";
 import { UserCog } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 
 import { useDevSwitch, useDevUsers } from "../../hooks/use-dev-switch";
 import { useSessionStore } from "../../store/session";
 import { iconWithClassName } from "../lib/icon";
+import { useThemeColors } from "../theme/use-theme-colors";
 import { Badge } from "../ui/badge";
 import { GroupedList, ListRow } from "../ui/grouped-list";
 import { SearchField } from "../ui/search-field";
@@ -65,6 +71,9 @@ function SwitcherBody({ onDone }: { onDone: () => void }) {
   }, [text]);
   const users = useDevUsers(q);
   const switchUser = useDevSwitch();
+  const colors = useThemeColors();
+  const [picked, setPicked] = useState<DevSwitchUser | null>(null);
+  const busy = picked !== null;
 
   const grouped = useMemo(() => {
     const map = new Map<UserRole, DevSwitchUser[]>(ROLE_ORDER.map((r) => [r, []]));
@@ -75,14 +84,19 @@ function SwitcherBody({ onDone }: { onDone: () => void }) {
   }, [users.data]);
 
   const pick = (u: DevSwitchUser) => {
-    if (switchUser.isPending || u.id === currentId) return;
+    if (busy || u.id === currentId) return;
+    setPicked(u);
+    AccessibilityInfo.announceForAccessibility(`Signing in as ${u.name || u.email}`);
     switchUser.mutate(u.id, {
       onSuccess: () => {
         onDone();
         router.replace("/dashboard");
         toast.success(`Signed in as ${u.name || u.email}.`);
       },
-      onError: () => toast.error("Couldn't switch user. Try again."),
+      onError: () => {
+        setPicked(null);
+        toast.error("Couldn't switch user. Try again.");
+      },
     });
   };
 
@@ -90,8 +104,8 @@ function SwitcherBody({ onDone }: { onDone: () => void }) {
     <View className="flex-col gap-3" style={{ maxHeight: 520 }}>
       <View className="flex-row items-center gap-2">
         <Badge variant="warning">DEV</Badge>
-        <Text variant="caption" className="flex-1 text-muted-foreground">
-          Signs in as the user you pick, with no password.
+        <Text testID="dev-switch-status" variant="caption" className="flex-1 text-muted-foreground">
+          {picked ? `Signing in as ${picked.name || picked.email}…` : "Signs in as the user you pick, with no password."}
         </Text>
       </View>
       <SearchField
@@ -112,18 +126,28 @@ function SwitcherBody({ onDone }: { onDone: () => void }) {
           <View className="flex-col gap-4 pb-4">
             {grouped.map(([role, list]) => (
               <GroupedList key={role} header={role}>
-                {list.map((u) => (
-                  <ListRow
-                    key={u.id}
-                    title={u.name || u.email}
-                    subtitle={u.email}
-                    subtitleLines={1}
-                    trailing={
-                      u.id === currentId ? <Badge role={ROLE_COLOR[role]}>You</Badge> : undefined
-                    }
-                    onPress={() => pick(u)}
-                  />
-                ))}
+                {list.map((u) => {
+                  const switching = picked?.id === u.id;
+                  return (
+                    <ListRow
+                      key={u.id}
+                      title={u.name || u.email}
+                      subtitle={switching ? "Signing in…" : u.email}
+                      subtitleLines={1}
+                      trailing={
+                        switching ? (
+                          <ActivityIndicator testID="dev-switch-spinner" color={colors.primary} />
+                        ) : u.id === currentId ? (
+                          <Badge role={ROLE_COLOR[role]}>You</Badge>
+                        ) : undefined
+                      }
+                      trailingLabel={switching ? "Signing in" : undefined}
+                      // While a switch runs, the other rows are dimmed and not buttons.
+                      className={busy && !switching ? "opacity-40" : undefined}
+                      onPress={busy ? undefined : () => pick(u)}
+                    />
+                  );
+                })}
               </GroupedList>
             ))}
           </View>

@@ -94,3 +94,30 @@ it("lists users by role and signs in as the one picked", async () => {
   expect(saveSession).toHaveBeenCalled();
   expect(useSessionStore.getState().user?.id).toBe(2);
 });
+
+it("shows at once that a switch is running, and locks the other rows until it lands", async () => {
+  const more = [...users, { id: 3, email: "max@jpc.test", name: "Max Mentor", role: "MENTOR" }];
+  get.mockResolvedValue({ data: { data: { users: more } } });
+  let finish: (v: unknown) => void = () => {};
+  post.mockImplementation(() => new Promise((resolve) => (finish = resolve)));
+  renderWithProviders(<DevUserSwitcher />);
+  fireEvent.press(await screen.findByLabelText("Switch user (dev)"));
+  fireEvent.press(await screen.findByText("Lee Leader"));
+
+  // Before the server answers: the row, the status line and the spinner say so.
+  expect(screen.getByTestId("dev-switch-status")).toHaveTextContent("Signing in as Lee Leader…");
+  expect(screen.getByText("Signing in…")).toBeTruthy();
+  expect(screen.getByTestId("dev-switch-spinner")).toBeTruthy();
+  // Another user cannot be picked meanwhile.
+  await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+  fireEvent.press(screen.getByText("Max Mentor"));
+  await new Promise((r) => setTimeout(r, 0));
+  expect(post).toHaveBeenCalledTimes(1);
+
+  // A failed switch gives the list back.
+  finish(Promise.reject(new Error("down")));
+  await waitFor(() =>
+    expect(screen.getByTestId("dev-switch-status")).toHaveTextContent(/Signs in as the user you pick/),
+  );
+  expect(screen.queryByTestId("dev-switch-spinner")).toBeNull();
+});
