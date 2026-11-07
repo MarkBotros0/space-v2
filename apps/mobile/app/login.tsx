@@ -2,11 +2,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { AccessibilityInfo, View } from "react-native";
+import { AccessibilityInfo, Alert, View } from "react-native";
 import { loginRequestSchema, type LoginRequest } from "@space/shared";
 
-import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/auth-card";
-import { Button, Input, PasswordInput } from "../src/design/ui";
+import { GoogleMark } from "../src/design/brand/google-mark";
+import {
+  AuthCard,
+  AuthDivider,
+  AuthField,
+  AuthLink,
+  AuthNotice,
+  InviteCodeCallout,
+} from "../src/design/layout/auth-card";
+import { Button, Input, PasswordInput, Text } from "../src/design/ui";
 import { useLogin } from "../src/hooks/use-session";
 import { authErrorMessage } from "../src/lib/auth-error";
 import { returnHrefFor } from "../src/lib/return-to";
@@ -62,6 +70,7 @@ export default function LoginScreen() {
                 autoCapitalize="none"
                 autoComplete="email"
                 keyboardType="email-address"
+                placeholder="you@example.com"
                 value={field.value}
                 onChangeText={field.onChange}
                 onBlur={field.onBlur}
@@ -86,6 +95,10 @@ export default function LoginScreen() {
             </AuthField>
           )}
         />
+        {/* Owner 2026-11-07: Forgot password sits under its field. */}
+        <View className="-mt-2">
+          <AuthLink align="end" label="Forgot password?" onPress={() => router.push("/forgot-password")} />
+        </View>
         {/* The fields stay mounted with their values (RHF), so a wrong
             password needs no extra tap to get back to a fillable form. */}
         {error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
@@ -97,8 +110,23 @@ export default function LoginScreen() {
         >
           {formState.isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
-        <AuthLink label="Forgot password?" onPress={() => router.push("/forgot-password")} />
-        <AuthLink label="I have an invite code" onPress={() => router.push("/accept-invite")} />
+        <AuthDivider />
+        {/* Owner 2026-11-07: Google sign-in is coming; the button is in place until it is wired. */}
+        <Button
+          variant="secondary"
+          size="lg"
+          className="w-full"
+          accessibilityLabel="Continue with Google"
+          onPress={() =>
+            Alert.alert("Coming soon", "Signing in with Google isn't switched on yet. Use your email for now.")
+          }
+        >
+          <GoogleMark size={18} />
+          <Text className="font-semibold text-foreground">Continue with Google</Text>
+        </Button>
+        <View className="mt-4">
+          <InviteCodeCallout onPress={() => router.push("/accept-invite")} />
+        </View>
       </View>
     </AuthCard>
   );

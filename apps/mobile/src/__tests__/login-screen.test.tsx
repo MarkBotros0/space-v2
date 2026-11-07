@@ -1,3 +1,4 @@
+import { Alert } from "react-native";
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 import LoginScreen from "../../app/login";
@@ -116,5 +117,22 @@ describe("LoginScreen", () => {
     fireEvent.press(screen.getByText("Sign in"));
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard"));
+  });
+
+// Owner 2026-11-07: a Google button in place until it is wired, and the invite code made very clear.
+describe("LoginScreen — other ways in", () => {
+  it("offers Continue with Google, which says it is coming", () => {
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    renderWithProviders(<LoginScreen />);
+    fireEvent.press(screen.getByLabelText("Continue with Google"));
+    expect(alert).toHaveBeenCalledWith("Coming soon", expect.stringContaining("Google"));
+    alert.mockRestore();
+  });
+
+  it("gives the invite code a row of its own that says where the code comes from", () => {
+    renderWithProviders(<LoginScreen />);
+    const invite = screen.getByRole("button", { name: "I have an invite code" });
+    expect(invite.props.accessibilityHint).toMatch(/invite email/);
+    expect(screen.getByText(/Enter the code from your invite email/)).toBeTruthy();
   });
 });
