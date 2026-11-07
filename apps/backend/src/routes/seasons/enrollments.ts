@@ -7,7 +7,7 @@ import { auditLog } from "../../lib/audit";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { deleteDraftRow, hasWorkInSeason } from "../../lib/queries/students/writes";
-import { isAdminOfSeason, isSuper } from "../../lib/rbac";
+import { isAdminOfSeason } from "../../lib/rbac";
 import {
   isSeasonFinished,
   lockPeople,
@@ -24,7 +24,6 @@ import { forbidden } from "../respond";
 
 export const SEASON_NOT_FOUND: SeatRefusal = { code: "not_found", message: "Season not found." };
 export const NOT_DRAFT: SeatRefusal = { code: "not_draft", message: "This season has already started." };
-const ONLY_SUPER_OVERRIDES = "Only a super admin can override a block.";
 
 function refuse(res: Response, refusal: SeatRefusal) {
   return apiError(res, refusal.code, refusal.message, refusalStatus(refusal));
@@ -50,10 +49,8 @@ export async function addSeasonEnrollments(req: Request, res: Response) {
 
   const parsed = addSeasonEnrollmentsRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid enrollment body.", 400);
+  // Whoever administers the season may let someone past a block (owner, 2026-11-07).
   const { userIds, overrideUserIds = [] } = parsed.data;
-  if (overrideUserIds.length > 0 && !isSuper(user)) {
-    return apiError(res, "forbidden", ONLY_SUPER_OVERRIDES, 403);
-  }
 
   const outcome = await db.$transaction(
     async (tx): Promise<SeatRefusal | SeatStudentsResult> => {
@@ -61,7 +58,7 @@ export async function addSeasonEnrollments(req: Request, res: Response) {
       if (!season) return SEASON_NOT_FOUND;
       if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
       return seatStudents(tx, season, userIds, {
-        override: { userIds: overrideUserIds, actorId: user.userId, actorIsSuper: isSuper(user) },
+        override: { userIds: overrideUserIds, actorId: user.userId, actorMayOverride: true },
       });
     },
     // The statements are flat, but each reads or writes up to 500 people's rows.
@@ -137,17 +134,18 @@ export async function removeSeasonEnrollment(req: Request, res: Response) {
 }
 
 /**
- * `POST /seasons/:id/enrollments/:userId/override`: SUPER only. Lets someone
+ * `POST /seasons/:id/enrollments/:userId/override`: SUPER, or that season's
+ * admin (owner, 2026-11-07). Lets someone
  * already on a draft's roster past a block, for Start's checklist.
  */
 export async function overrideSeasonEnrollment(req: Request, res: Response) {
   const user = requireUser(req);
-  if (!isSuper(user)) return apiError(res, "forbidden", ONLY_SUPER_OVERRIDES, 403);
   const seasonId = parseId(req.params.id);
   const userId = parseId(req.params.userId);
   if (seasonId === null || userId === null) {
     return apiError(res, "bad_request", "Invalid season or user id.", 400);
   }
+  if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   const outcome = await db.$transaction(async (tx) => {
     const row = await draftRow(tx, seasonId, userId);

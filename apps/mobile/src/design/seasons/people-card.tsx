@@ -1,13 +1,13 @@
 /**
  * Who is in a season, as one card (owner, 2026-11-07: the Admins card, the
  * Students and groups tile and the Groups list merged): a hierarchy read top to
- * bottom, admins, then each group with its leaders, then the students in it,
- * and last the students in no group. Each group opens; the card's own actions
+ * bottom, admins, then the students and the two ways to add them (Select from
+ * community, Invite new), then each group with its leaders and the students in
+ * it, and last the students in no group. Each group opens; the card's own actions
  * are pills on its level headers and one button at the foot.
  */
 import type { SeasonDetail, SeasonRosterRow } from "@space/shared";
 import { ChevronRight, FolderOpen, ShieldCheck, Users } from "lucide-react-native";
-import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
@@ -19,6 +19,8 @@ import { Button } from "../ui/button";
 import { MorePill, PersonPill } from "../ui/person-pill";
 import { PillButton } from "../ui/pill-button";
 import { Text } from "../ui/text";
+import { LevelHeader } from "./level-header";
+import { StudentsLevel, type StudentsSuggestion } from "./students-level";
 
 iconWithClassName(ChevronRight, FolderOpen, ShieldCheck, Users);
 
@@ -30,28 +32,6 @@ type Group = SeasonDetail["groups"][number];
 export type PeopleCardAdmins =
   | { state: "loading" | "error" }
   | { state: "ready"; names: string[] };
-
-function LevelHeader({
-  icon: Icon,
-  title,
-  action,
-}: {
-  icon: LucideIcon;
-  title: string;
-  action?: ReactNode;
-}) {
-  return (
-    <View className="flex-row items-center gap-3">
-      <View className="size-9 shrink-0 items-center justify-center rounded-full bg-info-soft">
-        <Icon size={18} className="text-info" />
-      </View>
-      <Text variant="headline" accessibilityRole="header" className="min-w-0 flex-1">
-        {title}
-      </Text>
-      {action}
-    </View>
-  );
-}
 
 function Muted({ children }: { children: string }) {
   return (
@@ -130,10 +110,14 @@ function GroupBranch({
 const named = (r: SeasonRosterRow) => ({ id: r.userId, name: r.name ?? r.email });
 
 export function PeopleCard({
+  seasonTitle,
   groups,
   studentCount,
   admins,
   roster,
+  onSelectFromCommunity,
+  onInviteNew,
+  suggestion,
   onManageAdmins,
   onOpenGroup,
   onNewGroup,
@@ -145,6 +129,12 @@ export function PeopleCard({
   admins?: PeopleCardAdmins;
   /** The season's roster, when the viewer administers it; else counts only. */
   roster?: SeasonRosterRow[];
+  seasonTitle: string;
+  /** The two ways in (owner, 2026-11-07); absent when the viewer can't add people or the season has finished. */
+  onSelectFromCommunity?: () => void;
+  onInviteNew?: () => void;
+  /** A draft's "N people passed <last season>" callout. */
+  suggestion?: StudentsSuggestion | null;
   onManageAdmins?: () => void;
   onOpenGroup?: (id: number) => void;
   onNewGroup?: () => void;
@@ -197,6 +187,16 @@ export function PeopleCard({
           <View className="h-px bg-separator" />
         </>
       ) : null}
+      <StudentsLevel
+        seasonTitle={seasonTitle}
+        count={studentCount}
+        ungrouped={ungroupedCount}
+        groups={groups.length}
+        onSelectFromCommunity={onSelectFromCommunity}
+        onInviteNew={onInviteNew}
+        suggestion={suggestion}
+      />
+      <View className="h-px bg-separator" />
       <View className="flex-col gap-3">
         <LevelHeader
           icon={FolderOpen}

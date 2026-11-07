@@ -160,15 +160,15 @@ describe("/group/new", () => {
     fireEvent.changeText(await screen.findByLabelText("Name"), "Group C");
     fireEvent.press(await screen.findByText("Add leader"));
     fireEvent.press(await screen.findByText("Karim"));
-    await pickOption("Students", "Omar");
-    // Omar has no group in this season, so no "moves them" hint. A group in
-    // another season is not mentioned: memberships are per season (Plan 18
-    // M1), so saving here leaves it alone.
-    fireEvent.press(screen.getByLabelText("Students"));
-    expect(screen.getAllByText("omar@jpc.test").length).toBeGreaterThan(0);
-    expect(screen.queryByText(/^omar@jpc\.test · /)).toBeNull();
+    await pickOption("Members", "Omar");
+    // Each row says where they are now (owner, 2026-11-07). Omar has no group in
+    // this season; a group in another season is not mentioned: memberships are
+    // per season (Plan 18 M1), so saving here leaves it alone.
+    expect(screen.getByLabelText("Omar. Not in a group yet")).toBeTruthy();
     // Sara is in another group of THIS season, which saving does change.
-    expect(screen.getByText("sara@jpc.test · Now in Group A — saving moves them here.")).toBeTruthy();
+    expect(screen.getByText("In Group A · picking moves them here")).toBeTruthy();
+    expect(screen.getByRole("header", { name: "NOT IN A GROUP" })).toBeTruthy();
+    expect(screen.getByRole("header", { name: "IN ANOTHER GROUP" })).toBeTruthy();
     saveBar("Create group");
 
     await waitFor(() =>
@@ -225,7 +225,7 @@ describe("/group/[id]/edit", () => {
     renderWithProviders(<EditGroupScreen />);
 
     expect((await screen.findByLabelText("Name")).props.value).toBe("Group A");
-    await pickOption("Students", "Omar");
+    await pickOption("Members", "Omar");
     saveBar("Save changes");
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/groups/3", {

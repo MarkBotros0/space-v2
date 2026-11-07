@@ -120,7 +120,7 @@ describe("POST /seasons/:id/enrollments", () => {
     expect(await rowOf(target, peter.id)).toMatchObject({ overrideById: null, overrideAt: null });
   });
 
-  it("lets a season's own admin add, without an override; another season's admin gets nothing", async () => {
+  it("lets a season's own admin add, with an override too; another season's admin gets nothing", async () => {
     const target = await season("DRAFT", "LEAD 2027", "GBV", "LEAD");
     const adminToken = await adminTokenOf(target);
     const peter = await person("Peter");
@@ -128,9 +128,12 @@ describe("POST /seasons/:id/enrollments", () => {
     const sara = await person("Sara");
     await finishedGbv(sara.id, "NOT_PASSED");
 
-    const denied = await add(target, { userIds: [sara.id], overrideUserIds: [sara.id] }, adminToken);
-    expect(denied.status).toBe(403);
+    const blocked = await add(target, { userIds: [sara.id] }, adminToken);
+    expect(blocked.status).toBe(409);
     expect(await rowOf(target, sara.id)).toBeNull();
+    // Owner, 2026-11-07: the season's admin may override a block, as a super may.
+    expect((await add(target, { userIds: [sara.id], overrideUserIds: [sara.id] }, adminToken)).status).toBe(201);
+    expect((await rowOf(target, sara.id))?.overrideById).not.toBeNull();
 
     const strangerToken = await adminTokenOf(await season("DRAFT"));
     expect((await add(target, { userIds: [peter.id] }, strangerToken)).status).toBe(403);
@@ -240,13 +243,13 @@ describe("POST /seasons/:id/enrollments", () => {
 });
 
 describe("POST /seasons/:id/enrollments/:userId/override", () => {
-  it("records both columns on a draft's row, for a super only", async () => {
+  it("records both columns on a draft's row, for a super or the season's admin only", async () => {
     const target = await season("DRAFT", "LEAD 2027", "GBV", "LEAD");
     const sara = await person("Sara");
     await db.seasonEnrollment.create({ data: { seasonId: target, studentUserId: sara.id } });
 
-    const adminToken = await adminTokenOf(target);
-    expect((await override(target, sara.id, adminToken)).status).toBe(403);
+    const strangerToken = await adminTokenOf(await season("DRAFT"));
+    expect((await override(target, sara.id, strangerToken)).status).toBe(403);
     expect(await rowOf(target, sara.id)).toMatchObject({ overrideById: null, overrideAt: null });
 
     const res = await override(target, sara.id);
@@ -278,14 +281,14 @@ describe("checkStudentSeat", () => {
     const target = await readySeason("LEAD 2027");
     const sara = await person("Sara");
     await finishedGbv(sara.id, "NOT_PASSED");
-    const check = (overridden: boolean, actorIsSuper: boolean) =>
+    const check = (overridden: boolean, actorMayOverride: boolean) =>
       db.$transaction(async (tx) => {
         const row = await tx.user.findUniqueOrThrow({
           where: { id: sara.id },
           select: { id: true, name: true, role: true, graduationYear: true, deletedAt: true },
         });
         const seatSeason = (await readSeatSeason(tx, target))!;
-        return checkStudentSeat(tx, row, seatSeason, { overridden, actorIsSuper });
+        return checkStudentSeat(tx, row, seatSeason, { overridden, actorMayOverride });
       });
     const notEligible = { code: "not_eligible", message: "Sara did not pass GBV 2026" };
     expect(await check(false, true)).toEqual(notEligible);

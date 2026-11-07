@@ -64,6 +64,14 @@ function routeGets(d = detail(), extra: Record<string, unknown> = {}) {
       seasons: [listRow(1, "GBV"), listRow(2, "GBV"), listRow(3, "ABC"), listRow(4, "LEAD")],
     },
     "/api/v1/seasons/7/roster": { roster: [{ userId: 21, name: "Sara", email: "sara@jpc.test", groupId: null, groupName: null }] },
+    "/api/v1/seasons/7/people-candidates": {
+      season: { id: 7, title: "LEAD 2026", requiredProgram: "GBV", isCommunityWide: false, suggestedSourceId: 2, sources: [{ id: 2, code: "c2", title: "GBV 2022", passed: 2, graduated: 0 }] },
+      people: [21, 22, 23].map((id) => ({
+        id, name: `P${id}`, pool: "student", last: null, reason: id === 21 ? "Already in this season" : null,
+        availability: id === 21 ? "in_season" : "available", selectable: id !== 21, overridable: false,
+        places: [{ seasonId: 2, outcome: id === 23 ? "not_passed" : "passed" }],
+      })),
+    },
     "/api/v1/seasons/7/groups": { groups: [{ id: 3, name: "Group A", description: null, studentCount: 1, leaderNames: [], seasonId: 7, seasonCode: "s7", seasonTitle: "LEAD 2026" }] },
     ...extra,
   };
@@ -79,30 +87,46 @@ beforeEach(() => {
 });
 
 describe("season screen entry points", () => {
-  it("gives a super Add people and, on a draft, Start season", async () => {
+  it("gives a super both ways in from the People card and, on a draft, Start season; no Add people tile", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets();
     renderWithProviders(<SeasonDetailScreen />);
-    fireEvent.press(await screen.findByText("Add people"));
+    fireEvent.press(await screen.findByText("Select from community"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/people", params: { code: "s7" } });
+    fireEvent.press(screen.getByText("Invite new"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/invite", params: { code: "s7" } });
+    expect(screen.queryByText("Add people")).toBeNull();
     fireEvent.press(screen.getByText("Start season"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/start", params: { code: "s7" } });
   });
 
-  it("gives a season admin Add people but not Start season", async () => {
+  it("suggests, on a draft, the passers of the last season who aren't in it yet", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     routeGets();
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Add people")).toBeTruthy();
+    // P21 passed but is already in; P23 didn't pass: one to suggest.
+    expect(await screen.findByText("1 person passed GBV 2022.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Add the 1 who passed"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/people", params: { code: "s7", from: "2" } });
+  });
+
+  it("gives a season admin both ways in but not Start season", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    routeGets();
+    renderWithProviders(<SeasonDetailScreen />);
+    expect(await screen.findByText("Select from community")).toBeTruthy();
+    expect(screen.getByText("Invite new")).toBeTruthy();
     expect(screen.queryByText("Start season")).toBeNull();
   });
 
-  it("gives an active season Add people but no Start season", async () => {
+  it("gives an active season both ways in, no suggestion and no Start season", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail({ status: "ACTIVE" }));
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Add people")).toBeTruthy();
+    expect(await screen.findByText("Select from community")).toBeTruthy();
+    expect(screen.queryByTestId("students-suggestion")).toBeNull();
     expect(screen.queryByText("Start season")).toBeNull();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/people-candidates");
   });
 
   it.each(["COMPLETED", "ARCHIVED"])("gives a %s season neither", async (status) => {
@@ -110,7 +134,8 @@ describe("season screen entry points", () => {
     routeGets(detail({ status }));
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByLabelText("Edit season");
-    expect(screen.queryByText("Add people")).toBeNull();
+    expect(screen.queryByText("Select from community")).toBeNull();
+    expect(screen.queryByText("Invite new")).toBeNull();
     expect(screen.queryByText("Start season")).toBeNull();
   });
 });

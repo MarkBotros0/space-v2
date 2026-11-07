@@ -9,9 +9,9 @@ import { describeBlock, loadStandings, standingsFrom, type StandingSeason } from
 
 export type StudentSeatSeason = StandingSeason & { status: SeasonStatus; isCommunityWide: boolean };
 
-export type StudentSeatOptions = { overridden: boolean; actorIsSuper: boolean };
+export type StudentSeatOptions = { overridden: boolean; actorMayOverride: boolean };
 
-const NOT_OVERRIDDEN: StudentSeatOptions = { overridden: false, actorIsSuper: false };
+const NOT_OVERRIDDEN: StudentSeatOptions = { overridden: false, actorMayOverride: false };
 
 /**
  * The season a seat is being written against, locked and then read. Every such
@@ -45,11 +45,11 @@ async function decide(
   season: StudentSeatSeason,
   active: ActiveRole | undefined,
   standing: Standing,
-  { overridden, actorIsSuper }: StudentSeatOptions,
+  { overridden, actorMayOverride }: StudentSeatOptions,
 ): Promise<SeatRefusal | null> {
   const refusal = await seatRefusal(tx, person, { kind: "student", season }, active);
   if (refusal && refusal.code !== "already_in_role") return refusal;
-  if (standing.kind === "blocked" && !(overridden && actorIsSuper)) {
+  if (standing.kind === "blocked" && !(overridden && actorMayOverride)) {
     const block = `${person.name} ${describeBlock(standing, season.requiredProgram)}`;
     return { code: "not_eligible", message: refusal ? `${block}. ${refusal.message}` : block };
   }
@@ -87,7 +87,7 @@ export async function newPersonRefusal(
   return decide(tx, person, season, undefined, standing, NOT_OVERRIDDEN);
 }
 
-export type StudentSeatOverride = { userIds: number[]; actorId: number; actorIsSuper: boolean };
+export type StudentSeatOverride = { userIds: number[]; actorId: number; actorMayOverride: boolean };
 
 export type SeatStudentsResult = {
   seated: number[];
@@ -136,7 +136,7 @@ export async function seatStudents(
       ? { code: "not_found", message: "User not found." }
       : await refusalFor(tx, person, season, hereById.get(userId), active.get(userId), standings.get(userId)!, {
           overridden: overrideIds.has(userId),
-          actorIsSuper: options.override?.actorIsSuper ?? false,
+          actorMayOverride: options.override?.actorMayOverride ?? false,
         });
     if (refusal) refused.push({ userId, refusal });
     else toSeat.push(userId);
@@ -209,7 +209,7 @@ export async function restoreStudentSeat(
   const standing = (await loadStandings(tx, [userId], season)).get(userId)!;
   const refusal = await decide(tx, person, season, active.get(userId), standing, {
     overridden: actor.override,
-    actorIsSuper: true,
+    actorMayOverride: true,
   });
   if (refusal) return refusal;
 

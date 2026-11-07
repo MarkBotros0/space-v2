@@ -79,7 +79,7 @@ describe("GET /seasons/:id/people-candidates", () => {
 
     const res = await candidates(target);
     expect(res.status).toBe(200);
-    expect(res.body.data.season).toEqual({ id: target, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide: false });
+    expect(res.body.data.season).toMatchObject({ id: target, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide: false });
     const mine = (res.body.data.people as Row[]).filter((p) => [zed, amy, bob, cat, dan, alum].some((x) => x.id === p.id));
     expect(mine.map((p) => p.name)).toEqual(["Amy Passed", "Zed Passed", "Dan Passed Lead", "Bob Failed", "Cat Never"]);
 
@@ -113,7 +113,7 @@ describe("GET /seasons/:id/people-candidates", () => {
     expect(rowOf(res, alum.id)).toBeUndefined();
   });
 
-  it("gives a season admin the same fields on their own season, never overridable, and 403 on another", async () => {
+  it("gives a season admin the same fields on their own season, overridable too, and 403 on another", async () => {
     const gbv26 = await season("COMPLETED", "GBV", 2026);
     const mine = await season("DRAFT", "LEAD", 2027, "GBV");
     const other = await season("DRAFT", "LEAD", 2028);
@@ -126,7 +126,7 @@ describe("GET /seasons/:id/people-candidates", () => {
     const asAdmin = await candidates(mine, token);
     const asSuper = await candidates(mine);
     expect(asAdmin.status).toBe(200);
-    expect(rowOf(asAdmin, failed.id)).toEqual({ ...rowOf(asSuper, failed.id), overridable: false });
+    expect(rowOf(asAdmin, failed.id)).toEqual(rowOf(asSuper, failed.id));
     expect(rowOf(asSuper, failed.id).overridable).toBe(true);
     expect(rowOf(asAdmin, failed.id).selectable).toBe(false);
     expect((await candidates(other, token)).status).toBe(403);
@@ -205,7 +205,7 @@ describe("GET /seasons/:id/people-candidates", () => {
       overridable: true,
     });
     const asAdmin = rowOf(await candidates(target, await login(app, admin.email)), mina.id);
-    expect(asAdmin).toMatchObject({ availability: "never_finished", selectable: false, overridable: false });
+    expect(asAdmin).toMatchObject({ availability: "never_finished", selectable: false, overridable: true });
   });
 
   it("keeps a blocked person unselectable while no override is on record", async () => {

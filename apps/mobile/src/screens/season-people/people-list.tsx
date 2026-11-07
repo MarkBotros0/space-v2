@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { Users } from "lucide-react-native";
@@ -24,6 +24,8 @@ import {
   type Pool,
 } from "./model";
 import { PeopleFilterBar } from "./people-filters";
+import { initialSourceId, isStraggler, passersToTick, stragglerPhrase } from "./source";
+import { SourcePicker } from "./source-picker";
 
 const noun = (n: number) => (n === 1 ? "1 person" : `${n} people`);
 const keyOf = (item: PeopleItem) => item.key;
@@ -37,10 +39,15 @@ const keyOf = (item: PeopleItem) => item.key;
 export function PeopleList({
   seasonId,
   seasonTitle,
+  isDraft,
+  from,
   onInviteNew,
 }: {
   seasonId: number;
   seasonTitle: string;
+  isDraft: boolean;
+  /** `?from=`: a finished season whose passers open ticked (the season page's suggestion). */
+  from: number | null;
   /** Someone with no account yet: the invite form (owner, 2026-11-07: season admins invite people). */
   onInviteNew?: () => void;
 }) {
@@ -52,7 +59,13 @@ export function PeopleList({
   const listRef = useRef<FlatList<PeopleItem>>(null);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [overridden, setOverridden] = useState<ReadonlySet<number>>(new Set());
-  const [asking, setAsking] = useState<PeopleCandidate | null>(null);
+  const [asking, setAsking] = useState<{ person: PeopleCandidate; kind: "override" | "choice" } | null>(null);
+  /** Ticked on purpose although they didn't pass the chosen season or dropped out. */
+  const [chosen, setChosen] = useState<ReadonlySet<number>>(new Set());
+  /** The season to bring passers in from; undefined until the list first loads. */
+  const [sourceId, setSourceId] = useState<number | null | undefined>(undefined);
+  /** What choosing that season ticked, so choosing another unticks only those. */
+  const [autoTicked, setAutoTicked] = useState<number[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
 
   const people = candidates.data?.people;
@@ -60,7 +73,9 @@ export function PeopleList({
   const wide = candidates.data?.season.isCommunityWide ?? false;
   const filtered = useMemo(() => (people ? filterPeople(people, filters) : []), [people, filters]);
   const visible = useMemo(() => (wide ? inPool(filtered, pool) : filtered), [wide, filtered, pool]);
-  const items = useMemo(() => buildItems(visible), [visible]);
+  const sources = candidates.data?.season.sources ?? [];
+  const source = sources.find((x) => x.id === sourceId) ?? null;
+  const items = useMemo(() => buildItems(visible, source), [visible, source]);
   const titles = useMemo(() => (people ? lastSeasonTitles(people) : []), [people]);
   const targets = useMemo(() => people ? selectAllTargets(people, filters) : [], [people, filters]);
   const allTicked = targets.length > 0 && targets.every((id) => selected.has(id));
@@ -77,15 +92,43 @@ export function PeopleList({
     [wide, people, otherPool, selected],
   );
 
-  const toggle = useCallback((id: number) => {
-    setNotice(null);
-    setSelected((cur) => {
-      const next = new Set(cur);
-      if (!next.delete(id)) next.add(id);
-      return next;
-    });
-  }, []);
-  const ask = useCallback((person: PeopleCandidate) => setAsking(person), []);
+  const chooseSource = useCallback(
+    (id: number | null) => {
+      const ticks = id !== null && people ? passersToTick(people, id) : [];
+      setSourceId(id);
+      setSelected((cur) => {
+        const next = new Set(cur);
+        for (const t of autoTicked) next.delete(t);
+        for (const t of ticks) next.add(t);
+        return next;
+      });
+      setAutoTicked(ticks);
+    },
+    [people, autoTicked],
+  );
+  // The first load picks the season to start from (the link's, else the suggestion on an empty draft).
+  useEffect(() => {
+    if (sourceId !== undefined || !candidates.data) return;
+    chooseSource(initialSourceId(candidates.data, { from, isDraft }));
+  }, [sourceId, candidates.data, from, isDraft, chooseSource]);
+
+  const toggle = useCallback(
+    (id: number) => {
+      setNotice(null);
+      const person = people?.find((p) => p.id === id);
+      if (person && !selected.has(id) && !chosen.has(id) && isStraggler(person, sourceId ?? null)) {
+        setAsking({ person, kind: "choice" });
+        return;
+      }
+      setSelected((cur) => {
+        const next = new Set(cur);
+        if (!next.delete(id)) next.add(id);
+        return next;
+      });
+    },
+    [people, selected, chosen, sourceId],
+  );
+  const ask = useCallback((person: PeopleCandidate) => setAsking({ person, kind: "override" }), []);
 
   const selectAll = () => {
     setNotice(null);
@@ -99,10 +142,12 @@ export function PeopleList({
     });
   };
 
-  const confirmOverride = () => {
+  const confirmAsk = () => {
     if (!asking) return;
-    setOverridden((cur) => new Set(cur).add(asking.id));
-    setSelected((cur) => new Set(cur).add(asking.id));
+    const { id } = asking.person;
+    if (asking.kind === "override") setOverridden((cur) => new Set(cur).add(id));
+    else setChosen((cur) => new Set(cur).add(id));
+    setSelected((cur) => new Set(cur).add(id));
     setAsking(null);
   };
 
@@ -143,8 +188,8 @@ export function PeopleList({
 
   const frame = (body: React.ReactNode, footer?: React.ReactNode) => (
     <Screen
-      title={`Add people to ${seasonTitle}`}
-      subtitle={requiredProgram ? `Requires ${requiredProgram}` : undefined}
+      title="Select from community"
+      subtitle={`Add people who already have an account to ${seasonTitle}.${requiredProgram ? ` Requires ${requiredProgram}.` : ""}`}
       scroll={false}
       footer={footer}
       trailing={onInviteNew ? <Button onPress={onInviteNew}>Invite new</Button> : undefined}
@@ -160,7 +205,7 @@ export function PeopleList({
       <EmptyState
         icon={Users}
         title="No one to add"
-        description="There are no student accounts to add to this season."
+        description="There are no accounts to add to this season. Invite someone new instead."
         action={onInviteNew ? { label: "Invite someone new", onPress: onInviteNew } : undefined}
       />,
     );
@@ -177,6 +222,8 @@ export function PeopleList({
         windowSize={9}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
+          <>
+          <SourcePicker sources={sources} value={source} ticked={autoTicked.length} onChange={chooseSource} />
           <PeopleFilterBar
             filters={filters}
             onChange={setFilters}
@@ -187,6 +234,7 @@ export function PeopleList({
             onPool={switchPool}
             onSelectAll={selectAll}
           />
+          </>
         }
         ListEmptyComponent={
           wide ? (
@@ -201,7 +249,15 @@ export function PeopleList({
               }
             />
           ) : (
-            <EmptyState title="No one matches" description="Try a different name or clear a filter." />
+            <EmptyState
+              title="No one matches"
+              description={
+                onInviteNew
+                  ? "Not here? They may not have an account yet: invite them instead."
+                  : "Try a different name or clear a filter."
+              }
+              action={onInviteNew ? { label: "Invite new", onPress: onInviteNew } : undefined}
+            />
           )
         }
         renderItem={({ item }) =>
@@ -212,6 +268,8 @@ export function PeopleList({
               person={item.person}
               selected={selected.has(item.person.id)}
               overridden={overridden.has(item.person.id)}
+              chosen={chosen.has(item.person.id)}
+              source={source}
               onToggle={toggle}
               onOverride={ask}
             />
@@ -223,9 +281,20 @@ export function PeopleList({
         onOpenChange={(open) => {
           if (!open) setAsking(null);
         }}
-        title={asking ? `Add ${asking.name} even though they ${blockPhrase(asking, requiredProgram)}?` : ""}
+        title={
+          !asking
+            ? ""
+            : asking.kind === "override" || !source
+              ? `Add ${asking.person.name} even though they ${blockPhrase(asking.person, requiredProgram)}?`
+              : `Add ${asking.person.name} even though they ${stragglerPhrase(asking.person, source)}?`
+        }
+        description={
+          asking?.kind === "choice"
+            ? "Usually only the people who passed join the next season. Add them only if you mean to."
+            : undefined
+        }
         confirmLabel="Add anyway"
-        onConfirm={confirmOverride}
+        onConfirm={confirmAsk}
       />
     </>,
     <SaveBar

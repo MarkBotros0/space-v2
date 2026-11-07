@@ -5,8 +5,9 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
+import { findPreviousSeasonId, listSourceSeasons } from "../../lib/queries/previous-season";
 import { attendancePctForEnrollments } from "../../lib/queries/students/history";
-import { isAdminOfSeason, isSuper } from "../../lib/rbac";
+import { isAdminOfSeason } from "../../lib/rbac";
 import {
   activeRolesFor,
   describeActiveRole,
@@ -48,6 +49,16 @@ function latestOf(history: HistoryEntry[]): HistoryEntry | null {
   return latest;
 }
 
+/** Each finished season's place and how it ended, for "add the people who passed <season>". */
+function placesOf(history: HistoryEntry[]): PeopleCandidate["places"] {
+  return history
+    .filter((h) => h.seasonStatus !== "ACTIVE")
+    .map((h) => ({
+      seasonId: h.seasonId,
+      outcome: h.enrollmentStatus === "WITHDRAWN" ? "dropped" : h.result === "PASSED" ? "passed" : "not_passed",
+    }));
+}
+
 function outcomeOf(h: HistoryEntry): NonNullable<PeopleCandidate["last"]>["outcome"] {
   if (h.enrollmentStatus === "WITHDRAWN") return "DROPPED";
   return h.result ?? "COMPLETED";
@@ -56,7 +67,7 @@ function outcomeOf(h: HistoryEntry): NonNullable<PeopleCandidate["last"]>["outco
 /**
  * `GET /seasons/:id/people-candidates`: the people picker's rows, with each
  * person's last season and whether they can be added, in words. SUPER, or that
- * season's admin; only SUPER can override a block.
+ * season's admin; either may override a block (owner, 2026-11-07).
  */
 export async function listPeopleCandidates(req: Request, res: Response) {
   const user = requireUser(req);
@@ -98,7 +109,6 @@ export async function listPeopleCandidates(req: Request, res: Response) {
     ),
   );
 
-  const callerIsSuper = isSuper(user);
   const rows: PeopleCandidate[] = people.map((p) => {
     const lastEntry = lasts.get(p.id) ?? null;
     const last: PeopleCandidate["last"] = lastEntry
@@ -108,7 +118,14 @@ export async function listPeopleCandidates(req: Request, res: Response) {
           attendancePct: pcts.get(lastEntry.enrollmentId) ?? null,
         }
       : null;
-    const base = { id: p.id, name: p.name, pool: p.graduationYear === null ? ("student" as const) : ("alumni" as const), last, overridable: false };
+    const base = {
+      id: p.id,
+      name: p.name,
+      pool: p.graduationYear === null ? ("student" as const) : ("alumni" as const),
+      last,
+      overridable: false,
+      places: placesOf(history.get(p.id) ?? []),
+    };
 
     const enrolment = hereBy.get(p.id);
     if (enrolment) {
@@ -133,7 +150,8 @@ export async function listPeopleCandidates(req: Request, res: Response) {
         reason: role ? `${block}. ${describeActiveRole(p.name, role)}` : block,
         // An override lives on the enrolment row, and anyone with a row here is in_season above.
         selectable: false,
-        overridable: callerIsSuper,
+        // Whoever may read this list administers the season, and may override (owner, 2026-11-07).
+        overridable: true,
       };
     }
     if (!role && servingHere.has(p.id)) {
@@ -165,5 +183,25 @@ export async function listPeopleCandidates(req: Request, res: Response) {
   });
 
   rows.sort((a, b) => RANK[a.availability] - RANK[b.availability] || a.name.localeCompare(b.name) || a.id - b.id);
-  return apiOk(res, { season: { id: season.id, title: season.title, requiredProgram: season.requiredProgram, isCommunityWide: season.isCommunityWide }, people: rows });
+  const listedPassers = new Map<number, number>();
+  for (const r of rows) {
+    for (const pl of r.places) {
+      if (pl.outcome === "passed") listedPassers.set(pl.seasonId, (listedPassers.get(pl.seasonId) ?? 0) + 1);
+    }
+  }
+  const [sources, previousId] = await Promise.all([
+    listSourceSeasons(db, season.id, listedPassers, ids),
+    findPreviousSeasonId(db, season),
+  ]);
+  return apiOk(res, {
+    season: {
+      id: season.id,
+      title: season.title,
+      requiredProgram: season.requiredProgram,
+      isCommunityWide: season.isCommunityWide,
+      suggestedSourceId: sources.some((s) => s.id === previousId) ? previousId : null,
+      sources,
+    },
+    people: rows,
+  });
 }
