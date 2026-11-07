@@ -409,7 +409,9 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   (a deactivated one is left alone and printed apart), else converts in one transaction. It is a script, not a migration, because no migration may change
   `User.role` values. Run it on a database the owner names, after `preflight:community`.
 - **Graduation.** Super marks a season Graduating (`Season.graduatesOnPass`). Passing it graduates
-  the student automatically at End (see "Graduating seasons" above). Super may graduate an
+  the student automatically at End (see "Graduating seasons" above), in the class of the season's
+  own `year` whenever it ends; the app shows it as "School of {year}", and graduating someone who
+  passed by hand with any other year is refused (`wrong_class`). Super may graduate an
   exception without a pass via `POST /students/:id/graduate` with `override: true`, which needs
   a reason and a tick (stored on the user, shown to SUPER only); it is audited without the reason. `PATCH /users` can't set or clear a stored STUDENT's year (409
   `use_graduate`); changing one year to another corrects a typo, audited and marked stale. Graduating deletes a place on a draft's roster, under Remove's rule

@@ -231,7 +231,7 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`already_graduated` or `not_qualified`."),
+        409: conflict("`already_graduated`, `not_qualified`, or `wrong_class` (they passed a graduating season of another year; that season's year is their class)."),
       },
     },
   },

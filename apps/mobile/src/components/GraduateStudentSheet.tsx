@@ -178,7 +178,7 @@ export function GraduateStudentSheet({
             onPress={() => setUnderstood((v) => !v)}
             className="min-h-11 flex-row items-center gap-3"
           >
-            <View pointerEvents="none">
+            <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
               <Switch checked={understood} />
             </View>
             <Text variant="body" className="min-w-0 flex-1">

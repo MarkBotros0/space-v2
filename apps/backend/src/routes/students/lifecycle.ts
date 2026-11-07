@@ -6,7 +6,7 @@ import { auditLog } from "../../lib/audit";
 import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { parseId } from "../../lib/parse-id";
-import { graduatePerson, hasPassedGraduatingSeason } from "../../lib/queries/students/writes";
+import { graduatePerson, passedGraduatingYears } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
@@ -53,8 +53,13 @@ export async function graduateStudent(req: Request, res: Response) {
     });
     if (!student) return "not_found" as const;
     if (student.graduationYear !== null) return "already_graduated" as const;
-    const qualified = await hasPassedGraduatingSeason(tx, id);
+    const passedYears = await passedGraduatingYears(tx, id);
+    const qualified = passedYears.length > 0;
     if (!qualified && !override) return { notQualified: student.name };
+    // A pass decides the class: a typed year can't put them in a different School.
+    if (qualified && !passedYears.includes(graduationYear)) {
+      return { wrongClass: { name: student.name, year: Math.max(...passedYears) } };
+    }
     // The reason is kept only when the exception was needed, and only here.
     const exception = qualified ? undefined : { byId: user.userId, reason: overrideReason ?? "" };
     const done = await graduatePerson(tx, id, graduationYear, exception);
@@ -67,6 +72,11 @@ export async function graduateStudent(req: Request, res: Response) {
   }
   if ("notQualified" in outcome) {
     return apiError(res, "not_qualified", `${outcome.notQualified} hasn't passed a graduating season.`, 409);
+  }
+
+  if ("wrongClass" in outcome && outcome.wrongClass) {
+    const { name, year } = outcome.wrongClass;
+    return apiError(res, "wrong_class", `${name} passed the ${year} season, so they're School of ${year}.`, 409);
   }
 
   auditLog("student.graduate", user.userId, id, outcome.overridden ? { override: true } : {});

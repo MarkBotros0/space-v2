@@ -258,15 +258,15 @@ export async function graduatePassed(
  * The rule the graduate action checks: a COMPLETED, PASSED enrolment in a finished
  * season marked as graduating. Anyone else needs a super's override.
  */
-export async function hasPassedGraduatingSeason(tx: Prisma.TransactionClient, studentUserId: number): Promise<boolean> {
-  const row = await tx.seasonEnrollment.findFirst({
+export async function passedGraduatingYears(tx: Prisma.TransactionClient, studentUserId: number): Promise<number[]> {
+  const rows = await tx.seasonEnrollment.findMany({
     where: {
       studentUserId,
       status: "COMPLETED",
       result: "PASSED",
       season: { graduatesOnPass: true, status: { in: ["COMPLETED", "ARCHIVED"] }, deletedAt: null },
     },
-    select: { id: true },
+    select: { season: { select: { year: true } } },
   });
-  return row !== null;
+  return rows.map((row) => row.season.year);
 }

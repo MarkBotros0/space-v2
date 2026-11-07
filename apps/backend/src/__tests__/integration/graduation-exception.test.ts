@@ -55,7 +55,7 @@ describe("The reason for an exception", () => {
 
   it("is dropped when the student had qualified, so nothing records an exception", async () => {
     const student = await person("Qualified");
-    await finished(await seasonOf("ARCHIVED", true), student.id, "PASSED");
+    await finished(await seasonOf("ARCHIVED", true, undefined, 2025), student.id, "PASSED");
     const res = await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: REASON });
     expect(res.status).toBe(200);
     expect(await columns(student.id)).toMatchObject({
@@ -109,5 +109,25 @@ describe("Who sees graduatedByException", () => {
     const own = await detailOf(student.id, await mint(student.id));
     expect(own.status).toBe(200);
     expect(own.body.data).not.toHaveProperty("graduatedByException");
+  });
+});
+
+describe("A pass decides the class", () => {
+  it("refuses a typed year other than the passed season's, in words, and graduates nobody", async () => {
+    const student = await person("Typed");
+    const season = await seasonOf("COMPLETED", true, undefined, 2024);
+    await finished(season, student.id, "PASSED");
+    const res = await graduate(student.id, { graduationYear: 2025 });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toEqual({ code: "wrong_class", message: "Typed passed the 2024 season, so they're School of 2024." });
+    expect((await columns(student.id)).graduationYear).toBeNull();
+  });
+
+  it("accepts the passed season's year and records no exception", async () => {
+    const student = await person("Right");
+    const season = await seasonOf("COMPLETED", true, undefined, 2024);
+    await finished(season, student.id, "PASSED");
+    expect((await graduate(student.id, { graduationYear: 2024 })).status).toBe(200);
+    expect(await columns(student.id)).toMatchObject({ graduationYear: 2024, graduationOverrideAt: null });
   });
 });

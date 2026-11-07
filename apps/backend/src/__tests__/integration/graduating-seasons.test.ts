@@ -189,7 +189,7 @@ describe("Graduating someone by exception", () => {
 
   it("someone qualified needs no override, and isn't audited as one", async () => {
     const student = await person("Qualified");
-    const passed = await seasonOf("ARCHIVED", true);
+    const passed = await seasonOf("ARCHIVED", true, undefined, 2025);
     await finished(passed, student.id, "PASSED");
     const lines = await auditLines(async () => {
       expect((await graduate(student.id, { graduationYear: 2025 })).status).toBe(200);
