@@ -283,12 +283,7 @@ describe("StudentToday: figures", () => {
     expect(mockPush).toHaveBeenCalledWith("/season");
   });
 
-  // Owner 2026-11-07: the season, then the session and its check-in, then To do.
-  it("puts the season card first, then the session, then To do", async () => {
-    serve(routes());
-    renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
-    await screen.findByLabelText("Open Spring 2099");
+  function order(): (t: string) => number {
     const texts: string[] = [];
     const walk = (n: unknown): void => {
       if (typeof n === "string") texts.push(n);
@@ -300,10 +295,46 @@ describe("StudentToday: figures", () => {
       }
     };
     walk(screen.toJSON());
-    const at = (t: string) => texts.findIndex((x) => x === t || x.startsWith(t));
+    return (t) => texts.findIndex((x) => x === t || x.startsWith(t));
+  }
+
+  // Owner 2026-11-07: the season, then the session, then To do.
+  it("puts the season card first, then the session, then To do", async () => {
+    serve(routes({ [NEXT_SESSION_DETAIL]: { ...sessionDetail, checkInOpen: false } }));
+    renderWithProviders(<StudentToday />);
+    await screen.findByText("Check-in isn't open right now");
+    await screen.findByLabelText("Open Spring 2099");
+    const at = order();
     expect(at("Open Spring 2099")).toBeGreaterThanOrEqual(0);
     expect(at("Open Spring 2099")).toBeLessThan(at("Week 6"));
     expect(at("Week 6")).toBeLessThan(at("TO DO"));
+  });
+
+  // Owner 2026-11-07: while check-in is open, the session leads.
+  it("puts the session first while check-in is open and they haven't checked in", async () => {
+    serve(routes());
+    renderWithProviders(<StudentToday />);
+    await screen.findByText("Check In");
+    await screen.findByLabelText("Open Spring 2099");
+    const at = order();
+    expect(at("Week 6")).toBeGreaterThanOrEqual(0);
+    expect(at("Week 6")).toBeLessThan(at("Open Spring 2099"));
+    expect(at("Open Spring 2099")).toBeLessThan(at("TO DO"));
+  });
+
+  it("goes back to the season first once they have checked in", async () => {
+    serve(
+      routes({
+        [NEXT_SESSION_DETAIL]: {
+          ...sessionDetail,
+          myAttendance: { status: "PRESENT", notes: null, lateMinutes: null, checkedInAt: "2099-03-01T16:05:00.000Z" },
+        },
+      }),
+    );
+    renderWithProviders(<StudentToday />);
+    await screen.findByText(/You checked in at/);
+    const at = order();
+    expect(at("Open Spring 2099")).toBeLessThan(at("Week 6"));
   });
 
   it("season card: nothing scheduled, and complete", async () => {

@@ -91,6 +91,10 @@ export function StudentToday() {
   });
 
   const late = data?.assignments?.lateSubmittedCount ?? 0;
+  const checkInFirst = detail.data?.checkInOpen === true && detail.data.myAttendance === null;
+  const hero = data ? (
+    <NextSessionHero session={data.nextSession} todayOrgDay={data.todayOrgDay} detail={detail} />
+  ) : null;
 
   // A failed read keeps what's on screen, but says so: a pull that changes nothing must explain why.
   const stale = dash.isError ? (
@@ -117,13 +121,11 @@ export function StudentToday() {
       ) : data.season ? (
         <View className="flex-col gap-4">
           {stale}
-          {/* Owner 2026-11-07: the season first, then the session and its check-in, then To do. */}
+          {/* Owner 2026-11-07: the season first, then the session, then To do; while
+              check-in is open and they haven't checked in, the session leads. */}
+          {checkInFirst ? hero : null}
           <TodayFigures data={data} attendance={attendance} />
-          <NextSessionHero
-            session={data.nextSession}
-            todayOrgDay={data.todayOrgDay}
-            detail={detail}
-          />
+          {checkInFirst ? null : hero}
           <OpenWorkList
             open={data.assignments?.open ?? []}
             quizzes={quizzes}
