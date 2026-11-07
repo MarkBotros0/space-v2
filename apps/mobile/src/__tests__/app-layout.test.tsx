@@ -187,6 +187,7 @@ describe("AppLayout stack", () => {
     // Settings, Notifications, Events, …: opened from More (or Profile), so
     // Back must return there — a screen in the Tabs would go Home instead.
     expect([...PUSHED_NAV_ROUTE_NAMES].sort()).toEqual([
+      "announcements/index",
       "attendance",
       "events",
       "notifications",

@@ -29,7 +29,7 @@ describe("MoreScreen", () => {
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["Current Season", "Attendance", "History"]) {
+    for (const label of ["Announcements", "Current Season", "Attendance", "History"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     // Owner 2026-11-07: Profile opens from the name row, not a row of its own.
@@ -80,6 +80,26 @@ describe("MoreScreen", () => {
     expect(screen.getByText("Notifications")).toBeTruthy();
     expect(screen.queryByText("Notification settings")).toBeNull();
     expect(screen.queryByText("History")).toBeNull();
+  });
+
+  it("gives the mentor the same More as everyone: profile row, Announcements, Notifications, theme, sign out, delete (owner, 2026-11-07)", async () => {
+    useSessionStore.setState(makeSession("MENTOR", {}, { name: "Maged Mentor" }));
+
+    renderWithProviders(<MoreScreen />);
+
+    expect(screen.getByText("Maged Mentor")).toBeTruthy();
+    fireEvent.press(screen.getByText("Maged Mentor"));
+    expect(mockPush).toHaveBeenCalledWith("/profile");
+    fireEvent.press(screen.getByRole("button", { name: "Notifications" }));
+    expect(mockPush).toHaveBeenCalledWith("/notifications");
+    fireEvent.press(screen.getByText("Announcements"));
+    expect(mockPush).toHaveBeenCalledWith("/announcements");
+    expect(screen.getByText("Appearance")).toBeTruthy();
+    expect(screen.getByText("Delete account")).toBeTruthy();
+    // Their own tabs are not repeated.
+    for (const label of ["Community", "Notes", "Follow-ups"]) expect(screen.queryByText(label)).toBeNull();
+    fireEvent.press(screen.getByText("Sign out"));
+    await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
   });
 
   it("navigates to the item's route on press", () => {

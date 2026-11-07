@@ -44,12 +44,14 @@ describe("navFor", () => {
     // Frozen from the pre-Task-12 navs: anything leaving the tabs stays in the
     // sidebar, so it is still listed in More. Owner 2026-11-07: Profile and Profile
     // settings are one page, opened from More's name row and Home's avatar, so
-    // neither is a sidebar entry; MENTOR and alumni keep their Profile tab.
+    // neither is a sidebar entry; alumni keep their Profile tab. Announcements (owner,
+    // 2026-11-07) is in every More, and the mentor's last tab is More.
     const before: Record<string, string[]> = {
       // Owner, 2026-11-07: Community (every account) replaces Users, Students,
       // Alumni and Dropped; those lists are filters of /students, reached from
       // Home's figures.
       SUPER: [
+        "/announcements",
         "/calendar",
         "/community",
         "/dashboard",
@@ -63,6 +65,7 @@ describe("navFor", () => {
       // Owner, 2026-11-07: Students live under Groups, and Assignments and
       // Quizzes under Work (/coursework), so those three leave ADMIN's nav.
       ADMIN: [
+        "/announcements",
         "/calendar",
         "/coursework",
         "/dashboard",
@@ -74,6 +77,7 @@ describe("navFor", () => {
         "/season",
       ],
       LEADER: [
+        "/announcements",
         "/calendar",
         "/dashboard",
         "/groups",
@@ -84,14 +88,16 @@ describe("navFor", () => {
         "/submissions",
       ],
       MENTOR: [
+        "/announcements",
         "/dashboard",
         "/follow-ups",
+        "/more",
         "/notes",
         "/notifications",
-        "/profile",
         "/students",
       ],
       STUDENT: [
+        "/announcements",
         "/attendance",
         "/calendar",
         "/dashboard",
@@ -102,6 +108,7 @@ describe("navFor", () => {
         "/work",
       ],
       ALUMNI: [
+        "/announcements",
         "/calendar",
         "/dashboard",
         "/history",
@@ -145,6 +152,7 @@ describe("navFor", () => {
     expect(shape(navByRole.SUPER)).toEqual({
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
+        ["/announcements", "Announcements", "announcements"],
         ["/seasons", "Seasons", "season"],
         ["/calendar", "Calendar", "calendar"],
         ["/events", "JPC Events", "events"],
@@ -165,6 +173,7 @@ describe("navFor", () => {
     expect(shape(navByRole.ADMIN)).toEqual({
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
+        ["/announcements", "Announcements", "announcements"],
         ["/season", "My Season", "season"],
         ["/calendar", "Calendar", "calendar"],
         ["/groups", "Groups", "groups"],
@@ -185,6 +194,7 @@ describe("navFor", () => {
     expect(shape(navByRole.LEADER)).toEqual({
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
+        ["/announcements", "Announcements", "announcements"],
         ["/groups", "My group", "groups"],
         ["/notes", "My notes", "notes"],
         ["/calendar", "Calendar", "calendar"],
@@ -204,6 +214,7 @@ describe("navFor", () => {
     expect(shape(navByRole.STUDENT)).toEqual({
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
+        ["/announcements", "Announcements", "announcements"],
         ["/season", "Current Season", "season"],
         ["/calendar", "Calendar", "calendar"],
         ["/work", "My work", "todo"],
@@ -224,6 +235,7 @@ describe("navFor", () => {
       // and their people are their Community.
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
+        ["/announcements", "Announcements", "announcements"],
         ["/students", "Community", "users"],
         ["/notes", "Notes", "notes"],
         ["/follow-ups", "Follow-ups", "followUps"],
@@ -234,7 +246,7 @@ describe("navFor", () => {
         ["/students", "Community", "users"],
         ["/notes", "Notes", "notes"],
         ["/follow-ups", "Follow-ups", "followUps"],
-        ["/profile", "Profile", "profile"],
+        ["/more", "More", "more"],
       ],
     });
 
@@ -242,6 +254,7 @@ describe("navFor", () => {
     expect(shape(alumni)).toEqual({
       sidebar: [
         ["/dashboard", "Home", "dashboard"],
+        ["/announcements", "Announcements", "announcements"],
         ["/calendar", "Events", "events"],
         ["/history", "My History", "history"],
         ["/notifications", "Notifications", "notifications"],
@@ -254,6 +267,38 @@ describe("navFor", () => {
         ["/more", "More", "more"],
       ],
     });
+  });
+});
+
+describe("Announcements and More (owner, 2026-11-07)", () => {
+  const alumni = navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null });
+  const all: Record<string, RoleNav> = {
+    ...navByRole,
+    ALUMNI: alumni,
+    STUDENT_BETWEEN,
+  };
+
+  it("every nav lists Announcements in More", () => {
+    expect(Object.keys(all)).toHaveLength(7);
+    for (const [role, nav] of Object.entries(all)) {
+      expect([role, nav.sidebar.map((i) => i.href).includes("/announcements")]).toEqual([role, true]);
+      expect([role, nav.sidebar[1]?.href]).toEqual([role, "/announcements"]);
+      expect([role, nav.tabs.map((i) => i.href).includes("/announcements")]).toEqual([role, false]);
+    }
+  });
+
+  it("mentor tabs are Home, Community, Notes, Follow-ups, More", () => {
+    expect(navByRole.MENTOR.tabs.map((t) => t.label)).toEqual([
+      "Home", "Community", "Notes", "Follow-ups", "More",
+    ]);
+    expect(navByRole.MENTOR.tabs[4]).toEqual({ href: "/more", label: "More", icon: "more" });
+  });
+
+  it("Profile is a tab for alumni only", () => {
+    for (const [role, nav] of Object.entries(all)) {
+      const hasProfile = nav.tabs.some((t) => t.href === "/profile");
+      expect([role, hasProfile]).toEqual([role, role === "ALUMNI"]);
+    }
   });
 });
 
@@ -272,7 +317,7 @@ describe("navFor between seasons", () => {
   });
   it("STUDENT_BETWEEN sidebar has no season, work or attendance", () => {
     expect(STUDENT_BETWEEN.sidebar.map((i) => i.label)).toEqual([
-      "Dashboard", "Calendar", "History", "Notifications",
+      "Dashboard", "Announcements", "Calendar", "History", "Notifications",
     ]);
   });
 });

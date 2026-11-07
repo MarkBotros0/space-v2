@@ -13,6 +13,7 @@ import {
   History,
   Home,
   Inbox,
+  Megaphone,
   LayoutDashboard,
   ListTodo,
   ListChecks,
@@ -64,6 +65,7 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   todo: ListTodo,
   submitted: ClipboardCheck,
   followUps: Flag,
+  announcements: Megaphone,
 };
 
 // Lets `className="text-white/55"` colour the icon, as v1's classes do.

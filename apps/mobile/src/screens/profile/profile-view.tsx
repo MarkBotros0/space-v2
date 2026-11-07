@@ -9,7 +9,6 @@ import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { useMyProfile } from "../../hooks/use-self-service";
 import { formatDayKey } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
-import { AccountActions } from "./account-actions";
 import { IdentityCard } from "./identity-card";
 import { useProfileKind } from "./profile-kind";
 
@@ -25,7 +24,7 @@ function Detail({ label, value }: { label: string; value: string | null | undefi
  * Profile (owner, 2026-11-07): one page for who you are, read-only, with Edit
  * opening `/edit-profile`. It merges what were Profile and Profile settings, and
  * shows no season figures (they belong on Home and Attendance). Opened from More's
- * name row and Home's avatar; MENTOR and alumni also have it as a tab.
+ * name row and Home's avatar; alumni also have it as a tab.
  */
 export function ProfileView() {
   const user = useSessionStore((s) => s.user);
@@ -57,8 +56,6 @@ export function ProfileView() {
 
 function ProfileBody({ user, profile }: { user: MeUser; profile: MyProfile | null }) {
   const router = useRouter();
-  const nav = useSessionStore((s) => s.nav());
-  const hasMore = nav?.tabs.some((t) => t.href === "/more") ?? true;
   const year = profile?.universityGraduationYear;
 
   return (
@@ -92,7 +89,6 @@ function ProfileBody({ user, profile }: { user: MeUser; profile: MyProfile | nul
           ) : null}
         </GroupedList>
       ) : null}
-      {hasMore ? null : <AccountActions />}
     </View>
   );
 }
