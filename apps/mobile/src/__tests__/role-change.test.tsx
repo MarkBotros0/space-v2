@@ -87,12 +87,12 @@ describe("a token that changes role on refresh", () => {
   it("takes a real alumnus (no season) who becomes a leader again to the leader's tabs and queries", async () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2020 }));
     renderWithProviders(<Shell />);
-    expect(labels()).toEqual(["Today", "Events", "History", "Profile", "More"]);
+    expect(labels()).toEqual(["Home", "Events", "History", "Profile", "More"]);
     expect(screen.getByTestId("season").props.children).toBe("null");
 
     act(() => useSessionStore.getState().setSession(makeUser("LEADER"), makeScopes({ activeSeasonId: null, graduationYear: 2020, groupLeaderIds: [3] })));
 
-    expect(labels()).toEqual(["Today", "Groups", "Calendar", "Submissions", "More"]);
+    expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
     await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));
   });
 });
