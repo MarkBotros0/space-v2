@@ -10,6 +10,7 @@ jest.mock("expo-router", () => ({
 jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
 import { apiClient } from "../lib/api-client";
+import { toast } from "../design/ui/toaster";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -112,6 +113,64 @@ describe("admin student detail", () => {
         dropReason: "Moved",
       }),
     );
+  });
+
+  it("offers Remove instead of Drop on a draft, confirms and refreshes", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    const del = apiClient.delete as jest.Mock;
+    del.mockResolvedValue({ data: { data: { removed: true } } });
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/students/21") {
+        return Promise.resolve({
+          data: { data: { ...detail, enrollments: [{ ...enrollment(8), seasonStatus: "DRAFT" }] } },
+        });
+      }
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    renderWithProviders(<StudentDetailScreen />);
+    fireEvent.press(await screen.findByText("Seasons"));
+    expect(screen.queryByText("Drop")).toBeNull();
+    fireEvent.press(await screen.findByLabelText("Remove from Season 8"));
+    expect(screen.getByText("Remove from season?")).toBeTruthy();
+    expect(del).not.toHaveBeenCalled();
+    fireEvent.press(screen.getAllByText("Remove").at(-1)!);
+    await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/8/enrollments/21"));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Sara Student was removed from Season 8."));
+  });
+
+  it("says the server's reason when Remove is refused", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    const del = apiClient.delete as jest.Mock;
+    const { AxiosError } = jest.requireActual("axios");
+    del.mockRejectedValue(
+      new AxiosError("bad", "ERR_BAD_REQUEST", undefined, undefined, {
+        status: 409,
+        data: { error: { code: "has_work", message: "This person already has work." } },
+      }),
+    );
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/students/21"
+        ? Promise.resolve({ data: { data: { ...detail, enrollments: [{ ...enrollment(8), seasonStatus: "DRAFT" }] } } })
+        : Promise.reject(new Error(`unexpected GET ${url}`)),
+    );
+    renderWithProviders(<StudentDetailScreen />);
+    fireEvent.press(await screen.findByText("Seasons"));
+    fireEvent.press(await screen.findByLabelText("Remove from Season 8"));
+    fireEvent.press(screen.getAllByText("Remove").at(-1)!);
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("This person already has work."));
+  });
+
+  it("a season admin's own record parses as the private view, with no staff notes", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 21 }));
+    const { notes: _notes, ...privateProfile } = detail.profile;
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/students/21"
+        ? Promise.resolve({ data: { data: { ...detail, profile: privateProfile } } })
+        : Promise.reject(new Error(`unexpected GET ${url}`)),
+    );
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("Engineering")).toBeTruthy();
+    expect(screen.queryByText("Internal notes")).toBeNull();
   });
 
   it("MENTOR keeps the existing component: no actions", async () => {

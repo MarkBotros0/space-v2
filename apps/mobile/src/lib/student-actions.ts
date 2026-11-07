@@ -24,6 +24,8 @@ export interface StudentActions {
   canDelete: boolean;
   /** R64 per row — fixes R68's Drop buttons for seasons the viewer doesn't run. */
   canDrop: (enrollment: EnrollmentHistoryItem) => boolean;
+  /** A draft's row is a plan: the same people take it off instead of dropping it (the server's `season_draft`). */
+  canRemove: (enrollment: EnrollmentHistoryItem) => boolean;
   /** SUPER, on a dropped row of a season that has not finished (the server's `season_finished` gate). */
   canRestore: (enrollment: EnrollmentHistoryItem) => boolean;
 }
@@ -47,7 +49,8 @@ export function studentActionsFor(
     canEdit: isSuper || isAdminWithActiveRow,
     canGraduate: isSuper && student.graduationYear === null,
     canDelete: isSuper,
-    canDrop: (e) => e.status === "ACTIVE" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
+    canDrop: (e) => e.status === "ACTIVE" && e.seasonStatus !== "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
+    canRemove: (e) => e.status === "ACTIVE" && e.seasonStatus === "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
     canRestore: (e) =>
       isSuper && e.status === "WITHDRAWN" && (e.seasonStatus === "DRAFT" || e.seasonStatus === "ACTIVE"),
   };

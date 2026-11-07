@@ -36,14 +36,15 @@ export async function getStudentList(req: Request, res: Response) {
 /**
  * Which of the three §4.2 shapes this caller receives. SUPER and ADMIN read
  * everything; the subject reads their own personal data but never the
- * staff-only internal notes (R23); MENTOR and LEADER get the narrow cut —
+ * staff-only internal notes (R23), and a former student serving as an admin is
+ * still the subject of their own record; MENTOR and LEADER get the narrow cut —
  * v1 delivered them the full object and relied on React props to not render
  * it (§4.2's LEADER column), which an endpoint cannot do.
  */
 function detailViewFor(user: SessionUser, studentUserId: number): StudentDetailView {
-  if (isSuper(user) || user.role === "ADMIN") return "internal";
+  if (isSuper(user)) return "internal";
   if (user.userId === studentUserId) return "private";
-  return "public";
+  return user.role === "ADMIN" ? "internal" : "public";
 }
 
 export async function getStudent(req: Request, res: Response) {

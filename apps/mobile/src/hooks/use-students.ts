@@ -3,6 +3,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
+  type QueryClient,
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
@@ -39,6 +40,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { useSessionStore } from "../store/session";
 
 /** The list's group filter and sort (REG-82); null leaves each to the server's default. */
 export interface StudentListView {
@@ -97,9 +99,11 @@ export type StudentDetail = StudentDetailPublic | StudentDetailPrivate | Student
  * delivering personal data (D3). A union parse would accept the widest shape
  * and hide exactly that bug.
  */
-function detailSchemaFor(role: UserRole) {
-  if (role === "SUPER" || role === "ADMIN") return studentDetailInternalSchema;
-  if (role === "STUDENT") return studentDetailPrivateSchema; // self view — never `notes`
+function detailSchemaFor(role: UserRole, isSelf: boolean) {
+  if (role === "SUPER") return studentDetailInternalSchema;
+  // Self view, never `notes`: the server's rule for everyone but SUPER, who may be serving.
+  if (role === "STUDENT" || isSelf) return studentDetailPrivateSchema;
+  if (role === "ADMIN") return studentDetailInternalSchema;
   return studentDetailPublicSchema; // LEADER, MENTOR
 }
 
@@ -108,6 +112,7 @@ export function useStudentDetail(
   id: number | null,
   role: UserRole | null,
 ): UseQueryResult<StudentDetail> {
+  const myId = useSessionStore((s) => s.user?.id ?? null);
   return useQuery({
     queryKey: queryKeys.students.detail(id),
     queryFn: async () => {
@@ -115,7 +120,7 @@ export function useStudentDetail(
       // narrowing honest without a cast.
       if (role === null) throw new Error("useStudentDetail ran without a role");
       const res = await apiClient.get(`/api/v1/students/${id}`);
-      return detailSchemaFor(role).parse(res.data.data);
+      return detailSchemaFor(role, id === myId).parse(res.data.data);
     },
     enabled: id !== null && role !== null,
   });
@@ -228,6 +233,13 @@ export function useDeleteStudent(): UseMutationResult<StudentDeletedResponse, Er
   });
 }
 
+/** A seat came or went: the students, and the season's count, roster and start check. */
+function invalidateSeatChange(queryClient: QueryClient, seasonId: number): void {
+  void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.groups.roster(seasonId) });
+}
+
 /** PATCH /students/:id/enrollments/:seasonId → WITHDRAWN (Plan 7's endpoint). */
 export function useDropEnrollment(): UseMutationResult<
   EnrollmentTransitionResponse,
@@ -245,9 +257,7 @@ export function useDropEnrollment(): UseMutationResult<
       });
       return enrollmentTransitionResponseSchema.parse(res.data.data);
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
-    },
+    onSuccess: (_data, { seasonId }) => invalidateSeatChange(queryClient, seasonId),
   });
 }
 
@@ -271,8 +281,6 @@ export function useRestoreEnrollment(): UseMutationResult<
       );
       return res.data.data as unknown;
     },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
-    },
+    onSuccess: (_data, { seasonId }) => invalidateSeatChange(queryClient, seasonId),
   });
 }

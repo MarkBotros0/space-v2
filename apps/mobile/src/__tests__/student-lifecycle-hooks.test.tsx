@@ -7,10 +7,12 @@ jest.mock("../lib/api-client", () => ({
 }));
 
 import { apiClient } from "../lib/api-client";
+import { queryKeys } from "../lib/query-keys";
 import {
   useCreateStudent,
   useDeleteStudent,
   useDropEnrollment,
+  useRestoreEnrollment,
   useGraduateStudent,
   useUpdateStudent,
 } from "../hooks/use-students";
@@ -69,5 +71,30 @@ describe("student lifecycle mutations (ruling X10 — parsed, never cast)", () =
     const create = renderHook(() => useCreateStudent(), { wrapper }).result;
     await act(() => create.current.mutateAsync({ name: "New Student", email: "n@jpc.test" }));
     expect(post).toHaveBeenCalledWith("/api/v1/students", { name: "New Student", email: "n@jpc.test" });
+  });
+
+  describe("a seat write refreshes the season, its roster and its start check, not only the students", () => {
+    const expectRefreshed = (invalidate: jest.SpyInstance) => {
+      for (const queryKey of [queryKeys.students.all, queryKeys.seasons.all, queryKeys.groups.roster(7)]) {
+        expect(invalidate).toHaveBeenCalledWith({ queryKey });
+      }
+      invalidate.mockRestore();
+    };
+
+    it("useDropEnrollment", async () => {
+      patch.mockResolvedValue({ data: { data: { id: 507, status: "WITHDRAWN" } } });
+      const invalidate = jest.spyOn(client, "invalidateQueries");
+      const { result } = renderHook(() => useDropEnrollment(), { wrapper });
+      await act(() => result.current.mutateAsync({ studentId: 21, seasonId: 7, dropReason: null }));
+      expectRefreshed(invalidate);
+    });
+
+    it("useRestoreEnrollment", async () => {
+      post.mockResolvedValue({ data: { data: { id: 507, status: "ACTIVE" } } });
+      const invalidate = jest.spyOn(client, "invalidateQueries");
+      const { result } = renderHook(() => useRestoreEnrollment(), { wrapper });
+      await act(() => result.current.mutateAsync({ studentId: 21, seasonId: 7 }));
+      expectRefreshed(invalidate);
+    });
   });
 });

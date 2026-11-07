@@ -1,7 +1,7 @@
 /**
  * SUPER and ADMIN on /student/[id] (v1 app/admin/students/[id]): name and
  * email in the title, mail/call, Edit profile, Graduate, V2-ONLY Delete and a
- * per-season Drop, each only where `studentActionsFor` (the server's rules)
+ * per-season Drop (Remove on a draft), each only where `studentActionsFor` (the server's rules)
  * allows. Five sections behind wrapping ChoiceChips; a section's queries mount
  * the first time it opens and stay mounted (spec 06 §9). Delete leaves for
  * the list with dismissTo (CLAUDE.md navigation table).
@@ -33,6 +33,7 @@ import { useSessionStore } from "../../store/session";
 import { AdminEngagement } from "./admin-engagement";
 import { AdminProfileSection } from "./admin-profile-section";
 import { BringBackDialogs } from "./bring-back-dialogs";
+import { RemoveFromDraftDialog } from "./remove-from-draft-dialog";
 import { AdminSeasonsSection } from "./admin-seasons-section";
 
 type Section = "profile" | "seasons" | "attendance" | "submissions" | "notes";
@@ -59,6 +60,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [graduateOpen, setGraduateOpen] = useState(false);
   const [dropTarget, setDropTarget] = useState<EnrollmentHistoryItem | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<EnrollmentHistoryItem | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<EnrollmentHistoryItem | null>(null);
 
   const refresh = () => {
@@ -169,6 +171,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
           <AdminSeasonsSection
             enrollments={data.enrollments}
             dropFor={(e) => (actions.canDrop(e) ? () => setDropTarget(e) : null)}
+            removeFor={(e) => (actions.canRemove(e) ? () => setRemoveTarget(e) : null)}
             restoreFor={(e) => (actions.canRestore(e) ? () => setRestoreTarget(e) : null)}
           />
         </View>
@@ -213,6 +216,12 @@ export function AdminStudentDetail({ id }: { id: number }) {
         studentName={data.name}
         enrollment={restoreTarget}
         onClose={() => setRestoreTarget(null)}
+      />
+      <RemoveFromDraftDialog
+        studentId={data.id}
+        studentName={data.name}
+        enrollment={removeTarget}
+        onClose={() => setRemoveTarget(null)}
       />
       <DropEnrollmentSheet
         studentId={data.id}

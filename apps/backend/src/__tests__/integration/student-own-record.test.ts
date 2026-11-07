@@ -119,3 +119,40 @@ describe("a former leader's seasons (I1)", () => {
     expect(res.body.data.seasons).toEqual([]);
   });
 });
+
+describe("a season admin's own record", () => {
+  it("is the private view: no staff note, no drop reason, whatever role they hold", async () => {
+    const served = await createTestSeason();
+    const left = await createTestSeason();
+    const admin = await createTestUser("self-admin", "STUDENT");
+    await db.user.update({ where: { id: admin.id }, data: { graduationYear: 2020 } });
+    await db.studentProfile.create({ data: { userId: admin.id, notes: "SECRET-STAFF-NOTE" } });
+    await db.seasonAdmin.create({ data: { seasonId: served.id, userId: admin.id } });
+    await db.seasonEnrollment.create({
+      data: {
+        seasonId: left.id, studentUserId: admin.id, status: "WITHDRAWN",
+        droppedAt: new Date(), dropReason: "SECRET-DROP-REASON",
+      },
+    });
+
+    const res = await get(`/students/${admin.id}`, await mint(admin.id));
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(res.body)).not.toContain("SECRET-");
+    expect(res.body.data.profile).not.toHaveProperty("notes");
+    expect(res.body.data.enrollments[0]).toMatchObject({ status: "WITHDRAWN", dropReason: null });
+  });
+
+  it("another admin of that student's season still reads the staff view", async () => {
+    const season = await createTestSeason();
+    const [admin, student] = await Promise.all([
+      createTestUser("other-admin", "STUDENT"),
+      createTestUser("other-student", "STUDENT"),
+    ]);
+    await db.user.update({ where: { id: admin.id }, data: { graduationYear: 2020 } });
+    await db.seasonAdmin.create({ data: { seasonId: season.id, userId: admin.id } });
+    await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: student.id, status: "ACTIVE" } });
+    const res = await get(`/students/${student.id}`, await mint(admin.id));
+    expect(res.status).toBe(200);
+    expect(res.body.data.profile).toHaveProperty("notes");
+  });
+});

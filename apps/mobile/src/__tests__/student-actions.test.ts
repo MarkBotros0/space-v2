@@ -51,4 +51,19 @@ describe("studentActionsFor (Plan 10 Decision 6 — mirrors the server gates)", 
     const none = studentActionsFor(null, null, student);
     expect(none).toMatchObject({ canEdit: false, canGraduate: false, canDelete: false });
   });
+
+  it("offers Remove, not Drop, on a draft's active row (the server refuses a drop there)", () => {
+    const draft = { ...row(10, "ACTIVE"), seasonStatus: "DRAFT" as const };
+    const live = row(7, "ACTIVE");
+    const dropped = { ...row(11, "WITHDRAWN"), seasonStatus: "DRAFT" as const };
+    const su = studentActionsFor(makeUser("SUPER"), makeScopes(), student);
+    expect(su.canDrop(draft)).toBe(false);
+    expect(su.canRemove(draft)).toBe(true);
+    expect(su.canRemove(live)).toBe(false);
+    expect(su.canRemove(dropped)).toBe(false);
+    const theirs = studentActionsFor(makeUser("ADMIN"), makeScopes({ seasonAdminIds: [10] }), student);
+    expect(theirs.canRemove(draft)).toBe(true);
+    const other = studentActionsFor(makeUser("ADMIN"), makeScopes({ seasonAdminIds: [7] }), student);
+    expect(other.canRemove(draft)).toBe(false);
+  });
 });
