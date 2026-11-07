@@ -35,6 +35,7 @@ export function CalendarGrid({
   sessions,
   events,
   today,
+  onOpenDay,
   ...handlers
 }: {
   view: Exclude<CalendarView, "upcoming">;
@@ -42,6 +43,8 @@ export function CalendarGrid({
   sessions: SessionListItem[];
   events: JpcEventListItem[];
   today: string;
+  /** Month: the whole cell opens its day (owner, 2026-11-07); the bars are only a picture. */
+  onOpenDay?: (dayKey: string) => void;
 } & Handlers) {
   const keys = visibleKeys(view, anchor);
   // A month cell is ~40dp wide on a phone: a title breaks mid-word, so month shows colour bars and
@@ -68,10 +71,23 @@ export function CalendarGrid({
           {week.map((key) => {
             const outside = view === "month" && !isSameMonth(key, anchor);
             const isToday = key === today;
+            const daySessions = sessions.filter((s) => s.dayKey === key);
+            const dayEvents = events.filter((e) => e.dayKey === key);
+            const dayPress = compact && onOpenDay ? () => onOpenDay(key) : undefined;
+            // A cell that opens its day: its chips are part of the picture, not targets of their own.
+            const Chip = dayPress ? View : Pressable;
+            const Cell = dayPress ? Pressable : View;
+            const count = daySessions.length + dayEvents.length;
             return (
-              <View
+              <Cell
                 key={key}
-                accessibilityLabel={formatDayKey(key)}
+                accessibilityRole={dayPress ? "button" : undefined}
+                accessibilityLabel={
+                  dayPress
+                    ? `${formatDayKey(key)}, ${count === 0 ? "nothing on" : `${count} ${count === 1 ? "item" : "items"}`}`
+                    : formatDayKey(key)
+                }
+                onPress={dayPress}
                 className={cn(
                   "min-w-0 flex-1 flex-col gap-0.5 bg-card p-0.5",
                   view === "week" ? "min-h-32" : "min-h-[72px]",
@@ -100,78 +116,74 @@ export function CalendarGrid({
                     {String(Number(key.slice(8)))}
                   </Text>
                 </View>
-                {sessions
-                  .filter((s) => s.dayKey === key)
-                  .map((s) => {
-                    const tone = handlers.seasonColors
-                      ? (handlers.seasonColors[s.seasonCode] ?? FALLBACK_SEASON)
-                      : CHIP_TONE[sessionTone(s.dayKey, today)];
-                    return (
-                      <Pressable
-                        key={s.id}
-                        accessibilityRole="link"
-                        accessibilityLabel={s.title}
-                        onPress={() => handlers.onOpenSession(s.id)}
-                        className={cn("rounded px-0.5 py-0.5", tone.box)}
-                      >
-                        {compact ? (
-                          <View className={cn("h-2 rounded-sm", tone.bar ?? tone.box)} />
-                        ) : (
-                          <Text
-                            numberOfLines={1}
-                            maxFontSizeMultiplier={1}
-                            className={cn("text-[10px] font-medium leading-tight", tone.text)}
-                          >
-                            {s.title}
-                          </Text>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                {events
-                  .filter((e) => e.dayKey === key)
-                  .map((e) => {
-                    const alumni = e.visibility === "ALUMNI_ONLY";
-                    return (
-                      <Pressable
-                        key={`e${e.id}`}
-                        accessibilityRole={e.url ? "link" : "button"}
-                        accessibilityLabel={e.title}
-                        onPress={() => handlers.onOpenEvent(e)}
-                        className={cn(
-                          "flex-row items-center gap-0.5 rounded px-0.5 py-0.5",
-                          alumni
-                            ? "bg-warning-100 dark:bg-warning-950"
-                            : "bg-brand-navy-100 dark:bg-brand-navy-900",
-                        )}
-                      >
-                        {compact ? (
-                          <View
-                            className={cn(
-                              "h-2 flex-1 rounded-sm",
-                              alumni
-                                ? "bg-warning-600 dark:bg-warning-400"
-                                : "bg-brand-navy-600 dark:bg-brand-navy-300",
-                            )}
-                          />
-                        ) : (
-                          <Text
-                            numberOfLines={1}
-                            maxFontSizeMultiplier={1}
-                            className={cn(
-                              "shrink text-[10px] leading-tight",
-                              alumni
-                                ? "text-warning-800 dark:text-warning-200"
-                                : "text-brand-navy-800 dark:text-brand-navy-100",
-                            )}
-                          >
-                            {e.title}
-                          </Text>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-              </View>
+                {daySessions.map((s) => {
+                  const tone = handlers.seasonColors
+                    ? (handlers.seasonColors[s.seasonCode] ?? FALLBACK_SEASON)
+                    : CHIP_TONE[sessionTone(s.dayKey, today)];
+                  return (
+                    <Chip
+                      key={s.id}
+                      accessibilityRole={dayPress ? undefined : "link"}
+                      accessibilityLabel={dayPress ? undefined : s.title}
+                      onPress={dayPress ? undefined : () => handlers.onOpenSession(s.id)}
+                      className={cn("rounded px-0.5 py-0.5", tone.box)}
+                    >
+                      {compact ? (
+                        <View className={cn("h-2 rounded-sm", tone.bar ?? tone.box)} />
+                      ) : (
+                        <Text
+                          numberOfLines={1}
+                          maxFontSizeMultiplier={1}
+                          className={cn("text-[10px] font-medium leading-tight", tone.text)}
+                        >
+                          {s.title}
+                        </Text>
+                      )}
+                    </Chip>
+                  );
+                })}
+                {dayEvents.map((e) => {
+                  const alumni = e.visibility === "ALUMNI_ONLY";
+                  return (
+                    <Chip
+                      key={`e${e.id}`}
+                      accessibilityRole={dayPress ? undefined : e.url ? "link" : "button"}
+                      accessibilityLabel={dayPress ? undefined : e.title}
+                      onPress={dayPress ? undefined : () => handlers.onOpenEvent(e)}
+                      className={cn(
+                        "flex-row items-center gap-0.5 rounded px-0.5 py-0.5",
+                        alumni
+                          ? "bg-warning-100 dark:bg-warning-950"
+                          : "bg-brand-navy-100 dark:bg-brand-navy-900",
+                      )}
+                    >
+                      {compact ? (
+                        <View
+                          className={cn(
+                            "h-2 flex-1 rounded-sm",
+                            alumni
+                              ? "bg-warning-600 dark:bg-warning-400"
+                              : "bg-brand-navy-600 dark:bg-brand-navy-300",
+                          )}
+                        />
+                      ) : (
+                        <Text
+                          numberOfLines={1}
+                          maxFontSizeMultiplier={1}
+                          className={cn(
+                            "shrink text-[10px] leading-tight",
+                            alumni
+                              ? "text-warning-800 dark:text-warning-200"
+                              : "text-brand-navy-800 dark:text-brand-navy-100",
+                          )}
+                        >
+                          {e.title}
+                        </Text>
+                      )}
+                    </Chip>
+                  );
+                })}
+              </Cell>
             );
           })}
         </View>

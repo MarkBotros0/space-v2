@@ -32,7 +32,7 @@ function SeasonTag({ code, colors }: { code: string; colors: SeasonColors }) {
   );
 }
 
-function AgendaSession({
+export function AgendaSession({
   s,
   today,
   onOpenSession,
@@ -66,7 +66,7 @@ function AgendaSession({
   );
 }
 
-function AgendaEvent({
+export function AgendaEvent({
   e,
   onOpenEvent,
 }: {

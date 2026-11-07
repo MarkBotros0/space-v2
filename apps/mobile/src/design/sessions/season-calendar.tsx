@@ -19,15 +19,12 @@ import { iconWithClassName } from "../lib/icon";
 import { Button } from "../ui/button";
 import { SegmentedControl } from "../ui/segmented-control";
 import { Text } from "../ui/text";
+import { DaySheet } from "./day-sheet";
 import { AgendaView } from "./season-calendar-agenda";
 import { CalendarGrid } from "./season-calendar-grid";
 import type { Handlers, SeasonColors } from "./season-colors";
 
-export {
-  buildSeasonColors,
-  type SeasonColor,
-  type SeasonColors,
-} from "./season-colors";
+export { buildSeasonColors, type SeasonColor, type SeasonColors } from "./season-colors";
 
 iconWithClassName(ChevronLeft, ChevronRight);
 
@@ -65,6 +62,7 @@ export function SeasonCalendar({
 } & Handlers) {
   const [view, setView] = useState<CalendarView>("upcoming");
   const [anchor, setAnchor] = useState(initialAnchor);
+  const [day, setDay] = useState<string | null>(null);
   const handlers = { onOpenSession, onOpenEvent, seasonColors };
 
   return (
@@ -110,9 +108,18 @@ export function SeasonCalendar({
           sessions={sessions}
           events={events}
           today={today}
+          onOpenDay={setDay}
           {...handlers}
         />
       )}
+      <DaySheet
+        day={day}
+        sessions={sessions}
+        events={events}
+        today={today}
+        onClose={() => setDay(null)}
+        {...handlers}
+      />
     </View>
   );
 }
