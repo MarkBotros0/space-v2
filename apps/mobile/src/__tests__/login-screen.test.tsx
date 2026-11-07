@@ -118,6 +118,7 @@ describe("LoginScreen", () => {
 
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard"));
   });
+});
 
 // Owner 2026-11-07: a Google button in place until it is wired, and the invite code made very clear.
 describe("LoginScreen — other ways in", () => {
