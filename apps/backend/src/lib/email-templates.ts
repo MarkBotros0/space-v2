@@ -209,12 +209,3 @@ export function buildPasswordResetHtml(
   `;
   return renderShell("Reset your password", "We received a request to reset the password for your JPC Space account.", body);
 }
-
-/** A notification: its body and, when there is one, the way to it. */
-export function buildNotificationBody(
-  bodyText: string,
-  viewLink: string | null,
-  stores: StoreLinks,
-): string {
-  return `${paragraph(bodyText)}${viewLink ? buttonHtml(viewLink, "View in JPC Space") : ""}${storeLinksHtml(stores)}`;
-}

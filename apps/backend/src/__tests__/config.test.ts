@@ -65,11 +65,10 @@ describe("config", () => {
 
   it("treats an empty optional as absent rather than a blank value", () => {
     // An empty GMAIL_USER must leave email unconfigured, not configure it with
-    // an empty sender — sendNotificationEmail keys off these being undefined.
-    const config = loadConfig({ ...REQUIRED, GMAIL_USER: "", GMAIL_APP_PASSWORD: "", AUTH_URL: "" });
+    // an empty sender — the invite and reset senders key off these being undefined.
+    const config = loadConfig({ ...REQUIRED, GMAIL_USER: "", GMAIL_APP_PASSWORD: "" });
     expect(config.gmailUser).toBeUndefined();
     expect(config.gmailAppPassword).toBeUndefined();
-    expect(config.authUrl).toBeUndefined();
   });
 
   it("still rejects a missing DATABASE_URL, naming it and nothing else", () => {

@@ -6,7 +6,6 @@ const mockDb = {
   user: { findMany: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
-jest.mock("../lib/email", () => ({ sendNotificationEmail: jest.fn(async () => undefined) }));
 
 import { config } from "../lib/config";
 import { createNotificationsBulk } from "../lib/notifications";

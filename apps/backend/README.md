@@ -66,7 +66,6 @@ read outside that file). See `.env.example` for the full list.
 | `MOBILE_APP_ORIGIN` | No | `"*"` | CORS origin allowed to call the API. |
 | `GMAIL_USER` | No | unset | Paired with `GMAIL_APP_PASSWORD`. |
 | `GMAIL_APP_PASSWORD` | No | unset | |
-| `AUTH_URL` | No | unset | Base URL used to build a clickable link in notification emails. |
 | `APP_STORE_URL` | No | unset | The app's App Store page. Once set, every email ends with "Don't have the app yet?" and a button to it. Leave unset until the app is published. |
 | `PLAY_STORE_URL` | No | unset | The app's Google Play page, shown beside the App Store button the same way. |
 | `STORAGE_DRIVER` | No | `local` | `"local"` writes to `LOCAL_UPLOADS_DIR`; `"s3"` is a throwing stub, as in v1. |
@@ -85,11 +84,11 @@ read outside that file). See `.env.example` for the full list.
 | `SENTRY_TRACES_SAMPLE_RATE` | No | `0` | Share of requests traced for performance, `0`–`1`. `0` reports errors only. |
 | `SENTRY_RELEASE` | No | `VERCEL_GIT_COMMIT_SHA` | Release tag on each event; on Vercel it defaults to the deployed commit. |
 
-**When `GMAIL_USER`/`GMAIL_APP_PASSWORD` are unset:** `sendNotificationEmail`
-becomes a no-op (it logs a one-time warning and returns) — in-app
-notifications are created unconditionally and are not affected. **When
-`AUTH_URL` is unset:** any notification email that is sent omits the
-clickable button/link.
+**Email carries only invites and password resets.** Notifications are never
+emailed (owner, 2026-11-07): they land in the in-app inbox and, unless the
+person turned that kind off, as a push. **When `GMAIL_USER`/`GMAIL_APP_PASSWORD`
+are unset:** invite and reset emails don't send (each logs a one-time warning);
+invites are still issued and recorded.
 
 ## Running the tests
 

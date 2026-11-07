@@ -2,7 +2,6 @@ import { db } from "../db/client";
 import type { NotificationType } from "../generated/prisma/enums";
 import { pushContent, shouldPush } from "../../../../packages/shared/src/index";
 
-import { sendNotificationEmail } from "./email";
 import { runInBackground } from "./background";
 import { parseNotificationLink } from "./notification-target";
 import { sendPushToUsers } from "./push";
@@ -46,8 +45,9 @@ export interface BulkNotificationResult {
  * and is **always** written. v1 filtered opted-out recipients out before the
  * insert (R8), so "off" meant "no record" — a user who only wanted the emails
  * to stop had to give up their inbox too, and with push that single boolean
- * would govern three channels. Here the preference governs outbound channels
- * only: email and push.
+ * would govern three channels. Here the preference governs the outbound
+ * channel only: push. (Notification emails were removed, owner 2026-11-07:
+ * notifications reach people in the app's inbox and by push, never by email.)
  *
  * Consequence, accepted deliberately: v1 renders the same table with no
  * preference filter, so an opted-out user's v1 inbox stops being empty.
@@ -87,31 +87,13 @@ export async function createNotificationsBulk(
     })),
   });
 
-  const mailTargets = targets.filter((id) => !optedOut.has(id));
-  if (mailTargets.length > 0) {
-    const users = await db.user.findMany({
-      where: { id: { in: mailTargets } },
-      select: { email: true },
-    });
-    // Fire-and-forget: mail must never delay or fail the request that
-    // triggered it. allSettled so one bad address cannot reject the batch.
-    runInBackground(
-      "notification-email",
-      Promise.allSettled(
-        users.map((u) =>
-          sendNotificationEmail(u.email, payload.title, payload.body ?? null, payload.link ?? null),
-        ),
-      ),
-    );
-  }
-
-  // Push goes to the same recipients as mail: a type the user turned off
-  // stops every outbound channel (spec D4). Only devices that registered a
-  // token are reached.
-  if (mailTargets.length > 0 && shouldPush(payload.type)) {
+  // A type the user turned off stops push (spec D4). Only devices that
+  // registered a token are reached.
+  const pushTargets = targets.filter((id) => !optedOut.has(id));
+  if (pushTargets.length > 0 && shouldPush(payload.type)) {
     runInBackground(
       "notification-push",
-      sendPushToUsers(mailTargets, {
+      sendPushToUsers(pushTargets, {
         ...pushContent(payload.type, payload.title, payload.body ?? null),
         data: { type: payload.type, target: parseNotificationLink(payload.link ?? null) },
       }),

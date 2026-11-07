@@ -200,7 +200,7 @@ export const notesNotificationsPaths = {
       tags: ["Me"],
       summary: "Your notification preferences (all nine)",
       description:
-        "Always returns all nine keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs outbound channels only (email and push); the in-app inbox row is always written.",
+        "Always returns all nine keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs push only (notifications are never emailed); the in-app inbox row is always written.",
       responses: {
         200: ok(
           { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },

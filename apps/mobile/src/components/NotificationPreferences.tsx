@@ -196,8 +196,7 @@ export function NotificationPreferences() {
               and a surprise. */}
           {keys.length > 0 ? (
             <Text variant="caption" className="px-4 text-muted-foreground">
-              Changes save automatically. Turning one off stops the emails and push for that kind of
-              notification. They will still appear in your inbox — that is your history.
+              Changes save automatically. Turning one off stops the push notifications for that kind. They will still appear in your inbox — that is your history.
             </Text>
           ) : null}
         </View>

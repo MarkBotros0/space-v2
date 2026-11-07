@@ -8,16 +8,13 @@ import { INLINE_IMAGES } from "./email-assets";
 import {
   INVITE_SUBJECT,
   buildInviteHtml,
-  buildNotificationBody,
   buildPasswordResetHtml,
-  renderShell,
   type StoreLinks,
 } from "./email-templates";
 import { escapeHtml } from "./html";
 import { formatInOrgTime } from "./org-time";
 
 let cachedTransporter: Transporter | null = null;
-let warnedUnconfigured = false;
 let warnedInviteUnconfigured = false;
 let warnedResetUnconfigured = false;
 
@@ -76,60 +73,6 @@ function sendHtml(to: string, subject: string, html: string) {
 
 function fromAddress(): string {
   return `JPC Space <${config.gmailUser}>`;
-}
-
-/**
- * The notification email's body, as a pure function so the escaping is
- * testable without a transport.
- *
- * Ruling C11: v1 interpolated a notification's title and body straight into
- * this HTML (jpc-space/src/lib/email.ts:145-150). The worst case it enabled is
- * spec D2 — the first 140 characters of a pastoral note, raw HTML and possibly
- * cut mid-tag, mailed to every season admin. v2 does not put note content in a
- * notification at all (see routes/notes.ts), and escapes regardless, because
- * "no caller currently passes markup" is not a property anyone can maintain.
- */
-export function buildNotificationHtml(
-  title: string,
-  body: string | null,
-  viewLink: string | null,
-): string {
-  const bodyHtml = buildNotificationBody(
-    escapeHtml(body ?? "You have a new notification in JPC Space."),
-    viewLink ? escapeHtml(viewLink) : null,
-    storeLinks(),
-  );
-  return renderShell(escapeHtml(title), "Jesus Project Community", bodyHtml);
-}
-
-/**
- * Best-effort notification email.
- *
- * Divergence from v1: v1 threw when the transport was unconfigured and every
- * caller swallowed it. Returning early instead keeps the observable behaviour
- * (no mail, no crash) without minting an Error per recipient, and warns once so
- * a misconfigured deploy is visible in the log.
- */
-export async function sendNotificationEmail(
-  email: string,
-  title: string,
-  body: string | null,
-  link: string | null,
-): Promise<void> {
-  if (!isConfigured()) {
-    if (!warnedUnconfigured) {
-      warnedUnconfigured = true;
-      console.warn(
-        "[email] GMAIL_USER/GMAIL_APP_PASSWORD are unset — notification emails are disabled. In-app notifications are unaffected.",
-      );
-    }
-    return;
-  }
-
-  const appUrl = (config.authUrl ?? "").replace(/\/$/, "");
-  const viewLink = appUrl ? `${appUrl}${link ?? ""}` : null;
-
-  await sendHtml(email, `JPC Space — ${title}`, buildNotificationHtml(title, body, viewLink));
 }
 
 /**

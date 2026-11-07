@@ -20,13 +20,10 @@ const envSchema = z.object({
   // this backend was ported from; set to the mobile app's actual origin in
   // any environment where that matters.
   MOBILE_APP_ORIGIN: z.string().default("*"),
-  // Email is optional. When GMAIL_USER/GMAIL_APP_PASSWORD are unset,
-  // sendNotificationEmail becomes a no-op and in-app notifications still land.
+  // Email is optional and carries only invites and password resets. When
+  // GMAIL_USER/GMAIL_APP_PASSWORD are unset, neither sends.
   GMAIL_USER: z.string().optional(),
   GMAIL_APP_PASSWORD: z.string().optional(),
-  // Base URL used to turn a notification's relative link into one a recipient
-  // can click in an email. Unset means the email omits the button.
-  AUTH_URL: z.string().optional(),
   // Where the emails send someone without the app (owner, 2026-11-07). Unset
   // until the app is published (the store pages don't exist yet); the emails
   // show a store's button only once its URL is set.
@@ -161,7 +158,6 @@ export const config = {
   mobileAppOrigin: parsed.data.MOBILE_APP_ORIGIN,
   gmailUser: parsed.data.GMAIL_USER,
   gmailAppPassword: parsed.data.GMAIL_APP_PASSWORD,
-  authUrl: parsed.data.AUTH_URL,
   appStoreUrl: parsed.data.APP_STORE_URL,
   playStoreUrl: parsed.data.PLAY_STORE_URL,
   storageDriver: parsed.data.STORAGE_DRIVER,
