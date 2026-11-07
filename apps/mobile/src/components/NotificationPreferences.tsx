@@ -1,7 +1,7 @@
 // apps/mobile/src/components/NotificationPreferences.tsx
 import { useState } from "react";
 import { View } from "react-native";
-import type { NotificationPreferences as Prefs } from "@space/shared";
+import type { NotificationPreferences as Prefs, UserRole } from "@space/shared";
 
 import { Section } from "../design/settings/section";
 import { Button, Skeleton, Switch, Text } from "../design/ui";
@@ -13,16 +13,19 @@ import {
 import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
 
+/** The one preference no switch shows: mentor follow-ups are no longer sent (owner, 2026-11-07). */
+type ShownKey = Exclude<keyof Prefs, "mentorFollowup">;
+
 /**
- * v1 settings-form.tsx's Notifications section — nine rows, not v1's five.
+ * v1 settings-form.tsx's Notifications section.
  *
  * The labels are keyed off the preference column names so a key that exists in
- * the contract but not here is a compile error (`Record<keyof Prefs, ...>`),
+ * the contract but not here is a compile error (`Record<ShownKey, ...>`),
  * which is the UI half of the fix for R56/R57. Copy is v1's except the
  * low-attendance count (spec D12) and the four rows v1 never had (quiz graded,
  * quiz published, submission received, session cancelled).
  */
-const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
+const LABELS: Record<ShownKey, { label: string; help: string }> = {
   assignmentCreated: {
     label: "New assignments",
     help: "When an admin creates an assignment you're targeted by.",
@@ -56,24 +59,34 @@ const LABELS: Record<keyof Prefs, { label: string; help: string }> = {
     // Spec D12: v1's copy said three. The rule is two.
     help: "When a student you lead/admin misses two in a row.",
   },
-  mentorFollowup: {
-    label: "Mentor follow-ups",
-    help: "When a mentor flags a note for admin follow-up.",
-  },
 };
 
-// Student-facing first, then the staff ones.
-const ORDER: (keyof Prefs)[] = [
+/** What a student is sent: their work, their quizzes, their sessions. */
+const STUDENT_KEYS: ShownKey[] = [
   "assignmentCreated",
   "submissionReviewed",
   "quizPublished",
   "quizGraded",
   "sessionRescheduled",
   "sessionCancelled",
-  "submissionReceived",
-  "lowAttendanceFlag",
-  "mentorFollowup",
 ];
+
+/**
+ * Only the switches for notifications this person can get (owner, 2026-11-07): a
+ * student's six; a group leader's handed-in work and low-attendance flags; a
+ * season admin's low-attendance flags. SUPER and MENTOR are sent none of these.
+ */
+export function preferenceKeysFor(
+  role: UserRole | null,
+  scopes: { seasonAdminIds: number[]; groupLeaderIds: number[] } | null,
+): ShownKey[] {
+  if (role === "STUDENT") return STUDENT_KEYS;
+  const keys: ShownKey[] = [];
+  if (scopes && scopes.groupLeaderIds.length > 0) keys.push("submissionReceived");
+  if (scopes && (scopes.groupLeaderIds.length > 0 || scopes.seasonAdminIds.length > 0))
+    keys.push("lowAttendanceFlag");
+  return keys;
+}
 
 /** One honest sentence per push state. */
 const PUSH_COPY: Record<PushStatus | "idle", string> = {
@@ -87,6 +100,9 @@ const PUSH_COPY: Record<PushStatus | "idle", string> = {
 
 export function NotificationPreferences() {
   const pushToken = useSessionStore((s) => s.pushToken);
+  const role = useSessionStore((s) => s.user?.role ?? null);
+  const scopes = useSessionStore((s) => s.scopes);
+  const keys = preferenceKeysFor(role, scopes);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);
   const [enabling, setEnabling] = useState(false);
   const { data, isPending, isError, refetch } = useNotificationPreferences();
@@ -144,9 +160,15 @@ export function NotificationPreferences() {
                 Try again
               </Button>
             </View>
+          ) : keys.length === 0 ? (
+            <View className="rounded-group bg-surface p-4">
+              <Text variant="subhead" className="text-muted-foreground">
+                Nothing you're sent can be turned off here.
+              </Text>
+            </View>
           ) : (
             <GroupedList>
-              {ORDER.map((key) => (
+              {keys.map((key) => (
                 <ListRow
                   key={key}
                   title={LABELS[key].label}
@@ -167,10 +189,12 @@ export function NotificationPreferences() {
           {/* Spec D4: the inbox row is always written; the switch governs the
               outbound channels. Saying so is the difference between a setting
               and a surprise. */}
-          <Text variant="caption" className="px-4 text-muted-foreground">
-            Changes save automatically. Turning one off stops the emails and push for that kind of
-            notification. They will still appear in your inbox — that is your history.
-          </Text>
+          {keys.length > 0 ? (
+            <Text variant="caption" className="px-4 text-muted-foreground">
+              Changes save automatically. Turning one off stops the emails and push for that kind of
+              notification. They will still appear in your inbox — that is your history.
+            </Text>
+          ) : null}
         </View>
       ) : null}
     </View>

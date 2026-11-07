@@ -51,10 +51,11 @@ async function world(status: Status, label: string) {
 const notified = (userId: number, type: "MENTOR_FOLLOWUP" | "LOW_ATTENDANCE_FLAG") =>
   db.notification.count({ where: { userId, type } });
 
+// Owner 2026-11-07: the mentor follow-up notification is gone, in every season.
 describe("a flagged note", () => {
   it.each<[Status, number]>([
-    ["DRAFT", 1],
-    ["ACTIVE", 1],
+    ["DRAFT", 0],
+    ["ACTIVE", 0],
     ["COMPLETED", 0],
     ["ARCHIVED", 0],
   ])("in a %s season tells its admin %i time(s)", async (status, expected) => {

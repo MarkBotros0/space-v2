@@ -10,6 +10,7 @@ jest.mock("../lib/push", () => ({ enablePush: jest.fn() }));
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
+import { makeSession } from "./helpers/session";
 
 import { NotificationPreferences } from "../components/NotificationPreferences";
 
@@ -32,6 +33,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   get.mockResolvedValue({ data: { data: { preferences: allTrue } } });
   put.mockResolvedValue({ data: { data: { preferences: allTrue } } });
+  // A student in a season: the student's switches.
+  useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
   // The switches only render once push is on for this phone.
   useSessionStore.setState({ pushToken: "ExponentPushToken[x]" });
 });
@@ -59,29 +62,45 @@ describe("NotificationPreferences", () => {
     useSessionStore.setState({ pushToken: null });
   });
 
-  it("renders a switch for all nine types — including the one v1 could never set", async () => {
+  // Owner 2026-11-07: only the switches for what this person can get; no mentor follow-ups.
+  it("shows a student their six switches and none of the staff ones", async () => {
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     renderWithProviders(<NotificationPreferences />);
-
     expect(await screen.findByLabelText("New assignments")).toBeTruthy();
-    expect(screen.getByLabelText("Submission reviewed")).toBeTruthy();
-    expect(screen.getByLabelText("Session rescheduled")).toBeTruthy();
+    for (const label of ["Submission reviewed", "New quizzes", "Quiz graded", "Session rescheduled", "Session cancelled"]) {
+      expect(screen.getByLabelText(label)).toBeTruthy();
+    }
+    expect(screen.getAllByRole("switch")).toHaveLength(6);
+    expect(screen.queryByLabelText("Submissions received")).toBeNull();
+    expect(screen.queryByLabelText("Low-attendance flags")).toBeNull();
+    expect(screen.queryByLabelText("Mentor follow-ups")).toBeNull();
+  });
+
+  it("shows a leader handed-in work and low attendance, an admin low attendance only", async () => {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
+    const { unmount } = renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByLabelText("Submissions received")).toBeTruthy();
     expect(screen.getByLabelText("Low-attendance flags")).toBeTruthy();
-    expect(screen.getByLabelText("Mentor follow-ups")).toBeTruthy();
-    // R56/R57: v1's form rendered five toggles and its action spread a
-    // five-field object, so this column kept its default forever.
-    expect(screen.getByLabelText("Quiz graded")).toBeTruthy();
-    expect(screen.getByLabelText("New quizzes")).toBeTruthy();
-    expect(screen.getByLabelText("Submissions received")).toBeTruthy();
-    expect(screen.getByLabelText("Session cancelled")).toBeTruthy();
-    // One switch per preference key: a key added to the contract but left out
-    // of ORDER would have no row.
-    expect(screen.getAllByRole("switch")).toHaveLength(Object.keys(allTrue).length);
+    expect(screen.getAllByRole("switch")).toHaveLength(2);
+    unmount();
+
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByLabelText("Low-attendance flags")).toBeTruthy();
+    expect(screen.getAllByRole("switch")).toHaveLength(1);
+    expect(screen.queryByLabelText("Mentor follow-ups")).toBeNull();
+  });
+
+  it("tells a super there is nothing to turn off", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByText("Nothing you're sent can be turned off here.")).toBeTruthy();
+    expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 
   it("explains each new type in its help text", async () => {
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByText("When an online quiz opens in your season.")).toBeTruthy();
-    expect(screen.getByText("When a student in a group you lead submits their work.")).toBeTruthy();
     expect(screen.getByText("When an upcoming session in your season is cancelled.")).toBeTruthy();
   });
 
@@ -101,7 +120,9 @@ describe("NotificationPreferences", () => {
   it("states the real low-attendance threshold — two, not three (spec D12)", async () => {
     // v1's help text said "misses 3 in a row"; the rule is two
     // (attendance-notifications.ts `take: 2`, 04-attendance.md R79).
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
     renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByText("When a student in a group you lead submits their work.")).toBeTruthy();
     expect(await screen.findByText(/two in a row/i)).toBeTruthy();
   });
 

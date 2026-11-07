@@ -115,9 +115,8 @@ describe("POST /api/v1/students/:id/notes", () => {
     expect(res.body.error.code).toBe("season_not_enrolled");
   });
 
-  it("notifies season admins on a flagged note WITHOUT quoting it (spec D2)", async () => {
-    // Scoped to this suite's season admin: counting MENTOR_FOLLOWUP rows
-    // database-wide would race v1, which writes the same table on staging.
+  // Owner 2026-11-07: the mentor follow-up notification is gone; the flag stays on the note.
+  it("records the follow-up flag and notifies nobody", async () => {
     const mine = { type: "MENTOR_FOLLOWUP" as const, userId: adminUserId };
     const before = await db.notification.count({ where: mine });
 
@@ -130,20 +129,8 @@ describe("POST /api/v1/students/:id/notes", () => {
         followUpFlagged: true,
       });
     expect(res.status).toBe(201);
-
-    const notifications = await db.notification.findMany({
-      where: mine,
-      orderBy: { id: "desc" },
-      take: 1,
-      select: { body: true, title: true, link: true },
-    });
-    expect(await db.notification.count({ where: mine })).toBe(before + 1);
-    // v1 put body.slice(0, 140) here and mailed it unescaped to every season
-    // admin — including admins who cannot open the note in the app at all.
-    expect(notifications[0]?.body).not.toContain("confidential");
-    expect(notifications[0]?.title).toContain("Follow-up flagged");
-    // v1's exact link for this type (jpc-space note-actions.ts:84; ruling X1).
-    expect(notifications[0]?.link).toBe(`/admin/students/${studentUserId}`);
+    expect(res.body.data.note.followUpFlagged).toBe(true);
+    expect(await db.notification.count({ where: mine })).toBe(before);
   });
 });
 

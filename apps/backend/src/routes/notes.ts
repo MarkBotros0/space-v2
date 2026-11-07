@@ -3,8 +3,6 @@ import { Router } from "express";
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
-import { createNotificationsBulk } from "../lib/notifications";
-import { bestEffort } from "../lib/best-effort";
 import { canEditNote, canViewStudent, canWriteNote, staffRosterWhere } from "../lib/permissions";
 import {
   listAuthoredNotes,
@@ -225,42 +223,8 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
     select: NOTE_SELECT,
   });
 
-  // R13: flagged AND seasoned. A flagged note about a student with no season
-  // notifies nobody, exactly as in v1 — there is no season whose admins to
-  // notify. R14: recipients are that season's admins only.
-  if (parsed.data.followUpFlagged && seasonId !== null) {
-    const [admins, subject] = await Promise.all([
-      // Former admins have no access to a finished season: never name its student to them.
-      db.seasonAdmin.findMany({
-        where: { seasonId, season: { status: { in: ["DRAFT", "ACTIVE"] } } },
-        select: { userId: true },
-      }),
-      db.user.findUnique({ where: { id: studentUserId }, select: { name: true } }),
-    ]);
-    if (admins.length > 0) {
-      await bestEffort("notify:MENTOR_FOLLOWUP", () =>
-        createNotificationsBulk(
-          admins.map((a) => a.userId),
-          {
-            type: "MENTOR_FOLLOWUP",
-            title: `Follow-up flagged for ${subject?.name ?? "a student"}`,
-            // NO EXCERPT. v1 put body.slice(0, 140) here — raw HTML, possibly
-            // cut mid-tag — and createNotificationsBulk mails it onward, so
-            // confidential content about a named young person left the system
-            // to every season admin's inbox, including admins who cannot open
-            // the note in the app at all (spec D2, R16/R17, R36). The
-            // notification says a follow-up exists and links to it.
-            body: "A member of staff flagged a note for follow-up. Open the student to read it.",
-            // v1's link, verbatim: lib/notification-target.ts parses v1's
-            // shapes, and rewriting links to v2's route tree would be one
-            // change across every notification type, not one producer.
-            link: `/admin/students/${studentUserId}`,
-          },
-        ),
-      );
-    }
-  }
-
+  // A flagged note notifies nobody (owner, 2026-11-07: the mentor follow-up
+  // notification is gone). The flag stays on the note for staff to read.
   return apiOk(res, { note: toNoteSummary(authoredByCaller(created, user), user) }, 201);
 });
 
