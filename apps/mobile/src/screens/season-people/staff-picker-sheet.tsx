@@ -143,8 +143,8 @@ export function StaffPickerBody({
   else
     list = (
       <GroupedList>
-        {people.map((p, i) => (
-          <ListRow key={p.id} index={i} title={p.name} subtitle={p.description} onPress={() => onPick(p)} />
+        {people.map((p) => (
+          <ListRow key={p.id} title={p.name} subtitle={p.description} onPress={() => onPick(p)} />
         ))}
       </GroupedList>
     );

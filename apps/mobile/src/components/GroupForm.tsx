@@ -161,12 +161,11 @@ export function GroupForm({
               </Text>
             ) : (
               <GroupedList>
-                {values.leaderIds.map((id, i) => {
+                {values.leaderIds.map((id) => {
                   const name = leaderName.get(id) ?? "Unnamed";
                   return (
                     <ListRow
                       key={id}
-                      index={i}
                       title={name}
                       trailing={
                         <Button
