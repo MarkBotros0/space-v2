@@ -111,6 +111,19 @@ export async function lockSeason(
   else await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR SHARE`;
 }
 
+/** One fixed key for the global Start lock. Nothing else takes an advisory lock. */
+export const SEASON_START_LOCK_KEY = 7_302_026_001n;
+
+/**
+ * Serialises every Start, so two of them can't each judge the other season
+ * still unstarted: a community-wide season runs alone. Only Start takes it; a
+ * seat write can't change a Start's verdict about other seasons. It is the first
+ * lock a Start takes: global start lock, then the season, then the people.
+ */
+export async function lockSeasonStart(tx: Prisma.TransactionClient): Promise<void> {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${SEASON_START_LOCK_KEY}::bigint)`;
+}
+
 export function describeActiveRole(name: string, role: ActiveRole): string {
   switch (role.kind) {
     case "admin":

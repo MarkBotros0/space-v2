@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import type { StartIssue } from "@space/shared";
+import type { SeasonStartCheck, StartIssue } from "@space/shared";
 
 import { Button, EmptyState, GroupedList, Text } from "../../design/ui";
 
@@ -21,6 +21,26 @@ export type IssueActions = {
   onOpenSeason: (code: string) => void;
   onOverride: (issue: StartIssue) => void;
 };
+
+type SeasonInTheWay = SeasonStartCheck["seasonsInTheWay"][number];
+
+function SeasonInTheWayRow({ other, onOpen }: { other: SeasonInTheWay; onOpen: (code: string) => void }) {
+  return (
+    <View className="flex-col gap-2 px-4 py-3">
+      <Text variant="subhead">{other.message}</Text>
+      <View className="flex-row flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant="secondary"
+          accessibilityLabel={`Open ${other.title}`}
+          onPress={() => onOpen(other.code)}
+        >
+          {`Open ${other.title}`}
+        </Button>
+      </View>
+    </View>
+  );
+}
 
 function IssueRow({ issue, actions }: { issue: StartIssue; actions: IssueActions }) {
   const { seasonCode, seasonTitle, busy, onRemove, onOpenSeason, onOverride } = actions;
@@ -78,8 +98,16 @@ function IssueRow({ issue, actions }: { issue: StartIssue; actions: IssueActions
   );
 }
 
-/** What stops the season from starting, grouped by seat: Students, Leaders, Admins. */
-export function IssueList({ items, actions }: { items: StartIssue[]; actions: IssueActions }) {
+/** What stops the season from starting: seasons to end first, then the people grouped by seat: Students, Leaders, Admins. */
+export function IssueList({
+  items,
+  seasonsInTheWay,
+  actions,
+}: {
+  items: StartIssue[];
+  seasonsInTheWay: SeasonInTheWay[];
+  actions: IssueActions;
+}) {
   return (
     <View className="flex-col gap-5">
       <EmptyState
@@ -87,6 +115,13 @@ export function IssueList({ items, actions }: { items: StartIssue[]; actions: Is
         title="Sort these out first"
         description="Starting needs every seat clear. Fix each one below, then start the season."
       />
+      {seasonsInTheWay.length > 0 ? (
+        <GroupedList header={`Seasons to end first (${seasonsInTheWay.length})`}>
+          {seasonsInTheWay.map((other) => (
+            <SeasonInTheWayRow key={other.id} other={other} onOpen={actions.onOpenSeason} />
+          ))}
+        </GroupedList>
+      ) : null}
       {SEATS.map(({ seat, title }) => {
         const rows = items.filter((i) => i.seat === seat);
         if (rows.length === 0) return null;

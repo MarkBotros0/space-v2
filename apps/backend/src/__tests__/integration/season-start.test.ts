@@ -82,7 +82,7 @@ describe("GET /seasons/:id/start-check", () => {
     const id = await season("DRAFT");
     const res = await check(id);
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ ready: true, items: [] });
+    expect(res.body.data).toEqual({ ready: true, items: [], seasonsInTheWay: [] });
     expect((await start(id)).status).toBe(200);
     expect(await statusOf(id)).toBe("ACTIVE");
   });
@@ -96,6 +96,7 @@ describe("GET /seasons/:id/start-check", () => {
     const res = await check(id);
     expect(res.body.data).toEqual({
       ready: false,
+      seasonsInTheWay: [],
       items: [
         {
           userId: mina.id,
@@ -212,7 +213,7 @@ describe("GET /seasons/:id/start-check", () => {
     const id = await season("DRAFT", "Next", "GBV");
     const nora = await person("Nora Over");
     await seatStudent(id, nora.id, true);
-    expect((await check(id)).body.data).toEqual({ ready: true, items: [] });
+    expect((await check(id)).body.data).toEqual({ ready: true, items: [], seasonsInTheWay: [] });
     expect((await start(id)).status).toBe(200);
   });
 
@@ -240,7 +241,7 @@ describe("GET /seasons/:id/start-check", () => {
     await db.seasonEnrollment.create({ data: { seasonId: id, studentUserId: dropped.id, status: "WITHDRAWN" } });
     await seatStudent(elsewhere, listed.id);
     await seatStudent(id, listed.id);
-    expect((await check(id)).body.data).toEqual({ ready: true, items: [] });
+    expect((await check(id)).body.data).toEqual({ ready: true, items: [], seasonsInTheWay: [] });
   });
 });
 

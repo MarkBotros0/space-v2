@@ -25,6 +25,7 @@ export function StartIssuesSection() {
     <CatalogueSection id="start-issues" title="Start checklist issues">
       <IssueList
         items={ITEMS}
+        seasonsInTheWay={[{ id: 3, code: "3g-2026", title: "3G 2026", message: "3G 2026 is still running. End it first." }]}
         actions={{ seasonCode: "gbv-2027", seasonTitle: "GBV 2027", busy: false, onRemove: noop, onOpenSeason: noop, onOverride: noop }}
       />
     </CatalogueSection>

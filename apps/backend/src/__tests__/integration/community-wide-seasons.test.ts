@@ -111,3 +111,22 @@ describe("Season.isCommunityWide", () => {
     expect(await flag(res.body.data.id)).toBe(true);
   });
 });
+
+describe("Season.isCommunityWide, resending", () => {
+  it("turned on over a stored graduatesOnPass is community_wide_rules", async () => {
+    const id = await season("DRAFT");
+    await db.season.update({ where: { id }, data: { graduatesOnPass: true } });
+    const res = await patchSeason(id, await ownBody(id, { isCommunityWide: true }));
+    expect(res.status).toBe(409);
+    expect(res.body.error).toEqual({ code: "community_wide_rules", message: RULES });
+    expect(await flag(id)).toBe(false);
+  });
+
+  it("a started season resending the unchanged flag is accepted", async () => {
+    const id = await season("ACTIVE");
+    await db.season.update({ where: { id }, data: { isCommunityWide: true } });
+    const res = await patchSeason(id, await ownBody(id, { isCommunityWide: true }));
+    expect(res.status).toBe(200);
+    expect(await flag(id)).toBe(true);
+  });
+});

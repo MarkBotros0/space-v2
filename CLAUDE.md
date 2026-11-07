@@ -420,10 +420,18 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   `use_graduate`); changing one year to another corrects a typo, audited and marked stale. Graduating deletes a place on a draft's roster, under Remove's rule
   (with work recorded on it, the row completes instead), and completes the rest.
 
+- **A community-wide season runs alone (Build 3).** Start refuses (`start_blocked`) a community-wide
+  draft while any other season is ACTIVE, and a regular draft while a community-wide one is;
+  `GET /seasons/:id/start-check` lists them as `seasonsInTheWay` (id, code, title, message) and
+  `ready` is false while any stands. `startSeason` takes `lockSeasonStart` (an advisory transaction
+  lock on one fixed key) before anything else: lock order is global start lock (Start only), Season,
+  People, rows. One person both serving and a student in one draft is a single `already_in_role`
+  item in the student seat.
+
 ## Community model, Build 1 (owner rulings, 2026-11-06)
 
 Design: `docs/superpowers/specs/2026-11-06-community-model-design.md`. Three TestFlight builds; Build 1
-and Build 2 (see "Roles") are written, Build 3 (community-wide seasons) isn't.
+and Build 2 (see "Roles") are written, Build 3 (community-wide seasons) is under way.
 
 - **One active role.** Every user has zero or one active role: a student in one ACTIVE season, or
   serving (admin and/or leader of one group) in one ACTIVE season; Super and Mentor are permanent

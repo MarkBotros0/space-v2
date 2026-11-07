@@ -37,19 +37,32 @@ export const seasonStartPaths = {
       tags: ["Seasons"],
       summary: "What stops a draft from starting",
       description:
-        "SUPER only. One item per reason, judged as though the season were already ACTIVE, over everyone in it: its admins, its leaders and its ACTIVE enrolments. A role held in another ACTIVE season is `already_in_role`; `leader_has_group` is someone leading two or more groups in this season; `did_not_pass` and `never_finished` are the required program, and a recorded override removes those but not `already_in_role`. Someone who can't hold the seat at all (`user_inactive`, `permanent_role`, `not_alumnus`, `is_alumnus`) gets that item alone. A person can appear once per seat they hold.",
+        "SUPER only. One item per reason, judged as though the season were already ACTIVE, over everyone in it: its admins, its leaders and its ACTIVE enrolments. A role held in another ACTIVE season is `already_in_role`; `leader_has_group` is someone leading two or more groups in this season; `did_not_pass` and `never_finished` are the required program, and a recorded override removes those but not `already_in_role`. Someone who can't hold the seat at all (`user_inactive`, `permanent_role`, `not_alumnus`, `is_alumnus`) gets that item alone. A person can appear once per seat they hold, except someone both serving and a student in this draft: one `already_in_role` item in the student seat, `otherSeasonCode` null. `seasonsInTheWay` lists other ACTIVE seasons that must end first: any, for a community-wide draft; only a community-wide one, for a regular draft. `ready` is false while it or `items` is non-empty.",
       parameters: [idParam],
       responses: {
         200: ok(
           {
             type: "object",
-            required: ["ready", "items"],
+            required: ["ready", "items", "seasonsInTheWay"],
             properties: {
               ready: { type: "boolean" },
               items: { type: "array", items: startIssue },
+              seasonsInTheWay: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["id", "code", "title", "message"],
+                  properties: {
+                    id: { type: "integer" },
+                    code: { type: "string" },
+                    title: { type: "string" },
+                    message: { type: "string", description: "In words, with the season's title; ends with `End it first.`" },
+                  },
+                },
+              },
             },
           },
-          "The checklist; `ready` when it is empty.",
+          "The checklist; `ready` when both lists are empty.",
         ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -63,7 +76,7 @@ export const seasonStartPaths = {
       tags: ["Seasons"],
       summary: "Start a draft season",
       description:
-        "SUPER only, and the only way a draft becomes ACTIVE: `PATCH` to ACTIVE is 409 `use_start_season`. One transaction: locks the season, then everyone in it, re-runs the check, sets ACTIVE and marks everyone's sessions stale, so their role arrives on their next refresh with no new sign-in. 409 `start_blocked` when the check isn't clear, with its first reason in `message` (read the list from `start-check`), and nothing changes. 409 `not_draft` for a season already started. A season with no people starts.",
+        "SUPER only, and the only way a draft becomes ACTIVE: `PATCH` to ACTIVE is 409 `use_start_season`. One transaction: takes the global start lock (one Start at a time, so a community-wide season runs alone), locks the season, then everyone in it, re-runs the check, sets ACTIVE and marks everyone's sessions stale, so their role arrives on their next refresh with no new sign-in. 409 `start_blocked` when the check isn't clear, with its first reason in `message` (a season in the way comes first) (read the list from `start-check`), and nothing changes. 409 `not_draft` for a season already started. A season with no people starts.",
       parameters: [idParam],
       responses: {
         200: ok(

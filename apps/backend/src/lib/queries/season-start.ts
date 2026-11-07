@@ -22,7 +22,7 @@ const SEATS: StartIssue["seat"][] = ["admin", "leader", "student"];
  * never a role held elsewhere. An account that can't hold the seat at all needs
  * removing, so nothing else is said about it.
  *
- * Start calls this holding the season and its people, so what it reads stands.
+ * Start calls this holding the global start lock, the season and its people, so what it reads stands.
  */
 export async function loadSeasonStartCheck(
   season: StandingSeason & { isCommunityWide: boolean },
@@ -33,6 +33,22 @@ export async function loadSeasonStartCheck(
     where: { group: { seasonId: season.id } },
     select: { userId: true },
   });
+  const inTheWay = await client.season.findMany({
+    where: {
+      status: "ACTIVE",
+      deletedAt: null,
+      id: { not: season.id },
+      ...(season.isCommunityWide ? {} : { isCommunityWide: true }),
+    },
+    select: { id: true, code: true, title: true },
+    orderBy: { id: "asc" },
+  });
+  const seasonsInTheWay = inTheWay.map((other) => ({
+    ...other,
+    message: season.isCommunityWide
+      ? `${other.title} is still running. End it first.`
+      : `The community-wide season ${other.title} is running. End it first.`,
+  }));
   const students = await client.seasonEnrollment.findMany({
     where: { seasonId: season.id, status: "ACTIVE" },
     select: { studentUserId: true, overrideAt: true },
@@ -47,6 +63,7 @@ export async function loadSeasonStartCheck(
     student: students.map((s) => s.studentUserId),
   };
 
+  const serving = new Set([...seated.admin, ...seated.leader]);
   const userIds = [...new Set(Object.values(seated).flat())];
   const people = await client.user.findMany({
     where: { id: { in: userIds } },
@@ -65,6 +82,12 @@ export async function loadSeasonStartCheck(
         items.push({ userId: person.id, name: person.name, seat, reason, message, otherSeasonCode });
 
       const ineligible = eligibilityRefusal(person, seat, season);
+      // A draft's roles don't count yet, so only Start sees one person in both seats here.
+      // Anyone who serves is an alumnus, so in a regular season this says more than is_alumnus.
+      if (seat === "student" && serving.has(person.id) && (!ineligible || ineligible.code === "is_alumnus")) {
+        issue("already_in_role", `${person.name} is both serving and a student in this season.`);
+        continue;
+      }
       if (ineligible) {
         issue(ineligible.code, ineligible.message);
         continue;
@@ -83,5 +106,5 @@ export async function loadSeasonStartCheck(
       }
     }
   }
-  return { ready: items.length === 0, items };
+  return { ready: items.length === 0 && seasonsInTheWay.length === 0, items, seasonsInTheWay };
 }
