@@ -333,7 +333,7 @@ describe("isStudyingAlumnus (community-wide seasons)", () => {
 
   it("gets the alumni nav back once the season is over", () => {
     expect(navFor({ ...studying, activeSeasonId: null }).tabs.map((t) => t.label)).toEqual([
-      "Today", "Events", "History", "Profile", "More",
+      "Home", "Events", "History", "Profile", "More",
     ]);
   });
 });
