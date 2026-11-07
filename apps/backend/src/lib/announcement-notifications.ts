@@ -59,7 +59,7 @@ export function notifyAnnouncement(post: {
         type: "ANNOUNCEMENT",
         title: post.title,
         body: post.body.slice(0, ANNOUNCEMENT_PUSH_LENGTH),
-        link: `/news/${post.id}`,
+        link: `/announcements/${post.id}`,
       });
     })(),
   );

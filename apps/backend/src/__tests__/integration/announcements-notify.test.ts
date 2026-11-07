@@ -26,7 +26,7 @@ let studentIds: number[];
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 const rowsFor = (userId: number, postId: number) =>
-  db.notification.count({ where: { userId, type: "ANNOUNCEMENT", link: `/news/${postId}` } });
+  db.notification.count({ where: { userId, type: "ANNOUNCEMENT", link: `/announcements/${postId}` } });
 
 /** The notify job runs after the response; poll for the author-visible effect. */
 async function waitForRows(userId: number, postId: number, want: number) {
@@ -74,7 +74,7 @@ describe("announcement notifications", () => {
     for (const uid of [author.id, f.userIds.superUser, mentorId, droppedId, finishedStudentId]) {
       expect(await rowsFor(uid, id)).toBe(0);
     }
-    const row = await db.notification.findFirstOrThrow({ where: { userId: studentIds[0], link: `/news/${id}` } });
+    const row = await db.notification.findFirstOrThrow({ where: { userId: studentIds[0], link: `/announcements/${id}` } });
     expect(row).toMatchObject({ type: "ANNOUNCEMENT", body: "Bring a pen." });
   });
 
@@ -86,7 +86,7 @@ describe("announcement notifications", () => {
     expect(await rowsFor(studentIds[0]!, id)).toBe(1);
     expect(await rowsFor(mentorId, id)).toBe(1);
     expect(await rowsFor(f.userIds.superUser, id)).toBe(0);
-    const row = await db.notification.findFirstOrThrow({ where: { userId: mentorId, link: `/news/${id}` } });
+    const row = await db.notification.findFirstOrThrow({ where: { userId: mentorId, link: `/announcements/${id}` } });
     expect(row.body).toBe("x".repeat(120));
   });
 
@@ -105,11 +105,11 @@ describe("announcement notifications", () => {
     const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, title: testEventTitle("n4"), body: "Once." });
     await waitForRows(studentIds[0]!, id, 1);
     await settle();
-    const before = await db.notification.count({ where: { link: `/news/${id}` } });
+    const before = await db.notification.count({ where: { link: `/announcements/${id}` } });
     const res = await request(app).patch(`/api/v1/announcements/${id}`).set(as(f.tokens.superUser)).send({ body: "Twice." });
     expect(res.status).toBe(200);
     await settle();
-    expect(await db.notification.count({ where: { link: `/news/${id}` } })).toBe(before);
+    expect(await db.notification.count({ where: { link: `/announcements/${id}` } })).toBe(before);
   });
 
   it("notification target parses to announcement id", async () => {
@@ -117,7 +117,7 @@ describe("announcement notifications", () => {
     await waitForRows(studentIds[0]!, id, 1);
     const res = await request(app).get("/api/v1/notifications").set(as(f.tokens.student));
     expect(res.status).toBe(200);
-    const item = res.body.data.items.find((n: { link: string }) => n.link === `/news/${id}`);
+    const item = res.body.data.items.find((n: { link: string }) => n.link === `/announcements/${id}`);
     expect(item.target).toEqual({ entityType: "announcement", entityId: id });
   });
 });
