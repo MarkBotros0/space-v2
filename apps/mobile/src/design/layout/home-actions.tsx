@@ -7,6 +7,7 @@
  * redesign they sit in Home's title row only (`Screen home`, ruling R13).
  * The dev user switcher joins them when the backend enables it.
  */
+import { isStudyingAlumnus } from "@space/shared";
 import { useRouter } from "expo-router";
 import { View } from "react-native";
 
@@ -16,6 +17,7 @@ import {
   useNotifications,
   useUnreadCount,
 } from "../../hooks/use-notifications";
+import { useMyProfile } from "../../hooks/use-self-service";
 import { useLogout } from "../../hooks/use-session";
 import { initialsOf } from "../../lib/initials";
 import { routeForTarget } from "../../lib/notification-route";
@@ -29,6 +31,11 @@ export function HomeActions() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
+  const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
+  // Only an alumnus studying needs the season's name; no read for anyone else.
+  const studying =
+    user !== null && isStudyingAlumnus({ role: user.role, graduationYear, activeSeasonId });
+  const seasonTitle = useMyProfile(studying).data?.activeSeasonTitle ?? null;
   const { data: unread = 0 } = useUnreadCount();
   const { data } = useNotifications();
   const markRead = useMarkRead();
@@ -60,6 +67,8 @@ export function HomeActions() {
       <UserMenu
         role={user.role}
         graduationYear={graduationYear}
+        activeSeasonId={activeSeasonId}
+        seasonTitle={seasonTitle}
         userName={name}
         initials={initialsOf(name, user.role.charAt(0))}
         isDark={resolved === "dark"}

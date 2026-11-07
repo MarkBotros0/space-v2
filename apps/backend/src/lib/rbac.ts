@@ -1,3 +1,4 @@
+import { isStudyingAlumnus as studyingRule } from "../../../../packages/shared/src/navigation";
 import type { SessionUser } from "./auth/tokens";
 
 export function isSuper(u: SessionUser): boolean {
@@ -10,6 +11,11 @@ export function isSuper(u: SessionUser): boolean {
  */
 export function isAlumnus(u: SessionUser): boolean {
   return u.role === "STUDENT" && u.graduationYear != null;
+}
+
+/** Shared's rule over a token: an alumnus in a student seat gets the student experience. */
+export function isStudyingAlumnus(u: SessionUser): boolean {
+  return studyingRule(u);
 }
 
 export function isMentor(u: SessionUser): boolean {

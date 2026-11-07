@@ -8,7 +8,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Start or resume the caller's attempt",
       description:
-        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key.",
+        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus who isn't studying in it, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The open attempt."),

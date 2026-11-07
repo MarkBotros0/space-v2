@@ -122,7 +122,7 @@ export const mePaths = {
         "- **STUDENT** (not graduated): the caller's own figures only — no cohort, no other student, no score (C8). Season from the token's `activeSeasonId`; `seasonId` is ignored. With no active season every field but `variant` is null.",
         "- **SEASON_STAFF**: `seasonId` required. ADMIN must administer it, SUPER may name any, a LEADER gets `scope: \"groups\"` over the ACTIVE enrolments of the groups they lead in it. Attendance % starts at each student's enrolment and never exceeds 100; `atRisk` is the shared `isAtRisk` (either component below 60), not v1's 70 % rule; review counts use the review queue's own scope; ONLINE quiz drafts are counted as `drafts`.",
         "- **MENTOR**: the eight most recent attendance marks, submissions and reviews across all seasons, merged and newest first (reviews at `reviewedAt`), excluding DRAFT work, graduated or deleted students and deleted assignments or seasons. The mentor's at-risk list is `GET /api/v1/reports/engagement`.",
-        "- An alumnus gets 403.",
+        "- An alumnus gets 403, unless studying (holding an ACTIVE place in a community-wide season): they get the student variant.",
         "",
         "`nextSession` is the session in progress (`isInProgress: true`) if there is one, else the next; `dayKey`/`time` are the organisation's calendar day and wall-clock time.",
       ].join("\n"),
@@ -318,7 +318,7 @@ export const mePaths = {
     },
     patch: {
       tags: ["Me"],
-      summary: "Edit the caller's own student profile (students; alumni are read-only)",
+      summary: "Edit the caller's own student profile (students, and alumni while studying; other alumni are read-only)",
       description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/faculty/universityGraduationYear/phone/dateOfBirth is refused 403 forbidden_field — name and address are PATCH /me, email is staff-only. phone and dateOfBirth are account-level (User) fields, the same ones PATCH /me writes.",
       requestBody: {
         required: true,

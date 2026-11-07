@@ -67,7 +67,7 @@ describe("HistoryScreen", () => {
   });
 
   it("titles the alumni variant and uses its empty copy", async () => {
-    useSessionStore.setState(makeSession("STUDENT", { graduationYear: 2024 }));
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }));
     get.mockResolvedValue({ data: { data: { seasons: [] } } });
 
     renderWithProviders(<HistoryScreen />);

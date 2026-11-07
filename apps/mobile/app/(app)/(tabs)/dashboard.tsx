@@ -20,6 +20,7 @@ import { useSessionStore } from "../../../src/store/session";
 export default function DashboardScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
+  const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
 
   // The (app) layout only mounts for a signed-in user; this covers the frame
   // between boot and the session landing in the store.
@@ -31,7 +32,7 @@ export default function DashboardScreen() {
     );
   }
 
-  switch (dashboardBranchFor({ role, graduationYear })) {
+  switch (dashboardBranchFor({ role, graduationYear, activeSeasonId })) {
     case "SUPER":
       return <SuperToday />;
     case "ADMIN":

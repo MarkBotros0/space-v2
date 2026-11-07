@@ -201,6 +201,21 @@ export async function loadSeasonStaffDashboard(
 /** Active, non-graduated, non-deleted students — the at-risk cohort's people (D17, D18). */
 const FEED_STUDENT = { role: "STUDENT" as const, deletedAt: null, graduationYear: null };
 
+/** The live community-wide season: it runs alone, so "this season" is this one. */
+const LIVE_WIDE_SEASON = { isCommunityWide: true, status: "ACTIVE" as const, deletedAt: null };
+
+/**
+ * An alumnus studying there. They are in the feed for that season's rows only:
+ * what they did in a regular season before they graduated stays out, as it does
+ * for every other alumnus.
+ */
+const FEED_STUDYING_ALUMNUS = {
+  role: "STUDENT" as const,
+  deletedAt: null,
+  graduationYear: { not: null },
+  seasonEnrollments: { some: { status: "ACTIVE" as const, season: LIVE_WIDE_SEASON } },
+};
+
 /**
  * The mentor's feed: cross-season by design (a mentor reads every student,
  * `canReadAllStudents`), stated here rather than inherited from a page that
@@ -209,9 +224,19 @@ const FEED_STUDENT = { role: "STUDENT" as const, deletedAt: null, graduationYear
  */
 export async function loadMentorDashboard() {
   const liveAssignment = { deletedAt: null, season: { deletedAt: null } };
+  const submissionAuthor = [
+    { studentUser: FEED_STUDENT },
+    { studentUser: FEED_STUDYING_ALUMNUS, assignment: { season: LIVE_WIDE_SEASON } },
+  ];
   const [marks, submitted, reviewedRows] = await Promise.all([
     db.attendance.findMany({
-      where: { studentUser: FEED_STUDENT, session: { season: { deletedAt: null } } },
+      where: {
+        session: { season: { deletedAt: null } },
+        OR: [
+          { studentUser: FEED_STUDENT },
+          { studentUser: FEED_STUDYING_ALUMNUS, session: { season: LIVE_WIDE_SEASON } },
+        ],
+      },
       orderBy: [{ markedAt: "desc" }, { id: "desc" }],
       take: RECENT_ACTIVITY_LIMIT,
       select: {
@@ -227,8 +252,8 @@ export async function loadMentorDashboard() {
       where: {
         status: { in: ["SUBMITTED", "REVIEWED", "RETURNED"] },
         submittedAt: { not: null },
-        studentUser: FEED_STUDENT,
         assignment: liveAssignment,
+        OR: submissionAuthor,
       },
       orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
       take: RECENT_ACTIVITY_LIMIT,
@@ -245,8 +270,8 @@ export async function loadMentorDashboard() {
       where: {
         status: { in: ["REVIEWED", "RETURNED"] },
         reviewedAt: { not: null },
-        studentUser: FEED_STUDENT,
         assignment: liveAssignment,
+        OR: submissionAuthor,
       },
       orderBy: [{ reviewedAt: "desc" }, { id: "desc" }],
       take: RECENT_ACTIVITY_LIMIT,

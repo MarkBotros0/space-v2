@@ -6,7 +6,7 @@
  * callbacks (wired in the app shell). The theme item, like v1's
  * closeOnClick={false}, keeps the menu open.
  */
-import { isAlumnus, type UserRole } from "@space/shared";
+import { isAlumnus, isStudyingAlumnus, type UserRole } from "@space/shared";
 import { LogOut, Moon, Sun } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -32,14 +32,23 @@ export const ROLE_COLOR: Record<UserRole, RoleColor> = {
 
 /**
  * The badge naming who is signed in: the role, except that a graduated
- * student (navFor's isAlumnus rule: role stays STUDENT) is ALUMNI.
+ * student (navFor's isAlumnus rule: role stays STUDENT) is ALUMNI. One studying
+ * in a community-wide season is still an alumnus and says so, in words.
  */
 export function roleBadge(
   role: UserRole,
   graduationYear: number | null | undefined,
+  activeSeasonId: number | null = null,
+  seasonTitle: string | null = null,
 ): { color: RoleColor; label: string } {
-  if (isAlumnus({ role, graduationYear: graduationYear ?? null }))
-    return { color: "alumni", label: "ALUMNI" };
+  const audience = { role, graduationYear: graduationYear ?? null, activeSeasonId };
+  if (isStudyingAlumnus(audience)) {
+    return {
+      color: "alumni",
+      label: seasonTitle ? `Alumnus · Student in ${seasonTitle}` : "Alumnus · Studying",
+    };
+  }
+  if (isAlumnus(audience)) return { color: "alumni", label: "ALUMNI" };
   return { color: ROLE_COLOR[role], label: role };
 }
 
@@ -48,6 +57,8 @@ const itemClass = "w-full flex-row items-center gap-2 rounded-sm px-2 py-1.5 act
 export function UserMenu({
   role,
   graduationYear = null,
+  activeSeasonId = null,
+  seasonTitle = null,
   userName,
   initials,
   avatarUrl,
@@ -59,6 +70,9 @@ export function UserMenu({
   role: UserRole;
   /** Set for a graduated student, whose badge reads ALUMNI. */
   graduationYear?: number | null;
+  /** With a graduation year, an alumnus studying: the badge names the season. */
+  activeSeasonId?: number | null;
+  seasonTitle?: string | null;
   userName: string | null;
   initials: string;
   avatarUrl?: string | null;
@@ -69,7 +83,7 @@ export function UserMenu({
 }) {
   const [open, setOpen] = useState(false);
   const anchor = useAnchor();
-  const badge = roleBadge(role, graduationYear);
+  const badge = roleBadge(role, graduationYear, activeSeasonId, seasonTitle);
   const close = () => setOpen(false);
   return (
     <>
@@ -89,7 +103,7 @@ export function UserMenu({
         </Avatar>
       </Pressable>
       <AnchoredPopover open={open} onClose={close} anchor={anchor.rect} align="end" sideOffset={8}>
-        <View className="min-w-56 rounded-md border border-border bg-popover p-1">
+        <View className="min-w-56 max-w-72 rounded-md border border-border bg-popover p-1">
           <Pressable
             accessibilityRole="link"
             onPress={() => {
@@ -103,7 +117,7 @@ export function UserMenu({
                 {userName}
               </Text>
             ) : null}
-            <Badge role={badge.color} className="self-start">
+            <Badge role={badge.color} className="max-w-full self-start" textClassName="shrink">
               {badge.label}
             </Badge>
           </Pressable>

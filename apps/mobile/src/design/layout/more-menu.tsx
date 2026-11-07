@@ -32,6 +32,7 @@ function initialsFor(name: string | null, role: UserRole): string {
 export function MoreMenu({
   role,
   graduationYear = null,
+  activeSeasonId = null,
   userName,
   nav,
   onNavigate,
@@ -41,6 +42,8 @@ export function MoreMenu({
   role: UserRole;
   /** Set for a graduated student, whose badge reads ALUMNI. */
   graduationYear?: number | null;
+  /** With a graduation year, an alumnus studying. */
+  activeSeasonId?: number | null;
   userName: string | null;
   nav: RoleNav;
   onNavigate: (href: string) => void;
@@ -51,7 +54,7 @@ export function MoreMenu({
   // The same list more-back.test.tsx walks: sidebar entries that are not a tab.
   const items = moreItemsFor(nav);
   const name = userName?.trim() || null;
-  const badge = roleBadge(role, graduationYear);
+  const badge = roleBadge(role, graduationYear, activeSeasonId);
   return (
     <Screen title="More" subtitle="Account, settings, and more places to go.">
       <View className="flex-col gap-6">

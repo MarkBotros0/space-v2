@@ -42,7 +42,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   useSessionStore.setState(
-    makeSession("STUDENT", { graduationYear: 2025, activeSeasonId: 7 }, { name: "Aya Hassan" }),
+    makeSession("STUDENT", { graduationYear: 2025, activeSeasonId: null }, { name: "Aya Hassan" }),
   );
 });
 afterEach(settle);

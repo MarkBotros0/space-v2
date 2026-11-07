@@ -58,7 +58,7 @@ describe("session store", () => {
   });
 
   it("resolves the alumni nav for a graduated student", () => {
-    useSessionStore.getState().setSession(user, { ...scopes, graduationYear: 2024 });
+    useSessionStore.getState().setSession(user, { ...scopes, activeSeasonId: null, graduationYear: 2024 });
     const nav = useSessionStore.getState().nav();
     expect(nav?.tabs.map((t) => t.label)).toEqual(["Today", "Events", "History", "Profile", "More"]);
   });

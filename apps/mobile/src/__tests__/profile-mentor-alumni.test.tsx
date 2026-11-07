@@ -83,7 +83,7 @@ describe("AccountProfile", () => {
 
 describe("AlumniProfile", () => {
   beforeEach(() => {
-    useSessionStore.setState(makeSession("STUDENT", { graduationYear: 2025 }));
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2025 }));
   });
 
   it("shows the read-only record", async () => {

@@ -17,6 +17,7 @@ const hrefsOf = (items: NavItem[]) => items.map((item) => item.href);
  * destinations are derived from the two navs (REG-81): whatever a STUDENT's
  * tabs/sidebar reach that an ALUMNI's do not, computed from `navFor`. Only the
  * routes those navs cannot show are listed by hand, in STUDENT_ONLY_SEGMENTS.
+ * An alumnus studying isn't kept out: the layout doesn't ask this for them.
  */
 function studentOnlySegments(): ReadonlySet<string> {
   const student = navFor({ role: "STUDENT", graduationYear: null, activeSeasonId: 1 });
