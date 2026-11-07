@@ -20,7 +20,7 @@ import { queryKeys } from "../lib/query-keys";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
+import SeasonDetailScreen from "../../app/(app)/seasons/[code]/admins";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -72,7 +72,7 @@ beforeEach(() => {
   });
 });
 
-describe("Admins card on the SUPER season detail", () => {
+describe("Admins screen (SUPER), opened from the People card", () => {
   it("lists the admins and offers the staff candidates who aren't one yet", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<SeasonDetailScreen />);
@@ -222,11 +222,11 @@ describe("Admins card on the SUPER season detail", () => {
     expect(await screen.findByText("No admins yet.")).toBeTruthy();
   });
 
-  it("is not shown to a season ADMIN, and never asks for the list", async () => {
+  // The overview's People card links here for a SUPER only (season-detail-screens.test).
+  it("is not available to a season ADMIN, and never asks for the list", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Save changes")).toBeTruthy();
-    expect(screen.queryByText("Admins")).toBeNull();
+    expect(await screen.findByText("Not available")).toBeTruthy();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/admins");
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/staff-candidates");
   });

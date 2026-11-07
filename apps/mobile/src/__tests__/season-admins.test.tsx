@@ -17,7 +17,7 @@ import { toast } from "../design/ui/toaster";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
+import SeasonDetailScreen from "../../app/(app)/seasons/[code]/admins";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -75,19 +75,7 @@ beforeEach(() => {
   });
 });
 
-describe("Admins section", () => {
-  it("is shown on a SUPER's season overview and not on an ADMIN's", async () => {
-    useSessionStore.setState(makeSession("SUPER"));
-    const view = renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("ADMINS")).toBeTruthy();
-    view.unmount();
-
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Save changes")).toBeTruthy();
-    expect(screen.queryByText("ADMINS")).toBeNull();
-  });
-
+describe("Admins screen", () => {
   it("the picker lists the staff candidates, minus current admins, with their last season", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<SeasonDetailScreen />);

@@ -9,11 +9,12 @@ import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states"
 import { ShellFrame } from "../../src/design/layout/shell-frame";
 import { Badge, Button, EmptyState, Text } from "../../src/design/ui";
 import { useQuizList } from "../../src/hooks/use-quizzes";
-import { useCurrentSeasonId, useSeasonDetail } from "../../src/hooks/use-seasons";
+import { useSeasonDetail } from "../../src/hooks/use-seasons";
 import { formatDate } from "../../src/lib/format";
 import { bySessionDate } from "../../src/lib/quiz-order";
 import { LeaderQuizzes } from "../../src/screens/leader-quizzes";
 import { WorkScreen } from "../../src/screens/work/work-screen";
+import { useSeasonParamOrCurrent } from "../../src/hooks/use-season-param";
 import { useSessionStore } from "../../src/store/session";
 
 /**
@@ -76,7 +77,7 @@ function StaffQuizzes() {
   // Ruling X8: a staff season comes from Plan 4's hook — never
   // scopes.activeSeasonId, which is the student-profile pointer and always
   // null for staff.
-  const current = useCurrentSeasonId();
+  const current = useSeasonParamOrCurrent();
   const seasonId = current.seasonId;
   const season = useSeasonDetail(seasonId);
   const role = useSessionStore((s) => s.user?.role ?? null);

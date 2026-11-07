@@ -168,6 +168,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
         isOverdue: false,
         status: "PENDING",
         reviewedAt: null,
+        submittedAt: null,
       },
     ]);
   });

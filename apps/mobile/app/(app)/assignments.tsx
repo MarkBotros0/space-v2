@@ -16,10 +16,10 @@ import {
 } from "../../src/design/ui";
 import { useStaffAssignments } from "../../src/hooks/use-assignments";
 import { useSeasonGroups } from "../../src/hooks/use-groups";
-import { useCurrentSeasonId } from "../../src/hooks/use-seasons";
 import { targetLabel } from "../../src/lib/assignment-labels";
 import { formatDayKey, formatDistanceOnly } from "../../src/lib/format";
 import { WorkScreen } from "../../src/screens/work/work-screen";
+import { useSeasonParamOrCurrent } from "../../src/hooks/use-season-param";
 import { useSessionStore } from "../../src/store/session";
 
 /** v1 assignments-list.tsx dueBadge, with the overdue flag from the server (C4) and the org day (X13). */
@@ -43,7 +43,7 @@ function StaffDueBadge({ item }: { item: StaffAssignmentListItem }) {
  */
 function StaffAssignments({ canCreate }: { canCreate: boolean }) {
   const router = useRouter();
-  const current = useCurrentSeasonId();
+  const current = useSeasonParamOrCurrent();
   const list = useStaffAssignments(current.seasonId);
   // Only for the Scope names. A failure costs the names — the label falls back
   // to a group count — so it never blocks the list.

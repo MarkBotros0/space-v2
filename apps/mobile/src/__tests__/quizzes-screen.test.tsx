@@ -3,8 +3,13 @@ import { fireEvent, screen } from "@testing-library/react-native";
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
+let mockParams: Record<string, string> = {};
+beforeEach(() => {
+  mockParams = {};
+});
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: jest.fn(), canGoBack: () => true }),
+  useLocalSearchParams: () => mockParams,
 }));
 
 import { apiClient } from "../lib/api-client";

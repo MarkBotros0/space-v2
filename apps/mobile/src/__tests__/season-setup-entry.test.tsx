@@ -109,7 +109,7 @@ describe("season screen entry points", () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail({ status }));
     renderWithProviders(<SeasonDetailScreen />);
-    await screen.findByText("Edit season");
+    await screen.findByLabelText("Edit season");
     expect(screen.queryByText("Add people")).toBeNull();
     expect(screen.queryByText("Start season")).toBeNull();
   });

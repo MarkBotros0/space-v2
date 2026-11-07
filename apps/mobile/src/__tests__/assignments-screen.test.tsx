@@ -2,10 +2,15 @@ import { screen, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockReplace = jest.fn();
+let mockParams: Record<string, string> = {};
+beforeEach(() => {
+  mockParams = {};
+});
 jest.mock("expo-router", () => {
   const { Text } = jest.requireActual("react-native");
   return {
     useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn(), canGoBack: () => true }),
+    useLocalSearchParams: () => mockParams,
     Redirect: ({ href }: { href: string }) => <Text>{`redirect:${href}`}</Text>,
   };
 });

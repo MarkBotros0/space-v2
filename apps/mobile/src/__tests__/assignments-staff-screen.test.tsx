@@ -2,7 +2,14 @@ import { fireEvent, screen } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
+let mockParams: Record<string, string> = {};
+beforeEach(() => {
+  mockParams = {};
+});
+jest.mock("expo-router", () => ({
+  useRouter: () => ({ push: mockPush }),
+  useLocalSearchParams: () => mockParams,
+}));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -72,6 +79,22 @@ describe("AssignmentsScreen (staff)", () => {
     // The flag decides overdue (C4); the day is the server's org day (X13).
     expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
     expect(screen.getByText(/^Due in /)).toBeTruthy();
+  });
+
+  // Owner 2026-11-07: a season's overview opens its own assignments, whichever is current.
+  it("lists the season the link names", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    mockParams = { seasonId: "9" };
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/seasons/9/assignments"
+        ? Promise.resolve({ data: { data: { assignments: [row({ title: "Season nine" })] } } })
+        : url === "/api/v1/seasons/9/groups"
+          ? Promise.resolve({ data: { data: { groups: [] } } })
+          : Promise.resolve({ data: { data: { seasons: [] } } }),
+    );
+    renderWithProviders(<AssignmentsScreen />);
+    expect(await screen.findByText("Season nine")).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/assignments");
   });
 
   it("opens an assignment, and offers New assignment to a season admin", async () => {

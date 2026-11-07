@@ -61,7 +61,7 @@ describe("Manage items", () => {
 
   it("hides End season on a season that is not active", async () => {
     await open(detail({ status: "DRAFT" }));
-    await screen.findByText("Edit season");
+    await screen.findByLabelText("Edit season");
     expect(screen.queryByText("End season")).toBeNull();
   });
 
@@ -75,7 +75,7 @@ describe("Manage items", () => {
   it("does not show Results to an admin", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     await open(detail({ status: "COMPLETED" }));
-    await screen.findByText("Students and groups");
+    await screen.findByRole("button", { name: "Sessions" });
     expect(screen.queryByText("Results")).toBeNull();
   });
 });

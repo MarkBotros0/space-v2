@@ -5,19 +5,16 @@
  * - its figures in one card: students, groups, sessions;
  * - the next step the caller supplies (Start season on a draft, End season past
  *   its end date), when there is one;
- * - what can be done to it, as a grid of tiles;
- * - its groups, each opening the group;
- * - its sessions, on demand (the list is long), then the caller's extra cards.
+ * - who is in it, as one People card: admins, groups, students (owner, 2026-11-07);
+ * - what can be done to it, as a grid of tiles (Sessions, Assignments,
+ *   Quizzes, ...), then the caller's extra cards.
  */
 import type { SeasonDetail } from "@space/shared";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { View } from "react-native";
 
 import { formatSeasonDay } from "../../lib/format";
-import { joinMeta } from "../../lib/join-meta";
-import { countOf } from "../../lib/plural";
-import { GroupedList, ListRow, ListSectionHeader } from "../ui/grouped-list";
-import { PillButton } from "../ui/pill-button";
+import { ListSectionHeader } from "../ui/grouped-list";
 import { StatusChip, statusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
 import { ActionGrid, type SeasonAction } from "./action-grid";
@@ -89,31 +86,12 @@ function Figures({ season }: { season: SeasonDetail }) {
   );
 }
 
-function Sessions({ count, children }: { count: number; children: ReactNode }) {
-  const [shown, setShown] = useState(false);
-  if (count === 0) return null;
-  return (
-    <View className="flex-col gap-2">
-      <View className="flex-row items-center justify-between gap-2 pr-1">
-        <ListSectionHeader className="min-w-0 flex-1 pb-0">{`Sessions (${count})`}</ListSectionHeader>
-        <PillButton
-          label={shown ? "Hide" : "Show all"}
-          accessibilityLabel={shown ? "Hide sessions" : "Show all sessions"}
-          onPress={() => setShown((s) => !s)}
-        />
-      </View>
-      {shown ? children : null}
-    </View>
-  );
-}
-
 export function SeasonDetailView({
   season,
   today,
   actions,
   nextStep,
-  sessions,
-  onOpenGroup,
+  people,
   extra,
 }: {
   season: SeasonDetail;
@@ -121,8 +99,8 @@ export function SeasonDetailView({
   today: string;
   actions: SeasonAction[];
   nextStep?: ReactNode;
-  sessions: ReactNode;
-  onOpenGroup?: (id: number) => void;
+  /** Who is in it: admins, groups and students, as one card. */
+  people: ReactNode;
   extra?: ReactNode;
 }) {
   return (
@@ -132,29 +110,16 @@ export function SeasonDetailView({
         <Figures season={season} />
       </View>
       {nextStep}
+      <View className="flex-col gap-2">
+        <ListSectionHeader className="pb-0">People</ListSectionHeader>
+        {people}
+      </View>
       {actions.length > 0 ? (
         <View className="flex-col gap-2">
           <ListSectionHeader className="pb-0">Manage</ListSectionHeader>
           <ActionGrid actions={actions} />
         </View>
       ) : null}
-      {season.groups.length > 0 ? (
-        <GroupedList header={`Groups (${season.groups.length})`}>
-          {season.groups.map((g) => (
-            <ListRow
-              key={g.id}
-              title={g.name}
-              subtitle={joinMeta([
-                countOf(g.studentCount, "student"),
-                g.leaderNames.length ? `Leaders: ${g.leaderNames.join(", ")}` : "No leader yet",
-              ])}
-              chevron={onOpenGroup !== undefined}
-              onPress={onOpenGroup ? () => onOpenGroup(g.id) : undefined}
-            />
-          ))}
-        </GroupedList>
-      ) : null}
-      <Sessions count={season.sessionCount}>{sessions}</Sessions>
       {extra}
     </View>
   );
