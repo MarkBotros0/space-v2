@@ -123,6 +123,7 @@ export const quizResult = {
   sessionTitle: null,
   sessionDate: null,
   attemptStatus: null,
+  resultsReleased: false,
 };
 export const quizPage = { items: [quizResult], nextCursor: null };
 
@@ -217,7 +218,9 @@ export const seasonRow = {
 export const engagementSummary = {
   scope: {
     seasonIds: [7],
-    seasons: [{ id: 7, code: "spring-2099", title: "Spring 2099" }],
+    seasons: [
+      { id: 7, code: "spring-2099", title: "Spring 2099", status: "ACTIVE", endDate: "2099-06-01T00:00:00.000Z" },
+    ],
     truncated: false,
     label: "All seasons",
   },

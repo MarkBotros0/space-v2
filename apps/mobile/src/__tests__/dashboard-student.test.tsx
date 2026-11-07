@@ -85,11 +85,11 @@ describe("DashboardScreen — STUDENT", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Hi, Sara")).toBeTruthy();
-    expect(await screen.findByText("1 session to go · 75% done")).toBeTruthy();
+    expect(await screen.findByLabelText("Sessions held: 3 of 4")).toBeTruthy();
     expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
     expect(screen.getByLabelText("Streak: 2")).toBeTruthy();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
-    expect(screen.getByLabelText("Sessions done: 3/4")).toBeTruthy();
+    expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
     expect(screen.getByText("1 assignment submitted late this season")).toBeTruthy();
     expect(screen.getByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Sun, Mar 1 · 6:00 PM · 90 min · Hall")).toBeTruthy();
@@ -100,8 +100,8 @@ describe("DashboardScreen — STUDENT", () => {
 
     fireEvent.press(screen.getByText("Join stream"));
     expect(openURL).toHaveBeenCalledWith("https://youtu.be/live");
-    fireEvent.press(screen.getByLabelText("Absence budget left: 42%"));
-    expect(mockPush).toHaveBeenCalledWith("/attendance");
+    fireEvent.press(screen.getByLabelText("Open Spring 2099"));
+    expect(mockPush).toHaveBeenCalledWith("/season");
     fireEvent.press(screen.getByText("Old essay"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "41" } });
 
@@ -178,7 +178,7 @@ describe("DashboardScreen — STUDENT", () => {
     expect(await screen.findByText("Something went wrong")).toBeTruthy();
     serve(studentRoutes);
     fireEvent.press(screen.getAllByText("Try again")[0]!);
-    expect(await screen.findByText("1 session to go · 75% done")).toBeTruthy();
+    expect(await screen.findByLabelText("Sessions held: 3 of 4")).toBeTruthy();
   });
 
   it("pull-to-refresh refetches every query the branch owns", async () => {

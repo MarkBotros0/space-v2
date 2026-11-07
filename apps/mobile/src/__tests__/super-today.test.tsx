@@ -47,31 +47,31 @@ describe("Super Today", () => {
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });
 
-  it("shows the action rows with no season on the review, sessions or at-risk destinations", async () => {
+  it("shows the action tiles with no season on the review, sessions or at-risk destinations", async () => {
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("3 submissions waiting for review")).toBeTruthy();
+    expect(await screen.findByLabelText("Submissions to review: 3")).toBeTruthy();
     expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-    fireEvent.press(screen.getByText("3 submissions waiting for review"));
+    fireEvent.press(screen.getByLabelText("Submissions to review: 3"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: {} });
-    fireEvent.press(screen.getByText("1 session with no attendance"));
+    fireEvent.press(screen.getByLabelText("Sessions without attendance: 1"));
     expect(mockPush).toHaveBeenCalledWith("/attention/sessions");
-    fireEvent.press(screen.getByText("2 students at risk"));
+    fireEvent.press(screen.getByLabelText("Students at risk: 2"));
     expect(mockPush).toHaveBeenCalledWith("/attention/at-risk");
   });
 
-  it("the invites row opens pending users with no season id, and is absent at zero", async () => {
+  it("the invites tile opens pending users with no season id, and reads All clear at zero", async () => {
     serveStaff(get, { table: base() });
     const first = renderWithProviders(<DashboardScreen />);
-    fireEvent.press(await screen.findByText("5 people not invited yet"));
+    fireEvent.press(await screen.findByLabelText("Not invited yet: 5"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/users", params: { status: "pending" } });
     first.unmount();
 
     serveStaff(get, { table: { ...base(), "/api/v1/users/invites/pending": { pending: 0 } } });
     renderWithProviders(<DashboardScreen />);
-    expect(await screen.findByText("3 submissions waiting for review")).toBeTruthy();
-    expect(screen.queryByText(/not invited yet/)).toBeNull();
+    expect(await screen.findByLabelText("Submissions to review: 3")).toBeTruthy();
+    expect(screen.getByLabelText("Not invited yet: none, all clear")).toBeTruthy();
   });
 
   it("two sessions live at once are both visible", async () => {
@@ -107,27 +107,25 @@ describe("Super Today", () => {
     expect(screen.queryByText("Happening now")).toBeNull();
   });
 
-  it("the figure rows speak their count with the title", async () => {
+  it("the figure tiles speak their label with the value", async () => {
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByRole("button", { name: "Alumni, 12" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Students (not graduated), 40" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Alumni: 12" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Students (not graduated): 40" })).toBeTruthy();
   });
 
-  it("the figure rows open what the old stat cards opened", async () => {
+  it("the figure tiles open what the old stat cards opened", async () => {
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);
 
-    fireEvent.press(await screen.findByText("Alumni"));
+    fireEvent.press(await screen.findByLabelText("Alumni: 12"));
     expect(mockPush).toHaveBeenCalledWith("/students/alumni");
-    fireEvent.press(screen.getByText("Students (not graduated)"));
+    fireEvent.press(screen.getByLabelText("Students (not graduated): 40"));
     expect(mockPush).toHaveBeenCalledWith("/students");
-    fireEvent.press(screen.getByText("Seasons"));
+    fireEvent.press(screen.getByLabelText(/^Seasons: /));
     expect(mockPush).toHaveBeenCalledWith("/seasons");
-    expect(screen.getByText(/All statuses/)).toBeTruthy();
-    expect(screen.getByText(/From today, next 12 months/)).toBeTruthy();
-    fireEvent.press(await screen.findByText("From today, next 12 months"));
+    fireEvent.press(await screen.findByLabelText(/^Upcoming events: \d+$/));
     expect(mockPush).toHaveBeenCalledWith("/events");
   });
 });

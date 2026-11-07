@@ -343,7 +343,7 @@ it("lets a leader override one student's attendance, keeping stored notes (v1 mo
   post.mockResolvedValue({ data: { data: { saved: 1 } } });
 
   renderStacked(<SessionDetailScreen />);
-  fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
+  fireEvent.press(await screen.findByText("Sara Student"));
   expect(screen.getByText("Override attendance")).toBeTruthy();
   fireEvent.press(screen.getByLabelText("Mark Sara Student ABSENT"));
 
@@ -401,7 +401,7 @@ it("shows a failed override inside the sheet, where the leader is looking", asyn
     Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } } }),
   );
   renderStacked(<SessionDetailScreen />);
-  fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
+  fireEvent.press(await screen.findByText("Sara Student"));
   fireEvent.press(screen.getByLabelText("Mark Sara Student PRESENT"));
   expect(await screen.findByTestId("override-error")).toBeTruthy();
   expect(screen.getByText("Override attendance")).toBeTruthy();
@@ -420,13 +420,13 @@ it("starts the next student's override sheet without the last failure, after a d
     Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } } }),
   );
   renderStacked(<SessionDetailScreen />);
-  fireEvent.press(await screen.findByLabelText("Edit attendance for Sara Student"));
+  fireEvent.press(await screen.findByText("Sara Student"));
   fireEvent.press(screen.getByLabelText("Mark Sara Student PRESENT"));
   expect(await screen.findByText("Invalid attendance entries.")).toBeTruthy();
   fireEvent.press(screen.getByTestId("sheet-backdrop"));
   // Let the mutation observer publish the reset before the next student's sheet opens.
   await act(async () => {});
-  fireEvent.press(screen.getByLabelText("Edit attendance for Omar Student"));
+  fireEvent.press(screen.getByText("Omar Student"));
   await waitFor(() => expect(screen.queryByTestId("override-error")).toBeNull());
   expect(screen.getByLabelText("Mark Omar Student PRESENT")).toBeTruthy();
 });
