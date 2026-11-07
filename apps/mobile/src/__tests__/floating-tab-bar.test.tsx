@@ -114,25 +114,30 @@ it("navigates to the tab's route on press", () => {
   expect(navigateToTab).toHaveBeenCalledWith("calendar-key");
 });
 
-it("labels stay one line however long they are", () => {
-  renderBar();
-  const label = screen.getByText("Assignments");
-  expect(label.props.numberOfLines).toBe(1);
+it("names only the selected tab; every tab keeps its name for screen readers", () => {
+  renderBar("assignments");
+  expect(screen.getByText("Assignments")).toBeTruthy();
+  for (const name of ["Calendar", "Home", "History", "Profile"]) {
+    expect(screen.queryByText(name)).toBeNull();
+    expect(screen.getByLabelText(name)).toBeTruthy();
+  }
 });
 
-// Sweep at font 1.3: "Assignme…", "Submissi…". A long label shrinks (down to 0.8) to fit
-// its tab before it would ever ellipsize; the font scale still stops at 1.15.
-it("a long label shrinks to fit its tab instead of truncating", () => {
-  renderBar();
+// Sweep at font 1.3: "Assignme…". The selected tab's label shrinks (down to 0.8) to fit
+// before it would ever ellipsize; the font scale stops at 1.15.
+it("the selected label stays one line and shrinks to fit instead of truncating", () => {
+  renderBar("assignments");
   expect(screen.getByText("Assignments").props).toMatchObject({
     numberOfLines: 1,
     adjustsFontSizeToFit: true,
     minimumFontScale: 0.8,
     maxFontSizeMultiplier: 1.15,
   });
-  expect(screen.getByText("Assignments").props.className.split(" ")).toEqual(
-    expect.arrayContaining(["self-stretch", "text-center"]),
-  );
+});
+
+it("unselected tabs stay at least 44pt wide", () => {
+  renderBar();
+  expect(screen.getByLabelText("Calendar").props.className).toContain("min-w-[44px]");
 });
 
 describe("activeTabRoute", () => {
