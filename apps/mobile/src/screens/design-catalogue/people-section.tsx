@@ -18,6 +18,7 @@ const base: PeopleCandidate = {
   availability: "available",
   reason: null,
   selectable: true,
+  pool: "student",
   overridable: false,
 };
 const FAKE: PeopleCandidate[] = [

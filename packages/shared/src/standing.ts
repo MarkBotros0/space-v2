@@ -56,6 +56,8 @@ export function standingFor(
 export const peopleCandidateSchema = z.object({
   id: z.number(),
   name: z.string(),
+  /** `alumni` when `graduationYear` is set. */
+  pool: z.enum(["student", "alumni"]),
   last: z
     .object({
       seasonTitle: z.string(),
@@ -79,7 +81,12 @@ export type PeopleCandidate = z.infer<typeof peopleCandidateSchema>;
 
 /** `GET /seasons/:id/people-candidates` */
 export const peopleCandidatesResponseSchema = z.object({
-  season: z.object({ id: z.number(), title: z.string(), requiredProgram: z.string().nullable() }),
+  season: z.object({
+    id: z.number(),
+    title: z.string(),
+    requiredProgram: z.string().nullable(),
+    isCommunityWide: z.boolean(),
+  }),
   people: z.array(peopleCandidateSchema),
 });
 export type PeopleCandidatesResponse = z.infer<typeof peopleCandidatesResponseSchema>;

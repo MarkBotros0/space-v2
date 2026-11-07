@@ -4,7 +4,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login, testSeasonCode } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login, testEmail, testSeasonCode } from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -48,7 +48,7 @@ const finished = (
   });
 const candidates = (seasonId: number, token = superToken) =>
   request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(as(token));
-type Row = { id: number; name: string; availability: string; reason: string | null; selectable: boolean; overridable: boolean; last: { seasonTitle: string; outcome: string; attendancePct: number | null } | null };
+type Row = { id: number; name: string; pool: string; availability: string; reason: string | null; selectable: boolean; overridable: boolean; last: { seasonTitle: string; outcome: string; attendancePct: number | null } | null };
 const rowOf = (res: request.Response, id: number) => (res.body.data.people as Row[]).find((p) => p.id === id)!;
 
 beforeAll(async () => {
@@ -79,7 +79,7 @@ describe("GET /seasons/:id/people-candidates", () => {
 
     const res = await candidates(target);
     expect(res.status).toBe(200);
-    expect(res.body.data.season).toEqual({ id: target, title: "LEAD 2027", requiredProgram: "GBV" });
+    expect(res.body.data.season).toEqual({ id: target, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide: false });
     const mine = (res.body.data.people as Row[]).filter((p) => [zed, amy, bob, cat, dan, alum].some((x) => x.id === p.id));
     expect(mine.map((p) => p.name)).toEqual(["Amy Passed", "Zed Passed", "Dan Passed Lead", "Bob Failed", "Cat Never"]);
 
@@ -248,6 +248,90 @@ describe("GET /seasons/:id/people-candidates", () => {
     expect(rowOf(res, late.id).last?.attendancePct).toBe(50);
     expect(res.body.data.people.length).toBeGreaterThan(2);
     expect(calls).toBeLessThanOrEqual(3);
+  });
+});
+
+const wide = async (status: Status, year: number) => {
+  const id = await season(status, "COMM", year);
+  await db.season.update({ where: { id }, data: { isCommunityWide: true } });
+  return id;
+};
+
+describe("community-wide seasons: the pool", () => {
+  it("lists alumni and non-alumni with their pool, never Super or Mentor; a regular season lists no alumni", async () => {
+    const target = await wide("DRAFT", 2040);
+    const regular = await season("DRAFT", "LEAD", 2041);
+    const student = await person("Pool Student");
+    const alum = await person("Pool Alum", 2020);
+    const mentor = await createTestUser("pc-mentor", "MENTOR");
+    const sup = await createTestUser("pc-super2", "SUPER");
+    const gbv = await season("COMPLETED", "GBV", 2026);
+    await finished(gbv, alum.id, "PASSED");
+
+    const res = await candidates(target);
+    expect(res.body.data.season.isCommunityWide).toBe(true);
+    expect(rowOf(res, student.id)).toMatchObject({ pool: "student", availability: "available" });
+    expect(rowOf(res, alum.id)).toMatchObject({
+      pool: "alumni",
+      availability: "available",
+      selectable: true,
+      last: { seasonTitle: "GBV 2026", outcome: "PASSED" },
+    });
+    expect(rowOf(res, mentor.id)).toBeUndefined();
+    expect(rowOf(res, sup.id)).toBeUndefined();
+
+    const reg = await candidates(regular);
+    expect(reg.body.data.season.isCommunityWide).toBe(false);
+    expect(rowOf(reg, alum.id)).toBeUndefined();
+    expect(rowOf(reg, student.id).pool).toBe("student");
+  });
+
+  it("marks an alumnus serving elsewhere or in this season in_role; already passed stays already_passed", async () => {
+    const draft = await wide("DRAFT", 2042);
+    const active = await wide("ACTIVE", 2043);
+    const elsewhere = await season("ACTIVE", "GBV", 2042);
+    const away = await person("Away Alum", 2019);
+    const here = await person("Here Alum", 2018);
+    const passed = await person("Passed Alum", 2017);
+    await db.seasonAdmin.create({ data: { seasonId: elsewhere, userId: away.id } });
+    await db.seasonAdmin.create({ data: { seasonId: draft, userId: here.id } });
+    const hereActive = await person("Active Alum", 2016);
+    await db.seasonAdmin.create({ data: { seasonId: active, userId: hereActive.id } });
+    await finished(await season("COMPLETED", "COMM", 2039), passed.id, "PASSED");
+
+    const onDraft = await candidates(draft);
+    expect(rowOf(onDraft, away.id)).toMatchObject({ availability: "in_role", selectable: true, pool: "alumni" });
+    expect(rowOf(onDraft, here.id)).toMatchObject({
+      availability: "in_role",
+      reason: "Here Alum is serving in this season.",
+      selectable: true,
+    });
+    expect(rowOf(onDraft, passed.id)).toMatchObject({ availability: "already_passed", selectable: true });
+    const onActive = await candidates(active);
+    expect(rowOf(onActive, hereActive.id)).toMatchObject({ availability: "in_role", selectable: false });
+    expect(rowOf(onActive, away.id)).toMatchObject({ availability: "in_role", selectable: false });
+  });
+
+  it("enrols 200 people, half alumni, into a community-wide draft in one batched call", async () => {
+    const target = await wide("DRAFT", 2044);
+    const emails = Array.from({ length: 200 }, (_, i) => testEmail(`bulk${i}`));
+    await db.user.createMany({
+      data: emails.map((email, i) => ({
+        email,
+        name: `Bulk ${i}`,
+        role: "STUDENT" as const,
+        graduationYear: i % 2 ? 2020 : null,
+      })),
+    });
+    const ids = (await db.user.findMany({ where: { email: { in: emails } }, select: { id: true } })).map((u) => u.id);
+    expect(ids).toHaveLength(200);
+
+    const started = Date.now();
+    const res = await request(app).post(`/api/v1/seasons/${target}/enrollments`).set(as(superToken)).send({ userIds: ids });
+    const ms = Date.now() - started;
+    expect(res.status).toBe(201);
+    expect(await db.seasonEnrollment.count({ where: { seasonId: target } })).toBe(200);
+    expect(ms).toBeLessThan(30000);
   });
 });
 
