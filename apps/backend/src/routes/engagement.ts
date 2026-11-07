@@ -6,6 +6,7 @@ import { parseId } from "../lib/parse-id";
 import type { SessionUser } from "../lib/auth/tokens";
 import { canAccessSeason, canViewStudent, staffScopeForSeason } from "../lib/permissions";
 import { computeEngagementForSeason } from "../lib/queries/engagement";
+import { quizParticipation } from "../lib/queries/quiz-participation";
 import { canReadAllStudents } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
@@ -117,6 +118,8 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
     });
   }
 
+  // The student's page shows their quizzes too (owner, 2026-11-07).
+  const quizzes = await quizParticipation(row.seasonId, studentUserId);
   return apiOk(res, {
     studentUserId: row.studentUserId,
     seasonId: row.seasonId,
@@ -129,6 +132,7 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
     attendancePresent: row.attendancePresent,
     submissionsExpected: row.submissionsExpected,
     submissionsCompleted: row.submissionsCompleted,
+    ...quizzes,
   });
 });
 

@@ -154,6 +154,20 @@ export const studentEngagementSchema = engagementScoreSchema.extend({
 export type StudentEngagement = z.infer<typeof studentEngagementSchema>;
 
 /**
+ * One student's engagement on their page, staff view: the score row plus their
+ * quizzes (owner, 2026-11-07: the page shows attendance, assignments and quizzes,
+ * not the composite). Quizzes count published ONLINE quizzes and PAPER quizzes
+ * someone has been graded on; taken is an ONLINE attempt handed in (SUBMITTED or
+ * GRADED) or a PAPER grade. Not part of the score or the at-risk rule.
+ */
+export const studentEngagementDetailSchema = studentEngagementSchema.extend({
+  quizzesGiven: z.number().int().min(0),
+  quizzesTaken: z.number().int().min(0),
+  quizPct: z.number().int().min(0).max(100),
+});
+export type StudentEngagementDetail = z.infer<typeof studentEngagementDetailSchema>;
+
+/**
  * The SAME student's engagement as the student themselves sees it (spec D9).
  *
  * The two components are facts they can act on. The composite is a staff

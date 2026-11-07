@@ -58,6 +58,7 @@ const publicProfile = {
 const engagement = {
   score: 75, attendancePct: 50, submissionPct: 100, attendancePresent: 2, attendanceTotal: 4,
   submissionsCompleted: 2, submissionsExpected: 2, studentUserId: 21, seasonId: 7, seasonTitle: "Spring 2099", atRisk: true,
+  quizzesGiven: 2, quizzesTaken: 1, quizPct: 50,
 };
 const mentorNote = {
   id: 1, body: "Checked in about the essay", visibility: "MENTORS", followUpFlagged: true,
@@ -232,7 +233,7 @@ describe("StudentDetailScreen — STUDENT on their own record", () => {
     expect(screen.queryByText("Call")).toBeNull();
     expect(screen.queryByText("Email")).toBeNull();
     expect(screen.queryByRole("button", { name: "Seasons" })).toBeNull();
-    for (const hidden of ["Attendance", "Submissions", "Notes", "Write a note", "Score"]) {
+    for (const hidden of ["Attendance", "Submissions", "Notes", "Write a note", "Quizzes"]) {
       expect(screen.queryByText(hidden)).toBeNull();
     }
     expect(get.mock.calls.map(([u]) => u)).toEqual(["/api/v1/students/21"]);

@@ -71,6 +71,9 @@ const engagement = {
   attendancePresent: 2,
   submissionsExpected: 2,
   submissionsCompleted: 2,
+  quizzesGiven: 4,
+  quizzesTaken: 3,
+  quizPct: 75,
 };
 
 const note = {
@@ -111,17 +114,16 @@ beforeEach(() => {
 });
 
 describe("student detail — engagement block", () => {
-  it("renders the server's score and components without recomputing anything", async () => {
+  // Owner 2026-11-07: attendance, assignments and quizzes; no composite score.
+  it("renders the server's attendance, assignments and quizzes without recomputing anything", async () => {
     mockAllEndpoints();
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Score")).toBeTruthy();
-    expect(await screen.findByText("75%")).toBeTruthy();
-    expect(screen.getByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
-    expect(await screen.findByText("50%")).toBeTruthy();
-    expect(screen.getByLabelText("Submissions: 100%, 2 of 2")).toBeTruthy();
-    expect(await screen.findByText("100%")).toBeTruthy();
+    expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Assignments: 100%, 2 of 2")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes: 75%, 3 of 4")).toBeTruthy();
+    expect(screen.queryByText("Score")).toBeNull();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement");
   });
 
@@ -153,7 +155,7 @@ describe("student detail — engagement block", () => {
 
     // v1 draws no card for a student with no season.
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
-    expect(screen.queryByText("Score")).toBeNull();
+    expect(screen.queryByTestId("engagement-summary")).toBeNull();
   });
 
   it("shows a retryable error — not 'no season' — for any other failure", async () => {
@@ -171,7 +173,7 @@ describe("student detail — engagement block", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     expect(await screen.findByText("Couldn't load engagement.")).toBeTruthy();
-    expect(screen.queryByText("Score")).toBeNull();
+    expect(screen.queryByTestId("engagement-summary")).toBeNull();
   });
 });
 

@@ -1,9 +1,9 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import axios from "axios";
 import {
-  studentEngagementSchema,
+  studentEngagementDetailSchema,
   studentSelfEngagementSchema,
-  type StudentEngagement,
+  type StudentEngagementDetail,
   type StudentSelfEngagement,
 } from "@space/shared";
 
@@ -37,12 +37,12 @@ export function isNoSeasonError(err: unknown): boolean {
 export function useStudentEngagement(
   studentId: number | null,
   enabled: boolean,
-): UseQueryResult<StudentEngagement> {
+): UseQueryResult<StudentEngagementDetail> {
   return useQuery({
     queryKey: queryKeys.engagement.student(studentId),
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/students/${studentId}/engagement`);
-      return studentEngagementSchema.parse(res.data.data);
+      return studentEngagementDetailSchema.parse(res.data.data);
     },
     enabled: enabled && studentId !== null,
     // A 404 means "no season to score", which is a real answer, not a

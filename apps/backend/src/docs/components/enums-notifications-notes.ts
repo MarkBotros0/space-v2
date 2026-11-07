@@ -91,6 +91,21 @@ export const enumsNotificationsNotesSchemas = {
       },
     ],
   },
+  StudentEngagementDetail: {
+    description: "One student's page, staff view: `StudentEngagement` plus their quizzes. Given counts published ONLINE quizzes and PAPER quizzes anyone has been graded on; taken is an ONLINE attempt handed in (SUBMITTED or GRADED) or a PAPER grade. Not part of `score` or `atRisk`.",
+    allOf: [
+      { $ref: "#/components/schemas/StudentEngagement" },
+      {
+        type: "object",
+        required: ["quizzesGiven", "quizzesTaken", "quizPct"],
+        properties: {
+          quizzesGiven: { type: "integer", minimum: 0 },
+          quizzesTaken: { type: "integer", minimum: 0 },
+          quizPct: { type: "integer", minimum: 0, maximum: 100, description: "round(taken / given * 100); 0 when none given." },
+        },
+      },
+    ],
+  },
   StudentSelfEngagement: {
     type: "object",
     description: "A student's own view: the two components only. No `score` and no `atRisk` \u2014 deliberately.",

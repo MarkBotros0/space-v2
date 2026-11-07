@@ -8,6 +8,7 @@ const mockDb = {
   attendance: { findMany: jest.fn() },
   assignment: { findMany: jest.fn() },
   submission: { findMany: jest.fn() },
+  quiz: { findMany: jest.fn().mockResolvedValue([]) },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
 // requireAuth's Plan 18 M13 check reads User.sessionsValidFrom; no session

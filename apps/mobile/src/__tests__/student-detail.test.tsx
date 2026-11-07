@@ -211,6 +211,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
   const engagement = {
     score: 75, attendancePct: 50, submissionPct: 100, attendancePresent: 2, attendanceTotal: 4,
     submissionsCompleted: 2, submissionsExpected: 2, studentUserId: 21, seasonId: 7, seasonTitle: "Spring 2099", atRisk: false,
+  quizzesGiven: 2, quizzesTaken: 1, quizPct: 50,
   };
   function serveLeader(over: { engagementError?: boolean } = {}) {
     get.mockImplementation((url: string) => {
@@ -245,8 +246,8 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(screen.queryByText("Internal notes · staff only")).toBeNull();
     for (const label of ["University", "Faculty", "Graduation year"]) expect(screen.getByText(label)).toBeTruthy();
     expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
-    expect(screen.getByLabelText("Submissions: 100%, 2 of 2")).toBeTruthy();
-    expect(screen.getByLabelText("Score: 75%")).toBeTruthy();
+    expect(screen.getByLabelText("Assignments: 100%, 2 of 2")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes: 50%, 1 of 2")).toBeTruthy();
     expect(screen.queryByText("At risk")).toBeNull();
   });
 

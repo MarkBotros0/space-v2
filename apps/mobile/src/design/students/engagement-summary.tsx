@@ -1,9 +1,10 @@
 /**
  * This season at a glance on a student's page: one card, three figures side
- * by side (score, attendance, submissions) with their counts under them, and
+ * by side (attendance, assignments, quizzes) with their counts under them, and
  * "At risk" in the card's header when the server says so (C4, the single
  * definition). Replaces the three separate tiles (owner, 2026-11-07: the page
- * was a stack of boxes). A 404 no_season shows nothing, as in v1.
+ * was a stack of boxes). No composite score (owner, 2026-11-07: nobody could
+ * tell what it was). A 404 no_season shows nothing, as in v1.
  */
 import { Fragment } from "react";
 import { View } from "react-native";
@@ -45,13 +46,13 @@ export function EngagementSummary({ studentId }: { studentId: number }) {
     return <InlineError message="Couldn't load engagement." onRetry={() => void q.refetch()} />;
   const e = q.data;
   const figures: Figure[] = [
-    { label: "Score", pct: e.score },
     { label: "Attendance", pct: e.attendancePct, detail: `${e.attendancePresent} of ${e.attendanceTotal}` },
     {
-      label: "Submissions",
+      label: "Assignments",
       pct: e.submissionPct,
       detail: `${e.submissionsCompleted} of ${e.submissionsExpected}`,
     },
+    { label: "Quizzes", pct: e.quizPct, detail: `${e.quizzesTaken} of ${e.quizzesGiven}` },
   ];
   return (
     <View testID="engagement-summary" className="flex-col gap-3 rounded-group bg-surface p-4">

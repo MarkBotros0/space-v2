@@ -127,6 +127,25 @@ beforeAll(async () => {
     ],
   });
 
+  // Quizzes (owner, 2026-11-07: the student's page shows them). Given: the
+  // published ONLINE quiz and the PAPER quiz someone was graded on. Not given:
+  // the ONLINE draft and the PAPER quiz nobody is graded on. early took the
+  // ONLINE one and has no paper grade: 1 of 2.
+  const onlineQuiz = await db.quiz.create({
+    data: { seasonId, title: "Online", kind: "ONLINE", publishedAt: new Date() },
+    select: { id: true },
+  });
+  await db.quiz.create({ data: { seasonId, title: "Draft", kind: "ONLINE" } });
+  const paperQuiz = await db.quiz.create({
+    data: { seasonId, title: "Paper", kind: "PAPER" },
+    select: { id: true },
+  });
+  await db.quiz.create({ data: { seasonId, title: "Paper, not given", kind: "PAPER" } });
+  await db.quizAttempt.create({
+    data: { quizId: onlineQuiz.id, studentUserId: early.id, status: "SUBMITTED", submittedAt: new Date() },
+  });
+  await db.quizGrade.create({ data: { quizId: paperQuiz.id, studentUserId: late.id, score: 7 } });
+
   // A second season the early student is also enrolled in, plus an admin of
   // the FIRST season only. canViewStudent admits that admin (they share
   // season A with the student), which is exactly why the score itself must be
@@ -242,6 +261,15 @@ describe("GET /api/v1/students/:id/engagement", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ score: 75, attendancePct: 50, atRisk: true });
+  });
+
+  it("gives staff the student's quizzes: given and taken, outside the score", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${earlyStudentId}/engagement`)
+      .set("authorization", `Bearer ${superToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ quizzesGiven: 2, quizzesTaken: 1, quizPct: 50, score: 75 });
   });
 
   it("gives a student their own components and NOT the composite (D9)", async () => {
