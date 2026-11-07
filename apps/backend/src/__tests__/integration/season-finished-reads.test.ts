@@ -11,7 +11,7 @@ import { signAccessToken } from "../../lib/auth/tokens";
 import { buildSeasonWorkbook } from "../../lib/exports/season-workbook";
 import { listSeasonRoster } from "../../lib/queries/groups";
 import { newPublicId } from "../../lib/public-id";
-import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, reviewedOf } from "./fixtures";
 
 jest.setTimeout(180000);
 
@@ -124,7 +124,7 @@ beforeAll(async () => {
   });
 
   const adminT = await mint(admin.id);
-  const ended = await post(`/seasons/${seasonId}/end`, adminT, { notPassed: [{ userId: sara, reason: "Absent" }] });
+  const ended = await post(`/seasons/${seasonId}/end`, adminT, { notPassed: [{ userId: sara, reason: "Absent" }], reviewed: await reviewedOf(seasonId) });
   expect(ended.status).toBe(200);
   // Tokens from post-End scopes, the way a real refresh gets them.
   superT = await mint(sup.id);

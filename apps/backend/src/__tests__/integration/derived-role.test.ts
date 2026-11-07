@@ -7,7 +7,7 @@ import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 import { verifyAccessToken } from "../../lib/auth/tokens";
 import { isLeaderOfGroup } from "../../lib/rbac";
-import { PASSWORD, cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { PASSWORD, cleanupTestData, createTestSeason, createTestUser, login, reviewedOf } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -198,7 +198,7 @@ describe("a role in an ACTIVE season hides DRAFT grants", () => {
     const ended = await request(app)
       .post(`/api/v1/seasons/${seasonA.id}/end`)
       .set("authorization", `Bearer ${await login(app, sup.email)}`)
-      .send({ notPassed: [] });
+      .send({ notPassed: [], reviewed: await reviewedOf(seasonA.id) });
     expect(ended.status).toBe(200);
 
     const refreshed = await request(app)

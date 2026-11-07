@@ -4,7 +4,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login, reviewedOf } from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -60,7 +60,7 @@ describe("a late joiner and the attendance blocker (M2)", () => {
     const res = await check(w.seasonId);
     expect(res.status).toBe(200);
     expect(res.body.data.blockers.attendance).toEqual([]);
-    expect((await post(`/seasons/${w.seasonId}/end`, { notPassed: [] })).status).toBe(200);
+    expect((await post(`/seasons/${w.seasonId}/end`, { notPassed: [], reviewed: await reviewedOf(w.seasonId) })).status).toBe(200);
   });
 
   it("a session held after they joined still does", async () => {
@@ -92,7 +92,7 @@ describe("the stale cut-off (M4)", () => {
     const season = await createTestSeason();
     const student = await createTestUser("edge-stale", "STUDENT");
     await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: student.id, status: "ACTIVE" } });
-    expect((await post(`/seasons/${season.id}/end`, { notPassed: [] })).status).toBe(200);
+    expect((await post(`/seasons/${season.id}/end`, { notPassed: [], reviewed: await reviewedOf(season.id) })).status).toBe(200);
     const row = await db.seasonEnrollment.findUniqueOrThrow({
       where: { studentUserId_seasonId: { studentUserId: student.id, seasonId: season.id } },
     });
@@ -105,7 +105,7 @@ describe("the End transaction (I5)", () => {
   it("runs with a 30 second timeout", async () => {
     const season = await createTestSeason();
     const spy = jest.spyOn(db, "$transaction");
-    expect((await post(`/seasons/${season.id}/end`, { notPassed: [] })).status).toBe(200);
+    expect((await post(`/seasons/${season.id}/end`, { notPassed: [], reviewed: await reviewedOf(season.id) })).status).toBe(200);
     expect(spy.mock.calls.some((c) => (c[1] as { timeout?: number } | undefined)?.timeout === 30_000)).toBe(true);
     spy.mockRestore();
   });
@@ -122,7 +122,7 @@ describe("the request's limits (M6)", () => {
   it("End refuses a student listed twice with 400, and changes nothing", async () => {
     const w = await world("twice");
     const res = await post(`/seasons/${w.seasonId}/end`, {
-      notPassed: [{ userId: w.studentId, reason: "a" }, { userId: w.studentId, reason: "b" }],
+      notPassed: [{ userId: w.studentId, reason: "a" }, { userId: w.studentId, reason: "b" }], reviewed: await reviewedOf(w.seasonId),
     });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
@@ -132,7 +132,7 @@ describe("the request's limits (M6)", () => {
   it("End refuses a reason over 1000 characters with 400", async () => {
     const w = await world("long");
     const res = await post(`/seasons/${w.seasonId}/end`, {
-      notPassed: [{ userId: w.studentId, reason: "x".repeat(1001) }],
+      notPassed: [{ userId: w.studentId, reason: "x".repeat(1001) }], reviewed: await reviewedOf(w.seasonId),
     });
     expect(res.status).toBe(400);
     expect((await db.season.findUniqueOrThrow({ where: { id: w.seasonId } })).status).toBe("ACTIVE");
@@ -140,7 +140,7 @@ describe("the request's limits (M6)", () => {
 
   it("a result correction refuses a reason over 1000 characters with 400", async () => {
     const w = await world("correct");
-    expect((await post(`/seasons/${w.seasonId}/end`, { notPassed: [] })).status).toBe(200);
+    expect((await post(`/seasons/${w.seasonId}/end`, { notPassed: [], reviewed: await reviewedOf(w.seasonId) })).status).toBe(200);
     const res = await request(app)
       .patch(`/api/v1/seasons/${w.seasonId}/results/${w.studentId}`)
       .set("authorization", `Bearer ${superToken}`)

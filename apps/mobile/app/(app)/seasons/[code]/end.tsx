@@ -21,8 +21,9 @@ const PASSED: ResultDraft = { result: "PASSED", reason: "" };
 
 /**
  * End a season (staff): finish what blocks it, review every student's result
- * (everyone passes unless marked), confirm. The POST carries only the students
- * marked not passed. The end invalidates the ending staff member's token on the
+ * (everyone passes unless marked), confirm. The POST carries the students marked
+ * not passed and what was reviewed: a season changed since then is refused and
+ * the check reloads, keeping what was staged. The end invalidates the ending staff member's token on the
  * server, so a season admin loses this season at once: they go to Today, a
  * super admin stays and sees it finished.
  */
@@ -40,13 +41,16 @@ export default function EndSeasonScreen() {
   const [confirming, setConfirming] = useState(false);
   const [alreadyEnded, setAlreadyEnded] = useState(false);
 
+  // Only who's on the review now: someone dropped since can't be sent, or the retry is refused.
+  const reviewedIds = check.data?.students.map((s) => s.userId) ?? [];
   const notPassed = Object.entries(staged)
-    .filter(([, d]) => d.result === "NOT_PASSED")
+    .filter(([id, d]) => d.result === "NOT_PASSED" && reviewedIds.includes(Number(id)))
     .map(([id, d]) => ({ userId: Number(id), reason: d.reason.trim() === "" ? null : d.reason.trim() }));
 
   const onConfirm = () => {
+    if (!check.data) return;
     end.mutate(
-      { notPassed },
+      { notPassed, reviewed: { graduatesOnPass: check.data.graduatesOnPass, userIds: reviewedIds } },
       {
         onSuccess: ({ graduated }) => {
           setConfirming(false);

@@ -191,3 +191,13 @@ export async function cleanupTestData(): Promise<void> {
   await db.studentProfile.deleteMany({ where: { user: testUserFilter } });
   await db.user.deleteMany({ where: testUserFilter });
 }
+
+/** What End's review screen would send: the season's flag and its live ACTIVE students, as they are now. */
+export async function reviewedOf(seasonId: number): Promise<{ graduatesOnPass: boolean; userIds: number[] }> {
+  const season = await db.season.findUniqueOrThrow({ where: { id: seasonId }, select: { graduatesOnPass: true } });
+  const rows = await db.seasonEnrollment.findMany({
+    where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
+    select: { studentUserId: true },
+  });
+  return { graduatesOnPass: season.graduatesOnPass, userIds: rows.map((r) => r.studentUserId) };
+}

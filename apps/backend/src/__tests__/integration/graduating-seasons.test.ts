@@ -3,48 +3,14 @@ import request from "supertest";
 
 import { backfillResults } from "../../../scripts/community-preflight";
 import { db } from "../../db/client";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
 import { graduationYearFor } from "../../lib/org-time";
-import { PASSWORD, createTestSeason, createTestUser } from "./fixtures";
+import { auditLines, correct, enrol, finished, graduate, mint, nextSecond, seasonOf, yearOf } from "./graduating-seasons-setup";
 import { adminTokenOf, app, as, ctx, person, rowOf, seedEnrollmentFixtures, stamp, teardownEnrollmentFixtures } from "./season-enrollments-setup";
 
 jest.setTimeout(180000);
 
 beforeAll(seedEnrollmentFixtures);
 afterAll(teardownEnrollmentFixtures);
-
-const THIS_YEAR = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", year: "numeric" }).format(new Date()));
-
-const seasonOf = async (status: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED", graduatesOnPass: boolean, endDate?: Date) => {
-  const row = await createTestSeason({ status });
-  await db.season.update({ where: { id: row.id }, data: { graduatesOnPass, ...(endDate ? { endDate } : {}) } });
-  return row.id;
-};
-const enrol = (seasonId: number, studentUserId: number, status: "ACTIVE" | "WITHDRAWN" = "ACTIVE") =>
-  db.seasonEnrollment.create({ data: { seasonId, studentUserId, status } });
-const finished = (seasonId: number, studentUserId: number, result: "PASSED" | "NOT_PASSED" | null) =>
-  db.seasonEnrollment.create({
-    data: { seasonId, studentUserId, status: "COMPLETED", result, completedAt: new Date(Date.UTC(2026, 5, 1)) },
-  });
-const yearOf = async (id: number) =>
-  (await db.user.findUniqueOrThrow({ where: { id }, select: { graduationYear: true } })).graduationYear;
-const end = (seasonId: number, notPassed: { userId: number; reason: string | null }[] = [], token = ctx.superToken) =>
-  request(app).post(`/api/v1/seasons/${seasonId}/end`).set(as(token)).send({ notPassed });
-const correct = (seasonId: number, userId: number, result: "PASSED" | "NOT_PASSED") =>
-  request(app).patch(`/api/v1/seasons/${seasonId}/results/${userId}`).set(as(ctx.superToken)).send({ result, reason: null });
-const graduate = (userId: number, body: object, token = ctx.superToken) =>
-  request(app).post(`/api/v1/students/${userId}/graduate`).set(as(token)).send(body);
-const nextSecond = () => new Promise((resolve) => setTimeout(resolve, 1100));
-/** Minted, not signed in: the login limiter would throttle a fixture per test. */
-const mint = async (userId: number) => (await signAccessToken({ userId, ...(await loadScopes(userId)) })).token;
-const auditLines = async (run: () => Promise<unknown>) => {
-  const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
-  await run();
-  const lines = info.mock.calls.map((c) => String(c[0]));
-  info.mockRestore();
-  return lines;
-};
 
 describe("graduationYearFor", () => {
   const now = new Date("2026-11-07T12:00:00.000Z");
@@ -62,99 +28,6 @@ describe("graduationYearFor", () => {
     const instant = new Date("2026-12-31T22:30:00.000Z");
     expect(graduationYearFor(instant, new Date("2028-01-01T00:00:00.000Z"))).toBe(2027);
     expect(graduationYearFor(new Date("2099-01-01T00:00:00.000Z"), instant)).toBe(2027);
-  });
-});
-
-describe("End of a graduating season", () => {
-  it("graduates who passed, and no one else", async () => {
-    const seasonId = await seasonOf("ACTIVE", true, new Date("2025-06-30T00:00:00.000Z"));
-    const passed = await person("Passed");
-    const failed = await person("Failed");
-    const dropped = await person("Dropped");
-    const alumnus = await person("Already", 2019);
-    await enrol(seasonId, passed.id);
-    await enrol(seasonId, failed.id);
-    await enrol(seasonId, dropped.id, "WITHDRAWN");
-    await enrol(seasonId, alumnus.id);
-
-    const res = await end(seasonId, [{ userId: failed.id, reason: null }]);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.graduated).toBe(1);
-    expect(await yearOf(passed.id)).toBe(2025);
-    expect(await yearOf(failed.id)).toBeNull();
-    expect(await yearOf(dropped.id)).toBeNull();
-    expect(await yearOf(alumnus.id)).toBe(2019);
-    expect(await rowOf(seasonId, passed.id)).toMatchObject({ status: "COMPLETED", result: "PASSED" });
-  });
-
-  it("uses the current year when the end date is later than now", async () => {
-    const seasonId = await seasonOf("ACTIVE", true);
-    const student = await person("Early");
-    await enrol(seasonId, student.id);
-    expect((await end(seasonId)).body.data.graduated).toBe(1);
-    expect(await yearOf(student.id)).toBe(THIS_YEAR);
-  });
-
-  it("closes a graduate's seat in another season with no result, as graduating anyone does", async () => {
-    const seasonId = await seasonOf("ACTIVE", true);
-    const draft = await seasonOf("DRAFT", false);
-    const student = await person("Held");
-    await enrol(seasonId, student.id);
-    await enrol(draft, student.id);
-    expect((await end(seasonId)).status).toBe(200);
-    expect(await rowOf(draft, student.id)).toMatchObject({ status: "COMPLETED", result: null });
-  });
-
-  it("ends the graduate's session; the next refresh reads alumni", async () => {
-    const seasonId = await seasonOf("ACTIVE", true);
-    const student = await createTestUser("gs-refresh", "STUDENT");
-    await enrol(seasonId, student.id);
-    const session = await request(app).post("/api/v1/auth/login").send({ email: student.email, password: PASSWORD });
-    const { accessToken, refreshToken } = session.body.data as { accessToken: string; refreshToken: string };
-    const before = await stamp(student.id);
-    await nextSecond();
-
-    expect((await end(seasonId)).status).toBe(200);
-
-    expect((await stamp(student.id))?.getTime()).not.toBe(before?.getTime());
-    expect((await request(app).get("/api/v1/me").set(as(accessToken))).status).toBe(401);
-    const rotated = await request(app).post("/api/v1/auth/refresh").send({ refreshToken });
-    expect(rotated.status).toBe(200);
-    const me = await request(app).get("/api/v1/me").set(as(rotated.body.data.accessToken));
-    expect(me.status).toBe(200);
-    expect(me.body.data.scopes.graduationYear).toBe(THIS_YEAR);
-  });
-
-  it("a season admin's End graduates people too, audited person by person", async () => {
-    const seasonId = await seasonOf("ACTIVE", true);
-    const student = await person("ByAdmin");
-    await enrol(seasonId, student.id);
-    const token = await adminTokenOf(seasonId);
-    const lines = await auditLines(async () => {
-      const res = await end(seasonId, [], token);
-      expect(res.body.data.graduated).toBe(1);
-    });
-    expect(await yearOf(student.id)).toBe(THIS_YEAR);
-    expect(lines.some((l) => l.startsWith("[audit] student.graduate") && l.includes(`subject=${student.id} season=${seasonId}`))).toBe(true);
-  });
-
-  it("an ordinary season graduates nobody", async () => {
-    const seasonId = await seasonOf("ACTIVE", false);
-    const student = await person("Ordinary");
-    await enrol(seasonId, student.id);
-    const res = await end(seasonId);
-    expect(res.status).toBe(200);
-    expect(res.body.data.graduated).toBe(0);
-    expect(await yearOf(student.id)).toBeNull();
-  });
-
-  it("the end check says whether the season graduates", async () => {
-    const yes = await seasonOf("ACTIVE", true);
-    const no = await seasonOf("ACTIVE", false);
-    const read = (id: number) => request(app).get(`/api/v1/seasons/${id}/end-check`).set(as(ctx.superToken));
-    expect((await read(yes)).body.data.graduatesOnPass).toBe(true);
-    expect((await read(no)).body.data.graduatesOnPass).toBe(false);
   });
 });
 
@@ -328,7 +201,7 @@ describe("Graduating someone by exception", () => {
     const passed = await seasonOf("ARCHIVED", true);
     await finished(passed, student.id, "PASSED");
     const lines = await auditLines(async () => {
-      expect((await graduate(student.id, { graduationYear: 2025, override: true })).status).toBe(200);
+      expect((await graduate(student.id, { graduationYear: 2025 })).status).toBe(200);
     });
     expect(await yearOf(student.id)).toBe(2025);
     expect(lines).toContain(`[audit] student.graduate actor=${ctx.superId} subject=${student.id}`);

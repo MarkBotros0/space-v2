@@ -6,7 +6,7 @@ import { loadScopes } from "../../lib/auth/scopes";
 import { signAccessToken } from "../../lib/auth/tokens";
 import { newPublicId } from "../../lib/public-id";
 import { studentQuizDetailSchema } from "../../../../../packages/shared/src/index";
-import { cleanupTestData, createTestUser } from "./fixtures";
+import { cleanupTestData, createTestUser, reviewedOf } from "./fixtures";
 import { seedModuleWorld, type ModuleWorld } from "./module-world";
 
 jest.setTimeout(180000);
@@ -140,7 +140,7 @@ beforeAll(async () => {
     data: { publicId: activeAssignmentSubmission, assignmentId: w.otherAssignmentId, studentUserId: activeId, text: "active work", status: "DRAFT" },
   });
 
-  const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, { notPassed: [] });
+  const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, { notPassed: [], reviewed: await reviewedOf(seasonId) });
   expect(ended.status).toBe(200);
 
   for (const role of ["super", "admin", "leaderA", "mentor", "studentA", "studentB", "alumnus"] as const) {

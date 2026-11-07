@@ -7,7 +7,7 @@ import request from "supertest";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { lockSeason, type SeasonLockMode } from "../../lib/roles";
-import { createTestUser, login } from "./fixtures";
+import { createTestUser, login, reviewedOf } from "./fixtures";
 import {
   app,
   as,
@@ -220,18 +220,20 @@ describe("a Start or End while a seat write is open", () => {
     expect(await activeRoleRows(q.id)).toBe(1);
   });
 
-  it("End waits for the write, then closes the new row too", async () => {
+  it("End waits for the write, then refuses: the new student was never reviewed", async () => {
     const live = await season("ACTIVE");
     const q = await person("Late Student");
+    const reviewed = await reviewedOf(live);
     const held = await hold(live, "share", (tx) =>
       tx.seasonEnrollment.create({ data: { seasonId: live, studentUserId: q.id, status: "ACTIVE" } }),
     );
     const res = await behind(held, () =>
-      request(app).post(`/api/v1/seasons/${live}/end`).set(superCall()).send({ notPassed: [] }),
+      request(app).post(`/api/v1/seasons/${live}/end`).set(superCall()).send({ notPassed: [], reviewed }),
     );
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("season_unfinished");
     const row = await db.seasonEnrollment.findFirstOrThrow({ where: { seasonId: live, studentUserId: q.id } });
-    expect(row).toMatchObject({ status: "COMPLETED", result: "PASSED" });
+    expect(row).toMatchObject({ status: "ACTIVE", result: null });
   });
 
   it("a seat write behind an End reads the season finished, and refuses", async () => {

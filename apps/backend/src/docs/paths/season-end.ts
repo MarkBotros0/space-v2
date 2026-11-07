@@ -39,7 +39,7 @@ export const seasonEndPaths = {
       tags: ["Seasons"],
       summary: "End a season with pass results",
       description:
-        "Season-admin only (SUPER passes). One transaction: the season is claimed with a conditional update on `status: ACTIVE` (of two concurrent calls exactly one wins; the other is 409 `season_not_active`), the end check re-runs, then the season becomes COMPLETED, each ACTIVE student is COMPLETED with `result` PASSED (or NOT_PASSED with the reason when listed in `notPassed`) and `resultSetAt`, and the sessions of the season's students, admins and leaders are marked stale. WITHDRAWN enrolments are untouched. On a season with `graduatesOnPass`, in the same transaction, everyone who passed and isn't already an alumnus graduates: `graduationYear` becomes the smaller of the season's end year and the current year (org time), any other live seat they hold is completed with no result, and each gets a `student.graduate` audit line. 409 `season_unfinished` while any blocker exists; 400 when `notPassed` names someone without an ACTIVE enrolment, names a student twice, or carries a reason over 1000 characters. Nothing changes on any refusal.",
+        "Season-admin only (SUPER passes). One transaction: the season is claimed with a conditional update on `status: ACTIVE` (of two concurrent calls exactly one wins; the other is 409 `season_not_active`), the end check re-runs, then the season becomes COMPLETED, each ACTIVE student is COMPLETED with `result` PASSED (or NOT_PASSED with the reason when listed in `notPassed`) and `resultSetAt`, and the sessions of the season's students, admins and leaders are marked stale. WITHDRAWN enrolments are untouched. On a season with `graduatesOnPass`, in the same transaction, everyone who passed and isn't already an alumnus graduates: `graduationYear` becomes the smaller of the season's end year and the current year (org time), any other live seat they hold is completed with no result, and each gets a `student.graduate` audit line. `reviewed` is what the staff member was shown: compared inside the transaction, after the lock, a different `graduatesOnPass` or a different set of ACTIVE live students is 409 `season_unfinished` (\"The roster changed; check the season again.\"), so nobody passes or graduates from a stale review. 409 `season_unfinished` also while any blocker exists; 400 when `notPassed` names someone without an ACTIVE enrolment, names a student twice, or carries a reason over 1000 characters. Nothing changes on any refusal.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -47,7 +47,7 @@ export const seasonEndPaths = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["notPassed"],
+              required: ["notPassed", "reviewed"],
               properties: {
                 notPassed: {
                   type: "array",
@@ -55,6 +55,15 @@ export const seasonEndPaths = {
                     type: "object",
                     required: ["userId", "reason"],
                     properties: { userId: { type: "integer" }, reason: { type: "string", nullable: true } },
+                  },
+                },
+                reviewed: {
+                  type: "object",
+                  required: ["graduatesOnPass", "userIds"],
+                  description: "The end check the staff member reviewed: its flag and its students.",
+                  properties: {
+                    graduatesOnPass: { type: "boolean" },
+                    userIds: { type: "array", items: { type: "integer" } },
                   },
                 },
               },

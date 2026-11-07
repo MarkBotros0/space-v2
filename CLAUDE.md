@@ -321,7 +321,8 @@ Students graduate by passing a season a super marked **Graduating season**
 (`Season.graduatesOnPass`; super-only, changeable until the season has finished).
 End graduates everyone who passed in its own transaction, whoever ends it; the
 year is `graduationYearFor` (the smaller of the end year and the current year, org
-time). Correcting a result to Passed on such a season graduates then; Did not pass
+time). End's body carries `reviewed`, what the staff member was shown; a different flag
+or roster is refused, since everyone not named as not passed passes. Correcting a result to Passed on such a season graduates then; Did not pass
 never removes alumni status. `POST /students/:id/graduate` is the exception: without
 a pass it answers `not_qualified`, and `override: true` is audited. Backfills and old
 results never graduate anyone. The app's second confirmation is the same sheet changing

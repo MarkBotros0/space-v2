@@ -97,6 +97,11 @@ export const endSeasonRequestSchema = z
       .refine((rows) => new Set(rows.map((r) => r.userId)).size === rows.length, {
         message: "A student is listed twice.",
       }),
+    /** What the staff member was shown. The server refuses to end on anything else. */
+    reviewed: z.object({
+      graduatesOnPass: z.boolean(),
+      userIds: z.array(z.number().int()),
+    }),
   })
   .strict();
 export type EndSeasonRequest = z.infer<typeof endSeasonRequestSchema>;

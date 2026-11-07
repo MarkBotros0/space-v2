@@ -4,7 +4,7 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 import { signAccessToken } from "../../lib/auth/tokens";
-import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login, reviewedOf } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -93,7 +93,7 @@ describe("POST /seasons/:id/end", () => {
   it("ends a season in one step", async () => {
     const { season, peter, sara, wd, adminToken, adminId, leaderId } = await setupSeason();
     const res = await post(`/seasons/${season.id}/end`, adminToken, {
-      notPassed: [{ userId: sara, reason: "Attendance" }],
+      notPassed: [{ userId: sara, reason: "Attendance" }], reviewed: await reviewedOf(season.id),
     });
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({
@@ -128,13 +128,13 @@ describe("POST /seasons/:id/end", () => {
 
   it("lets super end any season", async () => {
     const { season } = await setupSeason();
-    expect((await post(`/seasons/${season.id}/end`, superToken, { notPassed: [] })).status).toBe(200);
+    expect((await post(`/seasons/${season.id}/end`, superToken, { notPassed: [], reviewed: await reviewedOf(season.id) })).status).toBe(200);
   });
 
   it("refuses a leader, a student and another season's admin with 403", async () => {
     const { season, leaderToken } = await setupSeason();
     for (const t of [leaderToken, studentToken, otherAdminToken]) {
-      expect((await post(`/seasons/${season.id}/end`, t, { notPassed: [] })).status).toBe(403);
+      expect((await post(`/seasons/${season.id}/end`, t, { notPassed: [], reviewed: await reviewedOf(season.id) })).status).toBe(403);
     }
     expect(await statusOf(season.id)).toBe("ACTIVE");
   });
@@ -142,7 +142,7 @@ describe("POST /seasons/:id/end", () => {
   it("is 409 season_not_active unless the season is ACTIVE", async () => {
     for (const status of ["DRAFT", "COMPLETED"] as const) {
       const s = await createTestSeason({ status });
-      const res = await post(`/seasons/${s.id}/end`, superToken, { notPassed: [] });
+      const res = await post(`/seasons/${s.id}/end`, superToken, { notPassed: [], reviewed: await reviewedOf(s.id) });
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe("season_not_active");
     }
@@ -151,8 +151,9 @@ describe("POST /seasons/:id/end", () => {
   it("is 400 on a malformed body and 404 on a missing season", async () => {
     const { season } = await setupSeason();
     expect((await post(`/seasons/${season.id}/end`, superToken, {})).status).toBe(400);
-    expect((await post(`/seasons/${season.id}/end`, superToken, { notPassed: [], x: 1 })).status).toBe(400);
-    expect((await post(`/seasons/2147483000/end`, superToken, { notPassed: [] })).status).toBe(404);
+    expect((await post(`/seasons/${season.id}/end`, superToken, { notPassed: [] })).status).toBe(400);
+    expect((await post(`/seasons/${season.id}/end`, superToken, { notPassed: [], reviewed: await reviewedOf(season.id), x: 1 })).status).toBe(400);
+    expect((await post(`/seasons/2147483000/end`, superToken, { notPassed: [], reviewed: { graduatesOnPass: false, userIds: [] } })).status).toBe(404);
   });
 
   it("is 409 season_unfinished while work blocks, and changes nothing", async () => {
@@ -162,7 +163,7 @@ describe("POST /seasons/:id/end", () => {
       data: { assignmentId: assignment.id, studentUserId: peter, status: "SUBMITTED", publicId: `endrt-${season.id}` },
     });
     const res = await post(`/seasons/${season.id}/end`, adminToken, {
-      notPassed: [{ userId: sara, reason: null }],
+      notPassed: [{ userId: sara, reason: null }], reviewed: await reviewedOf(season.id),
     });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("season_unfinished");
@@ -177,7 +178,7 @@ describe("POST /seasons/:id/end", () => {
     const { season, peter, sara, wd, extra, adminToken } = await setupSeason();
     for (const bad of [wd, extra]) {
       const res = await post(`/seasons/${season.id}/end`, adminToken, {
-        notPassed: [{ userId: sara, reason: null }, { userId: bad, reason: null }],
+        notPassed: [{ userId: sara, reason: null }, { userId: bad, reason: null }], reviewed: await reviewedOf(season.id),
       });
       expect(res.status).toBe(400);
     }
@@ -190,7 +191,7 @@ describe("POST /seasons/:id/end", () => {
     const { season, peter, extra, adminToken } = await setupSeason();
     await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: extra, status: "ACTIVE" } });
     await db.user.update({ where: { id: extra }, data: { deletedAt: new Date() } });
-    const res = await post(`/seasons/${season.id}/end`, adminToken, { notPassed: [] });
+    const res = await post(`/seasons/${season.id}/end`, adminToken, { notPassed: [], reviewed: await reviewedOf(season.id) });
     expect(res.status).toBe(200);
     const gone = await enrolment(season.id, extra);
     expect(gone).toMatchObject({ status: "COMPLETED", result: null, resultSetAt: null });
@@ -203,7 +204,7 @@ describe("POST /seasons/:id/end", () => {
     const { season, extra, adminToken } = await setupSeason();
     await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: extra, status: "ACTIVE" } });
     await db.user.update({ where: { id: extra }, data: { deletedAt: new Date() } });
-    const res = await post(`/seasons/${season.id}/end`, adminToken, { notPassed: [{ userId: extra, reason: null }] });
+    const res = await post(`/seasons/${season.id}/end`, adminToken, { notPassed: [{ userId: extra, reason: null }], reviewed: await reviewedOf(season.id) });
     expect(res.status).toBe(400);
     expect(await statusOf(season.id)).toBe("ACTIVE");
   });
@@ -211,8 +212,8 @@ describe("POST /seasons/:id/end", () => {
   it("two concurrent ends: exactly one 200, the other 409, first result kept", async () => {
     const { season, sara, peter, adminToken } = await setupSeason();
     const [a, b] = await Promise.all([
-      post(`/seasons/${season.id}/end`, adminToken, { notPassed: [{ userId: sara, reason: "First" }] }),
-      post(`/seasons/${season.id}/end`, superToken, { notPassed: [] }),
+      post(`/seasons/${season.id}/end`, adminToken, { notPassed: [{ userId: sara, reason: "First" }], reviewed: await reviewedOf(season.id) }),
+      post(`/seasons/${season.id}/end`, superToken, { notPassed: [], reviewed: await reviewedOf(season.id) }),
     ]);
     const statuses = [a.status, b.status].sort();
     expect(statuses).toEqual([200, 409]);
@@ -234,7 +235,7 @@ describe("season results", () => {
   async function ended() {
     const ctx = await setupSeason();
     const res = await post(`/seasons/${ctx.season.id}/end`, superToken, {
-      notPassed: [{ userId: ctx.sara, reason: "Attendance" }],
+      notPassed: [{ userId: ctx.sara, reason: "Attendance" }], reviewed: await reviewedOf(ctx.season.id),
     });
     expect(res.status).toBe(200);
     return ctx;

@@ -49,7 +49,8 @@ class EndRefused extends Error {
  * locked first, so its flag is read as End will act on it, and a seat
  * write goes in wholly before this or sees the season finished. It is claimed
  * with a conditional update, so of two concurrent Ends exactly one proceeds, and
- * the blocker check runs after the claim, on the data the claim protects.
+ * the blocker check runs after the claim, on the data the claim protects, as does
+ * the comparison with `reviewed`, what the staff member was shown.
  */
 export async function endSeason(req: Request, res: Response) {
   const user = requireUser(req);
@@ -84,6 +85,16 @@ export async function endSeason(req: Request, res: Response) {
         throw new EndRefused("season_unfinished", 409, "The season still has work to finish.");
       }
       const activeIds = new Set(check.students.map((s) => s.userId));
+      // Graduating can't be undone, and everyone not named in notPassed passes:
+      // End only goes ahead on what the staff member was actually shown.
+      const reviewedIds = new Set(parsed.data.reviewed.userIds);
+      if (
+        parsed.data.reviewed.graduatesOnPass !== check.graduatesOnPass ||
+        reviewedIds.size !== activeIds.size ||
+        [...activeIds].some((uid) => !reviewedIds.has(uid))
+      ) {
+        throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
+      }
       if ([...reasons.keys()].some((uid) => !activeIds.has(uid))) {
         throw new EndRefused("bad_request", 400, "notPassed names a student who is not active in this season.");
       }
