@@ -9,7 +9,8 @@
  *   pnpm roles:convert --apply    refuses if anyone lacks a graduationYear, else
  *                                 converts in one transaction. Safe to re-run.
  *
- * Not a migration: `migrate deploy` also reaches Neon, whose `User.role` v1 still reads.
+ * Not a migration: a migration must never change `User.role` values, since the
+ * old Neon database is kept and v1 still reads them.
  */
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";

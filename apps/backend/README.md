@@ -98,9 +98,10 @@ clickable button/link.
   deletes rows carrying that prefix. This is uncached in Turbo
   (`test:integration` has `cache: false`), so it always actually executes
   rather than replaying a stale pass.
-- The shared Neon staging Postgres autosuspends when idle; the first query
-  after a period of inactivity has been measured at ~18s (subsequent queries
-  ~2s). Several integration suites carry an explicit `jest.setTimeout` above
+- Locally `.env` points at a Postgres `space_test` (docker container
+  `space-v2-sweepdb`, 127.0.0.1:55440), which is where these run. A hosted
+  autosuspending Postgres (Neon was one) measured ~18s on the first query after
+  idle (subsequent ~2s). Several integration suites carry an explicit `jest.setTimeout` above
   Jest's 5s default for this reason — see the comment beside each
   `jest.setTimeout` call for the suite's specific budget.
 
@@ -110,7 +111,20 @@ clickable button/link.
 prints its host first. Read-only by default (violations, and how many enrolments the backfill would
 touch); `--apply` refuses while any violation exists, else marks COMPLETED enrolments without a
 result as PASSED and completes stale ACTIVE enrolments of finished seasons, in one transaction. Not
-part of a migration, so `migrate deploy` stays safe on Neon.
+part of a migration, so `migrate deploy` never rewrites data.
+
+It also prints review lists, which are information and never block `--apply`: stored ADMIN or
+LEADER accounts without a `graduationYear`; people holding a live seat (SeasonAdmin or GroupLeader
+in an ACTIVE season) who aren't alumni; seat rows in DRAFT seasons (reported apart, not
+violations); and stored STUDENTs holding live seats, split by whether they have a `graduationYear`.
+On a database not migrated yet, anything it can't read is reported as unknown.
+
+## Converting stored roles
+
+`pnpm roles:convert` moves stored ADMIN and LEADER accounts to STUDENT; their role already comes
+from season rows. Read-only by default (prints the plan); `--apply` refuses while any of them has
+no `graduationYear`, else converts in one transaction, and is safe to re-run. Run it on a database
+the owner names. It is a script rather than a migration so no migration changes `User.role`.
 
 ## Uploads are switched off
 
@@ -223,8 +237,8 @@ includes `TRUST_PROXY=1`, or the rate limiters bucket every client together.
 One thing does not survive a serverless runtime and is not fixed by the
 entrypoint above:
 
-- **Prisma needs a pooled connection.** Point `DATABASE_URL` at Neon's *pooled*
-  endpoint, or concurrent cold starts exhaust the connection limit.
+- **Prisma needs a pooled connection.** Point `DATABASE_URL` at the host's *pooled*
+  endpoint (Prisma Postgres' `@pooled` URL), or concurrent cold starts exhaust the connection limit.
 
 Rate limiting used to be a second: `express-rate-limit`'s default in-memory
 store gave every instance its own counter. Every limiter is now built by

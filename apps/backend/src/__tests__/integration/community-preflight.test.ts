@@ -5,6 +5,7 @@ import {
   countViolations,
   findRoleRuleViolations,
 } from "../../../scripts/community-preflight";
+import { findReviewLists } from "../../../scripts/community-preflight-review";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 
 jest.setTimeout(120000);
@@ -127,6 +128,73 @@ describe("findRoleRuleViolations", () => {
     for (const id of [student.id, leader.id, deleted.id]) {
       expect(text).not.toContain(`"userId":${id},`);
     }
+  });
+});
+
+describe("findReviewLists", () => {
+  const ids = (rows: { userId: number }[]) => rows.map((r) => r.userId);
+  const setYear = (id: number, graduationYear: number | null) =>
+    db.user.update({ where: { id }, data: { graduationYear } });
+
+  it("lists stored staff without a graduation year, and staff who aren't alumni", async () => {
+    const s = await active();
+    const noYear = await createTestUser("pf-rv-noyear", "ADMIN");
+    const withYear = await createTestUser("pf-rv-year", "LEADER");
+    const seatNoYear = await createTestUser("pf-rv-seat-noyear", "STUDENT");
+    await setYear(noYear.id, null);
+    await setYear(withYear.id, 2020);
+    await setYear(seatNoYear.id, null);
+    await administer(s.id, noYear.id);
+    await lead(s.id, withYear.id, "pf-rv-l");
+    await lead(s.id, seatNoYear.id, "pf-rv-l2");
+
+    const r = await findReviewLists();
+    expect(ids(r.storedStaffWithoutGraduationYear)).toContain(noYear.id);
+    expect(ids(r.storedStaffWithoutGraduationYear)).not.toContain(withYear.id);
+    expect(ids(r.staffNotAlumni)).toEqual(expect.arrayContaining([noYear.id, seatNoYear.id]));
+    expect(ids(r.staffNotAlumni)).not.toContain(withYear.id);
+  });
+
+  it("splits stored students holding live seats by graduation year", async () => {
+    const s = await active();
+    const alum = await createTestUser("pf-rv-alum", "STUDENT");
+    const plain = await createTestUser("pf-rv-plain", "STUDENT");
+    await setYear(alum.id, 2019);
+    await setYear(plain.id, null);
+    await administer(s.id, alum.id);
+    await lead(s.id, plain.id, "pf-rv-plain-g");
+    const r = await findReviewLists();
+    expect(ids(r.storedStudentsHoldingSeats.withGraduationYear)).toContain(alum.id);
+    expect(ids(r.storedStudentsHoldingSeats.withoutGraduationYear)).toContain(plain.id);
+    expect(ids(r.storedStudentsHoldingSeats.withGraduationYear)).not.toContain(plain.id);
+  });
+
+  it("reports DRAFT seats only in their own section, and they are not violations", async () => {
+    const draft = await createTestSeason({ status: "DRAFT" });
+    const person = await createTestUser("pf-rv-draft", "STUDENT");
+    await setYear(person.id, null);
+    await administer(draft.id, person.id);
+    await lead(draft.id, person.id, "pf-rv-draft-g");
+    const r = await findReviewLists();
+    expect(ids(r.draftSeatHolders)).toContain(person.id);
+    expect(ids(r.staffNotAlumni)).not.toContain(person.id);
+    expect(ids(r.storedStudentsHoldingSeats.withoutGraduationYear)).not.toContain(person.id);
+    expect(users((await findRoleRuleViolations()).adminsInManySeasons)).not.toContain(person.id);
+  });
+
+  it("ignores deleted accounts, Supers and Mentors", async () => {
+    const s = await active();
+    const gone = await createTestUser("pf-rv-gone", "ADMIN");
+    const sup = await createTestUser("pf-rv-super", "SUPER");
+    await setYear(gone.id, null);
+    await setYear(sup.id, null);
+    await administer(s.id, gone.id);
+    await administer(s.id, sup.id);
+    await db.user.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
+    const r = await findReviewLists();
+    expect(ids(r.storedStaffWithoutGraduationYear)).not.toContain(gone.id);
+    expect(ids(r.staffNotAlumni)).not.toEqual(expect.arrayContaining([gone.id]));
+    expect(ids(r.staffNotAlumni)).not.toContain(sup.id);
   });
 });
 

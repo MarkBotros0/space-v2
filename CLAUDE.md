@@ -82,8 +82,8 @@ pnpm --filter @space/backend db:generate
 
 `test` runs the Turbo tasks `test:unit` then `test:integration` (there is no
 `test` Turbo task itself — it's a root `package.json` script). `test:integration`
-is uncached (`cache: false` in `turbo.json`) and hits the live staging database,
-so it always actually executes. The backend's `start` script is
+is uncached (`cache: false` in `turbo.json`) and hits the database `.env` names
+(locally the Postgres `space_test`, see below), so it always actually executes. The backend's `start` script is
 `node dist/apps/backend/src/server.js` — the emit path nests under
 `dist/apps/backend/src/` because of the backend's `rootDir: "../.."`. The
 backend build uses `tsconfig.build.json` (extends `tsconfig.json`, excludes
@@ -375,6 +375,30 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   Android reports the keyboard height without the nav bar, and an edge-to-edge `Modal` window
   is never resized.
 
+## Roles (Build 2, owner rulings 2026-11-07)
+
+- **The role claim is derived.** `loadScopes` (`lib/auth/scopes.ts`) computes `role` on every token
+  from live season rows: a SeasonAdmin row means ADMIN, a GroupLeader row means LEADER, in a DRAFT
+  or ACTIVE, non-deleted season. Stored `User.role` means **SUPER, MENTOR or STUDENT only**; SUPER
+  and MENTOR are permanent and ignore season rows. Never gate on the stored role for staff.
+- **`lib/roles` guards every seat write**: `activeRolesFor` reads a person's one active role,
+  `lockPeople` / `lockSeason` take the row locks, and the refusal helpers (`seatRefusal`,
+  `checkStudentSeat`, ...) answer 409 with the reason in words. Lock order is **Season, then
+  People**, always; a new seat-writing path takes both in that order inside its transaction.
+  Staff must be alumni (`graduationYear` set), with no override; a student in a regular season must
+  not be.
+- **Role changes sign nobody out.** Assigning or removing a season role calls `markSessionsStale`,
+  so the new claim arrives on the next silent refresh; `revokeAllRefreshTokensForUser` is not
+  used on these paths.
+- **`pnpm roles:convert`** (`scripts/convert-stored-roles.ts`) moves stored ADMIN/LEADER accounts
+  to STUDENT. Read-only by default; `--apply` refuses while anyone lacks a `graduationYear`, else
+  converts in one transaction. It is a script, not a migration, because no migration may change
+  `User.role` values. Run it on a database the owner names, after `preflight:community`.
+- **Graduation.** Super marks a season Graduating (`Season.graduatesOnPass`). Passing it graduates
+  the student automatically at End (see "Graduating seasons" above). Super may graduate an
+  exception without a pass via `POST /students/:id/graduate` with `override: true`, behind one
+  extra confirm; it is audited.
+
 ## Community model, Build 1 (owner rulings, 2026-11-06)
 
 Design: `docs/superpowers/specs/2026-11-06-community-model-design.md`. Three TestFlight builds; only
@@ -382,18 +406,19 @@ Build 1 exists.
 
 - **One active role.** Every user has zero or one active role: a student in one ACTIVE season, or
   serving (admin and/or leader of one group) in one ACTIVE season; Super and Mentor are permanent
-  roles and hold no season role. A DRAFT season's roles don't count until it starts. **Build 1 does
-  not enforce this on writes** and still gates staff on the global `role`; it only *checks* it, in
+  roles and hold no season role. A DRAFT season's roles don't count until it starts. Build 1 only
+  *checked* it; Build 2 enforces it on every seat write (see "Roles"). The check lives in
   `pnpm preflight:community` (read-only by default; prints the host and every violation: a leader
   with two groups or in two seasons, an admin of two ACTIVE seasons, admin in one season and leader
   in another (the same season is allowed), a student in two ACTIVE seasons, a Super or Mentor with
   season rows, staff who also hold an ACTIVE enrolment; `--apply` refuses while any exist, or once
   any enrolment has a `result` so it can't run twice, else backfills results in one transaction; on
   a database not migrated yet it prints the violations and says what is unknown).
-  Run it against the real
-  database before anything depends on the rule; the backfill is not part of a migration because
-  `migrate deploy` also reaches Neon, which v1 writes. Enforcement, roles from season rows and the
-  pickers are Build 2.
+  Build 2 added review lists (information only, never blocking `--apply`): stored ADMIN/LEADER
+  without a `graduationYear`; live seat holders who aren't alumni; seat rows in DRAFT seasons
+  (reported apart, not violations); stored STUDENTs holding live seats, split by `graduationYear`.
+  Run it against any database a release will reach before it; the backfill is not part of a
+  migration because the old Neon database is kept and v1 writes it.
 - **Season lifecycle.** DRAFT -> ACTIVE -> COMPLETED (-> ARCHIVED). **End season** (`POST
   /seasons/:id/end`; that season's admin, or Super) is refused with `season_unfinished` while any
   blocker stands: a SUBMITTED submission or quiz attempt not graded, a finished session with an
@@ -429,8 +454,7 @@ Build 1 exists.
   (`sessionsValidFrom`), so the change lands on their next refresh, not at the next login.
 - **Former staff are cut off.** Once a season ends, its admins and leaders lose it with their
   scopes: no access to it and no History entry; only Super (and Mentors) read finished seasons.
-  They keep their global role and tabs until Build 2, so their season lists can look empty for one
-  TestFlight cycle.
+  Their role is derived from season rows (Build 2), so it ends with the season.
 - **Students between seasons** (no `activeSeasonId`) get Today, Calendar, History and More, with
   Today telling finished, dropped and first-time apart; the finished season has a read-only page
   with its assignments, quizzes and attendance. Alumni keep their own nav.
@@ -471,9 +495,13 @@ Since 2026-11-06 the project lives on the **`jesusprojectcommunity`** account.
   copied on 2026-11-06 from the shared Neon database (`ep-cold-mode-…`, the
   one v1 `jpc-space` ran on) with `pg_dump`/`pg_restore` of `public`; all 34
   tables' row counts, 63 FKs, 100 indexes, 13 enums and 24 migrations matched.
-  v1 is to be retired (it still writes to Neon until it's stopped, so do a
-  final copy at cut-over). The local `.env` still points at Neon —
-  check the host before running anything that writes.
+  Owner ruling: this is a test database too ("There's no live, it's a test
+  db"), so there is no final copy at cut-over. Nothing depends on Neon any
+  more; it stays alive and undeleted, but no `.env` points at it. The local
+  `.env` points at a local Postgres `space_test` (docker container
+  `space-v2-sweepdb`, 127.0.0.1:55440), where the integration tests run. Check
+  the host before running anything that writes elsewhere; never print
+  `DATABASE_URL`.
 - **`DATABASE_URL` on Vercel is the pooled URL** (`@pooled.db.prisma.io`), set
   by hand. The direct database allows ~50 connections and each serverless
   instance opens its own pool, so a direct URL runs out under load. The

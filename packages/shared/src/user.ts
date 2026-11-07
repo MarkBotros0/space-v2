@@ -5,7 +5,9 @@ import { addressFieldSchema, dateOfBirthFieldSchema, phoneFieldSchema } from "./
 /**
  * Roles only an alumnus (non-null graduationYear) may hold — v1's
  * src/lib/roles.ts, ported into the shared contract so the schema refinement
- * and the screens consume one list (spec 11 R2).
+ * and the screens consume one list (spec 11 R2). LEADER and ADMIN are derived
+ * roles now (from season rows, `loadScopes`); they stay here so a derived
+ * role is still checked against the graduation year. Only MENTOR is stored.
  */
 export const ALUMNI_ONLY_ROLES: readonly UserRole[] = ["LEADER", "ADMIN", "MENTOR"];
 

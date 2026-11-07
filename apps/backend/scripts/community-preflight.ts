@@ -5,10 +5,11 @@
  *                                       else backfills in one transaction
  *
  * The backfill is deliberately NOT in the migration: `migrate deploy` also
- * reaches Neon, which v1 still writes.
+ * can reach a database v1 still writes.
  */
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
+import { printReviewLists } from "./community-preflight-review";
 
 /** Every way the data breaks "zero or one active role". Each list is one rule. */
 export interface Violations {
@@ -149,6 +150,7 @@ function isMissingResultColumn(err: unknown): boolean {
 export async function readOnlyReport(log: (...args: unknown[]) => void): Promise<void> {
   const violations = await findRoleRuleViolations();
   log("Role-rule violations:", JSON.stringify(violations, null, 2));
+  await printReviewLists(log);
   try {
     log("Would change:", await backfillResults({ dryRun: true }));
   } catch (err) {
