@@ -116,14 +116,16 @@ part of a migration, so `migrate deploy` never rewrites data.
 It also prints review lists, which are information and never block `--apply`: stored ADMIN or
 LEADER accounts without a `graduationYear`; people holding a live seat (SeasonAdmin or GroupLeader
 in an ACTIVE season) who aren't alumni; seat rows in DRAFT seasons (reported apart, not
-violations); and stored STUDENTs holding live seats, split by whether they have a `graduationYear`.
+violations); stored STUDENTs holding live seats, split by whether they have a `graduationYear`; and
+alumni holding an ACTIVE enrolment in an ACTIVE season.
 On a database not migrated yet, anything it can't read is reported as unknown.
 
 ## Converting stored roles
 
 `pnpm roles:convert` moves stored ADMIN and LEADER accounts to STUDENT; their role already comes
-from season rows. Read-only by default (prints the plan); `--apply` refuses while any of them has
-no `graduationYear`, else converts in one transaction, and is safe to re-run. Run it on a database
+from season rows. Read-only by default (prints the plan); `--apply` refuses while any live one has
+no `graduationYear`, else converts in one transaction, and is safe to re-run. A deactivated account
+with no year is left as it is and printed apart. Run it on a database
 the owner names. It is a script rather than a migration so no migration changes `User.role`.
 
 ## Uploads are switched off

@@ -22,6 +22,8 @@ export interface ReviewLists {
   draftSeatHolders: SeatRow[];
   /** Stored STUDENTs holding live seats: their role comes from the rows already. */
   storedStudentsHoldingSeats: { withGraduationYear: SeatRow[]; withoutGraduationYear: SeatRow[] };
+  /** A regular season's students are non-alumni: these people count on a roster but act as alumni. */
+  alumniHoldingActiveEnrollment: { userId: number; seasonId: number }[];
 }
 
 const LIVE_USER = { deletedAt: null };
@@ -54,7 +56,7 @@ const asRow = ({ userId, seasonId, row }: Seat): SeatRow => ({ userId, seasonId,
 const permanent = (s: Seat) => s.role === "SUPER" || s.role === "MENTOR";
 
 export async function findReviewLists(): Promise<ReviewLists> {
-  const [storedStaff, live, draft] = await Promise.all([
+  const [storedStaff, live, draft, enrolledAlumni] = await Promise.all([
     db.user.findMany({
       where: { role: { in: ["ADMIN", "LEADER"] }, graduationYear: null, ...LIVE_USER },
       select: { id: true, role: true },
@@ -62,6 +64,15 @@ export async function findReviewLists(): Promise<ReviewLists> {
     }),
     readSeats("ACTIVE"),
     readSeats("DRAFT"),
+    db.seasonEnrollment.findMany({
+      where: {
+        status: "ACTIVE",
+        season: { status: "ACTIVE", deletedAt: null },
+        studentUser: { ...LIVE_USER, graduationYear: { not: null } },
+      },
+      select: { studentUserId: true, seasonId: true },
+      orderBy: { id: "asc" },
+    }),
   ]);
   const students = live.filter((s) => s.role === "STUDENT");
   return {
@@ -72,6 +83,7 @@ export async function findReviewLists(): Promise<ReviewLists> {
       withGraduationYear: students.filter((s) => s.graduationYear !== null).map(asRow),
       withoutGraduationYear: students.filter((s) => s.graduationYear === null).map(asRow),
     },
+    alumniHoldingActiveEnrollment: enrolledAlumni.map((e) => ({ userId: e.studentUserId, seasonId: e.seasonId })),
   };
 }
 

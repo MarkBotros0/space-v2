@@ -41,6 +41,23 @@ describe("planConversion", () => {
   });
 });
 
+describe("planConversion and deactivated accounts", () => {
+  const gone = new Date(Date.UTC(2026, 0, 1));
+
+  it("doesn't refuse a deactivated account with no year, and doesn't convert it", () => {
+    const plan = planConversion([person(1, "ADMIN", null, gone), person(2, "LEADER", 2021)]);
+    expect(plan.refused).toEqual([]);
+    expect(plan.skipped.map((p) => p.id)).toEqual([1]);
+    expect(plan.convert.map((p) => p.id)).toEqual([2]);
+  });
+
+  it("still converts a deactivated account that has a year", () => {
+    const plan = planConversion([person(1, "ADMIN", 2020, gone)]);
+    expect(plan.convert.map((p) => p.id)).toEqual([1]);
+    expect(plan.skipped).toEqual([]);
+  });
+});
+
 describe("applyConversion", () => {
   it("refuses and writes nothing when anyone is refused", async () => {
     mockTx.user.findMany.mockResolvedValue([person(1, "ADMIN", null), person(2, "LEADER", 2021)]);

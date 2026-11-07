@@ -6,8 +6,8 @@
  *
  * Run from apps/backend, on a database the owner names:
  *   pnpm roles:convert            read-only: prints the plan
- *   pnpm roles:convert --apply    refuses if anyone lacks a graduationYear, else
- *                                 converts in one transaction. Safe to re-run.
+ *   pnpm roles:convert --apply    refuses if a live account lacks a graduationYear,
+ *                                 else converts in one transaction. Safe to re-run.
  *
  * Not a migration: a migration must never change `User.role` values, since the
  * old Neon database is kept and v1 still reads them.
@@ -27,6 +27,8 @@ export interface ConversionPlan {
   convert: (PersonRow & { from: string; to: "STUDENT" })[];
   /** Staff with no graduationYear would become current students, not alumni. */
   refused: PersonRow[];
+  /** Deactivated, with no graduationYear: left as they are. They can't be edited, and preflight doesn't list them. */
+  skipped: PersonRow[];
 }
 
 const STORED_STAFF = ["ADMIN", "LEADER"] as const;
@@ -38,7 +40,8 @@ export function planConversion(rows: PersonRow[]): ConversionPlan {
     convert: staff
       .filter((r) => r.graduationYear !== null)
       .map((r) => ({ ...r, from: r.role, to: "STUDENT" as const })),
-    refused: staff.filter((r) => r.graduationYear === null),
+    refused: staff.filter((r) => r.graduationYear === null && r.deletedAt === null),
+    skipped: staff.filter((r) => r.graduationYear === null && r.deletedAt !== null),
   };
 }
 
@@ -99,11 +102,13 @@ async function main(): Promise<void> {
     console.log("Converted:", (await applyConversion()).converted);
     return;
   }
-  const { convert, refused } = planConversion(await readStoredStaff(db));
+  const { convert, refused, skipped } = planConversion(await readStoredStaff(db));
   console.log(`Would convert ${convert.length}:`);
   for (const c of convert) console.log(`  ${c.email}: ${c.from} -> ${c.to}`);
   console.log(`Refused, no graduation year (${refused.length}):`);
   for (const r of refused) console.log(`  ${r.email}: ${r.role}`);
+  console.log(`Left alone, deactivated with no graduation year (${skipped.length}):`);
+  for (const r of skipped) console.log(`  ${r.email}: ${r.role}`);
   console.log("Read-only run. Pass --apply to convert.");
 }
 

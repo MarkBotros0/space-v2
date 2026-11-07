@@ -392,18 +392,22 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   it completed. `deleteSeason` checks and deletes under the Season lock, and marks its staff stale.
   Staff must be alumni (`graduationYear` set), with no override; a student in a regular season must
   not be.
+- **Your own record is the private view.** `GET /students/<own id>` answers private for everyone but
+  SUPER, a serving alumnus included, so the staff note and drop reasons stay out; `useStudentDetail`
+  parses it with the private schema.
 - **Season role changes sign nobody out.** Assigning or removing a season role calls
   `markSessionsStale`, so the new claim arrives on the next silent refresh;
   `revokeAllRefreshTokensForUser` is not used on these paths. Changing a stored role
   (SUPER/MENTOR/STUDENT) or deactivating an account still signs them out.
 - **`pnpm roles:convert`** (`scripts/convert-stored-roles.ts`) moves stored ADMIN/LEADER accounts
-  to STUDENT. Read-only by default; `--apply` refuses while anyone lacks a `graduationYear`, else
-  converts in one transaction. It is a script, not a migration, because no migration may change
+  to STUDENT. Read-only by default; `--apply` refuses while a live account lacks a `graduationYear`
+  (a deactivated one is left alone and printed apart), else converts in one transaction. It is a script, not a migration, because no migration may change
   `User.role` values. Run it on a database the owner names, after `preflight:community`.
 - **Graduation.** Super marks a season Graduating (`Season.graduatesOnPass`). Passing it graduates
   the student automatically at End (see "Graduating seasons" above). Super may graduate an
   exception without a pass via `POST /students/:id/graduate` with `override: true`, behind one
-  extra confirm; it is audited. Graduating deletes a place on a draft's roster, under Remove's rule
+  extra confirm; it is audited. `PATCH /users` can't set or clear a stored STUDENT's year (409
+  `use_graduate`); changing one year to another corrects a typo, audited and marked stale. Graduating deletes a place on a draft's roster, under Remove's rule
   (with work recorded on it, the row completes instead), and completes the rest.
 
 ## Community model, Build 1 (owner rulings, 2026-11-06)
@@ -423,7 +427,8 @@ and Build 2 (see "Roles") are written, Build 3 (community-wide seasons) isn't.
   a database not migrated yet it prints the violations and says what is unknown).
   Build 2 added review lists (information only, never blocking `--apply`): stored ADMIN/LEADER
   without a `graduationYear`; live seat holders who aren't alumni; seat rows in DRAFT seasons
-  (reported apart, not violations); stored STUDENTs holding live seats, split by `graduationYear`.
+  (reported apart, not violations); stored STUDENTs holding live seats, split by `graduationYear`;
+  alumni holding an ACTIVE enrolment in an ACTIVE season.
   Run it against any database a release will reach before it; the backfill is not part of a
   migration because the old Neon database is kept and v1 writes it.
 - **Season lifecycle.** DRAFT -> ACTIVE -> COMPLETED (-> ARCHIVED). **End season** (`POST

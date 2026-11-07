@@ -71,6 +71,7 @@ describe("readOnlyReport review lists", () => {
     expect(text).toMatch(/staffNotAlumni/);
     expect(text).toMatch(/draftSeatHolders/);
     expect(text).toMatch(/storedStudentsHoldingSeats/);
+    expect(text).toMatch(/alumniHoldingActiveEnrollment/);
     expect(text).toMatch(/--apply would be: allowed/);
   });
 

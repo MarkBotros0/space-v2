@@ -182,6 +182,31 @@ describe("findReviewLists", () => {
     expect(users((await findRoleRuleViolations()).adminsInManySeasons)).not.toContain(person.id);
   });
 
+  it("lists alumni holding an ACTIVE enrolment in an ACTIVE season, and nothing else", async () => {
+    const s = await active();
+    const [alum, plain, past, goneAlum] = await Promise.all([
+      createTestUser("pf-rv-enrolled-alum", "STUDENT"),
+      createTestUser("pf-rv-enrolled-plain", "STUDENT"),
+      createTestUser("pf-rv-enrolled-past", "STUDENT"),
+      createTestUser("pf-rv-enrolled-gone", "STUDENT"),
+    ]);
+    const draft = await createTestSeason({ status: "DRAFT" });
+    await Promise.all([setYear(alum.id, 2019), setYear(past.id, 2019), setYear(plain.id, null)]);
+    await db.user.update({ where: { id: goneAlum.id }, data: { graduationYear: 2019, deletedAt: new Date() } });
+    await db.seasonEnrollment.createMany({
+      data: [
+        { seasonId: s.id, studentUserId: alum.id, status: "ACTIVE" },
+        { seasonId: s.id, studentUserId: plain.id, status: "ACTIVE" },
+        { seasonId: s.id, studentUserId: past.id, status: "WITHDRAWN" },
+        { seasonId: draft.id, studentUserId: past.id, status: "ACTIVE" },
+        { seasonId: s.id, studentUserId: goneAlum.id, status: "ACTIVE" },
+      ],
+    });
+    const listed = ids((await findReviewLists()).alumniHoldingActiveEnrollment);
+    expect(listed).toContain(alum.id);
+    for (const other of [plain.id, past.id, goneAlum.id]) expect(listed).not.toContain(other);
+  });
+
   it("ignores deleted accounts, Supers and Mentors", async () => {
     const s = await active();
     const gone = await createTestUser("pf-rv-gone", "ADMIN");
