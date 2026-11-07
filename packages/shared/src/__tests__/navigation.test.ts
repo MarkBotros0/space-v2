@@ -99,7 +99,6 @@ describe("navFor", () => {
         "/more",
         "/notifications",
         "/season",
-        "/submitted",
         "/work",
       ],
       ALUMNI: [
@@ -210,8 +209,7 @@ describe("navFor", () => {
         ["/dashboard", "Dashboard", "dashboard"],
         ["/season", "Current Season", "season"],
         ["/calendar", "Calendar", "calendar"],
-        ["/work", "To do", "todo"],
-        ["/submitted", "Submitted", "submitted"],
+        ["/work", "My work", "todo"],
         ["/attendance", "Attendance", "attendance"],
         ["/history", "History", "history"],
         ["/notifications", "Notifications", "notifications"],
@@ -219,8 +217,7 @@ describe("navFor", () => {
       tabs: [
         ["/dashboard", "Home", "home"],
         ["/calendar", "Calendar", "calendar"],
-        ["/work", "To do", "todo"],
-        ["/submitted", "Submitted", "submitted"],
+        ["/work", "My work", "todo"],
         ["/more", "More", "more"],
       ],
     });
@@ -264,7 +261,7 @@ describe("navFor between seasons", () => {
   const hrefs = (a: Parameters<typeof navFor>[0]) => navFor(a).tabs.map((t) => t.href);
   it("follows whether the student is in a season", () => {
     expect(hrefs({ role: "STUDENT", graduationYear: null, activeSeasonId: 1 })).toEqual([
-      "/dashboard", "/calendar", "/work", "/submitted", "/more",
+      "/dashboard", "/calendar", "/work", "/more",
     ]);
     expect(hrefs({ role: "STUDENT", graduationYear: null, activeSeasonId: null })).toEqual([
       "/dashboard", "/calendar", "/history", "/more",

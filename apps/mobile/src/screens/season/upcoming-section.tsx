@@ -37,11 +37,12 @@ function DateTile({ month, day }: { month: string; day: string }) {
   );
 }
 
+/** The next session only (owner, 2026-11-07); the rest are a tap away on the calendar. */
 export function UpcomingSection({ upcoming }: { upcoming: MySeason["upcoming"] }) {
   const router = useRouter();
   return (
     <GroupedList
-      header="Upcoming sessions"
+      header="Next session"
       headerAction={{ label: "See calendar", onPress: () => router.push("/calendar") }}
     >
       {upcoming.length === 0 ? (
@@ -51,7 +52,7 @@ export function UpcomingSection({ upcoming }: { upcoming: MySeason["upcoming"] }
           </Text>
         </View>
       ) : (
-        upcoming.slice(0, 3).map((s) => {
+        upcoming.slice(0, 1).map((s) => {
           const tile = dayTile(s.dayKey);
           // No org wall time in this payload: the time is the device's reading of startsAt (gap note).
           const when = `${tile.weekday} · ${formatSessionTime(s.startsAt)}`;

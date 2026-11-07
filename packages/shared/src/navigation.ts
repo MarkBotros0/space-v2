@@ -128,10 +128,9 @@ const STUDENT: RoleNav = {
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/season", label: "Current Season", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    // Owner, 2026-11-06: the student's work is two tabs — what to do, and
-    // what was handed in with its grading.
-    { href: "/work", label: "To do", icon: "todo" },
-    { href: "/submitted", label: "Submitted", icon: "submitted" },
+    // Owner, 2026-11-07: one My work tab, what to do on top and what was
+    // handed in, with its grading, under it.
+    { href: "/work", label: "My work", icon: "todo" },
     // Spec 04 D14: v1 reached /student/attendance only from the dashboard's
     // budget tile; the budget it explains must have a home of its own. STUDENT
     // sidebar only — it surfaces in More. Not ALUMNI (no active season).
@@ -142,8 +141,7 @@ const STUDENT: RoleNav = {
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/work", label: "To do", icon: "todo" },
-    { href: "/submitted", label: "Submitted", icon: "submitted" },
+    { href: "/work", label: "My work", icon: "todo" },
     { href: "/more", label: "More", icon: "more" },
   ],
 };

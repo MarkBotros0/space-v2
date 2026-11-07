@@ -43,6 +43,7 @@ const row = (over: Partial<StudentAssignmentStateRow>): StudentAssignmentStateRo
   isLate: false,
   status: "PENDING",
   reviewedAt: null,
+  submittedAt: null,
   ...over,
 });
 

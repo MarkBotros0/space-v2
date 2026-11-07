@@ -1,7 +1,7 @@
 import { isBlockedForAlumni } from "../lib/alumni-guard";
 
 describe("isBlockedForAlumni (REG-81)", () => {
-  it.each(["season", "work", "assignments", "quizzes", "attendance", "submitted"])("blocks %s", (seg) => {
+  it.each(["season", "work", "assignments", "quizzes", "attendance"])("blocks %s", (seg) => {
     expect(isBlockedForAlumni(["(app)", seg])).toBe(true);
   });
 

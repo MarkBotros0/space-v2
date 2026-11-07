@@ -73,6 +73,8 @@ export const studentAssignmentListItemSchema = z.object({
   isOverdue: z.boolean(),
   status: assignmentStudentStatusSchema,
   reviewedAt: z.string().nullable(),
+  /** When they last handed it in. Optional: a backend from before 2026-11-07 doesn't send it. */
+  submittedAt: z.string().nullable().optional(),
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 

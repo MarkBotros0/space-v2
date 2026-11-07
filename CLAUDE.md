@@ -313,6 +313,13 @@ sonner-native toasts, so flows shoot toasts best-effort.
   alumni also have it as a tab). Notification settings open from the gear on Notifications.
 - Home's bell opens `/notifications` and the avatar opens Profile: plain
   buttons, never dropdowns (owner, 2026-11-07). The theme lives on More (Profile for MENTOR).
+- Notification settings show only the kinds a person can be sent: a student's six, a group
+  leader's Submissions received and Low-attendance flags, a season admin's Low-attendance
+  flags; Super and Mentor are told nothing there can be turned off. Mentor follow-ups are
+  no longer sent (owner, 2026-11-07); a note's follow-up flag stays.
+- A student's page (staff view): the This season card shows Attendance, Assignments and
+  Quizzes (`quizzesGiven/Taken/quizPct` on the staff engagement arm), never the composite
+  score; its tabs run Submissions, Attendance, Notes, Seasons, the first open.
 - No password form in the app: "Forgot password?" on sign-in is the only way
   to set one. No "Sign out everywhere".
 - Sign out and Delete account (DELETE /me, a soft delete) live on More; on
@@ -351,13 +358,18 @@ quiz results must use it too. Grade notifications stay silent while held; the re
 `canReleaseResults`; the Results card (`screens/quiz-grade/release-results.tsx`) sits on the
 grading screen and the quiz page. Quizzes graded before this existed were backfilled as released.
 
-### Student work: two tabs (owner, 2026-11-06)
+### Student work: one My work tab (owner, 2026-11-07)
 
-A student's bar is Home · Calendar · To do (`/work`) · Submitted
-(`/submitted`) · More. To do groups open work as Overdue, Returned — needs
-changes, Due this week, Later, Quizzes to take. Submitted lists handed-in
-assignments (Waiting for review / Reviewed, said in words, never colour
-alone) and taken quizzes (score, or Not graded yet). Keep it that clear.
+A student's bar is Home · Calendar · My work (`/work`) · More (owner merged To do and
+Submitted on 2026-11-07; `/submitted` is gone). My work puts what still needs doing on
+top, grouped as Overdue, Returned — needs changes, Due this week, Later, Quizzes to take
+(or one "all caught up" row), then the history: Assignments handed in and Quizzes taken,
+newest first, Waiting for review / Reviewed said in words, never colour alone, no figure
+tiles. The season page (`/season`) shows the next session only, the group as one card
+(name, leaders and members as pills, never list rows) and Your submissions: the last
+assignment handed in and the last quiz taken, with See all to My work. Student Home leads
+with the season card, then the next session, then To do; while check-in is open and they
+haven't checked in, the session leads. There is no attendance streak anywhere.
 
 ### Motion: calm and quick (owner, 2026-11-06 and 2026-11-07)
 

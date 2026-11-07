@@ -64,7 +64,7 @@ const scopes = makeScopes();
 // computed with the same (possibly mutated) function the layout uses, or a
 // mutation to routeNameForHref would break both sides identically and the
 // test would keep passing.
-const STUDENT_VISIBLE_NAMES = ["dashboard", "calendar", "work", "submitted", "more"];
+const STUDENT_VISIBLE_NAMES = ["dashboard", "calendar", "work", "more"];
 const ADMIN_VISIBLE_NAMES = ["dashboard", "calendar", "groups", "coursework", "more"];
 const TOTAL_TAB_ROUTES = ALL_ROUTE_NAMES.length;
 

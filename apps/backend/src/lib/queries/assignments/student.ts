@@ -13,6 +13,8 @@ export interface StudentAssignmentRow {
   isOverdue: boolean;
   status: SubmissionStatus | "PENDING";
   reviewedAt: Date | null;
+  /** When they last handed it in; null before they ever have. */
+  submittedAt: Date | null;
 }
 
 /**
@@ -87,6 +89,7 @@ export async function listAssignmentStatesForStudent(
       isLate: isLate(sub?.submittedAt ?? null, a.dueAt),
       status: sub?.status ?? "PENDING",
       reviewedAt: sub?.reviewedAt ?? null,
+      submittedAt: sub?.submittedAt ?? null,
     };
   });
 }

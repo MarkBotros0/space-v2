@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
-import { useRouter } from "expo-router";
 
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { EmptyState, GroupedList, StatTile } from "../../design/ui";
+import { EmptyState, GroupedList, Text } from "../../design/ui";
 import { useStudentAssignments } from "../../hooks/use-assignments";
 import { useStudentDashboard } from "../../hooks/use-dashboard";
 import { useStudentQuizList } from "../../hooks/use-quizzes";
@@ -15,18 +14,12 @@ import { submittedSections, todoGroups, type WorkRow } from "./work-model";
 import { WorkListRow, WorkLoadingRow } from "./work-row";
 
 /*
- * The student's work, as two tabs (owner, 2026-11-06 — "very clear for the
- * students"): To do (what still needs doing, most urgent first) and Submitted
- * (what was handed in, and where its grading stands). Each tab answers one
- * question; there is no segmented control to miss.
+ * The student's work on one screen (owner, 2026-11-07: To do and Submitted
+ * merged): what still needs doing on top, most urgent first, then the history
+ * of what they handed in, newest first, its grading said in words.
  */
 
-const TODO_TITLE = { title: "To do", subtitle: "Assignments and quizzes still to finish" } as const;
-const SUBMITTED_TITLE = {
-  title: "Submitted",
-  subtitle: "What you handed in, and its grading",
-} as const;
-const NO_VALUE = "—";
+const TITLE = { title: "My work", subtitle: "What to do, and what you handed in" } as const;
 /** No limit: a quiz's subtitle carries the leader's note, which is not cut off at two lines. */
 const FULL_SUBTITLE_LINES = 0;
 
@@ -60,8 +53,19 @@ function useSeasonWork(seasonId: number) {
   };
 }
 
-function SeasonTodo({ seasonId }: { seasonId: number }) {
-  const router = useRouter();
+function CaughtUp() {
+  return (
+    <GroupedList header="To do">
+      <View className="min-h-[52px] justify-center px-4 py-3">
+        <Text variant="subhead" className="text-muted-foreground">
+          You're all caught up. New assignments and quizzes show up here.
+        </Text>
+      </View>
+    </GroupedList>
+  );
+}
+
+function SeasonWork({ seasonId }: { seasonId: number }) {
   const work = useSeasonWork(seasonId);
   const { assignments, quizzes } = work;
 
@@ -70,6 +74,7 @@ function SeasonTodo({ seasonId }: { seasonId: number }) {
   else if (assignments.isError) body = <RouteError onRetry={() => void assignments.refetch()} />;
   else {
     const groups = todoGroups(assignments.data, quizzes.data ?? [], work.todayOrgDay);
+    const done = submittedSections(assignments.data, quizzes.data ?? []);
     body = (
       <View className="flex-col gap-6">
         {groups.map((g) => (
@@ -80,107 +85,44 @@ function SeasonTodo({ seasonId }: { seasonId: number }) {
             <WorkLoadingRow />
           </GroupedList>
         ) : null}
-        {groups.length === 0 && !quizzes.isPending ? (
-          <EmptyState
-            icon={NAV_ICONS.todo}
-            title="You're all caught up"
-            description="Nothing to hand in right now. New assignments and quizzes show up here."
-            action={{ label: "See what you submitted", onPress: () => router.push("/submitted") }}
-          />
-        ) : null}
+        {groups.length === 0 && !quizzes.isPending ? <CaughtUp /> : null}
         {quizzes.isError ? (
           <InlineError
             message="Couldn't load your quizzes."
             onRetry={() => void quizzes.refetch()}
           />
         ) : null}
+        {done.assignments.length > 0 ? (
+          <Group header="Assignments handed in" rows={done.assignments} />
+        ) : null}
+        {done.quizzes.length > 0 ? <Group header="Quizzes taken" rows={done.quizzes} /> : null}
       </View>
     );
   }
 
   return (
-    <Screen {...TODO_TITLE} onRefresh={work.refresh} refreshing={work.refreshing}>
+    <Screen {...TITLE} onRefresh={work.refresh} refreshing={work.refreshing}>
       {body}
-    </Screen>
-  );
-}
-
-function SeasonSubmitted({ seasonId }: { seasonId: number }) {
-  const work = useSeasonWork(seasonId);
-  const { assignments, quizzes } = work;
-
-  let body: ReactNode;
-  if (assignments.isPending) body = <RouteSkeleton />;
-  else if (assignments.isError) body = <RouteError onRetry={() => void assignments.refetch()} />;
-  else {
-    const s = submittedSections(assignments.data, quizzes.data ?? []);
-    const nothing = s.assignments.length === 0 && s.quizzes.length === 0 && !quizzes.isPending;
-    body = nothing ? (
-      <EmptyState
-        icon={NAV_ICONS.submitted}
-        title="Nothing submitted yet"
-        description="Assignments you hand in and quizzes you take show up here, with their grading."
-      />
-    ) : (
-      <View className="flex-col gap-6">
-        <View className="flex-row flex-wrap gap-3">
-          <StatTile label="Waiting for review" value={s.stats.waiting} />
-          <StatTile label="Reviewed" value={s.stats.reviewed} />
-          <StatTile
-            label="Quiz average"
-            value={s.stats.quizAverage === null ? NO_VALUE : `${s.stats.quizAverage}%`}
-          />
-        </View>
-        {s.assignments.length > 0 ? <Group header="Assignments" rows={s.assignments} /> : null}
-        {quizzes.isPending ? (
-          <GroupedList header="Quizzes">
-            <WorkLoadingRow />
-          </GroupedList>
-        ) : s.quizzes.length > 0 ? (
-          <Group header="Quizzes" rows={s.quizzes} />
-        ) : null}
-        {quizzes.isError ? (
-          <InlineError
-            message="Couldn't load your quizzes."
-            onRetry={() => void quizzes.refetch()}
-          />
-        ) : null}
-      </View>
-    );
-  }
-
-  return (
-    <Screen {...SUBMITTED_TITLE} onRefresh={work.refresh} refreshing={work.refreshing}>
-      {body}
-    </Screen>
-  );
-}
-
-function NoSeason({ title }: { title: typeof TODO_TITLE | typeof SUBMITTED_TITLE }) {
-  return (
-    <Screen {...title}>
-      <EmptyState
-        icon={NAV_ICONS.assignments}
-        title="No active season"
-        description="You don't have an active season right now, so there is no work to show."
-      />
     </Screen>
   );
 }
 
 /**
- * The student's To do tab (/work). Also what a student sees at /assignments
+ * The student's My work tab (/work). Also what a student sees at /assignments
  * and /quizzes, in place on the stack (P2-11).
  */
 export function WorkScreen() {
   const seasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
-  if (seasonId === null) return <NoSeason title={TODO_TITLE} />;
-  return <SeasonTodo seasonId={seasonId} />;
-}
-
-/** The student's Submitted tab (/submitted). */
-export function SubmittedScreen() {
-  const seasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
-  if (seasonId === null) return <NoSeason title={SUBMITTED_TITLE} />;
-  return <SeasonSubmitted seasonId={seasonId} />;
+  if (seasonId === null) {
+    return (
+      <Screen {...TITLE}>
+        <EmptyState
+          icon={NAV_ICONS.assignments}
+          title="No active season"
+          description="You don't have an active season right now, so there is no work to show."
+        />
+      </Screen>
+    );
+  }
+  return <SeasonWork seasonId={seasonId} />;
 }

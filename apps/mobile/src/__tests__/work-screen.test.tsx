@@ -1,11 +1,11 @@
-import { act, fireEvent, screen, within } from "@testing-library/react-native";
+import { act, fireEvent, screen } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
 import { useSessionStore } from "../store/session";
-import { SubmittedScreen, WorkScreen } from "../screens/work/work-screen";
+import { WorkScreen } from "../screens/work/work-screen";
 import { get, quizResult, requested, serve, studentDashboard } from "./helpers/dashboard-fixtures";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -46,12 +46,13 @@ beforeEach(() => {
 
 afterEach(() => act(() => new Promise<void>((resolve) => setTimeout(resolve, 20))));
 
-describe("To do tab", () => {
+// Owner 2026-11-07: To do and Submitted are one My work screen.
+describe("My work: what to do", () => {
   it("no active season: says so and asks the server for nothing", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null }));
     renderWithProviders(<WorkScreen />);
     expect(await screen.findByText("No active season")).toBeTruthy();
-    expect(screen.getByText("To do")).toBeTruthy();
+    expect(screen.getByText("My work")).toBeTruthy();
     expect(requested()).toEqual([]);
   });
 
@@ -81,17 +82,28 @@ describe("To do tab", () => {
     for (const h of headers) expect(screen.getByText(h)).toBeTruthy();
     for (const t of ["Essay 1", "Essay 2", "Essay 3", "Essay 4", "Quiz 6"])
       expect(screen.getByText(t)).toBeTruthy();
-    // Handed in or graded: not here.
-    expect(screen.queryByText("Essay 5")).toBeNull();
-    expect(screen.queryByText("Quiz 7")).toBeNull();
+    // Handed in or graded: in the history below, not among the to-do groups.
+    const texts: string[] = [];
+    const walk = (n: unknown): void => {
+      if (typeof n === "string") texts.push(n);
+      else if (Array.isArray(n)) n.forEach(walk);
+      else if (n && typeof n === "object") (n as { children?: unknown[] }).children?.forEach(walk);
+    };
+    walk(screen.toJSON());
+    const at = (t: string) => texts.indexOf(t);
+    expect(at("Essay 5")).toBeGreaterThan(at("ASSIGNMENTS HANDED IN"));
+    expect(at("Quiz 7")).toBeGreaterThan(at("QUIZZES TAKEN"));
+    expect(at("ASSIGNMENTS HANDED IN")).toBeGreaterThan(at("QUIZZES TO TAKE"));
   });
 
-  it("nothing to do: caught up, with a way to the Submitted tab", async () => {
+  it("nothing to do: one caught-up row, with what they handed in under it", async () => {
     serve(routes([assignment(1, { status: "REVIEWED" })], [quiz(2, { score: 7 })]));
     renderWithProviders(<WorkScreen />);
-    expect(await screen.findByText("You're all caught up")).toBeTruthy();
-    fireEvent.press(screen.getByText("See what you submitted"));
-    expect(mockPush).toHaveBeenCalledWith("/submitted");
+    expect(await screen.findByText(/You're all caught up/)).toBeTruthy();
+    expect(screen.getByText("ASSIGNMENTS HANDED IN")).toBeTruthy();
+    expect(screen.getByText("Essay 1")).toBeTruthy();
+    expect(screen.getByText("QUIZZES TAKEN")).toBeTruthy();
+    expect(screen.getByText("Quiz 2")).toBeTruthy();
   });
 
   it("never says caught up until the quiz list has answered", async () => {
@@ -104,9 +116,9 @@ describe("To do tab", () => {
     });
     renderWithProviders(<WorkScreen />);
     expect(await screen.findByText("QUIZZES TO TAKE")).toBeTruthy();
-    expect(screen.queryByText("You're all caught up")).toBeNull();
+    expect(screen.queryByText(/You're all caught up/)).toBeNull();
     await act(async () => answer({ data: { data: { items: [], nextCursor: null } } }));
-    expect(await screen.findByText("You're all caught up")).toBeTruthy();
+    expect(await screen.findByText(/You're all caught up/)).toBeTruthy();
   });
 
   it("assignment list failing: a retry that asks again", async () => {
@@ -156,28 +168,41 @@ describe("To do tab", () => {
   });
 });
 
-describe("Submitted tab", () => {
-  it("nothing handed in: says what will show up here", async () => {
+describe("My work: what was handed in", () => {
+  it("nothing handed in: no history sections", async () => {
     serve(routes([assignment(1)], [quiz(2)]));
-    renderWithProviders(<SubmittedScreen />);
-    expect(await screen.findByText("Nothing submitted yet")).toBeTruthy();
+    renderWithProviders(<WorkScreen />);
+    expect(await screen.findByText("Essay 1")).toBeTruthy();
+    expect(screen.queryByText("ASSIGNMENTS HANDED IN")).toBeNull();
+    expect(screen.queryByText("QUIZZES TAKEN")).toBeNull();
   });
 
-  it("says in words where each assignment's grading stands, waiting first", async () => {
+  it("says in words where each assignment's grading stands, newest hand-in first", async () => {
     serve(
       routes([
-        assignment(1, { status: "REVIEWED", reviewedAt: "2099-02-20T10:00:00.000Z" }),
-        assignment(2, { status: "SUBMITTED" }),
-        assignment(3),
+        assignment(1, {
+          status: "REVIEWED",
+          reviewedAt: "2099-02-20T10:00:00.000Z",
+          submittedAt: "2099-02-10T10:00:00.000Z",
+        }),
+        assignment(2, { status: "SUBMITTED", submittedAt: "2099-02-25T10:00:00.000Z" }),
+        assignment(3, { status: "REVIEWED", submittedAt: "2099-01-05T10:00:00.000Z" }),
       ]),
     );
-    renderWithProviders(<SubmittedScreen />);
+    renderWithProviders(<WorkScreen />);
     expect((await screen.findAllByText("Waiting for review")).length).toBeGreaterThan(0);
     expect(screen.getByText("Your leader hasn't reviewed it yet")).toBeTruthy();
     expect(screen.getByText(/Reviewed Feb 20, 2099.*Open to read the feedback/)).toBeTruthy();
-    expect(screen.queryByText("Essay 3")).toBeNull();
     const rows = screen.getAllByText(/^Essay \d$/).map((t) => t.props.children);
-    expect(rows).toEqual(["Essay 2", "Essay 1"]);
+    expect(rows).toEqual(["Essay 2", "Essay 1", "Essay 3"]);
+  });
+
+  it("puts the history under what is still to do", async () => {
+    serve(routes([assignment(1), assignment(2, { status: "SUBMITTED", submittedAt: "2099-02-25T10:00:00.000Z" })]));
+    renderWithProviders(<WorkScreen />);
+    await screen.findByText("ASSIGNMENTS HANDED IN");
+    const rows = screen.getAllByText(/^Essay \d$/).map((t) => t.props.children);
+    expect(rows).toEqual(["Essay 1", "Essay 2"]);
   });
 
   it("quizzes show their score, or that they're not graded yet", async () => {
@@ -191,7 +216,7 @@ describe("Submitted tab", () => {
         ],
       ),
     );
-    renderWithProviders(<SubmittedScreen />);
+    renderWithProviders(<WorkScreen />);
     expect(await screen.findByRole("button", { name: /Quiz 4.*, 7\/10$/ })).toBeTruthy();
     expect(screen.getAllByText("Not graded yet")).toHaveLength(2);
   });
@@ -199,7 +224,7 @@ describe("Submitted tab", () => {
   it("a paper quiz is no button, and its notes show in full", async () => {
     const notes = "Good work on section two, but revise the last chapter before the next session.";
     serve(routes([], [quiz(41, { kind: "PAPER", score: 15, maxScore: 20, notes })]));
-    renderWithProviders(<SubmittedScreen />);
+    renderWithProviders(<WorkScreen />);
     const title = await screen.findByText("Quiz 41");
     expect(screen.queryByRole("button", { name: /Quiz 41/ })).toBeNull();
     fireEvent.press(title);
@@ -208,28 +233,18 @@ describe("Submitted tab", () => {
     expect(screen.getByText("15/20")).toBeTruthy();
   });
 
-  it("sums it up: waiting, reviewed and the quiz average", async () => {
-    serve(
-      routes(
-        [
-          assignment(1, { status: "SUBMITTED" }),
-          assignment(2, { status: "REVIEWED" }),
-          assignment(3, { status: "REVIEWED" }),
-        ],
-        [quiz(4, { score: 5, maxScore: 10 })],
-      ),
-    );
-    renderWithProviders(<SubmittedScreen />);
-    expect(await screen.findByLabelText("Waiting for review: 1")).toBeTruthy();
-    expect(screen.getByLabelText("Reviewed: 2")).toBeTruthy();
-    expect(await screen.findByLabelText("Quiz average: 50%")).toBeTruthy();
+  it("has no figure tiles", async () => {
+    serve(routes([assignment(1, { status: "SUBMITTED" })], [quiz(4, { score: 5, maxScore: 10 })]));
+    renderWithProviders(<WorkScreen />);
+    expect(await screen.findByText("Essay 1")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Waiting for review:/)).toBeNull();
+    expect(screen.queryByLabelText(/^Quiz average/)).toBeNull();
   });
 
   it("quiz list failing keeps the assignments and says so", async () => {
     serve(routes([assignment(1, { status: "SUBMITTED" })], null));
-    renderWithProviders(<SubmittedScreen />);
+    renderWithProviders(<WorkScreen />);
     expect(await screen.findByText("Essay 1")).toBeTruthy();
     expect(await screen.findByText("Couldn't load your quizzes.")).toBeTruthy();
-    expect(within(screen.getByTestId("screen")).getByLabelText("Quiz average: —")).toBeTruthy();
   });
 });

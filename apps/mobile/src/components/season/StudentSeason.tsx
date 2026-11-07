@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { View } from "react-native";
 
 import { NAV_ICONS } from "../../design/icons/nav-icon";
@@ -6,7 +7,9 @@ import { Screen } from "../../design/layout/screen";
 import { EmptyState, GroupedList, Progress, statusChip, StatusChip, Text } from "../../design/ui";
 import { useMySeason } from "../../hooks/use-self-service";
 import { formatDate } from "../../lib/format";
+import { queryKeys } from "../../lib/query-keys";
 import { GroupSection } from "../../screens/season/group-section";
+import { SubmissionsSection } from "../../screens/season/submissions-section";
 import { UpcomingSection } from "../../screens/season/upcoming-section";
 import { useSessionStore } from "../../store/session";
 
@@ -20,8 +23,13 @@ export function StudentSeason() {
   const seasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const { data, isPending, isError, refetch, isRefetching } = useMySeason(seasonId);
 
+  const queryClient = useQueryClient();
   const refresh = () => {
-    if (seasonId !== null) void refetch();
+    if (seasonId === null) return;
+    void refetch();
+    // The submissions card reads these; a pull refreshes it too.
+    void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.bySeason(seasonId) });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.bySeason(seasonId) });
   };
   const noSeason = (
     <Screen title="Current season">
@@ -76,6 +84,7 @@ export function StudentSeason() {
           </GroupedList>
         ) : null}
         <UpcomingSection upcoming={data.upcoming} />
+        <SubmissionsSection seasonId={seasonId} />
       </View>
     </Screen>
   );

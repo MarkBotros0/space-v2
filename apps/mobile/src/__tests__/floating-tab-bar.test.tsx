@@ -236,8 +236,8 @@ describe("no active tab (M1)", () => {
   });
 });
 
-describe("a student's five tabs", () => {
-  it("draws five, and the highlight lands under the tapped tab", () => {
+describe("a student's four tabs", () => {
+  it("draws four, and the highlight lands under the tapped tab", () => {
     const tabs = navByRole.STUDENT.tabs;
     const navigateToTab = jest.fn();
     const state = {
@@ -267,24 +267,17 @@ describe("a student's five tabs", () => {
     expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual([
       "Home",
       "Calendar",
-      "To do",
-      "Submitted",
+      "My work",
       "More",
     ]);
-    ["Home", "Calendar", "To do", "Submitted", "More"].forEach((label, i) =>
-      layoutTab(label, i * 68, 68),
-    );
+    ["Home", "Calendar", "My work", "More"].forEach((label, i) => layoutTab(label, i * 85, 85));
 
-    fireEvent.press(screen.getByLabelText("To do"));
-    expect(highlightTarget()).toEqual({ x: 136, width: 68 });
+    fireEvent.press(screen.getByLabelText("My work"));
+    expect(highlightTarget()).toEqual({ x: 170, width: 85 });
     expect(navigateToTab).toHaveBeenCalledWith("work-key");
 
-    fireEvent.press(screen.getByLabelText("Submitted"));
-    expect(highlightTarget()).toEqual({ x: 204, width: 68 });
-    expect(navigateToTab).toHaveBeenCalledWith("submitted-key");
-
     fireEvent.press(screen.getByLabelText("More"));
-    expect(highlightTarget()).toEqual({ x: 272, width: 68 });
+    expect(highlightTarget()).toEqual({ x: 255, width: 85 });
   });
 });
 

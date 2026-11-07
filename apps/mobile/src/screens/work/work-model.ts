@@ -272,30 +272,51 @@ export function submittedQuizRow(q: StudentQuizResult): WorkRow {
   return { ...base, chip: { tone: "neutral", label } };
 }
 
-export type SubmittedSections = {
-  assignments: WorkRow[];
-  quizzes: WorkRow[];
-  stats: { submitted: number; waiting: number; reviewed: number; quizAverage: number | null };
-};
+export type SubmittedSections = { assignments: WorkRow[]; quizzes: WorkRow[] };
 
+/** Newest hand-in first; an older backend sends no `submittedAt`, so the review date stands in. */
+function handedInAt(a: StudentAssignmentListItem): string {
+  return a.submittedAt ?? a.reviewedAt ?? "";
+}
+
+/** Newest first by the session it belonged to, then by when it was graded. */
+function quizRecency(q: StudentQuizResult): string {
+  return q.sessionDate ?? q.gradedAt ?? "";
+}
+
+function handedIn(assignments: StudentAssignmentListItem[]): StudentAssignmentListItem[] {
+  return assignments
+    .filter((a) => a.status === "SUBMITTED" || a.status === "REVIEWED")
+    .sort((a, b) => handedInAt(b).localeCompare(handedInAt(a)));
+}
+
+function taken(quizzes: StudentQuizResult[]): StudentQuizResult[] {
+  return quizzes.filter((q) => !isOpenQuiz(q)).sort((a, b) => quizRecency(b).localeCompare(quizRecency(a)));
+}
+
+/**
+ * What the student handed in, newest first (owner, 2026-11-07: My work shows the
+ * history under what is still to do). The chip says where the grading stands.
+ */
 export function submittedSections(
   assignments: StudentAssignmentListItem[],
   quizzes: StudentQuizResult[],
 ): SubmittedSections {
-  const handedIn = assignments.filter((a) => a.status === "SUBMITTED" || a.status === "REVIEWED");
-  // Waiting first: that's the one a student comes back to check on.
-  const ordered = [
-    ...handedIn.filter((a) => a.status === "SUBMITTED"),
-    ...handedIn.filter((a) => a.status === "REVIEWED"),
-  ];
   return {
-    assignments: ordered.map(submittedAssignmentRow),
-    quizzes: quizzes.filter((q) => !isOpenQuiz(q)).map(submittedQuizRow),
-    stats: {
-      submitted: handedIn.length,
-      waiting: handedIn.filter((a) => a.status === "SUBMITTED").length,
-      reviewed: handedIn.filter((a) => a.status === "REVIEWED").length,
-      quizAverage: quizAverage(quizzes),
-    },
+    assignments: handedIn(assignments).map(submittedAssignmentRow),
+    quizzes: taken(quizzes).map(submittedQuizRow),
+  };
+}
+
+/** The season page's preview: the last assignment handed in and the last quiz taken. */
+export function latestSubmitted(
+  assignments: StudentAssignmentListItem[],
+  quizzes: StudentQuizResult[],
+): { assignment: WorkRow | null; quiz: WorkRow | null } {
+  const a = handedIn(assignments)[0];
+  const q = taken(quizzes)[0];
+  return {
+    assignment: a ? submittedAssignmentRow(a) : null,
+    quiz: q ? submittedQuizRow(q) : null,
   };
 }

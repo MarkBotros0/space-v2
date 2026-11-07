@@ -73,7 +73,7 @@ describe("a token that changes role on refresh", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: 5, graduationYear: 2020 }));
     renderWithProviders(<Shell />);
     // Studying in a community-wide season: a student's tabs, until they serve.
-    expect(labels()).toEqual(["Home", "Calendar", "To do", "Submitted", "More"]);
+    expect(labels()).toEqual(["Home", "Calendar", "My work", "More"]);
     expect(screen.getByTestId("season").props.children).toBe("5");
     expect(get).not.toHaveBeenCalled();
 

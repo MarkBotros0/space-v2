@@ -77,7 +77,7 @@ describe("while studying", () => {
     expect(get).not.toHaveBeenCalledWith(HISTORY);
   });
 
-  it.each([["work"], ["submitted"]])("the alumni guard lets them through to %s", (tab) => {
+  it.each([["work"], ["season"]])("the alumni guard lets them through to %s", (tab) => {
     captured.segments = ["(app)", "(tabs)", tab];
     renderWithProviders(<AppLayout />);
     expect(screen.queryByTestId("redirect")).toBeNull();
@@ -161,9 +161,12 @@ describe("once the season is over", () => {
 });
 
 // The student's copy stays: a graduation year is what turns "Student" into this.
-it("a student who isn't an alumnus still reads Student on Profile", async () => {
+// No role badge on Profile (owner, 2026-11-07): only a graduate's class is named.
+it("a student who isn't an alumnus has no class on Profile", async () => {
   useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 1 }));
   serve({ [PROFILE]: { profile: { ...profile, graduationYear: null } } });
   renderWithProviders(<ProfileScreen />);
-  expect(await screen.findByText("Student")).toBeTruthy();
+  expect(await screen.findByText("Cairo University")).toBeTruthy();
+  expect(screen.queryByText(/School of/)).toBeNull();
+  expect(screen.queryByText("Student")).toBeNull();
 });

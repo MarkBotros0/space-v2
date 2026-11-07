@@ -146,6 +146,7 @@ export const sessionsAssignmentsSchemas = {
       },
       isOverdue: { type: "boolean", description: "Derived server-side." },
       reviewedAt: { type: ["string", "null"], format: "date-time" },
+      submittedAt: { type: ["string", "null"], format: "date-time", description: "When they last handed it in; null before they ever have." },
     },
   },
   AssignmentDetail: {
