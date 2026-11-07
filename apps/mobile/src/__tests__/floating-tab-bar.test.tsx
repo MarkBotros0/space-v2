@@ -135,6 +135,17 @@ it("the selected label stays one line and shrinks to fit instead of truncating",
   });
 });
 
+// Owner 2026-11-07: the name goes under the icon, not beside it, and every tab keeps
+// an equal share so selecting one never pushes the others sideways.
+it("stacks the selected tab's name under its icon, in an equal-width tab", () => {
+  renderBar("assignments");
+  const selected = screen.getByLabelText("Assignments").props.className;
+  const other = screen.getByLabelText("Calendar").props.className;
+  expect(selected).not.toContain("flex-row");
+  expect(selected).toContain("flex-1");
+  expect(other).toContain("flex-1");
+});
+
 it("unselected tabs stay at least 44pt wide", () => {
   renderBar();
   expect(screen.getByLabelText("Calendar").props.className).toContain("min-w-[44px]");

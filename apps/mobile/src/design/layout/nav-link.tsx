@@ -7,9 +7,10 @@ import { haptic } from "../motion";
 import { Text } from "../ui/text";
 
 /**
- * One tab of the pill. Only the selected tab names itself (owner, 2026-11-07):
- * it sizes to its icon and label side by side, and the others share what is
- * left as icons alone, at least 44pt each. The name is always the tab's
+ * One tab of the pill. Only the selected tab names itself (owner, 2026-11-07),
+ * with its name under the icon, never beside it (owner, 2026-11-07). Every tab
+ * takes an equal share of the pill, at least 44pt, so selecting one never
+ * shifts the others sideways. The name is always the tab's
  * accessibility label, so a screen reader hears every tab by name. The sliding
  * highlight lives in the pill (PillHighlight); here only the colours switch to
  * the pill tokens (no icon scale: the owner found the tab bar over-animated).
@@ -38,8 +39,8 @@ export function NavLink({
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
       className={cn(
-        "relative flex-row items-center justify-center self-stretch",
-        active ? "shrink gap-1.5 px-4" : "min-w-[44px] flex-1",
+        "relative min-w-[44px] flex-1 items-center justify-center self-stretch px-1",
+        active && "gap-0.5",
       )}
     >
       <NavIcon
@@ -47,16 +48,16 @@ export function NavLink({
         size={20}
         className={active ? "text-pill-active" : "text-pill-foreground"}
       />
-      {/* The pill is 64px tall and shares its width with four icons: the label stops
-          growing at 1.15x the font scale, and on a 360dp phone a label that still does
-          not fit shrinks (down to 0.8) instead of ellipsizing ("Assignme…"). */}
+      {/* The label sits under the icon in a fifth of the pill: it stops growing at 1.15x
+          the font scale, and on a 360dp phone a label that still does not fit shrinks
+          (down to 0.8) instead of ellipsizing ("Assignme…"). */}
       {active ? (
         <Text
           numberOfLines={1}
           adjustsFontSizeToFit
           minimumFontScale={0.8}
           maxFontSizeMultiplier={1.15}
-          className="shrink text-[13px] font-semibold leading-none text-pill-active-label"
+          className="text-center text-[11px] font-semibold leading-[13px] text-pill-active-label"
         >
           {label}
         </Text>

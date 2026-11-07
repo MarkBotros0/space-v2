@@ -191,7 +191,7 @@ Still outstanding: the mobile screens for the newly-ported endpoints. See
 `(tabs)`); `(app)/(tabs)/_layout.tsx` holds the `Tabs` (`backBehavior` "history" +
 `historyThenHomeTabsRouter`, anchor `dashboard` — its dev warning is expected, do not
 "fix" it). The pill renders `navFor(user).tabs` from `packages/shared/src/navigation.ts`:
-Home (`/dashboard`) first, at most 5 per role; only the selected tab shows its name
+Home (`/dashboard`) first, at most 5 per role; only the selected tab shows its name, under its icon (never beside it), and every tab takes an equal share of the pill
 (the rest are icons, named for screen readers; owner 2026-11-07). A href that is a tab for some role is in `ALL_TAB_HREFS`
 and its file lives in `(tabs)/`; a nav destination that is a tab for no role is a pushed
 route outside `(tabs)/` (`PUSHED_NAV_ROUTE_NAMES`), and every detail route is listed in
