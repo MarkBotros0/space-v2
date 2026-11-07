@@ -56,9 +56,21 @@ export function lastSeasonTitles(people: PeopleCandidate[]): string[] {
   );
 }
 
-/** What "Select all available" ticks: available rows only. Already passed and in-role are ticked by hand. */
-export function selectAllTargets(visible: PeopleCandidate[]): number[] {
-  return visible.filter((p) => p.availability === "available" && p.selectable).map((p) => p.id);
+export type Pool = PeopleCandidate["pool"];
+
+/** Who the Students / Alumni tab lists. */
+export function inPool(people: PeopleCandidate[], pool: Pool): PeopleCandidate[] {
+  return people.filter((p) => p.pool === pool);
+}
+
+/**
+ * What "Select all available" ticks: available rows matching the filters, across
+ * both tabs (the tab is not a filter). Already passed and in-role are ticked by hand.
+ */
+export function selectAllTargets(people: PeopleCandidate[], filters: PeopleFilters): number[] {
+  return filterPeople(people, filters)
+    .filter((p) => p.availability === "available" && p.selectable)
+    .map((p) => p.id);
 }
 
 const OUTCOME: Record<NonNullable<PeopleCandidate["last"]>["outcome"], string> = {

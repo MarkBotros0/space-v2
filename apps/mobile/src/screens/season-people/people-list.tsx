@@ -16,10 +16,12 @@ import {
   blockPhrase,
   buildItems,
   filterPeople,
+  inPool,
   lastSeasonTitles,
   selectAllTargets,
   type PeopleFilters,
   type PeopleItem,
+  type Pool,
 } from "./model";
 import { PeopleFilterBar } from "./people-filters";
 
@@ -37,6 +39,7 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
   const candidates = useSeasonPeople(seasonId, { enabled: true });
   const add = useAddSeasonPeople(seasonId);
   const [filters, setFilters] = useState<PeopleFilters>({ query: "", lastSeason: ANY_SEASON, availableOnly: false });
+  const [pool, setPool] = useState<Pool>("student");
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [overridden, setOverridden] = useState<ReadonlySet<number>>(new Set());
   const [asking, setAsking] = useState<PeopleCandidate | null>(null);
@@ -44,11 +47,19 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
 
   const people = candidates.data?.people;
   const requiredProgram = candidates.data?.season.requiredProgram ?? null;
-  const visible = useMemo(() => (people ? filterPeople(people, filters) : []), [people, filters]);
+  const wide = candidates.data?.season.isCommunityWide ?? false;
+  const filtered = useMemo(() => (people ? filterPeople(people, filters) : []), [people, filters]);
+  const visible = useMemo(() => (wide ? inPool(filtered, pool) : filtered), [wide, filtered, pool]);
   const items = useMemo(() => buildItems(visible), [visible]);
   const titles = useMemo(() => (people ? lastSeasonTitles(people) : []), [people]);
-  const targets = useMemo(() => selectAllTargets(visible), [visible]);
+  const targets = useMemo(() => people ? selectAllTargets(people, filters) : [], [people, filters]);
   const allTicked = targets.length > 0 && targets.every((id) => selected.has(id));
+
+  const otherPool: Pool = pool === "student" ? "alumni" : "student";
+  const tickedOnOther = useMemo(
+    () => (wide && people ? people.some((p) => p.pool === otherPool && selected.has(p.id)) : false),
+    [wide, people, otherPool, selected],
+  );
 
   const toggle = useCallback((id: number) => {
     setNotice(null);
@@ -152,12 +163,25 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
             onChange={setFilters}
             titles={titles}
             allTicked={allTicked}
-            hasTargets={targets.length > 0}
+            targetCount={targets.length}
+            pool={wide ? pool : null}
+            onPool={setPool}
             onSelectAll={selectAll}
           />
         }
         ListEmptyComponent={
-          <EmptyState title="No one matches" description="Try a different name or clear a filter." />
+          wide ? (
+            <EmptyState
+              title={pool === "alumni" ? "No alumni to show." : "No students to show."}
+              description={
+                tickedOnOther
+                  ? `Someone is ticked on the ${otherPool === "alumni" ? "Alumni" : "Students"} tab.`
+                  : "Try a different name or clear a filter."
+              }
+            />
+          ) : (
+            <EmptyState title="No one matches" description="Try a different name or clear a filter." />
+          )
         }
         renderItem={({ item }) =>
           item.kind === "header" ? (

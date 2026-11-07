@@ -45,6 +45,7 @@ const detail = {
 type Row = {
   id: number;
   name: string;
+  pool: "student" | "alumni";
   last: { seasonTitle: string; outcome: "PASSED" | "NOT_PASSED" | "DROPPED" | "COMPLETED"; attendancePct: number | null } | null;
   availability: "available" | "already_passed" | "did_not_pass" | "never_finished" | "in_role" | "in_season";
   reason: string | null;
@@ -53,6 +54,7 @@ type Row = {
 };
 const passed = (seasonTitle: string, pct: number) => ({ seasonTitle, outcome: "PASSED" as const, attendancePct: pct });
 const row = (r: Partial<Row> & Pick<Row, "id" | "name">): Row => ({
+  pool: "student",
   last: passed("GBV 2026", 88),
   availability: "available",
   reason: null,
@@ -105,11 +107,11 @@ function people(superCaller: boolean): Row[] {
 let candidates: () => Promise<unknown>;
 let list: Row[];
 
-function serve(rows: Row[]) {
+function serve(rows: Row[], isCommunityWide = false) {
   list = rows;
   candidates = () =>
     Promise.resolve({
-      data: { data: { season: { id: 7, title: "LEAD 2027", requiredProgram: "GBV" }, people: list } },
+      data: { data: { season: { id: 7, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide }, people: list } },
     });
 }
 
@@ -169,7 +171,7 @@ describe("selection", () => {
   it("Select all available ticks available rows only: not already passed, blocked, or in a role", async () => {
     await open();
     expect(bar()).toBeTruthy();
-    fireEvent.press(screen.getByText("Select all available"));
+    fireEvent.press(screen.getByText("Select all available (2)"));
     expect(screen.getByLabelText(/^Peter Samy/)).toBeChecked();
     expect(screen.getByLabelText(/^Nour Hany/)).toBeChecked();
     expect(screen.getByLabelText(/^Hala Fouad/)).not.toBeChecked();
@@ -230,6 +232,88 @@ describe("selection", () => {
   });
 });
 
+const everyone = () => [
+  ...people(true),
+  row({ id: 21, name: "Alaa Alumni", pool: "alumni", last: passed("GBV 2025", 70) }),
+  row({ id: 22, name: "Amir Alumni", pool: "alumni" }),
+  row({ id: 23, name: "Aya Alumni", pool: "alumni", availability: "already_passed", reason: "Already passed GBV 2026" }),
+  row({ id: 24, name: "Abdo Alumni", pool: "alumni", availability: "in_role", reason: "Leading a group", selectable: false }),
+];
+const openWide = async () => {
+  serve(everyone(), true);
+  await open();
+};
+
+describe("students and alumni tabs", () => {
+  it("a regular season shows no tabs and no alumni", async () => {
+    serve([...people(true), row({ id: 21, name: "Alaa Alumni", pool: "alumni" })]);
+    await open();
+    expect(screen.queryByTestId("segmented-control")).toBeNull();
+  });
+
+  it("a community-wide season shows Students | Alumni, each with its own rows", async () => {
+    await openWide();
+    expect(screen.getByRole("tab", { name: "Students" })).toBeSelected();
+    expect(screen.getByRole("tab", { name: "Alumni" })).toBeTruthy();
+    expect(screen.queryByText("Alaa Alumni")).toBeNull();
+    fireEvent.press(screen.getByRole("tab", { name: "Alumni" }));
+    expect(screen.getByText("Alaa Alumni")).toBeTruthy();
+    expect(screen.queryByText("Peter Samy")).toBeNull();
+  });
+
+  it("Select all counts both tabs, ticks both, keeps ticks across tabs and then clears", async () => {
+    await openWide();
+    fireEvent.press(screen.getByText("Select all available (4)"));
+    expect(screen.getByText("Add 4 people")).toBeTruthy();
+    expect(screen.getByText("Clear available")).toBeTruthy();
+    expect(screen.getByLabelText(/^Peter Samy/)).toBeChecked();
+    fireEvent.press(screen.getByRole("tab", { name: "Alumni" }));
+    expect(screen.getByLabelText(/^Alaa Alumni/)).toBeChecked();
+    expect(screen.getByLabelText(/^Amir Alumni/)).toBeChecked();
+    expect(screen.getByLabelText(/^Aya Alumni/)).not.toBeChecked();
+    expect(screen.getByLabelText(/^Abdo Alumni/)).toBeTruthy();
+    fireEvent.press(screen.getByText("Clear available"));
+    expect(screen.getByText("Add 0 people")).toBeTruthy();
+    fireEvent.press(screen.getByRole("tab", { name: "Students" }));
+    expect(screen.getByLabelText(/^Peter Samy/)).not.toBeChecked();
+  });
+
+  it("search and Last season narrow what it ticks, and the count; the tab does not", async () => {
+    await openWide();
+    fireEvent.changeText(screen.getByLabelText("Search people"), "a");
+    // Peter, Nour, Alaa, Amir match "a"... Peter Samy has an a; Nour Hany has an a
+    expect(screen.getByText("Select all available (4)")).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText("Search people"), "alaa");
+    expect(screen.getByText("Select all available (1)")).toBeTruthy();
+    expect(screen.getByText("No students to show.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Select all available (1)"));
+    expect(screen.getByText("Add 1 person")).toBeTruthy();
+    expect(screen.getByText(/ticked on the Alumni tab/)).toBeTruthy();
+    fireEvent.press(screen.getByRole("tab", { name: "Alumni" }));
+    expect(screen.getByText("Alaa Alumni")).toBeTruthy();
+    expect(screen.getByLabelText("Search people").props.value).toBe("alaa");
+    fireEvent.changeText(screen.getByLabelText("Search people"), "");
+    fireEvent.press(screen.getByLabelText("Last season"));
+    fireEvent.press(screen.getByText("Last season: GBV 2025"));
+    // Nour (student) and Alaa (alumni) last finished GBV 2025
+    expect(screen.getByText("Select all available (2)")).toBeTruthy();
+    fireEvent.press(screen.getByText("Select all available (2)"));
+    expect(screen.getByText("Add 2 people")).toBeTruthy();
+  });
+
+  it("posts ticks from both tabs and leaves an unticked person out", async () => {
+    post.mockResolvedValue({ data: { data: { added: 2 } } });
+    await openWide();
+    tick("Peter Samy");
+    fireEvent.press(screen.getByRole("tab", { name: "Alumni" }));
+    tick("Amir Alumni");
+    fireEvent.press(screen.getByText("Add 2 people"));
+    await waitFor(() => expect(mockBack).toHaveBeenCalled());
+    const ids = post.mock.calls[0]![1].userIds as number[];
+    expect([...ids].sort()).toEqual([1, 22]);
+  });
+});
+
 describe("override", () => {
   it("is offered to a super admin only, on blocked rows", async () => {
     await open();
@@ -275,7 +359,7 @@ describe("adding", () => {
   it("posts the ticked people, toasts the count, refreshes the roster and candidates, and goes back", async () => {
     post.mockResolvedValue({ data: { data: { added: 2 } } });
     await open();
-    fireEvent.press(screen.getByText("Select all available"));
+    fireEvent.press(screen.getByText("Select all available (2)"));
     fireEvent.press(screen.getByText("Add 2 people"));
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/enrollments", { userIds: expect.arrayContaining([1, 2]) });
@@ -286,7 +370,7 @@ describe("adding", () => {
   it("on a 409 toasts the message, refetches, drops who is no longer selectable and keeps the rest", async () => {
     post.mockRejectedValue(refusal("Nour Hany is already leading a group in GBV 2026"));
     await open();
-    fireEvent.press(screen.getByText("Select all available"));
+    fireEvent.press(screen.getByText("Select all available (2)"));
     tick("Hala Fouad");
     const gets = get.mock.calls.length;
     // Nour has taken a role in the meantime
