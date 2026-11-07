@@ -49,7 +49,8 @@ const subs = (n: number) =>
   Array.from({ length: n }, (_, i) => ({ publicId: `pub${i}`, assignmentTitle: `Essay ${i}`, studentName: `Student ${i}` }));
 const students = (n: number) =>
   Array.from({ length: n }, (_, i) => ({ userId: i + 1, name: `Student ${i + 1}`, groupName: "Group A", attendancePct: 90 }));
-const check = (blockers: Partial<{ submissions: unknown[]; quizAttempts: unknown[]; attendance: unknown[] }>, n = 3) => ({
+const check = (blockers: Partial<{ submissions: unknown[]; quizAttempts: unknown[]; attendance: unknown[] }>, n = 3, graduatesOnPass = false) => ({
+  graduatesOnPass,
   blockers: { submissions: [], quizAttempts: [], attendance: [], ...blockers },
   students: students(n),
 });
@@ -135,7 +136,7 @@ describe("End season screen", () => {
 
   it("reviews every student as Passed, stages a did-not-pass and posts only notPassed", async () => {
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 84) });
-    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" } } } });
+    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 0 } } });
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     expect(screen.getAllByText("Passed")).toHaveLength(84);
@@ -174,7 +175,7 @@ describe("End season screen", () => {
   it("sends an administering admin to Today after ending, since they lose the season", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1) });
-    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" } } } });
+    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 0 } } });
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
@@ -238,6 +239,104 @@ describe("End season screen, losing the race to another admin", () => {
   });
 });
 
+describe("End of a graduating season", () => {
+  const ended = (graduated: number) =>
+    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated } } });
+
+  it("warns on the review, counts the graduates in the confirm and says so after", async () => {
+    serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 13, true) });
+    ended(12);
+    renderStacked(<EndSeasonScreen />);
+    await screen.findByText("Student 1");
+    expect(screen.getByText("Passing this season graduates them")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Student 2"));
+    fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
+    fireEvent.press(screen.getByText("Done"));
+    fireEvent.press(screen.getByRole("button", { name: "End season" }));
+    expect(await screen.findByText(/12 people will graduate\.$/)).toBeTruthy();
+
+    confirmEnd();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("GBV 2026 has ended. 12 people graduated."));
+  });
+
+  it("says one person, in the singular", async () => {
+    serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1, true) });
+    ended(1);
+    renderStacked(<EndSeasonScreen />);
+    await screen.findByText("Student 1");
+    fireEvent.press(screen.getByRole("button", { name: "End season" }));
+    expect(await screen.findByText(/1 person will graduate\.$/)).toBeTruthy();
+    confirmEnd();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("GBV 2026 has ended. 1 person graduated."));
+  });
+
+  it("has no graduate line when nobody passes", async () => {
+    serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1, true) });
+    ended(0);
+    renderStacked(<EndSeasonScreen />);
+    fireEvent.press(await screen.findByText("Student 1"));
+    fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
+    fireEvent.press(screen.getByText("Done"));
+    fireEvent.press(screen.getByRole("button", { name: "End season" }));
+    await screen.findByText(/This finishes/);
+    expect(screen.queryByText(/will graduate/)).toBeNull();
+    confirmEnd();
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("GBV 2026 has ended."));
+  });
+
+  it("an ordinary season doesn't mention graduating", async () => {
+    serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 3) });
+    renderStacked(<EndSeasonScreen />);
+    await screen.findByText("Student 1");
+    expect(screen.queryByText("Passing this season graduates them")).toBeNull();
+    fireEvent.press(screen.getByRole("button", { name: "End season" }));
+    await screen.findByText(/This finishes/);
+    expect(screen.queryByText(/will graduate/)).toBeNull();
+  });
+});
+
+describe("Correcting a result on a graduating season", () => {
+  const open = async (graduatesOnPass: boolean) => {
+    serve({
+      [BY_CODE]: detail({ status: "COMPLETED", graduatesOnPass }),
+      "/api/v1/seasons/7/results": {
+        results: [
+          { userId: 1, name: "Mina", isAlumnus: true, groupName: null, attendancePct: 90, result: "PASSED", reason: null },
+          { userId: 2, name: "Nour", isAlumnus: false, groupName: null, attendancePct: 40, result: "NOT_PASSED", reason: null },
+        ],
+      },
+    });
+    renderStacked(<SeasonResultsScreen />);
+    await screen.findByText("Mina");
+  };
+  const KEEPS = "This doesn't remove their alumni status.";
+  const WILL = "They'll graduate when you save.";
+
+  it("says Did not pass doesn't remove alumni status", async () => {
+    await open(true);
+    fireEvent.press(screen.getByText("Mina"));
+    expect(screen.queryByText(KEEPS)).toBeNull();
+    fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
+    expect(screen.getByText(KEEPS)).toBeTruthy();
+  });
+
+  it("says Passed graduates someone who isn't an alumnus yet", async () => {
+    await open(true);
+    fireEvent.press(screen.getByText("Nour"));
+    expect(screen.queryByText(WILL)).toBeNull();
+    fireEvent.press(screen.getByRole("tab", { name: "Passed" }));
+    expect(screen.getByText(WILL)).toBeTruthy();
+  });
+
+  it("says neither on an ordinary season", async () => {
+    await open(false);
+    fireEvent.press(screen.getByText("Mina"));
+    fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
+    expect(screen.queryByText(KEEPS)).toBeNull();
+  });
+});
+
 describe("Result sheet", () => {
   it("caps the reason at the length the server accepts", async () => {
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1) });
@@ -253,8 +352,8 @@ describe("Results screen", () => {
       [BY_CODE]: detail({ status: "COMPLETED" }),
       "/api/v1/seasons/7/results": {
         results: [
-          { userId: 1, name: "Mina", groupName: "Group A", attendancePct: 90, result: "PASSED", reason: null },
-          { userId: 2, name: "Nour", groupName: null, attendancePct: 40, result: null, reason: null },
+          { userId: 1, name: "Mina", isAlumnus: false, groupName: "Group A", attendancePct: 90, result: "PASSED", reason: null },
+          { userId: 2, name: "Nour", isAlumnus: false, groupName: null, attendancePct: 40, result: null, reason: null },
         ],
       },
     });

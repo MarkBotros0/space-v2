@@ -15,6 +15,7 @@ import { useSessionStore } from "../store/session";
 import { renderStacked, renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import NewSeasonScreen from "../../app/(app)/seasons/new";
+import { NEW_SEASON_VALUES, SeasonForm } from "../components/season/SeasonForm";
 
 const post = apiClient.post as jest.Mock;
 
@@ -68,6 +69,7 @@ describe("NewSeasonScreen (/seasons/new)", () => {
         year: 2028,
         description: null,
         requiredProgram: null,
+        graduatesOnPass: false,
         startDate: `${day}T00:00:00.000Z`,
         endDate: `${day}T00:00:00.000Z`,
         status: "DRAFT",
@@ -129,9 +131,63 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     expect(mockBack).toHaveBeenCalled();
   });
 
+  it("sends the Graduating season switch, with its helper line", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    post.mockResolvedValue({ data: { data: { id: 99, code: "gbv-2028" } } });
+    renderWithProviders(<NewSeasonScreen />);
+    expect(screen.getByText("Graduating season")).toBeTruthy();
+    expect(screen.getByText("Everyone who passes becomes an alumnus when the season ends.")).toBeTruthy();
+
+    fireEvent.press(screen.getByRole("switch", { name: "Graduating season" }));
+    fireEvent.changeText(screen.getByLabelText("Program"), "GBV");
+    fireEvent.changeText(screen.getByLabelText("Year"), "2028");
+    pickToday("Start date");
+    pickToday("End date");
+    fireEvent.press(screen.getByText("Create season"));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/seasons", expect.objectContaining({ graduatesOnPass: true })),
+    );
+  });
+
   it("is SUPER-only", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<NewSeasonScreen />);
     expect(screen.getByText("Only a super admin can create a season.")).toBeTruthy();
+  });
+});
+
+describe("SeasonForm's Graduating season", () => {
+  const form = (status: "ACTIVE" | "COMPLETED", onSubmit = jest.fn()) => (
+    <SeasonForm
+      mode="edit"
+      title="Edit"
+      initial={{ ...NEW_SEASON_VALUES, status, graduatesOnPass: true, program: "GBV", code: "gbv-2026", startDay: "2026-01-01", endDay: "2026-06-30" }}
+      submitting={false}
+      message={null}
+      onSubmit={onSubmit}
+    />
+  );
+
+  it("isn't offered to anyone but a super", () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    renderWithProviders(form("ACTIVE"));
+    expect(screen.queryByText("Graduating season")).toBeNull();
+  });
+
+  it("can still change on a running season", () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(form("ACTIVE"));
+    expect(screen.getByRole("switch", { name: "Graduating season" }).props.accessibilityState.checked).toBe(true);
+  });
+
+  it("reads as settled once the season has finished, and isn't sent", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    const onSubmit = jest.fn();
+    renderWithProviders(form("COMPLETED", onSubmit));
+    expect(screen.queryByRole("switch", { name: "Graduating season" })).toBeNull();
+    expect(screen.getByText("Yes. It can't change now the season has finished.")).toBeTruthy();
+    fireEvent.press(screen.getByText("Save changes"));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("graduatesOnPass");
   });
 });

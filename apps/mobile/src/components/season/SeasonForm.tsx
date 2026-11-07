@@ -12,6 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   Text,
   Textarea,
 } from "../../design/ui";
@@ -19,6 +20,7 @@ import { FormField } from "../../design/ui/form-field";
 import { useSeasons } from "../../hooks/use-seasons";
 import { firstErrorByField } from "../../lib/form-errors";
 import { autoSeasonCode } from "../../lib/season-defaults";
+import { useSessionStore } from "../../store/session";
 import type { SeasonIdentityInput } from "../../hooks/use-season-writes";
 
 export interface SeasonFormValues {
@@ -26,6 +28,8 @@ export interface SeasonFormValues {
   program: string;
   /** The program someone must have finished to join; "" for none. */
   requiredProgram: string;
+  /** Everyone who passes becomes an alumnus when the season ends. */
+  graduatesOnPass: boolean;
   year: string;
   description: string;
   /** Calendar days "YYYY-MM-DD" (spec 02 D12: stored as UTC midnight). */
@@ -40,6 +44,7 @@ export const NEW_SEASON_VALUES: SeasonFormValues = {
   code: "",
   program: "",
   requiredProgram: "",
+  graduatesOnPass: false,
   year: String(new Date().getFullYear()),
   description: "",
   startDay: "",
@@ -99,7 +104,7 @@ export const dayToDate = (day: string): Date | null => {
   return isValid(d) ? d : null;
 };
 
-function toBody(v: SeasonFormValues, canSetRequired: boolean): SeasonIdentityInput {
+function toBody(v: SeasonFormValues, canSetRequired: boolean, canSetGraduating: boolean): SeasonIdentityInput {
   return {
     code: v.code,
     program: v.program,
@@ -107,6 +112,7 @@ function toBody(v: SeasonFormValues, canSetRequired: boolean): SeasonIdentityInp
     description: v.description.trim() === "" ? null : v.description,
     // Settled before the season starts: left out once it has, so the server has nothing to refuse.
     ...(canSetRequired ? { requiredProgram: v.requiredProgram === "" ? null : v.requiredProgram } : {}),
+    ...(canSetGraduating ? { graduatesOnPass: v.graduatesOnPass } : {}),
     startDate: `${v.startDay}T00:00:00.000Z`,
     endDate: `${v.endDay}T00:00:00.000Z`,
     status: v.status,
@@ -153,6 +159,9 @@ export function SeasonForm({
   // Who may join is settled before the season starts.
   const canSetRequired = mode === "create" || initial.status === "DRAFT";
   const seasons = useSeasons(canSetRequired);
+  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const seasonFinished = initial.status === "COMPLETED" || initial.status === "ARCHIVED";
+  const canSetGraduating = isSuper && !seasonFinished;
   const requiredChoices = requiredProgramChoices(seasons.data ?? [], v.program, initial.requiredProgram);
 
   const patch = (next: Partial<SeasonFormValues>) => {
@@ -166,7 +175,7 @@ export function SeasonForm({
   };
 
   const submit = () => {
-    const body = toBody(v, canSetRequired);
+    const body = toBody(v, canSetRequired, canSetGraduating);
     const parsed = seasonWriteRequestSchema.safeParse(body);
     if (!parsed.success) {
       setErrors(firstErrorByField(parsed.error));
@@ -240,6 +249,33 @@ export function SeasonForm({
             </Text>
           </View>
         )}
+        {canSetGraduating ? (
+          <View className="flex-col gap-1">
+            <View className="flex-row items-center gap-3">
+              <Text
+                className="min-w-0 flex-1 text-sm font-semibold text-foreground"
+                onPress={() => patch({ graduatesOnPass: !v.graduatesOnPass })}
+              >
+                Graduating season
+              </Text>
+              <Switch
+                accessibilityLabel="Graduating season"
+                checked={v.graduatesOnPass}
+                onCheckedChange={(graduatesOnPass) => patch({ graduatesOnPass })}
+              />
+            </View>
+            <Text variant="subhead" className="text-muted-foreground">
+              Everyone who passes becomes an alumnus when the season ends.
+            </Text>
+          </View>
+        ) : isSuper ? (
+          <View className="flex-col gap-1">
+            <Text className="text-sm font-semibold text-foreground">Graduating season</Text>
+            <Text variant="body" className="text-foreground">
+              {initial.graduatesOnPass ? "Yes" : "No"}. It can&apos;t change now the season has finished.
+            </Text>
+          </View>
+        ) : null}
         <FormField label="Year" required error={errors.year}>
           <Input
             accessibilityLabel="Year"

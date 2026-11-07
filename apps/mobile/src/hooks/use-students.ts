@@ -191,14 +191,17 @@ export function useUpdateStudent(): UseMutationResult<
 export function useGraduateStudent(): UseMutationResult<
   GraduateStudentResponse,
   Error,
-  { id: number; graduationYear: number }
+  { id: number; graduationYear: number; override?: boolean }
 > {
   const queryClient = useQueryClient();
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async ({ id, graduationYear }) => {
-      const res = await apiClient.post(`/api/v1/students/${id}/graduate`, { graduationYear });
+    mutationFn: async ({ id, graduationYear, override }) => {
+      const res = await apiClient.post(`/api/v1/students/${id}/graduate`, {
+        graduationYear,
+        ...(override ? { override: true } : {}),
+      });
       return graduateStudentResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {

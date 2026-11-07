@@ -15,9 +15,20 @@ const OPTIONS = [
   { value: "NOT_PASSED", label: "Did not pass" },
 ];
 
+/** What the correction screen knows about a graduating season's student. */
+export type ResultGraduation = { isAlumnus: boolean; stored: ResultValue | null };
+
+/** What saving this draft does to alumni status, on a graduating season; null when it does nothing to say. */
+function graduationNote(graduation: ResultGraduation, result: ResultValue): string | null {
+  if (result === "PASSED") return graduation.isAlumnus ? null : "They'll graduate when you save.";
+  return graduation.isAlumnus && graduation.stored !== "NOT_PASSED" ? "This doesn't remove their alumni status." : null;
+}
+
 type Props = {
   student: { userId: number; name: string } | null;
   initial: ResultDraft;
+  /** Set when correcting a result on a graduating season. Ending one warns on its review instead. */
+  graduation?: ResultGraduation;
   saveLabel: string;
   saving?: boolean;
   error?: string | null;
@@ -25,8 +36,9 @@ type Props = {
   onSave: (draft: ResultDraft) => void;
 };
 
-function ResultSheetBody({ student, initial, saveLabel, saving, error, onClose, onSave }: Props) {
+function ResultSheetBody({ student, initial, graduation, saveLabel, saving, error, onClose, onSave }: Props) {
   const [draft, setDraft] = useState(initial);
+  const note = graduation ? graduationNote(graduation, draft.result) : null;
   return (
     <Sheet
       open={student !== null}
@@ -40,6 +52,11 @@ function ResultSheetBody({ student, initial, saveLabel, saving, error, onClose, 
           value={draft.result}
           onChange={(result) => setDraft((d) => ({ ...d, result: result as ResultValue }))}
         />
+        {note ? (
+          <Text variant="subhead" className="text-foreground">
+            {note}
+          </Text>
+        ) : null}
         <View className="flex-col gap-1.5">
           <Textarea
             accessibilityLabel="Reason"

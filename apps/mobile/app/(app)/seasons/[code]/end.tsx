@@ -48,9 +48,10 @@ export default function EndSeasonScreen() {
     end.mutate(
       { notPassed },
       {
-        onSuccess: () => {
+        onSuccess: ({ graduated }) => {
           setConfirming(false);
-          toast.success(`${season.data?.title ?? "The season"} has ended.`);
+          const ended = `${season.data?.title ?? "The season"} has ended.`;
+          toast.success(graduated > 0 ? `${ended} ${plural(graduated, "person", "people")} graduated.` : ended);
           if (isSuper) router.back();
           else router.dismissAll();
         },
@@ -109,7 +110,7 @@ export default function EndSeasonScreen() {
     if (blocked) {
       body = <BlockersList blockers={blockers} />;
     } else {
-      body = <ReviewList students={students} staged={staged} onOpen={setEditing} />;
+      body = <ReviewList students={students} staged={staged} graduating={check.data.graduatesOnPass} onOpen={setEditing} />;
       footer = (
         <SaveBar
           label="End season"
@@ -129,10 +130,12 @@ export default function EndSeasonScreen() {
 
   const total = check.data?.students.length ?? 0;
   const title = season.data?.title ?? "this season";
+  const graduating = check.data?.graduatesOnPass ? total - notPassed.length : 0;
   const description =
     `This finishes ${title} for ${plural(total, "student", "students")}` +
     (notPassed.length > 0 ? `, including ${notPassed.length} who did not pass` : "") +
-    ". Their leaders and admins lose access.";
+    ". Their leaders and admins lose access." +
+    (graduating > 0 ? ` ${plural(graduating, "person", "people")} will graduate.` : "");
 
   return (
     <Screen title="End season" subtitle={season.data?.title} footer={footer}>

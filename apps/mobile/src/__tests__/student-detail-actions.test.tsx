@@ -145,6 +145,62 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     });
   });
 
+  describe("someone who hasn't passed a graduating season", () => {
+    const notQualified = {
+      isAxiosError: true,
+      response: { status: 409, data: { error: { code: "not_qualified", message: "Sara Student hasn't passed a graduating season." } } },
+    };
+
+    it("asks once more in the same sheet, then re-posts with override", async () => {
+      const year = new Date().getFullYear();
+      useSessionStore.setState(makeSession("SUPER"));
+      post.mockRejectedValueOnce(notQualified);
+      post.mockResolvedValueOnce({ data: { data: { id: 21, graduationYear: year, enrollmentsCompleted: 0 } } });
+      renderWithProviders(<StudentDetailScreen />);
+
+      fireEvent.press(await screen.findByText("Graduate"));
+      fireEvent.press(screen.getByText("Graduate student"));
+
+      expect(await screen.findByText("Graduate Sara Student anyway?")).toBeTruthy();
+      expect(screen.getByText(/Sara Student hasn't passed a graduating season\./)).toBeTruthy();
+      expect(screen.queryByLabelText("JPCS graduation year")).toBeNull();
+      expect(screen.getAllByTestId("sheet")).toHaveLength(1);
+      expect(post).toHaveBeenCalledTimes(1);
+
+      fireEvent.press(screen.getByText("Graduate anyway"));
+      await waitFor(() =>
+        expect(post).toHaveBeenLastCalledWith("/api/v1/students/21/graduate", { graduationYear: year, override: true }),
+      );
+    });
+
+    it("Cancel leaves them as they are, and the next try starts over", async () => {
+      useSessionStore.setState(makeSession("SUPER"));
+      post.mockRejectedValueOnce(notQualified);
+      renderWithProviders(<StudentDetailScreen />);
+
+      fireEvent.press(await screen.findByText("Graduate"));
+      fireEvent.press(screen.getByText("Graduate student"));
+      fireEvent.press(await screen.findByText("Cancel"));
+      expect(post).toHaveBeenCalledTimes(1);
+
+      fireEvent.press(await screen.findByText("Graduate"));
+      expect(screen.getByText("Graduate Sara Student?")).toBeTruthy();
+    });
+
+    it("any other refusal stays on the first step, in the server's words", async () => {
+      useSessionStore.setState(makeSession("SUPER"));
+      post.mockRejectedValueOnce({
+        isAxiosError: true,
+        response: { status: 409, data: { error: { code: "already_graduated", message: "This student has already graduated." } } },
+      });
+      renderWithProviders(<StudentDetailScreen />);
+      fireEvent.press(await screen.findByText("Graduate"));
+      fireEvent.press(screen.getByText("Graduate student"));
+      expect(await screen.findByText("This student has already graduated.")).toBeTruthy();
+      expect(screen.queryByText("Graduate anyway")).toBeNull();
+    });
+  });
+
   it("clears the year error as soon as the year is edited to a valid one", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);

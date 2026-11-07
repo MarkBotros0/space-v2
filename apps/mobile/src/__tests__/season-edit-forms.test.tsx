@@ -134,6 +134,7 @@ describe("SeasonEditScreen save", () => {
         startDate: "2026-01-01T00:00:00.000Z",
         endDate: "2026-12-31T00:00:00.000Z",
         status: "ACTIVE",
+        graduatesOnPass: false,
         absenceBudgetMinutes: 240,
         absenceWeightMinutes: 60,
       }),

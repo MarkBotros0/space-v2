@@ -15,9 +15,12 @@ type Row = SeasonEndCheck["students"][number];
 export function ReviewList({
   students,
   staged,
+  graduating,
   onOpen,
 }: {
   students: Row[];
+  /** This season's pass makes them alumni: staff of any kind should know before End. */
+  graduating: boolean;
   /** Verdicts the staff member changed, by user id. */
   staged: Record<number, ResultDraft>;
   onOpen: (student: Row) => void;
@@ -27,6 +30,11 @@ export function ReviewList({
       <Text variant="subhead" className="text-muted-foreground">
         Everyone passes unless you say otherwise. Tap a student to mark them as not passed.
       </Text>
+      {graduating ? (
+        <Text variant="subhead" className="font-semibold text-foreground">
+          Passing this season graduates them
+        </Text>
+      ) : null}
       <GroupedList>
         {students.map((s, i) => {
           const notPassed = staged[s.userId]?.result === "NOT_PASSED";

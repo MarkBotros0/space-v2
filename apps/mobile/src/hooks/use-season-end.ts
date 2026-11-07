@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
+  endSeasonResponseSchema,
   overdueSeasonsResponseSchema,
   seasonEndCheckSchema,
   seasonResultRowSchema,
@@ -42,9 +43,7 @@ export function useEndSeason(id: number) {
   return useMutation({
     mutationFn: async (body: EndSeasonRequest) => {
       const res = await apiClient.post(`/api/v1/seasons/${id}/end`, body);
-      return z
-        .object({ season: z.object({ id: z.number(), code: z.string(), status: z.string() }) })
-        .parse(res.data.data);
+      return endSeasonResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
       // Not the end-check: it is mounted on the screen that ends the season, and
@@ -57,6 +56,8 @@ export function useEndSeason(id: number) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+      // A graduating season moves its graduates to the alumni list.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     },
   });
 }
@@ -79,8 +80,11 @@ export function useUpdateSeasonResult(id: number) {
     mutationFn: async ({ userId, ...body }: UpdateSeasonResultRequest & { userId: number }) => {
       await apiClient.patch(`/api/v1/seasons/${id}/results/${userId}`, body);
     },
-    onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.results(id) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.results(id) });
+      // Passed on a graduating season moves them to the alumni list.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+    },
   });
 }
 
