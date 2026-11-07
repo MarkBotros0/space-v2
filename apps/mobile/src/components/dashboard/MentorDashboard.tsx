@@ -1,10 +1,13 @@
 import { useRouter } from "expo-router";
+import { TriangleAlert, Users } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { InlineError } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { GroupedList, ListRow, Skeleton } from "../../design/ui";
+import { CountTile } from "../../design/home/count-tile";
+import { FigureTile } from "../../design/home/figure-tile";
+import { GroupedList, Skeleton } from "../../design/ui";
 import { useMentorDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useVisibleNotes } from "../../hooks/use-notes";
@@ -29,7 +32,15 @@ function GroupLoading({ header }: { header: string }) {
   );
 }
 
-function GroupError({ header, message, onRetry }: { header: string; message: string; onRetry: () => void }) {
+function GroupError({
+  header,
+  message,
+  onRetry,
+}: {
+  header: string;
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <GroupedList header={header}>
       <InlineError className="p-4" message={message} onRetry={onRetry} />
@@ -38,7 +49,8 @@ function GroupError({ header, message, onRetry }: { header: string; message: str
 }
 
 /**
- * The mentor's Today: who is at risk, the newest notes, recent activity, then
+ * The mentor's Home: who is at risk (a count tile beside everyone, then the
+ * names), the newest notes, recent activity, then
  * the upcoming-events card every Today keeps. v2 decisions kept (B6-1): the
  * at-risk list shares Reports' cache (D17) and the quick links are tabs.
  */
@@ -81,11 +93,25 @@ export function MentorDashboard() {
             onRetry={() => void engagement.refetch()}
           />
         ) : (
-          <AtRiskGroup
-            rows={engagement.data.atRisk}
-            total={engagement.data.atRiskTotal}
-            footer={<ListRow title="All students" chevron onPress={() => router.push("/students")} />}
-          />
+          <>
+            {/* The scope in two tiles: who needs a look, and everyone. */}
+            <View className="flex-row flex-wrap gap-3">
+              <CountTile
+                label="Students at risk"
+                value={engagement.data.atRiskTotal}
+                icon={TriangleAlert}
+                tone="bad"
+                onPress={() => router.push("/reports")}
+              />
+              <FigureTile
+                label="Students"
+                value={String(engagement.data.cohortSize)}
+                icon={Users}
+                onPress={() => router.push("/students")}
+              />
+            </View>
+            <AtRiskGroup rows={engagement.data.atRisk} total={engagement.data.atRiskTotal} />
+          </>
         )}
 
         {notes.isPending ? (

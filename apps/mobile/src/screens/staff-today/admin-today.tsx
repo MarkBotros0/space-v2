@@ -5,7 +5,9 @@ import { UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared"
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { EmptyState, GroupedList, ListRow, StatTile } from "../../design/ui";
+import { PeoplePreview } from "../../design/home/people-preview";
+import { SeasonPulse, staffPulseFigures } from "../../design/home/season-pulse";
+import { EmptyState } from "../../design/ui";
 import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
@@ -17,73 +19,46 @@ import { useSessionStore } from "../../store/session";
 import { fromDashboardSession, LiveSessionHero } from "./live-session-hero";
 import { NeedsActionList } from "./needs-action-list";
 
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-
-function Figures({ data }: { data: StaffSeasonDashboard }) {
+/** The season at a glance, then its students at risk by name. */
+function SeasonFigures({ data }: { data: StaffSeasonDashboard }) {
   const router = useRouter();
-  const { progress, cohort, submissions, quizzes, season } = data;
-  const mean = cohort.meanAttendancePct;
-  const showQuizzes = quizzes.total > 0 || quizzes.drafts > 0;
+  const { progress, cohort, season } = data;
   return (
     <>
-      <View className="flex-row flex-wrap gap-3">
-        <StatTile label="Attendance" value={mean ?? "—"} suffix={mean === null ? undefined : "%"} />
-        <StatTile label={`Progress · Session ${progress.sessionsHeld}/${progress.sessionsTotal}`} value={`${progress.pct ?? 0}%`} />
-        <StatTile label="Students" value={cohort.studentCount} />
-      </View>
-      <GroupedList>
-        <ListRow
-          title="Season"
-          subtitle={season.title}
-          chevron
-          onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: season.code } })}
-        />
-        <ListRow title="Students" chevron onPress={() => router.push("/students")} />
-        <ListRow
-          title="Assignments"
-          subtitle={joinMeta([`${submissions.reviewed} reviewed`, `${submissions.pendingReview} pending review`])}
-          chevron
-          onPress={() => router.push("/assignments")}
-        />
-        {showQuizzes ? (
-          <ListRow
-            title="Quizzes"
-            subtitle={joinMeta([
-              `${quizzes.pending} pending`,
-              `${quizzes.fullyGraded} fully graded`,
-              quizzes.drafts > 0 && `${quizzes.drafts} quiz ${plural(quizzes.drafts, "draft", "drafts")} not yet published`,
-            ])}
-            chevron
-            onPress={() => router.push("/quizzes")}
-          />
-        ) : null}
-      </GroupedList>
-      {cohort.atRisk.length > 0 ? (
-        <GroupedList header="Students at risk">
-          {cohort.atRisk.map((r) => (
-            <ListRow
-              key={`${r.studentUserId}:${r.seasonId}`}
-              title={r.studentName}
-              subtitle={joinMeta([
-                `${r.submissionsCompleted}/${r.submissionsExpected} submitted`,
-                r.attendanceTotal > 0 && `${r.attendancePct}% attendance`,
-              ])}
-              chevron
-              onPress={() =>
-                router.push({ pathname: "/student/[id]", params: { id: String(r.studentUserId) } })
-              }
-            />
-          ))}
-        </GroupedList>
-      ) : null}
+      <PeoplePreview
+        header="Students at risk"
+        people={cohort.atRisk.map((r) => ({
+          id: r.studentUserId,
+          name: r.studentName,
+          reason: joinMeta([
+            `${r.submissionsCompleted}/${r.submissionsExpected} submitted`,
+            r.attendanceTotal > 0 && `${r.attendancePct}% attendance`,
+          ]),
+        }))}
+        total={cohort.atRiskTotal}
+        onOpen={(id) => router.push({ pathname: "/student/[id]", params: { id: String(id) } })}
+        onSeeAll={() =>
+          router.push({ pathname: "/attention/at-risk", params: { seasonId: String(season.id) } })
+        }
+      />
+      <SeasonPulse
+        title={season.title}
+        progressPct={progress.pct}
+        sessionsHeld={progress.sessionsHeld}
+        sessionsTotal={progress.sessionsTotal}
+        figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
+        onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: season.code } })}
+      />
     </>
   );
 }
 
 /**
- * Admin Today: the live session, what needs action, then the season's figures
- * (the old dashboard, below the action). `useStaffToday` and the dashboard
- * share query keys with every list they open, so nothing is fetched twice.
+ * Admin Home (owner, 2026-11-07: less of a stacked list): the live session,
+ * what needs action as coloured tiles, the students at risk by name, the
+ * season at a glance (its ring opens the season), events. Assignments and
+ * quizzes live on the Work tab. `useStaffToday` and the dashboard share query
+ * keys with every list they open, so nothing is fetched twice.
  */
 export function AdminToday() {
   const name = useSessionStore((s) => s.user?.name ?? null);
@@ -113,19 +88,28 @@ export function AdminToday() {
     const next = dash.data?.nextSession;
     body = (
       <>
-        {dash.data && next ? <LiveSessionHero session={fromDashboardSession(next, dash.data.season.title)} /> : null}
+        {dash.data && next ? (
+          <LiveSessionHero session={fromDashboardSession(next, dash.data.season.title)} />
+        ) : null}
         <OverdueCallout />
         {today.isPending ? (
           <RouteSkeleton />
         ) : (
-          <NeedsActionList needs={today.needs} scopeSeasonId={today.scopeSeasonId} onRetry={today.refetch} />
+          <NeedsActionList
+            needs={today.needs}
+            scopeSeasonId={today.scopeSeasonId}
+            onRetry={today.refetch}
+          />
         )}
         {dash.isPending ? (
           <RouteSkeleton />
         ) : dash.isError || !dash.data ? (
-          <InlineError message="Couldn't load the season figures." onRetry={() => void dash.refetch()} />
+          <InlineError
+            message="Couldn't load the season figures."
+            onRetry={() => void dash.refetch()}
+          />
         ) : (
-          <Figures data={dash.data} />
+          <SeasonFigures data={dash.data} />
         )}
         <UpcomingEventsCard query={events} />
       </>

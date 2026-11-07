@@ -1,15 +1,16 @@
 import { useRouter } from "expo-router";
-import { Users } from "lucide-react-native";
+import { ClipboardCheck, FileText, TriangleAlert } from "lucide-react-native";
 import { View } from "react-native";
-import { AT_RISK_PCT, UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
+import { UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
 
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
 import { Screen } from "../../design/layout/screen";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { EmptyState } from "../../design/ui/empty-state";
-import { GroupedList, ListRow, ListSectionHeader } from "../../design/ui/grouped-list";
-import { StatTile } from "../../design/ui/stat-tile";
-import { Text } from "../../design/ui/text";
+import { CountGrid, type CountTileProps } from "../../design/home/count-tile";
+import { PeoplePreview } from "../../design/home/people-preview";
+import { SeasonPulse, staffPulseFigures } from "../../design/home/season-pulse";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
@@ -19,122 +20,80 @@ import { atRiskReason } from "./at-risk-reason";
 import { LeaderSessionSection, isOnTheDay } from "./session-section";
 import { useLiveTodayRefresh } from "./use-live-refresh";
 
-const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-const count = (n: number) => (
-  <Text variant="body" tabular>
-    {String(n)}
-  </Text>
-);
-
 function Body({ data }: { data: StaffSeasonDashboard }) {
   const router = useRouter();
   const { progress, cohort, submissions, quizzes } = data;
-  const mean = cohort.meanAttendancePct;
   // The figures count this season only, so the leader's queue opens on the
   // same season; otherwise "3 waiting" lands on a cross-season list showing
   // a different number.
   const toSubmissions = () =>
     router.push({ pathname: "/submissions", params: { seasonId: String(data.season.id) } });
-  const toQuizzes = () => router.push("/quizzes");
-  const student = (id: number) => () =>
-    router.push({ pathname: "/student/[id]", params: { id: String(id) } });
+  const toGroup = () => router.push("/groups");
+  const hasQuizzes = quizzes.total > 0 || quizzes.drafts > 0;
+  const tiles: CountTileProps[] = [
+    {
+      label: "Submissions to review",
+      value: submissions.pendingReview,
+      icon: FileText,
+      tone: "warn",
+      onPress: toSubmissions,
+    },
+    ...(hasQuizzes
+      ? [
+          {
+            label: "Quizzes to grade",
+            value: quizzes.pending,
+            icon: ClipboardCheck,
+            tone: "warn" as const,
+            onPress: () => router.push("/quizzes"),
+          },
+        ]
+      : []),
+    {
+      label: "Students at risk",
+      value: cohort.atRiskTotal,
+      icon: TriangleAlert,
+      tone: "bad",
+      onPress: toGroup,
+    },
+  ];
 
   return (
     <>
       <LeaderSessionSection session={data.nextSession} checkIn={data.leaderSession} />
-
-      <GroupedList header="To review">
-        <ListRow
-          title="Submissions waiting"
-          trailing={count(submissions.pendingReview)}
-          trailingLabel={String(submissions.pendingReview)}
-          chevron
-          onPress={toSubmissions}
-        />
-        <ListRow
-          title="Reviewed"
-          trailing={count(submissions.reviewed)}
-          trailingLabel={String(submissions.reviewed)}
-          chevron
-          onPress={toSubmissions}
-        />
-        {quizzes.total > 0 || quizzes.drafts > 0 ? (
-          <ListRow
-            title="Quizzes to grade"
-            subtitle={
-              quizzes.drafts > 0
-                ? `${quizzes.drafts} quiz ${plural(quizzes.drafts, "draft", "drafts")} not yet published`
-                : undefined
-            }
-            trailing={count(quizzes.pending)}
-            trailingLabel={String(quizzes.pending)}
-            chevron
-            onPress={toQuizzes}
-          />
-        ) : null}
-        {quizzes.total > 0 || quizzes.drafts > 0 ? (
-          <ListRow
-            title="Fully graded"
-            trailing={count(quizzes.fullyGraded)}
-            trailingLabel={String(quizzes.fullyGraded)}
-            chevron
-            onPress={toQuizzes}
-          />
-        ) : null}
-      </GroupedList>
-
-      {cohort.atRisk.length === 0 ? (
-        <View className="gap-1.5">
-          <ListSectionHeader>Your students at risk</ListSectionHeader>
-          <EmptyState
-            icon={Users}
-            title="Nobody at risk"
-            description={`No student has attendance or submissions below ${AT_RISK_PCT}%.`}
-          />
-        </View>
-      ) : (
-        <GroupedList header="Your students at risk">
-          {cohort.atRisk.map((r) => (
-            <ListRow
-              key={`${r.studentUserId}:${r.seasonId}`}
-              title={r.studentName}
-              titleLines={2}
-              subtitle={atRiskReason(r)}
-              chevron
-              onPress={student(r.studentUserId)}
-            />
-          ))}
-          {cohort.atRiskTotal > cohort.atRisk.length ? (
-            <ListRow
-              title={`See all ${cohort.atRiskTotal}`}
-              chevron
-              onPress={() => router.push("/groups")}
-            />
-          ) : null}
-        </GroupedList>
-      )}
-
-      <View className="gap-1.5">
-        <ListSectionHeader>This season</ListSectionHeader>
-        <View className="flex-row flex-wrap gap-3">
-          <StatTile
-            label="Students"
-            value={cohort.studentCount}
-            onPress={() => router.push("/groups")}
-          />
-          <StatTile label="Attendance" value={mean ?? "—"} suffix={mean !== null ? "%" : undefined} />
-          <StatTile
-            label={`Season progress · Session ${progress.sessionsHeld} of ${progress.sessionsTotal}`}
-            value={progress.pct ?? 0}
-            suffix="%"
-          />
-        </View>
+      <View className="gap-2">
+        <ListSectionHeader className="pb-0">Waiting for you</ListSectionHeader>
+        <CountGrid tiles={tiles} />
       </View>
+      <PeoplePreview
+        header="Your students at risk"
+        people={cohort.atRisk.map((r) => ({
+          id: r.studentUserId,
+          name: r.studentName,
+          reason: atRiskReason(r),
+        }))}
+        total={cohort.atRiskTotal}
+        onOpen={(id) => router.push({ pathname: "/student/[id]", params: { id: String(id) } })}
+        onSeeAll={toGroup}
+      />
+      <SeasonPulse
+        title={data.groups.map((g) => g.name).join(", ") || data.season.title}
+        progressPct={progress.pct}
+        sessionsHeld={progress.sessionsHeld}
+        sessionsTotal={progress.sessionsTotal}
+        figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
+        onPress={toGroup}
+      />
     </>
   );
 }
 
-/** The leader's Today: the session to run, who is missing, what to review. */
+/**
+ * The leader's Home (owner, 2026-11-07: "very stacked… clear and vivid, not
+ * boring"): the session to run and, on its day, who is missing; what is
+ * waiting as coloured tiles; the students at risk by name; the group's season
+ * at a glance; events.
+ */
 export function LeaderToday() {
   const name = useSessionStore((s) => s.user?.name ?? null);
   const current = useCurrentSeasonId();

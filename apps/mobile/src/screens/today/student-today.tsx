@@ -94,7 +94,10 @@ export function StudentToday() {
 
   // A failed read keeps what's on screen, but says so: a pull that changes nothing must explain why.
   const stale = dash.isError ? (
-    <InlineError message="Couldn't refresh. This may be out of date." onRetry={() => void dash.refetch()} />
+    <InlineError
+      message="Couldn't refresh. This may be out of date."
+      onRetry={() => void dash.refetch()}
+    />
   ) : null;
 
   return (

@@ -18,7 +18,10 @@ export function FinishedSeasonCard({ row }: { row: SeasonHistoryRow }) {
           <Button
             variant="secondary"
             onPress={() =>
-              router.push({ pathname: "/past-season/[seasonId]", params: { seasonId: String(row.seasonId) } })
+              router.push({
+                pathname: "/past-season/[seasonId]",
+                params: { seasonId: String(row.seasonId) },
+              })
             }
           >
             View your season
