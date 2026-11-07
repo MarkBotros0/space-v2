@@ -312,6 +312,22 @@ describe("community-wide seasons: the pool", () => {
     expect(rowOf(onActive, away.id)).toMatchObject({ availability: "in_role", selectable: false });
   });
 
+  it("lists an alumnus who did not pass a community-wide season as available in a later one (no requirement)", async () => {
+    const earlier = await wide("COMPLETED", 2037);
+    const later = await wide("DRAFT", 2038);
+    const failed = await person("Failed Alum", 2018);
+    await finished(earlier, failed.id, "NOT_PASSED");
+
+    const res = await candidates(later);
+    expect(res.body.data.season.requiredProgram).toBeNull();
+    expect(rowOf(res, failed.id)).toMatchObject({
+      pool: "alumni",
+      availability: "available",
+      selectable: true,
+      last: { seasonTitle: "COMM 2037", outcome: "NOT_PASSED" },
+    });
+  });
+
   it("enrols 200 people, half alumni, into a community-wide draft in one batched call", async () => {
     const target = await wide("DRAFT", 2044);
     const emails = Array.from({ length: 200 }, (_, i) => testEmail(`bulk${i}`));

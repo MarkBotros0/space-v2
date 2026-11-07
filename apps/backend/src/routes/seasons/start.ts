@@ -41,11 +41,11 @@ export async function getSeasonStartCheck(req: Request, res: Response) {
 
 /**
  * `POST /seasons/:id/start`: SUPER only. The one way a draft goes live. Takes the global start
- * lock, so a community-wide season runs alone, then holds the
+ * lock, so every start is serialised and a community-wide season runs alone, then holds the
  * season, so no seat can be written around the check, then everyone in it, so
- * none of them takes a role elsewhere meanwhile. Of two starts sharing a person
- * the second sees the first's season as ACTIVE. Everyone refreshes into their
- * role: no one is signed out.
+ * none of them takes a role elsewhere meanwhile. Because starts run one after another,
+ * two never race over a shared person: the later one sees the earlier season as ACTIVE.
+ * Everyone refreshes into their role: no one is signed out.
  */
 export async function startSeason(req: Request, res: Response) {
   const user = requireSuper(req, res);

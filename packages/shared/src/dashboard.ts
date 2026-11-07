@@ -201,7 +201,7 @@ export const mentorDashboardSchema = z
   .strict();
 export type MentorDashboard = z.infer<typeof mentorDashboardSchema>;
 
-/** `GET /api/v1/me/dashboard`. An alumnus gets 403 and composes `/me` + `/events` instead. */
+/** `GET /api/v1/me/dashboard`. An alumnus gets 403 and composes `/me` + `/events` instead, unless studying in a community-wide season: then the student variant. */
 export const dashboardSchema = z.discriminatedUnion("variant", [
   staffSeasonDashboardSchema,
   studentDashboardSchema,

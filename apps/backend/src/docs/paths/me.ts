@@ -119,9 +119,9 @@ export const mePaths = {
       description: [
         "A discriminated union on `variant` (spec 19 §7). Every figure is derived once, server-side (ruling C4); clients render, never recompute.",
         "",
-        "- **STUDENT** (not graduated): the caller's own figures only — no cohort, no other student, no score (C8). Season from the token's `activeSeasonId`; `seasonId` is ignored. With no active season every field but `variant` is null.",
+        "- **STUDENT** (not graduated, or an alumnus studying in a community-wide season): the caller's own figures only — no cohort, no other student, no score (C8). Season from the token's `activeSeasonId`; `seasonId` is ignored. With no active season every field but `variant` is null.",
         "- **SEASON_STAFF**: `seasonId` required. ADMIN must administer it, SUPER may name any, a LEADER gets `scope: \"groups\"` over the ACTIVE enrolments of the groups they lead in it. Attendance % starts at each student's enrolment and never exceeds 100; `atRisk` is the shared `isAtRisk` (either component below 60), not v1's 70 % rule; review counts use the review queue's own scope; ONLINE quiz drafts are counted as `drafts`.",
-        "- **MENTOR**: the eight most recent attendance marks, submissions and reviews across all seasons, merged and newest first (reviews at `reviewedAt`), excluding DRAFT work, graduated or deleted students and deleted assignments or seasons. The mentor's at-risk list is `GET /api/v1/reports/engagement`.",
+        "- **MENTOR**: the eight most recent attendance marks, submissions and reviews across all seasons, merged and newest first (reviews at `reviewedAt`), excluding DRAFT work, deleted students and graduated ones (an alumnus counts only for their marks in the community-wide season they study in) and deleted assignments or seasons. The mentor's at-risk list is `GET /api/v1/reports/engagement`.",
         "- An alumnus gets 403, unless studying (holding an ACTIVE place in a community-wide season): they get the student variant.",
         "",
         "`nextSession` is the session in progress (`isInProgress: true`) if there is one, else the next; `dayKey`/`time` are the organisation's calendar day and wall-clock time.",

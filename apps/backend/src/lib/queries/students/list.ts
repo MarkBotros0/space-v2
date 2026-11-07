@@ -187,20 +187,22 @@ async function listByRelatedSort(
 /**
  * R29/R38: graduationYear is the whole alumnus marker; the two global lists are
  * the same table filtered on the same column. A list of one season's people
- * (filtered to it, or a staff member's own roster) also holds the alumni who
- * study in a community-wide season there. A regular season's graduates stay off.
+ * (filtered to it or to one of its groups, or a staff member's own roster) also
+ * holds the alumni who study in a community-wide season there. A regular season's graduates stay off.
  */
 function graduationFilter(
   query: StudentListQuery,
   roster: Prisma.SeasonEnrollmentWhereInput | null,
 ): Prisma.UserWhereInput {
   if (query.status === "alumni") return { graduationYear: { not: null } };
-  if (!query.seasonId && !roster) return { graduationYear: null };
+  const group = typeof query.groupId === "number" ? query.groupId : null;
+  if (!query.seasonId && !roster && group === null) return { graduationYear: null };
   const studying: Prisma.SeasonEnrollmentWhereInput = {
     AND: [
       seasonParticipant,
       { season: { isCommunityWide: true } },
       query.seasonId ? { seasonId: query.seasonId } : {},
+      group !== null ? { groupId: group } : {},
       roster ?? {},
     ],
   };

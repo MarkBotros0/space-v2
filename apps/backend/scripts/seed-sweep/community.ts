@@ -16,6 +16,15 @@ import { fromToday, SWEEP_PASSWORD } from "./shared";
  * overdue callout and the End review list (nothing blocks it). The current season is
  * already blocked (a SUBMITTED reflection, a quiz attempt, an unmarked session), which
  * is the blockers state. Flows only open these; nothing here is ever saved by a flow.
+ *
+ * "Community Gathering" is a community-wide DRAFT (the Alumni tab of the people picker,
+ * Select all across both tabs, and Start's "Seasons to end first" list, since the
+ * ACTIVE seasons above stand in its way). Only the draft is seeded: a community-wide
+ * season runs alone, so a live one would break every scenario here that needs ACTIVE
+ * seasons (and `preflight:community` would call the seed a violation), which also rules
+ * out a studying alumnus. Those screens are reached by a flow that makes the draft the
+ * only live season first, then a studying alumnus signs in; neither is a save a flow
+ * makes, so it is the seed's job in a separate run (see the Task 8 sweep notes).
  */
 export async function seedCommunityScenario({ superUser, admin, leader, alumni, pastSeason }: SweepPeople): Promise<{
   finished: { email: string; name: string };
@@ -115,5 +124,20 @@ export async function seedCommunityScenario({ superUser, admin, leader, alumni, 
       data: { studentUserId: s.id, seasonId: overdue.id, groupId: group.id, status: "ACTIVE", enrolledAt: fromToday(-60) },
     });
   }
+
+  // A community-wide draft, empty: Super picks its people on the picker's two tabs.
+  await db.season.create({
+    data: {
+      code: `community-${year + 1}`,
+      title: `Community Gathering ${year + 1}`,
+      program: "COMMUNITY",
+      year: year + 1,
+      status: "DRAFT",
+      isCommunityWide: true,
+      startDate: fromToday(30),
+      endDate: fromToday(120),
+      createdById: superUser.id,
+    },
+  });
   return { finished, fresh };
 }

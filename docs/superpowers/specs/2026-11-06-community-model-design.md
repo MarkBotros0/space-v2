@@ -142,6 +142,13 @@ student** (group, leader, attendance, assignments, quizzes). Its staff are appoi
 any season. The super admin chooses people with **Select all available** and can untick;
 people who join the community later are added by hand. It has pass results like any season.
 
+Owner rulings (2026-11-07):
+
+- A community-wide season has **no required program and graduates nobody**; it keeps pass results.
+  The two options are refused with it (`community_wide_rules`) and the form hides them once it is on.
+- **Select all available ticks both tabs** (Students and Alumni) and shows the count, e.g.
+  `Select all available (186)`.
+
 Regular seasons may run in parallel with each other; the rule is per person.
 
 ### Ending

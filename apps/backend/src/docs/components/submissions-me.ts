@@ -214,7 +214,7 @@ export const submissionsMeSchemas = {
       name: { type: "string" },
       email: { type: "string" },
       avatarPath: { type: ["string", "null"] },
-      graduationYear: { type: ["integer", "null"], description: "Non-null = alumnus; the profile is then read-only." },
+      graduationYear: { type: ["integer", "null"], description: "Non-null = alumnus; the profile is then read-only, unless they are studying in a community-wide season (then it is edited like a student's)." },
       activeSeasonTitle: { type: ["string", "null"] },
       university: { type: ["string", "null"] },
       faculty: { type: ["string", "null"] },

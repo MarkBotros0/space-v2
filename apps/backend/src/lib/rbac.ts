@@ -7,7 +7,8 @@ export function isSuper(u: SessionUser): boolean {
 
 /**
  * An alumnus is a graduated student — role stays STUDENT, but graduationYear is
- * set. Alumni get read-only access instead of the active-student experience.
+ * set. Alumni get read-only access instead of the active-student experience,
+ * unless they are studying (`isStudyingAlumnus` below), which decides the experience.
  */
 export function isAlumnus(u: SessionUser): boolean {
   return u.role === "STUDENT" && u.graduationYear != null;

@@ -4,9 +4,10 @@
 import request from "supertest";
 
 import { db } from "../../db/client";
+import { verifyAccessToken } from "../../lib/auth/tokens";
 import { buildPublishedQuizIn } from "./quizzes-setup";
-import { adminTokenOf, app, as, ctx, person, season, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
-import { createTestUser, login, testEventTitle } from "./fixtures";
+import { add, adminTokenOf, app, as, ctx, person, season, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import { createTestUser, login, PASSWORD, reviewedOf, testEventTitle } from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -176,6 +177,20 @@ describe("what staff read for the season", () => {
     expect(lists(res.body, NAME)).toBe(true);
   });
 
+  it("a Super and a Mentor filtering on the community-wide season's group find them", async () => {
+    const group = await db.group.create({ data: { seasonId: wideId, name: "Wide Group" } });
+    await db.groupStudent.create({ data: { groupId: group.id, seasonId: wideId, studentUserId: studyingId } });
+    await db.seasonEnrollment.updateMany({
+      where: { seasonId: wideId, studentUserId: studyingId },
+      data: { groupId: group.id },
+    });
+    for (const token of [ctx.superToken, mentor]) {
+      const res = await get(`/students?status=active&groupId=${group.id}&limit=100`, token);
+      expect(res.status).toBe(200);
+      expect(lists(res.body, NAME)).toBe(true);
+    }
+  });
+
   it("a regular season's graduates stay off its student list", async () => {
     const res = await get(`/students?status=active&seasonId=${regularId}`, ctx.superToken);
     expect(lists(res.body, GRADUATE)).toBe(false);
@@ -200,5 +215,45 @@ describe("events", () => {
     expect(lists((await get("/events", studying)).body, alumniEventTitle)).toBe(true);
     expect(lists((await get("/events", notStudying)).body, alumniEventTitle)).toBe(true);
     expect(lists((await get("/events", ordinary)).body, alumniEventTitle)).toBe(false);
+  });
+});
+
+describe("a token crossing the season's start and end", () => {
+  it("an alumnus joins, the season starts, refresh gives the season; End clears it and the old attempt is refused", async () => {
+    // A community-wide season runs alone: the file's live one is done before this one starts.
+    await db.season.update({ where: { id: wideId }, data: { status: "COMPLETED" } });
+    const draft = await season("DRAFT", "Crossing Season");
+    await db.season.update({
+      where: { id: draft },
+      data: { isCommunityWide: true, startDate: new Date("2099-01-01T00:00:00.000Z"), endDate: new Date("2099-06-01T00:00:00.000Z") },
+    });
+    const alumnus = await person("Crossing Alumnus", 2017);
+    const email = alumnus.email;
+    const first = await request(app).post("/api/v1/auth/login").send({ email, password: PASSWORD });
+    const refreshOf = (res: request.Response) => res.body.data.refreshToken as string;
+    const refresh = async (token: string) => request(app).post("/api/v1/auth/refresh").send({ refreshToken: token });
+    const claim = async (res: request.Response) => (await verifyAccessToken(res.body.data.accessToken))?.activeSeasonId ?? null;
+
+    expect((await add(draft, { userIds: [alumnus.id] })).status).toBe(201);
+    const started = await request(app).post(`/api/v1/seasons/${draft}/start`).set(as(ctx.superToken));
+    expect([started.status, started.body.error?.message]).toEqual([200, undefined]);
+    const during = await refresh(refreshOf(first));
+    expect(during.status).toBe(200);
+    expect(await claim(during)).toBe(draft);
+
+    const quiz = await buildPublishedQuizIn(draft, (await db.session.create({
+      data: { seasonId: draft, title: "Crossing session", startsAt: new Date("2099-03-01T18:00:00.000Z"), durationMinutes: 60 },
+      select: { id: true },
+    })).id, { withEssay: false });
+    const path = `/api/v1/quizzes/${quiz.quizId}/attempt`;
+    const oldToken = during.body.data.accessToken as string;
+    expect((await request(app).put(path).set(as(oldToken))).status).toBe(200);
+
+    const end = await request(app).post(`/api/v1/seasons/${draft}/end`).set(as(ctx.superToken)).send({ notPassed: [], reviewed: await reviewedOf(draft) });
+    expect(end.status).toBe(200);
+    const after = await refresh(refreshOf(during));
+    expect(after.status).toBe(200);
+    expect(await claim(after)).toBeNull();
+    expect((await request(app).put(path).set(as(after.body.data.accessToken as string))).status).toBe(403);
   });
 });
