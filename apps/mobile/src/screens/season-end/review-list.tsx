@@ -28,12 +28,11 @@ export function ReviewList({
         Everyone passes unless you say otherwise. Tap a student to mark them as not passed.
       </Text>
       <GroupedList>
-        {students.map((s, i) => {
+        {students.map((s) => {
           const notPassed = staged[s.userId]?.result === "NOT_PASSED";
           return (
             <ListRow
               key={s.userId}
-              index={i}
               title={s.name}
               subtitle={joinMeta([s.groupName, `${s.attendancePct}% attendance`])}
               trailing={<StatusChip tone={notPassed ? "bad" : "ok"} label={notPassed ? "Did not pass" : "Passed"} />}

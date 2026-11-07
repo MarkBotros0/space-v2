@@ -42,7 +42,7 @@ export function OpenWorkList({
         header="To do"
         headerAction={{ label: "See all", onPress: () => router.push(WORK_HREF) }}
       >
-        {empty ?? rows.map((row, i) => <WorkListRow key={row.key} row={row} index={i} />)}
+        {empty ?? rows.map((row) => <WorkListRow key={row.key} row={row} />)}
       </GroupedList>
       {quizzes.isError ? (
         <InlineError message="Couldn't load your quizzes." onRetry={() => void quizzes.refetch()} />

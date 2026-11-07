@@ -47,10 +47,9 @@ export function LeaderQueue() {
   const { waiting, done } = queueSections(items);
   const open = (publicId: string) =>
     router.push({ pathname: "/submission/[publicId]", params: { publicId } });
-  const row = (item: SubmissionQueueItem, index: number) => (
+  const row = (item: SubmissionQueueItem) => (
     <ListRow
       key={item.publicId}
-      index={index}
       title={item.studentName ?? "Student"}
       titleLines={2}
       subtitle={subtitleOf(item)}

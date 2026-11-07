@@ -135,10 +135,9 @@ export function RosterList({
         <EmptyState title="No matches" description="No student matches that search." />
       ) : (
         <GroupedList>
-          {rows.map((r, i) => (
+          {rows.map((r) => (
             <ListRow
               key={r.userId}
-              index={i}
               title={r.name ?? r.email}
               subtitle={joinMeta([r.name ? r.email : null, groupName(choice(r))])}
               leading={

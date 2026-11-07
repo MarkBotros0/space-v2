@@ -103,10 +103,9 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
         <RouteError onRetry={() => void sheetQuery.refetch()} />
       ) : (
         <GroupedList>
-          {sheet.rows.map((r, i) => (
+          {sheet.rows.map((r) => (
             <ListRow
               key={r.studentUserId}
-              index={i}
               title={r.studentName ?? "Student"}
               titleLines={2}
               subtitle={r.notes ?? undefined}
@@ -186,10 +185,9 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
           )
         ) : (
           <GroupedList>
-            {items.map((a, i) => (
+            {items.map((a) => (
               <ListRow
                 key={a.attemptId}
-                index={i}
                 title={a.studentName ?? "Student"}
                 titleLines={2}
                 subtitle={`Attempt ${a.attemptNumber} · ${a.status === "GRADED" ? `${a.totalScore ?? 0}/${first.maxScore}` : "Awaiting grading"} · ${unbreakable(formatDate(a.submittedAt))}`}
@@ -213,10 +211,9 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
            * button could only ever fail.
            */
           <GroupedList header="Waiting">
-            {waiting.map((w, i) => (
+            {waiting.map((w) => (
               <ListRow
                 key={w.studentUserId}
-                index={i}
                 title={w.studentName ?? "Student"}
                 titleLines={2}
                 subtitle={w.startedAt === null ? "Not started" : `In progress since ${unbreakable(formatDate(w.startedAt))}`}

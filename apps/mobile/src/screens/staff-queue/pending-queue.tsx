@@ -9,12 +9,11 @@ import { Button, EmptyState, GroupedList, ListRow, StatusChip, statusChip } from
 import { useSubmissionQueue } from "../../hooks/use-submission-queue";
 import { joinMeta } from "../../lib/join-meta";
 
-function Row({ item, index }: { item: SubmissionQueueItem; index: number }) {
+function Row({ item }: { item: SubmissionQueueItem }) {
   const router = useRouter();
   const chip = statusChip("submission", item.status);
   return (
     <ListRow
-      index={index}
       title={item.studentName ?? "Unnamed"}
       subtitle={joinMeta([item.assignmentTitle, item.groupName])}
       trailing={
@@ -52,8 +51,8 @@ export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }
     body = (
       <View className="flex-col gap-4">
         <GroupedList>
-          {items.map((item, i) => (
-            <Row key={item.publicId} item={item} index={i} />
+          {items.map((item) => (
+            <Row key={item.publicId} item={item} />
           ))}
         </GroupedList>
         {q.hasNextPage ? (

@@ -30,12 +30,11 @@ export function RecentActivityGroup({ items }: { items: ActivityItem[] }) {
       {items.length === 0 ? (
         <ListRow title="No recent activity." />
       ) : (
-        items.map((i, idx) => {
+        items.map((i) => {
           const { name, rest } = activityParts(i);
           return (
             <ListRow
               key={i.key}
-              index={idx}
               title={name}
               titleLines={2}
               subtitle={`${rest.trim()} · ${formatTimeAgo(i.at)}`}

@@ -72,8 +72,8 @@ export default function NotesScreen() {
       ) : (
         <View className="flex-col gap-4">
           <GroupedList>
-            {notes.map((item, i) => (
-              <NoteRow key={item.id} item={item} index={i} />
+            {notes.map((item) => (
+              <NoteRow key={item.id} item={item} />
             ))}
           </GroupedList>
           {hasNextPage ? (

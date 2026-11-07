@@ -51,8 +51,8 @@ export default function EventsScreen() {
     body = (
       <View className="flex-col gap-3">
         <GroupedList>
-          {rows.map((e, i) => (
-            <EventListRow key={e.id} event={e} index={i} />
+          {rows.map((e) => (
+            <EventListRow key={e.id} event={e} />
           ))}
         </GroupedList>
         {/* Paging is v2's (owner decision); v1 loaded every event. */}

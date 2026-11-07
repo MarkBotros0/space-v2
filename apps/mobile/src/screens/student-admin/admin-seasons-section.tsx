@@ -30,13 +30,12 @@ export function AdminSeasonsSection({
   }
   return (
     <GroupedList>
-      {enrollments.map((e, i) => {
+      {enrollments.map((e) => {
         const chip = statusChip("enrollment", e.status);
         const drop = dropFor(e);
         return (
           <ListRow
             key={e.enrollmentId}
-            index={i}
             title={e.seasonTitle}
             subtitle={joinMeta([
               `${formatDate(e.startDate)} – ${formatDate(e.endDate)}`,

@@ -17,15 +17,15 @@ jest.mock("../design/lib/keyboard-inset", () => ({
   useKeyboardInset: () => ({ inset: mockKeyboard, offset: mockKeyboard, scrollProps: {} }),
 }));
 
-const mockWithSpring = jest.fn((to: number) => to);
+const mockWithTiming = jest.fn((to: number) => to);
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
-  return { ...actual, __esModule: true, default: actual.default, withSpring: (...args: [number]) => mockWithSpring(...args) };
+  return { ...actual, __esModule: true, default: actual.default, withTiming: (...args: [number]) => mockWithTiming(...args) };
 });
 
 beforeEach(() => {
   mockKeyboard = 0;
-  mockWithSpring.mockClear();
+  mockWithTiming.mockClear();
 });
 afterEach(() => {
   setReducedMotionForTests(null);
@@ -59,16 +59,17 @@ describe("Sheet", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("springs in with motion on", () => {
+  it("rises in 260 ms with an ease-out and no spring, with motion on", () => {
     setReducedMotionForTests(false);
     renderWithProviders(<Sheet open onClose={() => {}}><Text>b</Text></Sheet>);
-    expect(mockWithSpring).toHaveBeenCalledWith(0, expect.objectContaining({ damping: 22 }));
+    expect(mockWithTiming).toHaveBeenCalledWith(0, expect.objectContaining({ duration: 260, easing: expect.any(Function) }));
   });
 
-  it("opens without a spring under reduced motion", () => {
+  it("opens without travel under reduced motion (a short fade only)", () => {
     setReducedMotionForTests(true);
     renderWithProviders(<Sheet open onClose={() => {}}><Text>b</Text></Sheet>);
-    expect(mockWithSpring).not.toHaveBeenCalled();
+    expect(mockWithTiming).not.toHaveBeenCalledWith(0, expect.objectContaining({ duration: 260 }));
+    expect(mockWithTiming).toHaveBeenCalledWith(1, { duration: 150 });
     expect(screen.getByText("b")).toBeTruthy();
   });
 });

@@ -35,13 +35,11 @@ function SeasonTag({ code, colors }: { code: string; colors: SeasonColors }) {
 function AgendaSession({
   s,
   today,
-  index,
   onOpenSession,
   seasonColors,
 }: {
   s: SessionListItem;
   today: string;
-  index: number;
   onOpenSession: (id: number) => void;
   seasonColors?: SeasonColors;
 }) {
@@ -49,7 +47,6 @@ function AgendaSession({
   const where = s.location ? ` · ${s.location}` : "";
   return (
     <ListRow
-      index={index}
       title={s.title}
       titleLines={2}
       subtitle={`${formatWallTime(s.startTime)} · ${formatMinutes(s.durationMinutes)}${where}`}
@@ -71,16 +68,13 @@ function AgendaSession({
 
 function AgendaEvent({
   e,
-  index,
   onOpenEvent,
 }: {
   e: JpcEventListItem;
-  index: number;
   onOpenEvent: (e: JpcEventListItem) => void;
 }) {
   return (
     <ListRow
-      index={index}
       title={e.title}
       titleLines={2}
       subtitle={e.visibility === "ALUMNI_ONLY" ? "JPC event · Alumni only" : "JPC event"}
@@ -115,13 +109,12 @@ export function AgendaView({
     <View className="flex-col gap-5">
       {groups.map((group) => (
         <GroupedList key={group.dayKey} header={formatLongDay(group.dayKey)}>
-          {group.entries.map((entry, i) =>
+          {group.entries.map((entry) =>
             entry.kind === "session" ? (
               <AgendaSession
                 key={`s${entry.session.id}`}
                 s={entry.session}
                 today={today}
-                index={i}
                 onOpenSession={handlers.onOpenSession}
                 seasonColors={handlers.seasonColors}
               />
@@ -129,7 +122,6 @@ export function AgendaView({
               <AgendaEvent
                 key={`e${entry.event.id}`}
                 e={entry.event}
-                index={i}
                 onOpenEvent={handlers.onOpenEvent}
               />
             ),

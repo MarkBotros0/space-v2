@@ -57,10 +57,9 @@ export function LeaderQuizzes() {
     body = (
       <View className="flex-col gap-4">
         <GroupedList>
-          {rows.map((row, i) => (
+          {rows.map((row) => (
             <ListRow
               key={row.id}
-              index={i}
               title={row.title}
               titleLines={2}
               subtitle={subtitleOf(row)}

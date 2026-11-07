@@ -57,10 +57,9 @@ export function AdminGroups() {
   else
     body = (
       <GroupedList>
-        {rows.map((row, i) => (
+        {rows.map((row) => (
           <ListRow
             key={row.id}
-            index={i}
             title={row.name}
             subtitle={groupMeta(row)}
             chevron

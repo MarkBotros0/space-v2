@@ -31,8 +31,8 @@ export function AdminProfileSection({ profile: p }: { profile: StudentDetail["pr
   return (
     <View className="flex-col gap-2">
       <GroupedList>
-        {rows.map(([label, value], i) => (
-          <ListRow key={label} index={i} title={value || "—"} titleLines={8} subtitle={label} />
+        {rows.map(([label, value]) => (
+          <ListRow key={label} title={value || "—"} titleLines={8} subtitle={label} />
         ))}
       </GroupedList>
       {/* Staff-only: the student's own payload never carries this field. */}

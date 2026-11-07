@@ -276,11 +276,11 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
 - **Catalogue.** The hidden design catalogue (`spacev2://design-catalogue`, in dev or with
   `EXPO_PUBLIC_SWEEP_BUILD=1`) is the one catalogue: it shows every component; sweep flow
   `s90` shoots it. Add a component's states there when you add the component.
-- **Motion** (`src/design/motion/`): durations `fast` 150 / `base` 220 / `slow` 320 ms and
-  springs `snappy` / `gentle`; press scale via `usePressScale`; haptics via `haptic()`.
-  Every animated component reads `useReducedMotion` (movement becomes a short crossfade;
-  stagger and count-ups off; press scale stays). Exits are faster than entrances, a new tap
-  cancels motion in flight, and no state depends on an animation finishing.
+- **Motion** (`src/design/motion/`): durations `fast` 150 / `base` 220 / `slow` 320 ms, one
+  easing `EASE_OUT` (no springs exist); press feedback is a dim via `usePressDim`; haptics via
+  `haptic()`. Every animated component reads `useReducedMotion` (movement becomes a short
+  crossfade). Exits are faster than entrances, a new tap cancels motion in flight, and no state
+  depends on an animation finishing. `calm-motion.test.ts` guards the rules below.
 
 The legacy kit (`src/ui/`, `src/theme/`) is gone. `tools/ui-reference/` is the sweep rig.
 
@@ -323,15 +323,18 @@ changes, Due this week, Later, Quizzes to take. Submitted lists handed-in
 assignments (Waiting for review / Reviewed, said in words, never colour
 alone) and taken quizzes (score, or Not graded yet). Keep it that clear.
 
-### Motion: keep it restrained (owner, 2026-11-06)
+### Motion: calm and quick (owner, 2026-11-06 and 2026-11-07)
 
-The owner found the tab bar over-animated (springing highlight + bouncing icon).
-Motion is for orientation, not decoration:
-- No springs or overshoot on navigation chrome; a short ease-out
-  (`DURATION.fast`, 150ms) at most. No scale/bounce on icons or tabs.
-- One motion per interaction — don't stack a slide, a scale and a fade on the
-  same tap. No looping or attention-seeking animation.
-- Don't add new animations unless the owner asks; always honour reduced motion.
+It is an educational app: motion is for orientation, never decoration or play. The owner
+found the tab bar, the sheets and the segmented control bouncy and "like a cartoon".
+- No springs, overshoot or bounce anywhere: `withTiming` + `EASE_OUT`, stopping dead.
+  Sheets rise in 260 ms; the pill highlight and the segmented thumb slide in `DURATION.fast`.
+- Tabs switch instantly. Lists, rows, chips and numbers appear at once: no entrance
+  animations, no stagger, no count-ups, no pulses, no scale on press (press dims instead).
+- Kept: the native stack push, sheet/modal fades, the skeleton shimmer, the check drawing
+  itself on check-in, and the launch logo writing itself once per cold start.
+- One motion per interaction. Don't add new animations unless the owner asks; always
+  honour reduced motion.
 
 ### Rules from the UI sweep
 

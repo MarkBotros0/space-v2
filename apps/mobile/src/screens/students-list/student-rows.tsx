@@ -6,7 +6,7 @@ import { formatDate, keepTogether } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
 
-type RowProps = { item: StudentListItem; index?: number };
+type RowProps = { item: StudentListItem };
 
 function useOpenStudent(item: StudentListItem) {
   const router = useRouter();
@@ -23,12 +23,11 @@ function StudentAvatar({ item }: { item: StudentListItem }) {
 }
 
 /** An active student: name over university, faculty, season and group; the email when none of those is known. */
-export function ActiveStudentRow({ item, index }: RowProps) {
+export function ActiveStudentRow({ item }: RowProps) {
   const open = useOpenStudent(item);
   const meta = joinMeta([item.university, item.faculty, item.activeSeasonTitle, item.currentGroupName]);
   return (
     <ListRow
-      index={index}
       title={item.name}
       subtitle={meta || item.email}
       leading={<StudentAvatar item={item} />}
@@ -38,12 +37,11 @@ export function ActiveStudentRow({ item, index }: RowProps) {
   );
 }
 
-export function AlumnusRow({ item, index }: RowProps) {
+export function AlumnusRow({ item }: RowProps) {
   const open = useOpenStudent(item);
   const year = item.graduationYear === null ? null : `Class of ${item.graduationYear}`;
   return (
     <ListRow
-      index={index}
       title={item.name}
       subtitle={joinMeta([year, item.university])}
       leading={<StudentAvatar item={item} />}
@@ -53,12 +51,11 @@ export function AlumnusRow({ item, index }: RowProps) {
   );
 }
 
-export function DroppedStudentRow({ item, index }: RowProps) {
+export function DroppedStudentRow({ item }: RowProps) {
   const open = useOpenStudent(item);
   const d = item.droppedEnrollment;
   return (
     <ListRow
-      index={index}
       title={item.name}
       subtitle={joinMeta([
         d ? `Dropped from ${d.seasonTitle}` : null,

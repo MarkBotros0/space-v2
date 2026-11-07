@@ -60,10 +60,9 @@ function Figures({ data }: { data: StaffSeasonDashboard }) {
       </GroupedList>
       {cohort.atRisk.length > 0 ? (
         <GroupedList header="Students at risk">
-          {cohort.atRisk.map((r, i) => (
+          {cohort.atRisk.map((r) => (
             <ListRow
               key={`${r.studentUserId}:${r.seasonId}`}
-              index={i}
               title={r.studentName}
               subtitle={joinMeta([
                 `${r.submissionsCompleted}/${r.submissionsExpected} submitted`,

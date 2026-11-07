@@ -62,10 +62,9 @@ export default function SeasonResultsScreen() {
   else
     body = (
       <GroupedList>
-        {results.data.map((r, i) => (
+        {results.data.map((r) => (
           <ListRow
             key={r.userId}
-            index={i}
             title={r.name}
             subtitle={joinMeta([r.groupName, `${r.attendancePct}% attendance`, r.reason])}
             trailing={

@@ -31,19 +31,16 @@ export function SeasonOverview({ record }: { record: SeasonRecord }) {
       </View>
       <GroupedList>
         <ListRow
-          index={0}
           title={`Assignments (${record.assignments.length})`}
           chevron
           onPress={() => router.push({ pathname: "/past-season/[seasonId]/assignments", params })}
         />
         <ListRow
-          index={1}
           title={`Quizzes (${record.quizzes.length})`}
           chevron
           onPress={() => router.push({ pathname: "/past-season/[seasonId]/quizzes", params })}
         />
         <ListRow
-          index={2}
           title={`Attendance (${countOf(record.attendance.length, "session")})`}
           chevron
           onPress={() => router.push({ pathname: "/past-season/[seasonId]/attendance", params })}

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { setReducedMotionForTests } from "../design/motion";
 import { Button } from "../design/ui/button";
@@ -9,54 +9,13 @@ import { StatTile } from "../design/ui/stat-tile";
 afterEach(() => setReducedMotionForTests(null));
 
 describe("StatTile", () => {
-  it("shows the final value immediately under reduced motion", () => {
-    setReducedMotionForTests(true);
-    render(<StatTile value={42} suffix="%" label="Attendance" />);
+  it("shows the figure at once, with motion on or off (no count-up)", () => {
+    setReducedMotionForTests(false);
+    const { rerender } = render(<StatTile value={42} suffix="%" label="Attendance" />);
     expect(screen.getByText("42%")).toBeTruthy();
     expect(screen.getByText("Attendance")).toBeTruthy();
-  });
-
-  it("counts up to the final value otherwise", () => {
-    jest.useFakeTimers();
-    setReducedMotionForTests(false);
-    render(<StatTile value={10} label="Done" />);
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-    expect(screen.getByText("10")).toBeTruthy();
-    jest.useRealTimers();
-  });
-
-  it("does not count up again when a refetch brings the same number back", () => {
-    jest.useFakeTimers();
-    setReducedMotionForTests(false);
-    const { rerender } = render(<StatTile value={10} label="Done" />);
-    act(() => jest.advanceTimersByTime(1000));
-    // A refetch: a placeholder for a moment, then the same figure.
-    rerender(<StatTile value="—" label="Done" />);
-    rerender(<StatTile value={10} label="Done" />);
-    act(() => jest.advanceTimersByTime(16));
-    expect(screen.getByText("10")).toBeTruthy();
-    jest.useRealTimers();
-  });
-
-  it("counts from the shown number on a change, not from 0", () => {
-    jest.useFakeTimers();
-    setReducedMotionForTests(false);
-    const { rerender } = render(<StatTile value={10} label="Done" />);
-    act(() => jest.advanceTimersByTime(1000));
-    rerender(<StatTile value={12} label="Done" />);
-    act(() => jest.advanceTimersByTime(16));
-    const mid = Number(
-      screen
-        .getByLabelText("Done: 12")
-        .findAll((n) => typeof n.props.children === "string" && /^\d+$/.test(n.props.children))[0]
-        ?.props.children,
-    );
-    expect(mid).toBeGreaterThanOrEqual(10);
-    act(() => jest.advanceTimersByTime(1000));
-    expect(screen.getByText("12")).toBeTruthy();
-    jest.useRealTimers();
+    rerender(<StatTile value={43} suffix="%" label="Attendance" />);
+    expect(screen.getByText("43%")).toBeTruthy();
   });
 
   it("shrinks the value to fit one line instead of ellipsizing it", () => {

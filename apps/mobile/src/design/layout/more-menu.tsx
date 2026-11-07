@@ -69,10 +69,9 @@ export function MoreMenu({
         </GroupedList>
         {items.length > 0 ? (
           <GroupedList>
-            {items.map((item, i) => (
+            {items.map((item) => (
               <ListRow
                 key={item.href}
-                index={i}
                 title={item.label}
                 leading={<NavIcon name={item.icon} size={20} className="text-foreground" />}
                 chevron

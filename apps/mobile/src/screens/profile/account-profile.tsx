@@ -26,11 +26,10 @@ export function AccountProfile() {
       <View className="flex-col gap-4">
         {user ? <IdentityCard name={user.name} email={user.email} badge={user.role} /> : null}
         <GroupedList>
-          <ListRow title="Settings" chevron index={0} onPress={() => router.push("/settings")} />
+          <ListRow title="Settings" chevron onPress={() => router.push("/settings")} />
           <ListRow
             title="Notifications"
             chevron
-            index={1}
             onPress={() => router.push("/notifications")}
           />
         </GroupedList>

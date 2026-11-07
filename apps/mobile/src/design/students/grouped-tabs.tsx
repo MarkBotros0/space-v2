@@ -63,10 +63,9 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
   }
   return (
     <GroupedList>
-      {enrollments.map((e, i) => (
+      {enrollments.map((e) => (
         <ListRow
           key={e.enrollmentId}
-          index={i}
           title={e.seasonTitle}
           titleLines={2}
           subtitle={caption(`${formatSeasonDay(e.startDate)} – ${formatSeasonDay(e.endDate)}`, e.groupName && unbreakable(e.groupName), e.dropReason)}
@@ -102,10 +101,9 @@ export function GroupedAttendanceTab({ studentId }: { studentId: number }) {
   }
   return (
     <GroupedList>
-      {q.data.history.map((r, i) => (
+      {q.data.history.map((r) => (
         <ListRow
           key={r.sessionId}
-          index={i}
           title={r.sessionTitle}
           titleLines={2}
           // Instant in the device zone: no org day on this row (X13, gap note).
@@ -134,12 +132,11 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
   }
   return (
     <GroupedList>
-      {q.data.submissions.map((s, i) => {
+      {q.data.submissions.map((s) => {
         const status = statusChip("submission", s.status);
         return (
           <ListRow
             key={s.publicId}
-            index={i}
             title={s.assignmentTitle}
             titleLines={2}
             subtitle={caption(s.seasonTitle, s.submittedAt && `submitted ${formatDate(s.submittedAt)}`)}
@@ -189,10 +186,9 @@ export function GroupedNotesTab({
       ) : (
         <>
           <GroupedList>
-            {notes.map((n, i) => (
+            {notes.map((n) => (
               <ListRow
                 key={n.id}
-                index={i}
                 title={n.body}
                 titleLines={null}
                 subtitle={caption(

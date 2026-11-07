@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-import { SPRING, useReducedMotion } from "../motion";
+import { DURATION, EASE_OUT, useReducedMotion } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
@@ -11,7 +11,8 @@ type Option = { value: string; label: string; accessibilityLabel?: string };
 const PAD = 2;
 
 /**
- * Two-to-four way switch; the thumb slides to the selected segment with SPRING.snappy.
+ * Two-to-four way switch; the thumb slides to the selected segment in
+ * DURATION.fast, easing out and stopping dead (no spring: owner, 2026-11-07).
  * The thumb's Animated.View takes only styles; its fill is a plain View inside
  * (classes on an Animated.View are dropped on device). The thumb is
  * `surface-raised`: white in light, and in dark lighter than the
@@ -34,7 +35,7 @@ function SegmentedControl({
     if (segment === 0) return;
     // First measured position, and reduced motion, set the thumb without travel.
     if (reduced || !placed.current) x.value = index * segment;
-    else x.value = withSpring(index * segment, SPRING.snappy);
+    else x.value = withTiming(index * segment, { duration: DURATION.fast, easing: EASE_OUT });
     placed.current = true;
   }, [x, index, segment, reduced]);
   return (
