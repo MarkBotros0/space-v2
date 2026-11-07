@@ -22,6 +22,7 @@
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
+import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -45,17 +46,32 @@ const BAR_BOTTOM_PADDING = 12;
 
 const styles = StyleSheet.create({ panel: { maxHeight: "90%" } });
 
-type SheetProps = { open: boolean; onClose: () => void; title?: string; children?: ReactNode; footer?: ReactNode };
+type SheetProps = {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  children?: ReactNode;
+  footer?: ReactNode;
+  /**
+   * Lift the whole sheet above the keyboard instead of padding its content: for a
+   * short sheet whose input is the point (a picker's search), which would
+   * otherwise sit entirely under the keyboard (owner, 2026-11-07).
+   */
+  avoidKeyboard?: boolean;
+};
 
 const BarHeightContext = createContext<(h: number) => void>(() => {});
 
-function Sheet({ open, onClose, title, children, footer }: SheetProps) {
+function Sheet({ open, onClose, title, children, footer, avoidKeyboard = false }: SheetProps) {
   const reduced = useReducedMotion();
   const [mounted, setMounted] = useState(open);
   const [height, setHeight] = useState(0);
   const [barHeight, setBarHeight] = useState(0);
   const { scrollProps } = useKeyboardInset({ clampToViewport: true });
   const offset = useKeyboardBottomOffset();
+  const insetBottom = useContext(SafeAreaInsetsContext)?.bottom ?? 0;
+  // The keyboard is up when the offset is more than the inset alone.
+  const lift = avoidKeyboard && offset > insetBottom ? offset : 0;
   const openRef = useRef(open);
   openRef.current = open;
   const translateY = useSharedValue(OFFSCREEN);
@@ -131,7 +147,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
           />
           <Animated.View
             testID="sheet"
-            style={[styles.panel, sheetStyle]}
+            style={[styles.panel, { marginBottom: lift }, sheetStyle]}
             onLayout={(e) => setHeight(e.nativeEvent.layout.height)}
           >
             <View className="shrink rounded-t-sheet bg-surface">
@@ -149,7 +165,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
                 <ScrollView
                   testID="sheet-scroll"
                   {...scrollProps}
-                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: footer ? barHeight + 16 : offset + 16 }}
+                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: footer ? barHeight + 16 : (lift ? 0 : offset) + 16 }}
                 >
                   {children}
                 </ScrollView>
