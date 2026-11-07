@@ -21,6 +21,8 @@ import type { NotificationTarget } from "@space/shared";
  */
 export type NotificationRoute =
   | { pathname: "/assignment/[id]"; params: { id: string } }
+  | { pathname: "/announcements/[id]"; params: { id: string } }
+  | { pathname: "/announcements" }
   | { pathname: "/assignments" }
   | { pathname: "/quizzes" }
   | { pathname: "/calendar" }
@@ -47,7 +49,8 @@ export function routeForTarget(target: NotificationTarget | null): NotificationR
     case "submission":
       return { pathname: "/submission/[publicId]", params: { publicId: target.entityId } };
     case "announcement":
-      // No /news/[id] route yet (Task 6 adds it and returns it here).
-      return null;
+      return target.entityId === null
+        ? { pathname: "/announcements" }
+        : { pathname: "/announcements/[id]", params: { id: String(target.entityId) } };
   }
 }

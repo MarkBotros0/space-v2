@@ -34,6 +34,7 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "assignment/[id]/index",
   "assignment/[id]/edit",
   "assignment/new",
+  "announcements/[id]/index",
   // No role has it in its nav since Work took it (2026-11-07), but Season, the staff
   // panel and notifications still open it.
   "assignments",
