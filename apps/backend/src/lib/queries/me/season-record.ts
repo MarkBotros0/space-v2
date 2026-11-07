@@ -3,6 +3,7 @@ import type { SessionUser } from "../../auth/tokens";
 import type { SeasonRecord } from "../../../../../../packages/shared/src/season-lifecycle";
 import { listAssignmentStatesForStudent } from "../assignments";
 import { attendancePct } from "../attendance-pct";
+import { studentAttemptStatus } from "../../quiz-results";
 import { outcomeOf } from "./outcome";
 
 /*
@@ -45,6 +46,7 @@ export async function loadSeasonRecord(
         id: true,
         title: true,
         kind: true,
+        resultsReleasedAt: true,
         attempts: {
           where: { studentUserId: user.userId },
           orderBy: { attemptNumber: "desc" },
@@ -94,10 +96,13 @@ export async function loadSeasonRecord(
     quizzes: quizzes.map((q): RecordQuiz => {
       const attempt = q.attempts[0];
       const base = { id: q.id, title: q.title, kind: q.kind };
+      // Held results (owner, 2026-11-07): a graded attempt reads SUBMITTED, a paper grade not taken.
+      const released = q.resultsReleasedAt !== null;
       if (attempt) {
-        const graded = attempt.status === "GRADED";
-        return { ...base, status: attempt.status, score: graded ? attempt.totalScore : null };
+        const status = studentAttemptStatus(attempt.status, released);
+        return { ...base, status, score: status === "GRADED" ? attempt.totalScore : null };
       }
+      if (!released) return { ...base, status: "NOT_TAKEN", score: null };
       // A paper quiz has no attempt: it is graded or not taken.
       const score = q.grades[0]?.score ?? null;
       return score === null

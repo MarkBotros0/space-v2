@@ -6,10 +6,15 @@ import { parseId } from "../../lib/parse-id";
 import { canAccessSeason, canGradeQuiz, canManageQuiz, hasActiveEnrollment } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
 import { forbidden } from "../respond";
+import { canReleaseQuizResults } from "./release";
 import { loadStudentQuizDetail } from "./student-detail";
 
 /** The authoring/grading projection — the answer key, for the audience that needs it. */
-async function loadQuizAuthoringDetail(quizId: number, canManage: boolean) {
+async function loadQuizAuthoringDetail(
+  quizId: number,
+  canManage: boolean,
+  canRelease: (seasonId: number) => boolean,
+) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     select: {
@@ -19,6 +24,7 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean) {
       seasonId: true,
       sessionId: true,
       publishedAt: true,
+      resultsReleasedAt: true,
       maxScore: true,
       season: { select: { code: true } },
       session: { select: { title: true } },
@@ -55,6 +61,8 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean) {
     // enforces, so the screen never has to guess whether the builder is live.
     canEditStructure: canManage && quiz.kind === "ONLINE" && quiz._count.attempts === 0,
     canManage,
+    resultsReleasedAt: quiz.resultsReleasedAt,
+    canReleaseResults: canRelease(quiz.seasonId),
     questions: quiz.questions,
   };
 }
@@ -92,7 +100,9 @@ export async function getQuiz(req: Request, res: Response) {
   // Staff: grading needs the answer key (R103), and canGradeQuiz is the
   // audience that grades. canManage narrows further, to authoring.
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
-  const detail = await loadQuizAuthoringDetail(id, await canManageQuiz(user, id));
+  const detail = await loadQuizAuthoringDetail(id, await canManageQuiz(user, id), (seasonId) =>
+    canReleaseQuizResults(user, seasonId),
+  );
   if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
   return apiOk(res, detail);
 }

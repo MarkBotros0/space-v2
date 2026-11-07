@@ -114,7 +114,7 @@ export async function saveGrades(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { id: true, title: true, kind: true, maxScore: true, seasonId: true },
+    select: { id: true, title: true, kind: true, maxScore: true, seasonId: true, resultsReleasedAt: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
 
@@ -190,7 +190,8 @@ export async function saveGrades(req: Request, res: Response) {
   const notifyIds = parsed.data.entries
     .filter((e) => e.score !== null && previousScore.get(e.studentUserId) !== e.score)
     .map((e) => e.studentUserId);
-  if (notifyIds.length > 0) {
+  // Held results stay quiet: the release notifies everyone graded by then.
+  if (notifyIds.length > 0 && quiz.resultsReleasedAt !== null) {
     // Best-effort, outside the transaction. v1 issued three queries per
     // student here, one student at a time (R96); createNotificationsBulk
     // batches the whole set.

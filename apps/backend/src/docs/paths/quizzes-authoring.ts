@@ -25,7 +25,7 @@ export const quizAuthoringPaths = {
       tags: ["Quizzes"],
       summary: "List quizzes (row shape depends on the caller's role)",
       description:
-        "**The row shape differs by role.** Staff (SUPER, season admin, leader with a group in the season) receive `QuizSummary` rows. A STUDENT receives their own `StudentQuizResult` rows and `nextCursor` is always null: PAPER quizzes appear only once graded, ONLINE quizzes as soon as they are published.\n\n`seasonId` defaults to the caller's active season; with none, the list is empty. Staff outside the season get 403.\n\nOne definition each, computed server-side: `studentCount` is the ACTIVE enrolments of the quiz's season narrowed to the caller's scope (a leader sees only their own groups); `gradedCount` is, within that same student set, QuizGrade rows with a non-null score for PAPER and QuizAttempt rows with status GRADED for ONLINE.",
+        "**The row shape differs by role.** Staff (SUPER, season admin, leader with a group in the season) receive `QuizSummary` rows. A STUDENT receives their own `StudentQuizResult` rows and `nextCursor` is always null: PAPER quizzes appear only once graded and released, ONLINE quizzes as soon as they are published.\n\n`seasonId` defaults to the caller's active season; with none, the list is empty. Staff outside the season get 403.\n\nOne definition each, computed server-side: `studentCount` is the ACTIVE enrolments of the quiz's season narrowed to the caller's scope (a leader sees only their own groups); `gradedCount` is, within that same student set, QuizGrade rows with a non-null score for PAPER and QuizAttempt rows with status GRADED for ONLINE.",
       parameters: [
         { name: "seasonId", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "sessionId", in: "query", schema: { type: "integer", minimum: 1 } },
@@ -220,6 +220,27 @@ export const quizAuthoringPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: conflict("`wrong_quiz_kind`, `no_questions`, `mcq_without_answer` or `quiz_has_graded_attempts`."),
+      },
+    },
+  },
+
+  "/api/v1/quizzes/{id}/release": {
+    post: {
+      tags: ["Quizzes"],
+      summary: "Release a quiz's results to its students",
+      description:
+        "SUPER or admin of the quiz's season (owner, 2026-11-07). Until a quiz is released every student read hides the marking — no score, no `gradedAt`, no right or wrong answer, and a graded attempt reads SUBMITTED — so a student who takes it later can't learn the answers from one who took it first; grading stays silent too. One way: there is no un-release. An unpublished ONLINE quiz is refused (409 `quiz_not_published`). Only the request that flips it sends one `QUIZ_GRADED` notification, \"Results are out: <title>\", to each student with a PAPER grade or a GRADED latest attempt (best-effort); a repeat answers 200 with the stored time and sends nothing. Grades made after the release notify as usual.",
+      parameters: [idParam],
+      responses: {
+        200: ok(
+          { type: "object", required: ["resultsReleasedAt"], properties: { resultsReleasedAt: { type: "string", format: "date-time" } } },
+          "When the results were released.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`quiz_not_published`."),
       },
     },
   },

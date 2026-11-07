@@ -6,6 +6,7 @@ import {
   quizQuestionAuthoringSchema,
   quizQuestionDeletedResponseSchema,
   quizUpdatedResponseSchema,
+  releaseQuizResultsResponseSchema,
   reorderQuestionsResponseSchema,
   type createQuizRequestSchema,
   type QuizQuestionInput,
@@ -112,6 +113,22 @@ export function usePublishQuiz(id: number) {
     mutationFn: async (publish: boolean) => {
       const res = await apiClient.post(`/api/v1/quizzes/${id}/publish`, { publish });
       return publishQuizResponseSchema.parse(res.data.data);
+    },
+    onSuccess: invalidate,
+  });
+}
+
+/**
+ * Lets the quiz's students see their scores and which answers were right
+ * (owner, 2026-11-07). The season's admin or a super only; one way.
+ */
+export function useReleaseQuizResults(id: number) {
+  const invalidate = useInvalidateQuiz(id);
+  return useMutation({
+    meta: DASHBOARD_META,
+    mutationFn: async () => {
+      const res = await apiClient.post(`/api/v1/quizzes/${id}/release`);
+      return releaseQuizResultsResponseSchema.parse(res.data.data);
     },
     onSuccess: invalidate,
   });

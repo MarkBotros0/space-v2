@@ -1,6 +1,7 @@
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { db } from "../../db/client";
+import { studentAttemptStatus } from "../../lib/quiz-results";
 
 /**
  * The student projection.
@@ -45,6 +46,7 @@ interface StudentAnswerSource {
 function toStudentQuestion(
   q: StudentQuestionSource,
   a: StudentAnswerSource | undefined,
+  released: boolean,
 ): QuizQuestionStudent {
   return {
     id: q.id,
@@ -55,9 +57,10 @@ function toStudentQuestion(
     options: q.options,
     selectedIndex: a?.selectedIndex ?? null,
     text: a?.text ?? null,
-    // Null until submit (R52/R54), so nothing leaks mid-attempt.
-    isCorrect: a?.isCorrect ?? null,
-    pointsAwarded: a?.pointsAwarded ?? null,
+    // Null until submit (R52/R54), so nothing leaks mid-attempt, and until
+    // the results are released, so nothing leaks to whoever takes it later.
+    isCorrect: released ? (a?.isCorrect ?? null) : null,
+    pointsAwarded: released ? (a?.pointsAwarded ?? null) : null,
   };
 }
 
@@ -75,6 +78,7 @@ export async function loadStudentQuizDetail(
       seasonId: true,
       maxScore: true,
       publishedAt: true,
+      resultsReleasedAt: true,
       session: { select: { title: true } },
       questions: {
         orderBy: { order: "asc" },
@@ -116,6 +120,9 @@ export async function loadStudentQuizDetail(
     },
   });
   const answerByQuestion = new Map((attempt?.answers ?? []).map((a) => [a.questionId, a]));
+  const released = quiz.resultsReleasedAt !== null;
+  const status = studentAttemptStatus(attempt?.status ?? null, released);
+  const graded = status === "GRADED";
 
   return {
     id: quiz.id,
@@ -126,13 +133,14 @@ export async function loadStudentQuizDetail(
     sessionTitle: quiz.session?.title ?? null,
     attemptId: attempt?.id ?? null,
     attemptNumber: attempt?.attemptNumber ?? 0,
-    status: attempt?.status ?? null,
+    status,
     // autoScore/manualScore deliberately absent: v1 sent both and rendered
     // neither. totalScore is the only score a student is shown.
-    totalScore: attempt?.totalScore ?? null,
+    totalScore: graded ? (attempt?.totalScore ?? null) : null,
     submittedAt: attempt?.submittedAt ?? null,
-    gradedAt: attempt?.gradedAt ?? null,
-    questions: quiz.questions.map((q) => toStudentQuestion(q, answerByQuestion.get(q.id))),
+    gradedAt: graded ? (attempt?.gradedAt ?? null) : null,
+    questions: quiz.questions.map((q) => toStudentQuestion(q, answerByQuestion.get(q.id), released)),
     readOnly,
+    resultsReleased: released,
   };
 }

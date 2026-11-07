@@ -18,6 +18,8 @@ export const reorderQuestionsResponseSchema = z.object({
 });
 /** POST /quizzes/:id/publish */
 export const publishQuizResponseSchema = z.object({ publishedAt: z.string().nullable() });
+/** POST /quizzes/:id/release */
+export const releaseQuizResultsResponseSchema = z.object({ resultsReleasedAt: z.string() });
 /** PATCH /quizzes/:id/attempt */
 export const saveQuizAnswersResponseSchema = z.object({ saved: z.number() });
 /** POST /quizzes/:id/attempts/reopen */

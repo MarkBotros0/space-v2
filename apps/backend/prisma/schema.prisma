@@ -179,6 +179,7 @@ model User {
   jpcEventsCreated         JpcEvent[]              @relation("JpcEventCreator")
 
   quizzesCreated Quiz[]      @relation("QuizCreatedBy")
+  quizzesReleased Quiz[]     @relation("QuizResultsReleasedBy")
   quizGrades     QuizGrade[] @relation("QuizGradeStudent")
   quizGraded     QuizGrade[] @relation("QuizGradedBy")
 
@@ -714,6 +715,12 @@ model Quiz {
   publishedAt DateTime?
   createdById Int?
   createdBy   User?     @relation("QuizCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  // Students see their scores, and which answers were right, only once the
+  // season's admin (or a super) releases the results (owner, 2026-11-07): a
+  // student who takes it later can't learn the answers from one who took it first.
+  resultsReleasedAt   DateTime?
+  resultsReleasedById Int?
+  resultsReleasedBy   User?     @relation("QuizResultsReleasedBy", fields: [resultsReleasedById], references: [id], onDelete: SetNull)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

@@ -31,7 +31,7 @@ async function canTakeQuizIn(user: SessionUser, seasonId: number): Promise<boole
 async function loadTakeableQuiz(res: Response, user: SessionUser, quizId: number) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
-    select: { title: true, seasonId: true },
+    select: { title: true, seasonId: true, resultsReleasedAt: true },
   });
   if (!quiz) {
     apiError(res, "not_found", "Quiz not found.", 404);
@@ -314,7 +314,8 @@ export async function submitAttempt(req: Request, res: Response) {
   if ("fail" in outcome) return apiError(res, outcome.fail[0], outcome.fail[1], outcome.fail[2]);
   const { hasEssays } = outcome;
 
-  if (!hasEssays) {
+  // Held results stay quiet: the student hears once they are released.
+  if (!hasEssays && quiz.resultsReleasedAt !== null) {
     // Best-effort, outside the transaction (spec D6). A mail failure must not
     // report a submitted quiz as failed.
     await notifyQuizGraded(
