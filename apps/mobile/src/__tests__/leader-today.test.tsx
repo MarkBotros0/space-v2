@@ -202,7 +202,8 @@ describe("LeaderToday", () => {
   it("at risk: names with a reason line, See all to groups, and the season card stays", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByText("YOUR STUDENTS AT RISK")).toBeTruthy();
+    expect(await screen.findByText("STUDENTS AT RISK")).toBeTruthy();
+    expect(screen.queryByText("YOUR STUDENTS AT RISK")).toBeNull();
     expect(screen.getByText("Sara Student")).toBeTruthy();
     expect(screen.getByText("Attendance 33% · 1 of 3 submitted")).toBeTruthy();
     fireEvent.press(screen.getByText("See all 12"));
@@ -215,6 +216,29 @@ describe("LeaderToday", () => {
     expect(mockPush).toHaveBeenLastCalledWith("/groups");
     fireEvent.press(screen.getByText("Sara Student"));
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
+  });
+
+  // Owner 2026-11-07: the group's season card sits right under the session.
+  it("puts the group card right under the session, above the tiles and the names", async () => {
+    serveDash(dash({ nextSession: null, leaderSession: null }));
+    renderWithProviders(<LeaderToday />);
+    await screen.findByText("STUDENTS AT RISK");
+    const texts: string[] = [];
+    const walk = (n: unknown): void => {
+      if (typeof n === "string") texts.push(n);
+      else if (Array.isArray(n)) n.forEach(walk);
+      else if (n && typeof n === "object") {
+        const node = n as { props?: { accessibilityLabel?: string }; children?: unknown[] };
+        if (node.props?.accessibilityLabel) texts.push(node.props.accessibilityLabel);
+        node.children?.forEach(walk);
+      }
+    };
+    walk(screen.toJSON());
+    const at = (t: string) => texts.indexOf(t);
+    expect(at("No upcoming sessions.")).toBeGreaterThanOrEqual(0);
+    expect(at("No upcoming sessions.")).toBeLessThan(at("Open Group A, Group B"));
+    expect(at("Open Group A, Group B")).toBeLessThan(at("WAITING FOR YOU"));
+    expect(at("WAITING FOR YOU")).toBeLessThan(at("STUDENTS AT RISK"));
   });
 
   it("no name: the title is Home", async () => {

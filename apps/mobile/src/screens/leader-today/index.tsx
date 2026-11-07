@@ -61,12 +61,21 @@ function Body({ data }: { data: StaffSeasonDashboard }) {
   return (
     <>
       <LeaderSessionSection session={data.nextSession} checkIn={data.leaderSession} />
+      {/* Owner 2026-11-07: the group's season card sits right under the session. */}
+      <SeasonPulse
+        title={data.groups.map((g) => g.name).join(", ") || data.season.title}
+        progressPct={progress.pct}
+        sessionsHeld={progress.sessionsHeld}
+        sessionsTotal={progress.sessionsTotal}
+        figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
+        onPress={toGroup}
+      />
       <View className="gap-2">
         <ListSectionHeader className="pb-0">Waiting for you</ListSectionHeader>
         <CountGrid tiles={tiles} />
       </View>
       <PeoplePreview
-        header="Your students at risk"
+        header="Students at risk"
         people={cohort.atRisk.map((r) => ({
           id: r.studentUserId,
           name: r.studentName,
@@ -76,23 +85,15 @@ function Body({ data }: { data: StaffSeasonDashboard }) {
         onOpen={(id) => router.push({ pathname: "/student/[id]", params: { id: String(id) } })}
         onSeeAll={toGroup}
       />
-      <SeasonPulse
-        title={data.groups.map((g) => g.name).join(", ") || data.season.title}
-        progressPct={progress.pct}
-        sessionsHeld={progress.sessionsHeld}
-        sessionsTotal={progress.sessionsTotal}
-        figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
-        onPress={toGroup}
-      />
     </>
   );
 }
 
 /**
  * The leader's Home (owner, 2026-11-07: "very stacked… clear and vivid, not
- * boring"): the session to run and, on its day, who is missing; what is
- * waiting as coloured tiles; the students at risk by name; the group's season
- * at a glance; events.
+ * boring"): the session to run and, on its day, who is missing; the group's
+ * season at a glance; what is waiting as coloured tiles; the students at risk
+ * by name; events.
  */
 export function LeaderToday() {
   const name = useSessionStore((s) => s.user?.name ?? null);
