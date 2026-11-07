@@ -45,7 +45,7 @@ describe("/users/new (spec 11 §9)", () => {
     await waitFor(() =>
       expect(mockReplace).toHaveBeenCalledWith({ pathname: "/user/[id]", params: { id: "40" } }),
     );
-    expect(toast.success).toHaveBeenCalledWith("User created. Their invite is on its way.");
+    expect(toast.success).toHaveBeenCalledWith("Member added. Their invite is on its way.");
   });
 
   it("says so when the account was created but the invite email couldn't go out", async () => {

@@ -128,7 +128,12 @@ export default function CommunityScreen() {
           {pendingRow}
           {/* Spec 16 §9: the importer is reached from its parent list, as in v1
               (super/users/page.tsx:59). */}
-          <ListRow title="Import profiles" chevron onPress={() => router.push("/users/import")} />
+          <ListRow
+            title="Add students in bulk"
+            subtitle="Paste names and emails"
+            chevron
+            onPress={() => router.push("/users/import")}
+          />
         </GroupedList>
         {/* Owner 2026-11-07: Filter is an icon button in the search row. */}
         <View className="flex-row items-center gap-2">

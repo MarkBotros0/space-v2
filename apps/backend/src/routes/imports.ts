@@ -6,6 +6,7 @@ import { isUniqueViolation } from "../lib/prisma-errors";
 import { apiError, apiOk } from "../lib/api-response";
 import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
+import { withImpliedHeader, withoutImpliedHeaderLine } from "../lib/imports/students/implied-header";
 import { buildGroupImportPreview } from "../lib/imports/groups";
 // The one 429 handler (ruling X4: Plan 9 extracted it; no copies anywhere).
 import { makeLimiter } from "../lib/rate-limit";
@@ -123,8 +124,11 @@ importsRouter.post("/students/preview", previewLimiter, importJsonParser, async 
   }
 
   try {
-    const sheet = parseDelimited(parsed.data.text, parsed.data.delimiter, IMPORT_MAX_ROWS);
-    return apiOk(res, await buildStudentImportPreview(sheet));
+    // Plain "name, email" lines work without a header row (owner, 2026-11-07).
+    const pasted = withImpliedHeader(parsed.data.text);
+    const sheet = parseDelimited(pasted.text, parsed.data.delimiter, IMPORT_MAX_ROWS);
+    const preview = await buildStudentImportPreview(sheet);
+    return apiOk(res, pasted.implied ? withoutImpliedHeaderLine(preview) : preview);
   } catch (err) {
     // The importer's own error type carries a message written for the
     // operator and is safe to surface verbatim (spec R14). Anything else is a

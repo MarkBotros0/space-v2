@@ -161,13 +161,16 @@ export function ImportPasteStep({
                 className="min-h-40"
                 value={flow.text}
                 onChangeText={flow.setText}
-                placeholder={
-                  sampleHeader ? `One person per line, starting with:\n${sampleHeader}` : undefined
-                }
+                // Owner 2026-11-07: a name and an email is enough, no header row.
+                placeholder={"One person per line:\nMina Adel, mina@example.com\nSara Nabil, sara@example.com"}
                 autoCapitalize="none"
               />
               <View className="mt-1 flex-col gap-0.5">
-                <Text className="text-xs font-medium text-muted-foreground">
+                <Text variant="caption" className="text-muted-foreground">
+                  A name and an email per line is all it needs. To add more details, start
+                  with a header row naming the columns.
+                </Text>
+                <Text className="mt-1 text-xs font-medium text-muted-foreground">
                   Columns we recognise
                 </Text>
                 {template.data?.columns.map((c) => (

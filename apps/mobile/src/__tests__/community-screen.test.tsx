@@ -71,9 +71,9 @@ describe("CommunityScreen", () => {
     renderWithProviders(<UsersScreen />);
 
     expect(await screen.findByText("Active Ann")).toBeTruthy();
-    // Each label appears on its filter chip and on the row's status chip.
-    expect(screen.getAllByText("Active")).toHaveLength(2);
-    expect(screen.getAllByText("No invite")).toHaveLength(2);
+    // The filters sit in a sheet now: each label is the row's own status chip.
+    expect(screen.getAllByText("Active")).toHaveLength(1);
+    expect(screen.getAllByText("No invite")).toHaveLength(1);
   });
 
   it("shows a row-level invite action only for uninvited/invited accounts, and sends it", async () => {
@@ -168,7 +168,7 @@ describe("CommunityScreen — Plan 10 entry points", () => {
     useSessionStore.setState(superSession);
     routeGets(0);
     renderWithProviders(<UsersScreen />);
-    fireEvent.press(await screen.findByText("Import profiles"));
+    fireEvent.press(await screen.findByText("Add students in bulk"));
     expect(mockPush).toHaveBeenCalledWith("/users/import");
   });
 
@@ -206,8 +206,10 @@ describe("CommunityScreen — Plan 10 entry points", () => {
   });
 });
 
-const chip = (label: string) =>
-  screen.getAllByLabelText(label).find((e) => e.props.accessibilityState?.selected !== undefined)!;
+// Owner 2026-11-07: the filters live in a sheet behind the icon in the search row.
+const openFilters = () => fireEvent.press(screen.getByLabelText(/^Filter/));
+const option = (label: string) => screen.getByLabelText(new RegExp(`^${label}(, Selected)?$`));
+const picked = (label: string) => String(option(label).props.accessibilityLabel).endsWith("Selected");
 
 describe("CommunityScreen — status filter and rows", () => {
   const usersUrls = () =>
@@ -226,8 +228,10 @@ describe("CommunityScreen — status filter and rows", () => {
     mockParams = { status: "pending" };
     renderWithProviders(<UsersScreen />);
     await screen.findByText("Active Ann");
-    expect(chip("No invite").props.accessibilityState.selected).toBe(true);
-    expect(chip("All").props.accessibilityState.selected).toBe(false);
+    expect(screen.getByLabelText("Filter, 1 active")).toBeTruthy();
+    openFilters();
+    expect(picked("No invite yet")).toBe(true);
+    expect(picked("Any")).toBe(false);
     expect(usersUrls()).toEqual(["/api/v1/users?status=pending"]);
   });
 
@@ -235,12 +239,14 @@ describe("CommunityScreen — status filter and rows", () => {
   it("narrows to one role, and back to everyone", async () => {
     renderWithProviders(<UsersScreen />);
     await screen.findByText("Active Ann");
-    expect(chip("Everyone").props.accessibilityState.selected).toBe(true);
-    fireEvent.press(chip("Mentors"));
+    openFilters();
+    expect(picked("Everyone")).toBe(true);
+    fireEvent.press(option("Mentors"));
     await waitFor(() => expect(usersUrls()).toContain("/api/v1/users?role=MENTOR"));
-    expect(chip("Mentors").props.accessibilityState.selected).toBe(true);
-    fireEvent.press(chip("Everyone"));
-    expect(chip("Everyone").props.accessibilityState.selected).toBe(true);
+    expect(picked("Mentors")).toBe(true);
+    fireEvent.press(option("Everyone"));
+    expect(picked("Everyone")).toBe(true);
+    fireEvent.press(screen.getByText("Done"));
     expect(screen.getByText("2 members")).toBeTruthy();
   });
 
@@ -251,13 +257,14 @@ describe("CommunityScreen — status filter and rows", () => {
     expect(usersUrls()).toEqual(["/api/v1/users"]);
   });
 
-  it("clearing to All refetches without a status", async () => {
+  it("clearing to Any refetches without a status", async () => {
     mockParams = { status: "pending" };
     renderWithProviders(<UsersScreen />);
     await screen.findByText("Active Ann");
-    fireEvent.press(chip("All"));
+    openFilters();
+    fireEvent.press(option("Any"));
     await waitFor(() => expect(usersUrls()).toContain("/api/v1/users"));
-    fireEvent.press(chip("Inactive"));
+    fireEvent.press(option("Inactive"));
     await waitFor(() => expect(usersUrls()).toContain("/api/v1/users?status=inactive"));
   });
 
@@ -300,7 +307,7 @@ describe("CommunityScreen — status filter and rows", () => {
     );
     renderWithProviders(<UsersScreen />);
     expect(await screen.findByText("Send 1 invite")).toBeTruthy();
-    expect(screen.getByText("Import profiles")).toBeTruthy();
+    expect(screen.getByText("Add students in bulk")).toBeTruthy();
     expect(screen.getAllByTestId("list-row-chevron", { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(2);
   });
 });

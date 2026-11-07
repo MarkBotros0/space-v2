@@ -64,8 +64,16 @@ describe("ImportScreen — step 1, paste", () => {
 
     const field = await screen.findByLabelText("Paste your spreadsheet");
     expect(field.props.placeholder).not.toMatch(/\t/);
-    expect(field.props.placeholder).toContain("name | email");
     expect(screen.getAllByText("name | email").length).toBeGreaterThan(0);
+  });
+
+  // Owner 2026-11-07: a name and an email per line, no header row.
+  it("asks only for a name and an email per line", async () => {
+    useSessionStore.setState(superSession);
+    renderWithProviders(<ImportScreen />);
+    const field = await screen.findByLabelText("Paste your spreadsheet");
+    expect(field.props.placeholder).toContain("Mina Adel, mina@example.com");
+    expect(screen.getByText(/A name and an email per line is all it needs/)).toBeTruthy();
   });
 
   it("refuses an over-long paste locally, without spending a request", async () => {

@@ -18,9 +18,9 @@ import { useSessionStore } from "../../../src/store/session";
  * persisted — see useStudentImportFlow.
  */
 const frame = {
-  title: "Import profiles batch",
+  title: "Add in bulk",
   subtitle:
-    "Bulk-create profiles from pasted rows with name and email columns. Choose whether to import them as active students in a season or as alumni of a graduation year. Invites are sent separately once you're ready.",
+    "Paste one person per line: a name and an email is enough. Add them as students in a season or as alumni of a graduation year. Invites are sent separately once you're ready.",
 } as const;
 
 export default function ImportScreen() {
