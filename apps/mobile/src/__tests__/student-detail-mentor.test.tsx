@@ -67,6 +67,11 @@ const mentorNote = {
 };
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
+let mockFollowUps: unknown[] = [];
+const followUp = {
+  id: 9, studentUserId: 21, studentName: "Sara Student", reason: "After the exam",
+  createdAt: "2099-01-01T10:00:00.000Z", dueAt: "2099-01-08T10:00:00.000Z", remindedAt: null, doneAt: null,
+};
 function serveMentor() {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/students/21") return ok({ ...base, profile: publicProfile });
@@ -76,12 +81,14 @@ function serveMentor() {
     if (url === "/api/v1/students/21/submissions")
       return ok({ submissions: [{ publicId: "abc123defg", assignmentId: 41, assignmentTitle: "Essay one", status: "SUBMITTED", isLate: false, submittedAt: "2099-03-02T10:00:00.000Z", reviewedAt: null, seasonId: 7, seasonTitle: "Spring 2099" }] });
     if (url.startsWith("/api/v1/students/21/notes")) return ok({ notes: [mentorNote], nextCursor: null });
+    if (url === "/api/v1/follow-ups") return ok({ followUps: mockFollowUps });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockFollowUps = [];
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
@@ -91,22 +98,17 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     serveMentor();
   });
 
-  it("is the grouped page: name over the group, this season, details and four sections", async () => {
+  it("shows nothing season-shaped: no group, no This season, Notes first and Attendance (owner, 2026-11-07)", async () => {
     renderWithProviders(<StudentDetailScreen />);
     expect(await screen.findByText("Cairo University")).toBeTruthy();
-    expect(screen.getAllByText("Sara Student").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Group A").length).toBeGreaterThan(0);
-    // No email anywhere, and no season badge (owner, 2026-11-07).
+    expect(screen.queryByText("Group A")).toBeNull();
     expect(screen.queryByText("sara@jpc.test")).toBeNull();
-    expect(screen.queryByText("Email")).toBeNull();
-    for (const section of ["Seasons", "Attendance", "Submissions", "Notes"]) {
-      expect(screen.getByRole("tab", { name: section })).toBeTruthy();
-    }
-    expect(screen.queryByRole("tab", { name: "Profile" })).toBeNull();
-    expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
-    expect(screen.getByText("At risk")).toBeTruthy();
-    // The legacy page's card heading.
-    expect(screen.queryByText("Engagement (current season)")).toBeNull();
+    const tabs = screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel ?? "");
+    expect(tabs.filter((t) => t === "Notes" || t === "Attendance")).toEqual(["Notes", "Attendance"]);
+    for (const gone of ["Seasons", "Submissions"]) expect(screen.queryByRole("tab", { name: gone })).toBeNull();
+    expect(screen.queryByText("At risk")).toBeNull();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/engagement");
+    expect(await screen.findByText("Checked in about the essay")).toBeTruthy();
   });
 
   it("keeps the loaded page when a background refresh fails", async () => {
@@ -131,7 +133,7 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
   it("offers no action a mentor doesn't have, and no field beyond the phone the public arm carries", async () => {
     renderWithProviders(<StudentDetailScreen />);
     await screen.findByText("Cairo University");
-    for (const action of ["Edit profile", "Graduate", "Delete student"]) {
+    for (const action of ["Edit profile", "Graduate", "Delete student", "Drop"]) {
       expect(screen.queryByText(action)).toBeNull();
     }
     // A mentor reads the phone and can call it (4999d4cf), but not the date of birth or notes.
@@ -139,22 +141,35 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     expect(screen.getByLabelText("Call +20 100 000 0000")).toBeTruthy();
     expect(screen.queryByText("Date of birth")).toBeNull();
     expect(screen.queryByText("Internal notes · staff only")).toBeNull();
-    fireEvent.press(screen.getByRole("tab", { name: "Seasons" }));
-    expect(await screen.findByText(/83% attendance/)).toBeTruthy();
-    expect(screen.getByText(/Jan 1, 2099 – Dec 31, 2099/)).toBeTruthy();
-    expect(screen.queryByText("Drop")).toBeNull();
   });
 
-  it("opens attendance and a submission as before", async () => {
+  it("groups attendance under each season's name", async () => {
     renderWithProviders(<StudentDetailScreen />);
     fireEvent.press(await screen.findByRole("tab", { name: "Attendance" }));
     expect(await screen.findByText("Week 4")).toBeTruthy();
-    fireEvent.press(screen.getByRole("tab", { name: "Submissions" }));
-    const essay = await screen.findByText("Essay one");
-    expect(essay.props.numberOfLines).toBe(2);
-    expect(screen.getByText(/submitted Mar 2, 2099/).props.numberOfLines).toBeUndefined();
-    fireEvent.press(essay);
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
+    expect(screen.getByText("SPRING 2099")).toBeTruthy();
+  });
+
+  it("flags a follow-up with an optional reason", async () => {
+    post.mockResolvedValue({ data: { data: followUp } });
+    renderWithProviders(<StudentDetailScreen />);
+    fireEvent.press(await screen.findByText("Remind me to follow up"));
+    fireEvent.changeText(await screen.findByLabelText("Why (optional)"), "  After the exam ");
+    fireEvent.press(screen.getByText("Remind me in a week"));
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/students/21/follow-ups", { reason: "After the exam" }),
+    );
+  });
+
+  it("shows an open follow-up with its date and Mark done", async () => {
+    mockFollowUps = [{ ...followUp, dueAt: "2999-01-08T10:00:00.000Z" }];
+    post.mockResolvedValue({ data: { data: { ...followUp, doneAt: "2099-01-09T10:00:00.000Z" } } });
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("You're following up")).toBeTruthy();
+    expect(screen.getByText(/We'll remind you on Jan 8, 2999/)).toBeTruthy();
+    expect(screen.queryByText("Remind me to follow up")).toBeNull();
+    fireEvent.press(screen.getByText("Mark done"));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/follow-ups/9/done"));
   });
 
   it("reads only the notes the server returns, and says who may see each", async () => {

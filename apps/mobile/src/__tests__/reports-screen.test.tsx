@@ -18,7 +18,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import ReportsScreen from "../../app/(app)/(tabs)/reports";
+import ReportsScreen from "../../app/(app)/reports";
 
 import { mockEndpoints, sessionFor } from "./helpers/reports-fixtures";
 
@@ -37,7 +37,7 @@ describe("ReportsScreen — role branches", () => {
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Reports")).toBeTruthy();
-    expect(screen.getByText("This screen is for mentors and season admins.")).toBeTruthy();
+    expect(screen.getByText("This screen is for season admins.")).toBeTruthy();
     // The API refuses leaders explicitly. A query that fires only to be refused
     // surfaces as an error state on a screen that should simply say the surface
     // is not theirs.
@@ -52,18 +52,14 @@ describe("ReportsScreen — role branches", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("gives a MENTOR the engagement report and NOT the organisation roll-up", async () => {
+  it("shows a MENTOR nothing and issues no request (owner, 2026-11-07: Follow-ups took the tab)", async () => {
     useSessionStore.setState(sessionFor("MENTOR"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("Sara Student")).toBeTruthy();
-    const urls = get.mock.calls.map((c) => String(c[0]));
-    expect(urls.some((u) => u.startsWith("/api/v1/reports/engagement"))).toBe(true);
-    // /reports/organisation is SUPER-only; asking for it as a mentor earns a
-    // 403 and an error card for a section that is not theirs.
-    expect(urls.some((u) => u.includes("organisation"))).toBe(false);
+    expect(await screen.findByText("This screen is for season admins.")).toBeTruthy();
+    expect(get).not.toHaveBeenCalled();
   });
 
   it("gives SUPER both the roll-up and the engagement view (spec D17)", async () => {
@@ -107,7 +103,7 @@ describe("ReportsScreen — SUPER's organisation roll-up (v1 super/reports)", ()
 
 describe("ReportsScreen — the at-risk card comes first and tells the truth", () => {
   it('renders "1 of 34" so the cap is visible (spec D16, R33)', async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);
@@ -118,7 +114,8 @@ describe("ReportsScreen — the at-risk card comes first and tells the truth", (
   });
 
   it("navigates to the student on press", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    // A Super: an admin opens only the students of seasons they serve now.
+    useSessionStore.setState(sessionFor("SUPER"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);
@@ -131,7 +128,7 @@ describe("ReportsScreen — the at-risk card comes first and tells the truth", (
   });
 
   it("pages more at-risk rows inline rather than pushing a second route", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);

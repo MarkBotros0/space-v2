@@ -1,9 +1,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
-  mentorDashboardSchema,
   staffSeasonDashboardSchema,
   studentDashboardSchema,
-  type MentorDashboard,
   type StaffSeasonDashboard,
   type StudentDashboard,
 } from "@space/shared";
@@ -63,13 +61,3 @@ export function useStaffOrgToday(seasonId: number | null): { today: string | und
   return { today: dash.data?.todayOrgDay, isPending: seasonId !== null && dash.isPending };
 }
 
-export function useMentorDashboard(): UseQueryResult<MentorDashboard> {
-  return useQuery({
-    queryKey: queryKeys.dashboard.me(null),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/me/dashboard");
-      return mentorDashboardSchema.parse(res.data.data);
-    },
-    staleTime: DASHBOARD_STALE_TIME,
-  });
-}

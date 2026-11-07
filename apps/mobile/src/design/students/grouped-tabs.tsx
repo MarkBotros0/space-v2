@@ -67,7 +67,11 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
   );
 }
 
-export function GroupedAttendanceTab({ studentId }: { studentId: number }) {
+/**
+ * Every mark, newest first. `bySeason` (the mentor, owner 2026-11-07) groups them
+ * under each season's name, the one place a season shows: where the session was.
+ */
+export function GroupedAttendanceTab({ studentId, bySeason = false }: { studentId: number; bySeason?: boolean }) {
   const q = useStudentAttendanceHistory(studentId, true);
   if (q.isPending) return <Loading />;
   if (!q.data)
@@ -81,19 +85,32 @@ export function GroupedAttendanceTab({ studentId }: { studentId: number }) {
       />
     );
   }
+  const row = (r: (typeof q.data.history)[number]) => (
+    <ListRow
+      key={r.sessionId}
+      title={r.sessionTitle}
+      titleLines={2}
+      // Instant in the device zone: no org day on this row (X13, gap note).
+      subtitle={bySeason ? formatDateTime(r.startsAt) : caption(formatDateTime(r.startsAt), r.seasonTitle)}
+      trailing={<StatusChip {...statusChip("attendance", r.status)} />}
+    />
+  );
+  if (!bySeason) return <GroupedList>{q.data.history.map(row)}</GroupedList>;
+  // Newest first already, so each season's group keeps that order and seasons follow their newest mark.
+  const seasons: { id: number; title: string; rows: typeof q.data.history }[] = [];
+  for (const r of q.data.history) {
+    const last = seasons.find((g) => g.id === r.seasonId);
+    if (last) last.rows.push(r);
+    else seasons.push({ id: r.seasonId, title: r.seasonTitle, rows: [r] });
+  }
   return (
-    <GroupedList>
-      {q.data.history.map((r) => (
-        <ListRow
-          key={r.sessionId}
-          title={r.sessionTitle}
-          titleLines={2}
-          // Instant in the device zone: no org day on this row (X13, gap note).
-          subtitle={caption(formatDateTime(r.startsAt), r.seasonTitle)}
-          trailing={<StatusChip {...statusChip("attendance", r.status)} />}
-        />
+    <View className="flex-col gap-4">
+      {seasons.map((g) => (
+        <GroupedList key={g.id} header={g.title}>
+          {g.rows.map(row)}
+        </GroupedList>
       ))}
-    </GroupedList>
+    </View>
   );
 }
 
@@ -145,10 +162,13 @@ export function GroupedNotesTab({
   studentId,
   canWriteNote,
   onWrite,
+  seasonless = false,
 }: {
   studentId: number;
   canWriteNote: boolean;
   onWrite: () => void;
+  /** The mentor (owner, 2026-11-07): no season on a note. */
+  seasonless?: boolean;
 }) {
   const q = useStudentNotes(studentId, true);
   const notes = flattenNotePages(q.data?.pages);
@@ -177,7 +197,7 @@ export function GroupedNotesTab({
                   n.authorName,
                   USER_ROLE_LABELS[n.authorRole],
                   formatDate(n.createdAt),
-                  n.seasonTitle,
+                  seasonless ? null : n.seasonTitle,
                   n.edited && "Edited",
                   VISIBILITY_LABEL[n.visibility],
                 )}

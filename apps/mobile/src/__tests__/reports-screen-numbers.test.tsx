@@ -18,7 +18,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import ReportsScreen from "../../app/(app)/(tabs)/reports";
+import ReportsScreen from "../../app/(app)/reports";
 
 import { mockEndpoints, row, sessionFor, summary } from "./helpers/reports-fixtures";
 
@@ -31,7 +31,7 @@ beforeEach(() => {
 
 describe("ReportsScreen — the numbers it renders", () => {
   it("takes the band from the contract, never from a local threshold (C4)", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     get.mockImplementation((url: string) => {
       if (url.startsWith("/api/v1/reports/engagement/students")) {
         return Promise.resolve({
@@ -59,7 +59,7 @@ describe("ReportsScreen — the numbers it renders", () => {
   });
 
   it("shows enrolments and students side by side when the scope spans seasons (R32)", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);
@@ -72,7 +72,7 @@ describe("ReportsScreen — the numbers it renders", () => {
   });
 
   it("renders a completion row with no cohort as — rather than 0% (R22)", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);
@@ -82,7 +82,7 @@ describe("ReportsScreen — the numbers it renders", () => {
   });
 
   it("describes the trend for a screen reader from the served values", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);
@@ -93,7 +93,7 @@ describe("ReportsScreen — the numbers it renders", () => {
   });
 
   it("draws one line per season instead of one interleaved line (REG-117)", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     const [first, second] = summary.attendanceTrend;
     const interleaved = {
       ...summary,
@@ -134,7 +134,7 @@ describe("ReportsScreen — the numbers it renders", () => {
   });
 
   it("shows the method note, from the shared constant", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
 
     renderWithProviders(<ReportsScreen />);
@@ -160,7 +160,7 @@ describe("ReportsScreen — the numbers it renders", () => {
   });
 
   it("maps an error to ErrorState with a working retry", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     get.mockRejectedValue(new Error("boom"));
 
     renderWithProviders(<ReportsScreen />);
@@ -234,7 +234,7 @@ describe("ReportsScreen — the season header and History", () => {
   });
 
   it("opens on the season that ended last when none is running", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
+    useSessionStore.setState(sessionFor("ADMIN"));
     const ended = (id: number, title: string, endDate: string) => ({
       id,
       code: `s${id}`,

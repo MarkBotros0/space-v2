@@ -42,9 +42,15 @@ export const queryKeys = {
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
     authored: () => [...queryKeys.notes.lists(), "authored"] as const,
-    visible: (limit: number) => [...queryKeys.notes.lists(), "visible", { limit }] as const,
+    visible: (limit: number, withinDays: number | null = null) =>
+      [...queryKeys.notes.lists(), "visible", { limit, withinDays }] as const,
     // Nullable per this file's header convention — no -1 sentinel.
     byStudent: (studentId: number | null) => [...queryKeys.notes.lists(), { studentId }] as const,
+  },
+  followUps: {
+    all: ["followUps"] as const,
+    mine: () => [...queryKeys.followUps.all, "mine"] as const,
+    summary: () => [...queryKeys.followUps.all, "summary"] as const,
   },
   engagement: {
     all: ["engagement"] as const,

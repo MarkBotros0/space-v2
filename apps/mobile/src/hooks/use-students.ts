@@ -51,6 +51,8 @@ export interface StudentListView {
   groupId: number | "none" | null;
   sort: StudentListSort | null;
   dir: "asc" | "desc";
+  /** The mentor's "Absent lately": last two marked sessions both absent (owner, 2026-11-07). */
+  absentLately: boolean;
 }
 
 export const DEFAULT_STUDENT_VIEW: StudentListView = {
@@ -58,6 +60,7 @@ export const DEFAULT_STUDENT_VIEW: StudentListView = {
   groupId: null,
   sort: null,
   dir: "asc",
+  absentLately: false,
 };
 
 async function fetchStudentsPage(
@@ -70,6 +73,7 @@ async function fetchStudentsPage(
   if (q) params.set("q", q);
   if (view.seasonId !== null) params.set("seasonId", String(view.seasonId));
   if (view.groupId !== null) params.set("groupId", String(view.groupId));
+  if (view.absentLately) params.set("absentLately", "1");
   if (view.sort !== null) {
     params.set("sort", view.sort);
     params.set("dir", view.dir);

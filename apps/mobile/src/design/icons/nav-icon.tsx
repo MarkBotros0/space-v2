@@ -17,6 +17,7 @@ import {
   ListTodo,
   ListChecks,
   NotebookPen,
+  Flag,
   Settings,
   Ticket,
   UserCheck,
@@ -62,6 +63,7 @@ export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   settings: Settings,
   todo: ListTodo,
   submitted: ClipboardCheck,
+  followUps: Flag,
 };
 
 // Lets `className="text-white/55"` colour the icon, as v1's classes do.

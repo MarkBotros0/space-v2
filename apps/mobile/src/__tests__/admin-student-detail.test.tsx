@@ -190,7 +190,7 @@ describe("admin student detail", () => {
     expect(screen.queryByText("Internal notes")).toBeNull();
   });
 
-  it("MENTOR keeps the existing component: no actions", async () => {
+  it("MENTOR gets their own page: no actions", async () => {
     useSessionStore.setState(makeSession("MENTOR"));
     get.mockImplementation((url: string) =>
       url === "/api/v1/students/21"
@@ -198,7 +198,7 @@ describe("admin student detail", () => {
         : Promise.reject(new Error("x")),
     );
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("Seasons");
+    await screen.findByRole("tab", { name: "Notes" });
     expect(screen.queryByLabelText("Edit profile")).toBeNull();
     expect(screen.queryByTestId("sheet-save-bar")).toBeNull();
   });

@@ -47,6 +47,12 @@ const COPY = {
   },
 } as const;
 
+/** The mentor's count line: no "your seasons" (owner, 2026-11-07). */
+function mentorSubtitle(n: number, absent: boolean): string {
+  const people = `${n} ${n === 1 ? "student" : "students"}`;
+  return absent ? `${people} absent lately` : people;
+}
+
 export interface StudentListProps {
   status: StudentListStatus;
   /** Mirrors the endpoint's per-surface role gate — the screen never asks for a 403. */
@@ -56,6 +62,8 @@ export interface StudentListProps {
   headerAction?: ReactNode;
   /** Inside another screen (the admin's Groups tab): the list without its own Screen. */
   embedded?: boolean;
+  /** Opens on the mentor's "Absent lately" (Home's card links `?absent=1`). */
+  absentLately?: boolean;
 }
 
 /**
@@ -68,11 +76,17 @@ export function StudentList({
   title,
   headerAction,
   embedded = false,
+  absentLately = false,
 }: StudentListProps) {
   const role = useSessionStore((s) => s.user?.role ?? null);
   const allowed = role !== null && allowedRoles.includes(role);
   const { search, q, setSearch, commit } = useDebouncedSearch();
-  const [view, setView] = useState<StudentListView>(DEFAULT_STUDENT_VIEW);
+  // The mentor sees nothing season-shaped (owner, 2026-11-07): rows, filters and copy.
+  const mentor = role === "MENTOR";
+  const [view, setView] = useState<StudentListView>({ ...DEFAULT_STUDENT_VIEW, absentLately: mentor && absentLately });
+  useEffect(() => {
+    if (mentor) setView((v) => ({ ...v, absentLately }));
+  }, [mentor, absentLately]);
   // Who the list shows (owner, 2026-11-07: Alumni and Dropped are a filter, not
   // pages). Starts at the caller's; a link with ?show= changes it.
   const [picked, setShown] = useState<StudentListStatus>(status);
@@ -107,7 +121,7 @@ export function StudentList({
   const students = data?.pages.flatMap((p) => p.students) ?? [];
   const total = data?.pages[0]?.total ?? 0;
   const copy = COPY[shown];
-  const filtered = q !== "" || view.groupId !== null || view.seasonId !== null;
+  const filtered = q !== "" || view.groupId !== null || view.seasonId !== null || view.absentLately;
   const filters = activeFilterCount(view) + (shown !== "active" ? 1 : 0);
 
   let body: ReactNode;
@@ -121,7 +135,9 @@ export function StudentList({
         description={
           q
             ? "No students match your search."
-            : view.groupId !== null
+            : view.absentLately
+              ? "Nobody has missed their last two sessions."
+              : view.groupId !== null
               ? "No students are in that group."
               : view.seasonId !== null
                 ? "No students are in that season."
@@ -139,6 +155,7 @@ export function StudentList({
               // appear once per dropped season, so the user id collides.
               key={item.droppedEnrollment?.enrollmentId ?? item.id}
               item={item as StudentListItem}
+              seasonless={mentor}
             />
           ))}
         </GroupedList>
@@ -174,6 +191,7 @@ export function StudentList({
         view={view}
         onChange={setView}
         bySeason={role === "SUPER"}
+        mentor={mentor}
         show={{
           value: shown,
           options: showOptions,
@@ -193,7 +211,7 @@ export function StudentList({
       title={title}
       // The real population under the current filters (D14) — v1
       // printed the fetched row count as if it were the total.
-      subtitle={data ? copy.subtitle(total) : undefined}
+      subtitle={data ? (mentor ? mentorSubtitle(total, view.absentLately) : copy.subtitle(total)) : undefined}
       trailing={headerAction}
       onRefresh={() => void refetch()}
       refreshing={isRefetching}

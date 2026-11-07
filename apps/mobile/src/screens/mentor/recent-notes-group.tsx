@@ -25,7 +25,7 @@ export function RecentNotesGroup({ notes }: { notes: AuthoredNote[] }) {
           />
         ))
       )}
-      <ListRow title="My notes" chevron onPress={() => router.push("/notes")} />
+      <ListRow title="All notes" chevron onPress={() => router.push("/notes")} />
     </GroupedList>
   );
 }

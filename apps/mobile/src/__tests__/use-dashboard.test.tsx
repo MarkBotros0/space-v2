@@ -7,7 +7,7 @@ jest.mock("../lib/api-client", () => ({
 }));
 
 import { apiClient } from "../lib/api-client";
-import { useMentorDashboard, useSeasonStaffDashboard, useStudentDashboard } from "../hooks/use-dashboard";
+import { useSeasonStaffDashboard, useStudentDashboard } from "../hooks/use-dashboard";
 
 const get = apiClient.get as jest.Mock;
 
@@ -46,11 +46,5 @@ describe("dashboard hooks", () => {
     get.mockResolvedValue({ data: { data: { variant: "MENTOR", recentActivity: [] } } });
     const { result } = renderHook(() => useStudentDashboard(7), { wrapper: makeWrapper() });
     await waitFor(() => expect(result.current.isError).toBe(true));
-  });
-
-  it("useMentorDashboard parses the MENTOR arm", async () => {
-    get.mockResolvedValue({ data: { data: { variant: "MENTOR", recentActivity: [] } } });
-    const { result } = renderHook(() => useMentorDashboard(), { wrapper: makeWrapper() });
-    await waitFor(() => expect(result.current.data?.recentActivity).toEqual([]));
   });
 });

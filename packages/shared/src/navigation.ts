@@ -41,7 +41,8 @@ export type NavIconName =
   | "more"
   | "settings"
   | "todo"
-  | "submitted";
+  | "submitted"
+  | "followUps";
 
 export interface NavItem {
   href: string;
@@ -145,18 +146,20 @@ const STUDENT: RoleNav = {
   ],
 };
 
+// Mentor (owner, 2026-11-07): nothing season-shaped; Follow-ups replaces Reports.
 const MENTOR: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/students", label: "Students", icon: "students" },
-    { href: "/reports", label: "Reports", icon: "reports" },
+    { href: "/notes", label: "Notes", icon: "notes" },
+    { href: "/follow-ups", label: "Follow-ups", icon: "followUps" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/students", label: "Students", icon: "students" },
-    { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notes", label: "Notes", icon: "notes" },
+    { href: "/follow-ups", label: "Follow-ups", icon: "followUps" },
     { href: "/profile", label: "Profile", icon: "profile" },
   ],
 };

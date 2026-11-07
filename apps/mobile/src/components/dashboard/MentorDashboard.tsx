@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { TriangleAlert, Users } from "lucide-react-native";
+import { Flag, NotebookPen, UserX, Users } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
@@ -8,68 +8,34 @@ import { Screen } from "../../design/layout/screen";
 import { CountTile } from "../../design/home/count-tile";
 import { FigureTile } from "../../design/home/figure-tile";
 import { GroupedList, Skeleton } from "../../design/ui";
-import { useMentorDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
+import { useMentorSummary } from "../../hooks/use-follow-ups";
 import { useVisibleNotes } from "../../hooks/use-notes";
-import { useEngagementReport } from "../../hooks/use-reports";
 import { firstName } from "../../lib/format";
-import { AtRiskGroup } from "../../screens/mentor/at-risk-group";
-import { RecentActivityGroup } from "../../screens/mentor/recent-activity-group";
 import { RecentNotesGroup } from "../../screens/mentor/recent-notes-group";
 import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
 
 const NOTES_LIMIT = 5;
 
-function GroupLoading({ header }: { header: string }) {
-  return (
-    <GroupedList header={header}>
-      <View accessible accessibilityLabel="Loading" className="flex-col gap-2.5 p-4">
-        <Skeleton className="h-9" />
-        <Skeleton className="h-9" />
-      </View>
-    </GroupedList>
-  );
-}
-
-function GroupError({
-  header,
-  message,
-  onRetry,
-}: {
-  header: string;
-  message: string;
-  onRetry: () => void;
-}) {
-  return (
-    <GroupedList header={header}>
-      <InlineError className="p-4" message={message} onRetry={onRetry} />
-    </GroupedList>
-  );
-}
-
 /**
- * The mentor's Home: who is at risk (a count tile beside everyone, then the
- * names), the newest notes, recent activity, then
- * the upcoming-events card every Today keeps. v2 decisions kept (B6-1): the
- * at-risk list shares Reports' cache (D17) and the quick links are tabs.
+ * The mentor's Home (owner, 2026-11-07): nothing season-shaped. Four numbers,
+ * each opening its list: follow-ups due, students absent lately, notes this
+ * week, everyone. Then the newest notes and the upcoming events every Home keeps.
+ * The numbers are the totals of the lists they open (GET /me/mentor-summary).
  */
 export function MentorDashboard() {
   const router = useRouter();
   const name = useSessionStore((s) => s.user?.name ?? null);
   // As the leader's Today: a blank name keeps the plain title, not "Hi, there".
   const named = (name ?? "").trim() !== "";
-  // D17: the SAME query key as the mentor's Reports tab, so Home and Reports
-  // cannot show different at-risk sets. No seasonId = the mentor's whole scope.
-  const engagement = useEngagementReport(null, true);
+  const summary = useMentorSummary(true);
   const notes = useVisibleNotes(NOTES_LIMIT, true);
-  const feed = useMentorDashboard();
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
 
   const refresh = () => {
-    void engagement.refetch();
+    void summary.refetch();
     void notes.refetch();
-    void feed.refetch();
     void events.refetch();
   };
 
@@ -79,63 +45,60 @@ export function MentorDashboard() {
       title={named ? `Hi, ${firstName(name)}` : "Home"}
       compactTitle="Home"
       onRefresh={refresh}
-      refreshing={
-        engagement.isRefetching || notes.isRefetching || feed.isRefetching || events.isRefetching
-      }
+      refreshing={summary.isRefetching || notes.isRefetching || events.isRefetching}
     >
       <View className="flex-col gap-6">
-        {engagement.isPending ? (
-          <GroupLoading header="At risk" />
-        ) : engagement.isError ? (
-          <GroupError
-            header="At risk"
-            message="Couldn't load the at-risk list."
-            onRetry={() => void engagement.refetch()}
-          />
+        {summary.isPending ? (
+          <View accessible accessibilityLabel="Loading" className="flex-row flex-wrap gap-3">
+            <Skeleton className="h-[104px] min-w-[140px] flex-1 basis-[45%] rounded-group" />
+            <Skeleton className="h-[104px] min-w-[140px] flex-1 basis-[45%] rounded-group" />
+          </View>
+        ) : summary.isError ? (
+          <InlineError message="Couldn't load your numbers." onRetry={() => void summary.refetch()} />
         ) : (
-          <>
-            {/* The scope in two tiles: who needs a look, and everyone. */}
-            <View className="flex-row flex-wrap gap-3">
-              <CountTile
-                label="Students at risk"
-                value={engagement.data.atRiskTotal}
-                icon={TriangleAlert}
-                tone="bad"
-                onPress={() => router.push("/reports")}
-              />
-              <FigureTile
-                label="Students"
-                value={String(engagement.data.cohortSize)}
-                icon={Users}
-                onPress={() => router.push("/students")}
-              />
-            </View>
-            <AtRiskGroup rows={engagement.data.atRisk} total={engagement.data.atRiskTotal} />
-          </>
+          <View testID="mentor-figures" className="flex-row flex-wrap gap-3">
+            <CountTile
+              label="Follow-ups due"
+              value={summary.data.followUpsDue}
+              icon={Flag}
+              tone="warn"
+              onPress={() => router.push("/follow-ups")}
+            />
+            <CountTile
+              label="Absent lately"
+              value={summary.data.absentLately}
+              icon={UserX}
+              tone="bad"
+              onPress={() => router.push({ pathname: "/students", params: { absent: "1" } })}
+            />
+            <FigureTile
+              label="Notes this week"
+              value={String(summary.data.notesThisWeek)}
+              icon={NotebookPen}
+              onPress={() => router.push({ pathname: "/notes", params: { range: "week" } })}
+            />
+            <FigureTile
+              label="Students"
+              value={String(summary.data.students)}
+              icon={Users}
+              onPress={() => router.push("/students")}
+            />
+          </View>
         )}
 
         {notes.isPending ? (
-          <GroupLoading header="Recent notes" />
+          <GroupedList header="Recent notes">
+            <View accessible accessibilityLabel="Loading" className="flex-col gap-2.5 p-4">
+              <Skeleton className="h-9" />
+              <Skeleton className="h-9" />
+            </View>
+          </GroupedList>
         ) : notes.isError ? (
-          <GroupError
-            header="Recent notes"
-            message="Couldn't load recent notes."
-            onRetry={() => void notes.refetch()}
-          />
+          <GroupedList header="Recent notes">
+            <InlineError className="p-4" message="Couldn't load recent notes." onRetry={() => void notes.refetch()} />
+          </GroupedList>
         ) : (
           <RecentNotesGroup notes={notes.data} />
-        )}
-
-        {feed.isPending ? (
-          <GroupLoading header="Recent activity" />
-        ) : feed.isError ? (
-          <GroupError
-            header="Recent activity"
-            message="Couldn't load recent activity."
-            onRetry={() => void feed.refetch()}
-          />
-        ) : (
-          <RecentActivityGroup items={feed.data.recentActivity} />
         )}
 
         <UpcomingEventsCard query={events} />

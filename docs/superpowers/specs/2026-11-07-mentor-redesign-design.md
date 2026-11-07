@@ -54,10 +54,10 @@ and at-risk list go **(my call)**: they are season views.
   (createdAt + 7 days), `remindedAt` (null until the reminder goes), `doneAt` (null
   while open). At most **one open follow-up per mentor and student**: flagging again
   while one is open answers 409 `already_following_up`.
-- **API:** `GET /me/follow-ups` (open first, then done in the last 30 days),
+- **API:** `GET /follow-ups` (open first, then done in the last 30 days),
   `POST /students/:id/follow-ups` `{ reason? }`, `POST /follow-ups/:id/done`. MENTOR
   only; a mentor touches only their own.
-- **The reminder:** a daily Vercel Cron calls `POST /internal/follow-ups/remind` with
+- **The reminder:** a daily Vercel Cron calls `GET /internal/follow-ups/remind` (Vercel Cron sends GET) with
   `CRON_SECRET`; it sends one `MENTOR_FOLLOWUP` notification (in-app, and push where
   it is on) for each open follow-up past `dueAt` with `remindedAt` null, and stamps
   `remindedAt` in the same transaction, so it never sends twice. Hobby allows one run a
@@ -70,7 +70,7 @@ and at-risk list go **(my call)**: they are season views.
 
 ## A student's page, as the mentor sees it
 
-- Header: name, Follow up button (or "Following up since {date}" with Mark done).
+- Header: name. Then "Remind me to follow up" (or the open follow-up's date with Mark done).
 - Details card (phone calls, as today).
 - Sections: **Notes** (first, open) · **Attendance**: every season, newest first,
   grouped by season with that season's title as a header (not a season figure, just
@@ -81,7 +81,7 @@ and at-risk list go **(my call)**: they are season views.
 ## Absent lately
 
 For each student: their most recent 2 finished sessions where they had a mark (any season,
-any status). Both ABSENT → absent lately. A late or excused mark breaks the run
+any status). Both ABSENT → absent lately. A late mark breaks the run (there is no excused status)
 **(my call)**. Computed on the server for the mentor's list and Home count
 (`GET /students?absentLately=1`, mentor only); fewer than 2 marked sessions → never.
 

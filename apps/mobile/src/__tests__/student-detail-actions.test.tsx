@@ -113,9 +113,10 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     get.mockResolvedValue({ data: { data: { ...base, profile: publicProfile } } });
     renderWithProviders(<StudentDetailScreen />);
 
-    await screen.findByText("Seasons");
+    await screen.findByRole("tab", { name: "Notes" });
     expect(screen.queryByLabelText("Edit profile")).toBeNull();
-    fireEvent.press(screen.getByText("Seasons"));
+    // No Seasons tab, so nothing to drop from (owner, 2026-11-07).
+    expect(screen.queryByRole("tab", { name: "Seasons" })).toBeNull();
     expect(screen.queryByText("Drop")).toBeNull();
   });
 

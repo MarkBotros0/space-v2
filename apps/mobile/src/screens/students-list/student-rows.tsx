@@ -6,7 +6,11 @@ import { formatDate, keepTogether } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
 
-type RowProps = { item: StudentListItem };
+type RowProps = {
+  item: StudentListItem;
+  /** The mentor's list (owner, 2026-11-07): no season or group on a row. */
+  seasonless?: boolean;
+};
 
 function useOpenStudent(item: StudentListItem) {
   const router = useRouter();
@@ -32,9 +36,11 @@ export function seasonLine(item: StudentListItem): string | null {
 }
 
 /** A student: name over their season, group and university; the email when none of those is known. */
-export function ActiveStudentRow({ item }: RowProps) {
+export function ActiveStudentRow({ item, seasonless = false }: RowProps) {
   const open = useOpenStudent(item);
-  const meta = joinMeta([seasonLine(item), item.currentGroupName, item.university]);
+  const meta = seasonless
+    ? joinMeta([item.university, item.faculty])
+    : joinMeta([seasonLine(item), item.currentGroupName, item.university]);
   return (
     <ListRow
       title={item.name}
@@ -46,13 +52,13 @@ export function ActiveStudentRow({ item }: RowProps) {
   );
 }
 
-export function AlumnusRow({ item }: RowProps) {
+export function AlumnusRow({ item, seasonless = false }: RowProps) {
   const open = useOpenStudent(item);
   const year = item.graduationYear === null ? null : `School of ${item.graduationYear}`;
   return (
     <ListRow
       title={item.name}
-      subtitle={joinMeta([year, seasonLine(item), item.university])}
+      subtitle={joinMeta([year, seasonless ? null : seasonLine(item), item.university])}
       leading={<StudentAvatar item={item} />}
       chevron
       onPress={open}

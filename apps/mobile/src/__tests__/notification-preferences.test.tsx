@@ -98,6 +98,13 @@ describe("NotificationPreferences", () => {
     expect(screen.queryAllByRole("switch")).toHaveLength(0);
   });
 
+  it("gives a mentor their one switch: follow-up reminders (owner, 2026-11-07)", async () => {
+    useSessionStore.setState(makeSession("MENTOR"));
+    renderWithProviders(<NotificationPreferences />);
+    expect(await screen.findByLabelText("Follow-up reminders")).toBeTruthy();
+    expect(screen.getAllByRole("switch")).toHaveLength(1);
+  });
+
   it("explains each new type in its help text", async () => {
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByText("When an online quiz opens in your season.")).toBeTruthy();

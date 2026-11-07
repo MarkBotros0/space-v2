@@ -1,4 +1,6 @@
+import { useLocalSearchParams } from "expo-router";
 import { Flag } from "lucide-react-native";
+import type { UserRole } from "@space/shared";
 import { View } from "react-native";
 
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
@@ -6,11 +8,20 @@ import { BACK_TO_PREVIOUS } from "../../../src/design/layout/large-title";
 import { Screen } from "../../../src/design/layout/screen";
 import { Button, EmptyState, GroupedList } from "../../../src/design/ui";
 import { flattenNotePages, useAuthoredNotes } from "../../../src/hooks/use-notes";
+import { MentorNotes } from "../../../src/screens/mentor/mentor-notes";
 import { NoteRow } from "../../../src/screens/staff-notes/note-row";
 import { useSessionStore } from "../../../src/store/session";
 
 export default function NotesScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
+  const { range } = useLocalSearchParams<{ range?: string }>();
+  // The mentor reads everyone's notes, not only their own (owner, 2026-11-07).
+  if (role === "MENTOR") return <MentorNotes initialRange={range === "week" ? "week" : "all"} />;
+  return <AuthoredNotesScreen role={role} />;
+}
+
+/** Notes the caller wrote: a leader's, an admin's or a super's My notes. */
+function AuthoredNotesScreen({ role }: { role: UserRole | null }) {
   // Four roles can author (spec R46–R49); a STUDENT never can (R51) and the
   // API refuses them, so the screen does not ask.
   // My notes is a tab for the mentor only; for any other role it was opened from More,
@@ -30,8 +41,6 @@ export default function NotesScreen() {
   } = useAuthoredNotes(canAuthor);
   const notes = flattenNotePages(data?.pages);
 
-  // One list serves every authoring role, the mentor included (R05-4), so there
-  // is no `role === "MENTOR"` return here.
   if (!canAuthor) {
     return (
       <Screen back={back}>

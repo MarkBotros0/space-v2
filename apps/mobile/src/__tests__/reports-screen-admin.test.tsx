@@ -19,7 +19,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import ReportsScreen from "../../app/(app)/(tabs)/reports";
+import ReportsScreen from "../../app/(app)/reports";
 
 import {
   emptyScopes,
@@ -126,15 +126,6 @@ describe("ReportsScreen for admin and super — frame and export", () => {
     // A lone point is a caption, not a dot on a bare axis.
     expect(screen.getByText("One session so far: the trend starts after the next one.")).toBeTruthy();
     expect(screen.queryByLabelText(/^Attendance trend, 1 session/)).toBeNull();
-  });
-
-  it("gives a mentor the same Export sheet, with the engagement file only", async () => {
-    useSessionStore.setState(sessionFor("MENTOR"));
-    mockEndpoints();
-    renderWithProviders(<ReportsScreen />);
-    fireEvent.press(await screen.findByLabelText("Export"));
-    expect(await screen.findByText("Export engagement")).toBeTruthy();
-    expect(screen.queryByText(/Export season workbook/)).toBeNull();
   });
 });
 

@@ -13,8 +13,7 @@ import {
 import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
 
-/** The one preference no switch shows: mentor follow-ups are no longer sent (owner, 2026-11-07). */
-type ShownKey = Exclude<keyof Prefs, "mentorFollowup">;
+type ShownKey = keyof Prefs;
 
 /**
  * v1 settings-form.tsx's Notifications section.
@@ -54,6 +53,10 @@ const LABELS: Record<ShownKey, { label: string; help: string }> = {
     label: "Submissions received",
     help: "When a student in a group you lead submits their work.",
   },
+  mentorFollowup: {
+    label: "Follow-up reminders",
+    help: "A week after you flag a student to follow up with.",
+  },
   lowAttendanceFlag: {
     label: "Low-attendance flags",
     // Spec D12: v1's copy said three. The rule is two.
@@ -74,13 +77,15 @@ const STUDENT_KEYS: ShownKey[] = [
 /**
  * Only the switches for notifications this person can get (owner, 2026-11-07): a
  * student's six; a group leader's handed-in work and low-attendance flags; a
- * season admin's low-attendance flags. SUPER and MENTOR are sent none of these.
+ * season admin's low-attendance flags; a mentor's follow-up reminders (owner,
+ * 2026-11-07). SUPER is sent none of these.
  */
 export function preferenceKeysFor(
   role: UserRole | null,
   scopes: { seasonAdminIds: number[]; groupLeaderIds: number[] } | null,
 ): ShownKey[] {
   if (role === "STUDENT") return STUDENT_KEYS;
+  if (role === "MENTOR") return ["mentorFollowup"];
   const keys: ShownKey[] = [];
   if (scopes && scopes.groupLeaderIds.length > 0) keys.push("submissionReceived");
   if (scopes && (scopes.groupLeaderIds.length > 0 || scopes.seasonAdminIds.length > 0))

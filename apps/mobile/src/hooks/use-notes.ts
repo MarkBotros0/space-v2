@@ -23,7 +23,8 @@ export type AuthoredNotePage = z.infer<typeof authoredNoteListResponseSchema>;
 
 /** `?cursor=` appended only past the first page, so page one's URL is bare. */
 function withCursor(path: string, cursor: string | null): string {
-  return cursor === null ? path : `${path}?cursor=${encodeURIComponent(cursor)}`;
+  if (cursor === null) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}cursor=${encodeURIComponent(cursor)}`;
 }
 
 /** Every page's rows, in order, for rendering. */
@@ -48,6 +49,27 @@ export function useAuthoredNotes(
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const res = await apiClient.get(withCursor("/api/v1/me/notes", pageParam));
+      return authoredNoteListResponseSchema.parse(res.data.data);
+    },
+    getNextPageParam: (last) => last.nextCursor,
+    enabled,
+  });
+}
+
+/**
+ * Every page of the notes a mentor may read across students (the mentor's Notes
+ * tab, owner 2026-11-07); `withinDays` 7 is its "This week". MENTOR only.
+ */
+export function useVisibleNotePages(
+  withinDays: number | null,
+  enabled: boolean,
+): UseInfiniteQueryResult<InfiniteData<AuthoredNotePage>> {
+  return useInfiniteQuery({
+    queryKey: queryKeys.notes.visible(20, withinDays),
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      const path = withinDays === null ? "/api/v1/me/visible-notes" : `/api/v1/me/visible-notes?withinDays=${withinDays}`;
+      const res = await apiClient.get(withCursor(path, pageParam));
       return authoredNoteListResponseSchema.parse(res.data.data);
     },
     getNextPageParam: (last) => last.nextCursor,

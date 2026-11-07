@@ -321,7 +321,7 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
   });
 
   it("gives other staff every group they can read, with Unassigned", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState({ ...mentorSession, user: { ...mentorSession.user, role: "ADMIN" as const } });
     serve();
     renderWithProviders(<StudentsScreen />);
     await screen.findByText("Sara Student");
@@ -343,5 +343,28 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     expect(await screen.findByText("SHOW")).toBeTruthy();
     expect(screen.queryByText("SORT BY")).toBeNull();
     expect(screen.queryByText("SEASON")).toBeNull();
+  });
+
+  it("gives a mentor nothing season-shaped: no group or season on a row or in the sheet, and Absent lately", async () => {
+    useSessionStore.setState(mentorSession);
+    serve();
+    renderWithProviders(<StudentsScreen />);
+    expect(await screen.findByText("Cairo University · Engineering")).toBeTruthy();
+    expect(screen.queryByText(/Spring 2099/)).toBeNull();
+    fireEvent.press(screen.getByLabelText("Filter"));
+    expect(await screen.findByText("WHO")).toBeTruthy();
+    expect(screen.queryByText("GROUP")).toBeNull();
+    expect(screen.queryByLabelText(/^Season/)).toBeNull();
+    fireEvent.press(screen.getByLabelText(/^Absent lately/));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&absentLately=1"));
+  });
+
+  it("opens a mentor's list on Absent lately from Home's card", async () => {
+    useSessionStore.setState(mentorSession);
+    mockParams = { absent: "1" };
+    serve();
+    renderWithProviders(<StudentsScreen />);
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&absentLately=1"));
+    expect(await screen.findByText("1 student absent lately")).toBeTruthy();
   });
 });

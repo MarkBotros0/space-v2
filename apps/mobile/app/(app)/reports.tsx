@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { ExportMenu } from "../../../src/components/ExportMenu";
-import { Screen } from "../../../src/design/layout/screen";
-import { EmptyState, SegmentedControl } from "../../../src/design/ui";
-import { OrganisationSection } from "../../../src/screens/reports/organisation-section";
-import { SeasonReport } from "../../../src/screens/reports/season-report";
-import { useReportsScope } from "../../../src/screens/reports/use-reports-scope";
-import { MentorReports } from "../../../src/screens/mentor/mentor-reports";
-import { useSessionStore } from "../../../src/store/session";
+import { ExportMenu } from "../../src/components/ExportMenu";
+import { Screen } from "../../src/design/layout/screen";
+import { EmptyState, SegmentedControl } from "../../src/design/ui";
+import { OrganisationSection } from "../../src/screens/reports/organisation-section";
+import { SeasonReport } from "../../src/screens/reports/season-report";
+import { useReportsScope } from "../../src/screens/reports/use-reports-scope";
+import { useSessionStore } from "../../src/store/session";
 
 function StaffReports() {
   const role = useSessionStore((s) => s.user?.role ?? null);
@@ -16,7 +15,8 @@ function StaffReports() {
   const [tab, setTab] = useState<"season" | "organisation">("season");
 
   // LEADER and STUDENT have no surface in this domain (R109, R110) and the API
-  // refuses them explicitly. The screen does not ask. MENTOR is routed away below.
+  // refuses them explicitly. Nor does a MENTOR any more (owner, 2026-11-07: a
+  // mentor sees nothing season-shaped; Follow-ups took the tab).
   const canView = role === "SUPER" || role === "ADMIN";
   const isSuper = role === "SUPER";
   const scope = useReportsScope(canView);
@@ -25,7 +25,7 @@ function StaffReports() {
   if (!canView) {
     return (
       <Screen>
-        <EmptyState title="Reports" description="This screen is for mentors and season admins." />
+        <EmptyState title="Reports" description="This screen is for season admins." />
       </Screen>
     );
   }
@@ -77,6 +77,5 @@ function StaffReports() {
 
 // Mentors get their own grouped page; every other role keeps the staff screen.
 export default function ReportsScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
-  return role === "MENTOR" ? <MentorReports /> : <StaffReports />;
+  return <StaffReports />;
 }

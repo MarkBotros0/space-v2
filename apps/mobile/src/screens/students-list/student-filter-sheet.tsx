@@ -16,10 +16,16 @@ const SORTS: { value: StudentListSort; label: string }[] = [
   { value: "group", label: "Group" },
 ];
 
-/** How many filters are in force: a season, a group, a sort. */
+/** The mentor sorts by what isn't season-shaped (owner, 2026-11-07). */
+const MENTOR_SORTS = SORTS.filter((o) => o.value === "name" || o.value === "university");
+
+/** How many filters are in force: a season, a group, a sort, Absent lately. */
 export function activeFilterCount(view: StudentListView): number {
   return (
-    (view.seasonId !== null ? 1 : 0) + (view.groupId !== null ? 1 : 0) + (view.sort !== null ? 1 : 0)
+    (view.seasonId !== null ? 1 : 0) +
+    (view.groupId !== null ? 1 : 0) +
+    (view.sort !== null ? 1 : 0) +
+    (view.absentLately ? 1 : 0)
   );
 }
 
@@ -45,7 +51,9 @@ const tick = (on: boolean) => ({
  * v1's group select, sort select and direction toggle, as a sheet. Each pick
  * applies at once (the list is server-side, REG-82), so "Done" only closes it.
  * With `bySeason` (a Super, owner 2026-11-07) a Season section comes first, and
- * groups are offered only once a season is picked: that season's own.
+ * groups are offered only once a season is picked: that season's own. With
+ * `mentor` (owner, 2026-11-07) nothing season-shaped: no groups, sorted by name
+ * or university, and a Who section with Absent lately.
  */
 export function StudentFilterSheet({
   open,
@@ -53,6 +61,7 @@ export function StudentFilterSheet({
   view,
   onChange,
   bySeason = false,
+  mentor = false,
   show,
 }: {
   open: boolean;
@@ -60,6 +69,7 @@ export function StudentFilterSheet({
   view: StudentListView;
   onChange: (view: StudentListView) => void;
   bySeason?: boolean;
+  mentor?: boolean;
   /** Who the list shows: students, alumni or dropped (each the caller may read). */
   show?: {
     value: StudentListStatus;
@@ -82,7 +92,8 @@ export function StudentFilterSheet({
         { id: "none", label: "Unassigned" },
         ...groups.map((g) => ({ id: g.id, label: `${g.name} · ${g.seasonTitle}` })),
       ];
-  const showGroups = narrowing && (!bySeason || view.seasonId !== null);
+  const showGroups = narrowing && !mentor && (!bySeason || view.seasonId !== null);
+  const sorts = mentor ? MENTOR_SORTS : SORTS;
   const sort = view.sort ?? "name";
   return (
     <Sheet open={open} onClose={onClose} title="Filter" footer={<SheetSaveBar label="Done" onPress={onClose} />}>
@@ -96,6 +107,21 @@ export function StudentFilterSheet({
               onPress={() => show.onChange(o)}
             />
           ))}
+        </GroupedList>
+      ) : null}
+      {mentor && narrowing ? (
+        <GroupedList header="Who" className="mb-4">
+          <ListRow
+            title="Everyone"
+            {...tick(!view.absentLately)}
+            onPress={() => onChange({ ...view, absentLately: false })}
+          />
+          <ListRow
+            title="Absent lately"
+            subtitle="Missed their last two sessions"
+            {...tick(view.absentLately)}
+            onPress={() => onChange({ ...view, absentLately: true })}
+          />
         </GroupedList>
       ) : null}
       {bySeason && narrowing ? (
@@ -132,7 +158,7 @@ export function StudentFilterSheet({
       {narrowing ? (
         <>
           <GroupedList header="Sort by">
-            {SORTS.map((o) => (
+            {sorts.map((o) => (
               <ListRow
                 key={o.value}
                 title={o.label}

@@ -9,12 +9,18 @@ import { StatusChip, Text } from "../../design/ui";
 import { formatDate } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
 
-/** One authored note as a grouped-list row: who, when and season, the body, then visibility. */
-export function NoteRow({ item }: { item: AuthoredNote }) {
+/**
+ * One authored note as a grouped-list row: who, when and season, the body, then
+ * visibility. `byAuthor` (the mentor's list, owner 2026-11-07) names the author
+ * in place of the season: a mentor reads everyone's notes and sees no seasons.
+ */
+export function NoteRow({ item, byAuthor = false }: { item: AuthoredNote; byAuthor?: boolean }) {
   const router = useRouter();
   const press = usePressDim();
   // One string, so a missing season can never leave a dangling separator (R33).
-  const meta = [formatDate(item.createdAt), item.seasonTitle].filter(Boolean).join(" · ");
+  const meta = [formatDate(item.createdAt), byAuthor ? item.authorName : item.seasonTitle]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Pressable

@@ -4,8 +4,10 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
 }));
 const mockPush = jest.fn();
+let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
+  useLocalSearchParams: () => mockParams,
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -24,11 +26,16 @@ const emptyScopes = {
 };
 // Every required MeUser field, so typecheck (which covers tests) passes
 // (ruling X11): avatarPath, and Plan 9's hasPassword.
-const mentorSession = {
+// The author: a leader (the mentor's Notes tab lists everyone's notes instead; see below).
+const authorSession = {
   user: {
-    id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const,
+    id: 2, name: "Test leader", email: "lea@jpc.test", role: "LEADER" as const,
     avatarPath: null, hasPassword: true,
   },
+  scopes: emptyScopes,
+};
+const mentorSession = {
+  user: { ...authorSession.user, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const },
   scopes: emptyScopes,
 };
 const studentSession = {
@@ -58,12 +65,13 @@ const note = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
 describe("NotesScreen", () => {
   it("lists the notes this staff member wrote, with who they are about", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
 
     renderWithProviders(<NotesScreen />);
@@ -74,7 +82,7 @@ describe("NotesScreen", () => {
   });
 
   it("labels visibility in the equality terms the API actually enforces", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
 
     renderWithProviders(<NotesScreen />);
@@ -85,7 +93,7 @@ describe("NotesScreen", () => {
   });
 
   it("shows the follow-up badge and the edited marker from server-derived fields", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({
       data: { data: { notes: [{ ...note, edited: true }], nextCursor: null } },
     });
@@ -96,28 +104,19 @@ describe("NotesScreen", () => {
     expect(screen.getByText("Edited")).toBeTruthy();
   });
 
-  it("gives Back to a leader, for whom My notes is not a tab, but not to a mentor, for whom it is", async () => {
+  it("gives Back to a leader, for whom My notes is not a tab", async () => {
     get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
     const { TabBarPresenceContext } = jest.requireActual("../design/layout/shell-context");
-
-    useSessionStore.setState({ ...mentorSession, user: { ...mentorSession.user, role: "LEADER" as const } });
-    const leader = renderWithProviders(
-      <TabBarPresenceContext.Provider value={true}><NotesScreen /></TabBarPresenceContext.Provider>,
-    );
-    await screen.findByText("Sara Student");
-    expect(screen.getAllByLabelText("Back").length).toBeGreaterThan(0);
-    leader.unmount();
-
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     renderWithProviders(
       <TabBarPresenceContext.Provider value={true}><NotesScreen /></TabBarPresenceContext.Provider>,
     );
     await screen.findByText("Sara Student");
-    expect(screen.queryByLabelText("Back")).toBeNull();
+    expect(screen.getAllByLabelText("Back").length).toBeGreaterThan(0);
   });
 
   it("marks each note row as opening the student with a chevron", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
 
     renderWithProviders(<NotesScreen />);
@@ -127,7 +126,7 @@ describe("NotesScreen", () => {
   });
 
   it("navigates to the student on press", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
 
     renderWithProviders(<NotesScreen />);
@@ -140,7 +139,7 @@ describe("NotesScreen", () => {
   });
 
   it("never renders a standalone separator node, and joins date and season in one string", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
 
     renderWithProviders(<NotesScreen />);
@@ -150,7 +149,7 @@ describe("NotesScreen", () => {
   });
 
   it("has no trailing separator when the note has no season", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({
       data: { data: { notes: [{ ...note, seasonId: null, seasonTitle: null }], nextCursor: null } },
     });
@@ -173,7 +172,7 @@ describe("NotesScreen", () => {
   });
 
   it("shows an empty state when this author has written nothing", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     get.mockResolvedValue({ data: { data: { notes: [], nextCursor: null } } });
 
     renderWithProviders(<NotesScreen />);
@@ -182,7 +181,7 @@ describe("NotesScreen", () => {
   });
 
   it("follows nextCursor — the list is never silently capped at one page (R41)", async () => {
-    useSessionStore.setState(mentorSession);
+    useSessionStore.setState(authorSession);
     const older = { ...note, id: 4, student: { id: 22, name: "Omar Older", email: "o@jpc.test" } };
     get.mockImplementation((url: string) =>
       Promise.resolve(
@@ -199,5 +198,32 @@ describe("NotesScreen", () => {
     expect(get).toHaveBeenCalledWith("/api/v1/me/notes?cursor=5");
     // Last page reached: the control goes away.
     await waitFor(() => expect(screen.queryByText("Load more")).toBeNull());
+  });
+});
+
+describe("NotesScreen for a mentor (owner, 2026-11-07)", () => {
+  it("lists every note they may read, by anyone, with the author and no season", async () => {
+    useSessionStore.setState(mentorSession);
+    get.mockResolvedValue({
+      data: { data: { notes: [{ ...note, authorName: "Lina Leader", authorRole: "LEADER" }], nextCursor: null } },
+    });
+    renderWithProviders(<NotesScreen />);
+
+    expect(await screen.findByText("Sara Student")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/me/visible-notes");
+    expect(screen.getByText(/Lina Leader/)).toBeTruthy();
+    expect(screen.queryByText(/Spring 2099/)).toBeNull();
+    expect(screen.queryByLabelText("Back")).toBeNull();
+  });
+
+  it("opens on This week from Home's card, and switches back to All", async () => {
+    mockParams = { range: "week" };
+    useSessionStore.setState(mentorSession);
+    get.mockResolvedValue({ data: { data: { notes: [note], nextCursor: null } } });
+    renderWithProviders(<NotesScreen />);
+
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/me/visible-notes?withinDays=7"));
+    fireEvent.press(screen.getByRole("tab", { name: "All" }));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/me/visible-notes"));
   });
 });
