@@ -23,7 +23,33 @@ const trimmedToNull = (max: number) =>
     .transform((v): string | null => (v === "" ? null : v))
     .nullish();
 
-export const phoneFieldSchema = trimmedToNull(PHONE_MAX);
+// ---------------------------------------------------------------------------
+// Phone (owner, 2026-11-07): an Egyptian mobile, 11 digits starting with 01.
+// Spaces, dashes, dots and brackets are dropped; +20 / 0020 become the leading
+// 0, and a 10-digit number starting with 1 gets its 0 back (a spreadsheet
+// drops it on import). Stored in that one canonical form, "01XXXXXXXXX".
+// ---------------------------------------------------------------------------
+
+export const PHONE_PATTERN = /^01\d{9}$/;
+export const PHONE_MESSAGE = "Enter an 11-digit mobile number starting with 01.";
+
+/** The canonical form of what was typed: digits only, with the local 0. Unchanged when it can't be one. */
+export function normalisePhone(raw: string): string {
+  let v = raw.trim().replace(/[\s\-.()]/g, "");
+  if (v.startsWith("+20")) v = `0${v.slice(3)}`;
+  else if (v.startsWith("0020")) v = `0${v.slice(4)}`;
+  if (/^1\d{9}$/.test(v)) v = `0${v}`;
+  return v;
+}
+
+/** A phone field: "" (after trimming) and null clear it; anything else must be a mobile. */
+export const phoneFieldSchema = z
+  .string()
+  .max(PHONE_MAX, `At most ${PHONE_MAX} characters.`)
+  .transform(normalisePhone)
+  .refine((v) => v === "" || PHONE_PATTERN.test(v), PHONE_MESSAGE)
+  .transform((v): string | null => (v === "" ? null : v))
+  .nullish();
 export const addressFieldSchema = trimmedToNull(ADDRESS_MAX);
 
 /** A calendar day, "YYYY-MM-DD" (Plan 11 Decision 11); "" or null clears it. */

@@ -66,17 +66,17 @@ describe("GET /api/v1/me", () => {
 
 describe("PATCH /api/v1/me", () => {
   it("updates only the keys sent (partial), trimmed, birthday at UTC midnight", async () => {
-    const res = await patchMe({ phone: "  +20 122  ", dateOfBirth: "2001-04-05" });
+    const res = await patchMe({ phone: "  0122 222 2222  ", dateOfBirth: "2001-04-05" });
     expect(res.status).toBe(200);
     const { data } = mockDb.user.update.mock.calls[0][0];
     expect(data).toEqual({
       name: undefined,
-      phone: "+20 122",
+      phone: "01222222222",
       dateOfBirth: new Date("2001-04-05T00:00:00.000Z"),
       address: undefined,
     });
     expect(mockDb.user.update.mock.calls[0][0].where).toEqual({ id: 7 });
-    expect(res.body.data.user).toMatchObject({ phone: "+20 122", dateOfBirth: "2001-04-05" });
+    expect(res.body.data.user).toMatchObject({ phone: "01222222222", dateOfBirth: "2001-04-05" });
   });
 
   it("still takes a name on its own", async () => {
@@ -102,6 +102,8 @@ describe("PATCH /api/v1/me", () => {
 
   it("refuses a phone over 60 characters", async () => {
     expect((await patchMe({ phone: "1".repeat(61) })).status).toBe(400);
+    // 11 digits starting with 01 (owner, 2026-11-07).
+    expect((await patchMe({ phone: "0122" })).status).toBe(400);
   });
 
   it("refuses a date of birth that is not a real YYYY-MM-DD day", async () => {
@@ -136,12 +138,12 @@ describe("PATCH /api/v1/me/profile", () => {
 
   it("writes phone/dateOfBirth to User and the academic fields to StudentProfile", async () => {
     const res = await patchProfile({
-      phone: "+20 2", dateOfBirth: "2002-07-09", faculty: "Medicine", universityGraduationYear: 2031,
+      phone: "+201022222222", dateOfBirth: "2002-07-09", faculty: "Medicine", universityGraduationYear: 2031,
     });
     expect(res.status).toBe(200);
     expect(mockDb.user.update).toHaveBeenCalledWith({
       where: { id: 9 },
-      data: { phone: "+20 2", dateOfBirth: new Date("2002-07-09T00:00:00.000Z") },
+      data: { phone: "01022222222", dateOfBirth: new Date("2002-07-09T00:00:00.000Z") },
     });
     const upsert = mockDb.studentProfile.upsert.mock.calls[0][0];
     expect(upsert.update).toEqual({ university: undefined, faculty: "Medicine", universityGraduationYear: 2031 });

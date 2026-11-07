@@ -95,7 +95,7 @@ function ProfileDetailsForm({ user }: { user: MeUser }) {
         <FormField label="Email" description="Ask an admin to change this.">
           <Input accessibilityLabel="Email" value={user.email} readOnly />
         </FormField>
-        <FormField label="Phone" error={errors.phone}>
+        <FormField label="Phone" description="11 digits, starting with 01." error={errors.phone}>
           <Input
             accessibilityLabel="Phone"
             keyboardType="phone-pad"

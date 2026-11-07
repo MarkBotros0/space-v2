@@ -45,7 +45,7 @@ describe("POST /api/v1/imports/students/preview", () => {
 
     const text = sheet(
       "name\temail\tMobile No\tYear",
-      `Fresh Student\t${fresh}\t+201234567\t3rd`,
+      `Fresh Student\t${fresh}\t+201234567890\t3rd`,
       `Dupe One\t${dupe}\t\t`,
       `Dupe Two\t${dupe}\t\t`,
       `Existing Student\t${existingUser.email}\t\t`,
@@ -69,10 +69,10 @@ describe("POST /api/v1/imports/students/preview", () => {
       previously_removed: 0,
       total: 6,
     });
-    // R7/D7: a leading "+" survives, because nothing here ever coerces a cell.
+    // R7/D7: the preview echoes the cell as pasted; commit stores it as 01XXXXXXXXX.
     const freshRow = res.body.data.rows.find((r: { email: string }) => r.email === fresh);
     expect(freshRow).toMatchObject({ rowNumber: 2, status: "new" });
-    expect(freshRow.values.phone).toBe("+201234567");
+    expect(freshRow.values.phone).toBe("+201234567890");
     // Second occurrence is the duplicate; the first stays importable.
     expect(res.body.data.rows.filter((r: { status: string }) => r.status === "duplicate")).toHaveLength(1);
   });

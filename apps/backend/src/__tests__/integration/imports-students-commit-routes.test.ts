@@ -45,7 +45,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
               university: "Test University",
               faculty: "Engineering",
               universityGraduationYear: "2027",
-              phone: "+201234567",
+              phone: "+201234567890",
               dateOfBirth: "2003-02-28",
               notes: "Internal staff note",
             },
@@ -68,8 +68,8 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       // logged into until that invite is accepted.
       passwordHash: null,
       graduationYear: null,
-      // R7/D7: the leading "+" survives — nothing coerced this cell.
-      phone: "+201234567",
+      // Stored in the one canonical form, 01 + 9 digits (owner, 2026-11-07).
+      phone: "01234567890",
     });
     expect(row.email).toBe(email); // stored EXACTLY as pasted (D-16.6)
     expect(row.studentProfile).toMatchObject({

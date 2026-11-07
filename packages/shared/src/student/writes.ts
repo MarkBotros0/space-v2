@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { PHONE_MAX, universityGraduationYearFieldSchema } from "../contact-fields";
+import { phoneFieldSchema, universityGraduationYearFieldSchema } from "../contact-fields";
 import { emptyToNull } from "./empty-to-null";
 
 // ---------------------------------------------------------------------------
@@ -18,7 +18,8 @@ const studentWriteFields = {
   faculty: emptyToNull(160),
   universityGraduationYear: universityGraduationYearFieldSchema,
   // User.phone / User.dateOfBirth since 2026-11-06; the wire is unchanged.
-  phone: emptyToNull(PHONE_MAX),
+  // An Egyptian mobile, 01 + 9 digits (owner, 2026-11-07), shared with PATCH /me.
+  phone: phoneFieldSchema,
   dateOfBirth: z.string().datetime({ offset: true }).nullish(),
   notes: emptyToNull(4000),
 };

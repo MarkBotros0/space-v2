@@ -112,7 +112,7 @@ describe("PATCH /api/v1/students/:id", () => {
 
     expect(res.status).toBe(200);
     const row = await db.user.findUnique({ where: { id: student1Id }, select: { phone: true } });
-    expect(row?.phone).toBe("+20 111 111 1111");
+    expect(row?.phone).toBe("01111111111");
   });
 
   it("refuses the subject's own write of notes with forbidden_field (R23 — loudly, not v1's silent drop, R24)", async () => {
