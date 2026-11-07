@@ -10,6 +10,7 @@ import { EmptyState } from "../../src/design/ui/empty-state";
 import { Screen } from "../../src/design/layout/screen";
 import { isSweepBuild } from "../../src/lib/app-config";
 import { LeaderSection } from "../../src/screens/design-catalogue/leader-section";
+import { LogoSection } from "../../src/screens/design-catalogue/logo-section";
 import { ChipsSection } from "../../src/screens/design-catalogue/chips-section";
 import { SwitchSection } from "../../src/screens/design-catalogue/switch-section";
 import {
@@ -44,6 +45,7 @@ export default function DesignCatalogue() {
       subtitle="Every component in every state."
       footer={saveBar !== "off" ? <CatalogueSaveBar disabled={saveBar === "disabled"} onDone={() => setSaveBar("off")} /> : undefined}
     >
+      <LogoSection />
       <TypeSection />
       <ButtonsSection />
       <ChipsSection />
