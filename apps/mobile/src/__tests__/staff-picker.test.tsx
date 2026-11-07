@@ -18,7 +18,7 @@ import { toast } from "../design/ui/toaster";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
+import SeasonAdminsScreen from "../../app/(app)/seasons/[code]/admins";
 import EditGroupScreen from "../../app/(app)/group/[id]/edit";
 
 const get = apiClient.get as jest.Mock;
@@ -86,7 +86,7 @@ describe("the staff picker sheet", () => {
   it("lists a name and a last season, and nothing else about anyone", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets();
-    renderWithProviders(<SeasonDetailScreen />);
+    renderWithProviders(<SeasonAdminsScreen />);
 
     fireEvent.press(await screen.findByText("Add admin"));
     expect(await screen.findByText("Karim")).toBeTruthy();
@@ -100,7 +100,7 @@ describe("the staff picker sheet", () => {
   it("narrows by the search box", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets();
-    renderWithProviders(<SeasonDetailScreen />);
+    renderWithProviders(<SeasonAdminsScreen />);
     fireEvent.press(await screen.findByText("Add admin"));
     await screen.findByText("Karim");
     fireEvent.changeText(screen.getByLabelText("Search people"), "nor");
@@ -116,7 +116,7 @@ describe("adding a season admin (super)", () => {
     post.mockResolvedValue({
       data: { data: { admins: [{ userId: 6, name: "Karim", email: "k@jpc.test", assignedAt: "2026-01-02T00:00:00.000Z", assignedByName: null }] } },
     });
-    renderWithProviders(<SeasonDetailScreen />);
+    renderWithProviders(<SeasonAdminsScreen />);
     fireEvent.press(await screen.findByText("Add admin"));
     fireEvent.press(await screen.findByText("Karim"));
     fireEvent.press(screen.getByText("Add"));
@@ -128,7 +128,7 @@ describe("adding a season admin (super)", () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets();
     post.mockRejectedValue(refusal("Karim is already leading a group in GBV 2026"));
-    renderWithProviders(<SeasonDetailScreen />);
+    renderWithProviders(<SeasonAdminsScreen />);
     fireEvent.press(await screen.findByText("Add admin"));
     fireEvent.press(await screen.findByText("Karim"));
     fireEvent.press(screen.getByText("Add"));
