@@ -1,5 +1,4 @@
 import { fireEvent, screen } from "@testing-library/react-native";
-import { Linking } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
 const mockPush = jest.fn();
@@ -63,7 +62,7 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
     expect(screen.getByText("Active")).toBeTruthy(); // the season status chip, a word
     expect(screen.getByText("Leader")).toBeTruthy();
     expect(screen.getByText("Lina Leader")).toBeTruthy();
-    expect(screen.getByText("lina@jpc.test")).toBeTruthy(); // R89: leaders' emails, not peers'
+    expect(screen.queryByText("lina@jpc.test")).toBeNull(); // no email contact (owner, 2026-11-07)
     // The kit's all-caps header with the count in it, like "YOUR GROUP" above.
     expect(screen.getByRole("header", { name: "MEMBERS (2)" })).toBeTruthy();
     expect(screen.getByText("Peer Person")).toBeTruthy();
@@ -106,16 +105,15 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
     expect(screen.queryByText("Leader")).toBeNull();
   });
 
-  it("opens mail to a leader from their row", async () => {
+  it("names a leader without an email or a mail link (owner, 2026-11-07)", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     get.mockResolvedValue({ data: { data: { season: mySeason } } });
-    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
 
     renderWithProviders(<SeasonScreen />);
 
-    fireEvent.press(await screen.findByLabelText("Lina Leader, lina@jpc.test, Leader"));
-    expect(openURL).toHaveBeenCalledWith("mailto:lina@jpc.test");
-    openURL.mockRestore();
+    expect(await screen.findByText("Lina Leader")).toBeTruthy();
+    expect(screen.queryByText("lina@jpc.test")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Lina Leader/ })).toBeNull();
   });
 
   it("titles the screen with the season and says which session it is on", async () => {

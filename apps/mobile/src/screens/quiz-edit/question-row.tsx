@@ -94,21 +94,25 @@ export function QuestionRow({
       : undefined;
 
   return (
-    <View className="flex-row items-start justify-between gap-3 rounded-group bg-surface p-4 dark:border dark:border-separator">
+    <View className="flex-row items-start justify-between gap-3 rounded-group bg-surface p-4">
       <View className="min-w-0 flex-1">
         <View className="flex-row flex-wrap items-center gap-2">
-          <Text className="text-xs font-bold text-muted-foreground">{`Q${n}`}</Text>
+          <Text variant="caption" className="font-bold text-muted-foreground">{`Q${n}`}</Text>
           <StatusChip
             tone={question.type === "MCQ" ? "info" : "neutral"}
             label={question.type === "MCQ" ? "Multiple choice" : "Essay"}
           />
-          <Text className="text-xs text-muted-foreground">{`${question.points} pt${question.points === 1 ? "" : "s"}`}</Text>
+          <Text
+            variant="caption"
+            tabular
+            className="text-muted-foreground"
+          >{`${question.points} pt${question.points === 1 ? "" : "s"}`}</Text>
         </View>
-        <Text className="mt-1 text-sm font-semibold text-brand-navy-900 dark:text-foreground">
+        <Text variant="headline" className="mt-1">
           {question.prompt}
         </Text>
         {question.type === "MCQ" ? (
-          <Text numberOfLines={1} className="mt-0.5 text-xs text-muted-foreground">
+          <Text variant="caption" numberOfLines={1} className="mt-0.5 text-muted-foreground">
             {`Correct: ${correct ?? "—"}`}
           </Text>
         ) : null}

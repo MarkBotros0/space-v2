@@ -21,7 +21,7 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
   });
   if (!quiz) return null;
 
-  const [students, grades] = await Promise.all([
+  const [students, grades, enrollments] = await Promise.all([
     db.user.findMany({
       // R100: deleted users are not on the sheet; ordered by name.
       where: { id: { in: studentIds }, deletedAt: null },
@@ -35,8 +35,14 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
         gradedBy: { select: { name: true } },
       },
     }),
+    // The group each student is in this season, so the sheet can list them by group.
+    db.seasonEnrollment.findMany({
+      where: { seasonId: quiz.seasonId, studentUserId: { in: studentIds } },
+      select: { studentUserId: true, group: { select: { name: true } } },
+    }),
   ]);
   const gradeBy = new Map(grades.map((g) => [g.studentUserId, g]));
+  const groupBy = new Map(enrollments.map((e) => [e.studentUserId, e.group?.name ?? null]));
 
   return {
     id: quiz.id,
@@ -51,6 +57,7 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
       return {
         studentUserId: s.id,
         studentName: s.name,
+        groupName: groupBy.get(s.id) ?? null,
         score: g?.score ?? null,
         notes: g?.notes ?? null,
         gradedAt: g?.gradedAt ?? null,
@@ -107,7 +114,7 @@ export async function saveGrades(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { id: true, title: true, kind: true, maxScore: true, seasonId: true },
+    select: { id: true, title: true, kind: true, maxScore: true, seasonId: true, resultsReleasedAt: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
 
@@ -183,7 +190,8 @@ export async function saveGrades(req: Request, res: Response) {
   const notifyIds = parsed.data.entries
     .filter((e) => e.score !== null && previousScore.get(e.studentUserId) !== e.score)
     .map((e) => e.studentUserId);
-  if (notifyIds.length > 0) {
+  // Held results stay quiet: the release notifies everyone graded by then.
+  if (notifyIds.length > 0 && quiz.resultsReleasedAt !== null) {
     // Best-effort, outside the transaction. v1 issued three queries per
     // student here, one student at a time (R96); createNotificationsBulk
     // batches the whole set.

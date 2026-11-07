@@ -2,25 +2,95 @@ import { useState } from "react";
 import { Plus } from "lucide-react-native";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
-import { updateQuizRequestSchema, type QuizAuthoringDetail } from "@space/shared";
+import type { QuizAuthoringDetail } from "@space/shared";
 
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { FormErrorBox } from "../../design/forms/form-parts";
-import { FormScreen } from "../../design/layout/form-screen";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
-import { Button, EmptyState, StatusChip, Text } from "../../design/ui";
-import { useAddQuestion, usePublishQuiz, useUpdateQuiz } from "../../hooks/use-quiz-authoring";
+import { haptic } from "../../design/motion";
+import {
+  Button,
+  EmptyState,
+  ListSectionHeader,
+  PillButton,
+  StatusChip,
+  Text,
+  toast,
+} from "../../design/ui";
+import { useAddQuestion, usePublishQuiz } from "../../hooks/use-quiz-authoring";
 import { useQuizAuthoringDetail } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
-import { firstErrorByField } from "../../lib/form-errors";
+import { ReleaseResultsCard } from "../quiz-grade/release-results";
 import { QuestionRow } from "./question-row";
-import { QuizSettings } from "./quiz-settings";
+import { QuizDetailsSheet } from "./quiz-details-sheet";
 
 iconWithClassName(Plus);
 
-const MAX_SCORE_MESSAGE = "Max score must be a whole number from 1 to 1000.";
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/**
+ * The quiz at a glance: its name with Edit, what it is, and where it stands.
+ * A published quiz is unpublished from here; publishing is the page's footer.
+ */
+function QuizSummary({
+  quiz,
+  onEdit,
+  onUnpublish,
+  unpublishing,
+}: {
+  quiz: QuizAuthoringDetail;
+  onEdit: () => void;
+  onUnpublish: () => void;
+  unpublishing: boolean;
+}) {
+  const isPaper = quiz.kind === "PAPER";
+  const published = quiz.publishedAt !== null;
+  const meta = isPaper
+    ? `Paper quiz · out of ${quiz.maxScore}`
+    : `Online quiz · ${plural(quiz.questions.length, "question")} · ${quiz.maxScore} pts`;
+  return (
+    <View testID="quiz-summary" className="flex-col gap-3 rounded-group bg-surface p-4">
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="min-w-0 flex-1 gap-1">
+          <Text variant="headline">{quiz.title}</Text>
+          <Text variant="subhead" className="text-muted-foreground">
+            {meta}
+          </Text>
+          {quiz.sessionTitle ? (
+            <Text variant="caption" className="text-muted-foreground">
+              {`Session: ${quiz.sessionTitle}`}
+            </Text>
+          ) : null}
+        </View>
+        <PillButton
+          label="Edit"
+          accessibilityLabel="Edit quiz details"
+          onPress={onEdit}
+          className="shrink-0"
+        />
+      </View>
+      {isPaper ? null : (
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
+          <StatusChip tone={published ? "ok" : "warn"} label={published ? "Published" : "Draft"} />
+          {published ? (
+            <PillButton
+              label={unpublishing ? "Unpublishing…" : "Unpublish"}
+              accessibilityLabel="Unpublish quiz"
+              onPress={onUnpublish}
+            />
+          ) : (
+            <Text variant="caption" className="text-muted-foreground">
+              Students can't see it yet
+            </Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
 
 function QuizForm({
   data,
@@ -37,95 +107,69 @@ function QuizForm({
   const id = data.id;
   const add = useAddQuestion(id);
   const publish = usePublishQuiz(id);
-  const update = useUpdateQuiz(id);
   const [adding, setAdding] = useState(false);
   const [editingRows, setEditingRows] = useState(0);
   const [addError, setAddError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [title, setTitle] = useState(data.title);
-  const [maxScore, setMaxScore] = useState(String(data.maxScore));
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const isPaper = data.kind === "PAPER";
-  // The server trims, so a space-only edit changes nothing.
-  const titleChanged = title.trim() !== data.title;
-  const scoreLocked = data.gradeCount > 0;
-  const scoreChanged = isPaper && !scoreLocked && maxScore !== String(data.maxScore);
-  const dirty = titleChanged || scoreChanged;
-
+  const published = data.publishedAt !== null;
+  const count = data.questions.length;
   const questionOpen = adding || editingRows > 0;
 
-  const save = () => {
-    if (!dirty || questionOpen) return;
-    const body: { title?: string; maxScore?: number } = {};
-    if (titleChanged) body.title = title.trim();
-    if (scoreChanged) body.maxScore = maxScore.trim() === "" ? Number.NaN : Number(maxScore);
-    const parsed = updateQuizRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      const byField = firstErrorByField(parsed.error);
-      const next: Record<string, string> = {};
-      if ("title" in byField) next.title = "Enter a title.";
-      if ("maxScore" in byField) next.maxScore = MAX_SCORE_MESSAGE;
-      if (Object.keys(next).length === 0)
-        next.form = Object.values(byField)[0] ?? "Check the quiz.";
-      setErrors(next);
-      return;
-    }
-    setErrors({});
-    setSaveError(null);
-    update.mutate(body, {
-      onError: (err) => setSaveError(apiErrorMessage(err, "Couldn't save the quiz.")),
+  const setPublished = (next: boolean) => {
+    setError(null);
+    publish.mutate(next, {
+      onSuccess: () => {
+        if (next) haptic("success");
+        toast.success(next ? "Quiz published. Students can take it now." : "Quiz unpublished.");
+      },
+      onError: (err) => setError(apiErrorMessage(err, "Couldn't change the publish state.")),
     });
   };
 
-  // A failed save stays visible even if a question form is opened afterwards.
-  const saveHint = saveError
-    ? saveError
-    : questionOpen
-      ? "Finish or cancel the question above first."
-      : (errors.form ??
-        (Object.keys(errors).length > 0
-          ? "Fix the fields marked above."
-          : dirty
-            ? undefined
-            : "Nothing to save yet."));
+  // One action for the page: a draft's Publish. Questions save one by one and
+  // the details save from their sheet, so there is nothing else to save here.
+  const publishBlocked =
+    count === 0
+      ? "Add a question to publish."
+      : questionOpen
+        ? "Finish the question first."
+        : undefined;
+  const footer =
+    isPaper || published ? undefined : (
+      <SaveBar
+        label="Publish quiz"
+        onPress={() => setPublished(true)}
+        loading={publish.isPending}
+        disabled={publishBlocked !== undefined}
+        disabledReason={publishBlocked}
+        hint={publishBlocked ?? "Students in the season are told when it's published."}
+      />
+    );
 
-  const published = data.publishedAt !== null;
-  const count = data.questions.length;
   return (
-    <FormScreen
-      title={data.title}
-      saveLabel="Save changes"
-      saving={update.isPending}
-      saveHint={saveHint}
-      disabled={!dirty || questionOpen}
-      onSave={save}
-      onRefresh={onRefresh}
-      refreshing={refreshing}
-    >
-      <View className="flex-col gap-4">
+    <Screen title="Edit quiz" footer={footer} onRefresh={onRefresh} refreshing={refreshing}>
+      <View className="flex-col gap-6">
         {refreshFailed ? (
           <InlineError message="Couldn't refresh this quiz." onRetry={onRefresh} />
         ) : null}
-        <QuizSettings
-          kind={data.kind}
-          title={title}
-          maxScore={maxScore}
-          locked={scoreLocked}
-          errors={errors}
-          onTitle={setTitle}
-          onMaxScore={setMaxScore}
+        <QuizSummary
+          quiz={data}
+          onEdit={() => setDetailsOpen(true)}
+          onUnpublish={() => setPublished(false)}
+          unpublishing={publish.isPending}
         />
+        <FormErrorBox message={error} />
 
-        {data.kind === "PAPER" ? (
-          <View className="flex-col gap-3 rounded-group bg-surface dark:border dark:border-separator p-4">
-            <Text className="text-sm">
-              This is a paper quiz — it has no questions. Grade it from the grade sheet.
+        {isPaper ? (
+          <View className="flex-col gap-3">
+            <Text variant="subhead" className="text-muted-foreground">
+              A paper quiz has no questions. Enter the marks on the grade sheet.
             </Text>
             <Button
               className="self-start"
-              variant="outline"
               onPress={() =>
                 router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })
               }
@@ -134,36 +178,10 @@ function QuizForm({
             </Button>
           </View>
         ) : (
-          <>
-            {/* v1's publish bar. */}
-            <View className="flex-col gap-3 rounded-group bg-surface dark:border dark:border-separator p-4">
-              <View className="flex-row flex-wrap items-center gap-2">
-                <StatusChip
-                  tone={published ? "ok" : "warn"}
-                  label={published ? "Published" : "Draft"}
-                />
-                <Text className="text-sm text-muted-foreground">
-                  {`${count} question${count === 1 ? "" : "s"} · ${data.maxScore} pts`}
-                </Text>
-              </View>
-              <Button
-                className="self-start"
-                variant={published ? "outline" : "default"}
-                size="sm"
-                disabled={publish.isPending}
-                onPress={() => {
-                  setError(null);
-                  publish.mutate(!published, {
-                    onError: (err) =>
-                      setError(apiErrorMessage(err, "Couldn't change the publish state.")),
-                  });
-                }}
-              >
-                {published ? "Unpublish" : "Publish"}
-              </Button>
-            </View>
+          <View className="flex-col gap-3">
+            <ListSectionHeader className="pb-0">{`Questions (${count})`}</ListSectionHeader>
             {!data.canEditStructure ? (
-              <Text className="text-xs text-muted-foreground">
+              <Text variant="caption" className="text-muted-foreground">
                 Students have started this quiz, so its questions can no longer change.
               </Text>
             ) : null}
@@ -205,22 +223,24 @@ function QuizForm({
                   }
                 />
               ) : (
-                <Button
-                  className="self-start"
-                  variant="outline"
-                  size="sm"
-                  onPress={() => setAdding(true)}
-                >
+                <Button variant="secondary" onPress={() => setAdding(true)}>
                   <Plus size={16} className="text-foreground" />
                   Add question
                 </Button>
               )
             ) : null}
-          </>
+          </View>
         )}
-        <FormErrorBox message={error} />
+
+        {published || isPaper ? <ReleaseResultsCard quiz={data} /> : null}
       </View>
-    </FormScreen>
+      <QuizDetailsSheet
+        key={`${data.title}-${data.maxScore}`}
+        quiz={data}
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+      />
+    </Screen>
   );
 }
 

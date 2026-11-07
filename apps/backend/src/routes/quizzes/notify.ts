@@ -64,3 +64,52 @@ export async function notifyQuizPublished(quiz: { seasonId: number; title: strin
     );
   });
 }
+
+/**
+ * Results released: everyone with a result to see hears about it once — a
+ * PAPER grade, or a GRADED latest ONLINE attempt. Someone whose essays are
+ * still waiting hears when they are graded, since the quiz is released by then.
+ * Best-effort, after the release has committed (spec D6).
+ */
+export async function notifyQuizResultsReleased(quiz: {
+  id: number;
+  title: string;
+  kind: "PAPER" | "ONLINE";
+}): Promise<void> {
+  await bestEffort("notify:QUIZ_GRADED", async () => {
+    const live = { deletedAt: null } as const;
+    const ids =
+      quiz.kind === "PAPER"
+        ? (
+            await db.quizGrade.findMany({
+              where: { quizId: quiz.id, score: { not: null }, studentUser: live },
+              select: { studentUserId: true },
+            })
+          ).map((g) => g.studentUserId)
+        : latestGraded(
+            await db.quizAttempt.findMany({
+              where: { quizId: quiz.id, studentUser: live },
+              orderBy: { attemptNumber: "desc" },
+              select: { studentUserId: true, status: true },
+            }),
+          );
+    await createNotificationsBulk(ids, {
+      type: "QUIZ_GRADED",
+      title: `Results are out: ${quiz.title}`,
+      body: "Your quiz results are ready to see.",
+      link: QUIZ_GRADED_LINK,
+    });
+  });
+}
+
+/** Students whose newest attempt (rows come newest first) is graded. */
+function latestGraded(rows: { studentUserId: number; status: string }[]): number[] {
+  const seen = new Set<number>();
+  const graded: number[] = [];
+  for (const r of rows) {
+    if (seen.has(r.studentUserId)) continue;
+    seen.add(r.studentUserId);
+    if (r.status === "GRADED") graded.push(r.studentUserId);
+  }
+  return graded;
+}

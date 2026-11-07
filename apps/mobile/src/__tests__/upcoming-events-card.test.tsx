@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { Linking } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
@@ -48,10 +48,12 @@ describe("UpcomingEventsCard (spec 19 R5–R11, D19)", () => {
     expect(get).toHaveBeenCalledWith("/api/v1/events?upcoming=true&limit=4");
   });
 
-  it("renders an EmptyState, not nothing, when no event qualifies (v1 R10)", async () => {
+  it("hides itself when no event qualifies (owner, 2026-11-07)", async () => {
     get.mockResolvedValue({ data: { data: { events: [], total: 0 } } });
     renderWithProviders(<Harness />);
-    expect(await screen.findByText("No upcoming events")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByLabelText("Loading")).toBeNull());
+    expect(screen.queryByText("Upcoming events")).toBeNull();
+    expect(screen.queryByText("No upcoming events")).toBeNull();
   });
 
   it("opens the event detail, or the external link when the event has one", async () => {

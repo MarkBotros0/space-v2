@@ -5,8 +5,10 @@ import type { GroupDetail, GroupListItem } from "@space/shared";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
+import { StudentList } from "../../design/students/student-list";
 import { EmptyState } from "../../design/ui/empty-state";
-import { GroupedList, ListRow, ListSectionHeader } from "../../design/ui/grouped-list";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { Text } from "../../design/ui/text";
 import { useGroupDetails, useMyGroups } from "../../hooks/use-groups";
 import { useSeasons } from "../../hooks/use-seasons";
 import { useSessionStore } from "../../store/session";
@@ -14,56 +16,54 @@ import { useSessionStore } from "../../store/session";
 const GroupIcon = NAV_ICONS.groups;
 const byName = (a: GroupListItem, b: GroupListItem) => a.name.localeCompare(b.name);
 const NONE_DESCRIPTION = "An admin will add you to a group when you're ready.";
+const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
 
-/** One group: its own row (opens the group), then its students (open the student). */
-function GroupBlock({
-  group,
-  detail,
-}: {
-  group: GroupListItem;
-  detail: { data?: GroupDetail; isError: boolean };
-}) {
+/** The group a leader serves now: a card that opens it, then its students, searchable. */
+function CurrentGroup({ group, detail }: { group: GroupListItem; detail: { data?: GroupDetail; isError: boolean } }) {
   const router = useRouter();
   const students = detail.data?.students ?? null;
   // The list's count is ACTIVE enrolments; the members listed are ACTIVE and COMPLETED.
-  // Say what is listed once it has loaded, so the subtitle never disagrees with the rows.
   const count = students ? students.length : group.studentCount;
   return (
-    <GroupedList header={group.seasonTitle}>
-      <ListRow
-        title={group.name}
-        subtitle={`${count} ${count === 1 ? "student" : "students"}`}
-        leading={<GroupIcon size={20} className="text-primary" />}
-        chevron
-        onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(group.id) } })}
-      />
+    <View className="flex-col gap-4">
+      <GroupedList>
+        <ListRow
+          title={group.name}
+          subtitle={`${group.seasonTitle} · ${plural(count, "student")}`}
+          leading={
+            <View className="size-11 items-center justify-center rounded-full bg-info-soft">
+              <GroupIcon size={22} className="text-info" />
+            </View>
+          }
+          chevron
+          onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(group.id) } })}
+        />
+      </GroupedList>
       {detail.isError ? (
-        <ListRow title="Couldn't load the members." />
-      ) : students === null ? null : students.length === 0 ? (
-        <ListRow title="No students yet." />
-      ) : (
-        students.map((st) => (
-          <ListRow
-            key={st.id}
-            title={st.name ?? st.email ?? "Student"}
-            titleLines={2}
-            className="pl-12"
-            chevron
-            onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(st.id) } })}
-          />
-        ))
+        <Text variant="subhead" className="px-1 text-muted-foreground">
+          Couldn't load the students. Pull to try again.
+        </Text>
+      ) : students === null ? null : (
+        <StudentList
+          header="Students"
+          items={students.map((st) => ({ id: st.id, name: st.name ?? st.email ?? "Student" }))}
+          emptyDescription="No students in this group yet."
+          onPress={(st) => router.push({ pathname: "/student/[id]", params: { id: String(st.id) } })}
+        />
       )}
-    </GroupedList>
+    </View>
   );
 }
 
 /**
- * LEADER — v1 app/leader/groups/page.tsx. Members come from each group's
- * detail (B3-5: GET /groups rows carry only a count). Groups of past seasons
- * follow under their own header (spec 05 §9). A leader who leads nothing gets
- * no request at all (R87).
+ * LEADER's "My group" tab (owner, 2026-11-07: "Groups" listing students was
+ * misleading). The group they serve now as a card, then its students with
+ * search and paging; groups of finished seasons follow as rows that open the
+ * group (spec 05 §9). Members come from each group's detail (B3-5). A leader
+ * who leads nothing gets no request at all (R87).
  */
 export function LeaderGroups() {
+  const router = useRouter();
   const leadsNothing = useSessionStore((s) => (s.scopes?.groupLeaderIds.length ?? 0) === 0);
   const groups = useMyGroups(!leadsNothing);
   const seasons = useSeasons(!leadsNothing);
@@ -72,8 +72,8 @@ export function LeaderGroups() {
 
   if (leadsNothing) {
     return (
-      <Screen title="Groups" subtitle="You don't lead any groups yet.">
-        <EmptyState icon={NAV_ICONS.groups} title="No groups" description={NONE_DESCRIPTION} />
+      <Screen title="My group" subtitle="You don't lead a group yet.">
+        <EmptyState icon={NAV_ICONS.groups} title="No group" description={NONE_DESCRIPTION} />
       </Screen>
     );
   }
@@ -88,14 +88,10 @@ export function LeaderGroups() {
   const isCurrent = (g: GroupListItem) => !past.has(g.seasonId);
   const current = rows.filter(isCurrent).sort(byName);
   const pastRows = rows.filter((g) => !isCurrent(g)).sort(byName);
-  const block = (g: GroupListItem) => (
-    <GroupBlock key={g.id} group={g} detail={details[rows.indexOf(g)] ?? { isError: false }} />
-  );
 
   return (
     <Screen
-      title="Groups"
-      subtitle={groups.data ? `${rows.length} ${rows.length === 1 ? "group" : "groups"}` : undefined}
+      title="My group"
       refreshing={groups.isRefetching}
       onRefresh={() => {
         void groups.refetch();
@@ -107,14 +103,25 @@ export function LeaderGroups() {
       ) : groups.isError ? (
         <RouteError onRetry={() => void groups.refetch()} />
       ) : rows.length === 0 ? (
-        <EmptyState icon={NAV_ICONS.groups} title="No groups" description={NONE_DESCRIPTION} />
+        <EmptyState icon={NAV_ICONS.groups} title="No group" description={NONE_DESCRIPTION} />
       ) : (
-        <View className="flex-col gap-4">
-          {current.map(block)}
-          {current.length > 0 && pastRows.length > 0 ? (
-            <ListSectionHeader>Past seasons</ListSectionHeader>
+        <View className="flex-col gap-6">
+          {current.map((g) => (
+            <CurrentGroup key={g.id} group={g} detail={details[rows.indexOf(g)] ?? { isError: false }} />
+          ))}
+          {pastRows.length > 0 ? (
+            <GroupedList header="Past groups">
+              {pastRows.map((g) => (
+                <ListRow
+                  key={g.id}
+                  title={g.name}
+                  subtitle={g.seasonTitle}
+                  chevron
+                  onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(g.id) } })}
+                />
+              ))}
+            </GroupedList>
           ) : null}
-          {pastRows.map(block)}
         </View>
       )}
     </Screen>

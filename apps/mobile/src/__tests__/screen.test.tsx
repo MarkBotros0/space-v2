@@ -189,28 +189,21 @@ describe("Screen: home (ruling R13)", () => {
   it("home renders the bell and the user menu", () => {
     renderWithProviders(<Screen home>{body}</Screen>);
     expect(screen.getByLabelText("Notifications (3 unread)")).toBeTruthy();
-    expect(screen.getByLabelText("User menu")).toBeTruthy();
+    expect(screen.getByLabelText("Profile settings")).toBeTruthy();
   });
 
   it("a screen that is not home has neither", () => {
     renderWithProviders(<Screen title="Calendar">{body}</Screen>);
     expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
-    expect(screen.queryByLabelText("User menu")).toBeNull();
+    expect(screen.queryByLabelText("Profile settings")).toBeNull();
   });
 
-  it("lists v1's 10 most recent notifications in the bell (v1 listRecent(userId, 10))", () => {
-    mockNotificationItems = Array.from({ length: 15 }, (_, i) => ({
-      id: i + 1,
-      title: `Note ${i + 1}`,
-      body: null,
-      readAt: null,
-      createdAt: new Date().toISOString(),
-      target: null,
-    }));
+  it("the bell opens Notifications and the avatar Profile settings, as screens (owner, 2026-11-07)", () => {
     renderWithProviders(<Screen home>{body}</Screen>);
     fireEvent.press(screen.getByLabelText("Notifications (3 unread)"));
-    expect(screen.getByText("Note 10")).toBeTruthy();
-    expect(screen.queryByText("Note 11")).toBeNull();
+    expect(mockPush).toHaveBeenLastCalledWith("/notifications");
+    fireEvent.press(screen.getByLabelText("Profile settings"));
+    expect(mockPush).toHaveBeenLastCalledWith("/settings/profile");
   });
 });
 

@@ -158,12 +158,13 @@ export async function loadStudentDetail(
     activeSeasonId: current?.seasonId ?? null,
     activeSeasonTitle: current?.season.title ?? null,
     activeSeasonCode: current?.season.code ?? null,
+    // Leaders and mentors may call a student (owner, 2026-11-07).
+    phone: row.phone,
   };
   if (view === "public") return { ...base, profile: publicProfile };
 
   const privateProfile = {
     ...publicProfile,
-    phone: row.phone,
     dateOfBirth: row.dateOfBirth?.toISOString() ?? null,
   };
   if (view === "private") return { ...base, profile: privateProfile };

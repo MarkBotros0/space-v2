@@ -31,6 +31,8 @@ export const quizSummarySchema = z.object({
   seasonCode: z.string(),
   gradedCount: z.number(),
   studentCount: z.number(),
+  /** When students were let see their scores; null while results are held back. */
+  resultsReleasedAt: z.string().nullable(),
 });
 export type QuizSummary = z.infer<typeof quizSummarySchema>;
 
@@ -73,6 +75,14 @@ export const quizAuthoringDetailSchema = z.object({
   canEditStructure: z.boolean(),
   /** Whether this caller may reopen an attempt / publish (canManageQuiz). */
   canManage: z.boolean(),
+  /**
+   * Students see no score and no right or wrong answer until this is set
+   * (owner, 2026-11-07): someone taking the quiz later could learn the answers
+   * from someone who took it first.
+   */
+  resultsReleasedAt: z.string().nullable(),
+  /** The season's admin, or a super: the only people who may release results. */
+  canReleaseResults: z.boolean(),
   questions: z.array(quizQuestionAuthoringSchema),
 });
 export type QuizAuthoringDetail = z.infer<typeof quizAuthoringDetailSchema>;
@@ -119,6 +129,12 @@ export const studentQuizDetailSchema = z.object({
   questions: z.array(quizQuestionStudentSchema),
   /** True when the student's enrolment is no longer ACTIVE: they can read the quiz, not take it. */
   readOnly: z.boolean(),
+  /**
+   * False until staff release the results. Until then a handed-in attempt
+   * reads SUBMITTED, and the score, gradedAt and every isCorrect and
+   * pointsAwarded are null.
+   */
+  resultsReleased: z.boolean(),
 });
 export type StudentQuizDetail = z.infer<typeof studentQuizDetailSchema>;
 
@@ -135,6 +151,8 @@ export const studentQuizResultSchema = z.object({
   sessionDate: z.string().nullable(),
   /** ONLINE only; null for PAPER and for a never-started ONLINE quiz. */
   attemptStatus: quizAttemptStatusSchema.nullable(),
+  /** False until staff release the results: no score, and a graded attempt reads SUBMITTED. */
+  resultsReleased: z.boolean(),
 });
 export type StudentQuizResult = z.infer<typeof studentQuizResultSchema>;
 

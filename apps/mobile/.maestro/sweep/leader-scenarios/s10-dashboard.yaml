@@ -7,7 +7,7 @@ appId: com.jpc.space
     env:
       EMAIL: ${LEADER_EMAIL}
 - extendedWaitUntil:
-    # The tab label "Today" shows before the data loads, so wait on the session card.
+    # The tab label "Home" shows before the data loads, so wait on the session card.
     visible: '(?i)(next session|happening now)'
     timeout: 40000
 - waitForAnimationToEnd:

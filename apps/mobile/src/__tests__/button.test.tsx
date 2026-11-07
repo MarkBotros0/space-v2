@@ -29,7 +29,8 @@ describe("Button redesign", () => {
     expect(buttonVariants({ variant: "default" })).toBe(buttonVariants({ variant: "primary" }));
     expect(buttonVariants({ variant: "outline" })).toBe(buttonVariants({ variant: "secondary" }));
     expect(buttonVariants({ variant: "ghost" })).toBe(buttonVariants({ variant: "plain" }));
-    expect(buttonTextVariants({ variant: "link" })).toContain("underline");
+    expect(buttonTextVariants({ variant: "link" })).toBe(buttonTextVariants({ variant: "plain" }));
+    expect(buttonTextVariants({ variant: "link" })).not.toContain("underline");
     expect(buttonVariants({ size: "default" })).toBe(buttonVariants({ size: "md" }));
     expect(buttonVariants({ size: "lg" })).toBe(buttonVariants({ size: "md" }));
     expect(buttonVariants({ size: "icon" })).toContain("min-h-[44px]");

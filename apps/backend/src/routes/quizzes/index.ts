@@ -14,6 +14,7 @@ import {
   updateQuestion,
 } from "./questions";
 import { saveAttemptAnswers, startAttempt, submitAttempt } from "./attempts";
+import { releaseQuizResults } from "./release";
 
 /**
  * Domain 12 — text quizzes. The handlers live beside this file by concern
@@ -35,6 +36,8 @@ quizzesRouter.patch("/:id/questions/:questionId", updateQuestion);
 quizzesRouter.delete("/:id/questions/:questionId", deleteQuestion);
 quizzesRouter.put("/:id/questions/order", reorderQuestions);
 quizzesRouter.post("/:id/publish", publishQuiz);
+// Students see scores only once the season's admin or a super releases them.
+quizzesRouter.post("/:id/release", releaseQuizResults);
 
 quizzesRouter.get("/:id", getQuiz);
 

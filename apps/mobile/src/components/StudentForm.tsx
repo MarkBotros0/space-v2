@@ -122,7 +122,7 @@ export function StudentForm({
               keyboardType="email-address"
             />
           </FormField>
-          <FormField label="Phone" error={errors.phone}>
+          <FormField label="Phone" description="11 digits, starting with 01." error={errors.phone}>
             <Input
               accessibilityLabel="Phone"
               value={values.phone}

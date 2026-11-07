@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
-import { BellOff } from "lucide-react-native";
-import { FlatList, View } from "react-native";
+import { BellOff, Settings } from "lucide-react-native";
+import { FlatList, Pressable, View } from "react-native";
 import type { NotificationItem } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { Screen } from "../../src/design/layout/screen";
-import { Button, EmptyState } from "../../src/design/ui";
+import { EmptyState, PillButton } from "../../src/design/ui";
+import { iconWithClassName } from "../../src/design/lib/icon";
 import { Text } from "../../src/design/ui/text";
 import { GroupedList, ListRow } from "../../src/design/ui/grouped-list";
 import {
@@ -16,6 +17,8 @@ import {
 import { formatStampAgo, notificationTypeLabel } from "../../src/lib/format";
 import { joinMeta } from "../../src/lib/join-meta";
 import { routeForTarget } from "../../src/lib/notification-route";
+
+iconWithClassName(Settings);
 
 /**
  * The inbox — one route for everybody.
@@ -100,14 +103,20 @@ export default function NotificationsScreen() {
         <Text variant="subhead" className="text-muted-foreground">
           {`${unread} unread`}
         </Text>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={markRead.isPending}
-          onPress={() => markRead.mutate({ all: true })}
-        >
-          Mark all read
-        </Button>
+        <View className="flex-row items-center gap-2">
+          {unread > 0 ? (
+            <PillButton label="Mark all read" onPress={() => markRead.mutate({ all: true })} />
+          ) : null}
+          {/* Notification settings live here, not on More (owner, 2026-11-07). */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Notification settings"
+            onPress={() => router.push("/settings/notifications")}
+            className="size-11 items-center justify-center rounded-full active:bg-muted"
+          >
+            <Settings size={22} className="text-muted-foreground" />
+          </Pressable>
+        </View>
       </View>
       <FlatList
         className="flex-1"

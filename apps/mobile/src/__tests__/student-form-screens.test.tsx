@@ -170,14 +170,14 @@ describe("/student/[id]/edit", () => {
 
     const university = await screen.findByLabelText("University");
     expect(university.props.value).toBe("Cairo University");
-    fireEvent.changeText(screen.getByLabelText("Phone"), "+20 111");
+    fireEvent.changeText(screen.getByLabelText("Phone"), "0111 111 1111");
     expect(screen.queryByLabelText("Active season")).toBeNull();
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
     const [url, body] = patch.mock.calls[0] as [string, Record<string, unknown>];
     expect(url).toBe("/api/v1/students/21");
-    expect(body).toMatchObject({ phone: "+20 111", notes: "Watch attendance" });
+    expect(body).toMatchObject({ phone: "0111 111 1111", notes: "Watch attendance" });
     expect(body).not.toHaveProperty("activeSeasonId");
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
   });

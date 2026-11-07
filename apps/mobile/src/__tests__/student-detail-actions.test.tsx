@@ -136,7 +136,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
 
     get.mockResolvedValue({ data: { data: { ...internalDetail, graduatedByException: null } } });
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("University");
+    await screen.findByTestId("student-details");
     expect(screen.queryByText("Graduated by exception")).toBeNull();
   });
 

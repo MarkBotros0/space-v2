@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { ScrollView } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
@@ -332,7 +332,8 @@ describe("AssignmentDetailScreen", () => {
       await act(async () => {
         await slow;
       });
-      expect(refreshing()).toBe(false);
+      // The pull holds the spinner for PULL_MIN_MS however fast the reads were (iOS).
+      await waitFor(() => expect(refreshing()).toBe(false), { timeout: 2000 });
     });
 
     it("with no submission yet, reads only the assignment", async () => {

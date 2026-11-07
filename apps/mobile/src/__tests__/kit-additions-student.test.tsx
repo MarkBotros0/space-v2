@@ -100,6 +100,16 @@ describe("GroupedList headerAction", () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
+  it("draws the action as a soft pill, never an underlined link", () => {
+    render(
+      <GroupedList header="Open work" headerAction={{ label: "See all", onPress: () => {} }}>
+        <ListRow title="x" />
+      </GroupedList>,
+    );
+    expect(screen.getByTestId("pill-button").props.className).toContain("rounded-full");
+    expect(screen.getByText("See all").props.className ?? "").not.toContain("underline");
+  });
+
   it("has no action by default", () => {
     render(<GroupedList header="Open work"><ListRow title="x" /></GroupedList>);
     expect(screen.queryByRole("button")).toBeNull();
@@ -133,7 +143,7 @@ describe("Screen compactTitle", () => {
 
   it("Home still says Today when unset", () => {
     renderWithProviders(<Screen home><RNText>b</RNText></Screen>);
-    expect(within(compact()).getByText("Today", { includeHiddenElements: true })).toBeTruthy();
+    expect(within(compact()).getByText("Home", { includeHiddenElements: true })).toBeTruthy();
   });
 });
 

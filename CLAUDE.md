@@ -191,7 +191,8 @@ Still outstanding: the mobile screens for the newly-ported endpoints. See
 `(tabs)`); `(app)/(tabs)/_layout.tsx` holds the `Tabs` (`backBehavior` "history" +
 `historyThenHomeTabsRouter`, anchor `dashboard` — its dev warning is expected, do not
 "fix" it). The pill renders `navFor(user).tabs` from `packages/shared/src/navigation.ts`:
-Today first, at most 5 per role. A href that is a tab for some role is in `ALL_TAB_HREFS`
+Home (`/dashboard`) first, at most 5 per role; only the selected tab shows its name
+(the rest are icons, named for screen readers; owner 2026-11-07). A href that is a tab for some role is in `ALL_TAB_HREFS`
 and its file lives in `(tabs)/`; a nav destination that is a tab for no role is a pushed
 route outside `(tabs)/` (`PUSHED_NAV_ROUTE_NAMES`), and every detail route is listed in
 `DETAIL_ROUTE_NAMES` — both pushed on the stack so Back returns to the screen you came
@@ -246,7 +247,7 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
 `design/theme/palette.ts` or `useThemeColors()`, never hex literals.
 
 - **Frame.** Every screen renders `Screen` (`design/layout/screen.tsx`): large collapsing
-  title, `back`, `home` (bell + user menu, Today only), the offline banner, and the top
+  title, `back`, `home` (bell + avatar, Home only), the offline banner, and the top
   inset, which only it owns. `ShellFrame` is the transitional wrapper over it. A screen
   on the stack gets the pinned back bar by default; `back={null}` opts out, and an
   in-content back link is a duplicate. Bottom padding comes from `useShellBottomPadding()`,
@@ -303,10 +304,13 @@ sonner-native toasts, so flows shoot toasts best-effort.
 
 ### Settings and account (owner, 2026-11-06)
 
-- `/settings` is a hub with two pages: `settings/profile` (name, phone, date
-  of birth, address — `User` columns, PATCH /me, every role) and
-  `settings/notifications` (push first; the per-kind switches show only once
-  push is on for the phone).
+- Two settings pages, each its own More entry (no Settings hub, owner 2026-11-07):
+  `settings/profile` "Profile settings" (name, phone, date of birth, address —
+  `User` columns, PATCH /me, every role) and `settings/notifications`
+  "Notification settings" (push first; the per-kind switches show only once
+  push is on for the phone). MENTOR reaches both from Profile.
+- Home's bell opens `/notifications` and the avatar opens Profile settings: plain
+  buttons, never dropdowns (owner, 2026-11-07). The theme lives on More (Profile for MENTOR).
 - No password form in the app: "Forgot password?" on sign-in is the only way
   to set one. No "Sign out everywhere".
 - Sign out and Delete account (DELETE /me, a soft delete) live on More; on
@@ -333,9 +337,22 @@ to 2100, so a graduate of a future-year season can still save. Backfills and old
 results never graduate anyone. The app's second confirmation is the same sheet changing
 its words: never close one modal and open another, iOS can drop the second.
 
+### Quiz results are held until released (owner, 2026-11-07)
+
+Students may take a quiz at different times, so nobody sees the marking until the season's admin
+or a super releases it (`POST /quizzes/:id/release`, one way; `Quiz.resultsReleasedAt/ById`).
+Grading still happens (an MCQ-only attempt is GRADED on submit), but every student read goes
+through `studentAttemptStatus` (`lib/quiz-results.ts`): a graded attempt reads SUBMITTED and score,
+`gradedAt`, `isCorrect` and `pointsAwarded` are null; a paper grade isn't listed. That covers the
+quiz list, the quiz detail, the submit response and a past season's record; a new student read of
+quiz results must use it too. Grade notifications stay silent while held; the release sends one
+"Results are out" to everyone graded by then. Staff see `resultsReleasedAt` and
+`canReleaseResults`; the Results card (`screens/quiz-grade/release-results.tsx`) sits on the
+grading screen and the quiz page. Quizzes graded before this existed were backfilled as released.
+
 ### Student work: two tabs (owner, 2026-11-06)
 
-A student's bar is Today · Calendar · To do (`/work`) · Submitted
+A student's bar is Home · Calendar · To do (`/work`) · Submitted
 (`/submitted`) · More. To do groups open work as Overdue, Returned — needs
 changes, Due this week, Later, Quizzes to take. Submitted lists handed-in
 assignments (Waiting for review / Reviewed, said in words, never colour
@@ -349,6 +366,8 @@ found the tab bar, the sheets and the segmented control bouncy and "like a carto
   Sheets rise in 260 ms; the pill highlight and the segmented thumb slide in `DURATION.fast`.
 - Tabs switch instantly. Lists, rows, chips and numbers appear at once: no entrance
   animations, no stagger, no count-ups, no pulses, no scale on press (press dims instead).
+- Light actions beside content (See all, Clear due date) are a `PillButton`; nothing is
+  underlined (owner, 2026-11-07).
 - Kept: the native stack push, sheet/modal fades, the skeleton shimmer, the check drawing
   itself on check-in, and the launch logo writing itself once per cold start.
 - One motion per interaction. Don't add new animations unless the owner asks; always

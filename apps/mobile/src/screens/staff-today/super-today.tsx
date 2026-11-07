@@ -48,8 +48,8 @@ export function SuperToday() {
   const named = (name ?? "").trim() !== "";
   return (
     <Screen
-      title={named ? `Hi, ${firstName(name)}` : "Today"}
-      compactTitle="Today"
+      title={named ? `Hi, ${firstName(name)}` : "Home"}
+      compactTitle="Home"
       home
       refreshing={today.isRefetching || org.isRefetching || events.isRefetching}
       onRefresh={refresh}

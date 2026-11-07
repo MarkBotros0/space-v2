@@ -74,16 +74,16 @@ describe("Back from a More destination returns to More (R19)", () => {
     expect(result.getPathname()).toBe("/dashboard");
   });
 
-  it("MENTOR (no More tab): Settings opened from Profile returns to Profile", async () => {
+  it("MENTOR (no More tab): the settings pages opened from Profile return to Profile", async () => {
     signIn("MENTOR");
     const result = await renderRouter(appContext(), { initialUrl: "/dashboard" });
     expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
     await act(() => router.navigate("/profile"));
 
-    // AccountProfile links to Settings and Notifications; Settings is the one opened here.
-    await openEachAndComeBack(result, ["/settings"], "/profile");
+    // AccountProfile links to both settings pages and Notifications.
+    await openEachAndComeBack(result, ["/settings/profile", "/settings/notifications"], "/profile");
     // The rest of the mentor's sidebar is the mentor's own tabs.
-    expect(moreItemsFor(navByRole.MENTOR).map((item) => item.href)).toEqual(["/notifications", "/settings"]);
+    expect(moreItemsFor(navByRole.MENTOR).map((item) => item.href)).toEqual(["/notifications", "/settings/profile", "/settings/notifications"]);
   });
 });
 

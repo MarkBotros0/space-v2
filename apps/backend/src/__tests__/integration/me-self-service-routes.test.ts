@@ -309,7 +309,7 @@ describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
     const res = await patch({ phone: "+20 122 222 2222", faculty: "", universityGraduationYear: 2030 });
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toMatchObject({
-      phone: "+20 122 222 2222",
+      phone: "01222222222",
       faculty: null,
       universityGraduationYear: 2030,
       university: "Cairo University", // untouched
@@ -321,7 +321,7 @@ describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
     expect(row).toEqual({ faculty: null, universityGraduationYear: 2030, notes: "STAFF ONLY — never sent to the subject" });
     // Phone lands on the User row (account-level).
     const user = await db.user.findUnique({ where: { id: studentId }, select: { phone: true } });
-    expect(user?.phone).toBe("+20 122 222 2222");
+    expect(user?.phone).toBe("01222222222");
   });
 
   it("stores a calendar date of birth at UTC midnight and reads it back unchanged (Decision 11)", async () => {
@@ -347,12 +347,12 @@ describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
   });
 
   it("is read-only for an alumnus", async () => {
-    const res = await patch({ phone: "+20 1" }, alumnusToken);
+    const res = await patch({ phone: "01012345678" }, alumnusToken);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("forbidden");
   });
 
   it("refuses staff", async () => {
-    expect((await patch({ phone: "+20 1" }, leaderToken)).status).toBe(403);
+    expect((await patch({ phone: "01012345678" }, leaderToken)).status).toBe(403);
   });
 });

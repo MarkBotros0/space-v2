@@ -263,11 +263,13 @@ export function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
   };
 }
 
-/** A taken or paper quiz on the Submitted tab: its score, or that it isn't graded yet. */
+/** A taken or paper quiz on the Submitted tab: its score, or that it isn't out yet. */
 export function submittedQuizRow(q: StudentQuizResult): WorkRow {
   const base = quizRow(q);
   if (q.score !== null) return base;
-  return { ...base, chip: { tone: "neutral", label: "Not graded yet" } };
+  // Held by staff (owner, 2026-11-07) reads differently from an essay still being marked.
+  const label = q.resultsReleased ? "Not graded yet" : "Results not out yet";
+  return { ...base, chip: { tone: "neutral", label } };
 }
 
 export type SubmittedSections = {

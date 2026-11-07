@@ -1,16 +1,17 @@
 /**
- * The student-page tab bodies as grouped lists, for the leader's and mentor's
- * page (StudentDetailGrouped) and the admin's (AdminStudentDetail).
+ * The student page's sections as grouped lists (Seasons, Attendance,
+ * Submissions, Notes), for the leader's and mentor's page
+ * (StudentDetailGrouped) and the admin's (AdminStudentDetail). The details
+ * list is StudentDetails.
  */
-import { dateOnlyFromIso, type EnrollmentHistoryItem } from "@space/shared";
+import type { EnrollmentHistoryItem } from "@space/shared";
 import { useRouter } from "expo-router";
 import { Calendar, Flag, MapPin } from "lucide-react-native";
 import { View } from "react-native";
 
 import { flattenNotePages, useStudentNotes } from "../../hooks/use-notes";
 import { useStudentAttendanceHistory, useStudentSubmissions } from "../../hooks/use-students";
-import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
-import { formatDate, formatDateTime, formatDayKey, formatSeasonDay, unbreakable } from "../../lib/format";
+import { formatDate, formatDateTime, formatSeasonDay, unbreakable } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
 import { NAV_ICONS } from "../icons/nav-icon";
 import { InlineError } from "../layout/route-states";
@@ -31,25 +32,6 @@ function Loading() {
 
 /** Caption parts joined with a separator, skipping the empty ones: no dangling dot. */
 const caption = (...parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");
-
-export function GroupedProfileTab({ profile: p }: { profile: StudentDetailData["profile"] }) {
-  const rows: [string, string | null][] = [
-    ["University", p.university],
-    ["Faculty", p.faculty],
-    ["Graduation year", p.universityGraduationYear === null ? null : String(p.universityGraduationYear)],
-  ];
-  if ("phone" in p) rows.push(["Phone", p.phone]);
-  if ("dateOfBirth" in p)
-    rows.push(["Date of birth", p.dateOfBirth ? formatDayKey(dateOnlyFromIso(p.dateOfBirth)) : null]);
-  if ("notes" in p && p.notes) rows.push(["Internal notes", p.notes]);
-  return (
-    <GroupedList>
-      {rows.map(([label, value]) => (
-        <ListRow key={label} title={value ?? "—"} subtitle={label} titleLines={null} />
-      ))}
-    </GroupedList>
-  );
-}
 
 export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHistoryItem[] }) {
   if (enrollments.length === 0) {

@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react-native";
+import { act, screen } from "@testing-library/react-native";
 
 // Community model, Build 3, Task 5: an alumnus in a community-wide season gets
 // the student portal and stays an alumnus. These pin both sides of each branch.
@@ -115,17 +115,8 @@ describe("while studying", () => {
     expect(await screen.findByText("Seasons you've participated in")).toBeTruthy();
   });
 
-  it("the user menu names the season", async () => {
-    serve({ [PROFILE]: { profile } });
-    renderWithProviders(<HomeActions />);
-    await settle();
-    fireEvent.press(screen.getByLabelText("User menu"));
-    expect(await screen.findByText("Alumnus · Student in Community Season")).toBeTruthy();
-  });
-
-  it("the badge falls back when the season's title isn't there, and keeps the alumni colour", () => {
+  it("the badge says they're studying, and keeps the alumni colour", () => {
     expect(roleBadge("STUDENT", 2025, 7)).toEqual({ color: "alumni", label: "Alumnus · Studying" });
-    expect(roleBadge("STUDENT", 2025, 7, "Community Season").label).toBe("Alumnus · Student in Community Season");
   });
 });
 

@@ -22,7 +22,7 @@ export const quizSchemas = {
   },
   QuizSummary: {
     type: "object",
-    required: ["id", "title", "kind", "publishedAt", "questionCount", "maxScore", "sessionId", "sessionTitle", "sessionDate", "seasonId", "seasonCode", "gradedCount", "studentCount"],
+    required: ["id", "title", "kind", "publishedAt", "questionCount", "maxScore", "sessionId", "sessionTitle", "sessionDate", "seasonId", "seasonCode", "gradedCount", "studentCount", "resultsReleasedAt"],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -37,6 +37,7 @@ export const quizSchemas = {
       seasonCode: { type: "string" },
       gradedCount: { type: "integer" },
       studentCount: { type: "integer" },
+      resultsReleasedAt: { type: ["string", "null"], format: "date-time", description: "Null while students' results are held back." },
     },
   },
   QuizQuestionAuthoring: {
@@ -67,7 +68,7 @@ export const quizSchemas = {
   QuizAuthoringDetail: {
     type: "object",
     description: "Staff projection of a quiz. Carries the answer key (`questions[].correctIndex`).",
-    required: ["id", "title", "kind", "seasonId", "seasonCode", "sessionId", "sessionTitle", "publishedAt", "maxScore", "attemptCount", "gradeCount", "canEditStructure", "canManage", "questions"],
+    required: ["id", "title", "kind", "seasonId", "seasonCode", "sessionId", "sessionTitle", "publishedAt", "maxScore", "attemptCount", "gradeCount", "canEditStructure", "canManage", "resultsReleasedAt", "canReleaseResults", "questions"],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -82,6 +83,8 @@ export const quizSchemas = {
       gradeCount: { type: "integer" },
       canEditStructure: { type: "boolean", description: "`canManage`, ONLINE, and no attempts yet — exactly the condition the question writes enforce." },
       canManage: { type: "boolean", description: "SUPER or admin of the quiz's season (authoring and publishing); a grading-only leader gets false." },
+      resultsReleasedAt: { type: ["string", "null"], format: "date-time", description: "Null while students' results are held back: they see no score and no right or wrong answer until it is set." },
+      canReleaseResults: { type: "boolean", description: "SUPER or admin of the quiz's season: who may `POST /quizzes/{id}/release`." },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionAuthoring" } },
     },
   },
@@ -105,7 +108,7 @@ export const quizSchemas = {
   StudentQuizDetail: {
     type: "object",
     description: "A student's view of an ONLINE quiz and their own attempt. `autoScore`/`manualScore` are deliberately absent; `totalScore` is the only score shown.",
-    required: ["id", "title", "kind", "seasonId", "maxScore", "sessionTitle", "attemptId", "attemptNumber", "status", "totalScore", "submittedAt", "gradedAt", "questions", "readOnly"],
+    required: ["id", "title", "kind", "seasonId", "maxScore", "sessionTitle", "attemptId", "attemptNumber", "status", "totalScore", "submittedAt", "gradedAt", "questions", "readOnly", "resultsReleased"],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -121,6 +124,7 @@ export const quizSchemas = {
       gradedAt: { type: ["string", "null"], format: "date-time" },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionStudent" } },
       readOnly: { type: "boolean", description: "True when the student's enrolment is no longer ACTIVE: they can read the quiz and their attempt, not take it." },
+      resultsReleased: { type: "boolean", description: "False until staff release the results. Until then a graded attempt reads SUBMITTED and `totalScore`, `gradedAt` and every question's `isCorrect`/`pointsAwarded` are null." },
     },
   },
   QuizGradingAnswer: {
@@ -186,10 +190,11 @@ export const quizSchemas = {
   },
   QuizGradeRow: {
     type: "object",
-    required: ["studentUserId", "studentName", "score", "notes", "gradedAt", "gradedByName"],
+    required: ["studentUserId", "studentName", "groupName", "score", "notes", "gradedAt", "gradedByName"],
     properties: {
       studentUserId: { type: "integer" },
       studentName: { type: ["string", "null"] },
+      groupName: { type: ["string", "null"], description: "The student's group in the quiz's season." },
       score: { type: ["integer", "null"] },
       notes: { type: ["string", "null"] },
       gradedAt: { type: ["string", "null"], format: "date-time" },
@@ -213,7 +218,7 @@ export const quizSchemas = {
   },
   StudentQuizResult: {
     type: "object",
-    required: ["quizId", "title", "kind", "maxScore", "score", "notes", "gradedAt", "sessionTitle", "sessionDate", "attemptStatus"],
+    required: ["quizId", "title", "kind", "maxScore", "score", "notes", "gradedAt", "sessionTitle", "sessionDate", "attemptStatus", "resultsReleased"],
     properties: {
       quizId: { type: "integer" },
       title: { type: "string" },
@@ -224,7 +229,8 @@ export const quizSchemas = {
       gradedAt: { type: ["string", "null"], format: "date-time" },
       sessionTitle: { type: ["string", "null"] },
       sessionDate: { type: ["string", "null"], format: "date-time" },
-      attemptStatus: { oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }], description: "ONLINE only." },
+      attemptStatus: { oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }], description: "ONLINE only. A graded attempt reads SUBMITTED until results are released." },
+      resultsReleased: { type: "boolean", description: "False until staff release the results; `score` and `gradedAt` are null until then. A PAPER row appears only once released." },
     },
   },
 

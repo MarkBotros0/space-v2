@@ -19,6 +19,7 @@ import { renderWithProviders } from "./helpers/render";
 import { studentDashboard } from "./helpers/dashboard-fixtures";
 import { makeSession } from "./helpers/session";
 import SessionDetailScreen from "../../app/(app)/session/[id]/index";
+import { PULL_MIN_MS } from "../design/lib/pull-refresh";
 
 /**
  * The session detail screen's freshness: the check-in card follows the
@@ -171,6 +172,10 @@ it("on a student's session a poll leaves the pull's spinner down, and a pull rai
     });
     expect(control().refreshing).toBe(true);
     await finish();
+    // The pull holds the spinner for PULL_MIN_MS however fast the read was (iOS).
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(PULL_MIN_MS);
+    });
     expect(control().refreshing).toBe(false);
   } finally {
     jest.useRealTimers();

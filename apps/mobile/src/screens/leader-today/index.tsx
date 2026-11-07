@@ -172,8 +172,8 @@ export function LeaderToday() {
   return (
     <Screen
       home
-      title={named ? `Hi, ${firstName(name)}` : "Today"}
-      compactTitle="Today"
+      title={named ? `Hi, ${firstName(name)}` : "Home"}
+      compactTitle="Home"
       subtitle={data ? data.groups.map((g) => g.name).join(", ") || "Your group" : undefined}
       refreshing={dash.isRefetching || events.isRefetching}
       onRefresh={refresh}

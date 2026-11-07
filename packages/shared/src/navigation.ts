@@ -10,10 +10,12 @@ import type { UserRole } from "./auth";
  * See Decision D1 in the Phase 0 plan.
  *
  * `tabs` was mobile-shaped in v1: five entries with Home centred. The
- * redesign (plan 01 Task 12) puts Today (`/dashboard`, the `home` icon)
+ * redesign (plan 01 Task 12) puts Home (`/dashboard`, the `home` icon)
  * first for every role, at most five tabs. Nothing left the
  * navs: a destination that stopped being a tab is still in `sidebar`, which
- * is what More lists. MENTOR has no More tab; Profile links to Settings.
+ * is what More lists. MENTOR has no More tab; Profile links to Profile settings
+ * (no Settings hub: owner, 2026-11-07). Notification settings open from the
+ * gear on the Notifications screen.
  */
 
 export type NavIconName =
@@ -70,10 +72,10 @@ const SUPER: RoleNav = {
     { href: "/users", label: "Users", icon: "users" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/seasons", label: "Seasons", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/students", label: "Students", icon: "students" },
@@ -86,20 +88,20 @@ const ADMIN: RoleNav = {
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/season", label: "My Season", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
+    // Owner, 2026-11-07: Groups holds the students too, and Work holds the
+    // assignments and quizzes, so neither has its own entry.
     { href: "/groups", label: "Groups", icon: "groups" },
-    { href: "/students", label: "Students", icon: "students" },
+    { href: "/coursework", label: "Work", icon: "assignments" },
     { href: "/notes", label: "My notes", icon: "notes" },
-    { href: "/assignments", label: "Assignments", icon: "assignments" },
-    { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/groups", label: "Groups", icon: "groups" },
-    { href: "/students", label: "Students", icon: "students" },
+    { href: "/coursework", label: "Work", icon: "assignments" },
     { href: "/more", label: "More", icon: "more" },
   ],
 };
@@ -107,17 +109,17 @@ const ADMIN: RoleNav = {
 const LEADER: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-    { href: "/groups", label: "Groups", icon: "groups" },
+    { href: "/groups", label: "My group", icon: "groups" },
     { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
-    { href: "/groups", label: "Groups", icon: "groups" },
+    { href: "/dashboard", label: "Home", icon: "home" },
+    { href: "/groups", label: "My group", icon: "groups" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/more", label: "More", icon: "more" },
@@ -140,10 +142,10 @@ const STUDENT: RoleNav = {
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/work", label: "To do", icon: "todo" },
     { href: "/submitted", label: "Submitted", icon: "submitted" },
@@ -157,10 +159,10 @@ const MENTOR: RoleNav = {
     { href: "/students", label: "Students", icon: "students" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/students", label: "Students", icon: "students" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notes", label: "Notes", icon: "notes" },
@@ -176,10 +178,10 @@ const ALUMNI: RoleNav = {
     { href: "/history", label: "My History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Events", icon: "events" },
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
@@ -189,7 +191,7 @@ const ALUMNI: RoleNav = {
 
 /**
  * A student who is not in a season right now (between seasons, or never in
- * one): no season, work or attendance, just Today, Calendar and History.
+ * one): no season, work or attendance, just Home, Calendar and History.
  */
 export const STUDENT_BETWEEN: RoleNav = {
   sidebar: [
@@ -198,10 +200,10 @@ export const STUDENT_BETWEEN: RoleNav = {
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/history", label: "History", icon: "history" },
     { href: "/more", label: "More", icon: "more" },

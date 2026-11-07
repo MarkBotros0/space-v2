@@ -64,8 +64,8 @@ export function MentorDashboard() {
   return (
     <Screen
       home
-      title={named ? `Hi, ${firstName(name)}` : "Today"}
-      compactTitle="Today"
+      title={named ? `Hi, ${firstName(name)}` : "Home"}
+      compactTitle="Home"
       onRefresh={refresh}
       refreshing={
         engagement.isRefetching || notes.isRefetching || feed.isRefetching || events.isRefetching

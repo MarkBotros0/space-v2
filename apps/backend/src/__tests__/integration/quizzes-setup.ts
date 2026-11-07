@@ -113,11 +113,15 @@ export async function quizGradedCountFor(ownStudentId: number): Promise<number> 
   });
 }
 
-/** A published ONLINE quiz: one MCQ (2 points) and optionally one essay (5). */
+/**
+ * A published ONLINE quiz: one MCQ (2 points) and optionally one essay (5).
+ * Released by default, so suites about grading see what a student sees once
+ * results are out; `released: false` holds them back (quizzes-release-routes).
+ */
 export async function buildPublishedQuizIn(
   seasonId: number,
   sessionId: number,
-  opts: { withEssay: boolean },
+  opts: { withEssay: boolean; released?: boolean },
 ) {
   const quiz = await db.quiz.create({
     data: { seasonId, sessionId, title: "Runner quiz", kind: "ONLINE", maxScore: 0 },
@@ -143,7 +147,11 @@ export async function buildPublishedQuizIn(
   }
   await db.quiz.update({
     where: { id: quiz.id },
-    data: { maxScore: opts.withEssay ? 7 : 2, publishedAt: new Date() },
+    data: {
+      maxScore: opts.withEssay ? 7 : 2,
+      publishedAt: new Date(),
+      resultsReleasedAt: opts.released === false ? null : new Date(),
+    },
   });
   return { quizId: quiz.id, mcqId: mcq.id, essayId: essay.id };
 }

@@ -3,6 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { canAccessSeason } from "../../lib/permissions";
+import { studentAttemptStatus } from "../../lib/quiz-results";
 import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
 import { quizListQuerySchema } from "../../../../../packages/shared/src/index";
@@ -12,14 +13,14 @@ import { forbidden } from "../respond";
  * The student's own results — v1's listQuizResultsForStudent, ported.
  *
  * PAPER rows start from QuizGrade, so a paper quiz stays invisible until it is
- * graded (R36); ONLINE rows start from Quiz filtered to published, so they
+ * graded (R36) and its results released (owner, 2026-11-07); ONLINE rows start from Quiz filtered to published, so they
  * appear as soon as they are available, attempted or not (R37). Merged by
  * session date descending, a null date sunk to the bottom (R38).
  */
 async function listQuizResultsForStudent(studentUserId: number, seasonId: number) {
   const [grades, onlineQuizzes] = await Promise.all([
     db.quizGrade.findMany({
-      where: { studentUserId, quiz: { seasonId, kind: "PAPER" } },
+      where: { studentUserId, quiz: { seasonId, kind: "PAPER", resultsReleasedAt: { not: null } } },
       select: {
         score: true,
         notes: true,
@@ -40,6 +41,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
         id: true,
         title: true,
         maxScore: true,
+        resultsReleasedAt: true,
         session: { select: { title: true, startsAt: true } },
         attempts: {
           where: { studentUserId },
@@ -63,22 +65,25 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
       sessionTitle: g.quiz.session?.title ?? null,
       sessionDate: g.quiz.session?.startsAt ?? null,
       attemptStatus: null,
+      resultsReleased: true,
     })),
     ...onlineQuizzes.map((q) => {
       const attempt = q.attempts[0];
-      const status = attempt?.status ?? null;
+      const released = q.resultsReleasedAt !== null;
+      const status = studentAttemptStatus(attempt?.status ?? null, released);
       return {
         quizId: q.id,
         title: q.title,
         kind: "ONLINE" as const,
         maxScore: q.maxScore,
-        // Only a GRADED attempt has a score to show (R37).
+        // Only a GRADED attempt has a score to show (R37), once released.
         score: status === "GRADED" ? (attempt?.totalScore ?? null) : null,
         notes: null,
-        gradedAt: attempt?.gradedAt ?? null,
+        gradedAt: status === "GRADED" ? (attempt?.gradedAt ?? null) : null,
         sessionTitle: q.session?.title ?? null,
         sessionDate: q.session?.startsAt ?? null,
         attemptStatus: status,
+        resultsReleased: released,
       };
     }),
   ];
@@ -135,6 +140,7 @@ export async function listQuizzes(req: Request, res: Response) {
       title: true,
       kind: true,
       publishedAt: true,
+      resultsReleasedAt: true,
       maxScore: true,
       sessionId: true,
       seasonId: true,
@@ -165,6 +171,7 @@ export async function listQuizzes(req: Request, res: Response) {
       seasonCode: q.season.code,
       gradedCount: gradedBy.get(q.id) ?? 0,
       studentCount: studentIds.length,
+      resultsReleasedAt: q.resultsReleasedAt,
     })),
     nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,
   });

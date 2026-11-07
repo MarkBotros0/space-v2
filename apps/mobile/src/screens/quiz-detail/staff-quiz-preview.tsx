@@ -7,6 +7,7 @@ import { Button } from "../../design/ui/button";
 import { Card } from "../../design/ui/card";
 import { Text } from "../../design/ui/text";
 import { useQuizAuthoringDetail } from "../../hooks/use-quizzes";
+import { ReleaseResultsCard } from "../quiz-grade/release-results";
 
 /** LEADER / ADMIN / SUPER: the quiz's questions with the answer key, plus Grade and Edit. */
 export function StaffPreview({ id }: { id: number }) {
@@ -56,6 +57,7 @@ export function StaffPreview({ id }: { id: number }) {
             </Button>
           ) : null}
         </Card>
+        <ReleaseResultsCard quiz={data} />
         {data.kind === "PAPER" ? (
           <Text>This is a paper quiz — there are no questions to preview.</Text>
         ) : (

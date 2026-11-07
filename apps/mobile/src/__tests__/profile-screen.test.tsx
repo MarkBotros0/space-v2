@@ -225,7 +225,7 @@ describe("ProfileScreen — ALUMNI", () => {
 });
 
 describe("ProfileScreen — MENTOR (Decision 2)", () => {
-  it("is the account card with Settings and Sign out, and calls no student endpoint", async () => {
+  it("is the account card with the settings pages and Sign out, and calls no student endpoint", async () => {
     useSessionStore.setState(
       makeSession("MENTOR", {}, { name: "Maged Mentor", email: "maged@jpc.test" }),
     );
@@ -235,8 +235,8 @@ describe("ProfileScreen — MENTOR (Decision 2)", () => {
     expect(screen.getByText("Maged Mentor")).toBeTruthy();
     expect(screen.getByText("MM")).toBeTruthy();
     expect(screen.getByText("MENTOR")).toBeTruthy();
-    fireEvent.press(screen.getByText("Settings"));
-    expect(mockPush).toHaveBeenCalledWith("/settings");
+    fireEvent.press(screen.getByText("Profile settings"));
+    expect(mockPush).toHaveBeenCalledWith("/settings/profile");
     fireEvent.press(screen.getByText("Sign out"));
     await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
     expect(get).not.toHaveBeenCalled();

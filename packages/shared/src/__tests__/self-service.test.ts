@@ -91,7 +91,7 @@ describe("updateOwnProfileInputSchema (Decision 1)", () => {
   });
 
   it("keeps v1's server-side bounds (R20)", () => {
-    expect(updateOwnProfileInputSchema.safeParse({ phone: "1".repeat(60) }).success).toBe(true);
+    expect(updateOwnProfileInputSchema.safeParse({ phone: "01012345678" }).success).toBe(true);
     expect(updateOwnProfileInputSchema.safeParse({ phone: "1".repeat(61) }).success).toBe(false);
     expect(updateOwnProfileInputSchema.safeParse({ faculty: "f".repeat(161) }).success).toBe(false);
   });

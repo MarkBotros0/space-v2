@@ -150,7 +150,7 @@ export async function gradeAttempt(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { id: true, title: true, seasonId: true },
+    select: { id: true, title: true, seasonId: true, resultsReleasedAt: true },
   });
   if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
@@ -229,7 +229,8 @@ export async function gradeAttempt(req: Request, res: Response) {
     }),
   ]);
 
-  if (scoreChanged) {
+  // Held results stay quiet: the release notifies everyone graded by then.
+  if (scoreChanged && quiz.resultsReleasedAt !== null) {
     // D8's single rule for both grading paths: notify on a first grade and on
     // any score change, silent on a no-op re-save. v1's two paths disagreed —
     // ONLINE notified on every call (R75), PAPER never re-notified (R92).

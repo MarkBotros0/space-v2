@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { Linking } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
@@ -95,10 +95,13 @@ describe("AlumniDashboard", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "5" } });
   });
 
-  it("says so when there are no events and shows no hero", async () => {
+  it("shows no events block at all when there are none", async () => {
     serve({ [EVENTS]: { events: [], total: 0 }, [HISTORY]: { seasons: [] } });
     renderWithProviders(<AlumniDashboard />);
-    expect(await screen.findByText("No upcoming events")).toBeTruthy();
+    expect(await screen.findByText("No past seasons")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByLabelText("Loading")).toBeNull());
+    expect(screen.queryByText("Upcoming events")).toBeNull();
+    expect(screen.queryByText("No upcoming events")).toBeNull();
     expect(screen.queryByText("Next event")).toBeNull();
   });
 

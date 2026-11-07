@@ -3,7 +3,7 @@ import type { QuizKind } from "@space/shared";
 
 import { FormField, Input } from "../../design/ui";
 
-/** V2-ONLY (v1's builder had no settings block): rename and, for paper, the max score. Saved from the screen's bar. */
+/** V2-ONLY (v1's builder had no settings block): rename and, for paper, the max score. Saved from its sheet (QuizDetailsSheet). */
 export function QuizSettings({
   kind,
   title,

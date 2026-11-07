@@ -6,6 +6,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { Button, EmptyState } from "../../../../src/design/ui";
 import { GroupedList, ListRow } from "../../../../src/design/ui/grouped-list";
+import { StudentList } from "../../../../src/design/students/student-list";
 import { useGroupDetail } from "../../../../src/hooks/use-groups";
 import { useSessionStore } from "../../../../src/store/session";
 
@@ -99,11 +100,12 @@ export default function GroupDetailScreen() {
     >
       <View className="flex-col gap-6">
         <MemberList title="Leaders" members={data.leaders} empty="No leaders assigned." />
-        <MemberList
-          title="Students"
-          members={data.students}
-          empty="No students enrolled."
-          onOpen={openStudent}
+        {/* Search and a page at a time, like every student list (owner, 2026-11-07); no emails. */}
+        <StudentList
+          header={`Students (${data.students.length})`}
+          items={data.students.map((m) => ({ id: m.id, name: m.name ?? "Unnamed", member: m }))}
+          emptyDescription="No students enrolled."
+          onPress={openStudent ? ({ member }) => openStudent(member) : undefined}
         />
       </View>
     </Screen>

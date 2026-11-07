@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 describe("admin student detail", () => {
-  it("shows every staff profile field, mail and call", async () => {
+  it("shows every staff profile field and call, never email", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
     expect(await screen.findByText("Engineering")).toBeTruthy();
@@ -71,7 +71,7 @@ describe("admin student detail", () => {
     expect(screen.queryByText("Spiritual background")).toBeNull();
     expect(screen.getByText("Watch attendance")).toBeTruthy();
     expect(screen.getByText("+20 111")).toBeTruthy();
-    expect(screen.getByText("Email")).toBeTruthy();
+    expect(screen.queryByText("Email")).toBeNull();
     expect(screen.getByText("Call")).toBeTruthy();
   });
 

@@ -47,7 +47,7 @@ describe("Admin Today", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { name: "  " }));
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
-    expect((await screen.findAllByText("Today")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Home")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });
 

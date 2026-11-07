@@ -91,7 +91,7 @@ it("SelectValue shows the selected item's label from items", () => {
 
 it("Combobox filters and shows v1's empty message", () => {
   const onChange = jest.fn();
-  render(
+  renderWithProviders(
     <Combobox
       accessibilityLabel="Student"
       value={null}
@@ -112,7 +112,7 @@ it("Combobox filters and shows v1's empty message", () => {
 
 it("MultiSelect toggles several options (v1 onChange)", () => {
   const onChange = jest.fn();
-  render(
+  renderWithProviders(
     <MultiSelect
       accessibilityLabel="Tags"
       value={["a"]}

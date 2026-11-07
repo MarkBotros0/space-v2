@@ -13,11 +13,8 @@ jest.mock("../hooks/use-students", () => ({
   useStudentAttendanceHistory: (...a: unknown[]) => mockAttendance(...a),
 }));
 
-import {
-  GroupedAttendanceTab,
-  GroupedNotesTab,
-  GroupedProfileTab,
-} from "../design/students/grouped-tabs";
+import { GroupedAttendanceTab, GroupedNotesTab } from "../design/students/grouped-tabs";
+import { StudentDetails } from "../design/students/student-details";
 import { renderWithProviders } from "./helpers/render";
 
 const LONG = Array.from({ length: 30 }, (_, i) => `Line ${i + 1} of a long pastoral note.`).join(
@@ -63,7 +60,7 @@ describe("student page free text is read in full", () => {
 
   it("a long Faculty value has no line cap", () => {
     renderWithProviders(
-      <GroupedProfileTab
+      <StudentDetails
         profile={
           {
             university: "Cairo",

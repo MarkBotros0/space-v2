@@ -107,7 +107,7 @@ describe("self-scoped settings schemas", () => {
   });
 
   it("updateProfileRequestSchema is partial over name/phone/dateOfBirth/address, at least one key", () => {
-    expect(updateProfileRequestSchema.parse({ phone: " +20 1 " })).toEqual({ phone: "+20 1" });
+    expect(updateProfileRequestSchema.parse({ phone: " 0101 234 5678 " })).toEqual({ phone: "01012345678" });
     expect(updateProfileRequestSchema.parse({ address: "", dateOfBirth: null })).toEqual({
       address: null,
       dateOfBirth: null,
