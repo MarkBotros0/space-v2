@@ -120,7 +120,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
       <View className="flex-col gap-4">
         <View className="flex-row flex-wrap gap-2">
           {data.graduationYear !== null ? (
-            <StatusChip tone="ok" label={`Alumnus · ${data.graduationYear}`} />
+            <StatusChip tone="ok" label={`Alumnus · School of ${data.graduationYear}`} />
           ) : null}
           {p.activeSeasonTitle ? <StatusChip tone="info" label={p.activeSeasonTitle} /> : null}
           {data.currentGroup ? <StatusChip tone="neutral" label={data.currentGroup.name} /> : null}
@@ -165,7 +165,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
 
         {/* An opened section stays mounted (hidden) so its cache and scroll state survive a switch. */}
         <View className={section === "profile" ? undefined : "hidden"}>
-          <AdminProfileSection profile={p} />
+          <AdminProfileSection profile={p} exception={data.graduatedByException} />
         </View>
         <View className={section === "seasons" ? undefined : "hidden"}>
           <AdminSeasonsSection

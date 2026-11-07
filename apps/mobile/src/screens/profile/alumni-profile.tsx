@@ -49,7 +49,7 @@ export function AlumniProfile() {
           <ListRow title={p.email} subtitle="Email" titleLines={2} />
           <ListRow title={p.university || "—"} subtitle="University" titleLines={2} />
           {p.graduationYear !== null ? (
-            <StatusRow label="Status" chip={`Alumnus · Class of ${p.graduationYear}`} />
+            <StatusRow label="Status" chip={`Alumnus · School of ${p.graduationYear}`} />
           ) : (
             <ListRow title="—" subtitle="Status" />
           )}

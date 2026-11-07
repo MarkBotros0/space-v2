@@ -114,7 +114,7 @@ export default function EndSeasonScreen() {
     if (blocked) {
       body = <BlockersList blockers={blockers} />;
     } else {
-      body = <ReviewList students={students} staged={staged} graduating={check.data.graduatesOnPass} onOpen={setEditing} />;
+      body = <ReviewList students={students} staged={staged} graduating={check.data.graduatesOnPass} year={season.data?.year ?? null} onOpen={setEditing} />;
       footer = (
         <SaveBar
           label="End season"

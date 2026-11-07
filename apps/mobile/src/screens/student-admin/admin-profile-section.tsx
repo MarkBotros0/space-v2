@@ -4,7 +4,7 @@
  * field reads "—" so staff can see what is missing; the internal notes carry
  * their staff-only caption because the student's own payload never has them.
  */
-import { dateOnlyFromIso } from "@space/shared";
+import { dateOnlyFromIso, type GraduatedByException } from "@space/shared";
 import { View } from "react-native";
 
 import type { StudentDetail } from "../../hooks/use-students";
@@ -12,7 +12,14 @@ import { formatDayKey } from "../../lib/format";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { Text } from "../../design/ui/text";
 
-export function AdminProfileSection({ profile: p }: { profile: StudentDetail["profile"] }) {
+export function AdminProfileSection({
+  profile: p,
+  exception,
+}: {
+  profile: StudentDetail["profile"];
+  /** SUPER's view only: set when they were graduated without passing a graduating season. */
+  exception?: GraduatedByException | null;
+}) {
   const rows: [label: string, value: string | null][] = [
     ["University", p.university],
     ["Faculty", p.faculty],
@@ -23,6 +30,12 @@ export function AdminProfileSection({ profile: p }: { profile: StudentDetail["pr
     rows.push([
       "Date of birth",
       p.dateOfBirth ? formatDayKey(dateOnlyFromIso(p.dateOfBirth)) : null,
+    ]);
+  }
+  if (exception) {
+    rows.push([
+      "Graduated by exception",
+      `${exception.byName ?? "A super admin"} on ${formatDayKey(dateOnlyFromIso(exception.at))}${exception.reason ? `\n${exception.reason}` : ""}`,
     ]);
   }
   if ("notes" in p) {

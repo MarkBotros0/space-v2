@@ -16,11 +16,14 @@ export function ReviewList({
   students,
   staged,
   graduating,
+  year,
   onOpen,
 }: {
   students: Row[];
   /** This season's pass makes them alumni: staff of any kind should know before End. */
   graduating: boolean;
+  /** The season's own year: passing makes them School of this year. */
+  year: number | null;
   /** Verdicts the staff member changed, by user id. */
   staged: Record<number, ResultDraft>;
   onOpen: (student: Row) => void;
@@ -32,7 +35,7 @@ export function ReviewList({
       </Text>
       {graduating ? (
         <Text variant="subhead" className="font-semibold text-foreground">
-          Passing this season graduates them
+          {year === null ? "Passing this season graduates them" : `Passing makes them School of ${year}`}
         </Text>
       ) : null}
       <GroupedList>

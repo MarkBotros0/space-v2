@@ -40,7 +40,7 @@ export function ActiveStudentRow({ item, index }: RowProps) {
 
 export function AlumnusRow({ item, index }: RowProps) {
   const open = useOpenStudent(item);
-  const year = item.graduationYear === null ? null : `Class of ${item.graduationYear}`;
+  const year = item.graduationYear === null ? null : `School of ${item.graduationYear}`;
   return (
     <ListRow
       index={index}

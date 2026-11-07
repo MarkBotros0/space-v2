@@ -57,7 +57,7 @@ export function AlumniDashboard() {
     <Screen
       home
       title={`Hi, ${firstName(name)}`}
-      subtitle={`Class of ${graduationYear ?? "—"}`}
+      subtitle={`School of ${graduationYear ?? "—"}`}
       compactTitle="Today"
       onRefresh={refresh}
       refreshing={events.isRefetching || history.isRefetching}

@@ -216,7 +216,7 @@ describe("ProfileScreen — ALUMNI", () => {
 
     renderWithProviders(<ProfileScreen />);
 
-    expect(await screen.findByText("Alumnus · Class of 2024")).toBeTruthy();
+    expect(await screen.findByText("Alumnus · School of 2024")).toBeTruthy();
     expect(screen.getByText("Cairo University")).toBeTruthy();
     expect(screen.getByText("To update your details, please contact the JPC team.")).toBeTruthy();
     expect(screen.queryByText("Save profile")).toBeNull();

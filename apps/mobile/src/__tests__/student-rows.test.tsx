@@ -69,8 +69,8 @@ describe("AlumnusRow", () => {
         <AlumnusRow item={{ ...base, id: 23, name: "Omar" }} />
       </GroupedList>,
     );
-    expect(screen.getByLabelText("Sara Student, Class of 2024 · AUC")).toBeTruthy();
-    expect(screen.getByLabelText("Aya, Class of 2023")).toBeTruthy();
+    expect(screen.getByLabelText("Sara Student, School of 2024 · AUC")).toBeTruthy();
+    expect(screen.getByLabelText("Aya, School of 2023")).toBeTruthy();
     expect(screen.getByLabelText("Omar")).toBeTruthy();
   });
 });

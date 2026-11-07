@@ -265,7 +265,7 @@ export function SeasonForm({
               />
             </View>
             <Text variant="subhead" className="text-muted-foreground">
-              Everyone who passes becomes an alumnus when the season ends.
+              Everyone who passes becomes an alumnus when the season ends, School of the season&apos;s year.
             </Text>
           </View>
         ) : isSuper ? (

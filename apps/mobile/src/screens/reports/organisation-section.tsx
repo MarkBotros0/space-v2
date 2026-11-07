@@ -92,7 +92,7 @@ export function OrganisationSection() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Alumni by graduation year</CardTitle>
+          <CardTitle className="text-base">Alumni by School year</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           {data.alumniByYear.length === 0 ? (

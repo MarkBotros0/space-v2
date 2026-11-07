@@ -16,11 +16,13 @@ const OPTIONS = [
 ];
 
 /** What the correction screen knows about a graduating season's student. */
-export type ResultGraduation = { isAlumnus: boolean; stored: ResultValue | null };
+export type ResultGraduation = { isAlumnus: boolean; stored: ResultValue | null; year: number | null };
 
 /** What saving this draft does to alumni status, on a graduating season; null when it does nothing to say. */
 function graduationNote(graduation: ResultGraduation, result: ResultValue): string | null {
-  if (result === "PASSED") return graduation.isAlumnus ? null : "They'll graduate when you save. Any season they're in now ends for them.";
+  if (result === "PASSED") return graduation.isAlumnus
+      ? null
+      : `${graduation.year === null ? "Passing graduates them" : `Passing makes them School of ${graduation.year}`}. Any season they're in now ends for them.`;
   return graduation.isAlumnus && graduation.stored !== "NOT_PASSED" ? "This doesn't remove their alumni status." : null;
 }
 

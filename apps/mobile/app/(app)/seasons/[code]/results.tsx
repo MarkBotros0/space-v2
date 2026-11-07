@@ -92,7 +92,7 @@ export default function SeasonResultsScreen() {
         student={editing}
         initial={{ result: editing?.result ?? "PASSED", reason: editing?.reason ?? "" }}
         graduation={
-          editing && season.data?.graduatesOnPass ? { isAlumnus: editing.isAlumnus, stored: editing.result } : undefined
+          editing && season.data?.graduatesOnPass ? { isAlumnus: editing.isAlumnus, stored: editing.result, year: season.data.year } : undefined
         }
         saveLabel="Save result"
         saving={update.isPending}

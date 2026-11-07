@@ -121,7 +121,7 @@ export function StudentDetailGrouped({
     <View className="flex-col gap-4">
       <View className="flex-row flex-wrap gap-2">
         {student.graduationYear !== null ? (
-          <StatusChip tone="ok" label={`Alumnus · ${student.graduationYear}`} />
+          <StatusChip tone="ok" label={`Alumnus · School of ${student.graduationYear}`} />
         ) : null}
         {p.activeSeasonTitle ? <StatusChip tone="info" label={p.activeSeasonTitle} /> : null}
         {student.currentGroup ? <StatusChip tone="neutral" label={student.currentGroup.name} /> : null}

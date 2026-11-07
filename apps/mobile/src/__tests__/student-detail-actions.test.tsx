@@ -117,6 +117,29 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     expect(screen.queryByText("Drop")).toBeNull();
   });
 
+  it("shows SUPER who graduated someone by exception, when and why; no row without it", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    get.mockResolvedValue({
+      data: {
+        data: {
+          ...internalDetail,
+          graduationYear: 2026,
+          graduatedByException: { at: "2026-11-07T10:00:00.000Z", byName: "Sam Super", reason: "Finished abroad" },
+        },
+      },
+    });
+    const { unmount } = renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("Graduated by exception")).toBeTruthy();
+    expect(screen.getByText(/Sam Super on .* Finished abroad/)).toBeTruthy();
+    expect(screen.getByText("Alumnus · School of 2026")).toBeTruthy();
+    unmount();
+
+    get.mockResolvedValue({ data: { data: { ...internalDetail, graduatedByException: null } } });
+    renderWithProviders(<StudentDetailScreen />);
+    await screen.findByText("University");
+    expect(screen.queryByText("Graduated by exception")).toBeNull();
+  });
+
   it("Edit goes to the edit route", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
@@ -151,40 +174,107 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
       response: { status: 409, data: { error: { code: "not_qualified", message: "Sara Student hasn't passed a graduating season." } } },
     };
 
-    it("asks once more in the same sheet, then re-posts with override", async () => {
+    const TICK = "I understand this can't be undone";
+    const REASON = "He finished the program abroad";
+    const openWarning = async () => {
+      fireEvent.press(await screen.findByText("Graduate"));
+      fireEvent.press(screen.getByText("Graduate student"));
+      await screen.findByText("Graduate Sara Student anyway?");
+    };
+
+    it("switches the same sheet to a warning with the consequences", async () => {
+      useSessionStore.setState(makeSession("SUPER"));
+      post.mockRejectedValueOnce(notQualified);
+      renderWithProviders(<StudentDetailScreen />);
+      await openWarning();
+
+      expect(screen.getByText("Sara Student hasn't passed a graduating season. Students become alumni by passing one. Only use this in a very rare case.")).toBeTruthy();
+      expect(screen.getByText("They become an alumnus permanently. This can't be undone in the app.")).toBeTruthy();
+      expect(screen.getByText(`They'll be listed as School of ${new Date().getFullYear()}.`)).toBeTruthy();
+      expect(screen.getByText("They can be appointed leader or admin, and can no longer join regular seasons as a student.")).toBeTruthy();
+      expect(screen.getByText("Any season they're in now ends for them, with no result.")).toBeTruthy();
+      expect(screen.getByText("Your name and your reason are recorded.")).toBeTruthy();
+      expect(screen.queryByLabelText("JPCS graduation year")).toBeNull();
+      expect(screen.getAllByTestId("sheet")).toHaveLength(1);
+      expect(post).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps the action locked until there is a reason of 10 characters and the tick", async () => {
+      useSessionStore.setState(makeSession("SUPER"));
+      post.mockRejectedValueOnce(notQualified);
+      renderWithProviders(<StudentDetailScreen />);
+      await openWarning();
+
+      const locked = () => screen.getByRole("button", { name: "Graduate anyway" }).props.accessibilityState?.disabled;
+      expect(locked()).toBe(true);
+      const tick = screen.getByLabelText(TICK);
+      expect(tick.props.accessibilityRole).toBe("checkbox");
+      expect(tick.props.accessibilityState.checked).toBe(false);
+
+      fireEvent.press(tick);
+      expect(screen.getByLabelText(TICK).props.accessibilityState.checked).toBe(true);
+      expect(locked()).toBe(true); // ticked, no reason
+
+      fireEvent.changeText(screen.getByLabelText("Reason"), "too short");
+      expect(locked()).toBe(true);
+      expect(screen.getByLabelText("Reason").props.accessibilityHint).toMatch(/at least 10/i);
+
+      fireEvent.changeText(screen.getByLabelText("Reason"), REASON);
+      expect(locked()).toBe(false);
+      expect(screen.getByLabelText("Reason").props.accessibilityHint).toBeFalsy();
+
+      fireEvent.press(screen.getByLabelText(TICK)); // un-tick locks it again
+      expect(locked()).toBe(true);
+      expect(post).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows no reason error before they type anything", async () => {
+      useSessionStore.setState(makeSession("SUPER"));
+      post.mockRejectedValueOnce(notQualified);
+      renderWithProviders(<StudentDetailScreen />);
+      await openWarning();
+      expect(screen.getByLabelText("Reason").props.accessibilityHint).toBeFalsy();
+    });
+
+    it("posts override with the trimmed reason once both are valid", async () => {
       const year = new Date().getFullYear();
       useSessionStore.setState(makeSession("SUPER"));
       post.mockRejectedValueOnce(notQualified);
       post.mockResolvedValueOnce({ data: { data: { id: 21, graduationYear: year, enrollmentsCompleted: 0 } } });
       renderWithProviders(<StudentDetailScreen />);
+      await openWarning();
 
-      fireEvent.press(await screen.findByText("Graduate"));
-      fireEvent.press(screen.getByText("Graduate student"));
-
-      expect(await screen.findByText("Graduate Sara Student anyway?")).toBeTruthy();
-      expect(screen.getByText(/Sara Student hasn't passed a graduating season\./)).toBeTruthy();
-      expect(screen.queryByLabelText("JPCS graduation year")).toBeNull();
-      expect(screen.getAllByTestId("sheet")).toHaveLength(1);
-      expect(post).toHaveBeenCalledTimes(1);
-
+      fireEvent.changeText(screen.getByLabelText("Reason"), `  ${REASON}  `);
+      fireEvent.press(screen.getByLabelText(TICK));
       fireEvent.press(screen.getByText("Graduate anyway"));
       await waitFor(() =>
-        expect(post).toHaveBeenLastCalledWith("/api/v1/students/21/graduate", { graduationYear: year, override: true }),
+        expect(post).toHaveBeenLastCalledWith("/api/v1/students/21/graduate", {
+          graduationYear: year,
+          override: true,
+          overrideReason: REASON,
+        }),
       );
     });
 
-    it("Cancel leaves them as they are, and the next try starts over", async () => {
+    it("Cancel posts nothing more, and reopening starts over from step one", async () => {
       useSessionStore.setState(makeSession("SUPER"));
       post.mockRejectedValueOnce(notQualified);
       renderWithProviders(<StudentDetailScreen />);
+      await openWarning();
+      fireEvent.changeText(screen.getByLabelText("Reason"), REASON);
+      fireEvent.press(screen.getByLabelText(TICK));
 
-      fireEvent.press(await screen.findByText("Graduate"));
-      fireEvent.press(screen.getByText("Graduate student"));
-      fireEvent.press(await screen.findByText("Cancel"));
+      fireEvent.press(screen.getByText("Cancel"));
       expect(post).toHaveBeenCalledTimes(1);
 
+      post.mockRejectedValueOnce(notQualified);
       fireEvent.press(await screen.findByText("Graduate"));
       expect(screen.getByText("Graduate Sara Student?")).toBeTruthy();
+      fireEvent.press(screen.getByText("Graduate student"));
+      await screen.findByText("Graduate Sara Student anyway?");
+      expect(screen.getByLabelText("Reason").props.value).toBe("");
+      expect(screen.getByLabelText(TICK).props.accessibilityState.checked).toBe(false);
+      expect(screen.getByRole("button", { name: "Graduate anyway" }).props.accessibilityState?.disabled).toBe(true);
     });
 
     it("any other refusal stays on the first step, in the server's words", async () => {

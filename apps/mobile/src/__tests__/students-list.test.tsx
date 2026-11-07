@@ -192,7 +192,7 @@ describe("AlumniScreen", () => {
 
     renderWithProviders(<AlumniScreen />);
 
-    expect(await screen.findByLabelText(/Class of 2024/)).toBeTruthy();
+    expect(await screen.findByLabelText(/School of 2024/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=alumni");
   });
 });
