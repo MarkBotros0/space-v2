@@ -36,7 +36,6 @@ export * from "./stat-tile";
 export * from "./status-chip";
 export * from "./submission-status-badge";
 export * from "./switch";
-export * from "./tabs";
 export * from "./text";
 export * from "./textarea";
 export * from "./theme-toggle";

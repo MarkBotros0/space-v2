@@ -89,18 +89,19 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     serveMentor();
   });
 
-  it("is the grouped page: name and email in the title, chips, tiles and the five tabs", async () => {
+  it("is the grouped page: name over the group, this season, details and four sections", async () => {
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
+    expect(await screen.findByText("Cairo University")).toBeTruthy();
     expect(screen.getAllByText("Sara Student").length).toBeGreaterThan(0);
-    expect(screen.getByText("Spring 2099")).toBeTruthy();
-    expect(screen.getByText("Group A")).toBeTruthy();
-    expect(screen.getByText("Email")).toBeTruthy();
-    for (const tab of ["Profile", "Seasons", "Attendance", "Submissions", "Notes"]) {
-      expect(screen.getByText(tab)).toBeTruthy();
+    expect(screen.getAllByText("Group A").length).toBeGreaterThan(0);
+    // No email anywhere, and no season badge (owner, 2026-11-07).
+    expect(screen.queryByText("sara@jpc.test")).toBeNull();
+    expect(screen.queryByText("Email")).toBeNull();
+    for (const section of ["Seasons", "Attendance", "Submissions", "Notes"]) {
+      expect(screen.getByRole("button", { name: section })).toBeTruthy();
     }
-    expect(screen.getByText("Cairo University")).toBeTruthy();
-    expect(await screen.findByText("Attendance 2/4")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Profile" })).toBeNull();
+    expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
     expect(screen.getByText("At risk")).toBeTruthy();
     // The legacy page's card heading.
     expect(screen.queryByText("Engagement (current season)")).toBeNull();
@@ -108,7 +109,7 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
 
   it("keeps the loaded page when a background refresh fails", async () => {
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("sara@jpc.test");
+    await screen.findByText("Cairo University");
     let refused = false;
     get.mockImplementation(() => {
       refused = true;
@@ -121,18 +122,18 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(screen.getByText("sara@jpc.test")).toBeTruthy();
+    expect(screen.getByText("Cairo University")).toBeTruthy();
     expect(screen.queryByText("Try again")).toBeNull();
   });
 
   it("offers no action a mentor doesn't have, and no field the public arm doesn't carry", async () => {
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("sara@jpc.test");
+    await screen.findByText("Cairo University");
     for (const action of ["Edit profile", "Graduate", "Delete student", "Call"]) {
       expect(screen.queryByText(action)).toBeNull();
     }
     expect(screen.queryByText("Phone")).toBeNull();
-    fireEvent.press(screen.getByText("Seasons"));
+    fireEvent.press(screen.getByRole("button", { name: "Seasons" }));
     expect(await screen.findByText("83% attendance")).toBeTruthy();
     expect(screen.getByText(/Jan 1, 2099 – Dec 31, 2099/)).toBeTruthy();
     expect(screen.queryByText("Drop")).toBeNull();
@@ -140,9 +141,9 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
 
   it("opens attendance and a submission as before", async () => {
     renderWithProviders(<StudentDetailScreen />);
-    fireEvent.press(await screen.findByText("Attendance"));
+    fireEvent.press(await screen.findByRole("button", { name: "Attendance" }));
     expect(await screen.findByText("Week 4")).toBeTruthy();
-    fireEvent.press(screen.getByText("Submissions"));
+    fireEvent.press(screen.getByRole("button", { name: "Submissions" }));
     const essay = await screen.findByText("Essay one");
     expect(essay.props.numberOfLines).toBe(2);
     expect(screen.getByText(/submitted Mar 2, 2099/).props.numberOfLines).toBeUndefined();
@@ -212,7 +213,7 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
 });
 
 describe("StudentDetailScreen — STUDENT on their own record", () => {
-  it("keeps Profile and Seasons, with mail and call, and asks no staff endpoint", async () => {
+  it("shows their details and Seasons only, without a call or mail button, and asks no staff endpoint", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 21 }));
     get.mockImplementation((url: string) =>
       url === "/api/v1/students/21"
@@ -221,12 +222,12 @@ describe("StudentDetailScreen — STUDENT on their own record", () => {
     );
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
-    expect(screen.getByText("Profile")).toBeTruthy();
-    expect(screen.getByText("Seasons")).toBeTruthy();
-    expect(screen.getByText("Call")).toBeTruthy();
-    expect(screen.getByText("+20 100")).toBeTruthy();
-    for (const hidden of ["Attendance", "Submissions", "Notes", "Write a note", "Attendance 2/4"]) {
+    expect(await screen.findByText("+20 100")).toBeTruthy();
+    expect(screen.getByText("SEASONS")).toBeTruthy();
+    expect(screen.queryByText("Call")).toBeNull();
+    expect(screen.queryByText("Email")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Seasons" })).toBeNull();
+    for (const hidden of ["Attendance", "Submissions", "Notes", "Write a note", "Score"]) {
       expect(screen.queryByText(hidden)).toBeNull();
     }
     expect(get.mock.calls.map(([u]) => u)).toEqual(["/api/v1/students/21"]);

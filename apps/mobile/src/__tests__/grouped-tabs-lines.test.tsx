@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react-native";
 import type { NoteSummary } from "@space/shared";
 
-import { GroupedNotesTab, GroupedProfileTab } from "../design/students/grouped-tabs";
+import { GroupedNotesTab } from "../design/students/grouped-tabs";
+import { StudentDetails } from "../design/students/student-details";
 
 const mockNotes: { current: NoteSummary[] } = { current: [] };
 
@@ -40,7 +41,7 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
 
   it("a long profile value has no line cap", () => {
     render(
-      <GroupedProfileTab
+      <StudentDetails
         profile={{ university: "AUC", faculty: LONG, universityGraduationYear: null } as never}
       />,
     );
@@ -49,9 +50,9 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
 });
 
 describe("Academic rows", () => {
-  it("shows faculty and the university graduation year; an unknown year reads as a dash", () => {
+  it("shows faculty and the university graduation year", () => {
     render(
-      <GroupedProfileTab
+      <StudentDetails
         profile={{ university: "AUC", faculty: "Engineering", universityGraduationYear: 2031 } as never}
       />,
     );
@@ -62,7 +63,7 @@ describe("Academic rows", () => {
 
   it("no longer renders the dropped gifts or spiritual background rows", () => {
     render(
-      <GroupedProfileTab
+      <StudentDetails
         profile={{ university: "AUC", faculty: null, universityGraduationYear: null } as never}
       />,
     );

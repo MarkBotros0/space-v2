@@ -4,7 +4,7 @@ import type { UserRole } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
-import { StudentDetailGrouped } from "../../../../src/design/students/student-detail-grouped";
+import { StudentDetailGrouped, studentSubtitle } from "../../../../src/design/students/student-detail-grouped";
 import { AdminStudentDetail } from "../../../../src/screens/student-admin/admin-student-detail";
 import { EmptyState } from "../../../../src/design/ui";
 import { useStudentDetail } from "../../../../src/hooks/use-students";
@@ -43,7 +43,7 @@ function GroupedStudentPage({ id, role }: { id: number; role: UserRole | null })
   }
   const staff = role !== "STUDENT";
   return (
-    <Screen title={data.name} subtitle={data.email} refreshing={isRefetching} onRefresh={refresh}>
+    <Screen title={data.name} subtitle={studentSubtitle(data)} refreshing={isRefetching} onRefresh={refresh}>
       <StudentDetailGrouped
         student={data}
         canWriteNote={staff}

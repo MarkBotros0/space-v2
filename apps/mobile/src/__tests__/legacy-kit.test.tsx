@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react-native";
 import { Animated } from "react-native";
 
 import { setReducedMotionForTests } from "../design/motion";
-import { Badge, Modal, ModalContent, ModalTitle, Tabs, TabsList, TabsTrigger } from "../design/ui";
+import { Badge, Modal, ModalContent, ModalTitle } from "../design/ui";
 import { StatusChip } from "../design/ui/status-chip";
 
 const TONE_BG = { ok: "bg-ok-soft", warn: "bg-warn-soft", bad: "bg-bad-soft", info: "bg-info-soft", neutral: "bg-neutral-soft" };
@@ -41,24 +41,6 @@ describe("Badge draws as a StatusChip", () => {
     render(<Badge role="student">Student</Badge>);
     const label = screen.getByText("Student");
     expect(label.props.className).toContain("text-role-student-foreground");
-  });
-});
-
-describe("Tabs", () => {
-  it("underlines the selected tab with the ring and leaves the others clear", () => {
-    render(
-      <Tabs defaultValue="a">
-        <TabsList>
-          <TabsTrigger value="a">Upcoming</TabsTrigger>
-          <TabsTrigger value="b">Past</TabsTrigger>
-        </TabsList>
-      </Tabs>,
-    );
-    const [selected, other] = screen.getAllByRole("tab");
-    expect(selected!.props.className).toContain("border-ring");
-    expect(other!.props.className).toContain("border-transparent");
-    expect(screen.getByText("Upcoming").props.className).toContain("text-foreground");
-    expect(screen.getByText("Past").props.className).toContain("text-muted-foreground");
   });
 });
 

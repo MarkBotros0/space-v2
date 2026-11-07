@@ -118,9 +118,9 @@ describe("student detail — engagement block", () => {
 
     expect(await screen.findByText("Score")).toBeTruthy();
     expect(await screen.findByText("75%")).toBeTruthy();
-    expect(screen.getByText("Attendance 2/4")).toBeTruthy();
+    expect(screen.getByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
     expect(await screen.findByText("50%")).toBeTruthy();
-    expect(screen.getByText("Submissions 2/2")).toBeTruthy();
+    expect(screen.getByLabelText("Submissions: 100%, 2 of 2")).toBeTruthy();
     expect(await screen.findByText("100%")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement");
   });

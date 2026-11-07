@@ -1,15 +1,16 @@
 /**
- * SUPER and ADMIN on /student/[id] (v1 app/admin/students/[id]): name and
- * email in the title, mail/call, Edit profile, Graduate, V2-ONLY Delete and a
- * per-season Drop (Remove on a draft), each only where `studentActionsFor` (the server's rules)
- * allows. Five sections behind wrapping ChoiceChips; a section's queries mount
- * the first time it opens and stay mounted (spec 06 §9). Delete leaves for
- * the list with dismissTo (CLAUDE.md navigation table).
+ * SUPER and ADMIN on /student/[id] (v1 app/admin/students/[id]): the name
+ * over the current group, Edit profile and Graduate, this season at a glance,
+ * the details (the phone row calls), then Seasons, Attendance, Submissions
+ * and Notes behind choice chips, the same layout as the leader's page (owner,
+ * 2026-11-07). V2-ONLY Delete and a per-season Drop (Remove on a draft) show
+ * only where `studentActionsFor` (the server's rules) allows. Delete leaves
+ * for the list with dismissTo (CLAUDE.md navigation table).
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { useState, type ReactNode } from "react";
-import { Alert, Linking, View } from "react-native";
+import { useState } from "react";
+import { Alert, View } from "react-native";
 import type { EnrollmentHistoryItem } from "@space/shared";
 
 import { DropEnrollmentSheet } from "../../components/DropEnrollmentSheet";
@@ -21,29 +22,21 @@ import {
   GroupedNotesTab,
   GroupedSubmissionsTab,
 } from "../../design/students/grouped-tabs";
+import { EngagementSummary } from "../../design/students/engagement-summary";
 import { NoteSheet } from "../../design/students/note-sheet";
+import { studentSubtitle } from "../../design/students/student-detail-grouped";
+import { StudentDetails } from "../../design/students/student-details";
+import { type StudentSection, StudentSections } from "../../design/students/student-sections";
 import { Button } from "../../design/ui/button";
-import { ChoiceChip } from "../../design/ui/choice-chip";
 import { StatusChip } from "../../design/ui/status-chip";
 import { useDeleteStudent, useStudentDetail } from "../../hooks/use-students";
 import { apiErrorMessage } from "../../lib/api-error";
 import { queryKeys } from "../../lib/query-keys";
 import { studentActionsFor } from "../../lib/student-actions";
 import { useSessionStore } from "../../store/session";
-import { AdminEngagement } from "./admin-engagement";
-import { AdminProfileSection } from "./admin-profile-section";
 import { BringBackDialogs } from "./bring-back-dialogs";
 import { RemoveFromDraftDialog } from "./remove-from-draft-dialog";
 import { AdminSeasonsSection } from "./admin-seasons-section";
-
-type Section = "profile" | "seasons" | "attendance" | "submissions" | "notes";
-const SECTIONS: { value: Section; label: string }[] = [
-  { value: "profile", label: "Profile" },
-  { value: "seasons", label: "Seasons" },
-  { value: "attendance", label: "Attendance" },
-  { value: "submissions", label: "Submissions" },
-  { value: "notes", label: "Notes" },
-];
 
 export function AdminStudentDetail({ id }: { id: number }) {
   const router = useRouter();
@@ -55,8 +48,6 @@ export function AdminStudentDetail({ id }: { id: number }) {
     user?.role ?? null,
   );
   const deleteStudent = useDeleteStudent();
-  const [section, setSection] = useState<Section>("profile");
-  const [opened, setOpened] = useState<Set<Section>>(() => new Set<Section>(["profile"]));
   const [noteOpen, setNoteOpen] = useState(false);
   const [graduateOpen, setGraduateOpen] = useState(false);
   const [dropTarget, setDropTarget] = useState<EnrollmentHistoryItem | null>(null);
@@ -74,11 +65,6 @@ export function AdminStudentDetail({ id }: { id: number }) {
       void queryClient.invalidateQueries({ queryKey: key });
     }
   };
-  const choose = (s: Section) => {
-    setSection(s);
-    setOpened((prev) => new Set(prev).add(s));
-  };
-  const lazy = (s: Section, node: ReactNode) => (opened.has(s) ? node : null);
 
   const confirmDelete = (studentId: number, name: string) => {
     Alert.alert(
@@ -113,77 +99,55 @@ export function AdminStudentDetail({ id }: { id: number }) {
   }
 
   const actions = studentActionsFor(user, scopes, data);
-  const p = data.profile;
-  const phone = "phone" in p ? p.phone : null;
+  const sections: StudentSection[] = [
+    {
+      value: "seasons",
+      label: "Seasons",
+      render: () => (
+        <AdminSeasonsSection
+          enrollments={data.enrollments}
+          dropFor={(e) => (actions.canDrop(e) ? () => setDropTarget(e) : null)}
+          removeFor={(e) => (actions.canRemove(e) ? () => setRemoveTarget(e) : null)}
+          restoreFor={(e) => (actions.canRestore(e) ? () => setRestoreTarget(e) : null)}
+        />
+      ),
+    },
+    { value: "attendance", label: "Attendance", render: () => <GroupedAttendanceTab studentId={data.id} /> },
+    { value: "submissions", label: "Submissions", render: () => <GroupedSubmissionsTab studentId={data.id} /> },
+    {
+      value: "notes",
+      label: "Notes",
+      render: () => <GroupedNotesTab studentId={data.id} canWriteNote onWrite={() => setNoteOpen(true)} />,
+    },
+  ];
   return (
-    <Screen title={data.name} subtitle={data.email} refreshing={isRefetching} onRefresh={refresh}>
-      <View className="flex-col gap-4">
-        <View className="flex-row flex-wrap gap-2">
-          {data.graduationYear !== null ? (
-            <StatusChip tone="ok" label={`Alumnus · School of ${data.graduationYear}`} />
-          ) : null}
-          {p.activeSeasonTitle ? <StatusChip tone="info" label={p.activeSeasonTitle} /> : null}
-          {data.currentGroup ? <StatusChip tone="neutral" label={data.currentGroup.name} /> : null}
-        </View>
-        <View testID="student-actions" className="flex-row flex-wrap gap-2">
-          {phone ? (
-            <Button variant="secondary" onPress={() => void Linking.openURL(`tel:${phone}`)}>
-              Call
-            </Button>
-          ) : null}
-          {actions.canEdit ? (
-            <Button
-              onPress={() =>
-                router.push({ pathname: "/student/[id]/edit", params: { id: String(data.id) } })
-              }
-            >
-              Edit profile
-            </Button>
-          ) : null}
-          {actions.canGraduate ? (
-            <Button variant="secondary" onPress={() => setGraduateOpen(true)}>
-              Graduate
-            </Button>
-          ) : null}
-        </View>
+    <Screen title={data.name} subtitle={studentSubtitle(data)} refreshing={isRefetching} onRefresh={refresh}>
+      <View className="flex-col gap-6">
+        {data.graduationYear !== null ? (
+          <StatusChip tone="ok" label={`Alumnus · School of ${data.graduationYear}`} className="self-start" />
+        ) : null}
+        {actions.canEdit || actions.canGraduate ? (
+          <View testID="student-actions" className="flex-row flex-wrap gap-2">
+            {actions.canEdit ? (
+              <Button
+                onPress={() =>
+                  router.push({ pathname: "/student/[id]/edit", params: { id: String(data.id) } })
+                }
+              >
+                Edit profile
+              </Button>
+            ) : null}
+            {actions.canGraduate ? (
+              <Button variant="secondary" onPress={() => setGraduateOpen(true)}>
+                Graduate
+              </Button>
+            ) : null}
+          </View>
+        ) : null}
 
-        <AdminEngagement studentId={data.id} />
-
-        <View className="flex-row flex-wrap gap-2">
-          {SECTIONS.map((s) => (
-            <ChoiceChip
-              key={s.value}
-              label={s.label}
-              selected={section === s.value}
-              onPress={() => choose(s.value)}
-            />
-          ))}
-        </View>
-
-        {/* An opened section stays mounted (hidden) so its cache and scroll state survive a switch. */}
-        <View className={section === "profile" ? undefined : "hidden"}>
-          <AdminProfileSection profile={p} exception={data.graduatedByException} />
-        </View>
-        <View className={section === "seasons" ? undefined : "hidden"}>
-          <AdminSeasonsSection
-            enrollments={data.enrollments}
-            dropFor={(e) => (actions.canDrop(e) ? () => setDropTarget(e) : null)}
-            removeFor={(e) => (actions.canRemove(e) ? () => setRemoveTarget(e) : null)}
-            restoreFor={(e) => (actions.canRestore(e) ? () => setRestoreTarget(e) : null)}
-          />
-        </View>
-        <View className={section === "attendance" ? undefined : "hidden"}>
-          {lazy("attendance", <GroupedAttendanceTab studentId={data.id} />)}
-        </View>
-        <View className={section === "submissions" ? undefined : "hidden"}>
-          {lazy("submissions", <GroupedSubmissionsTab studentId={data.id} />)}
-        </View>
-        <View className={section === "notes" ? undefined : "hidden"}>
-          {lazy(
-            "notes",
-            <GroupedNotesTab studentId={data.id} canWriteNote onWrite={() => setNoteOpen(true)} />,
-          )}
-        </View>
+        <EngagementSummary studentId={data.id} />
+        <StudentDetails profile={data.profile} exception={data.graduatedByException} />
+        <StudentSections sections={sections} />
 
         {/* Destructive action: apart from the primary actions, at the bottom. */}
         {actions.canDelete ? (

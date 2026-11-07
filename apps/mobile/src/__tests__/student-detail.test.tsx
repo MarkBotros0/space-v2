@@ -91,7 +91,7 @@ describe("StudentDetailScreen", () => {
     expect(screen.getByText("Call")).toBeTruthy();
     expect(screen.getByText("+20 100 000 0000")).toBeTruthy();
     expect(screen.getByText("Watch attendance")).toBeTruthy();
-    expect(screen.getByText("Staff only — the student never receives this field.")).toBeTruthy();
+    expect(screen.getByText("Internal notes · staff only")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21");
   });
 
@@ -231,15 +231,17 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     useSessionStore.setState(leaderSession);
     serveLeader();
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
+    // The subtitle is the group, never the email (owner, 2026-11-07).
+    expect(await screen.findByText("Group A")).toBeTruthy();
+    expect(screen.queryByText("sara@jpc.test")).toBeNull();
     expect(screen.queryByText(/leader view/)).toBeNull();
     expect(screen.queryByText("Email")).toBeNull();
     expect(screen.queryByText("Call")).toBeNull();
     expect(screen.queryByText("Phone")).toBeNull();
     expect(screen.queryByText("Date of birth")).toBeNull();
     for (const label of ["University", "Faculty", "Graduation year"]) expect(screen.getByText(label)).toBeTruthy();
-    expect(await screen.findByText("Attendance 2/4")).toBeTruthy();
-    expect(screen.getByText("Submissions 2/2")).toBeTruthy();
+    expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Submissions: 100%, 2 of 2")).toBeTruthy();
     expect(screen.getByLabelText("Score: 75%")).toBeTruthy();
     expect(screen.queryByText("At risk")).toBeNull();
   });
@@ -248,10 +250,10 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     useSessionStore.setState(leaderSession);
     serveLeader();
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
+    expect(await screen.findByText("Group A")).toBeTruthy();
     expect(requested().some((u) => u.endsWith("/submissions") || u.endsWith("/attendance") || u.includes("/notes"))).toBe(false);
 
-    fireEvent.press(screen.getByText("Submissions"));
+    fireEvent.press(screen.getByRole("button", { name: "Submissions" }));
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/submissions");
     fireEvent.press(screen.getByText("Essay one"));
@@ -318,7 +320,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     useSessionStore.setState(leaderSession);
     serveLeader({ engagementError: true });
     renderWithProviders(<StudentDetailScreen />);
-    expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
+    expect(await screen.findByText("Group A")).toBeTruthy();
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
     expect(screen.queryByText("Engagement (current season)")).toBeNull();
   });
