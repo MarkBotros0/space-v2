@@ -143,7 +143,7 @@ describe("Screen compactTitle", () => {
 
   it("Home still says Today when unset", () => {
     renderWithProviders(<Screen home><RNText>b</RNText></Screen>);
-    expect(within(compact()).getByText("Today", { includeHiddenElements: true })).toBeTruthy();
+    expect(within(compact()).getByText("Home", { includeHiddenElements: true })).toBeTruthy();
   });
 });
 

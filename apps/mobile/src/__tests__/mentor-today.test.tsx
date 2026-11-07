@@ -81,7 +81,7 @@ describe("MentorDashboard (Today)", () => {
     useSessionStore.setState(makeSession("MENTOR", {}, { name: "  " }));
     serve(routes());
     renderWithProviders(<MentorDashboard />);
-    expect((await screen.findAllByText("Today")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Home")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Hi,/)).toBeNull();
     await screen.findByText("Open day");
   });

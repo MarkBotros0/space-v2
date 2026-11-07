@@ -22,7 +22,7 @@ appId: com.jpc.space
 - takeScreenshot: s47-02-dashboard-bottom
 # The user menu and the bell popover; Back closes each (rows and Mark all read are never tapped).
 # Scrolled down: the in-content bell and user menu are gone, the compact header
-# (titled "Today", R31) carries them once it has faded in.
+# (titled "Home", R31) carries them once it has faded in.
 - extendedWaitUntil:
     visible: 'User menu'
     timeout: 10000

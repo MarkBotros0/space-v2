@@ -45,12 +45,12 @@ describe("role tabs", () => {
   });
 
   it.each([
-    ["SUPER", navByRole.SUPER, ["Today", "Seasons", "Calendar", "Students", "More"]],
-    ["ADMIN", navByRole.ADMIN, ["Today", "Calendar", "Groups", "Students", "More"]],
-    ["LEADER", navByRole.LEADER, ["Today", "Groups", "Calendar", "Submissions", "More"]],
-    ["MENTOR", navByRole.MENTOR, ["Today", "Students", "Reports", "Notes", "Profile"]],
-    ["STUDENT", navByRole.STUDENT, ["Today", "Calendar", "To do", "Submitted", "More"]],
-    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null }), ["Today", "Events", "History", "Profile", "More"]],
+    ["SUPER", navByRole.SUPER, ["Home", "Seasons", "Calendar", "Students", "More"]],
+    ["ADMIN", navByRole.ADMIN, ["Home", "Calendar", "Groups", "Students", "More"]],
+    ["LEADER", navByRole.LEADER, ["Home", "Groups", "Calendar", "Submissions", "More"]],
+    ["MENTOR", navByRole.MENTOR, ["Home", "Students", "Reports", "Notes", "Profile"]],
+    ["STUDENT", navByRole.STUDENT, ["Home", "Calendar", "To do", "Submitted", "More"]],
+    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null }), ["Home", "Events", "History", "Profile", "More"]],
   ])("the pill draws %s's tabs Today first, none featured (R22)", (_role, nav, labels) => {
     const state = { index: 0, routes: nav.tabs.map((t) => ({ key: t.href, name: routeNameForHref(t.href) })) };
     renderWithProviders(

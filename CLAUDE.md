@@ -191,7 +191,8 @@ Still outstanding: the mobile screens for the newly-ported endpoints. See
 `(tabs)`); `(app)/(tabs)/_layout.tsx` holds the `Tabs` (`backBehavior` "history" +
 `historyThenHomeTabsRouter`, anchor `dashboard` — its dev warning is expected, do not
 "fix" it). The pill renders `navFor(user).tabs` from `packages/shared/src/navigation.ts`:
-Today first, at most 5 per role. A href that is a tab for some role is in `ALL_TAB_HREFS`
+Home (`/dashboard`) first, at most 5 per role; only the selected tab shows its name
+(the rest are icons, named for screen readers; owner 2026-11-07). A href that is a tab for some role is in `ALL_TAB_HREFS`
 and its file lives in `(tabs)/`; a nav destination that is a tab for no role is a pushed
 route outside `(tabs)/` (`PUSHED_NAV_ROUTE_NAMES`), and every detail route is listed in
 `DETAIL_ROUTE_NAMES` — both pushed on the stack so Back returns to the screen you came
@@ -335,7 +336,7 @@ its words: never close one modal and open another, iOS can drop the second.
 
 ### Student work: two tabs (owner, 2026-11-06)
 
-A student's bar is Today · Calendar · To do (`/work`) · Submitted
+A student's bar is Home · Calendar · To do (`/work`) · Submitted
 (`/submitted`) · More. To do groups open work as Overdue, Returned — needs
 changes, Due this week, Later, Quizzes to take. Submitted lists handed-in
 assignments (Waiting for review / Reviewed, said in words, never colour
@@ -349,6 +350,8 @@ found the tab bar, the sheets and the segmented control bouncy and "like a carto
   Sheets rise in 260 ms; the pill highlight and the segmented thumb slide in `DURATION.fast`.
 - Tabs switch instantly. Lists, rows, chips and numbers appear at once: no entrance
   animations, no stagger, no count-ups, no pulses, no scale on press (press dims instead).
+- Light actions beside content (See all, Clear due date) are a `PillButton`; nothing is
+  underlined (owner, 2026-11-07).
 - Kept: the native stack push, sheet/modal fades, the skeleton shimmer, the check drawing
   itself on check-in, and the launch logo writing itself once per cold start.
 - One motion per interaction. Don't add new animations unless the owner asks; always

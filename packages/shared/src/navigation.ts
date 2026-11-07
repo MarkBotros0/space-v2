@@ -10,7 +10,7 @@ import type { UserRole } from "./auth";
  * See Decision D1 in the Phase 0 plan.
  *
  * `tabs` was mobile-shaped in v1: five entries with Home centred. The
- * redesign (plan 01 Task 12) puts Today (`/dashboard`, the `home` icon)
+ * redesign (plan 01 Task 12) puts Home (`/dashboard`, the `home` icon)
  * first for every role, at most five tabs. Nothing left the
  * navs: a destination that stopped being a tab is still in `sidebar`, which
  * is what More lists. MENTOR has no More tab; Profile links to Settings.
@@ -73,7 +73,7 @@ const SUPER: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/seasons", label: "Seasons", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/students", label: "Students", icon: "students" },
@@ -96,7 +96,7 @@ const ADMIN: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/groups", label: "Groups", icon: "groups" },
     { href: "/students", label: "Students", icon: "students" },
@@ -116,7 +116,7 @@ const LEADER: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/groups", label: "Groups", icon: "groups" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/submissions", label: "Submissions", icon: "submissions" },
@@ -143,7 +143,7 @@ const STUDENT: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/work", label: "To do", icon: "todo" },
     { href: "/submitted", label: "Submitted", icon: "submitted" },
@@ -160,7 +160,7 @@ const MENTOR: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/students", label: "Students", icon: "students" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notes", label: "Notes", icon: "notes" },
@@ -179,7 +179,7 @@ const ALUMNI: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Events", icon: "events" },
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
@@ -189,7 +189,7 @@ const ALUMNI: RoleNav = {
 
 /**
  * A student who is not in a season right now (between seasons, or never in
- * one): no season, work or attendance, just Today, Calendar and History.
+ * one): no season, work or attendance, just Home, Calendar and History.
  */
 export const STUDENT_BETWEEN: RoleNav = {
   sidebar: [
@@ -201,7 +201,7 @@ export const STUDENT_BETWEEN: RoleNav = {
     { href: "/settings", label: "Settings", icon: "settings" },
   ],
   tabs: [
-    { href: "/dashboard", label: "Today", icon: "home" },
+    { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/history", label: "History", icon: "history" },
     { href: "/more", label: "More", icon: "more" },

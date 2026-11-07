@@ -254,13 +254,13 @@ describe("a student's five tabs", () => {
       </SafeAreaProvider>,
     );
     expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual([
-      "Today",
+      "Home",
       "Calendar",
       "To do",
       "Submitted",
       "More",
     ]);
-    ["Today", "Calendar", "To do", "Submitted", "More"].forEach((label, i) =>
+    ["Home", "Calendar", "To do", "Submitted", "More"].forEach((label, i) =>
       layoutTab(label, i * 68, 68),
     );
 

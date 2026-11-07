@@ -102,7 +102,7 @@ export function StudentToday() {
       home
       title={`Hi, ${firstName(name)}`}
       subtitle={data ? formatLongDay(data.todayOrgDay) : undefined}
-      compactTitle="Today"
+      compactTitle="Home"
       onRefresh={pull.onRefresh}
       refreshing={pull.refreshing}
     >

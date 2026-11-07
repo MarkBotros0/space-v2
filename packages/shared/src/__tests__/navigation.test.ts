@@ -6,7 +6,7 @@ const base = { role: "STUDENT" as const, graduationYear: null as number | null, 
 describe("navFor", () => {
   it("returns the alumni nav for a graduated student", () => {
     const nav = navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null });
-    expect(nav.tabs.map((t) => t.label)).toEqual(["Today", "Events", "History", "Profile", "More"]);
+    expect(nav.tabs.map((t) => t.label)).toEqual(["Home", "Events", "History", "Profile", "More"]);
   });
 
   it("returns the student nav for an active student", () => {
@@ -27,7 +27,7 @@ describe("navFor", () => {
     for (const [role, nav] of Object.entries(ALL_NAVS)) {
       expect([role, nav.tabs[0]]).toEqual([
         role,
-        { href: "/dashboard", label: "Today", icon: "home" },
+        { href: "/dashboard", label: "Home", icon: "home" },
       ]);
       expect(nav.tabs.length).toBeLessThanOrEqual(5);
       expect(nav.sidebar.length).toBeGreaterThan(0);
@@ -164,7 +164,7 @@ describe("navFor", () => {
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
-        ["/dashboard", "Today", "home"],
+        ["/dashboard", "Home", "home"],
         ["/seasons", "Seasons", "season"],
         ["/calendar", "Calendar", "calendar"],
         ["/students", "Students", "students"],
@@ -187,7 +187,7 @@ describe("navFor", () => {
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
-        ["/dashboard", "Today", "home"],
+        ["/dashboard", "Home", "home"],
         ["/calendar", "Calendar", "calendar"],
         ["/groups", "Groups", "groups"],
         ["/students", "Students", "students"],
@@ -207,7 +207,7 @@ describe("navFor", () => {
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
-        ["/dashboard", "Today", "home"],
+        ["/dashboard", "Home", "home"],
         ["/groups", "Groups", "groups"],
         ["/calendar", "Calendar", "calendar"],
         ["/submissions", "Submissions", "submissions"],
@@ -229,7 +229,7 @@ describe("navFor", () => {
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
-        ["/dashboard", "Today", "home"],
+        ["/dashboard", "Home", "home"],
         ["/calendar", "Calendar", "calendar"],
         ["/work", "To do", "todo"],
         ["/submitted", "Submitted", "submitted"],
@@ -246,7 +246,7 @@ describe("navFor", () => {
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
-        ["/dashboard", "Today", "home"],
+        ["/dashboard", "Home", "home"],
         ["/students", "Students", "students"],
         ["/reports", "Reports", "reports"],
         ["/notes", "Notes", "notes"],
@@ -265,7 +265,7 @@ describe("navFor", () => {
         ["/settings", "Settings", "settings"],
       ],
       tabs: [
-        ["/dashboard", "Today", "home"],
+        ["/dashboard", "Home", "home"],
         ["/calendar", "Events", "events"],
         ["/history", "History", "history"],
         ["/profile", "Profile", "profile"],

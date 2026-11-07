@@ -4,7 +4,7 @@
  * large title in the scroll content that collapses into a pinned
  * `CompactHeader` once scrolled past, Home's bell and user menu (`home`,
  * ruling R13; as soon as they start to scroll under the top the compact
- * header, titled "Today", carries them, R31), the bottom padding that clears
+ * header, titled "Home", carries them, R31), the bottom padding that clears
  * the pill (or, on a detail screen, just the inset: `useShellBottomPadding`),
  * the keyboard inset, and
  * the scroll direction the pill hides and returns on (`useTabBarScroll`).
@@ -72,7 +72,7 @@ export type ScreenProps = {
   children: ReactNode;
   title?: string;
   subtitle?: string;
-  /** Overrides the title in the collapsed header. Unset: the title, or "Today" on Home without one. */
+  /** Overrides the title in the collapsed header. Unset: the title, or "Home" on Home without one. */
   compactTitle?: string;
   /**
    * The pinned back bar. Unset: a screen on the stack (no tab bar) gets
@@ -253,8 +253,8 @@ export function Screen({
   };
 
   // Home has no large title; once its actions row scrolls away the compact
-  // header names it "Today" and carries the bell and user menu (R31).
-  const compactTitle = compactTitleProp ?? title ?? (home ? "Today" : undefined);
+  // header names it "Home" and carries the bell and user menu (R31).
+  const compactTitle = compactTitleProp ?? title ?? (home ? "Home" : undefined);
   const actions =
     trailing || home ? (
       <>

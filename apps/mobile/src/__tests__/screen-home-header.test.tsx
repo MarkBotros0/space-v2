@@ -53,7 +53,7 @@ describe("Screen home: compact header (R31)", () => {
         <RNText>body</RNText>
       </Screen>,
     );
-    expect(within(compact()).getByText("Today", { includeHiddenElements: true })).toBeTruthy();
+    expect(within(compact()).getByText("Home", { includeHiddenElements: true })).toBeTruthy();
     expect(
       within(compact()).getByLabelText("User menu", { includeHiddenElements: true }),
     ).toBeTruthy();
@@ -64,12 +64,12 @@ describe("Screen home: compact header (R31)", () => {
 
   it("compactTitle overrides the collapsed title while the large title stays", () => {
     renderWithProviders(
-      <Screen home title="Hi, Sam" compactTitle="Today">
+      <Screen home title="Hi, Sam" compactTitle="Home">
         <RNText>body</RNText>
       </Screen>,
     );
     expect(screen.getByText("Hi, Sam")).toBeTruthy();
-    expect(within(compact()).getByText("Today", { includeHiddenElements: true })).toBeTruthy();
+    expect(within(compact()).getByText("Home", { includeHiddenElements: true })).toBeTruthy();
     expect(within(compact()).queryByText("Hi, Sam", { includeHiddenElements: true })).toBeNull();
   });
 
@@ -127,7 +127,7 @@ describe("Screen home: compact header (R31)", () => {
     expect(compact().props.accessibilityElementsHidden).toBe(false);
     expect(within(compact()).getByLabelText("User menu")).toBeTruthy();
     // The compact title stays out of the tree: the content holds the page's heading.
-    expect(within(compact()).queryByText("Today")).toBeNull();
+    expect(within(compact()).queryByText("Home")).toBeNull();
     await scrollTo(0);
     expect(compact().props.pointerEvents).toBe("none");
   });

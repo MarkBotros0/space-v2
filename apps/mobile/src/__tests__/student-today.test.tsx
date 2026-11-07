@@ -99,7 +99,7 @@ describe("StudentToday: the first thing on screen", () => {
     expect(await screen.findByText("Hi, Sara")).toBeTruthy();
     expect(await screen.findByText("Sunday, March 1")).toBeTruthy();
     // Hidden from assistive tech until the bar fades in.
-    expect(screen.getByText("Today", { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText("Home", { includeHiddenElements: true })).toBeTruthy();
   });
 
   it("offers Check In on the hero when check-in is open", async () => {

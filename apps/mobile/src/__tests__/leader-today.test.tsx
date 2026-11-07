@@ -217,12 +217,12 @@ describe("LeaderToday", () => {
     expect(screen.getByText("No student has attendance or submissions below 60%.")).toBeTruthy();
   });
 
-  it("no name: the title is Today", async () => {
+  it("no name: the title is Home", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5] }, { name: "" }));
     serveDash(dash({ nextSession: null }));
     renderWithProviders(<LeaderToday />);
     expect(await screen.findByText("Submissions waiting")).toBeTruthy();
-    expect(screen.getAllByText("Today").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });
 

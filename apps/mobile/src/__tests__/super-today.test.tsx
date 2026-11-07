@@ -43,7 +43,7 @@ describe("Super Today", () => {
     useSessionStore.setState(makeSession("SUPER", {}, { name: "" }));
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);
-    expect((await screen.findAllByText("Today")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Home")).length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });
 
