@@ -11,7 +11,7 @@ import { GroupedList } from "../design/ui";
 import { renderWithProviders } from "./helpers/render";
 
 describe("row line caps", () => {
-  it("lets a Today needs-action title take two lines", () => {
+  it("lets a Home needs-action tile label take two lines", () => {
     renderWithProviders(
       <NeedsActionList
         needs={{ pendingReview: 1, unmarkedSessions: 0, atRisk: 0, pendingInvites: 0 }}
@@ -19,7 +19,7 @@ describe("row line caps", () => {
         onRetry={() => undefined}
       />,
     );
-    expect(screen.getByText("1 submission waiting for review").props.numberOfLines).toBe(2);
+    expect(screen.getByText("Submissions to review").props.numberOfLines).toBe(2);
   });
 
   it("lets a season row's code and dates take three lines", () => {

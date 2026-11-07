@@ -65,7 +65,7 @@ const scopes = makeScopes();
 // mutation to routeNameForHref would break both sides identically and the
 // test would keep passing.
 const STUDENT_VISIBLE_NAMES = ["dashboard", "calendar", "work", "submitted", "more"];
-const ADMIN_VISIBLE_NAMES = ["dashboard", "calendar", "groups", "students/index", "more"];
+const ADMIN_VISIBLE_NAMES = ["dashboard", "calendar", "groups", "coursework", "more"];
 const TOTAL_TAB_ROUTES = ALL_ROUTE_NAMES.length;
 
 beforeEach(() => {
@@ -187,13 +187,11 @@ describe("AppLayout stack", () => {
     // Settings, Notifications, Events, …: opened from More (or Profile), so
     // Back must return there — a screen in the Tabs would go Home instead.
     expect([...PUSHED_NAV_ROUTE_NAMES].sort()).toEqual([
-      "assignments",
       "attendance",
       "events",
       "notifications",
       "quizzes",
       "season",
-      "settings/notifications",
       "settings/profile",
       "students/alumni",
       "students/dropped",

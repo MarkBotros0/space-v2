@@ -78,7 +78,7 @@ describe("a token that changes role on refresh", () => {
 
     act(() => useSessionStore.getState().setSession(makeUser("LEADER"), makeScopes({ activeSeasonId: null, graduationYear: 2020, groupLeaderIds: [3] })));
 
-    expect(labels()).toEqual(["Home", "Groups", "Calendar", "Submissions", "More"]);
+    expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
     await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
   });

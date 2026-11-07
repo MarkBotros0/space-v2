@@ -80,10 +80,10 @@ describe("Back from a More destination returns to More (R19)", () => {
     expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
     await act(() => router.navigate("/profile"));
 
-    // AccountProfile links to both settings pages and Notifications.
-    await openEachAndComeBack(result, ["/settings/profile", "/settings/notifications"], "/profile");
+    // AccountProfile links to Profile settings; Notification settings opens from the bell.
+    await openEachAndComeBack(result, ["/settings/profile"], "/profile");
     // The rest of the mentor's sidebar is the mentor's own tabs.
-    expect(moreItemsFor(navByRole.MENTOR).map((item) => item.href)).toEqual(["/notifications", "/settings/profile", "/settings/notifications"]);
+    expect(moreItemsFor(navByRole.MENTOR).map((item) => item.href)).toEqual(["/notifications", "/settings/profile"]);
   });
 });
 
