@@ -1,4 +1,4 @@
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import type { MySeason } from "@space/shared";
 
 import { NavIcon } from "../../design/icons/nav-icon";
@@ -88,7 +88,6 @@ export function GroupSection({ group }: { group: NonNullable<MySeason["group"]> 
             <ListRow
               key={leader.id}
               title={leader.name}
-              subtitle={leader.email}
               leading={<Initials text={initialsOf(leader.name, leader.email.charAt(0).toUpperCase() || "?")} />}
               trailing={
                 <Text variant="caption" className="text-muted-foreground">
@@ -96,7 +95,6 @@ export function GroupSection({ group }: { group: NonNullable<MySeason["group"]> 
                 </Text>
               }
               trailingLabel="Leader"
-              onPress={() => void Linking.openURL(`mailto:${leader.email}`)}
             />
           ))
         )}

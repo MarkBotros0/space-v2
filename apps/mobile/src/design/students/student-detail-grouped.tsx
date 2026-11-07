@@ -127,13 +127,6 @@ export function StudentDetailGrouped({
         {student.currentGroup ? <StatusChip tone="neutral" label={student.currentGroup.name} /> : null}
       </View>
       <View className="flex-row flex-wrap gap-2">
-        <Button
-          variant="secondary"
-          className="self-start"
-          onPress={() => void Linking.openURL(`mailto:${student.email}`)}
-        >
-          Email
-        </Button>
         {phone ? (
           <Button
             variant="secondary"

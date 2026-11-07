@@ -126,9 +126,6 @@ export function AdminStudentDetail({ id }: { id: number }) {
           {data.currentGroup ? <StatusChip tone="neutral" label={data.currentGroup.name} /> : null}
         </View>
         <View testID="student-actions" className="flex-row flex-wrap gap-2">
-          <Button variant="secondary" onPress={() => void Linking.openURL(`mailto:${data.email}`)}>
-            Email
-          </Button>
           {phone ? (
             <Button variant="secondary" onPress={() => void Linking.openURL(`tel:${phone}`)}>
               Call

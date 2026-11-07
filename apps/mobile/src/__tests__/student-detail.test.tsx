@@ -233,7 +233,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     renderWithProviders(<StudentDetailScreen />);
     expect(await screen.findByText("sara@jpc.test")).toBeTruthy();
     expect(screen.queryByText(/leader view/)).toBeNull();
-    expect(screen.getByText("Email")).toBeTruthy();
+    expect(screen.queryByText("Email")).toBeNull();
     expect(screen.queryByText("Call")).toBeNull();
     expect(screen.queryByText("Phone")).toBeNull();
     expect(screen.queryByText("Date of birth")).toBeNull();
