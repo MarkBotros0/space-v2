@@ -24,7 +24,6 @@ const NAV_ROUTES: Readonly<Record<string, Href>> = {
   "/reports": "/reports",
   "/season": "/season",
   "/seasons": "/seasons",
-  "/settings/notifications": "/settings/notifications",
   "/settings/profile": "/settings/profile",
   "/students": "/students",
   "/students/alumni": "/students/alumni",

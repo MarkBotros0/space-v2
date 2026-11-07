@@ -69,6 +69,8 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "event/[id]",
   "attention/sessions",
   "attention/at-risk",
+  // Opened from the gear on Notifications (owner, 2026-11-07), not from a nav list.
+  "settings/notifications",
 ];
 
 /**

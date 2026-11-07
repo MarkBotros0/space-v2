@@ -14,7 +14,8 @@ import type { UserRole } from "./auth";
  * first for every role, at most five tabs. Nothing left the
  * navs: a destination that stopped being a tab is still in `sidebar`, which
  * is what More lists. MENTOR has no More tab; Profile links to Profile settings
- * and Notification settings (no Settings hub: owner, 2026-11-07).
+ * (no Settings hub: owner, 2026-11-07). Notification settings open from the
+ * gear on the Notifications screen.
  */
 
 export type NavIconName =
@@ -72,7 +73,6 @@ const SUPER: RoleNav = {
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
-    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -96,7 +96,6 @@ const ADMIN: RoleNav = {
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
-    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -117,7 +116,6 @@ const LEADER: RoleNav = {
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
-    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -145,7 +143,6 @@ const STUDENT: RoleNav = {
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
-    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -163,7 +160,6 @@ const MENTOR: RoleNav = {
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
-    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -183,7 +179,6 @@ const ALUMNI: RoleNav = {
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
-    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -206,7 +201,6 @@ export const STUDENT_BETWEEN: RoleNav = {
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
-    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },

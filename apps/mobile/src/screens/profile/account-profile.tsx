@@ -29,11 +29,6 @@ export function AccountProfile() {
         <GroupedList>
           <ListRow title="Profile settings" chevron onPress={() => router.push("/settings/profile")} />
           <ListRow
-            title="Notification settings"
-            chevron
-            onPress={() => router.push("/settings/notifications")}
-          />
-          <ListRow
             title="Notifications"
             chevron
             onPress={() => router.push("/notifications")}
