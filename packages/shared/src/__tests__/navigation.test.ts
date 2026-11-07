@@ -53,7 +53,8 @@ describe("navFor", () => {
         "/notifications",
         "/reports",
         "/seasons",
-        "/settings",
+        "/settings/notifications",
+        "/settings/profile",
         "/students",
         "/students/alumni",
         "/students/dropped",
@@ -70,7 +71,8 @@ describe("navFor", () => {
         "/quizzes",
         "/reports",
         "/season",
-        "/settings",
+        "/settings/notifications",
+        "/settings/profile",
         "/students",
       ],
       LEADER: [
@@ -81,7 +83,8 @@ describe("navFor", () => {
         "/notes",
         "/notifications",
         "/quizzes",
-        "/settings",
+        "/settings/notifications",
+        "/settings/profile",
         "/submissions",
       ],
       MENTOR: [
@@ -90,7 +93,8 @@ describe("navFor", () => {
         "/notifications",
         "/profile",
         "/reports",
-        "/settings",
+        "/settings/notifications",
+        "/settings/profile",
         "/students",
       ],
       STUDENT: [
@@ -102,7 +106,8 @@ describe("navFor", () => {
         "/notifications",
         "/profile",
         "/season",
-        "/settings",
+        "/settings/notifications",
+        "/settings/profile",
         "/submitted",
         "/work",
       ],
@@ -113,7 +118,8 @@ describe("navFor", () => {
         "/more",
         "/notifications",
         "/profile",
-        "/settings",
+        "/settings/notifications",
+        "/settings/profile",
       ],
     };
     for (const [role, nav] of Object.entries(ALL_NAVS)) {
@@ -161,7 +167,8 @@ describe("navFor", () => {
         ["/users", "Users", "users"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings", "Settings", "settings"],
+        ["/settings/profile", "Profile settings", "settings"],
+        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -184,7 +191,8 @@ describe("navFor", () => {
         ["/quizzes", "Quizzes", "quizzes"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings", "Settings", "settings"],
+        ["/settings/profile", "Profile settings", "settings"],
+        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -204,7 +212,8 @@ describe("navFor", () => {
         ["/submissions", "Submissions", "submissions"],
         ["/quizzes", "Quizzes", "quizzes"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings", "Settings", "settings"],
+        ["/settings/profile", "Profile settings", "settings"],
+        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -226,7 +235,8 @@ describe("navFor", () => {
         ["/history", "History", "history"],
         ["/profile", "Profile", "profile"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings", "Settings", "settings"],
+        ["/settings/profile", "Profile settings", "settings"],
+        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -243,7 +253,8 @@ describe("navFor", () => {
         ["/students", "Students", "students"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings", "Settings", "settings"],
+        ["/settings/profile", "Profile settings", "settings"],
+        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -262,7 +273,8 @@ describe("navFor", () => {
         ["/history", "My History", "history"],
         ["/profile", "Profile", "profile"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings", "Settings", "settings"],
+        ["/settings/profile", "Profile settings", "settings"],
+        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -290,7 +302,8 @@ describe("navFor between seasons", () => {
   });
   it("STUDENT_BETWEEN sidebar has no season, work or attendance", () => {
     expect(STUDENT_BETWEEN.sidebar.map((i) => i.label)).toEqual([
-      "Dashboard", "Calendar", "History", "Profile", "Notifications", "Settings",
+      "Dashboard", "Calendar", "History", "Profile", "Notifications", "Profile settings",
+      "Notification settings",
     ]);
   });
 });

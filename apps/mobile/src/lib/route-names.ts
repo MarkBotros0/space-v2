@@ -6,7 +6,7 @@ import { ALL_NAV_HREFS, ALL_TAB_HREFS } from "@space/shared";
  * (Plan 6's `seasons/[code]/…`) and `users` (`users/new`, Plan 17's `users/import`). Without the mapping the tab bar looks for
  * a file named "seasons" and silently omits the tab.
  */
-export const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons", "users", "settings"]);
+export const DIRECTORY_ROUTE_HREFS = new Set(["students", "seasons", "users"]);
 
 /**
  * href → route name (the `name` prop `Tabs.Screen` or `Stack.Screen`

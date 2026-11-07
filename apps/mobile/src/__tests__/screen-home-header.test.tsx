@@ -55,7 +55,7 @@ describe("Screen home: compact header (R31)", () => {
     );
     expect(within(compact()).getByText("Home", { includeHiddenElements: true })).toBeTruthy();
     expect(
-      within(compact()).getByLabelText("User menu", { includeHiddenElements: true }),
+      within(compact()).getByLabelText("Profile settings", { includeHiddenElements: true }),
     ).toBeTruthy();
     expect(
       within(compact()).getByLabelText("Notifications (3 unread)", { includeHiddenElements: true }),
@@ -83,7 +83,7 @@ describe("Screen home: compact header (R31)", () => {
     expect(compact().props.pointerEvents).toBe("none");
     expect(compact().props.importantForAccessibility).toBe("no-hide-descendants");
     expect(compact().props.accessibilityElementsHidden).toBe(true);
-    expect(screen.getAllByLabelText("User menu")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Profile settings")).toHaveLength(1);
   });
 
   it("takes over as soon as the actions row starts to go under the top, not once it is gone", async () => {
@@ -125,7 +125,7 @@ describe("Screen home: compact header (R31)", () => {
     await scrollTo(120);
     expect(compact().props.pointerEvents).toBe("box-none");
     expect(compact().props.accessibilityElementsHidden).toBe(false);
-    expect(within(compact()).getByLabelText("User menu")).toBeTruthy();
+    expect(within(compact()).getByLabelText("Profile settings")).toBeTruthy();
     // The compact title stays out of the tree: the content holds the page's heading.
     expect(within(compact()).queryByText("Home")).toBeNull();
     await scrollTo(0);
@@ -141,6 +141,6 @@ describe("Screen home: compact header (R31)", () => {
     layoutHeading();
     await scrollTo(200);
     expect(compact().props.pointerEvents).toBe("none");
-    expect(screen.queryByLabelText("User menu", { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByLabelText("Profile settings", { includeHiddenElements: true })).toBeNull();
   });
 });

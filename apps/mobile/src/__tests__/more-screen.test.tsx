@@ -29,7 +29,7 @@ describe("MoreScreen", () => {
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["Current Season", "Attendance", "History", "Profile", "Settings"]) {
+    for (const label of ["Current Season", "Attendance", "History", "Profile", "Profile settings", "Notification settings"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     // Already tabs: never duplicated in More.
@@ -38,12 +38,12 @@ describe("MoreScreen", () => {
     expect(screen.queryByText("Quizzes")).toBeNull();
   });
 
-  it("shows the leader's More rows (v1 Quizzes + Settings, plus v2's My notes and Notifications, B3-7)", () => {
+  it("shows the leader's More rows (v1 Quizzes + the two settings pages, plus v2's My notes and Notifications, B3-7)", () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { name: "Lina Leader" }));
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["My notes", "Quizzes", "Notifications", "Settings"]) {
+    for (const label of ["My notes", "Quizzes", "Notifications", "Profile settings", "Notification settings"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     expect(screen.queryByText("Submissions")).toBeNull();
@@ -63,7 +63,7 @@ describe("MoreScreen", () => {
     expect(screen.getByText("STUDENT")).toBeTruthy();
   });
 
-  it("shows a different set for an admin, and an alumnus gets only Settings", () => {
+  it("shows a different set for an admin, and an alumnus gets only the settings pages", () => {
     useSessionStore.setState(makeSession("ADMIN"));
     const { unmount } = renderWithProviders(<MoreScreen />);
     expect(screen.getByText("Reports")).toBeTruthy();
@@ -72,7 +72,8 @@ describe("MoreScreen", () => {
 
     useSessionStore.setState(makeSession("STUDENT", { graduationYear: 2024 }));
     renderWithProviders(<MoreScreen />);
-    expect(screen.getByText("Settings")).toBeTruthy();
+    expect(screen.getByText("Profile settings")).toBeTruthy();
+    expect(screen.getByText("Notification settings")).toBeTruthy();
     expect(screen.queryByText("History")).toBeNull();
   });
 

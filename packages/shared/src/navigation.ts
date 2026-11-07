@@ -13,7 +13,8 @@ import type { UserRole } from "./auth";
  * redesign (plan 01 Task 12) puts Home (`/dashboard`, the `home` icon)
  * first for every role, at most five tabs. Nothing left the
  * navs: a destination that stopped being a tab is still in `sidebar`, which
- * is what More lists. MENTOR has no More tab; Profile links to Settings.
+ * is what More lists. MENTOR has no More tab; Profile links to Profile settings
+ * and Notification settings (no Settings hub: owner, 2026-11-07).
  */
 
 export type NavIconName =
@@ -70,7 +71,8 @@ const SUPER: RoleNav = {
     { href: "/users", label: "Users", icon: "users" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
+    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -93,7 +95,8 @@ const ADMIN: RoleNav = {
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
+    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -113,7 +116,8 @@ const LEADER: RoleNav = {
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
+    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -140,7 +144,8 @@ const STUDENT: RoleNav = {
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
+    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -157,7 +162,8 @@ const MENTOR: RoleNav = {
     { href: "/students", label: "Students", icon: "students" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
+    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -176,7 +182,8 @@ const ALUMNI: RoleNav = {
     { href: "/history", label: "My History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
+    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -198,7 +205,8 @@ export const STUDENT_BETWEEN: RoleNav = {
     { href: "/history", label: "History", icon: "history" },
     { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings", label: "Settings", icon: "settings" },
+    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
+    { href: "/settings/notifications", label: "Notification settings", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },

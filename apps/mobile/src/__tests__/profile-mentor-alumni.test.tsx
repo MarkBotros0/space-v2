@@ -66,10 +66,12 @@ describe("AccountProfile", () => {
     expect(screen.getByText("mona@jpc.test")).toBeTruthy();
   });
 
-  it("pushes Settings and Notifications from grouped rows", () => {
+  it("pushes Profile settings, Notification settings and Notifications from grouped rows", () => {
     renderWithProviders(<AccountProfile />);
-    fireEvent.press(screen.getByRole("button", { name: "Settings" }));
-    expect(mockPush).toHaveBeenLastCalledWith("/settings");
+    fireEvent.press(screen.getByRole("button", { name: "Profile settings" }));
+    expect(mockPush).toHaveBeenLastCalledWith("/settings/profile");
+    fireEvent.press(screen.getByRole("button", { name: "Notification settings" }));
+    expect(mockPush).toHaveBeenLastCalledWith("/settings/notifications");
     fireEvent.press(screen.getByRole("button", { name: "Notifications" }));
     expect(mockPush).toHaveBeenLastCalledWith("/notifications");
   });

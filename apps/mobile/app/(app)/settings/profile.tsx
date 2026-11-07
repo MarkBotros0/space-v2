@@ -30,7 +30,7 @@ function dayToDate(value: string): Date | null {
 }
 
 /**
- * Settings → Profile details: name, phone, date of birth and address, for
+ * Profile settings (More, Home's avatar): name, phone, date of birth and address, for
  * every role (owner, 2026-11-06 — they live on User). PATCH /me with only the
  * fields that changed; "" clears a contact field. Email is staff-managed.
  */
@@ -77,7 +77,7 @@ function ProfileDetailsForm({ user }: { user: MeUser }) {
 
   return (
     <FormScreen
-      title="Profile details"
+      title="Profile settings"
       saveLabel={update.isPending ? "Saving…" : "Save changes"}
       onSave={save}
       saving={update.isPending}

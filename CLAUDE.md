@@ -247,7 +247,7 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
 `design/theme/palette.ts` or `useThemeColors()`, never hex literals.
 
 - **Frame.** Every screen renders `Screen` (`design/layout/screen.tsx`): large collapsing
-  title, `back`, `home` (bell + user menu, Today only), the offline banner, and the top
+  title, `back`, `home` (bell + avatar, Home only), the offline banner, and the top
   inset, which only it owns. `ShellFrame` is the transitional wrapper over it. A screen
   on the stack gets the pinned back bar by default; `back={null}` opts out, and an
   in-content back link is a duplicate. Bottom padding comes from `useShellBottomPadding()`,
@@ -304,10 +304,13 @@ sonner-native toasts, so flows shoot toasts best-effort.
 
 ### Settings and account (owner, 2026-11-06)
 
-- `/settings` is a hub with two pages: `settings/profile` (name, phone, date
-  of birth, address — `User` columns, PATCH /me, every role) and
-  `settings/notifications` (push first; the per-kind switches show only once
-  push is on for the phone).
+- Two settings pages, each its own More entry (no Settings hub, owner 2026-11-07):
+  `settings/profile` "Profile settings" (name, phone, date of birth, address —
+  `User` columns, PATCH /me, every role) and `settings/notifications`
+  "Notification settings" (push first; the per-kind switches show only once
+  push is on for the phone). MENTOR reaches both from Profile.
+- Home's bell opens `/notifications` and the avatar opens Profile settings: plain
+  buttons, never dropdowns (owner, 2026-11-07). The theme lives on More (Profile for MENTOR).
 - No password form in the app: "Forgot password?" on sign-in is the only way
   to set one. No "Sign out everywhere".
 - Sign out and Delete account (DELETE /me, a soft delete) live on More; on

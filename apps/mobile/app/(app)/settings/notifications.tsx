@@ -1,10 +1,10 @@
 import { NotificationPreferences } from "../../../src/components/NotificationPreferences";
 import { Screen } from "../../../src/design/layout/screen";
 
-/** Settings → Notification settings. */
+/** Notification settings: a More entry (Profile for MENTOR). */
 export default function NotificationSettingsScreen() {
   return (
-    <Screen title="Notifications">
+    <Screen title="Notification settings">
       <NotificationPreferences />
     </Screen>
   );
