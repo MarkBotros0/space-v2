@@ -100,9 +100,9 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     expect(screen.queryByText("sara@jpc.test")).toBeNull();
     expect(screen.queryByText("Email")).toBeNull();
     for (const section of ["Seasons", "Attendance", "Submissions", "Notes"]) {
-      expect(screen.getByRole("button", { name: section })).toBeTruthy();
+      expect(screen.getByRole("tab", { name: section })).toBeTruthy();
     }
-    expect(screen.queryByRole("button", { name: "Profile" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Profile" })).toBeNull();
     expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
     expect(screen.getByText("At risk")).toBeTruthy();
     // The legacy page's card heading.
@@ -139,17 +139,17 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     expect(screen.getByLabelText("Call +20 100 000 0000")).toBeTruthy();
     expect(screen.queryByText("Date of birth")).toBeNull();
     expect(screen.queryByText("Internal notes · staff only")).toBeNull();
-    fireEvent.press(screen.getByRole("button", { name: "Seasons" }));
-    expect(await screen.findByText("83% attendance")).toBeTruthy();
+    fireEvent.press(screen.getByRole("tab", { name: "Seasons" }));
+    expect(await screen.findByText(/83% attendance/)).toBeTruthy();
     expect(screen.getByText(/Jan 1, 2099 – Dec 31, 2099/)).toBeTruthy();
     expect(screen.queryByText("Drop")).toBeNull();
   });
 
   it("opens attendance and a submission as before", async () => {
     renderWithProviders(<StudentDetailScreen />);
-    fireEvent.press(await screen.findByRole("button", { name: "Attendance" }));
+    fireEvent.press(await screen.findByRole("tab", { name: "Attendance" }));
     expect(await screen.findByText("Week 4")).toBeTruthy();
-    fireEvent.press(screen.getByRole("button", { name: "Submissions" }));
+    fireEvent.press(screen.getByRole("tab", { name: "Submissions" }));
     const essay = await screen.findByText("Essay one");
     expect(essay.props.numberOfLines).toBe(2);
     expect(screen.getByText(/submitted Mar 2, 2099/).props.numberOfLines).toBeUndefined();
@@ -232,7 +232,7 @@ describe("StudentDetailScreen — STUDENT on their own record", () => {
     expect(screen.getByText("SEASONS")).toBeTruthy();
     expect(screen.queryByText("Call")).toBeNull();
     expect(screen.queryByText("Email")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Seasons" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Seasons" })).toBeNull();
     for (const hidden of ["Attendance", "Submissions", "Notes", "Write a note", "Quizzes"]) {
       expect(screen.queryByText(hidden)).toBeNull();
     }

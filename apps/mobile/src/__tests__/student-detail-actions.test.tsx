@@ -77,7 +77,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Edit profile")).toBeTruthy();
+    expect(await screen.findByLabelText("Edit profile")).toBeTruthy();
     expect(screen.getByText("Graduate")).toBeTruthy();
     expect(screen.getByText("Delete student")).toBeTruthy();
     expect(screen.getByText(/Mar 9, 2004/)).toBeTruthy();
@@ -89,9 +89,10 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
 
-    await screen.findByText("Edit profile");
+    // Owner 2026-11-07: Edit sits beside the name; Graduate is the one action under it.
+    await screen.findByLabelText("Edit profile");
     const primary = screen.getByTestId("student-actions");
-    expect(within(primary).getByText("Edit profile")).toBeTruthy();
+    expect(within(primary).getByText("Graduate")).toBeTruthy();
     expect(within(primary).queryByText("Delete student")).toBeNull();
     expect(within(screen.getByTestId("student-danger-zone")).getByText("Delete student")).toBeTruthy();
   });
@@ -100,7 +101,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<StudentDetailScreen />);
 
-    await screen.findByText("Edit profile");
+    await screen.findByLabelText("Edit profile");
     expect(screen.queryByText("Graduate")).toBeNull();
     expect(screen.queryByText("Delete student")).toBeNull();
     fireEvent.press(screen.getByText("Seasons"));
@@ -113,7 +114,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     await screen.findByText("Seasons");
-    expect(screen.queryByText("Edit profile")).toBeNull();
+    expect(screen.queryByLabelText("Edit profile")).toBeNull();
     fireEvent.press(screen.getByText("Seasons"));
     expect(screen.queryByText("Drop")).toBeNull();
   });
@@ -144,7 +145,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
   it("Edit goes to the edit route", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
-    fireEvent.press(await screen.findByText("Edit profile"));
+    fireEvent.press(await screen.findByLabelText("Edit profile"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]/edit", params: { id: "21" } });
   });
 

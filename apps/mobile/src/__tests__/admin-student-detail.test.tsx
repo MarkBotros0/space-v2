@@ -79,11 +79,11 @@ describe("admin student detail", () => {
   it("gives ADMIN of the season Edit and Drop, not Graduate or Delete", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("Edit profile");
+    await screen.findByLabelText("Edit profile");
     expect(screen.queryByText("Graduate")).toBeNull();
     expect(screen.queryByText("Delete student")).toBeNull();
     // Drop sits on the Seasons tab, last since 2026-11-07.
-    fireEvent.press(screen.getByRole("button", { name: "Seasons" }));
+    fireEvent.press(screen.getByRole("tab", { name: "Seasons" }));
     expect(await screen.findByText("Drop")).toBeTruthy();
   });
 
@@ -91,10 +91,10 @@ describe("admin student detail", () => {
   it("orders the sections Submissions, Attendance, Notes, Seasons", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("Edit profile");
+    await screen.findByLabelText("Edit profile");
     const names = new Set(["Submissions", "Attendance", "Notes", "Seasons"]);
     const tabs = screen
-      .getAllByRole("button")
+      .getAllByRole("tab")
       .map((b) => b.props.accessibilityLabel as string)
       .filter((label) => names.has(label));
     expect(tabs).toEqual(["Submissions", "Attendance", "Notes", "Seasons"]);
@@ -104,7 +104,7 @@ describe("admin student detail", () => {
   it("fetches a section only when it is first opened", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
-    await screen.findByText("Edit profile");
+    await screen.findByLabelText("Edit profile");
     expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/notes");
     expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/attendance");
     fireEvent.press(screen.getByText("Notes"));
@@ -199,7 +199,7 @@ describe("admin student detail", () => {
     );
     renderWithProviders(<StudentDetailScreen />);
     await screen.findByText("Seasons");
-    expect(screen.queryByText("Edit profile")).toBeNull();
+    expect(screen.queryByLabelText("Edit profile")).toBeNull();
     expect(screen.queryByTestId("sheet-save-bar")).toBeNull();
   });
 });

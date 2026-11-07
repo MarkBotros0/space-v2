@@ -175,7 +175,7 @@ describe("StudentDetailScreen history (REG-83)", () => {
 
     // Each tab fetches when it opens (spec 06 §9).
     fireEvent.press(await screen.findByText("Seasons"));
-    expect(await screen.findByText("83% attendance")).toBeTruthy();
+    expect(await screen.findByText(/83% attendance/)).toBeTruthy();
     fireEvent.press(screen.getByText("Attendance"));
     expect(await screen.findByText("Week 4")).toBeTruthy();
     expect(screen.getAllByText("Late").length).toBeGreaterThan(0);
@@ -265,7 +265,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
 
     fireEvent.press(screen.getByText("Seasons"));
-    expect(await screen.findByText("83% attendance")).toBeTruthy();
+    expect(await screen.findByText(/83% attendance/)).toBeTruthy();
   });
 
   it("writes a note from the sheet: visibility, follow-up flag, and the empty-note check", async () => {

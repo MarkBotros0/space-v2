@@ -22,9 +22,11 @@ describe("StudentDetails", () => {
     expect(screen.queryByText("3G-2026")).toBeNull();
   });
 
-  it("says so when nothing is filled in", () => {
+  // Owner 2026-11-07: an empty Details card is left out.
+  it("shows nothing when nothing is filled in", () => {
     render(<StudentDetails profile={{ ...base, university: null } as never} />);
-    expect(screen.getByText("No details added yet.")).toBeTruthy();
+    expect(screen.queryByTestId("student-details")).toBeNull();
+    expect(screen.queryByText("Details")).toBeNull();
   });
 
   it("calls the phone from its row", () => {
@@ -48,10 +50,10 @@ describe("StudentSections", () => {
     render(<StudentSections sections={sections(notes)} />);
     expect(screen.getByText("seasons body")).toBeTruthy();
     expect(notes).not.toHaveBeenCalled();
-    fireEvent.press(screen.getByRole("button", { name: "Notes" }));
+    fireEvent.press(screen.getByRole("tab", { name: "Notes" }));
     expect(screen.getByText("notes body")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Notes" }).props.accessibilityState).toMatchObject({ selected: true });
-    fireEvent.press(screen.getByRole("button", { name: "Seasons" }));
+    expect(screen.getByRole("tab", { name: "Notes" }).props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(screen.getByRole("tab", { name: "Seasons" }));
     expect(screen.getByText("notes body", { includeHiddenElements: true })).toBeTruthy();
   });
 

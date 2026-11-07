@@ -82,22 +82,18 @@ export function StudentDetails({
   canCall?: boolean;
 }) {
   const rows = detailRows(profile, exception, canCall);
+  // Owner 2026-11-07: an empty card says nothing worth its space; Edit adds them.
+  if (rows.length === 0) return null;
   return (
     <View testID="student-details">
       <ListSectionHeader>Details</ListSectionHeader>
       <View className="overflow-hidden rounded-group bg-surface">
-        {rows.length === 0 ? (
-          <Text variant="subhead" className="px-4 py-4 text-muted-foreground">
-            No details added yet.
-          </Text>
-        ) : (
-          rows.map((row, i) => (
-            <Fragment key={row.label}>
-              {i > 0 ? <View className="ml-4 h-px bg-separator" /> : null}
-              <DetailRow {...row} />
-            </Fragment>
-          ))
-        )}
+        {rows.map((row, i) => (
+          <Fragment key={row.label}>
+            {i > 0 ? <View className="ml-4 h-px bg-separator" /> : null}
+            <DetailRow {...row} />
+          </Fragment>
+        ))}
       </View>
     </View>
   );

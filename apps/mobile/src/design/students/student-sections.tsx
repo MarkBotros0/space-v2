@@ -1,16 +1,16 @@
 /**
- * The switchable part of a student's page: a row of choice chips (Seasons,
- * Attendance, Submissions, Notes) over the chosen section. Chips wrap on a
- * small phone instead of scrolling off it, and nothing is underlined (owner,
- * 2026-11-07). A section mounts the first time it is chosen and then stays
+ * The switchable part of a student's page: one segmented control (Submissions,
+ * Attendance, Notes, Seasons) over the chosen section (owner, 2026-11-07: the
+ * chips wrapped and ran off the edge; a segment shrinks its label to fit
+ * instead), and nothing is underlined. A section mounts the first time it is chosen and then stays
  * mounted, hidden, so its cache and scroll state survive a switch (spec 06 §9).
  * With a single section there is nothing to choose: it shows under its name.
  */
 import { type ReactNode, useState } from "react";
 import { View } from "react-native";
 
-import { ChoiceChip } from "../ui/choice-chip";
 import { ListSectionHeader } from "../ui/grouped-list";
+import { SegmentedControl } from "../ui/segmented-control";
 
 export type StudentSection = { value: string; label: string; render: () => ReactNode };
 
@@ -34,11 +34,11 @@ export function StudentSections({ sections }: { sections: StudentSection[] }) {
   };
   return (
     <View className="flex-col gap-3">
-      <View accessibilityRole="tablist" className="flex-row flex-wrap gap-2">
-        {sections.map((s) => (
-          <ChoiceChip key={s.value} label={s.label} selected={current === s.value} onPress={() => choose(s.value)} />
-        ))}
-      </View>
+      <SegmentedControl
+        options={sections.map((s) => ({ value: s.value, label: s.label }))}
+        value={current}
+        onChange={choose}
+      />
       {sections.map((s) =>
         opened.has(s.value) ? (
           <View key={s.value} className={current === s.value ? undefined : "hidden"}>

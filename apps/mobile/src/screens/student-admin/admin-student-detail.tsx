@@ -1,13 +1,14 @@
 /**
  * SUPER and ADMIN on /student/[id] (v1 app/admin/students/[id]): the name
- * over the current group, Edit profile and Graduate, this season at a glance,
- * the details (the phone row calls), then Seasons, Attendance, Submissions
- * and Notes behind choice chips, the same layout as the leader's page (owner,
+ * over the current group with Edit beside it, Graduate, this season at a
+ * glance, the details when there are any (the phone row calls), then
+ * Submissions, Attendance, Notes and Seasons behind a segmented control, the same layout as the leader's page (owner,
  * 2026-11-07). V2-ONLY Delete and a per-season Drop (Remove on a draft) show
  * only where `studentActionsFor` (the server's rules) allows. Delete leaves
  * for the list with dismissTo (CLAUDE.md navigation table).
  */
 import { useQueryClient } from "@tanstack/react-query";
+import { Pencil } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
@@ -16,6 +17,7 @@ import type { EnrollmentHistoryItem } from "@space/shared";
 import { DropEnrollmentSheet } from "../../components/DropEnrollmentSheet";
 import { GraduateStudentSheet } from "../../components/GraduateStudentSheet";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { iconWithClassName } from "../../design/lib/icon";
 import { Screen } from "../../design/layout/screen";
 import {
   GroupedAttendanceTab,
@@ -37,6 +39,8 @@ import { useSessionStore } from "../../store/session";
 import { BringBackDialogs } from "./bring-back-dialogs";
 import { RemoveFromDraftDialog } from "./remove-from-draft-dialog";
 import { AdminSeasonsSection } from "./admin-seasons-section";
+
+iconWithClassName(Pencil);
 
 export function AdminStudentDetail({ id }: { id: number }) {
   const router = useRouter();
@@ -122,27 +126,36 @@ export function AdminStudentDetail({ id }: { id: number }) {
     },
   ];
   return (
-    <Screen title={data.name} subtitle={studentSubtitle(data)} refreshing={isRefetching} onRefresh={refresh}>
+    <Screen
+      title={data.name}
+      subtitle={studentSubtitle(data)}
+      // Owner 2026-11-07: Edit sits beside the name, as on a season's page.
+      trailing={
+        actions.canEdit ? (
+          <Button
+            variant="secondary"
+            size="icon"
+            accessibilityLabel="Edit profile"
+            onPress={() =>
+              router.push({ pathname: "/student/[id]/edit", params: { id: String(data.id) } })
+            }
+          >
+            <Pencil size={18} className="text-foreground" />
+          </Button>
+        ) : undefined
+      }
+      refreshing={isRefetching}
+      onRefresh={refresh}
+    >
       <View className="flex-col gap-6">
         {data.graduationYear !== null ? (
           <StatusChip tone="ok" label={`Alumnus · School of ${data.graduationYear}`} className="self-start" />
         ) : null}
-        {actions.canEdit || actions.canGraduate ? (
+        {actions.canGraduate ? (
           <View testID="student-actions" className="flex-row flex-wrap gap-2">
-            {actions.canEdit ? (
-              <Button
-                onPress={() =>
-                  router.push({ pathname: "/student/[id]/edit", params: { id: String(data.id) } })
-                }
-              >
-                Edit profile
-              </Button>
-            ) : null}
-            {actions.canGraduate ? (
-              <Button variant="secondary" onPress={() => setGraduateOpen(true)}>
-                Graduate
-              </Button>
-            ) : null}
+            <Button variant="secondary" className="self-start" onPress={() => setGraduateOpen(true)}>
+              Graduate
+            </Button>
           </View>
         ) : null}
 
