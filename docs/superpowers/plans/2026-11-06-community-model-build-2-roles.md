@@ -14,7 +14,7 @@
 
 - Work on branch `community-model` in `/home/mark/projects/JPC/space-v2-community`, from `ac1cb208`. Never touch the shared checkout. Commits are authored by the repo-local `jesusprojectcommunity` config. End every commit message with:
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_016bpCTuvMRmKUfFfPhax16c`
-- No push, deploy, or migration on the Prisma test database without the owner saying so at the time. Local `.env` points at Neon, which integration tests use. Never print `DATABASE_URL`.
+- No push, deploy, or migration on the Prisma test database without the owner saying so at the time. Local `.env` points at the local `space_test` database in container `space-v2-sweepdb`; nothing depends on Neon any more. Never print `DATABASE_URL`.
 - Migrations are schema-additive and say which environments they reached. **No migration changes `User.role` values**, since v1 still reads Neon's: Task 1's script does that, on a database the owner names.
 - Token claims stay `jose` HS256, audience `jpc-mobile`, 900s TTL. A role change takes effect through `markSessionsStale`, which refreshes silently. **Assigning or removing a season role no longer signs anyone out**, so `revokeAllRefreshTokensForUser` leaves those paths and the "They'll be signed out" dialog copy goes.
 - Never import `@prisma/client`. No `process.env` outside `src/lib/config.ts`. No `@/` alias. A value import of `packages/shared` from a route folder uses the relative path. Envelope `{data}` / `{error:{code,message}}`. Update `src/docs/` in the same commit as a route. Files stay at or under 400 lines.
