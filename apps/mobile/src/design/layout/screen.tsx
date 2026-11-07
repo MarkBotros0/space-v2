@@ -33,6 +33,7 @@ import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
 import { cn } from "../lib/cn";
+import { usePullRefresh } from "../lib/pull-refresh";
 import { useKeyboardInset } from "../lib/keyboard-inset";
 import { keyboardBottomOffset } from "../lib/keyboard-offset";
 import { useReducedMotion } from "../motion";
@@ -157,6 +158,7 @@ export function Screen({
   const back = useEffectiveBack(backProp);
   const reduced = useReducedMotion();
   const { onScrollDirection } = useTabBarScroll();
+  const pull = usePullRefresh(refreshing, onRefresh);
 
   const scrollY = useSharedValue(0);
   const titleBottom = useSharedValue(NOT_MEASURED);
@@ -296,7 +298,9 @@ export function Screen({
           contentContainerClassName={cn("px-4 pt-4", contentClassName)}
           contentContainerStyle={{ paddingBottom: contentBottom }}
           refreshControl={
-            onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
+            pull.onRefresh ? (
+              <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />
+            ) : undefined
           }
         >
           {heading}

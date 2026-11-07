@@ -34,6 +34,7 @@ import { resetMockCamera } from "./helpers/expo-camera";
 import { resetFocus, setFocused } from "./helpers/focus-effect";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
+import { PULL_MIN_MS } from "../design/lib/pull-refresh";
 
 const DASHBOARD = "/api/v1/me/dashboard";
 const closed = { ...sessionDetail, checkInOpen: false };
@@ -264,7 +265,7 @@ describe("the pull's spinner belongs to the pull", () => {
     const release = hold(NEXT_SESSION_DETAIL);
     await pull();
     expect(control().refreshing).toBe(true);
-    await act(async () => { release(); await jest.advanceTimersByTimeAsync(0); });
+    await act(async () => { release(); await jest.advanceTimersByTimeAsync(PULL_MIN_MS); });
     expect(control().refreshing).toBe(false);
   });
 
@@ -275,6 +276,8 @@ describe("the pull's spinner belongs to the pull", () => {
     act(() => onlineManager.setOnline(false));
     try {
       await pull();
+      // Only the pull's own minimum hold, never the paused read.
+      await tick(PULL_MIN_MS);
       expect(control().refreshing).toBe(false);
     } finally {
       act(() => onlineManager.setOnline(true));
