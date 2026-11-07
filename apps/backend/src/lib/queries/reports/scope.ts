@@ -30,7 +30,7 @@ export async function resolveReportScope(
       ...(scope.kind === "seasons" ? { id: { in: scope.seasonIds } } : {}),
     },
     orderBy: [{ year: "desc" }, { title: "asc" }],
-    select: { id: true, code: true, title: true },
+    select: { id: true, code: true, title: true, status: true, endDate: true },
   });
 
   const requested = new Set(requestedIds);
@@ -46,5 +46,10 @@ export async function resolveReportScope(
           ? "All seasons"
           : `${seasons.length} seasons`;
 
-  return { seasonIds: seasons.map((s) => s.id), seasons, truncated, label };
+  return {
+    seasonIds: seasons.map((s) => s.id),
+    seasons: seasons.map((s) => ({ ...s, endDate: s.endDate.toISOString() })),
+    truncated,
+    label,
+  };
 }

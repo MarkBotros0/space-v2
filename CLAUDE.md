@@ -496,6 +496,11 @@ and Build 2 (see "Roles") are written, Build 3 (community-wide seasons) isn't.
 - **Former staff are cut off.** Once a season ends, its admins and leaders lose it with their
   scopes: no access to it and no History entry; only Super (and Mentors) read finished seasons.
   Their role is derived from season rows (Build 2), so it ends with the season.
+  One exception (owner, 2026-11-07): Reports' History. An ADMIN's report scope
+  (`reportScopeFor`) is every season they hold or held a SeasonAdmin row in, so a serving admin
+  can read the engagement report of a season they ran before; its at-risk rows don't open
+  student pages they can no longer read. Reports open on the current season, else the last one
+  (`defaultReportSeason`).
 - **Students between seasons** (no `activeSeasonId`) get Today, Calendar, History and More, with
   Today telling finished, dropped and first-time apart; the finished season has a read-only page
   with its assignments, quizzes and attendance. Alumni keep their own nav.

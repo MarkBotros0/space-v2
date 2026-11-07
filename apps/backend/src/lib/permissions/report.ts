@@ -1,3 +1,4 @@
+import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason, isMentor, isSuper } from "../rbac";
 
@@ -19,14 +20,23 @@ import { isAdminOfSeason, isMentor, isSuper } from "../rbac";
  */
 export type ReportScope = { kind: "all" } | { kind: "seasons"; seasonIds: number[] };
 
-export function reportScopeFor(user: SessionUser): ReportScope | null {
+export async function reportScopeFor(user: SessionUser): Promise<ReportScope | null> {
   // MENTOR's remit is read-all-students (rbac.ts:41-43) and v1 gives them an
   // unscoped engagement CSV (R45), so "all" here is a port, not a widening.
   // SUPER gains the engagement view that v1's per-role page tree denied them
   // while its export route handed them the same data (spec D17) — a deliberate
   // divergence, recorded in this plan's ledger row 10.
   if (isSuper(user) || isMentor(user)) return { kind: "all" };
-  if (user.role === "ADMIN") return { kind: "seasons", seasonIds: user.seasonAdminIds };
+  if (user.role === "ADMIN") {
+    // Every season they were made admin of, finished ones too: Reports' History
+    // (owner, 2026-11-07). The one read a former admin keeps after End; it is
+    // aggregate engagement and the at-risk list, never a season's pages. The
+    // claim (DRAFT/ACTIVE seats only) is included as-is, and a SeasonAdmin row
+    // removed by a super takes the season out of History with it.
+    const rows = await db.seasonAdmin.findMany({ where: { userId: user.userId }, select: { seasonId: true } });
+    const ids = new Set([...user.seasonAdminIds, ...rows.map((r) => r.seasonId)]);
+    return { kind: "seasons", seasonIds: [...ids] };
+  }
   return null;
 }
 

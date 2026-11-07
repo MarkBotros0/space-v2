@@ -9,8 +9,14 @@ export const reportScopeDoc = {
       type: "array",
       items: {
         type: "object",
-        required: ["id", "code", "title"],
-        properties: { id: intField, code: { type: "string" }, title: { type: "string" } },
+        required: ["id", "code", "title", "status", "endDate"],
+        properties: {
+          id: intField,
+          code: { type: "string" },
+          title: { type: "string" },
+          status: { type: "string", enum: ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] },
+          endDate: { type: "string", format: "date-time", description: "The season's last day, UTC midnight." },
+        },
       },
     },
     truncated: { type: "boolean" },

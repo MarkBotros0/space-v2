@@ -54,13 +54,21 @@ export function OrganisationSection() {
     <View className="flex-col gap-4">
       <View testID="organisation-tiles" className="flex-row flex-wrap gap-3">
         <TilePress onPress={() => router.push("/students")}>
-          <StatTile className="flex-none" label="Student accounts" value={data.totalStudentsNotGraduated} />
+          <StatTile
+            className="flex-none"
+            label="Student accounts"
+            value={data.totalStudentsNotGraduated}
+          />
         </TilePress>
         <TilePress onPress={() => router.push("/students/alumni")}>
           <StatTile className="flex-none" label="Alumni" value={data.totalAlumni} />
         </TilePress>
         <TilePress onPress={() => router.push("/seasons")}>
-          <StatTile className="flex-none" label={data.activeSeasonCount === 1 ? "Active season" : "Active seasons"} value={data.activeSeasonCount} />
+          <StatTile
+            className="flex-none"
+            label={data.activeSeasonCount === 1 ? "Active season" : "Active seasons"}
+            value={data.activeSeasonCount}
+          />
         </TilePress>
       </View>
 

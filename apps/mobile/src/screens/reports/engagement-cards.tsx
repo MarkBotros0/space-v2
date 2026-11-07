@@ -1,8 +1,7 @@
-import { Pressable, View } from "react-native";
+import { Fragment, useState, type ReactNode } from "react";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 import {
-  BAND_LABEL,
-  BAND_ORDER,
   REPORT_METRIC_NOTES,
   type EngagementReportRow,
   type EngagementSummary,
@@ -11,27 +10,95 @@ import {
 import { BandDonut } from "../../components/charts/BandDonut";
 import { RankedBars } from "../../components/charts/RankedBars";
 import { TrendLine } from "../../components/charts/TrendLine";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  GroupedList,
-  ListRow,
-  StatTile,
-  Text,
-} from "../../design/ui";
+import { GroupedList, ListRow, PillButton, Text } from "../../design/ui";
 import { InlineError } from "../../design/layout/route-states";
 import { formatDayKey } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
 
+/** One titled card of the report. */
+function ReportCard({
+  title,
+  caption,
+  children,
+}: {
+  title: string;
+  caption?: string;
+  children: ReactNode;
+}) {
+  return (
+    <View className="flex-col gap-3 rounded-group bg-surface p-4">
+      <View className="gap-0.5">
+        <Text variant="headline" accessibilityRole="header">
+          {title}
+        </Text>
+        {caption ? (
+          <Text variant="caption" className="text-muted-foreground">
+            {caption}
+          </Text>
+        ) : null}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+/**
+ * The scope in three numbers. Enrolments shows only when it differs from
+ * students: a student in two seasons in scope is counted once there and twice
+ * in the bands (R27, R32).
+ */
+function Figures({ summary }: { summary: EngagementSummary }) {
+  const figures = [
+    { label: "Students", value: summary.cohortSize },
+    ...(summary.enrollmentCount !== summary.cohortSize
+      ? [{ label: "Enrolments", value: summary.enrollmentCount }]
+      : []),
+    { label: "At risk", value: summary.atRiskTotal },
+  ];
+  return (
+    <View
+      testID="engagement-tiles"
+      className="flex-row items-stretch rounded-group bg-surface py-4"
+    >
+      {figures.map((f, i) => (
+        <Fragment key={f.label}>
+          {i > 0 ? <View className="w-px self-stretch bg-separator" /> : null}
+          <View
+            accessible
+            accessibilityLabel={`${f.label}: ${f.value}`}
+            className="min-w-0 flex-1 items-center gap-0.5 px-1"
+          >
+            <Text
+              variant="title"
+              tabular
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
+              className={f.label === "At risk" && f.value > 0 ? "text-bad" : undefined}
+            >
+              {String(f.value)}
+            </Text>
+            <Text
+              variant="caption"
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.3}
+              className="text-muted-foreground"
+            >
+              {f.label}
+            </Text>
+          </View>
+        </Fragment>
+      ))}
+    </View>
+  );
+}
+
 /**
  * An at-risk student as a row: season and both percentages in its meta line.
- * Server-derived, every one of them (ruling C4): the client renders what it is
- * given and computes no threshold of its own. User.name is NOT NULL in the
- * schema, so v1's name-or-email fallback has no case to cover.
+ * Server-derived, every one of them (ruling C4). `canOpen` is false for a
+ * season the caller no longer serves (a finished one from History), whose
+ * student pages they can't read.
  */
-function AtRiskGroupedRow({ row }: { row: EngagementReportRow }) {
+function AtRiskRow({ row, canOpen }: { row: EngagementReportRow; canOpen: boolean }) {
   const router = useRouter();
   return (
     <ListRow
@@ -42,96 +109,14 @@ function AtRiskGroupedRow({ row }: { row: EngagementReportRow }) {
       ])}
       titleLines={2}
       subtitleLines={3}
-      chevron
-      onPress={() =>
-        router.push({ pathname: "/student/[id]", params: { id: String(row.studentUserId) } })
+      chevron={canOpen}
+      onPress={
+        canOpen
+          ? () =>
+              router.push({ pathname: "/student/[id]", params: { id: String(row.studentUserId) } })
+          : undefined
       }
     />
-  );
-}
-
-/**
- * The engagement summary's cards, at-risk list first. `atRiskRows` is the
- * summary's own list, or every flagged student once "Show more" has loaded them.
- * Every role with a Reports surface sees this layout.
- */
-export function EngagementCards({
-  summary,
-  atRiskRows,
-  onShowMore,
-  moreFailed = false,
-}: {
-  summary: EngagementSummary;
-  atRiskRows: EngagementReportRow[];
-  onShowMore: () => void;
-  /** Show more failed: say so under the list; `onShowMore` is the retry. */
-  moreFailed?: boolean;
-}) {
-  return (
-    <>
-      {/* The at-risk list comes FIRST on mobile. v1 puts it in the fourth card
-          of a two-by-two grid (reports-view.tsx:64-108); stacked, that is four
-          screens of scrolling before the only actionable element (spec §9). */}
-      <View className="flex-col gap-2">
-        <Text variant="headline" accessibilityRole="header">
-          {`Students at risk (${atRiskRows.length} of ${summary.atRiskTotal})`}
-        </Text>
-        {atRiskRows.length === 0 ? (
-          <Text variant="subhead" className="text-muted-foreground">
-            Nobody flagged in this scope.
-          </Text>
-        ) : (
-          <GroupedList>
-            {atRiskRows.map((row) => (
-              <AtRiskGroupedRow key={`${row.studentUserId}-${row.seasonId}`} row={row} />
-            ))}
-          </GroupedList>
-        )}
-        {moreFailed ? (
-          <InlineError message="Couldn't load more students." onRetry={onShowMore} />
-        ) : null}
-      </View>
-      {summary.atRiskTotal > atRiskRows.length ? (
-        <Pressable
-          accessibilityRole="button"
-          className="min-h-[44px] justify-center self-start"
-          onPress={onShowMore}
-        >
-          <Text
-            variant="subhead"
-            className="font-medium text-brand-teal-800 dark:text-brand-teal-300"
-          >
-            Show more
-          </Text>
-        </Pressable>
-      ) : null}
-
-      {/* Bucket counts count ENROLMENTS, so a student in two in-scope seasons is
-          counted twice and the total exceeds the headcount (R27, R32): both
-          numbers sit side by side as tiles. */}
-      <View testID="engagement-tiles" className="flex-row flex-wrap gap-3">
-        <StatTile label="Enrolments" value={summary.enrollmentCount} />
-        <StatTile label="Students" value={summary.cohortSize} />
-        {BAND_ORDER.map((band) => (
-          <StatTile
-            key={band}
-            label={band === "AT_RISK" ? BAND_LABEL[band] : `${BAND_LABEL[band]} engagement`}
-            value={summary.bands.find((b) => b.band === band)?.count ?? 0}
-          />
-        ))}
-      </View>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Engagement</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BandDonut bands={summary.bands} />
-        </CardContent>
-      </Card>
-
-      <TrendCompletionNotes summary={summary} />
-    </>
   );
 }
 
@@ -140,56 +125,126 @@ function trendRange(first: string, last: string): string {
   return first === last ? formatDayKey(first) : `${formatDayKey(first)} – ${formatDayKey(last)}`;
 }
 
-/** Trend, completion and method cards: the same for every role. */
-function TrendCompletionNotes({ summary }: { summary: EngagementSummary }) {
+function AttendanceTrend({ summary }: { summary: EngagementSummary }) {
+  const trend = summary.attendanceTrend;
+  return (
+    <ReportCard
+      title="Attendance trend"
+      caption={
+        trend.length > 0 ? trendRange(trend[0]!.dayKey, trend[trend.length - 1]!.dayKey) : undefined
+      }
+    >
+      {trend.length < 2 ? (
+        <Text variant="subhead" className="text-muted-foreground">
+          {trend.length === 0
+            ? "No sessions yet: the trend starts after the first one."
+            : "One session so far: the trend starts after the next one."}
+        </Text>
+      ) : (
+        <TrendLine
+          points={trend.map((p) => ({
+            // The server's org-calendar day, labelled with the timezone-free
+            // formatDayKey (X13, R15, R101, D12).
+            label: formatDayKey(p.dayKey),
+            pct: p.pct,
+            // One line per season (REG-117).
+            series: { key: String(p.seasonId), label: p.seasonTitle },
+          }))}
+        />
+      )}
+    </ReportCard>
+  );
+}
+
+/** The same strings the workbook's Key sheet renders (C4 applied to prose), folded away until asked for. */
+function HowCalculated() {
+  const [open, setOpen] = useState(false);
+  return (
+    <View className="flex-col gap-2">
+      <PillButton
+        className="self-start"
+        label={open ? "Hide how it's calculated" : "How are these calculated?"}
+        onPress={() => setOpen((o) => !o)}
+      />
+      {open ? (
+        <View className="flex-col gap-2 rounded-group bg-surface p-4">
+          {REPORT_METRIC_NOTES.map((note) => (
+            <Text key={note} variant="caption" className="text-muted-foreground">
+              {note}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * One season's report (owner, 2026-11-07: structured logically). Who needs
+ * help comes first, as it is the only thing to act on: the figures, then the
+ * at-risk students. Then how the season is going: engagement bands, the
+ * attendance trend, assignment completion. The method notes are last, folded.
+ */
+export function EngagementCards({
+  summary,
+  atRiskRows,
+  onShowMore,
+  moreFailed = false,
+  canOpenStudent = () => true,
+}: {
+  summary: EngagementSummary;
+  atRiskRows: EngagementReportRow[];
+  onShowMore: () => void;
+  /** Show more failed: say so under the list; `onShowMore` is the retry. */
+  moreFailed?: boolean;
+  canOpenStudent?: (row: EngagementReportRow) => boolean;
+}) {
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Attendance trend</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-col gap-1">
-          {summary.attendanceTrend.length < 2 ? (
-            <Text variant="subhead" className="text-muted-foreground">
-              {summary.attendanceTrend.length === 0
-                ? "No sessions yet: the trend starts after the first one."
-                : "One session so far: the trend starts after the next one."}
-            </Text>
-          ) : (
-            <TrendLine
-              points={summary.attendanceTrend.map((p) => ({
-                // The server's org-calendar day, labelled with the
-                // timezone-free formatDayKey (X13). v1 formatted on the
-                // server with date-fns and no year, so sessions from
-                // different years collapsed onto one label (R15, R101, D12);
-                // formatting startsAt on the device would instead show the
-                // phone's calendar day.
-                label: formatDayKey(p.dayKey),
-                pct: p.pct,
-                // One line per season (REG-117).
-                series: { key: String(p.seasonId), label: p.seasonTitle },
-              }))}
-            />
-          )}
-          {summary.attendanceTrend.length > 0 ? (
-            <Text className="text-xs text-muted-foreground">
-              {trendRange(
-                summary.attendanceTrend[0]!.dayKey,
-                summary.attendanceTrend[summary.attendanceTrend.length - 1]!.dayKey,
-              )}
-            </Text>
-          ) : null}
-        </CardContent>
-      </Card>
+      <Figures summary={summary} />
 
-      <Card>
-        <CardHeader>
-          {/* Named "Completion rate", not "Submission %": it is a
-          property of an assignment, and v1 calling both by one name
-          is spec D2's most consequential ambiguity (D-17.1). */}
-          <CardTitle className="text-base">Completion rate</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <View className="flex-col gap-2">
+        {atRiskRows.length === 0 ? (
+          <ReportCard title="Students at risk">
+            <Text variant="subhead" className="text-muted-foreground">
+              Nobody is flagged. Everyone is above the at-risk line.
+            </Text>
+          </ReportCard>
+        ) : (
+          <GroupedList header={`Students at risk (${atRiskRows.length} of ${summary.atRiskTotal})`}>
+            {atRiskRows.map((row) => (
+              <AtRiskRow
+                key={`${row.studentUserId}-${row.seasonId}`}
+                row={row}
+                canOpen={canOpenStudent(row)}
+              />
+            ))}
+          </GroupedList>
+        )}
+        {moreFailed ? (
+          <InlineError message="Couldn't load more students." onRetry={onShowMore} />
+        ) : null}
+        {summary.atRiskTotal > atRiskRows.length ? (
+          <PillButton className="self-start" label="Show more" onPress={onShowMore} />
+        ) : null}
+      </View>
+
+      <ReportCard title="Engagement" caption="Every student by how engaged they are this season.">
+        <BandDonut bands={summary.bands} />
+      </ReportCard>
+
+      <AttendanceTrend summary={summary} />
+
+      {/* "Completion rate", not "Submission %": it is a property of an assignment (D-17.1). */}
+      <ReportCard
+        title="Assignment completion"
+        caption="Share of the expected students who handed each one in."
+      >
+        {summary.completion.length === 0 ? (
+          <Text variant="subhead" className="text-muted-foreground">
+            No assignments yet.
+          </Text>
+        ) : (
           <RankedBars
             bars={summary.completion.map((r) => ({
               key: String(r.assignmentId),
@@ -198,30 +253,13 @@ function TrendCompletionNotes({ summary }: { summary: EngagementSummary }) {
               caption:
                 r.expected === 0
                   ? "No students targeted"
-                  : `${r.completed} of ${r.expected} ${
-                      r.targeting === "all_groups" ? "in the season" : "in the target groups"
-                    }`,
+                  : `${r.completed} of ${r.expected} ${r.targeting === "all_groups" ? "in the season" : "in the target groups"}`,
             }))}
           />
-        </CardContent>
-      </Card>
+        )}
+      </ReportCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">How these numbers are calculated</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-col gap-2">
-          {/* The same strings the workbook's Key sheet renders. One
-          definition, two renderers — the C4 discipline applied to
-          prose, so a spreadsheet and the app cannot describe the same
-          metric differently. */}
-          {REPORT_METRIC_NOTES.map((note) => (
-            <Text key={note} className="text-xs text-muted-foreground">
-              {note}
-            </Text>
-          ))}
-        </CardContent>
-      </Card>
+      <HowCalculated />
     </>
   );
 }
