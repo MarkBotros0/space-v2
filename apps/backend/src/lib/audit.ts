@@ -25,6 +25,8 @@ export type AuditOperation =
   // stays ids-only like the rest.
   | "user.create"
   | "user.role_change"
+  // Correcting a stored student's year. Setting or clearing one is Graduate's.
+  | "user.graduation_year_change"
   | "user.deactivate"
   | "user.reactivate"
   // The account holder deleting their own account (DELETE /me).

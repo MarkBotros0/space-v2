@@ -73,6 +73,9 @@ export function UserForm({
   // Admin and leader come from season rows: shown as text, never offered or sent.
   const fromSeasons = mode === "edit" && (initial.role === "ADMIN" || initial.role === "LEADER");
   const needsYear = ALUMNI_ONLY_ROLES.includes(v.role);
+  // A student's year is their alumni status: Graduate sets it (the server's `use_graduate`).
+  const studentStays = mode === "edit" && initial.role === "STUDENT" && v.role === "STUDENT";
+  const yearLocked = studentStays && initial.graduationYear === "";
 
   const submit = () => {
     if (readOnly) return;
@@ -177,15 +180,19 @@ export function UserForm({
           label="JPCS graduation year"
           required={needsYear}
           description={
-            needsYear
-              ? "Leaders, admins, and mentors must be JPCS alumni."
-              : "Optional — set if this person has graduated from JPCS."
+            yearLocked
+              ? "Not graduated yet. To graduate them, use Graduate on their student page."
+              : studentStays
+                ? "Correct a wrong year here. Graduating can't be undone."
+                : needsYear
+                  ? "Leaders, admins, and mentors must be JPCS alumni."
+                  : "Optional — set if this person has graduated from JPCS."
           }
           error={errors.graduationYear}
         >
           <Input
             accessibilityLabel="Graduation year"
-            disabled={readOnly}
+            disabled={readOnly || yearLocked}
             value={v.graduationYear}
             onChangeText={(graduationYear) => setV({ ...v, graduationYear })}
             keyboardType="number-pad"

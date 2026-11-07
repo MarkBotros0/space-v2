@@ -215,6 +215,35 @@ describe("UserDetailScreen", () => {
     expect(patch).not.toHaveBeenCalled();
   });
 
+  describe("a student's graduation year", () => {
+    const CAPTION = "Not graduated yet. To graduate them, use Graduate on their student page.";
+
+    it("isn't editable when empty, and says to use Graduate", async () => {
+      renderWithProviders(<UserDetailScreen />);
+      await screen.findByText(/Invite expires/);
+      expect(screen.getByText(CAPTION)).toBeTruthy();
+      expect(screen.getByLabelText("Graduation year").props.editable).toBe(false);
+    });
+
+    it("opens again once the form moves them to Mentor", async () => {
+      renderWithProviders(<UserDetailScreen />);
+      await screen.findByText(/Invite expires/);
+      fireEvent.press(screen.getByLabelText("Role"));
+      fireEvent.press(await screen.findByText("Mentor"));
+      expect(screen.queryByText(CAPTION)).toBeNull();
+      expect(screen.getByLabelText("Graduation year").props.editable).not.toBe(false);
+    });
+
+    it("stays editable when set, to correct it", async () => {
+      get.mockResolvedValue({ data: { data: { ...detail, graduationYear: 2020 } } });
+      renderWithProviders(<UserDetailScreen />);
+      await screen.findByText(/Invite expires/);
+      expect(screen.queryByText(CAPTION)).toBeNull();
+      expect(screen.getByText("Correct a wrong year here. Graduating can't be undone.")).toBeTruthy();
+      expect(screen.getByLabelText("Graduation year").props.editable).not.toBe(false);
+    });
+  });
+
   it("deactivates behind a confirmation, and never offers it for your own account", async () => {
     const post = apiClient.post as jest.Mock;
     post.mockResolvedValue({ data: { data: { id: 7, deletedAt: "2026-08-30T00:00:00.000Z" } } });

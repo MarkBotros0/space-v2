@@ -4,7 +4,7 @@ import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { derivedRoleOf } from "../../lib/auth/scopes";
-import { invalidateSessions } from "../../lib/auth/session-validity";
+import { invalidateSessions, markSessionsStale } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { findExistingByEmail } from "../../lib/imports/students/validation";
 import { deliverInvite, issueInvite } from "../../lib/invites";
@@ -67,7 +67,7 @@ export async function updateUser(req: Request, res: Response) {
     await lockPeople(tx, [id]);
     const target = await tx.user.findUnique({
       where: { id },
-      select: { id: true, name: true, role: true, deletedAt: true },
+      select: { id: true, name: true, role: true, deletedAt: true, graduationYear: true },
     });
     // REG-104: a deactivated account is not an edit target. GET and reactivate
     // still reach it; only this write refuses.
@@ -131,6 +131,18 @@ export async function updateUser(req: Request, res: Response) {
       }
     }
 
+    // A stored student's year is their alumni status, and Graduate is what changes
+    // that: its gate, its audit line, its enrolment completion. Correcting one year
+    // to another isn't a change of status. Moving off STUDENT sets the year that
+    // role needs.
+    const staysStudent = target.role === "STUDENT" && (!roleChanged || body.role === "STUDENT");
+    if (staysStudent && (target.graduationYear === null) !== (body.graduationYear === null)) {
+      return {
+        fail: ["use_graduate", "Use Graduate. A graduation year can't be added or cleared here.", 409] as const,
+      };
+    }
+    const yearCorrected = staysStudent && target.graduationYear !== body.graduationYear;
+
     // A move to STUDENT finally gets a profile (R46: v1 left promoted users
     // with a null activeSeasonId forever).
     if (roleChanged && body.role === "STUDENT") {
@@ -157,8 +169,10 @@ export async function updateUser(req: Request, res: Response) {
       await revokeAllRefreshTokensForUser(tx, id);
       await invalidateSessions(tx, id);
     }
+    // The year rides in the token; the next silent refresh picks up the right one.
+    if (yearCorrected) await markSessionsStale(tx, [id]);
 
-    return { fail: null, roleChanged };
+    return { fail: null, roleChanged, yearCorrected };
   });
 
   if (outcome.fail) {
@@ -166,6 +180,7 @@ export async function updateUser(req: Request, res: Response) {
     return apiError(res, code, message, status);
   }
   if (outcome.roleChanged) auditLog("user.role_change", user.userId, id);
+  if (outcome.yearCorrected) auditLog("user.graduation_year_change", user.userId, id);
 
   // Through the same builder GET /:id uses, so PATCH returns exactly what GET
   // does — invite panel included.
