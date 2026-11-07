@@ -10,7 +10,7 @@ import {
   announcementUnreadResponseSchema,
 } from "../../../../../packages/shared/src/index";
 import { insertPost, seedNewsFixtures, type NewsFixtures } from "./announcements-setup";
-import { cleanupTestData } from "./fixtures";
+import { TEST_PREFIX, cleanupTestData, testUserFilter } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -23,7 +23,12 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-  await db.announcementRead.deleteMany({});
+  // Only marks on test posts or by test users: no other row can match.
+  await db.announcementRead.deleteMany({
+    where: {
+      OR: [{ announcement: { title: { startsWith: TEST_PREFIX } } }, { user: testUserFilter }],
+    },
+  });
   if (extraPosts.length > 0) {
     await db.announcement.deleteMany({ where: { id: { in: extraPosts.splice(0) } } });
   }
@@ -204,4 +209,45 @@ it("feed pages with nextCursor", async () => {
   expect(second.body.data.nextCursor).toBeNull();
   const bad = await request(app).get("/api/v1/announcements").query({ cursor: "zzz" }).set(auth(f.tokens.student));
   expect(bad.status).toBe(400);
+});
+
+it("a non-numeric id is 400 in the error envelope", async () => {
+  const get = await request(app).get("/api/v1/announcements/abc").set(auth(f.tokens.student));
+  expect(get.status).toBe(400);
+  expect(get.body.error.code).toBe("bad_request");
+  const post = await request(app).post("/api/v1/announcements/abc/read").set(auth(f.tokens.student));
+  expect(post.status).toBe(400);
+  expect(post.body.error.code).toBe("bad_request");
+});
+
+it("cursor tie-break: posts sharing one createdAt page with no duplicate or gap", async () => {
+  const sameInstant = new Date(Date.now() - 60 * 60 * 1000);
+  const ids: number[] = [];
+  for (let i = 0; i < ANNOUNCEMENT_PAGE_SIZE + 5; i++) {
+    ids.push(await insertPost({ audience: "COMMUNITY", authorId: f.userIds.superUser, createdAt: sameInstant }));
+  }
+  extraPosts.push(...ids);
+
+  const seen: number[] = [];
+  let cursor: string | null = null;
+  let pages = 0;
+  do {
+    const res: request.Response = await request(app)
+      .get("/api/v1/announcements")
+      .query(cursor ? { cursor } : {})
+      .set(auth(f.tokens.student));
+    expect(res.status).toBe(200);
+    seen.push(...res.body.data.items.map((i: Item) => i.id));
+    cursor = res.body.data.nextCursor;
+    pages += 1;
+  } while (cursor && pages < 10);
+
+  expect(pages).toBeGreaterThanOrEqual(2);
+  expect(new Set(seen).size).toBe(seen.length);
+  expect([...seen].sort((a, b) => a - b)).toEqual(
+    [...ids, f.communityId, f.liveId].sort((a, b) => a - b),
+  );
+  // Ties break on id descending.
+  const tied = seen.filter((id) => ids.includes(id));
+  expect(tied).toEqual([...ids].sort((a, b) => b - a));
 });
