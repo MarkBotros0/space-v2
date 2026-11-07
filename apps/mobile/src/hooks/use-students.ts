@@ -11,6 +11,7 @@ import {
   createStudentResponseSchema,
   enrollmentTransitionResponseSchema,
   graduateStudentResponseSchema,
+  inviteStateSchema,
   studentDeletedResponseSchema,
   studentDetailInternalSchema,
   studentDetailPrivateSchema,
@@ -23,6 +24,7 @@ import {
   type CreateStudentResponse,
   type EnrollmentTransitionResponse,
   type GraduateStudentResponse,
+  type InviteState,
   type StudentDeletedResponse,
   type StudentDetailInternal,
   type StudentDetailPrivate,
@@ -290,5 +292,24 @@ export function useRestoreEnrollment(): UseMutationResult<
       return res.data.data as unknown;
     },
     onSuccess: (_data, { seasonId }) => invalidateSeatChange(queryClient, seasonId),
+  });
+}
+
+/**
+ * POST /students/:id/invite: a Super, or an admin of a season the student is
+ * in, resends the invite (owner, 2026-11-07). Metadata back, never a code.
+ */
+export function useResendStudentInvite(): UseMutationResult<InviteState, Error, { id: number }> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }) => {
+      const res = await apiClient.post(`/api/v1/students/${id}/invite`);
+      return inviteStateSchema.parse(res.data.data);
+    },
+    // Settled: a refusal (already_activated) means the cached state is stale too.
+    onSettled: (_data, _err, { id }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+    },
   });
 }

@@ -1,4 +1,4 @@
-import { conflict, errRef, ok } from "../helpers";
+import { conflict, errRef, errorResponse, ok } from "../helpers";
 import { idParam } from "../shared/params";
 
 /** `/api/v1/students/*`. Assembled into the document by `../openapi.ts`. */
@@ -232,6 +232,26 @@ export const studentPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: conflict("`already_graduated`, `not_qualified`, or `wrong_class` (they passed a graduating season of another year; that season's year is their class)."),
+      },
+    },
+  },
+
+  "/api/v1/students/{id}/invite": {
+    post: {
+      tags: ["Students"],
+      summary: "Resend a student's invite",
+      description:
+        "A Super, or an admin of a season the student is live in (owner, 2026-11-07); never the student. Mints a new code, mails it, and only then expires the older one, so a failed send leaves the earlier code working. The same sending and refusals as `POST /users/{id}/invite`; the code never appears in a response. `GET /students/{id}` tells staff whether the account still needs one (`invite`).",
+      parameters: [idParam],
+      responses: {
+        200: ok({ $ref: "#/components/schemas/InviteState" }, "The new invite's metadata."),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`already_activated` or `user_deleted`."),
+        502: { description: "`email_send_failed`.", content: { "application/json": { schema: errorResponse } } },
+        503: { description: "`email_not_configured`.", content: { "application/json": { schema: errorResponse } } },
       },
     },
   },

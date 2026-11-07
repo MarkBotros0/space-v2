@@ -55,14 +55,22 @@ export async function resendInvite(req: Request, res: Response) {
   if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  return answerResend(res, id, user.userId);
+}
 
+/**
+ * Re-send one person's invite and answer with their invite panel. Shared by
+ * the Super's `POST /users/:id/invite` and `POST /students/:id/invite`, which a
+ * season's admin may call too (owner, 2026-11-07); each route gates first.
+ */
+export async function answerResend(res: Response, id: number, byUserId: number) {
   const target = await db.user.findUnique({
     where: { id },
     select: { email: true, passwordHash: true, lastLoginAt: true, deletedAt: true },
   });
   if (!target) return apiError(res, "not_found", "User not found.", 404);
-  // Explicit refusals where v1 silently dropped (R16): this is an
-  // authenticated SUPER pressing a button on one row, and deserves an answer.
+  // Explicit refusals where v1 silently dropped (R16): this is someone
+  // pressing a button on one person, and deserves an answer.
   if (target.deletedAt) return apiError(res, "user_deleted", "This account is deactivated.", 409);
   if (target.passwordHash !== null || target.lastLoginAt !== null) {
     return apiError(res, "already_activated", "This account is already activated.", 409);
@@ -70,7 +78,7 @@ export async function resendInvite(req: Request, res: Response) {
 
   // Send first, expire the old code only after the mail went (resendInvite):
   // a failure here must never leave the person without a working code.
-  const outcome = await resendInviteNow(id, user.userId, target.email);
+  const outcome = await resendInviteNow(id, byUserId, target.email);
   if (outcome === "email_not_configured") return emailNotConfigured(res);
   if (outcome === "send_failed") {
     return apiError(

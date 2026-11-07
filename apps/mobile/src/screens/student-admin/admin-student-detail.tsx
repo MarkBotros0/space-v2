@@ -1,7 +1,8 @@
 /**
  * SUPER and ADMIN on /student/[id] (v1 app/admin/students/[id]): the name
  * over the current group with Edit beside it, Graduate, this season at a
- * glance, the details when there are any (the phone row calls), then
+ * glance (after Resend invite while the account isn't set up), the details
+ * when there are any (the phone row calls), then
  * Submissions, Attendance, Notes and Seasons behind a segmented control, the same layout as the leader's page (owner,
  * 2026-11-07). V2-ONLY Delete and a per-season Drop (Remove on a draft) show
  * only where `studentActionsFor` (the server's rules) allows. Delete leaves
@@ -37,6 +38,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { studentActionsFor } from "../../lib/student-actions";
 import { useSessionStore } from "../../store/session";
 import { BringBackDialogs } from "./bring-back-dialogs";
+import { InviteCallout } from "./invite-callout";
 import { RemoveFromDraftDialog } from "./remove-from-draft-dialog";
 import { AdminSeasonsSection } from "./admin-seasons-section";
 
@@ -159,6 +161,10 @@ export function AdminStudentDetail({ id }: { id: number }) {
           </View>
         ) : null}
 
+        {/* Staff who may edit them may resend their invite (owner, 2026-11-07). */}
+        {actions.canEdit && data.invite ? (
+          <InviteCallout studentId={data.id} email={data.email} invite={data.invite} />
+        ) : null}
         <EngagementSummary studentId={data.id} />
         <StudentDetails profile={data.profile} exception={data.graduatedByException} />
         <StudentSections sections={sections} />

@@ -350,6 +350,11 @@ export const peopleSchemas = {
         description: "SUPER's view only (null when none, absent for everyone else): the person was graduated without passing a graduating season. `at` is the time, `byName` the super who did it, `reason` their reason.",
         properties: { at: { type: "string", format: "date-time" }, byName: { type: ["string", "null"] }, reason: { type: ["string", "null"] } },
       },
+      invite: {
+        type: ["object", "null"],
+        description: "The internal view only (absent for everyone else): null once the account is set up; else `status` `invited` while the newest invite still works (until `expiresAt`), `pending` when none does. Resend with `POST /students/{id}/invite`.",
+        properties: { status: { type: "string", enum: ["invited", "pending"] }, expiresAt: { type: ["string", "null"], format: "date-time" } },
+      },
       currentGroup: {
         description: "Advisory current group: the most recent GroupStudent membership, any season.",
         oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],

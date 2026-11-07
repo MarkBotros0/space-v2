@@ -397,6 +397,14 @@ Finished seasons still never reopen.
   control; an empty Details card is left out.
 - **Sign-in:** no boxed card; Forgot password under its field; "or", then Continue with Google
   (not wired yet: it says so); the invite code is a full-width row of its own.
+- **Inviting and re-inviting** (owner, 2026-11-07). A season's admin may add someone with no account
+  into that season (`POST /students` with their `seasonId`, a draft or running one; the season's Add
+  people screen has Invite new, `/seasons/[code]/invite`); only a Super creates someone with no season.
+  A Super, or an admin of a season the student is live in, resends a stuck invite from the student's
+  page (`POST /students/:id/invite`, sharing `answerResend` with `POST /users/:id/invite`); the staff
+  detail carries `invite` (null once the account is set up).
+- **Finished seasons stay finished** (owner, 2026-11-07): never reopened, and they take no late
+  submissions.
 - **Emails** (`src/lib/email-templates.ts`) are drawn dark with the app's tokens, the logo and the
   stores' official badges as inline cid images (`email-assets.ts`; Gmail shows no SVG or data
   URLs). The store row shows only once `APP_STORE_URL` / `PLAY_STORE_URL` are set. An email can't

@@ -77,6 +77,16 @@ export const graduatedByExceptionSchema = z
   .nullable();
 export type GraduatedByException = z.infer<typeof graduatedByExceptionSchema>;
 
+/**
+ * Staff (the internal view): null once the account is set up; else `invited`
+ * while the newest invite still works (`expiresAt`), `pending` when none does.
+ * Drives Resend invite on the student's page (owner, 2026-11-07).
+ */
+export const studentInviteStateSchema = z
+  .object({ status: z.enum(["invited", "pending"]), expiresAt: z.string().nullable() })
+  .nullable();
+export type StudentInviteState = z.infer<typeof studentInviteStateSchema>;
+
 const studentDetailBase = z.object({
   id: z.number(),
   name: z.string(),
@@ -85,6 +95,8 @@ const studentDetailBase = z.object({
   graduationYear: z.number().nullable(),
   /** SUPER's view only; see `graduatedByExceptionSchema`. */
   graduatedByException: graduatedByExceptionSchema.optional(),
+  /** The internal view only; see `studentInviteStateSchema`. */
+  invite: studentInviteStateSchema.optional(),
   /** Advisory current group (GroupStudent — the one question it may answer, C9/R4). */
   currentGroup: z.object({ id: z.number(), name: z.string() }).nullable(),
   /**

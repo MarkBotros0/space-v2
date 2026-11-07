@@ -4,6 +4,7 @@ import type {
   StudentDetailInternal,
   StudentDetailPrivate,
   StudentDetailPublic,
+  StudentInviteState,
 } from "@space/shared";
 
 import { db } from "../../../db/client";
@@ -70,6 +71,8 @@ export async function loadStudentDetail(
   // Read for SUPER alone, in its own query, like the notes: nobody else's
   // view ever holds the reason in memory.
   const exception = isSuper(user) ? await loadGraduatedByException(studentUserId) : undefined;
+  // Staff resend a stuck invite from the student's page (owner, 2026-11-07).
+  const invite = view === "internal" ? await loadInviteState(studentUserId) : undefined;
 
   const enrollments = await db.seasonEnrollment.findMany({
     where: { studentUserId },
@@ -148,6 +151,7 @@ export async function loadStudentDetail(
     avatarPath: row.avatarPath,
     graduationYear: row.graduationYear,
     ...(exception === undefined ? {} : { graduatedByException: exception }),
+    ...(invite === undefined ? {} : { invite }),
     currentGroup,
     enrollments: history,
   };
@@ -186,5 +190,30 @@ async function loadGraduatedByException(userId: number): Promise<GraduatedByExce
     at: row.graduationOverrideAt.toISOString(),
     byName: row.graduationOverrideBy?.name ?? null,
     reason: row.graduationOverrideReason,
+  };
+}
+
+/**
+ * Whether the account is still waiting to be set up, for staff: null once the
+ * person has a password or has signed in, else `invited` while their newest
+ * invite is unused and unexpired, `pending` when there is none that works.
+ * The same rule as the Community badges (routes/users/views.ts); the hash is
+ * read here and never leaves.
+ */
+async function loadInviteState(userId: number): Promise<StudentInviteState> {
+  const row = await db.user.findUnique({
+    where: { id: userId },
+    select: { passwordHash: true, lastLoginAt: true },
+  });
+  if (!row || row.passwordHash !== null || row.lastLoginAt !== null) return null;
+  const latest = await db.inviteToken.findFirst({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: { usedAt: true, expiresAt: true },
+  });
+  const live = latest !== null && latest.usedAt === null && latest.expiresAt > new Date();
+  return {
+    status: live ? "invited" : "pending",
+    expiresAt: live ? latest.expiresAt.toISOString() : null,
   };
 }
