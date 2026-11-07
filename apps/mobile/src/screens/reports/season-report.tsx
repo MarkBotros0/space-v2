@@ -24,10 +24,13 @@ export function SeasonReport({
   const { seasonId, setSeasonId, ready, permitted, summary, atRiskRows, moreFailed, showMore } =
     scope;
 
-  if (summary.isError && !summary.data)
-    return <RouteError onRetry={() => void summary.refetch()} />;
-  if (!ready || summary.isPending) return <RouteSkeleton />;
+  // Before the season list arrives there is no header to keep, so the first
+  // load's states take the whole page. After it, the header (and History) stays
+  // whatever the chosen season does: a season that keeps failing must not
+  // strand the caller, who can always pick another (final review M6).
   if (permitted.length === 0) {
+    if (summary.isError) return <RouteError onRetry={() => void summary.refetch()} />;
+    if (!ready || summary.isPending) return <RouteSkeleton />;
     return (
       <EmptyState
         title="No seasons yet"
@@ -38,14 +41,15 @@ export function SeasonReport({
   const data = summary.data;
   return (
     <View className="flex-col gap-4">
-      {/* Outside the error branch: a season that keeps failing must not strand the caller. */}
       <ReportSeasonHeader
         seasons={permitted}
         selected={seasonId}
         onSelect={setSeasonId}
         allowAll={allowAll}
       />
-      {summary.isError ? (
+      {!ready || summary.isPending ? (
+        <RouteSkeleton />
+      ) : summary.isError && !data ? (
         <RouteError onRetry={() => void summary.refetch()} />
       ) : data ? (
         <>

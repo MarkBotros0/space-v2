@@ -79,32 +79,35 @@ export function ReportSeasonHeader({
   };
 
   return (
-    <View
-      testID="report-season"
-      className="flex-row items-center gap-3 rounded-group bg-surface p-4"
-    >
-      <View className="min-w-0 flex-1 gap-1">
-        <Text variant="headline">{season ? season.title : "All seasons"}</Text>
-        {season ? (
-          <View className="flex-row flex-wrap items-center gap-2">
-            <StatusChip {...statusChip("season", season.status)} />
+    <>
+      <View
+        testID="report-season"
+        className="flex-row items-center gap-3 rounded-group bg-surface p-4"
+      >
+        <View className="min-w-0 flex-1 gap-1">
+          <Text variant="headline">{season ? season.title : "All seasons"}</Text>
+          {season ? (
+            <View className="flex-row flex-wrap items-center gap-2">
+              <StatusChip {...statusChip("season", season.status)} />
+              <Text variant="caption" className="text-muted-foreground">
+                {seasonLine(season)}
+              </Text>
+            </View>
+          ) : (
             <Text variant="caption" className="text-muted-foreground">
-              {seasonLine(season)}
+              {`Every season together (${seasons.length})`}
             </Text>
-          </View>
-        ) : (
-          <Text variant="caption" className="text-muted-foreground">
-            {`Every season together (${seasons.length})`}
-          </Text>
-        )}
+          )}
+        </View>
+        {hasChoice ? (
+          <PillButton
+            label="History"
+            accessibilityLabel="Choose another season"
+            onPress={() => setOpen(true)}
+          />
+        ) : null}
       </View>
-      {hasChoice ? (
-        <PillButton
-          label="History"
-          accessibilityLabel="Choose another season"
-          onPress={() => setOpen(true)}
-        />
-      ) : null}
+      {/* Beside the card, not in it: the card stays put while a picked season loads. */}
       <Sheet open={open} onClose={() => setOpen(false)} title="Seasons">
         <View className="flex-col gap-5">
           {allowAll ? (
@@ -130,6 +133,6 @@ export function ReportSeasonHeader({
           ) : null}
         </View>
       </Sheet>
-    </View>
+    </>
   );
 }
