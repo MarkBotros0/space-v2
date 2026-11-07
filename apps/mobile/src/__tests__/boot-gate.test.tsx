@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native";
+import { act, render, screen } from "@testing-library/react-native";
 
 // Task 8 is known to touch `app/_layout.tsx`. If it rewrites the file wholesale
 // instead of editing around the existing gate, the always-show-login bug
@@ -48,6 +48,8 @@ jest.mock("../hooks/use-session", () => ({
 }));
 
 import RootLayout from "../../app/_layout";
+import { LOGO_WRITING_MS } from "../design/brand/logo-strokes";
+import { DURATION } from "../design/motion";
 import { useSessionStore } from "../store/session";
 
 beforeEach(() => {
@@ -103,5 +105,28 @@ describe("RootLayout boot gate", () => {
 
     expect(await screen.findByText("STACK")).toBeTruthy();
     expect(screen.queryByLabelText("Loading")).toBeNull();
+  });
+});
+
+describe("RootLayout launch screen", () => {
+  afterEach(() => jest.useRealTimers());
+
+  it("writes the logo over the app once per cold start, then never again", async () => {
+    jest.useFakeTimers();
+    useSessionStore.setState({ status: "authenticated" });
+    const { rerender } = render(<RootLayout />);
+    expect(await screen.findByTestId("launch-screen")).toBeTruthy();
+    // The app is underneath the whole time, so boot never waits on the logo.
+    expect(screen.getByText("STACK")).toBeTruthy();
+
+    act(() => jest.advanceTimersByTime(LOGO_WRITING_MS));
+    act(() => jest.advanceTimersByTime(DURATION.base));
+    expect(screen.queryByTestId("launch-screen")).toBeNull();
+
+    // A sign-out and sign-in again (or any re-render) does not replay it.
+    act(() => useSessionStore.setState({ status: "anonymous" }));
+    rerender(<RootLayout />);
+    act(() => useSessionStore.setState({ status: "authenticated" }));
+    expect(screen.queryByTestId("launch-screen")).toBeNull();
   });
 });
