@@ -383,6 +383,25 @@ and Duplicate are icon buttons beside the name. **A finished season is read-only
 and sessions are read, nothing is added, moved or marked; a note offers "Duplicate as a draft".
 Finished seasons still never reopen.
 
+### People lists, sign-in and emails (owner, 2026-11-07)
+
+- **Super's Community tab** (`/community`, replacing the Students tab and the Users page) lists
+  every account. Search and a filter icon (`FilterButton`) share one row; the sheet narrows by role
+  and by account status. Its header button is **New member** (`/users/new`). "Add students in bulk"
+  opens the importer, which takes plain `name, email` lines with no header row.
+- **Students list.** Filter is the icon in the search row, never a chip under it. A Super filters
+  by season first, then that season's groups. Alumni and Dropped are a Show choice in the sheet
+  (`/students?show=alumni`), not pages. Every row names the active season, else "Last season: …"
+  (`lastSeasonTitle`).
+- **A student's page (staff):** Edit is a pencil beside the name; sections switch on a segmented
+  control; an empty Details card is left out.
+- **Sign-in:** no boxed card; Forgot password under its field; "or", then Continue with Google
+  (not wired yet: it says so); the invite code is a full-width row of its own.
+- **Emails** (`src/lib/email-templates.ts`) are drawn dark with the app's tokens, the logo and the
+  stores' official badges as inline cid images (`email-assets.ts`; Gmail shows no SVG or data
+  URLs). The store row shows only once `APP_STORE_URL` / `PLAY_STORE_URL` are set. An email can't
+  copy to the clipboard: a code selects in one tap instead.
+
 ### Motion: calm and quick (owner, 2026-11-06 and 2026-11-07)
 
 It is an educational app: motion is for orientation, never decoration or play. The owner
