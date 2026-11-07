@@ -46,8 +46,12 @@ describe("navFor", () => {
     // settings are one page, opened from More's name row and Home's avatar, so
     // neither is a sidebar entry; MENTOR and alumni keep their Profile tab.
     const before: Record<string, string[]> = {
+      // Owner, 2026-11-07: Community (every account) replaces Users, Students,
+      // Alumni and Dropped; those lists are filters of /students, reached from
+      // Home's figures.
       SUPER: [
         "/calendar",
+        "/community",
         "/dashboard",
         "/events",
         "/more",
@@ -55,10 +59,6 @@ describe("navFor", () => {
         "/notifications",
         "/reports",
         "/seasons",
-        "/students",
-        "/students/alumni",
-        "/students/dropped",
-        "/users",
       ],
       // Owner, 2026-11-07: Students live under Groups, and Assignments and
       // Quizzes under Work (/coursework), so those three leave ADMIN's nav.
@@ -85,10 +85,10 @@ describe("navFor", () => {
       ],
       MENTOR: [
         "/dashboard",
+        "/follow-ups",
         "/notes",
         "/notifications",
         "/profile",
-        "/reports",
         "/students",
       ],
       STUDENT: [
@@ -148,11 +148,8 @@ describe("navFor", () => {
         ["/seasons", "Seasons", "season"],
         ["/calendar", "Calendar", "calendar"],
         ["/events", "JPC Events", "events"],
-        ["/students", "Students", "students"],
-        ["/students/alumni", "Alumni", "alumni"],
-        ["/students/dropped", "Dropped students", "dropped"],
+        ["/community", "Community", "users"],
         ["/notes", "My notes", "notes"],
-        ["/users", "Users", "users"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
       ],
@@ -160,7 +157,7 @@ describe("navFor", () => {
         ["/dashboard", "Home", "home"],
         ["/seasons", "Seasons", "season"],
         ["/calendar", "Calendar", "calendar"],
-        ["/students", "Students", "students"],
+        ["/community", "Community", "users"],
         ["/more", "More", "more"],
       ],
     });
@@ -223,17 +220,20 @@ describe("navFor", () => {
     });
 
     expect(shape(navByRole.MENTOR)).toEqual({
+      // Owner, 2026-11-07: the mentor sees nothing season-shaped (no Reports),
+      // and their people are their Community.
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
-        ["/students", "Students", "students"],
-        ["/reports", "Reports", "reports"],
+        ["/students", "Community", "users"],
+        ["/notes", "Notes", "notes"],
+        ["/follow-ups", "Follow-ups", "followUps"],
         ["/notifications", "Notifications", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
-        ["/students", "Students", "students"],
-        ["/reports", "Reports", "reports"],
+        ["/students", "Community", "users"],
         ["/notes", "Notes", "notes"],
+        ["/follow-ups", "Follow-ups", "followUps"],
         ["/profile", "Profile", "profile"],
       ],
     });

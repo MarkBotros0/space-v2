@@ -19,7 +19,10 @@ export function NeedsActionList({
   needs,
   scopeSeasonId,
   onRetry,
+  title = "Needs action",
 }: {
+  /** The section's heading: Home says "Needs action", a season's page "Needs attention". */
+  title?: string;
   needs: NeedsAction;
   scopeSeasonId: number | null;
   onRetry: () => void;
@@ -83,7 +86,7 @@ export function NeedsActionList({
 
   return (
     <View className="gap-2">
-      <ListSectionHeader className="pb-0">Needs action</ListSectionHeader>
+      <ListSectionHeader className="pb-0">{title}</ListSectionHeader>
       {tiles.length > 0 ? <CountGrid tiles={tiles} /> : null}
       {unknown.length > 0 ? (
         <InlineError message={`Couldn't load ${unknown.join(", ")}.`} onRetry={onRetry} />

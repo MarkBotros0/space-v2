@@ -65,8 +65,8 @@ const SUPER: RoleNav = {
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/events", label: "JPC Events", icon: "events" },
     // Owner 2026-11-07: everyone, whatever their role; it replaces Users.
+    // Owner 2026-11-07: no Students row; Community already lists every student.
     { href: "/community", label: "Community", icon: "users" },
-    { href: "/students", label: "Students", icon: "students" },
     // GET /me/notes is open to every role that can author (spec §7, R44) —
     // ADMIN, LEADER and SUPER could all write notes in v1 and none of them
     // could list what they had written. The nav has to follow in the same

@@ -1,4 +1,5 @@
-# UI sweep s29 — Dashboard as a super admin, with the user menu and the bell. Read-only: nothing is saved, the flow only
+# UI sweep s29 — Dashboard as a super admin (an overview: seasons and community, no work queues;
+# owner 2026-11-07), with the user menu and the bell, then a running season's Needs attention. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
@@ -8,7 +9,7 @@ appId: com.jpc.space
       EMAIL: ${SUPER_EMAIL}
 - openLink: spacev2://dashboard
 - extendedWaitUntil:
-    visible: '(?i)needs action'
+    visible: '(?i)community'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -47,3 +48,16 @@ appId: com.jpc.space
 - pressKey: back
 - waitForAnimationToEnd:
     timeout: 3000
+# Super finds a running season's work queues on its page. The seeded active season is gbv-<this year>.
+- evalScript: ${output.year = new Date().getFullYear()}
+- openLink: spacev2://seasons/gbv-${output.year}
+- extendedWaitUntil:
+    visible: 'Code: gbv-${output.year}'
+    timeout: 40000
+- scrollUntilVisible:
+    element: '(?i)needs attention'
+    direction: DOWN
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s29-06-season-needs-attention

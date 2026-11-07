@@ -19,6 +19,7 @@ import { iconWithClassName } from "../../../../src/design/lib/icon";
 import { NextStepCard } from "../../../../src/design/seasons/next-step-card";
 import { PeopleCard, type PeopleCardAdmins } from "../../../../src/design/seasons/people-card";
 import { SeasonDetailView, type SeasonAction } from "../../../../src/design/seasons/season-detail";
+import { SeasonNeeds } from "../../../../src/screens/season/season-needs";
 import { phoneDayKey } from "../../../../src/design/seasons/season-timeline";
 import { Button, EmptyState } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
@@ -203,6 +204,8 @@ export default function SeasonDetailScreen() {
           today={today}
           actions={actions}
           nextStep={nextStep}
+          // Owner 2026-11-07: Super finds a season's work here, not on Home.
+          attention={s.status === "ACTIVE" && manage ? <SeasonNeeds seasonId={s.id} /> : undefined}
           people={people}
           extra={isAdmin && canAdminister ? <EditSeason season={s} /> : undefined}
         />

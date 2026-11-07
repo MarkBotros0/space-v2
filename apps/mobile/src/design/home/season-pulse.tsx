@@ -45,6 +45,7 @@ export function staffPulseFigures(attendancePct: number | null, students: number
 
 export function SeasonPulse({
   title,
+  subtitle,
   progressPct,
   sessionsHeld,
   sessionsTotal,
@@ -53,6 +54,8 @@ export function SeasonPulse({
 }: {
   /** The season's or the group's name, on top of the card. */
   title: string;
+  /** One line under the title, e.g. "Community-wide". */
+  subtitle?: string;
   progressPct: number | null;
   sessionsHeld: number;
   sessionsTotal: number;
@@ -73,9 +76,16 @@ export function SeasonPulse({
       <Animated.View style={press.animatedStyle}>
         <View testID="season-pulse" className="flex-col gap-3 rounded-group bg-surface p-4">
           <View className="flex-row items-center justify-between gap-2">
-            <Text variant="headline" numberOfLines={2} className="min-w-0 flex-1">
-              {title}
-            </Text>
+            <View className="min-w-0 flex-1 gap-0.5">
+              <Text variant="headline" numberOfLines={2}>
+                {title}
+              </Text>
+              {subtitle ? (
+                <Text variant="subhead" className="text-muted-foreground">
+                  {subtitle}
+                </Text>
+              ) : null}
+            </View>
             {onPress ? <ChevronRight size={18} className="shrink-0 text-muted-foreground" /> : null}
           </View>
           <View className="flex-row items-center gap-5">

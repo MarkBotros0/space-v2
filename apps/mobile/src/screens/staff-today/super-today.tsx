@@ -1,45 +1,83 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { CalendarDays, GraduationCap, Layers, Users } from "lucide-react-native";
+import { CalendarDays, GraduationCap, MailPlus, Users } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
+import { FigureGrid, type FigureTileProps } from "../../design/home/figure-tile";
 import { InlineError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { FigureGrid } from "../../design/home/figure-tile";
-import { GroupedList, ListRow, ListSectionHeader } from "../../design/ui";
+import { ListSectionHeader } from "../../design/ui";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useOrganisationReport } from "../../hooks/use-reports";
-import { useStaffToday } from "../../hooks/use-staff-today";
+import { useSeasons } from "../../hooks/use-seasons";
+import { usePendingInviteCount } from "../../hooks/use-users";
 import { firstName } from "../../lib/format";
-import { OverdueCallout } from "../season-end/overdue-callout";
-import { liveSessions, nextSession } from "../../lib/staff-today";
+import { queryKeys } from "../../lib/query-keys";
 import { useSessionStore } from "../../store/session";
-import { fromListItem, LiveSessionHero } from "./live-session-hero";
-import { NeedsActionList } from "./needs-action-list";
+import { OverdueCallout } from "../season-end/overdue-callout";
+import { SuperSeasons } from "./super-seasons";
 
 /**
- * Super Today: live sessions across every active season, what needs action,
- * then the organisation figures as a grid of tiles (owner, 2026-11-07). The
- * figures share the Reports query key; the events count reads `total` from
- * the very response the events card renders (D19).
+ * Super Home: an overview of the community and its seasons, never a work
+ * queue (owner, 2026-11-07: "the super user should see just an overview of the
+ * students and season"). Students at risk, submissions to review, sessions
+ * without attendance and the live session belong to a season's admin; Super
+ * reaches them from the season's page. What stays: the overdue-season prompt,
+ * each running season's pulse and the drafts coming up, the community figures,
+ * and events. Spec: docs/superpowers/specs/2026-11-07-super-home-overview-design.md.
  */
 export function SuperToday() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const name = useSessionStore((s) => s.user?.name ?? null);
-  const today = useStaffToday("SUPER");
+  const seasons = useSeasons();
   const org = useOrganisationReport(true);
+  const invites = usePendingInviteCount(true);
   const events = useUpcomingEvents(UPCOMING_EVENTS_LIMIT);
 
   const refresh = () => {
-    today.refetch();
+    void seasons.refetch();
     void org.refetch();
+    void invites.refetch();
     void events.refetch();
+    // Every running season's pulse reads its own dashboard query.
+    void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
   };
 
-  const now = new Date();
-  const live = liveSessions(today.sessions, now, today.orgToday);
-  const hero = live[0] ?? nextSession(today.sessions, now, today.orgToday);
+  const tiles: FigureTileProps[] = [];
+  if (org.data) {
+    tiles.push(
+      {
+        label: "Students (not graduated)",
+        value: String(org.data.totalStudentsNotGraduated),
+        icon: Users,
+        onPress: () => router.push("/students"),
+      },
+      {
+        label: "Alumni",
+        value: String(org.data.totalAlumni),
+        icon: GraduationCap,
+        onPress: () => router.push({ pathname: "/students", params: { show: "alumni" } }),
+      },
+    );
+  }
+  // Inviting people is Super's own community job, so it stays (as a figure, not a task tile).
+  if (invites.data !== undefined) {
+    tiles.push({
+      label: "Not invited yet",
+      value: String(invites.data),
+      icon: MailPlus,
+      onPress: () => router.push({ pathname: "/community", params: { status: "pending" } }),
+    });
+  }
+  tiles.push({
+    label: "Upcoming events",
+    value: events.data ? String(events.data.total) : "—",
+    icon: CalendarDays,
+    onPress: () => router.push("/events"),
+  });
 
   const named = (name ?? "").trim() !== "";
   return (
@@ -47,79 +85,34 @@ export function SuperToday() {
       title={named ? `Hi, ${firstName(name)}` : "Home"}
       compactTitle="Home"
       home
-      refreshing={today.isRefetching || org.isRefetching || events.isRefetching}
+      refreshing={seasons.isRefetching || org.isRefetching || events.isRefetching}
       onRefresh={refresh}
     >
       <View className="flex-col gap-4">
-        {hero ? <LiveSessionHero session={fromListItem(hero, live.length > 0)} /> : null}
-        {live.length > 1 ? (
-          <GroupedList header="Also happening now">
-            {live.slice(1).map((s) => {
-              const row = fromListItem(s, true);
-              return (
-                <ListRow
-                  key={s.id}
-                  title={row.title}
-                  subtitle={row.meta}
-                  chevron
-                  onPress={() =>
-                    router.push({ pathname: "/session/[id]", params: { id: String(s.id) } })
-                  }
-                />
-              );
-            })}
-          </GroupedList>
-        ) : null}
         <OverdueCallout />
-        {today.isPending ? (
+        {seasons.isPending ? (
           <RouteSkeleton />
+        ) : seasons.isError ? (
+          <InlineError message="Couldn't load the seasons." onRetry={() => void seasons.refetch()} />
         ) : (
-          <NeedsActionList
-            needs={today.needs}
-            scopeSeasonId={today.scopeSeasonId}
-            onRetry={today.refetch}
-          />
+          <SuperSeasons seasons={seasons.data} org={org.data} />
         )}
-        {org.isPending ? (
-          <RouteSkeleton />
-        ) : org.isError ? (
-          <InlineError
-            message="Couldn't load the organisation figures."
-            onRetry={() => void org.refetch()}
-          />
-        ) : (
-          <View className="gap-2">
-            <ListSectionHeader className="pb-0">Organisation</ListSectionHeader>
-            <FigureGrid
-              tiles={[
-                {
-                  label: "Students (not graduated)",
-                  value: String(org.data.totalStudentsNotGraduated),
-                  icon: Users,
-                  onPress: () => router.push("/students"),
-                },
-                {
-                  label: "Alumni",
-                  value: String(org.data.totalAlumni),
-                  icon: GraduationCap,
-                  onPress: () => router.push({ pathname: "/students", params: { show: "alumni" } }),
-                },
-                {
-                  label: "Seasons",
-                  value: String(org.data.seasons.length),
-                  icon: Layers,
-                  onPress: () => router.push("/seasons"),
-                },
-                {
-                  label: "Upcoming events",
-                  value: events.data ? String(events.data.total) : "—",
-                  icon: CalendarDays,
-                  onPress: () => router.push("/events"),
-                },
-              ]}
-            />
-          </View>
-        )}
+        <View className="gap-2">
+          <ListSectionHeader className="pb-0">Community</ListSectionHeader>
+          {org.isPending ? (
+            <RouteSkeleton />
+          ) : (
+            <>
+              {org.isError ? (
+                <InlineError
+                  message="Couldn't load the community figures."
+                  onRetry={() => void org.refetch()}
+                />
+              ) : null}
+              <FigureGrid tiles={tiles} />
+            </>
+          )}
+        </View>
         <UpcomingEventsCard query={events} />
       </View>
     </Screen>

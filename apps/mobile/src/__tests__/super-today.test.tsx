@@ -15,15 +15,16 @@ jest.mock("../design/layout/home-actions", () => {
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import { get, organisation } from "./helpers/dashboard-fixtures";
+import { get, organisation, requested, staffDashboard } from "./helpers/dashboard-fixtures";
 import { seasonFixture, serveStaff, sessionRow, staffRoutes } from "./helpers/staff-today-fixtures";
 
 import DashboardScreen from "../../app/(app)/(tabs)/dashboard";
 
-const base = () =>
+const base = (over: Record<string, unknown> = {}) =>
   staffRoutes({
     "/api/v1/reports/organisation": organisation,
     "/api/v1/users/invites/pending": { pending: 5 },
+    ...over,
   });
 
 beforeEach(() => {
@@ -32,12 +33,13 @@ beforeEach(() => {
   useSessionStore.setState(makeSession("SUPER"));
 });
 
-describe("Super Today", () => {
-  it("greets the super by first name, and falls back to Today when the name is blank", async () => {
+describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => {
+  it("greets the super by first name, and falls back to Home when the name is blank", async () => {
     useSessionStore.setState(makeSession("SUPER", {}, { name: "Sam Super" }));
     serveStaff(get, { table: base() });
     const first = renderWithProviders(<DashboardScreen />);
     expect((await screen.findAllByText("Hi, Sam")).length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     first.unmount();
 
     useSessionStore.setState(makeSession("SUPER", {}, { name: "" }));
@@ -47,75 +49,76 @@ describe("Super Today", () => {
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });
 
-  it("shows the action tiles with no season on the review, sessions or at-risk destinations", async () => {
-    serveStaff(get, { table: base() });
-    renderWithProviders(<DashboardScreen />);
-
-    expect(await screen.findByLabelText("Submissions to review: 3")).toBeTruthy();
-    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-    fireEvent.press(screen.getByLabelText("Submissions to review: 3"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: {} });
-    fireEvent.press(screen.getByLabelText("Sessions without attendance: 1"));
-    expect(mockPush).toHaveBeenCalledWith("/attention/sessions");
-    fireEvent.press(screen.getByLabelText("Students at risk: 2"));
-    expect(mockPush).toHaveBeenCalledWith("/attention/at-risk");
-  });
-
-  it("the invites tile opens pending users with no season id, and reads All clear at zero", async () => {
-    serveStaff(get, { table: base() });
-    const first = renderWithProviders(<DashboardScreen />);
-    fireEvent.press(await screen.findByLabelText("Not invited yet: 5"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/community", params: { status: "pending" } });
-    first.unmount();
-
-    serveStaff(get, { table: { ...base(), "/api/v1/users/invites/pending": { pending: 0 } } });
-    renderWithProviders(<DashboardScreen />);
-    expect(await screen.findByLabelText("Submissions to review: 3")).toBeTruthy();
-    expect(screen.getByLabelText("Not invited yet: none, all clear")).toBeTruthy();
-  });
-
-  it("two sessions live at once are both visible", async () => {
+  it("shows no season-admin work: no review, attendance or at-risk tiles, no live session, and never asks for them", async () => {
     serveStaff(get, {
-      table: {
-        ...base(),
-        "/api/v1/seasons": { seasons: [seasonFixture(7), seasonFixture(8)] },
-        "/api/v1/seasons/7/sessions": { sessions: [sessionRow(1, 7, 30)] },
-        "/api/v1/seasons/8/sessions": { sessions: [sessionRow(2, 8, 10)] },
-      },
+      table: base({ "/api/v1/seasons/7/sessions": { sessions: [sessionRow(1, 7, 30)] } }),
     });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("Happening now")).toBeTruthy();
-    expect(screen.getByText("ALSO HAPPENING NOW")).toBeTruthy();
-    expect(screen.getByText("Week 1")).toBeTruthy();
-    expect(screen.getByText("Week 2")).toBeTruthy();
-    fireEvent.press(screen.getByText("Mark attendance"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/attendance", params: { id: "1" } });
-  });
-
-  it("no active seasons still shows the figures and the events", async () => {
-    serveStaff(get, {
-      table: { ...base(), "/api/v1/seasons": { seasons: [seasonFixture(7, "ARCHIVED")] } },
-    });
-    renderWithProviders(<DashboardScreen />);
-
-    expect(await screen.findByText("40")).toBeTruthy();
-    expect(screen.getByText("12")).toBeTruthy();
-    expect(screen.getByText("Seasons")).toBeTruthy();
-    expect(await screen.findByText("9")).toBeTruthy();
-    expect(screen.getByText("Open day")).toBeTruthy();
+    expect(await screen.findByLabelText("Open Season 7")).toBeTruthy();
+    expect(screen.queryByText("NEEDS ACTION")).toBeNull();
+    expect(screen.queryByText(/Submissions to review/)).toBeNull();
+    expect(screen.queryByText(/Sessions without attendance/)).toBeNull();
+    expect(screen.queryByText(/Students at risk/)).toBeNull();
     expect(screen.queryByText("Happening now")).toBeNull();
+    const urls = requested();
+    expect(urls.some((u) => u.startsWith("/api/v1/submissions"))).toBe(false);
+    expect(urls.some((u) => u.startsWith("/api/v1/reports/engagement"))).toBe(false);
+    expect(urls.some((u) => u.includes("/sessions"))).toBe(false);
   });
 
-  it("the figure tiles speak their label with the value", async () => {
-    serveStaff(get, { table: base() });
+  it("gives each running season its pulse, opening the season", async () => {
+    serveStaff(get, {
+      table: base({
+        "/api/v1/seasons": {
+          seasons: [seasonFixture(7), { ...seasonFixture(8), isCommunityWide: true }],
+        },
+        "/api/v1/me/dashboard?seasonId=8": { ...staffDashboard("season"), season: { id: 8, code: "s8", title: "Season 8", status: "ACTIVE" } },
+      }),
+    });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByRole("button", { name: "Alumni: 12" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Students (not graduated): 40" })).toBeTruthy();
+    expect(await screen.findByLabelText("Open Season 8")).toBeTruthy();
+    expect(screen.getAllByTestId("season-pulse")).toHaveLength(2);
+    expect(screen.getByText("Community-wide")).toBeTruthy();
+    expect(screen.getAllByText("3 of 4").length).toBe(2);
+    fireEvent.press(screen.getByLabelText("Open Season 7"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s7" } });
   });
 
-  it("the figure tiles open what the old stat cards opened", async () => {
+  it("lists drafts under Coming up with their start and enrolled count", async () => {
+    serveStaff(get, {
+      table: base({
+        "/api/v1/seasons": { seasons: [seasonFixture(9, "DRAFT")] },
+        "/api/v1/reports/organisation": {
+          ...organisation,
+          seasons: [{ ...organisation.seasons[0], seasonId: 9, status: "DRAFT", activeCount: 1 }],
+        },
+      }),
+    });
+    renderWithProviders(<DashboardScreen />);
+
+    expect(await screen.findByText("COMING UP")).toBeTruthy();
+    expect(screen.getByText(/Starts .*1 student$/)).toBeTruthy();
+    expect(screen.queryByTestId("season-pulse")).toBeNull();
+    fireEvent.press(screen.getByText("Season 9"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s9" } });
+  });
+
+  it("with no running or draft season, says so and offers a new one, and still shows the community", async () => {
+    serveStaff(get, {
+      table: base({ "/api/v1/seasons": { seasons: [seasonFixture(7, "ARCHIVED")] } }),
+    });
+    renderWithProviders(<DashboardScreen />);
+
+    expect(await screen.findByText("No season running")).toBeTruthy();
+    fireEvent.press(screen.getByText("New season"));
+    expect(mockPush).toHaveBeenCalledWith("/seasons/new");
+    expect(await screen.findByLabelText("Students (not graduated): 40")).toBeTruthy();
+    expect(screen.getByText("Open day")).toBeTruthy();
+  });
+
+  it("the community tiles open what they count", async () => {
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);
 
@@ -123,9 +126,10 @@ describe("Super Today", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/students", params: { show: "alumni" } });
     fireEvent.press(screen.getByLabelText("Students (not graduated): 40"));
     expect(mockPush).toHaveBeenCalledWith("/students");
-    fireEvent.press(screen.getByLabelText(/^Seasons: /));
-    expect(mockPush).toHaveBeenCalledWith("/seasons");
+    fireEvent.press(await screen.findByLabelText("Not invited yet: 5"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/community", params: { status: "pending" } });
     fireEvent.press(await screen.findByLabelText(/^Upcoming events: \d+$/));
     expect(mockPush).toHaveBeenCalledWith("/events");
+    expect(screen.queryByLabelText(/^Seasons: /)).toBeNull();
   });
 });

@@ -91,6 +91,7 @@ export function SeasonDetailView({
   today,
   actions,
   nextStep,
+  attention,
   people,
   extra,
 }: {
@@ -99,6 +100,8 @@ export function SeasonDetailView({
   today: string;
   actions: SeasonAction[];
   nextStep?: ReactNode;
+  /** A running season's work queues (review, attendance, at risk), under the next step. */
+  attention?: ReactNode;
   /** Who is in it: admins, groups and students, as one card. */
   people: ReactNode;
   extra?: ReactNode;
@@ -110,6 +113,7 @@ export function SeasonDetailView({
         <Figures season={season} />
       </View>
       {nextStep}
+      {attention}
       <View className="flex-col gap-2">
         <ListSectionHeader className="pb-0">People</ListSectionHeader>
         {people}
