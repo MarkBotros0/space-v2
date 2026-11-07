@@ -82,7 +82,23 @@ describe("admin student detail", () => {
     await screen.findByText("Edit profile");
     expect(screen.queryByText("Graduate")).toBeNull();
     expect(screen.queryByText("Delete student")).toBeNull();
-    expect(screen.getByText("Drop")).toBeTruthy();
+    // Drop sits on the Seasons tab, last since 2026-11-07.
+    fireEvent.press(screen.getByRole("button", { name: "Seasons" }));
+    expect(await screen.findByText("Drop")).toBeTruthy();
+  });
+
+  // Owner 2026-11-07: Submissions, Attendance, Notes, Seasons; the first opens.
+  it("orders the sections Submissions, Attendance, Notes, Seasons", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    renderWithProviders(<StudentDetailScreen />);
+    await screen.findByText("Edit profile");
+    const names = new Set(["Submissions", "Attendance", "Notes", "Seasons"]);
+    const tabs = screen
+      .getAllByRole("button")
+      .map((b) => b.props.accessibilityLabel as string)
+      .filter((label) => names.has(label));
+    expect(tabs).toEqual(["Submissions", "Attendance", "Notes", "Seasons"]);
+    expect(get).toHaveBeenCalledWith("/api/v1/students/21/submissions");
   });
 
   it("fetches a section only when it is first opened", async () => {

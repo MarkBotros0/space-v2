@@ -99,7 +99,15 @@ export function AdminStudentDetail({ id }: { id: number }) {
   }
 
   const actions = studentActionsFor(user, scopes, data);
+  // Owner 2026-11-07: Submissions first, then Attendance, Notes and Seasons; the first opens.
   const sections: StudentSection[] = [
+    { value: "submissions", label: "Submissions", render: () => <GroupedSubmissionsTab studentId={data.id} /> },
+    { value: "attendance", label: "Attendance", render: () => <GroupedAttendanceTab studentId={data.id} /> },
+    {
+      value: "notes",
+      label: "Notes",
+      render: () => <GroupedNotesTab studentId={data.id} canWriteNote onWrite={() => setNoteOpen(true)} />,
+    },
     {
       value: "seasons",
       label: "Seasons",
@@ -111,13 +119,6 @@ export function AdminStudentDetail({ id }: { id: number }) {
           restoreFor={(e) => (actions.canRestore(e) ? () => setRestoreTarget(e) : null)}
         />
       ),
-    },
-    { value: "attendance", label: "Attendance", render: () => <GroupedAttendanceTab studentId={data.id} /> },
-    { value: "submissions", label: "Submissions", render: () => <GroupedSubmissionsTab studentId={data.id} /> },
-    {
-      value: "notes",
-      label: "Notes",
-      render: () => <GroupedNotesTab studentId={data.id} canWriteNote onWrite={() => setNoteOpen(true)} />,
     },
   ];
   return (

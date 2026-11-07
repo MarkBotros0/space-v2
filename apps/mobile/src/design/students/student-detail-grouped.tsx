@@ -38,22 +38,26 @@ export function StudentDetailGrouped({
 }) {
   // Always mounted, so a dismissed note keeps its text.
   const [noteOpen, setNoteOpen] = useState(false);
-  const sections: StudentSection[] = [
-    { value: "seasons", label: "Seasons", render: () => <GroupedSeasonsTab enrollments={student.enrollments} /> },
-  ];
-  if (staffTabs) {
-    sections.push(
-      { value: "attendance", label: "Attendance", render: () => <GroupedAttendanceTab studentId={student.id} /> },
-      { value: "submissions", label: "Submissions", render: () => <GroupedSubmissionsTab studentId={student.id} /> },
-      {
-        value: "notes",
-        label: "Notes",
-        render: () => (
-          <GroupedNotesTab studentId={student.id} canWriteNote={canWriteNote} onWrite={() => setNoteOpen(true)} />
-        ),
-      },
-    );
-  }
+  // Owner 2026-11-07: Submissions first, then Attendance, Notes and Seasons; the first opens.
+  const seasons: StudentSection = {
+    value: "seasons",
+    label: "Seasons",
+    render: () => <GroupedSeasonsTab enrollments={student.enrollments} />,
+  };
+  const sections: StudentSection[] = staffTabs
+    ? [
+        { value: "submissions", label: "Submissions", render: () => <GroupedSubmissionsTab studentId={student.id} /> },
+        { value: "attendance", label: "Attendance", render: () => <GroupedAttendanceTab studentId={student.id} /> },
+        {
+          value: "notes",
+          label: "Notes",
+          render: () => (
+            <GroupedNotesTab studentId={student.id} canWriteNote={canWriteNote} onWrite={() => setNoteOpen(true)} />
+          ),
+        },
+        seasons,
+      ]
+    : [seasons];
 
   return (
     <View className="flex-col gap-6">

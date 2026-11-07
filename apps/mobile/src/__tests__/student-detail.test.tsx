@@ -178,7 +178,7 @@ describe("StudentDetailScreen history (REG-83)", () => {
     expect(await screen.findByText("83% attendance")).toBeTruthy();
     fireEvent.press(screen.getByText("Attendance"));
     expect(await screen.findByText("Week 4")).toBeTruthy();
-    expect(screen.getByText("Late")).toBeTruthy();
+    expect(screen.getAllByText("Late").length).toBeGreaterThan(0);
     fireEvent.press(screen.getByText("Submissions"));
     fireEvent.press(await screen.findByText("Essay one"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
@@ -255,11 +255,11 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     serveLeader();
     renderWithProviders(<StudentDetailScreen />);
     expect(await screen.findByText("Group A")).toBeTruthy();
-    expect(requested().some((u) => u.endsWith("/submissions") || u.endsWith("/attendance") || u.includes("/notes"))).toBe(false);
-
-    fireEvent.press(screen.getByRole("button", { name: "Submissions" }));
+    // Submissions is the first tab (owner, 2026-11-07), so it opens and fetches at once;
+    // the others wait until opened.
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/submissions");
+    expect(requested().some((u) => u.endsWith("/attendance") || u.includes("/notes"))).toBe(false);
     fireEvent.press(screen.getByText("Essay one"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
 
