@@ -18,7 +18,7 @@ import { ChevronRight } from "lucide-react-native";
 import { usePressDim } from "../motion";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
-import { Button } from "./button";
+import { PillButton } from "./pill-button";
 import { Text } from "./text";
 
 iconWithClassName(ChevronRight);
@@ -44,11 +44,9 @@ function GroupedList({
   return (
     <View className={className}>
       {header && headerAction ? (
-        <View className="flex-row items-center justify-between gap-2">
-          <ListSectionHeader className="min-w-0 flex-1">{header}</ListSectionHeader>
-          <Button variant="link" size="sm" onPress={headerAction.onPress} className="shrink-0">
-            {headerAction.label}
-          </Button>
+        <View className="flex-row items-center justify-between gap-2 pb-1.5">
+          <ListSectionHeader className="min-w-0 flex-1 pb-0">{header}</ListSectionHeader>
+          <PillButton label={headerAction.label} onPress={headerAction.onPress} />
         </View>
       ) : header ? (
         <ListSectionHeader>{header}</ListSectionHeader>

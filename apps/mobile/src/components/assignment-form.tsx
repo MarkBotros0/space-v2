@@ -17,6 +17,7 @@ import {
   FormField,
   Input,
   MultiSelect,
+  PillButton,
   RichTextEditor,
   Switch,
   Text,
@@ -241,13 +242,7 @@ export function AssignmentForm({
           />
           {v.dueDay !== null ? (
             // V2-only (R19/C2): v1 could not unset a due date once picked.
-            <Pressable
-              accessibilityRole="button"
-              className="self-start"
-              onPress={() => set("dueDay", null)}
-            >
-              <Text className="text-sm text-muted-foreground underline">Clear due date</Text>
-            </Pressable>
+            <PillButton label="Clear due date" className="self-start" onPress={() => set("dueDay", null)} />
           ) : null}
         </FormField>
         <FormField

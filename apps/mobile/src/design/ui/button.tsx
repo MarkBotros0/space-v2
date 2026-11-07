@@ -2,7 +2,8 @@
  * Redesign Button: variants primary | secondary | destructive | plain, sizes
  * md (min-height 46) | sm (min-height 44), radius 14, dims while pressed.
  * v1's names stay as aliases so no call site changes: default -> primary,
- * outline -> secondary, ghost/link -> plain (link keeps an underlined label),
+ * outline -> secondary, ghost/link -> plain (no underlines anywhere, owner 2026-11-07;
+ * a light link-like action is a PillButton),
  * default/lg/icon-lg -> md, xs/sm/icon/icon-xs/icon-sm -> sm.
  * The outer Pressable takes the caller's layout classes (self-start, flex-1,
  * w-full); the Animated.View inside it carries only the press dim, which
@@ -84,9 +85,8 @@ const baseText = cva("", {
       plain: "text-foreground",
       onHero: "text-on-hero-foreground",
     },
-    link: { true: "underline", false: "" },
   },
-  defaultVariants: { variant: "primary", link: false },
+  defaultVariants: { variant: "primary" },
 });
 
 type Opts = { variant?: VariantInput | null; size?: SizeInput | null };
@@ -100,7 +100,7 @@ function buttonVariants({ variant, size }: Opts = {}) {
 }
 
 function buttonTextVariants({ variant }: Pick<Opts, "variant"> = {}) {
-  return baseText({ variant: VARIANT_ALIAS[variant ?? "primary"], link: variant === "link" });
+  return baseText({ variant: VARIANT_ALIAS[variant ?? "primary"] });
 }
 
 /**

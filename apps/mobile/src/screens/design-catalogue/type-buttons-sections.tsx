@@ -1,6 +1,7 @@
 import { View } from "react-native";
 
 import { Button } from "../../design/ui/button";
+import { PillButton } from "../../design/ui/pill-button";
 import { Text } from "../../design/ui/text";
 import { CatalogueSection } from "./section";
 
@@ -50,6 +51,10 @@ export function ButtonsSection() {
         <Button variant="secondary" disabled onPress={() => {}}>
           Disabled
         </Button>
+      </View>
+      <View className="flex-row flex-wrap items-center gap-2">
+        <PillButton label="See all" onPress={() => {}} />
+        <PillButton label="Clear due date" onPress={() => {}} />
       </View>
     </CatalogueSection>
   );

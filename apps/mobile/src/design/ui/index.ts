@@ -21,6 +21,7 @@ export * from "./logo";
 export * from "./modal";
 export * from "./multi-select";
 export * from "./password-input";
+export * from "./pill-button";
 export * from "./progress";
 export * from "./progress-ring";
 export * from "./rich-text-editor";
