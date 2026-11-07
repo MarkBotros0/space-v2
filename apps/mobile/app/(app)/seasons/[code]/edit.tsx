@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react-native";
 import type { SeasonDetail } from "@space/shared";
 
 import { SeasonForm, type SeasonFormValues } from "../../../../src/components/season/SeasonForm";
+import { FormSection } from "../../../../src/design/forms/form-section";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../../src/design/lib/icon";
@@ -50,8 +51,8 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
   return (
     <SeasonForm
       mode="edit"
-      title={`Edit · ${season.title}`}
-      subtitle={`Code: ${season.code}`}
+      title="Edit season"
+      subtitle={season.title}
       initial={fromDetail(season)}
       submitting={update.isPending}
       message={message ?? deleteError}
@@ -67,10 +68,12 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
         });
       }}
     >
-      <Button variant="destructive" className="self-start" onPress={() => setConfirming(true)}>
-        <Trash2 size={14} className="text-bad" />
-        Delete season
-      </Button>
+      <FormSection title="Delete" note="Only an empty season can be deleted. Archive one that has been used.">
+        <Button variant="destructive" className="self-start" onPress={() => setConfirming(true)}>
+          <Trash2 size={14} className="text-bad" />
+          Delete season
+        </Button>
+      </FormSection>
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
@@ -96,7 +99,7 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
                 // The common refusal, said where it can't be missed — the
                 // form's message line sits below the fold on a phone.
                 const text =
-                  "This season has sessions or enrollments, so it can't be deleted. Archive it instead: set Status to Archived and save.";
+                  "This season has sessions or enrollments, so it can't be deleted. Archive it once it has finished: set Status to Archived and save.";
                 setDeleteError(text);
                 Alert.alert("Season in use", text);
                 return;

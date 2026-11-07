@@ -70,42 +70,39 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
       <Text variant="headline" accessibilityRole="header">
         Season settings
       </Text>
-        <FormField label="Description">
-          <Textarea
-            accessibilityLabel="Description"
-            value={description}
-            onChangeText={edit(setDescription)}
-          />
-        </FormField>
-        <FormField label="Absence budget (minutes)">
-          <Input
-            accessibilityLabel="Absence budget (minutes)"
-            value={budget}
-            onChangeText={edit(setBudget)}
-            keyboardType="number-pad"
-          />
-        </FormField>
-        <FormField label="Absence weight (minutes)">
-          <Input
-            accessibilityLabel="Absence weight (minutes)"
-            value={weight}
-            onChangeText={edit(setWeight)}
-            keyboardType="number-pad"
-          />
-        </FormField>
-        {message ? (
-          <View accessibilityRole={message.error ? "alert" : undefined}>
-            <Text
-              variant="subhead"
-              className={message.error ? "text-bad" : "text-muted-foreground"}
-            >
-              {message.text}
-            </Text>
-          </View>
-        ) : null}
-        <Button className="self-start" disabled={update.isPending || !dirty} onPress={save}>
-          {update.isPending ? "Saving…" : "Save changes"}
-        </Button>
+      <FormField label="Description">
+        <Textarea
+          accessibilityLabel="Description"
+          value={description}
+          onChangeText={edit(setDescription)}
+        />
+      </FormField>
+      <FormField label="Absence budget (minutes)">
+        <Input
+          accessibilityLabel="Absence budget (minutes)"
+          value={budget}
+          onChangeText={edit(setBudget)}
+          keyboardType="number-pad"
+        />
+      </FormField>
+      <FormField label="Absence weight (minutes)">
+        <Input
+          accessibilityLabel="Absence weight (minutes)"
+          value={weight}
+          onChangeText={edit(setWeight)}
+          keyboardType="number-pad"
+        />
+      </FormField>
+      {message ? (
+        <View accessibilityRole={message.error ? "alert" : undefined}>
+          <Text variant="subhead" className={message.error ? "text-bad" : "text-muted-foreground"}>
+            {message.text}
+          </Text>
+        </View>
+      ) : null}
+      <Button className="self-start" disabled={update.isPending || !dirty} onPress={save}>
+        {update.isPending ? "Saving…" : "Save changes"}
+      </Button>
     </View>
   );
 }

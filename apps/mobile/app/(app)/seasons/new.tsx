@@ -27,7 +27,7 @@ export default function NewSeasonScreen() {
     <SeasonForm
       mode="create"
       title="New season"
-      subtitle="Set up a new program season."
+      subtitle="It starts as a draft: nobody sees it until you start it."
       initial={NEW_SEASON_VALUES}
       submitting={create.isPending}
       message={message}
