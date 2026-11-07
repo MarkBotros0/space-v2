@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() },
@@ -61,6 +61,7 @@ function authoring(over: Partial<Record<string, unknown>> = {}) {
     id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26",
     sessionId: 12, sessionTitle: "Week 1", publishedAt: null, maxScore: 7,
     attemptCount: 0, gradeCount: 0, canEditStructure: true, canManage: true,
+    resultsReleasedAt: null, canReleaseResults: true,
     questions: [mcq, essay], ...over,
   };
 }
@@ -154,7 +155,7 @@ describe("QuizEditScreen (the builder)", () => {
     expect(screen.getByText("Discuss.")).toBeTruthy();
     expect(screen.getByText("Correct: Paris")).toBeTruthy();
     expect(screen.getByText("Draft")).toBeTruthy();
-    expect(screen.getByText("2 questions · 7 pts")).toBeTruthy();
+    expect(screen.getByText("Online quiz · 2 questions · 7 pts")).toBeTruthy();
   });
 
   it("adds an MCQ through the editor and sends exactly the form's question", async () => {
@@ -237,7 +238,7 @@ describe("QuizEditScreen (the builder)", () => {
     post.mockRejectedValue(conflict("mcq_without_answer", "Every multiple-choice question needs a correct answer."));
     renderWithProviders(<QuizEditScreen />);
 
-    fireEvent.press(await screen.findByText("Publish"));
+    fireEvent.press(await screen.findByText("Publish quiz"));
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/publish", { publish: true }));
     expect(await screen.findByText("Every multiple-choice question needs a correct answer.")).toBeTruthy();
@@ -264,10 +265,12 @@ describe("QuizEditScreen (the builder)", () => {
     patch.mockResolvedValue({ data: { data: { updated: true } } });
     renderWithProviders(<QuizEditScreen />);
 
-    expect(await screen.findByText("This is a paper quiz — it has no questions. Grade it from the grade sheet.")).toBeTruthy();
+    expect(await screen.findByText("A paper quiz has no questions. Enter the marks on the grade sheet.")).toBeTruthy();
     expect(screen.queryByText("Add question")).toBeNull();
-    fireEvent.changeText(screen.getByLabelText("Quiz title"), "Renamed");
-    fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Save changes")); // was a per-field "Save title"
+    // The title is edited in a sheet (owner, 2026-11-07), with its own Save.
+    fireEvent.press(screen.getByLabelText("Edit quiz details"));
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
+    fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
 

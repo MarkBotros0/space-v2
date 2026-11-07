@@ -54,7 +54,7 @@ function staffRow(over: Partial<Record<string, unknown>> = {}) {
     id: 41, title: "Week 1 quiz", kind: "PAPER", publishedAt: null, questionCount: 0,
     maxScore: 20, sessionId: 12, sessionTitle: "Week 1",
     sessionDate: "2099-03-01T18:00:00.000Z", seasonId: 7, seasonCode: "s26",
-    gradedCount: 3, studentCount: 8, ...over,
+    gradedCount: 3, studentCount: 8, resultsReleasedAt: null, ...over,
   };
 }
 
