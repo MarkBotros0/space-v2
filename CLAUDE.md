@@ -418,7 +418,7 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   exception without a pass via `POST /students/:id/graduate` with `override: true`, which needs
   a reason and a tick (stored on the user, shown to SUPER only); it is audited without the reason. `PATCH /users` can't set or clear a stored STUDENT's year (409
   `use_graduate`); changing one year to another corrects a typo, audited and marked stale. Graduating deletes a place on a draft's roster, under Remove's rule
-  (with work recorded on it, the row completes instead), and completes the rest.
+  (with work recorded on it, the row completes instead), and completes the rest of their regular-season places. **A community-wide season is never touched** (owner 2026-11-07): the graduate stays in it, draft or live, as an alumnus, keeps their group and gets a result at End.
 
 ## Community-wide seasons (Build 3, owner rulings 2026-11-07)
 
@@ -448,7 +448,8 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   global active Students list, which filters on `graduationYear: null`. A list of one season's people
   (`seasonId`, a `groupId` of it, or a staff member's own roster) also holds them when that season is
   community-wide, via `graduationFilter` in `lib/queries/students/list.ts`; so do the season roster,
-  attendance, trackers, reports and End's review. A regular season's graduates never appear.
+  attendance, trackers, reports and End's review. A regular season's graduates never appear. A dropped alumnus stays on their season's own list, as any
+  dropped student does (`seasonId` matches any status).
 - **Ending.** End-check students carry `graduationYear` (the review shows "School of N"), the confirm says
   how many people it ends the season for, and End graduates nobody and keeps every class. Alumni return to
   the alumni portal on their next refresh (`activeSeasonId` null), and their old attempts are refused.
@@ -475,7 +476,8 @@ and Build 2 (see "Roles") and Build 3 (see "Community-wide seasons") are written
   Build 2 added review lists (information only, never blocking `--apply`): stored ADMIN/LEADER
   without a `graduationYear`; live seat holders who aren't alumni; seat rows in DRAFT seasons
   (reported apart, not violations); stored STUDENTs holding live seats, split by `graduationYear`;
-  alumni holding an ACTIVE enrolment in an ACTIVE season.
+  alumni holding an ACTIVE enrolment in an ACTIVE regular season (a community-wide season's alumni are
+  not listed).
   Run it against any database a release will reach before it; the backfill is not part of a
   migration because the old Neon database is kept and v1 writes it.
 - **Season lifecycle.** DRAFT -> ACTIVE -> COMPLETED (-> ARCHIVED). **End season** (`POST

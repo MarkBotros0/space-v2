@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { Users } from "lucide-react-native";
@@ -40,6 +40,7 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
   const add = useAddSeasonPeople(seasonId);
   const [filters, setFilters] = useState<PeopleFilters>({ query: "", lastSeason: ANY_SEASON, availableOnly: false });
   const [pool, setPool] = useState<Pool>("student");
+  const listRef = useRef<FlatList<PeopleItem>>(null);
   const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
   const [overridden, setOverridden] = useState<ReadonlySet<number>>(new Set());
   const [asking, setAsking] = useState<PeopleCandidate | null>(null);
@@ -54,6 +55,12 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
   const titles = useMemo(() => (people ? lastSeasonTitles(people) : []), [people]);
   const targets = useMemo(() => people ? selectAllTargets(people, filters) : [], [people, filters]);
   const allTicked = targets.length > 0 && targets.every((id) => selected.has(id));
+
+  const filtersOn = filters.query.trim() !== "" || filters.lastSeason !== ANY_SEASON || filters.availableOnly;
+  const switchPool = (next: Pool) => {
+    setPool(next);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  };
 
   const otherPool: Pool = pool === "student" ? "alumni" : "student";
   const tickedOnOther = useMemo(
@@ -151,6 +158,7 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
   return frame(
     <>
       <FlatList
+        ref={listRef}
         className="flex-1"
         data={items}
         keyExtractor={keyOf}
@@ -165,18 +173,20 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
             allTicked={allTicked}
             targetCount={targets.length}
             pool={wide ? pool : null}
-            onPool={setPool}
+            onPool={switchPool}
             onSelectAll={selectAll}
           />
         }
         ListEmptyComponent={
           wide ? (
             <EmptyState
-              title={pool === "alumni" ? "No alumni to show." : "No students to show."}
+              title={pool === "alumni" ? "No alumni to show" : "No students to show"}
               description={
                 tickedOnOther
                   ? `Someone is ticked on the ${otherPool === "alumni" ? "Alumni" : "Students"} tab.`
-                  : "Try a different name or clear a filter."
+                  : filtersOn
+                    ? "Try a different name or clear a filter."
+                    : undefined
               }
             />
           ) : (

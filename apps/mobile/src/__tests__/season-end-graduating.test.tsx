@@ -110,7 +110,7 @@ describe("Correcting a result on a graduating season", () => {
     await screen.findByText("Mina");
   };
   const KEEPS = "This doesn't remove their alumni status.";
-  const WILL = "Passing makes them School of 2026. Any season they're in now ends for them.";
+  const WILL = "Passing makes them School of 2026. Any regular season they're in now ends for them. A community-wide season carries on.";
 
   it("says Did not pass doesn't remove alumni status", async () => {
     await open(true);

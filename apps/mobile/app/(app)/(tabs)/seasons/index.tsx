@@ -96,6 +96,7 @@ export default function SeasonsScreen() {
                 onOpen={(row) =>
                   router.push({ pathname: "/seasons/[code]", params: { code: row.code } })
                 }
+                emptyDescription={isSuper ? undefined : "No seasons to show."}
                 emptyAction={isSuper ? <Button onPress={newSeason}>New season</Button> : undefined}
               />
             )}

@@ -107,6 +107,7 @@ describe("SeasonsScreen (non-SUPER)", () => {
     get.mockResolvedValue({ data: { data: { seasons: [] } } });
     renderWithProviders(<SeasonsScreen />);
     expect(await screen.findByText("No seasons yet")).toBeTruthy();
+    expect(screen.queryByText(/Create your first season/)).toBeNull();
     expect(screen.queryByText("New season")).toBeNull();
   });
 

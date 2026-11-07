@@ -199,7 +199,8 @@ function graduationFilter(
   if (!query.seasonId && !roster && group === null) return { graduationYear: null };
   const studying: Prisma.SeasonEnrollmentWhereInput = {
     AND: [
-      seasonParticipant,
+      // A season's own list shows any status (C9), dropped included; the roster-only branch lists participants.
+      query.seasonId ? {} : seasonParticipant,
       { season: { isCommunityWide: true } },
       query.seasonId ? { seasonId: query.seasonId } : {},
       group !== null ? { groupId: group } : {},

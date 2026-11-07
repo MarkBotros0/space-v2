@@ -245,6 +245,14 @@ const openWide = async () => {
 };
 
 describe("students and alumni tabs", () => {
+  it("an empty tab with no filter on doesn't suggest clearing one", async () => {
+    serve(people(true), true);
+    await open();
+    fireEvent.press(screen.getByRole("tab", { name: "Alumni" }));
+    expect(screen.getByText("No alumni to show")).toBeTruthy();
+    expect(screen.queryByText(/clear a filter/)).toBeNull();
+  });
+
   it("a regular season shows no tabs and no alumni", async () => {
     serve([...people(true), row({ id: 21, name: "Alaa Alumni", pool: "alumni" })]);
     await open();
@@ -285,7 +293,7 @@ describe("students and alumni tabs", () => {
     expect(screen.getByText("Select all available (4)")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Search people"), "alaa");
     expect(screen.getByText("Select all available (1)")).toBeTruthy();
-    expect(screen.getByText("No students to show.")).toBeTruthy();
+    expect(screen.getByText("No students to show")).toBeTruthy();
     fireEvent.press(screen.getByText("Select all available (1)"));
     expect(screen.getByText("Add 1 person")).toBeTruthy();
     expect(screen.getByText(/ticked on the Alumni tab/)).toBeTruthy();

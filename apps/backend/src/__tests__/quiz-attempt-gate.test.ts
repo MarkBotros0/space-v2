@@ -69,11 +69,18 @@ describe.each([
     expect(res.statusCode).toBe(403);
   });
 
-  it("refuses an alumnus even with an ACTIVE enrolment row", async () => {
+  it("refuses an alumnus with no active season, even with an ACTIVE enrolment row", async () => {
     mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE", season: { status: "ACTIVE", deletedAt: null } });
-    const res = await call(handler, student({ graduationYear: 2025 }), body);
+    const res = await call(handler, student({ graduationYear: 2025, activeSeasonId: null }), body);
     expect(res.statusCode).toBe(403);
     expect(mockDb.quizAttempt.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("lets an alumnus studying in their active season through", async () => {
+    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE", season: { status: "ACTIVE", deletedAt: null } });
+    const res = await call(handler, student({ graduationYear: 2025 }), body);
+    expect(res.statusCode).not.toBe(403);
+    expect(mockDb.quizAttempt.findFirst).toHaveBeenCalled();
   });
 
   it("lets an ACTIVE student through to the attempt lookup", async () => {
