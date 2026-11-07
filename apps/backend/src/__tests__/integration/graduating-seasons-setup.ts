@@ -10,8 +10,8 @@ import { app, as, ctx } from "./season-enrollments-setup";
 
 export const THIS_YEAR = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", year: "numeric" }).format(new Date()));
 
-export const seasonOf = async (status: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED", graduatesOnPass: boolean, endDate?: Date) => {
-  const row = await createTestSeason({ status });
+export const seasonOf = async (status: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED", graduatesOnPass: boolean, endDate?: Date, year = THIS_YEAR) => {
+  const row = await createTestSeason({ status, year });
   await db.season.update({ where: { id: row.id }, data: { graduatesOnPass, ...(endDate ? { endDate } : {}) } });
   return row.id;
 };

@@ -183,13 +183,3 @@ const dayFormatter = new Intl.DateTimeFormat("en-US", {
 export function formatDayInOrgTime(date: Date): string {
   return dayFormatter.format(date);
 }
-
-const orgYear = (date: Date): number => Number(orgDayKey(date).slice(0, 4));
-
-/**
- * The year a graduating season's pass is recorded under: the season's end year,
- * or the current year when the end date is still ahead, both on the org's clock.
- */
-export function graduationYearFor(seasonEndDate: Date, now: Date): number {
-  return Math.min(orgYear(seasonEndDate), orgYear(now));
-}

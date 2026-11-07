@@ -123,7 +123,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
     const res = await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ graduationYear: 2020, override: true });
+      .send({ graduationYear: 2020, override: true, overrideReason: "Test exception, see ticket" });
 
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ id: sid, graduationYear: 2020, enrollmentsCompleted: 2 });
@@ -155,7 +155,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
     const res = await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ graduationYear: 2021, override: true });
+      .send({ graduationYear: 2021, override: true, overrideReason: "Test exception, see ticket" });
 
     expect(res.body.data.enrollmentsCompleted).toBe(1);
     const dropped = await db.seasonEnrollment.findFirst({
@@ -170,7 +170,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
     const res = await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ graduationYear: 2020, override: true });
+      .send({ graduationYear: 2020, override: true, overrideReason: "Test exception, see ticket" });
     expect(res.status).toBe(403);
     const row = await db.user.findUnique({ where: { id: sid }, select: { graduationYear: true } });
     expect(row?.graduationYear).toBeNull();
@@ -193,11 +193,11 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
     await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ graduationYear: 2019, override: true });
+      .send({ graduationYear: 2019, override: true, overrideReason: "Test exception, see ticket" });
     const again = await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ graduationYear: 2020, override: true });
+      .send({ graduationYear: 2020, override: true, overrideReason: "Test exception, see ticket" });
 
     expect(again.status).toBe(409);
     expect(again.body.error.code).toBe("already_graduated");
@@ -210,7 +210,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
     const res = await request(app)
       .post(`/api/v1/students/${leader.id}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ graduationYear: 2020, override: true });
+      .send({ graduationYear: 2020, override: true, overrideReason: "Test exception, see ticket" });
     expect(res.status).toBe(404);
   });
 
@@ -220,7 +220,7 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
     await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ graduationYear: 2018, override: true });
+      .send({ graduationYear: 2018, override: true, overrideReason: "Test exception, see ticket" });
     const lines = info.mock.calls.map((c) => String(c[0]));
     expect(lines.some((l) => new RegExp(`^\\[audit\\] student\\.graduate actor=\\d+ subject=${sid} override=true$`).test(l))).toBe(true);
     expect(lines.join("\n")).not.toContain("2018");

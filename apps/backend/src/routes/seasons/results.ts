@@ -4,7 +4,6 @@ import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
-import { graduationYearFor } from "../../lib/org-time";
 import { loadSeasonResults } from "../../lib/queries/season-results";
 import { graduatePerson } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
@@ -40,7 +39,7 @@ export async function updateSeasonResult(req: Request, res: Response) {
 
   const season = await db.season.findFirst({
     where: { id, deletedAt: null },
-    select: { status: true, endDate: true, graduatesOnPass: true },
+    select: { status: true, year: true, graduatesOnPass: true },
   });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
   if (season.status !== "COMPLETED" && season.status !== "ARCHIVED") {
@@ -65,7 +64,7 @@ export async function updateSeasonResult(req: Request, res: Response) {
       data: { result, resultReason: reason, resultSetAt: now },
     });
     if (result !== "PASSED" || !season.graduatesOnPass) return false;
-    const outcome = await graduatePerson(tx, studentUserId, graduationYearFor(season.endDate, now));
+    const outcome = await graduatePerson(tx, studentUserId, season.year);
     return typeof outcome !== "string";
   });
   auditLog("season.result_correct", user.userId, studentUserId, { season: id });

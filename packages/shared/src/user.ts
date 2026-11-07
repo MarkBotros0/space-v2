@@ -86,17 +86,20 @@ export type UserDetail = z.infer<typeof userDetailSchema>;
 export const userWriteRoleSchema = z.enum(["SUPER", "MENTOR", "STUDENT"]);
 export type UserWriteRole = z.infer<typeof userWriteRoleSchema>;
 
+const MAX_CLASS_YEAR = 2100;
+
 function checkUserFields(
   v: { role?: UserRole; graduationYear: number | null },
   ctx: z.RefinementCtx,
 ): void {
   if (v.graduationYear !== null) {
-    const currentYear = new Date().getFullYear();
-    if (v.graduationYear < 1990 || v.graduationYear > currentYear) {
+    // No "this year" ceiling: the class is the season's own year, which can be ahead
+    // (a 2027 season ending in 2026), and its graduate must still be able to save.
+    if (v.graduationYear < 1990 || v.graduationYear > MAX_CLASS_YEAR) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["graduationYear"],
-        message: `Must be between 1990 and ${currentYear}.`,
+        message: `Must be between 1990 and ${MAX_CLASS_YEAR}.`,
       });
     }
   }

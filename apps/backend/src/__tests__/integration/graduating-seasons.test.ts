@@ -3,7 +3,6 @@ import request from "supertest";
 
 import { backfillResults } from "../../../scripts/community-preflight";
 import { db } from "../../db/client";
-import { graduationYearFor } from "../../lib/org-time";
 import { auditLines, correct, enrol, finished, graduate, mint, nextSecond, seasonOf, yearOf } from "./graduating-seasons-setup";
 import { adminTokenOf, app, as, ctx, person, rowOf, seedEnrollmentFixtures, stamp, teardownEnrollmentFixtures } from "./season-enrollments-setup";
 
@@ -12,28 +11,9 @@ jest.setTimeout(180000);
 beforeAll(seedEnrollmentFixtures);
 afterAll(teardownEnrollmentFixtures);
 
-describe("graduationYearFor", () => {
-  const now = new Date("2026-11-07T12:00:00.000Z");
-  it("takes the end year of a season that ended in an earlier year", () => {
-    expect(graduationYearFor(new Date("2024-06-30T00:00:00.000Z"), now)).toBe(2024);
-  });
-  it("takes the shared year when the season ends this year", () => {
-    expect(graduationYearFor(new Date("2026-06-30T00:00:00.000Z"), now)).toBe(2026);
-  });
-  it("takes the current year when the end date is still in a later year", () => {
-    expect(graduationYearFor(new Date("2099-12-31T00:00:00.000Z"), now)).toBe(2026);
-  });
-  it("reads both years on the organisation's clock, not UTC", () => {
-    // 22:30Z on New Year's Eve is already next year in Cairo.
-    const instant = new Date("2026-12-31T22:30:00.000Z");
-    expect(graduationYearFor(instant, new Date("2028-01-01T00:00:00.000Z"))).toBe(2027);
-    expect(graduationYearFor(new Date("2099-01-01T00:00:00.000Z"), instant)).toBe(2027);
-  });
-});
-
 describe("Correcting a result", () => {
   it("to Passed on a graduating season graduates them then, with fresh claims", async () => {
-    const seasonId = await seasonOf("COMPLETED", true, new Date("2025-06-30T00:00:00.000Z"));
+    const seasonId = await seasonOf("COMPLETED", true, new Date("2026-06-30T00:00:00.000Z"), 2025);
     const student = await person("Corrected");
     await finished(seasonId, student.id, "NOT_PASSED");
     const before = await stamp(student.id);
@@ -45,8 +25,19 @@ describe("Correcting a result", () => {
     expect((await stamp(student.id))?.getTime()).not.toBe(before?.getTime());
   });
 
+  it.each([
+    [2026, "2027-06-30T00:00:00.000Z"],
+    [2027, "2026-06-30T00:00:00.000Z"],
+  ])("to Passed on a %s season gives the class of the season's year, whenever it ended", async (year, endDate) => {
+    const seasonId = await seasonOf("COMPLETED", true, new Date(endDate), year);
+    const student = await person(`Year${year}`);
+    await finished(seasonId, student.id, "NOT_PASSED");
+    expect((await correct(seasonId, student.id, "PASSED")).body.data.graduated).toBe(true);
+    expect(await yearOf(student.id)).toBe(year);
+  });
+
   it("to Passed for someone already an alumnus keeps their year", async () => {
-    const seasonId = await seasonOf("ARCHIVED", true, new Date("2025-06-30T00:00:00.000Z"));
+    const seasonId = await seasonOf("ARCHIVED", true, new Date("2026-06-30T00:00:00.000Z"), 2025);
     const student = await person("Kept", 2020);
     await finished(seasonId, student.id, "NOT_PASSED");
     const res = await correct(seasonId, student.id, "PASSED");
@@ -187,7 +178,7 @@ describe("Graduating someone by exception", () => {
     const live = await seasonOf("ACTIVE", false);
     await enrol(live, student.id);
     const lines = await auditLines(async () => {
-      const res = await graduate(student.id, { graduationYear: 2025, override: true });
+      const res = await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: "A very rare case" });
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual({ id: student.id, graduationYear: 2025, enrollmentsCompleted: 1 });
     });
@@ -212,7 +203,7 @@ describe("Graduating someone by exception", () => {
     const id = await seasonOf("ACTIVE", false);
     await enrol(id, student.id);
     const token = await adminTokenOf(id);
-    expect((await graduate(student.id, { graduationYear: 2025, override: true }, token)).status).toBe(403);
+    expect((await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: "Test exception, see ticket" }, token)).status).toBe(403);
     expect(await yearOf(student.id)).toBeNull();
   });
 
@@ -223,7 +214,7 @@ describe("Graduating someone by exception", () => {
 
   it("keeps the year's bounds", async () => {
     const student = await person("Bounds");
-    expect((await graduate(student.id, { graduationYear: 1989, override: true })).status).toBe(400);
+    expect((await graduate(student.id, { graduationYear: 1989, override: true, overrideReason: "Test exception, see ticket" })).status).toBe(400);
   });
 });
 

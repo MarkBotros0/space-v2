@@ -55,7 +55,7 @@ describe("User.sessionsValidFrom (Plan 18 M13)", () => {
     const res = await request(app)
       .post(`/api/v1/students/${u.id}/graduate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ graduationYear: 2024, override: true });
+      .send({ graduationYear: 2024, override: true, overrideReason: "Test exception, see ticket" });
     expect(res.status).toBe(200);
 
     // The old token said graduationYear: null, i.e. a current student.

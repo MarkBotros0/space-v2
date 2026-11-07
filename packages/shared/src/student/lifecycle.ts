@@ -30,9 +30,21 @@ export const graduateStudentRequestSchema = z
     graduationYear: graduationYearField,
     /** A super graduating someone who hasn't passed a graduating season. */
     override: z.boolean().optional(),
+    /** Why, when `override` is set: trimmed, 10 to 1000 characters. Kept only if the override was needed. */
+    overrideReason: z.string().trim().max(1000, "Keep the reason under 1000 characters.").optional(),
   })
   .strict()
-  .superRefine(checkGraduationYear);
+  .superRefine(checkGraduationYear)
+  .superRefine((v, ctx) => {
+    if (v.override !== true) return;
+    if ((v.overrideReason ?? "").length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["overrideReason"],
+        message: "Give a reason of at least 10 characters for graduating someone by exception.",
+      });
+    }
+  });
 export type GraduateStudentBody = z.infer<typeof graduateStudentRequestSchema>;
 
 export const graduateStudentResponseSchema = z.object({

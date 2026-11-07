@@ -13,7 +13,7 @@ afterAll(teardownEnrollmentFixtures);
 
 describe("End of a graduating season", () => {
   it("graduates who passed, and no one else", async () => {
-    const seasonId = await seasonOf("ACTIVE", true, new Date("2025-06-30T00:00:00.000Z"));
+    const seasonId = await seasonOf("ACTIVE", true, new Date("2026-06-30T00:00:00.000Z"), 2025);
     const passed = await person("Passed");
     const failed = await person("Failed");
     const dropped = await person("Dropped");
@@ -34,12 +34,16 @@ describe("End of a graduating season", () => {
     expect(await rowOf(seasonId, passed.id)).toMatchObject({ status: "COMPLETED", result: "PASSED" });
   });
 
-  it("uses the current year when the end date is later than now", async () => {
-    const seasonId = await seasonOf("ACTIVE", true);
-    const student = await person("Early");
+  it.each([
+    [2025, "2026-06-30T00:00:00.000Z"],
+    [2026, "2027-06-30T00:00:00.000Z"],
+    [2027, "2026-06-30T00:00:00.000Z"],
+  ])("a %s season ending %s gives the class of the season's year", async (year, endDate) => {
+    const seasonId = await seasonOf("ACTIVE", true, new Date(endDate), year);
+    const student = await person(`Class${year}`);
     await enrol(seasonId, student.id);
     expect((await end(seasonId)).body.data.graduated).toBe(1);
-    expect(await yearOf(student.id)).toBe(THIS_YEAR);
+    expect(await yearOf(student.id)).toBe(year);
   });
 
   it("closes a graduate's seat in another season with no result, as graduating anyone does", async () => {

@@ -67,12 +67,23 @@ export const enrollmentHistoryItemSchema = z.object({
 });
 export type EnrollmentHistoryItem = z.infer<typeof enrollmentHistoryItemSchema>;
 
+/**
+ * Who graduated this person by the rare exception (no graduating season passed),
+ * when, and why. SUPER's view alone: null when there was none, absent for everyone else.
+ */
+export const graduatedByExceptionSchema = z
+  .object({ at: z.string(), byName: z.string().nullable(), reason: z.string().nullable() })
+  .nullable();
+export type GraduatedByException = z.infer<typeof graduatedByExceptionSchema>;
+
 const studentDetailBase = z.object({
   id: z.number(),
   name: z.string(),
   email: z.string(),
   avatarPath: z.string().nullable(),
   graduationYear: z.number().nullable(),
+  /** SUPER's view only; see `graduatedByExceptionSchema`. */
+  graduatedByException: graduatedByExceptionSchema.optional(),
   /** Advisory current group (GroupStudent — the one question it may answer, C9/R4). */
   currentGroup: z.object({ id: z.number(), name: z.string() }).nullable(),
   /**

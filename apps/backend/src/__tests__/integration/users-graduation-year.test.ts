@@ -84,6 +84,14 @@ describe("a stored STUDENT's graduation year on PATCH /users", () => {
     expect(lines.some((l) => l.includes("user.graduation_year_change"))).toBe(false);
   });
 
+  it("a graduate of a future-year season can still save other fields, and be corrected to another year", async () => {
+    const u = await studentWithYear("gy-future", new Date().getFullYear() + 1);
+    const renamed = await patch(u.id, { name: "New Name", role: "STUDENT", graduationYear: new Date().getFullYear() + 1 });
+    expect(renamed.status).toBe(200);
+    expect((await stored(u.id)).graduationYear).toBe(new Date().getFullYear() + 1);
+    expect((await patch(u.id, { name: "New Name", role: "STUDENT", graduationYear: 2025 })).status).toBe(200);
+  });
+
   it("a plain student's rename stays allowed", async () => {
     const u = await studentWithYear("gy-plain", null);
     expect((await patch(u.id, { name: "New Name", role: "STUDENT", graduationYear: null })).status).toBe(200);

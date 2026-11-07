@@ -215,7 +215,7 @@ describe("POST /api/v1/users", () => {
     for (const [body, message] of [
       [{ role: "MENTOR" }, "Required for this role."],
       [{ role: "STUDENT", graduationYear: 1989 }, "Must be between 1990"],
-      [{ role: "STUDENT", graduationYear: new Date().getFullYear() + 1 }, "Must be between 1990"],
+      [{ role: "STUDENT", graduationYear: 2101 }, "Must be between 1990"],
     ] as const) {
       const res = await request(app)
         .post("/api/v1/users")

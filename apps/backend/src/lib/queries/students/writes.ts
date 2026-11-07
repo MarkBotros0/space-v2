@@ -197,6 +197,8 @@ export async function graduatePerson(
   tx: Prisma.TransactionClient,
   id: number,
   graduationYear: number,
+  /** Set only by the rare exception: who, and why (trimmed). */
+  exception?: { byId: number; reason: string },
 ): Promise<GraduationOutcome> {
   const student = await tx.user.findFirst({
     where: { id, role: "STUDENT", deletedAt: null },
@@ -207,7 +209,16 @@ export async function graduatePerson(
   // `graduationYear: null`; the other sees count 0 and is refused.
   const marked = await tx.user.updateMany({
     where: { id, graduationYear: null },
-    data: { graduationYear },
+    data: {
+      graduationYear,
+      ...(exception
+        ? {
+            graduationOverrideAt: new Date(),
+            graduationOverrideById: exception.byId,
+            graduationOverrideReason: exception.reason,
+          }
+        : {}),
+    },
   });
   if (marked.count === 0) return "already_graduated";
   await clearDraftRows(tx, [id]);

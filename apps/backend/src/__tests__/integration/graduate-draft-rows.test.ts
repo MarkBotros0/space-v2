@@ -24,7 +24,7 @@ const graduate = (id: number) =>
   request(app)
     .post(`/api/v1/students/${id}/graduate`)
     .set(as(ctx.superToken))
-    .send({ graduationYear: 2026, override: true });
+    .send({ graduationYear: 2026, override: true, overrideReason: "Test exception, see ticket" });
 
 const onDraft = async (name: string) => {
   const draft = await season("DRAFT", "Next Season");

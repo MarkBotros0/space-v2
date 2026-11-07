@@ -27,8 +27,9 @@ import { graduateStudentRequestSchema } from "../../../../../packages/shared/src
  * graduationYear under it.
  *
  * Passing a graduating season is how people graduate (owner, 2026-11-07), and End
- * does that itself. Anyone else needs `override`, the one extra confirmation; the
- * audit line says so when it was actually needed.
+ * does that itself. Anyone else needs `override` and an `overrideReason` (10 to 1000
+ * characters). When it was actually needed, who/when/why go on the user in the same
+ * transaction and the audit line says `override`, never the reason (a console log).
  */
 export async function graduateStudent(req: Request, res: Response) {
   const user = requireUser(req);
@@ -42,7 +43,7 @@ export async function graduateStudent(req: Request, res: Response) {
   if (!parsed.success) {
     return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid graduation year.", 400);
   }
-  const { graduationYear, override } = parsed.data;
+  const { graduationYear, override, overrideReason } = parsed.data;
 
   const outcome = await db.$transaction(async (tx) => {
     await lockPeople(tx, [id]);
@@ -54,7 +55,9 @@ export async function graduateStudent(req: Request, res: Response) {
     if (student.graduationYear !== null) return "already_graduated" as const;
     const qualified = await hasPassedGraduatingSeason(tx, id);
     if (!qualified && !override) return { notQualified: student.name };
-    const done = await graduatePerson(tx, id, graduationYear);
+    // The reason is kept only when the exception was needed, and only here.
+    const exception = qualified ? undefined : { byId: user.userId, reason: overrideReason ?? "" };
+    const done = await graduatePerson(tx, id, graduationYear, exception);
     return typeof done === "string" ? done : { ...done, overridden: !qualified };
   });
 

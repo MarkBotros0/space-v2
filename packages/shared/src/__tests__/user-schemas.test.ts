@@ -54,11 +54,12 @@ describe("createUserRequestSchema", () => {
     expect(createUserRequestSchema.safeParse({ ...valid, role, graduationYear: 2020 }).success).toBe(false);
   });
 
-  it("evaluates the graduation-year upper bound per call, not at module load (R37)", () => {
+  it("takes a class year ahead of this year (a future-year season's graduate), up to 2100", () => {
     const nextYear = new Date().getFullYear() + 1;
     expect(
       createUserRequestSchema.safeParse({ ...valid, graduationYear: nextYear }).success,
-    ).toBe(false);
+    ).toBe(true);
+    expect(createUserRequestSchema.safeParse({ ...valid, graduationYear: 2101 }).success).toBe(false);
     expect(
       createUserRequestSchema.safeParse({ ...valid, graduationYear: new Date().getFullYear() }).success,
     ).toBe(true);

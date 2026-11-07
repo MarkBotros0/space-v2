@@ -6,7 +6,6 @@ import { auditLog } from "../../lib/audit";
 import { seasonPeopleIds } from "../../lib/auth/season-people";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
-import { graduationYearFor } from "../../lib/org-time";
 import { loadSeasonEndCheck } from "../../lib/queries/season-end";
 import { graduatePassed } from "../../lib/queries/students/writes";
 import { isAdminOfSeason } from "../../lib/rbac";
@@ -62,7 +61,7 @@ export async function endSeason(req: Request, res: Response) {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid end-season body.", 400);
   const reasons = new Map(parsed.data.notPassed.map((n) => [n.userId, n.reason?.trim() || null]));
 
-  const season = await db.season.findFirst({ where: { id, deletedAt: null }, select: { status: true, endDate: true } });
+  const season = await db.season.findFirst({ where: { id, deletedAt: null }, select: { status: true, year: true } });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
   if (season.status !== "ACTIVE") {
     return apiError(res, "season_not_active", "Only an active season can be ended.", 409);
@@ -134,7 +133,7 @@ export async function endSeason(req: Request, res: Response) {
       // waited for them didn't pass. Under the people's locks, since a seat write
       // elsewhere reads graduationYear under them.
       const graduated = check.graduatesOnPass
-        ? await graduatePassed(tx, completed.map((c) => c.studentUserId), graduationYearFor(season.endDate, now))
+        ? await graduatePassed(tx, completed.map((c) => c.studentUserId), season.year)
         : [];
       // Stamped now, not at the transaction's start: a token refreshed after that
       // start still carries the old grants and must fall before the cut-off.

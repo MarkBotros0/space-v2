@@ -16,7 +16,7 @@ describe("graduateStudentRequestSchema", () => {
   it("accepts 1990 through the current year, evaluated per call (R58 — v1 captured the year at module load)", () => {
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: 1990 }).success).toBe(true);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear }).success).toBe(true);
-    expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear, override: true }).success).toBe(true);
+    expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear, override: true, overrideReason: "A very rare case" }).success).toBe(true);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear + 1 }).success).toBe(false);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: 1989 }).success).toBe(false);
   });
@@ -27,6 +27,19 @@ describe("graduateStudentRequestSchema", () => {
     if (!res.success) {
       expect(res.error.issues[0]?.message).toBe(`Enter a year between 1990 and ${thisYear}.`);
     }
+  });
+
+  it("an override needs a reason of 10 to 1000 characters, trimmed", () => {
+    const parse = (extra: object) => graduateStudentRequestSchema.safeParse({ graduationYear: 2020, override: true, ...extra });
+    expect(parse({}).success).toBe(false);
+    expect(parse({ overrideReason: "123456789" }).success).toBe(false);
+    expect(parse({ overrideReason: "   123456789   " }).success).toBe(false);
+    expect(parse({ overrideReason: "1234567890" }).success).toBe(true);
+    expect(parse({ overrideReason: "x".repeat(1000) }).success).toBe(true);
+    expect(parse({ overrideReason: "x".repeat(1001) }).success).toBe(false);
+    const trimmed = parse({ overrideReason: "  A very rare case  " });
+    expect(trimmed.success && trimmed.data.overrideReason).toBe("A very rare case");
+    expect(graduateStudentRequestSchema.safeParse({ graduationYear: 2020 }).success).toBe(true);
   });
 
   it("refuses a fractional year and an unknown key", () => {

@@ -1,5 +1,6 @@
 import type {
   EnrollmentHistoryItem,
+  GraduatedByException,
   StudentDetailInternal,
   StudentDetailPrivate,
   StudentDetailPublic,
@@ -7,7 +8,7 @@ import type {
 
 import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
-import { canReadAllStudents } from "../../rbac";
+import { canReadAllStudents, isSuper } from "../../rbac";
 import { CURRENT_MEMBERSHIP_ORDER, currentMembershipSelect } from "./current-group";
 import { attendancePctByEnrollment, canReadEnrollmentHistory } from "./history";
 
@@ -65,6 +66,10 @@ export async function loadStudentDetail(
           })
         )?.notes ?? null)
       : null;
+
+  // Read for SUPER alone, in its own query, like the notes: nobody else's
+  // view ever holds the reason in memory.
+  const exception = isSuper(user) ? await loadGraduatedByException(studentUserId) : undefined;
 
   const enrollments = await db.seasonEnrollment.findMany({
     where: { studentUserId },
@@ -142,6 +147,7 @@ export async function loadStudentDetail(
     email: row.email,
     avatarPath: row.avatarPath,
     graduationYear: row.graduationYear,
+    ...(exception === undefined ? {} : { graduatedByException: exception }),
     currentGroup,
     enrollments: history,
   };
@@ -163,4 +169,21 @@ export async function loadStudentDetail(
   if (view === "private") return { ...base, profile: privateProfile };
 
   return { ...base, profile: { ...privateProfile, notes: internalNotes } };
+}
+
+async function loadGraduatedByException(userId: number): Promise<GraduatedByException> {
+  const row = await db.user.findUnique({
+    where: { id: userId },
+    select: {
+      graduationOverrideAt: true,
+      graduationOverrideReason: true,
+      graduationOverrideBy: { select: { name: true } },
+    },
+  });
+  if (!row?.graduationOverrideAt) return null;
+  return {
+    at: row.graduationOverrideAt.toISOString(),
+    byName: row.graduationOverrideBy?.name ?? null,
+    reason: row.graduationOverrideReason,
+  };
 }

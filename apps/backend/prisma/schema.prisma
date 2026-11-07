@@ -122,6 +122,12 @@ model User {
   // Set when a student graduates from JPCS. Doubles as the "is an alumnus" marker
   // and gates eligibility for LEADER/SEASON_ADMIN/MENTOR roles (only alumni may hold them).
   graduationYear Int?
+  // Set only when a super graduated someone who hadn't passed a graduating season
+  // (the rare exception). Shown to SUPER alone; the reason is never logged.
+  graduationOverrideAt     DateTime?
+  graduationOverrideById   Int?
+  graduationOverrideBy     User?     @relation("GraduationOverrideBy", fields: [graduationOverrideById], references: [id], onDelete: SetNull)
+  graduationOverrideReason String?
   // Account-level contact fields, for every role (owner 2026-11-06). Replace
   // StudentProfile.phone/dateOfBirth, which stay in the table but are unused.
   phone        String?
@@ -162,6 +168,7 @@ model User {
   submissionsAsStudent Submission[]       @relation("SubmissionStudent")
   seasonEnrollments    SeasonEnrollment[] @relation("EnrollmentStudent")
   enrollmentOverrides  SeasonEnrollment[] @relation("EnrollmentOverrideBy")
+  graduationOverrides  User[]             @relation("GraduationOverrideBy")
   engagementNotesAbout EngagementNote[]   @relation("EngagementNoteStudent")
 
   notifications            Notification[]
