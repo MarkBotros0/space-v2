@@ -76,7 +76,10 @@ describe("ReportsScreen — role branches", () => {
     // cross-season engagement screen at all (R106) — while the CSV route hands
     // them exactly that data (R45).
     expect(await screen.findByText("Sara Student")).toBeTruthy();
-    expect(screen.getByText("Student accounts")).toBeTruthy();
+    // The roll-up is its own view behind the Season | Organisation control.
+    expect(screen.queryByText("Student accounts")).toBeNull();
+    fireEvent.press(screen.getByText("Organisation"));
+    expect(await screen.findByText("Student accounts")).toBeTruthy();
     expect((await screen.findAllByText("40")).length).toBeGreaterThan(0);
   });
 });
@@ -88,6 +91,7 @@ describe("ReportsScreen — SUPER's organisation roll-up (v1 super/reports)", ()
 
     renderWithProviders(<ReportsScreen />);
 
+    fireEvent.press(await screen.findByText("Organisation"));
     expect(await screen.findByText("Students per season")).toBeTruthy();
     expect(screen.getByText("Active seasons")).toBeTruthy();
     expect(screen.getByText("2098: 12")).toBeTruthy();
@@ -110,7 +114,7 @@ describe("ReportsScreen — the at-risk card comes first and tells the truth", (
 
     // v1 sliced to ten and said nothing, so a reader could not tell whether ten
     // was all of them.
-    expect(await screen.findByText("Students at risk (1 of 34)")).toBeTruthy();
+    expect(await screen.findByText("STUDENTS AT RISK (1 OF 34)")).toBeTruthy();
   });
 
   it("navigates to the student on press", async () => {

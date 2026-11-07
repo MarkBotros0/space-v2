@@ -51,5 +51,5 @@ export default function SeasonRosterScreen() {
         description="Only this season's admins can manage its roster."
       />
     );
-  return <Screen title="Roster">{body}</Screen>;
+  return <Screen title="Students and groups">{body}</Screen>;
 }

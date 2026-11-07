@@ -30,9 +30,16 @@ const mcq = { id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of Franc
 const authoring = (over: Record<string, unknown> = {}) => ({
   id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26", sessionId: null, sessionTitle: null,
   publishedAt: null, maxScore: 2, attemptCount: 0, gradeCount: 0, canEditStructure: true, canManage: true,
-  questions: [mcq], ...over,
+  resultsReleasedAt: null, canReleaseResults: true, questions: [mcq], ...over,
 });
 const bar = () => within(screen.getByTestId("save-bar"));
+const sheetBar = () => within(screen.getByTestId("sheet-save-bar"));
+const openDetails = async () => fireEvent.press(await screen.findByLabelText("Edit quiz details"));
+const conflictError = () =>
+  Object.assign(new Error("409"), {
+    isAxiosError: true,
+    response: { status: 409, data: { error: { code: "quiz_has_grades", message: "Grades exist." } } },
+  });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -85,125 +92,60 @@ describe("new quiz on the fixed save bar", () => {
   });
 });
 
-describe("quiz builder on the fixed save bar", () => {
-  it("settings save from the bar: only what changed, nothing to save says why", async () => {
-    get.mockResolvedValue({ data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], canEditStructure: false }) } });
-    patch.mockResolvedValue({ data: { data: { updated: true } } });
-    renderStacked(<QuizEditScreen />);
-
-    await screen.findByLabelText("Quiz title");
-    expect(within(screen.getByTestId("screen-footer")).getByText("Save changes")).toBeTruthy();
-    expect(within(screen.UNSAFE_getByType(ScrollView)).queryByTestId("save-bar")).toBeNull();
-    expect(screen.queryByText("Save title")).toBeNull();
-    expect(bar().getByText("Nothing to save yet.")).toBeTruthy();
-    fireEvent.press(bar().getByText("Save changes"));
-    expect(patch).not.toHaveBeenCalled();
-
-    fireEvent.changeText(screen.getByLabelText("Max score"), "30");
-    expect(bar().queryByText("Nothing to save yet.")).toBeNull();
-    fireEvent.press(bar().getByText("Save changes"));
-    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { maxScore: 30 }));
-  });
-
-  it("a blank title is refused on its field", async () => {
-    get.mockResolvedValue({ data: { data: authoring() } });
-    renderStacked(<QuizEditScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "  ");
-    fireEvent.press(bar().getByText("Save changes"));
-    expect(await screen.findByText("Enter a title.")).toBeTruthy();
-    expect(bar().getByText("Fix the fields marked above.")).toBeTruthy();
-    expect(patch).not.toHaveBeenCalled();
-  });
-
-  it("the server's refusal is the bar's hint", async () => {
-    get.mockResolvedValue({ data: { data: authoring() } });
-    patch.mockRejectedValue(
-      Object.assign(new Error("409"), {
-        isAxiosError: true,
-        response: { status: 409, data: { error: { code: "quiz_has_grades", message: "Grades exist." } } },
-      }),
-    );
-    renderStacked(<QuizEditScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
-    fireEvent.press(bar().getByText("Save changes"));
-    expect(await bar().findByText("Grades exist.")).toBeTruthy();
-  });
-
-  it("a failed save stays visible when a question form is opened afterwards (final review M5a)", async () => {
-    get.mockResolvedValue({ data: { data: authoring() } });
-    patch.mockRejectedValue(
-      Object.assign(new Error("409"), {
-        isAxiosError: true,
-        response: { status: 409, data: { error: { code: "quiz_has_grades", message: "Grades exist." } } },
-      }),
-    );
-    renderStacked(<QuizEditScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
-    fireEvent.press(bar().getByText("Save changes"));
-    expect(await bar().findByText("Grades exist.")).toBeTruthy();
-    fireEvent.press(screen.getByText("Add question"));
-    expect(bar().getByText("Grades exist.")).toBeTruthy();
-  });
-
-  it("with a question editor open, Save sends nothing and says to finish it; once closed the title saves", async () => {
-    get.mockResolvedValue({ data: { data: authoring() } });
-    patch.mockResolvedValue({ data: { data: { updated: true } } });
-    renderStacked(<QuizEditScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
-    fireEvent.press(screen.getByText("Add question"));
-    fireEvent.press(bar().getByText("Save changes"));
-    expect(bar().getByText("Finish or cancel the question above first.")).toBeTruthy();
-    expect(patch).not.toHaveBeenCalled();
-
-    fireEvent.press(screen.getByText("Cancel"));
-    fireEvent.press(screen.getByLabelText("Edit question 1"));
-    expect(bar().getByText("Finish or cancel the question above first.")).toBeTruthy();
-    fireEvent.press(screen.getByText("Cancel"));
-    expect(bar().queryByText("Finish or cancel the question above first.")).toBeNull();
-    fireEvent.press(bar().getByText("Save changes"));
-    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
-  });
-
+describe("quiz builder: Publish in the footer, details in a sheet (owner, 2026-11-07)", () => {
+  const HINT = "Finish the question first.";
   const refresh = () =>
     act(async () => {
       await screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
     });
-  const HINT = "Finish or cancel the question above first.";
 
-  it("Save is drawn disabled, with its hint kept, when there is nothing to save or a question form is open (final review M4)", async () => {
+  it("a draft's footer is Publish quiz, outside the scroll view; a paper quiz has no footer", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     renderStacked(<QuizEditScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Week 1 quiz");
-    expect(bar().getByRole("button", { name: "Save changes" })).toBeDisabled();
-    expect(bar().getByText("Nothing to save yet.")).toBeTruthy();
-
-    fireEvent.changeText(screen.getByLabelText("Quiz title"), "Renamed");
-    expect(bar().getByRole("button", { name: "Save changes" })).toBeEnabled();
-    fireEvent.press(screen.getByLabelText("Edit question 1"));
-    expect(bar().getByRole("button", { name: "Save changes" })).toBeDisabled();
-    expect(bar().getByText("Finish or cancel the question above first.")).toBeTruthy();
+    await screen.findByText("Capital of France?");
+    expect(within(screen.getByTestId("screen-footer")).getByText("Publish quiz")).toBeTruthy();
+    expect(within(screen.UNSAFE_getByType(ScrollView)).queryByTestId("save-bar")).toBeNull();
+    expect(screen.queryByText("Save changes")).toBeNull();
   });
 
-  it("a question deleted elsewhere while its form is open no longer blocks Save (final review I2)", async () => {
+  it("Publish is drawn disabled with its reason while a question form is open, and with no questions", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
-    patch.mockResolvedValue({ data: { data: { updated: true } } });
     renderStacked(<QuizEditScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
+    await screen.findByText("Capital of France?");
+    expect(bar().getByRole("button", { name: "Publish quiz" })).toBeEnabled();
     fireEvent.press(screen.getByLabelText("Edit question 1"));
+    expect(bar().getByRole("button", { name: "Publish quiz" })).toBeDisabled();
+    expect(bar().getByText(HINT)).toBeTruthy();
+    fireEvent.press(screen.getByText("Cancel"));
+    expect(bar().queryByText(HINT)).toBeNull();
+  });
+
+  it("an empty draft says to add a question", async () => {
+    get.mockResolvedValue({ data: { data: authoring({ questions: [], maxScore: 0 }) } });
+    renderStacked(<QuizEditScreen />);
+    await screen.findByText("No questions yet");
+    expect(bar().getByRole("button", { name: "Publish quiz" })).toBeDisabled();
+    expect(bar().getByText("Add a question to publish.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("a question deleted elsewhere while its form is open no longer blocks Publish (final review I2)", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderStacked(<QuizEditScreen />);
+    fireEvent.press(await screen.findByLabelText("Edit question 1"));
     expect(bar().getByText(HINT)).toBeTruthy();
 
     get.mockResolvedValue({ data: { data: authoring({ questions: [] }) } });
     await refresh();
+    // With its question gone the draft is empty: the block is now "add a question", not the open form.
     await waitFor(() => expect(bar().queryByText(HINT)).toBeNull(), { timeout: 20000 });
-    fireEvent.press(bar().getByText("Save changes"));
-    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
   });
 
-  it("closing one of two open question forms keeps Save blocked by the other (final review I2)", async () => {
+  it("closing one of two open question forms keeps Publish blocked by the other (final review I2)", async () => {
     const mcq2 = { ...mcq, id: 101, order: 1, prompt: "Capital of Spain?", options: ["Madrid", "Paris"], correctIndex: 0 };
     get.mockResolvedValue({ data: { data: authoring({ questions: [mcq, mcq2] }) } });
     renderStacked(<QuizEditScreen />);
-    await screen.findByLabelText("Quiz title");
+    await screen.findByText("Capital of Spain?");
     fireEvent.press(screen.getByLabelText("Edit question 1"));
     fireEvent.press(screen.getByLabelText("Edit question 2"));
     fireEvent.press(screen.getAllByText("Cancel")[0] as never);
@@ -212,30 +154,82 @@ describe("quiz builder on the fixed save bar", () => {
     expect(bar().queryByText(HINT)).toBeNull();
   });
 
+  it("the details sheet saves only what changed, and says nothing to send when untouched", async () => {
+    get.mockResolvedValue({ data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], canEditStructure: false }) } });
+    patch.mockResolvedValue({ data: { data: { updated: true } } });
+    renderStacked(<QuizEditScreen />);
+    await openDetails();
+    expect(sheetBar().getByText("Save")).toBeTruthy();
+    fireEvent.press(sheetBar().getByText("Save"));
+    expect(patch).not.toHaveBeenCalled();
+
+    await openDetails();
+    fireEvent.changeText(await screen.findByLabelText("Max score"), "30");
+    fireEvent.press(sheetBar().getByText("Save"));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { maxScore: 30 }));
+  });
+
+  it("a blank title is refused on its field in the sheet", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderStacked(<QuizEditScreen />);
+    await openDetails();
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "  ");
+    fireEvent.press(sheetBar().getByText("Save"));
+    expect(await screen.findByText("Enter a title.")).toBeTruthy();
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("a space-only title change sends nothing", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderStacked(<QuizEditScreen />);
+    await openDetails();
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Week 1 quiz  ");
+    fireEvent.press(sheetBar().getByText("Save"));
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it("the server's refusal shows in the sheet's bar", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    patch.mockRejectedValue(conflictError());
+    renderStacked(<QuizEditScreen />);
+    await openDetails();
+    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
+    fireEvent.press(sheetBar().getByText("Save"));
+    expect(await sheetBar().findByText("Grades exist.")).toBeTruthy();
+  });
+
   it("a graded paper quiz shows Max score read-only with why, and renames with only the title", async () => {
     get.mockResolvedValue({
       data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], gradeCount: 3, canEditStructure: false }) },
     });
     patch.mockResolvedValue({ data: { data: { updated: true } } });
     renderStacked(<QuizEditScreen />);
+    await openDetails();
     fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Renamed");
     expect(screen.getByLabelText("Max score").props.editable).toBe(false);
     expect(screen.getByText("Max score is locked because grades have been entered.")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Max score"), "99");
-    fireEvent.press(bar().getByText("Save changes"));
+    fireEvent.press(sheetBar().getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41", { title: "Renamed" }));
+  });
+
+  it("a published quiz has no footer; Unpublish is a pill in the summary", async () => {
+    get.mockResolvedValue({ data: { data: authoring({ publishedAt: "2099-02-01T00:00:00.000Z" }) } });
+    post.mockResolvedValue({ data: { data: { published: false } } });
+    renderStacked(<QuizEditScreen />);
+    fireEvent.press(await screen.findByLabelText("Unpublish quiz"));
+    expect(screen.queryByText("Publish quiz")).toBeNull();
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/publish", { publish: false }));
   });
 
   it("a failed refetch over cached data shows an inline error with retry above the form", async () => {
     get.mockResolvedValueOnce({ data: { data: authoring() } });
     renderStacked(<QuizEditScreen />);
-    await screen.findByLabelText("Quiz title");
+    await screen.findByText("Capital of France?");
     get.mockRejectedValue(new Error("offline"));
-    await act(async () => {
-      await screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
-    });
+    await refresh();
     expect(await screen.findByText("Couldn't refresh this quiz.")).toBeTruthy();
-    expect(screen.getByLabelText("Quiz title")).toBeTruthy();
+    expect(screen.getByText("Capital of France?")).toBeTruthy();
     get.mockResolvedValue({ data: { data: authoring() } });
     const callsBeforeRetry = get.mock.calls.length;
     fireEvent.press(screen.getByText("Try again"));
@@ -243,13 +237,4 @@ describe("quiz builder on the fixed save bar", () => {
     // This screen renders slowly on a loaded machine (full suite beside a build), so the wait is generous.
     await waitFor(() => expect(screen.queryByText("Couldn't refresh this quiz.")).toBeNull(), { timeout: 45000 });
   }, 60000);
-
-  it("a space-only title change is nothing to save: the hint says so and Save sends nothing", async () => {
-    get.mockResolvedValue({ data: { data: authoring() } });
-    renderStacked(<QuizEditScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Quiz title"), "Week 1 quiz  ");
-    expect(bar().getByText("Nothing to save yet.")).toBeTruthy();
-    fireEvent.press(bar().getByText("Save changes"));
-    expect(patch).not.toHaveBeenCalled();
-  });
 });

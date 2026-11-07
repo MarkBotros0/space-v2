@@ -15,6 +15,8 @@ import { ChipsSection } from "../../src/screens/design-catalogue/chips-section";
 import { PeopleSection } from "../../src/screens/design-catalogue/people-section";
 import { StartIssuesSection } from "../../src/screens/design-catalogue/start-issues-section";
 import { StaffPickerSection } from "../../src/screens/design-catalogue/staff-picker-section";
+import { HomePartsSection } from "../../src/screens/design-catalogue/home-parts-section";
+import { SeasonPartsSection } from "../../src/screens/design-catalogue/season-parts-section";
 import { SwitchSection } from "../../src/screens/design-catalogue/switch-section";
 import {
   ControlsSection,
@@ -67,6 +69,8 @@ export default function DesignCatalogue() {
         onToggleDisabled={() => setSaveBar((on) => (on === "disabled" ? "off" : "disabled"))}
       />
       <PeopleSection />
+      <SeasonPartsSection />
+      <HomePartsSection />
       <StaffPickerSection />
       <LeaderSection />
       <StartIssuesSection />

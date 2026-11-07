@@ -29,7 +29,7 @@ describe("MoreScreen", () => {
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["Current Season", "Attendance", "History", "Profile", "Profile settings", "Notification settings"]) {
+    for (const label of ["Current Season", "Attendance", "History", "Profile", "Profile settings"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     // Already tabs: never duplicated in More.
@@ -43,7 +43,7 @@ describe("MoreScreen", () => {
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["My notes", "Quizzes", "Notifications", "Profile settings", "Notification settings"]) {
+    for (const label of ["My notes", "Quizzes", "Notifications", "Profile settings"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     expect(screen.queryByText("Submissions")).toBeNull();
@@ -73,7 +73,7 @@ describe("MoreScreen", () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }));
     renderWithProviders(<MoreScreen />);
     expect(screen.getByText("Profile settings")).toBeTruthy();
-    expect(screen.getByText("Notification settings")).toBeTruthy();
+    expect(screen.queryByText("Notification settings")).toBeNull();
     expect(screen.queryByText("History")).toBeNull();
   });
 

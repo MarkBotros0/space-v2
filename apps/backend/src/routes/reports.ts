@@ -42,7 +42,7 @@ export const reportsRouter = Router();
 reportsRouter.get("/engagement", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
-  const scope = reportScopeFor(user);
+  const scope = await reportScopeFor(user);
   // LEADER and STUDENT, explicitly. Not an empty list — an empty list is
   // indistinguishable from "there is no data", which is exactly the accident
   // v1 relied on (spec D6 #4, R109, R110).
@@ -71,7 +71,7 @@ reportsRouter.get("/engagement", requireAuth, async (req, res) => {
 reportsRouter.get("/engagement/students", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
-  const scope = reportScopeFor(user);
+  const scope = await reportScopeFor(user);
   if (scope === null) return forbidden(res);
 
   const parsed = engagementStudentsQuerySchema.safeParse(req.query);

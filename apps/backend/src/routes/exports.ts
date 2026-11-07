@@ -83,7 +83,7 @@ function setDownloadHeaders(res: Response, filename: string): void {
 reportExportsRouter.get("/engagement/export", requireAuth, exportLimiter, async (req, res) => {
   const user = requireUser(req);
 
-  const scope = reportScopeFor(user);
+  const scope = await reportScopeFor(user);
   if (scope === null) return forbidden(res);
 
   if (req.query.format !== undefined) {

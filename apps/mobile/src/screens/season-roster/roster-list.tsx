@@ -59,7 +59,7 @@ export function RosterList({
   const removePerson = useRemoveSeasonPerson(seasonId);
 
   const frame = (children: ReactNode, subtitle?: string, footer?: ReactNode) => (
-    <Screen title="Roster" subtitle={subtitle} trailing={trailing} footer={footer}>
+    <Screen title="Students and groups" subtitle={subtitle} trailing={trailing} footer={footer}>
       {children}
     </Screen>
   );

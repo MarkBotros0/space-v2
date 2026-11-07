@@ -236,7 +236,7 @@ describe("GET /api/v1/students/:id", () => {
     expect(res.status).toBe(403);
   });
 
-  it("withholds phone, DOB and notes from MENTOR — absence, not null (D3)", async () => {
+  it("withholds DOB and notes from MENTOR — absence, not null (D3); the phone is shown", async () => {
     const res = await request(app)
       .get(`/api/v1/students/${student1Id}`)
       .set("authorization", `Bearer ${mentorToken}`);
@@ -245,7 +245,8 @@ describe("GET /api/v1/students/:id", () => {
     expect(res.body.data.profile).toHaveProperty("university", "Test University");
     // The keys must not exist on the wire at all — a null would still admit
     // the field exists and still round-trip through generic clients.
-    expect(res.body.data.profile).not.toHaveProperty("phone");
+    // Leaders and mentors see the phone (owner, 2026-11-07).
+    expect(res.body.data.profile).toHaveProperty("phone", "+20 100 000 0000");
     expect(res.body.data.profile).not.toHaveProperty("dateOfBirth");
     expect(res.body.data.profile).not.toHaveProperty("notes");
   });
@@ -256,7 +257,8 @@ describe("GET /api/v1/students/:id", () => {
       .set("authorization", `Bearer ${leaderToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.profile).not.toHaveProperty("phone");
+    expect(res.body.data.profile).toHaveProperty("phone");
+    expect(res.body.data.profile).not.toHaveProperty("dateOfBirth");
     expect(res.body.data.profile).not.toHaveProperty("notes");
     // student1 holds two enrollments; only the one naming the leader's group
     // travels (spec 06 §7: "the scoped season rows").

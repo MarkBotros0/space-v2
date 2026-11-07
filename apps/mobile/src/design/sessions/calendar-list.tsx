@@ -24,12 +24,22 @@ function todayKey(now: Date): string {
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
 }
 
-function StatusBadge({ session, now, today }: { session: SessionListItem; now: Date; today?: string }) {
+function StatusBadge({
+  session,
+  now,
+  today,
+}: {
+  session: SessionListItem;
+  now: Date;
+  today?: string;
+}) {
   const orgToday = today ?? todayKey(now);
   if (session.dayKey === orgToday) return <Badge variant="info">Today</Badge>;
   // On another day than the org's today, the day decides; the instant is for today only.
   const past =
-    today !== undefined ? session.dayKey < today : new Date(session.startsAt).getTime() < now.getTime();
+    today !== undefined
+      ? session.dayKey < today
+      : new Date(session.startsAt).getTime() < now.getTime();
   if (past) {
     return session.attendanceMarked ? (
       <Badge variant="success">Attendance marked</Badge>
@@ -69,7 +79,10 @@ export function CalendarList({
   return (
     <View className="flex-col gap-3">
       {sessions.map((s) => (
-        <View key={s.id} className="flex-col gap-3 rounded-group bg-surface dark:border dark:border-separator p-4">
+        <View
+          key={s.id}
+          className="flex-col gap-3 rounded-group bg-surface dark:border dark:border-separator p-4"
+        >
           <View className="flex-col gap-1">
             <View className="flex-row flex-wrap items-center gap-2">
               <Pressable accessibilityRole="link" onPress={() => onOpen(s.id)}>

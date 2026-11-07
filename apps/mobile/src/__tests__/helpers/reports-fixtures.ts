@@ -43,8 +43,20 @@ export const summary = {
   scope: {
     seasonIds: [7, 8],
     seasons: [
-      { id: 7, code: "spring-2099", title: "Spring 2099" },
-      { id: 8, code: "autumn-2099", title: "Autumn 2099" },
+      {
+        id: 7,
+        code: "spring-2099",
+        title: "Spring 2099",
+        status: "ACTIVE" as const,
+        endDate: "2099-06-30T00:00:00.000Z",
+      },
+      {
+        id: 8,
+        code: "autumn-2098",
+        title: "Autumn 2098",
+        status: "COMPLETED" as const,
+        endDate: "2098-12-20T00:00:00.000Z",
+      },
     ],
     truncated: false,
     label: "All seasons",

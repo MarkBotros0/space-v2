@@ -93,7 +93,15 @@ export const resolvedScopeSchema = z.object({
   /** The intersection actually queried — never the request (ruling C8, spec D6 #1). */
   seasonIds: z.array(z.number().int()),
   seasons: z.array(
-    z.object({ id: z.number().int(), code: z.string(), title: z.string() }),
+    z.object({
+      id: z.number().int(),
+      code: z.string(),
+      title: z.string(),
+      /** Reports open on an ACTIVE season, else the one that ended last. */
+      status: seasonStatusSchema,
+      /** The season's last day (UTC midnight, spec 02 D12). */
+      endDate: z.string(),
+    }),
   ),
   /**
    * True when the request named more seasons than the caller got. Deliberately

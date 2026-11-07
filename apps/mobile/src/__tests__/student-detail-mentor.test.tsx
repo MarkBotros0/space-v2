@@ -47,6 +47,7 @@ const base = {
   enrollments: [enrollment],
 };
 const publicProfile = {
+  phone: "+20 100 000 0000",
   university: "Cairo University",
   faculty: "Engineering",
   universityGraduationYear: 2027,
@@ -126,13 +127,17 @@ describe("StudentDetailScreen — MENTOR (v1 /mentor/students/[id])", () => {
     expect(screen.queryByText("Try again")).toBeNull();
   });
 
-  it("offers no action a mentor doesn't have, and no field the public arm doesn't carry", async () => {
+  it("offers no action a mentor doesn't have, and no field beyond the phone the public arm carries", async () => {
     renderWithProviders(<StudentDetailScreen />);
     await screen.findByText("Cairo University");
-    for (const action of ["Edit profile", "Graduate", "Delete student", "Call"]) {
+    for (const action of ["Edit profile", "Graduate", "Delete student"]) {
       expect(screen.queryByText(action)).toBeNull();
     }
-    expect(screen.queryByText("Phone")).toBeNull();
+    // A mentor reads the phone and can call it (4999d4cf), but not the date of birth or notes.
+    expect(screen.getByText("Phone")).toBeTruthy();
+    expect(screen.getByLabelText("Call +20 100 000 0000")).toBeTruthy();
+    expect(screen.queryByText("Date of birth")).toBeNull();
+    expect(screen.queryByText("Internal notes · staff only")).toBeNull();
     fireEvent.press(screen.getByRole("button", { name: "Seasons" }));
     expect(await screen.findByText("83% attendance")).toBeTruthy();
     expect(screen.getByText(/Jan 1, 2099 – Dec 31, 2099/)).toBeTruthy();

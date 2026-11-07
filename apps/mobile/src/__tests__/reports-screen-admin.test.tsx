@@ -21,9 +21,21 @@ import { renderWithProviders } from "./helpers/render";
 
 import ReportsScreen from "../../app/(app)/(tabs)/reports";
 
-import { mockEndpoints, organisation, sessionFor, summary } from "./helpers/reports-fixtures";
+import {
+  emptyScopes,
+  mockEndpoints,
+  organisation,
+  sessionFor,
+  summary,
+} from "./helpers/reports-fixtures";
 
 const get = apiClient.get as jest.Mock;
+
+/** An ADMIN who serves season 7 only: season 8 in History is past, not theirs. */
+const adminOf7 = () => ({
+  ...sessionFor("ADMIN"),
+  scopes: { ...emptyScopes, seasonAdminIds: [7] },
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -32,12 +44,12 @@ beforeEach(() => {
 });
 
 describe("ReportsScreen for admin and super — frame and export", () => {
-  it("titles the Screen, keeps the scope line, and opens the export sheet from the title row", async () => {
+  it("titles the Screen, shows the season header, and opens the export sheet from the title row", async () => {
     useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("Scoped to All seasons.")).toBeTruthy();
+    expect(await screen.findByTestId("report-season")).toBeTruthy();
     expect(screen.getAllByText("Reports").length).toBeGreaterThan(0);
     // The two buttons moved into a sheet; nothing is offered inline any more.
     expect(screen.queryByText("Export engagement")).toBeNull();
@@ -48,17 +60,23 @@ describe("ReportsScreen for admin and super — frame and export", () => {
     await waitFor(() =>
       expect(mockDownloadAndShare).toHaveBeenCalledWith(
         expect.objectContaining({
-          path: "/api/v1/reports/engagement/export",
+          path: "/api/v1/reports/engagement/export?seasonId=7",
           filename: "engagement-all-seasons-2099-03-10.xlsx",
         }),
       ),
     );
   });
 
-  it("agrees with the All seasons chip when the caller has one season and the server labels it by title (sweep F6)", async () => {
+  it("offers no History when the caller has one season, and names it in the header (sweep F6)", async () => {
     useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
-    const one = { id: 7, code: "gbv-2026", title: "GBV 2026" };
+    const one = {
+      id: 7,
+      code: "gbv-2026",
+      title: "GBV 2026",
+      status: "ACTIVE" as const,
+      endDate: "2026-12-31T00:00:00.000Z",
+    };
     const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
     get.mockImplementation((url: string) =>
       url.startsWith("/api/v1/reports/engagement") && !url.includes("/students")
@@ -74,8 +92,8 @@ describe("ReportsScreen for admin and super — frame and export", () => {
     );
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("Showing all seasons (GBV 2026).")).toBeTruthy();
-    expect(screen.queryByText("Scoped to GBV 2026.")).toBeNull();
+    expect(await within(await screen.findByTestId("report-season")).findByText("GBV 2026")).toBeTruthy();
+    expect(screen.queryByLabelText("Choose another season")).toBeNull();
   });
 
   it("labels the engagement donut with a legend of each band's name and count, not colour alone (sweep F7)", async () => {
@@ -109,27 +127,40 @@ describe("ReportsScreen for admin and super — frame and export", () => {
     expect(screen.queryByLabelText(/^Attendance trend, 1 session/)).toBeNull();
   });
 
-  it("keeps the mentor's inline export buttons", async () => {
+  it("gives a mentor the same Export sheet, with the engagement file only", async () => {
     useSessionStore.setState(sessionFor("MENTOR"));
     mockEndpoints();
     renderWithProviders(<ReportsScreen />);
+    fireEvent.press(await screen.findByLabelText("Export"));
     expect(await screen.findByText("Export engagement")).toBeTruthy();
+    expect(screen.queryByText(/Export season workbook/)).toBeNull();
   });
 });
 
 describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => {
   it("draws the at-risk list as a grouped row with the season and both percentages", async () => {
-    useSessionStore.setState(sessionFor("ADMIN"));
+    useSessionStore.setState(adminOf7());
     mockEndpoints();
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("Students at risk (1 of 34)")).toBeTruthy();
+    expect(await screen.findByText("STUDENTS AT RISK (1 OF 34)")).toBeTruthy();
     expect(screen.getByText("Sara Student").props.numberOfLines).toBe(2);
     expect(screen.getByText("Spring 2099 · 50% attendance · 30% submissions")).toBeTruthy();
     expect(screen.getByTestId("list-row-chevron", { includeHiddenElements: true })).toBeTruthy();
     fireEvent.press(screen.getByLabelText(/^Sara Student/));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
     expect(screen.getByText("Show more")).toBeTruthy();
+  });
+
+  it("does not open the student of a season the admin no longer serves", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    mockEndpoints();
+    renderWithProviders(<ReportsScreen />);
+
+    expect(await screen.findByText("Sara Student")).toBeTruthy();
+    expect(screen.queryByTestId("list-row-chevron", { includeHiddenElements: true })).toBeNull();
+    fireEvent.press(screen.getByText("Sara Student"));
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("a failed Show more says so under the list and Try again asks again (final review I4)", async () => {
@@ -146,37 +177,30 @@ describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => 
 
     fireEvent.press(await screen.findByText("Show more"));
     expect(await screen.findByText("Couldn't load more students.")).toBeTruthy();
-    expect(screen.getByText("Students at risk (1 of 34)")).toBeTruthy();
+    expect(screen.getByText("STUDENTS AT RISK (1 OF 34)")).toBeTruthy();
 
     failing = false;
     fireEvent.press(screen.getByText("Try again"));
     await waitFor(() => expect(screen.queryByText("Couldn't load more students.")).toBeNull(), { timeout: 5000 });
   });
 
-  it("keeps every engagement figure as a tile in a wrapping row", async () => {
+  it("shows the figures in one card: students, enrolments and at risk", async () => {
     useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
     renderWithProviders(<ReportsScreen />);
 
-    const expected: Array<[string, string]> = [
-      ["Enrolments", "44"],
+    const tiles = await screen.findByTestId("engagement-tiles");
+    for (const [label, value] of [
       ["Students", "40"],
-      ["High engagement", "3"],
-      ["Medium engagement", "5"],
-      ["Low engagement", "2"],
+      ["Enrolments", "44"],
       ["At risk", "34"],
-    ];
-    for (const [label, value] of expected) {
-      const tile = await screen.findByLabelText(`${label}: ${value}`);
-      // The figure shrinks to fit one line at font scale 1.3 and never ellipsizes.
-      await waitFor(() => expect(within(tile).getByText(value)).toBeTruthy());
-      const figure = within(tile).getByText(value);
-      expect(figure.props.adjustsFontSizeToFit).toBe(true);
-      expect(figure.props.numberOfLines).toBe(1);
-      expect(figure.props.ellipsizeMode).toBeUndefined();
+    ] as const) {
+      const figure = within(tiles).getByLabelText(`${label}: ${value}`);
+      const number = within(figure).getByText(value);
+      expect(number.props.numberOfLines).toBe(1);
     }
-    expect(screen.getByTestId("engagement-tiles").props.className).toContain("flex-wrap");
-    // The old text lines are the tiles now.
+    // The bands are the donut's legend now, not tiles.
+    expect(screen.queryByLabelText("High engagement: 3")).toBeNull();
     expect(screen.queryByText("44 enrolments · 40 students")).toBeNull();
   });
 
@@ -186,34 +210,31 @@ describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => 
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Reflection one")).toBeTruthy();
-    expect(screen.getByText("Completion rate")).toBeTruthy();
-    expect(screen.getByText("How these numbers are calculated")).toBeTruthy();
+    expect(screen.getByText("Assignment completion")).toBeTruthy();
+    expect(screen.getByText("How are these calculated?")).toBeTruthy();
     expect(screen.getByLabelText("Attendance trend, 2 sessions, from 80% to 50%")).toBeTruthy();
   });
 
-  it("filters by season with chips and refetches with that seasonId", async () => {
+  it("opens on the active season and moves to another through History", async () => {
     useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
     renderWithProviders(<ReportsScreen />);
 
-    const chip = await screen.findByLabelText("Season filter: Autumn 2099");
-    expect(chip.props.accessibilityState).toEqual({ selected: false });
-    fireEvent.press(chip);
+    const header = await screen.findByTestId("report-season");
+    expect(within(header).getByText("Spring 2099")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Choose another season"));
+    fireEvent.press(await screen.findByText("Autumn 2098"));
 
     await waitFor(() => {
       const urls = get.mock.calls.map((c) => String(c[0]));
       expect(urls.some((u) => u.includes("seasonId=8"))).toBe(true);
     });
-    await waitFor(() =>
-      expect(screen.getByLabelText("Season filter: Autumn 2099").props.accessibilityState).toEqual({
-        selected: true,
-      }),
-    );
+    expect(within(await screen.findByTestId("report-season")).getByText("Autumn 2098")).toBeTruthy();
   });
 });
 
 describe("ReportsScreen for admin — a failing season", () => {
-  it("keeps the season picker when the chosen season fails, so another can be picked (final review M6)", async () => {
+  it("keeps History when the chosen season fails, so another can be picked (final review M6)", async () => {
     useSessionStore.setState(sessionFor("ADMIN"));
     mockEndpoints();
     const base = get.getMockImplementation() as (url: string) => Promise<unknown>;
@@ -224,10 +245,12 @@ describe("ReportsScreen for admin — a failing season", () => {
     );
     renderWithProviders(<ReportsScreen />);
 
-    fireEvent.press(await screen.findByLabelText("Season filter: Autumn 2099"));
+    fireEvent.press(await screen.findByLabelText("Choose another season"));
+    fireEvent.press(await screen.findByText("Autumn 2098"));
     expect(await screen.findByText("Try again")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("Season filter: Spring 2099"));
-    await waitFor(() => expect(screen.getByText("Students at risk (1 of 34)")).toBeTruthy());
+    fireEvent.press(screen.getByLabelText("Choose another season"));
+    fireEvent.press(await screen.findByText("Spring 2099"));
+    await waitFor(() => expect(screen.getByText("STUDENTS AT RISK (1 OF 34)")).toBeTruthy());
   });
 });
 
@@ -237,6 +260,7 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     mockEndpoints({ withOrg: true });
     renderWithProviders(<ReportsScreen />);
 
+    fireEvent.press(await screen.findByText("Organisation"));
     fireEvent.press(await screen.findByLabelText("Student accounts: 40"));
     expect(mockPush).toHaveBeenCalledWith("/students");
     fireEvent.press(screen.getByLabelText("Alumni: 12"));
@@ -246,26 +270,20 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     expect(screen.getByTestId("organisation-tiles").props.className).toContain("flex-wrap");
   });
 
-  it("puts the org-wide Organisation above the season chips, so the chips sit over what they scope", async () => {
+  it("switches between Season and Organisation instead of stacking them", async () => {
     useSessionStore.setState(sessionFor("SUPER"));
     mockEndpoints({ withOrg: true });
     renderWithProviders(<ReportsScreen />);
 
-    await screen.findByLabelText("Student accounts: 40");
-    // Document order of the accessibility labels.
-    const labels: string[] = [];
-    const walk = (n: unknown): void => {
-      if (!n || typeof n !== "object") return;
-      if (Array.isArray(n)) return n.forEach(walk);
-      const node = n as { props?: { accessibilityLabel?: string }; children?: unknown };
-      if (node.props?.accessibilityLabel) labels.push(node.props.accessibilityLabel);
-      walk(node.children);
-    };
-    walk(screen.toJSON());
-    const org = labels.indexOf("Student accounts: 40");
-    const chips = labels.indexOf("Season filter: Spring 2099");
-    expect(org).toBeGreaterThan(-1);
-    expect(chips).toBeGreaterThan(org);
+    expect(await screen.findByTestId("report-season")).toBeTruthy();
+    expect(screen.queryByLabelText("Student accounts: 40")).toBeNull();
+    fireEvent.press(screen.getByText("Organisation"));
+    expect(await screen.findByLabelText("Student accounts: 40")).toBeTruthy();
+    expect(screen.queryByTestId("report-season")).toBeNull();
+    // No export from the organisation view: it has no engagement file.
+    expect(screen.queryByLabelText("Export")).toBeNull();
+    fireEvent.press(screen.getByText("Season"));
+    expect(await screen.findByTestId("report-season")).toBeTruthy();
   });
 
   it("says 1 Active season, not 1 Active seasons", async () => {
@@ -275,6 +293,7 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     organisation.activeSeasonCount = 1;
     try {
       renderWithProviders(<ReportsScreen />);
+      fireEvent.press(await screen.findByText("Organisation"));
       expect(await screen.findByLabelText("Active season: 1")).toBeTruthy();
     } finally {
       organisation.activeSeasonCount = was;
@@ -286,6 +305,7 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     mockEndpoints({ withOrg: true });
     renderWithProviders(<ReportsScreen />);
 
+    fireEvent.press(await screen.findByText("Organisation"));
     expect(await screen.findByText("Students per season")).toBeTruthy();
     const meta = screen.getByText("2 leaders · 20 active · 3 completed · 1 dropped");
     // Each count stays with its noun when the line wraps (sweep R6).

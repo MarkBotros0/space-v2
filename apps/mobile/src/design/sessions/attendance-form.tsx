@@ -23,10 +23,34 @@ import { Text } from "../ui/text";
 
 iconWithClassName(Check, Clock, X);
 
-const OPTIONS: { value: AttendanceStatus; label: string; icon: LucideIcon; active: string; text: string }[] = [
-  { value: "PRESENT", label: "Present", icon: Check, active: "border-transparent bg-ok-soft", text: "text-ok" },
-  { value: "LATE", label: "Late", icon: Clock, active: "border-transparent bg-warn-soft", text: "text-warn" },
-  { value: "ABSENT", label: "Absent", icon: X, active: "border-transparent bg-bad-soft", text: "text-bad" },
+const OPTIONS: {
+  value: AttendanceStatus;
+  label: string;
+  icon: LucideIcon;
+  active: string;
+  text: string;
+}[] = [
+  {
+    value: "PRESENT",
+    label: "Present",
+    icon: Check,
+    active: "border-transparent bg-ok-soft",
+    text: "text-ok",
+  },
+  {
+    value: "LATE",
+    label: "Late",
+    icon: Clock,
+    active: "border-transparent bg-warn-soft",
+    text: "text-warn",
+  },
+  {
+    value: "ABSENT",
+    label: "Absent",
+    icon: X,
+    active: "border-transparent bg-bad-soft",
+    text: "text-bad",
+  },
 ];
 
 export function AttendanceRosterForm({
@@ -48,7 +72,10 @@ export function AttendanceRosterForm({
 }) {
   if (rows.length === 0) {
     return (
-      <Text variant="subhead" className="rounded-group bg-surface p-8 text-center text-muted-foreground">
+      <Text
+        variant="subhead"
+        className="rounded-group bg-surface p-8 text-center text-muted-foreground"
+      >
         No students are enrolled in this scope.
       </Text>
     );

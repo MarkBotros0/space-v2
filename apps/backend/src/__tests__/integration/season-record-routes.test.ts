@@ -92,7 +92,11 @@ beforeAll(async () => {
     ],
   });
   const mkQuiz = (title: string) =>
-    db.quiz.create({ data: { seasonId: sid, title, kind: "ONLINE", maxScore: 10, publishedAt: new Date() }, select: { id: true } });
+    db.quiz.create({
+      // Released: held results read SUBMITTED (quizzes-release-routes).
+      data: { seasonId: sid, title, kind: "ONLINE", maxScore: 10, publishedAt: new Date(), resultsReleasedAt: new Date() },
+      select: { id: true },
+    });
   const q1 = await mkQuiz("Q not taken");
   const q2 = await mkQuiz("Q progress");
   const q3 = await mkQuiz("Q graded");

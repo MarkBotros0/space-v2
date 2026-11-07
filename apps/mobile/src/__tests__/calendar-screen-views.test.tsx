@@ -165,13 +165,16 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
     fireEvent.press(screen.getByLabelText("Month"));
     expect(screen.getByText("March 2099")).toBeTruthy();
     // 1 Mar 2099 is a Sunday: the grid opens on Monday 23 Feb, its date muted as out-of-month.
-    const feb = screen.getByLabelText("Feb 23, 2099");
+    const feb = screen.getByLabelText("Feb 23, 2099, nothing on");
     expect(within(feb).getByText("23").props.className).toContain("text-muted-foreground");
-    // v1's grid shows each session's title chip in its day cell; no tap-a-day list.
-    expect(screen.getByLabelText("Kickoff")).toBeTruthy();
-    expect(screen.getByLabelText("Week two")).toBeTruthy();
+    // Each cell is one button (owner, 2026-11-07): its label counts what is on, and the
+    // session chips are only a picture, not targets of their own.
+    expect(screen.getByLabelText("Mar 1, 2099, 1 item")).toBeTruthy();
+    expect(screen.queryByLabelText("Kickoff")).toBeNull();
     expect(screen.getByText("Mon")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("Week two"));
+    fireEvent.press(screen.getByLabelText("Mar 12, 2099, 1 item"));
+    expect(screen.getByText("Thu, Mar 12, 2099")).toBeTruthy();
+    fireEvent.press(screen.getByText("Week two"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "2" } });
 
     fireEvent.press(screen.getByLabelText("Next month"));

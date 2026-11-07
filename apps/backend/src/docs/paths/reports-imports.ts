@@ -13,8 +13,8 @@ export const reportsImportsPaths = {
         "Charts, band counts and the capped at-risk list. The cohort is NOT included — " +
         "see /api/v1/reports/engagement/students.\n\n" +
         "Scope: `seasonId` may repeat. The requested ids are INTERSECTED with the " +
-        "caller's permitted set (SUPER/MENTOR: every non-deleted season; ADMIN: their " +
-        "seasonAdminIds); ids outside it are dropped silently and `scope.truncated` is " +
+        "caller's permitted set (SUPER/MENTOR: every non-deleted season; ADMIN: every " +
+        "season they hold or held a SeasonAdmin row in, finished ones included, for Reports' History); ids outside it are dropped silently and `scope.truncated` is " +
         "set. LEADER and STUDENT are refused.\n\n" +
         "Metrics: `attendanceTrend[].pct` divides by the roster as it stood at that " +
         "session's instant, so it cannot exceed 100 and is `null` when nobody was " +

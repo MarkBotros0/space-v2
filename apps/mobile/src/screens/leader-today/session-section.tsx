@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { Linking, View } from "react-native";
 
 import { Button } from "../../design/ui/button";
-import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { PeoplePreview } from "../../design/home/people-preview";
 import { HeroCard } from "../../design/ui/hero-card";
 import { dayCue, deviceTodayKey } from "../../lib/calendar-grid";
 import { formatWallTime, formatWeekdayDay, unbreakable } from "../../lib/format";
@@ -45,7 +45,8 @@ export function LeaderSessionSection({
     session.location ? ` · ${session.location}` : ""
   }`;
   if (onTheDay) {
-    if (checkIn) meta += ` · ${unbreakable(`${checkIn.present + checkIn.late} present`)} · ${unbreakable(`${checkIn.notCheckedIn.length} not checked in`)}`;
+    if (checkIn)
+      meta += ` · ${unbreakable(`${checkIn.present + checkIn.late} present`)} · ${unbreakable(`${checkIn.notCheckedIn.length} not checked in`)}`;
   } else {
     const cue = dayCue(session.dayKey, today);
     if (cue) meta += ` · ${unbreakable(cue)}`;
@@ -69,7 +70,10 @@ export function LeaderSessionSection({
               </Button>
               {/* D13: a stream link only while the session is running. */}
               {session.isInProgress && session.youtubeUrl ? (
-                <Button variant="secondary" onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}>
+                <Button
+                  variant="secondary"
+                  onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}
+                >
                   Join stream
                 </Button>
               ) : null}
@@ -81,22 +85,13 @@ export function LeaderSessionSection({
           )
         }
       />
-      {missing.length > 0 ? (
-        <GroupedList header="Not checked in">
-          {missing.slice(0, NAMED).map((s) => (
-            <ListRow
-              key={s.id}
-              title={s.name}
-              titleLines={2}
-              chevron
-              onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(s.id) } })}
-            />
-          ))}
-          {missing.length > NAMED ? (
-            <ListRow title={`See all ${missing.length}`} chevron onPress={() => router.push(attendance)} />
-          ) : null}
-        </GroupedList>
-      ) : null}
+      <PeoplePreview
+        header="Not checked in"
+        people={missing.slice(0, NAMED).map((m) => ({ id: m.id, name: m.name }))}
+        total={missing.length}
+        onOpen={(sid) => router.push({ pathname: "/student/[id]", params: { id: String(sid) } })}
+        onSeeAll={() => router.push(attendance)}
+      />
     </View>
   );
 }

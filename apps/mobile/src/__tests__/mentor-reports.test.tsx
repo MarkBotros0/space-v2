@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { RefreshControl } from "react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn() } }));
@@ -37,11 +37,12 @@ beforeEach(() => {
 });
 
 describe("MentorReports", () => {
-  it("renders the title and the scope subtitle on Screen, not PageTitle", async () => {
+  it("renders the title and the season header on Screen, not PageTitle", async () => {
     mockEndpoints();
     renderWithProviders(<MentorReports />);
     expect(await screen.findByText("Reports")).toBeTruthy();
-    expect(await screen.findByText(`Scoped to ${summary.scope.label}.`)).toBeTruthy();
+    const header = await screen.findByTestId("report-season");
+    expect(within(header).getByText("Spring 2099")).toBeTruthy();
     expect(mockPageTitle).not.toHaveBeenCalled();
   });
 
@@ -49,19 +50,21 @@ describe("MentorReports", () => {
     mockEndpoints();
     renderWithProviders(<MentorReports />);
     await screen.findByText("Sara Student");
-    const season = { id: 7, title: "Spring 2099" }; // first of the fixture scope
-    fireEvent.press(screen.getByLabelText(`Season filter: ${season.title}`));
-    await waitFor(() => {
-      const last = mockExportMenu.mock.calls.at(-1)?.[0] as {
+    // Opens on the running season (first of the fixture scope).
+    const lastProps = () =>
+      mockExportMenu.mock.calls.at(-1)?.[0] as {
         seasonId: number | null;
         canExportWorkbook: boolean;
         sheet?: boolean;
       };
-      expect(last.seasonId).toBe(season.id);
-      expect(last.canExportWorkbook).toBe(false);
-      // The inline form, not the sheet.
-      expect(last.sheet).toBeFalsy();
-    });
+    await waitFor(() => expect(lastProps().seasonId).toBe(7));
+    expect(lastProps().canExportWorkbook).toBe(false);
+    // Another season from History, and All seasons: still no workbook.
+    fireEvent.press(screen.getByLabelText("Choose another season"));
+    fireEvent.press(await screen.findByText("Autumn 2098"));
+    await waitFor(() => expect(lastProps().seasonId).toBe(8));
+    expect(lastProps().canExportWorkbook).toBe(false);
+    expect(lastProps().sheet).toBe(true);
   });
 
   it("an at-risk row opens that student", async () => {
@@ -154,6 +157,6 @@ describe("MentorReports", () => {
       data: { data: { ...summary, enrollmentCount: 0, attendanceTrend: [] } },
     });
     renderWithProviders(<MentorReports />);
-    expect(await screen.findByText("No data in this scope")).toBeTruthy();
+    expect(await screen.findByText("Nothing to report yet")).toBeTruthy();
   });
 });

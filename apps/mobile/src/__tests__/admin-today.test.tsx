@@ -55,18 +55,19 @@ describe("Admin Today", () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("3 submissions waiting for review")).toBeTruthy();
+    expect(await screen.findByLabelText("Submissions to review: 3")).toBeTruthy();
     expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.getByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Week 6")).toBeTruthy();
     expect(screen.getByText(/Spring 2099 · .*· 90 min · Hall/)).toBeTruthy();
-    const at = order("Happening now", "NEEDS ACTION", "Attendance", "Upcoming events");
+    const at = order("Happening now", "NEEDS ACTION", "Sessions held", "Upcoming events");
     expect(at[0]).toBeGreaterThan(-1);
     expect(at[1]).toBeGreaterThan(at[0]!);
     expect(at[2]).toBeGreaterThan(at[1]!);
     expect(at[3]).toBeGreaterThan(at[2]!);
     expect(screen.getByLabelText("Students: 3")).toBeTruthy();
-    expect(screen.getByLabelText("Progress · Session 3/4: 75%")).toBeTruthy();
+    expect(screen.getByLabelText("Sessions held: 3 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
     expect(screen.getByLabelText("Attendance: 33%")).toBeTruthy();
   });
 
@@ -96,25 +97,25 @@ describe("Admin Today", () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
 
-    fireEvent.press(await screen.findByText("3 submissions waiting for review"));
+    fireEvent.press(await screen.findByLabelText("Submissions to review: 3"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
-    fireEvent.press(screen.getByText("1 session with no attendance"));
+    fireEvent.press(screen.getByLabelText("Sessions without attendance: 1"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/sessions", params: { seasonId: "7" } });
-    fireEvent.press(screen.getByText("2 students at risk"));
+    fireEvent.press(screen.getByLabelText("Students at risk: 2"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/at-risk", params: { seasonId: "7" } });
-    expect(screen.queryByText(/people not invited/)).toBeNull();
+    expect(screen.queryByLabelText(/Not invited yet/)).toBeNull();
   });
 
-  it("zero counts hide their rows, and one student is singular", async () => {
+  it("a zero count is an All clear tile beside the ones with work in them", async () => {
     serveStaff(get, { pending: 0, atRisk: 1 });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("1 student at risk")).toBeTruthy();
-    expect(screen.queryByText(/waiting for review/)).toBeNull();
-    expect(screen.queryByText("Nothing needs action")).toBeNull();
+    expect(await screen.findByLabelText("Students at risk: 1")).toBeTruthy();
+    expect(screen.getByLabelText("Submissions to review: none, all clear")).toBeTruthy();
+    expect(screen.getByText("Submissions to review · All clear")).toBeTruthy();
   });
 
-  it("says Nothing needs action only when every count is exactly zero", async () => {
+  it("every Needs action tile reads All clear only when its count is exactly zero", async () => {
     serveStaff(get, {
       pending: 0,
       atRisk: 0,
@@ -122,7 +123,9 @@ describe("Admin Today", () => {
     });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("Nothing needs action")).toBeTruthy();
+    expect(await screen.findByLabelText("Submissions to review: none, all clear")).toBeTruthy();
+    expect(screen.getByLabelText("Sessions without attendance: none, all clear")).toBeTruthy();
+    expect(screen.getByLabelText("Students at risk: none, all clear")).toBeTruthy();
   });
 
   it("a failed sessions read shows a retry in place of that row, never Nothing needs action", async () => {
@@ -134,26 +137,21 @@ describe("Admin Today", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText(/Couldn't load sessions with no attendance/)).toBeTruthy();
-    expect(screen.queryByText("Nothing needs action")).toBeNull();
+    expect(screen.queryByLabelText("Sessions without attendance: none, all clear")).toBeNull();
     const before = requested().filter((u) => u.endsWith("/sessions")).length;
     fireEvent.press(screen.getAllByText("Try again")[0]!);
     await waitFor(() => expect(requested().filter((u) => u.endsWith("/sessions")).length).toBeGreaterThan(before));
   });
 
-  it("the figure rows keep their destinations and the at-risk preview opens the student", async () => {
+  it("the season card opens the season and the at-risk preview opens the student", async () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
 
-    fireEvent.press(await screen.findByText("Spring 2099"));
+    fireEvent.press(await screen.findByLabelText("Open Spring 2099"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "spring-2099" } });
-    fireEvent.press(screen.getByLabelText("Students"));
-    expect(mockPush).toHaveBeenCalledWith("/students");
-    expect(screen.getByText("2 reviewed · 1 pending review")).toBeTruthy();
-    fireEvent.press(screen.getByText("Assignments"));
-    expect(mockPush).toHaveBeenCalledWith("/assignments");
-    fireEvent.press(screen.getByText("Quizzes"));
-    expect(mockPush).toHaveBeenCalledWith("/quizzes");
-    expect(screen.getByText(/1 quiz draft/)).toBeTruthy();
+    // Students, Assignments and Quizzes are tabs now, not rows on Home.
+    expect(screen.queryByText("Assignments")).toBeNull();
+    expect(screen.queryByText("Quizzes")).toBeNull();
     fireEvent.press(screen.getByText("Sara Student"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
     expect(screen.getByText("1/3 submitted · 33% attendance")).toBeTruthy();
@@ -167,6 +165,6 @@ describe("Admin Today", () => {
     expect(await screen.findByText("No season yet")).toBeTruthy();
     expect(await screen.findByText("Open day")).toBeTruthy();
     expect(requested().some((u) => u.startsWith("/api/v1/me/dashboard"))).toBe(false);
-    expect(screen.queryByText("Nothing needs action")).toBeNull();
+    expect(screen.queryByLabelText(/Submissions to review/)).toBeNull();
   });
 });

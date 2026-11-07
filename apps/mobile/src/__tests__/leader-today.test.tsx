@@ -106,7 +106,7 @@ describe("LeaderToday", () => {
 
     expect(await screen.findByText("Take attendance")).toBeTruthy();
     expect(screen.getByText("Hi, Lena")).toBeTruthy();
-    expect(screen.getByText("Group A, Group B")).toBeTruthy();
+    expect(screen.getAllByText("Group A, Group B").length).toBeGreaterThan(0);
     expect(screen.getByText(/2 present · 7 not checked in/)).toBeTruthy();
     expect(screen.getByText("Next session")).toBeTruthy();
     expect(screen.getByText("Missing 1")).toBeTruthy();
@@ -166,32 +166,40 @@ describe("LeaderToday", () => {
     expect(screen.queryByText(/not checked in/)).toBeNull();
   });
 
-  it("to review: submissions open on the same season, quizzes with the draft note", async () => {
+  it("waiting for you: tiles open the same season's queue and the quizzes", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByText("Submissions waiting")).toBeTruthy();
-    expect(screen.getByText("Reviewed")).toBeTruthy();
-    expect(screen.getByText("Quizzes to grade")).toBeTruthy();
-    expect(screen.getByText("Fully graded")).toBeTruthy();
-    expect(screen.getByText("1 quiz draft not yet published")).toBeTruthy();
-    fireEvent.press(screen.getByText("Submissions waiting"));
+    expect(await screen.findByLabelText("Submissions to review: 1")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes to grade: 2")).toBeTruthy();
+    expect(screen.getByLabelText("Students at risk: 12")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Submissions to review: 1"));
     // The figures are this season's, so the queue opens on the same season.
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
-    fireEvent.press(screen.getByText("Quizzes to grade"));
+    fireEvent.press(screen.getByLabelText("Quizzes to grade: 2"));
     expect(mockPush).toHaveBeenLastCalledWith("/quizzes");
+    fireEvent.press(screen.getByLabelText("Students at risk: 12"));
+    expect(mockPush).toHaveBeenLastCalledWith("/groups");
   });
 
-  it("the count rows are spoken with their numbers (M2)", async () => {
-    serveDash(dash({ nextSession: null, leaderSession: null }));
+  it("a zero count is spoken as all clear, and no quizzes means no quizzes tile", async () => {
+    const base = staffDashboard("groups");
+    serveDash(
+      dash({
+        nextSession: null,
+        leaderSession: null,
+        submissions: { pendingReview: 0, reviewed: 2 },
+        quizzes: { total: 0, pending: 0, fullyGraded: 0, drafts: 0 },
+        cohort: { ...base.cohort, atRisk: [], atRiskTotal: 0 },
+      }),
+    );
     renderWithProviders(<LeaderToday />);
-    await screen.findByText("Submissions waiting");
-    expect(screen.getByLabelText("Submissions waiting, 1")).toBeTruthy();
-    expect(screen.getByLabelText("Reviewed, 2")).toBeTruthy();
-    expect(screen.getByLabelText(/^Quizzes to grade, .*, 2$/)).toBeTruthy();
-    expect(screen.getByLabelText("Fully graded, 0")).toBeTruthy();
+    expect(await screen.findByLabelText("Submissions to review: none, all clear")).toBeTruthy();
+    expect(screen.getByText("Submissions to review · All clear")).toBeTruthy();
+    expect(screen.getByLabelText("Students at risk: none, all clear")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Quizzes to grade/)).toBeNull();
   });
 
-  it("at risk: reason line, See all to groups, and figures stay", async () => {
+  it("at risk: names with a reason line, See all to groups, and the season card stays", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
     expect(await screen.findByText("YOUR STUDENTS AT RISK")).toBeTruthy();
@@ -201,27 +209,19 @@ describe("LeaderToday", () => {
     expect(mockPush).toHaveBeenCalledWith("/groups");
     expect(screen.getByLabelText("Students: 3")).toBeTruthy();
     expect(screen.getByLabelText("Attendance: 33%")).toBeTruthy();
-    expect(screen.getByLabelText("Season progress · Session 3 of 4: 75%")).toBeTruthy();
-    expect(screen.getByText("THIS SEASON")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("Students: 3"));
+    expect(screen.getByLabelText("Sessions held: 3 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Open Group A, Group B"));
     expect(mockPush).toHaveBeenLastCalledWith("/groups");
     fireEvent.press(screen.getByText("Sara Student"));
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
-  });
-
-  it("nobody at risk keeps the rule in the empty state", async () => {
-    const base = staffDashboard("groups");
-    serveDash(dash({ nextSession: null, cohort: { ...base.cohort, atRisk: [], atRiskTotal: 0 } }));
-    renderWithProviders(<LeaderToday />);
-    expect(await screen.findByText("Nobody at risk")).toBeTruthy();
-    expect(screen.getByText("No student has attendance or submissions below 60%.")).toBeTruthy();
   });
 
   it("no name: the title is Home", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5] }, { name: "" }));
     serveDash(dash({ nextSession: null }));
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByText("Submissions waiting")).toBeTruthy();
+    expect(await screen.findByLabelText("Submissions to review: 1")).toBeTruthy();
     expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });

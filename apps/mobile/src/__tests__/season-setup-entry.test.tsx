@@ -141,10 +141,8 @@ describe("required program on the form", () => {
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/seasons"));
     fireEvent.press(screen.getByLabelText("Required program"));
     fireEvent.press(await screen.findByText("GBV"));
-    // Status offers Draft alone.
-    fireEvent.press(screen.getByLabelText("Status"));
-    expect(screen.queryByRole("menuitem", { name: "Active" })).toBeNull();
-    fireEvent.press(screen.getAllByText("Draft").at(-1)!);
+    // A new season has no status choice: it is a draft.
+    expect(screen.queryByText("Status")).toBeNull();
     expect(screen.queryByText("Active")).toBeNull();
   });
 
@@ -166,7 +164,7 @@ describe("required program on the form", () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail({ status: "ACTIVE" }));
     renderWithProviders(<SeasonEditScreen />);
-    await screen.findByLabelText("Code");
+    await screen.findByLabelText("Change code");
     expect(screen.queryByLabelText("Required program")).toBeNull();
     expect(screen.getByText("Required program")).toBeTruthy();
     expect(screen.getByText("GBV")).toBeTruthy();

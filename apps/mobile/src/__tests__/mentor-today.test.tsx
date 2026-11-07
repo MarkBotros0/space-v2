@@ -112,7 +112,7 @@ describe("MentorDashboard (Today)", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
   });
 
-  it("shows 'n OF total' and an All students row when the list is a slice", async () => {
+  it("shows 'n OF total', with tiles for the at-risk count and everyone, when the list is a slice", async () => {
     const row = engagementSummary.atRisk[0];
     serve(
       routes({
@@ -125,7 +125,9 @@ describe("MentorDashboard (Today)", () => {
     );
     renderWithProviders(<MentorDashboard />);
     expect(await screen.findByText("AT RISK · 3 OF 12")).toBeTruthy();
-    fireEvent.press(screen.getByRole("button", { name: /All students/ }));
+    fireEvent.press(screen.getByLabelText("Students at risk: 12"));
+    expect(mockPush).toHaveBeenCalledWith("/reports");
+    fireEvent.press(screen.getByLabelText("Students: 40"));
     expect(mockPush).toHaveBeenCalledWith("/students");
   });
 

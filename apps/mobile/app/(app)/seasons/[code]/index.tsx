@@ -1,14 +1,26 @@
 import { useState, type ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Award,
+  CalendarPlus,
+  Copy,
+  Flag,
+  FolderPlus,
+  Pencil,
+  UserPlus,
+  Users,
+} from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
 import { EditSeason } from "../../../../src/components/season/EditSeason";
 import { SeasonAdmins } from "../../../../src/components/season/SeasonAdmins";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
-import { SeasonDetailView, type ManageItem } from "../../../../src/design/seasons/season-detail";
+import { NextStepCard } from "../../../../src/design/seasons/next-step-card";
+import { SeasonDetailView, type SeasonAction } from "../../../../src/design/seasons/season-detail";
+import { phoneDayKey } from "../../../../src/design/seasons/season-timeline";
 import { CalendarList } from "../../../../src/design/sessions/calendar-list";
-import { Button, EmptyState } from "../../../../src/design/ui";
+import { EmptyState } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
@@ -16,11 +28,11 @@ import { useSessionStore } from "../../../../src/store/session";
 
 /**
  * /seasons/[code] — any season, any role that may see it (spec 02 §9; G4).
- * v1 SeasonDetail (admin: read-only tabs; super: Edit season). V2-ONLY kept:
- * whoever the server says administers the season (canAdminister, C4) gets
- * the Roster / New group / New session buttons under the tabs, the group
- * cards open the group, and an ADMIN edits description and budgets (REG-72).
- * A SUPER gets the Admins card on the overview (owner decision; v1 had none).
+ * One overview, no tabs (owner, 2026-11-07): the season at a glance, its
+ * figures, the next step it waits for, its actions as tiles (whoever the
+ * server says administers it, canAdminister C4, gets Students and groups /
+ * New group / New session), its groups, its sessions on demand. An ADMIN
+ * edits description and budgets (REG-72); a SUPER gets the Admins card.
  */
 export default function SeasonDetailScreen() {
   const router = useRouter();
@@ -33,7 +45,9 @@ export default function SeasonDetailScreen() {
   const sessions = useSeasonSessions(detail.data?.id ?? null);
   // The org's day for the status badges; never waited on, and a failure leaves the device's.
   // Only those who can read this season's dashboard ask for it: anyone else would get a 403.
-  const orgToday = useStaffOrgToday(detail.data && (detail.data.canAdminister || isSuper) ? detail.data.id : null).today;
+  const orgToday = useStaffOrgToday(
+    detail.data && (detail.data.canAdminister || isSuper) ? detail.data.id : null,
+  ).today;
 
   const refresh = () => {
     if (code !== null) void detail.refetch();
@@ -74,21 +88,32 @@ export default function SeasonDetailScreen() {
         />
       );
 
-    const manageItems: ManageItem[] = [];
+    const go = {
+      roster: () => router.push({ pathname: "/seasons/[code]/roster", params: { code: s.code } }),
+      people: () => router.push({ pathname: "/seasons/[code]/people", params: { code: s.code } }),
+      start: () => router.push({ pathname: "/seasons/[code]/start", params: { code: s.code } }),
+      end: () => router.push({ pathname: "/seasons/[code]/end", params: { code: s.code } }),
+    };
+    const today = orgToday ?? phoneDayKey();
+    const pastEnd = s.status === "ACTIVE" && today > s.endDate.slice(0, 10);
+    const actions: SeasonAction[] = [];
     if (canAdminister) {
-      manageItems.push(
+      actions.push(
         {
-          label: "Roster",
-          onPress: () =>
-            router.push({ pathname: "/seasons/[code]/roster", params: { code: s.code } }),
+          label: "Students and groups",
+          hint: "Move students between groups",
+          icon: Users,
+          onPress: go.roster,
         },
         {
           label: "New group",
+          icon: FolderPlus,
           onPress: () =>
             router.push({ pathname: "/group/new", params: { seasonId: String(s.id) } }),
         },
         {
           label: "New session",
+          icon: CalendarPlus,
           onPress: () =>
             router.push({ pathname: "/session/new", params: { seasonId: String(s.id) } }),
         },
@@ -97,41 +122,59 @@ export default function SeasonDetailScreen() {
     // Setup entry points. Only a season that is still running or about to: a finished one takes no one.
     const open = s.status === "DRAFT" || s.status === "ACTIVE";
     if (open && manage) {
-      manageItems.push({
+      actions.push({
         label: "Add people",
-        onPress: () =>
-          router.push({ pathname: "/seasons/[code]/people", params: { code: s.code } }),
+        hint: "Students, leaders and admins",
+        icon: UserPlus,
+        onPress: go.people,
       });
     }
-    if (isSuper && s.status === "DRAFT") {
-      manageItems.push({
-        label: "Start season",
-        onPress: () =>
-          router.push({ pathname: "/seasons/[code]/start", params: { code: s.code } }),
-      });
-    }
-    if (s.status === "ACTIVE" && manage) {
-      manageItems.push({
+    // Past its end date, End season is the next step instead of a tile.
+    if (s.status === "ACTIVE" && manage && !pastEnd) {
+      actions.push({
         label: "End season",
-        onPress: () =>
-          router.push({ pathname: "/seasons/[code]/end", params: { code: s.code } }),
+        hint: "Results and graduation",
+        icon: Flag,
+        onPress: go.end,
       });
     }
     if (isSuper && (s.status === "COMPLETED" || s.status === "ARCHIVED")) {
-      manageItems.push({
+      actions.push({
         label: "Results",
+        icon: Award,
         onPress: () =>
           router.push({ pathname: "/seasons/[code]/results", params: { code: s.code } }),
       });
     }
     if (isSuper) {
-      manageItems.push(
+      actions.push(
         {
           label: "Edit season",
+          icon: Pencil,
           onPress: () =>
             router.push({ pathname: "/seasons/[code]/edit", params: { code: s.code } }),
         },
-        { label: "Duplicate season", onPress: () => setDuplicating(true) },
+        { label: "Duplicate season", icon: Copy, onPress: () => setDuplicating(true) },
+      );
+    }
+
+    let nextStep: ReactNode;
+    if (isSuper && s.status === "DRAFT") {
+      nextStep = (
+        <NextStepCard
+          title="This season is a draft"
+          body="Nobody sees it until it starts. Set up its groups and people, then start it."
+          action={{ label: "Start season", onPress: go.start }}
+        />
+      );
+    } else if (pastEnd && manage) {
+      nextStep = (
+        <NextStepCard
+          tone="warn"
+          title="The end date has passed"
+          body="End the season to record who passed and lock it."
+          action={{ label: "End season", onPress: go.end }}
+        />
       );
     }
 
@@ -139,22 +182,12 @@ export default function SeasonDetailScreen() {
       <>
         <SeasonDetailView
           season={s}
-          sessionsTab={sessionsTab}
+          today={today}
+          actions={actions}
+          nextStep={nextStep}
+          sessions={sessionsTab}
           onOpenGroup={(id) => router.push({ pathname: "/group/[id]", params: { id: String(id) } })}
-          groupsAction={
-            canAdminister ? (
-              <Button
-                variant="secondary"
-                onPress={() =>
-                  router.push({ pathname: "/seasons/[code]/roster", params: { code: s.code } })
-                }
-              >
-                Manage groups
-              </Button>
-            ) : undefined
-          }
-          manage={manageItems}
-          overviewExtra={
+          extra={
             isAdmin && canAdminister ? (
               <EditSeason season={s} />
             ) : isSuper ? (

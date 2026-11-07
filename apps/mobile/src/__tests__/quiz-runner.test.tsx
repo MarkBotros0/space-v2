@@ -43,7 +43,7 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
   return {
     id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, maxScore: 7,
     sessionTitle: "Week 1", attemptId: null, attemptNumber: 0, readOnly: false, status: null,
-    totalScore: null, submittedAt: null, gradedAt: null,
+    totalScore: null, submittedAt: null, gradedAt: null, resultsReleased: true,
     questions: [mcq, essay], ...over,
   };
 }
@@ -294,6 +294,7 @@ describe("quiz runner", () => {
           sessionId: 12, sessionTitle: "Week 1", publishedAt: "2099-02-01T00:00:00.000Z",
           maxScore: 7, attemptCount: 2, gradeCount: 0,
           canEditStructure: false, canManage: false,
+          resultsReleasedAt: null, canReleaseResults: true,
           questions: [{ id: 100, order: 0, type: "MCQ", prompt: "Capital of France?",
             points: 2, options: ["London", "Paris"], correctIndex: 1 }],
         },
@@ -341,5 +342,44 @@ describe("quiz runner, read-only (a finished season)", () => {
     renderWithProviders(<QuizDetailScreen />);
     expect(await screen.findByText("Your quiz has been graded.")).toBeTruthy();
     expect(screen.getByText("Score")).toBeTruthy();
+  });
+
+  it("lets staff release held results after a confirm, and tells the student what is held", async () => {
+    useSessionStore.setState({
+      user: { id: 5, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
+      scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
+    });
+    get.mockResolvedValue({
+      data: { data: {
+        id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26",
+        sessionId: 12, sessionTitle: "Week 1", publishedAt: "2099-02-01T00:00:00.000Z",
+        maxScore: 7, attemptCount: 2, gradeCount: 0, canEditStructure: false, canManage: true,
+        resultsReleasedAt: null, canReleaseResults: true,
+        questions: [{ id: 100, order: 0, type: "MCQ", prompt: "Capital of France?",
+          points: 2, options: ["London", "Paris"], correctIndex: 1 }],
+      } },
+    });
+    post.mockResolvedValue({ data: { data: { resultsReleasedAt: "2099-03-01T00:00:00.000Z" } } });
+
+    renderWithProviders(<QuizDetailScreen />);
+    fireEvent.press(await screen.findByText("Release results"));
+    expect(post).not.toHaveBeenCalled();
+    fireEvent.press((await screen.findAllByText("Release results")).at(-1)!);
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/release"));
+  });
+
+  it("shows a student whose results are held no per-question verdicts", async () => {
+    get.mockResolvedValue({
+      data: { data: detail({
+        attemptId: 900, attemptNumber: 1, status: "SUBMITTED", resultsReleased: false,
+        totalScore: null, submittedAt: "2099-01-01T00:00:00.000Z",
+      }) },
+    });
+    renderWithProviders(<QuizDetailScreen />);
+    expect(
+      await screen.findByText("Handed in. Your score will show here once your admin releases the results."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Correct")).toBeNull();
+    expect(screen.queryByText("Incorrect")).toBeNull();
   });
 });

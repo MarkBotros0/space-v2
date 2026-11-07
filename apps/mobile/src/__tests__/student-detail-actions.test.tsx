@@ -51,6 +51,7 @@ const base = {
   enrollments: [enrollment(7, "Spring 2099"), enrollment(8, "Autumn 2099")],
 };
 const publicProfile = {
+  phone: null,
   university: null, faculty: null, universityGraduationYear: null,
   activeSeasonId: 7, activeSeasonTitle: "Spring 2099", activeSeasonCode: "S7",
 };

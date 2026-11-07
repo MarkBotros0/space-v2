@@ -52,7 +52,12 @@ export function CheckInAttendanceList({
   return (
     <>
       <StudentList
-        items={rows.map((r) => ({ id: r.studentUserId, name: nameOf(r), group: r.groupName, row: r }))}
+        items={rows.map((r) => ({
+          id: r.studentUserId,
+          name: nameOf(r),
+          group: r.groupName,
+          row: r,
+        }))}
         trailing={({ row: r }) =>
           r.status !== null ? (
             <StatusChip {...statusChip("attendance", r.status)} />

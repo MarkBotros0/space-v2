@@ -271,34 +271,31 @@ describe("StudentToday: To do", () => {
 });
 
 describe("StudentToday: figures", () => {
-  it("shows the four tiles and the season row, and routes them (P2-6)", async () => {
+  it("shows the season card with the student's figures, and routes it (P2-6)", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    const budget = await screen.findByLabelText("Absence budget left: 42%");
+    expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
     expect(screen.getByLabelText("Streak: 2")).toBeTruthy();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
-    expect(screen.getByLabelText("Sessions done: 3/4")).toBeTruthy();
-    expect(screen.getByText("Spring 2099")).toBeTruthy();
-    expect(screen.getByText("1 session to go · 75% done")).toBeTruthy();
-    fireEvent.press(budget);
-    expect(mockPush).toHaveBeenCalledWith("/attendance");
-    fireEvent.press(screen.getByLabelText("Assignments pending: 2"));
-    expect(mockPush).toHaveBeenCalledWith(WORK_HREF);
-    fireEvent.press(screen.getByText("Spring 2099"));
+    expect(screen.getByLabelText("Sessions held: 3 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Open Spring 2099"));
     expect(mockPush).toHaveBeenCalledWith("/season");
   });
 
-  it("season row: nothing scheduled, and complete", async () => {
+  it("season card: nothing scheduled, and complete", async () => {
     const none = { ...studentDashboard, progress: { sessionsHeld: 0, sessionsTotal: 0, pct: null } };
     serve(routes({ [DASHBOARD]: none }));
     const { unmount } = renderWithProviders(<StudentToday />);
-    expect(await screen.findByText("No sessions scheduled yet")).toBeTruthy();
+    expect(await screen.findByLabelText("Sessions held: 0 of 0")).toBeTruthy();
+    expect(screen.getByLabelText("Season progress 0%")).toBeTruthy();
     unmount();
 
     const done = { ...studentDashboard, progress: { sessionsHeld: 4, sessionsTotal: 4, pct: 100 } };
     serve(routes({ [DASHBOARD]: done }));
     renderWithProviders(<StudentToday />);
-    expect(await screen.findByText("Session 4 of 4 · complete")).toBeTruthy();
+    expect(await screen.findByLabelText("Sessions held: 4 of 4")).toBeTruthy();
+    expect(screen.getByLabelText("Season progress 100%")).toBeTruthy();
   });
 
   it("attendance failing keeps the dashboard's own figures", async () => {
@@ -306,7 +303,9 @@ describe("StudentToday: figures", () => {
     renderWithProviders(<StudentToday />);
     expect(await screen.findByText("Couldn't load your attendance.")).toBeTruthy();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
-    expect(screen.getByLabelText("Sessions done: 3/4")).toBeTruthy();
+    expect(screen.getByLabelText("Sessions held: 3 of 4")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Absence budget left/)).toBeNull();
+    expect(screen.queryByLabelText(/^Streak/)).toBeNull();
   });
 
   it("keeps the late callout's copy", async () => {

@@ -15,9 +15,21 @@ export type HeroSession = {
   youtubeUrl: string | null;
 };
 
-type Parts = { seasonTitle: string; dayKey: string; time: string; durationMinutes: number; location: string | null };
+type Parts = {
+  seasonTitle: string;
+  dayKey: string;
+  time: string;
+  durationMinutes: number;
+  location: string | null;
+};
 const metaOf = (p: Parts) =>
-  joinMeta([p.seasonTitle, formatWeekdayDay(p.dayKey), formatWallTime(p.time), formatMinutes(p.durationMinutes), p.location]);
+  joinMeta([
+    p.seasonTitle,
+    formatWeekdayDay(p.dayKey),
+    formatWallTime(p.time),
+    formatMinutes(p.durationMinutes),
+    p.location,
+  ]);
 
 /** The admin's session: the dashboard's own `isInProgress` decides live. */
 export function fromDashboardSession(s: DashboardSession, seasonTitle: string): HeroSession {
@@ -32,7 +44,13 @@ export function fromDashboardSession(s: DashboardSession, seasonTitle: string): 
 
 /** A session from a season's list; `inProgress` is whether it is in the live set. */
 export function fromListItem(s: SessionListItem, inProgress: boolean): HeroSession {
-  return { id: s.id, title: s.title, meta: metaOf({ ...s, time: s.startTime }), inProgress, youtubeUrl: null };
+  return {
+    id: s.id,
+    title: s.title,
+    meta: metaOf({ ...s, time: s.startTime }),
+    inProgress,
+    youtubeUrl: null,
+  };
 }
 
 /**
@@ -52,7 +70,10 @@ export function LiveSessionHero({ session }: { session: HeroSession }) {
           {session.inProgress ? (
             <Button
               onPress={() =>
-                router.push({ pathname: "/session/[id]/attendance", params: { id: String(session.id) } })
+                router.push({
+                  pathname: "/session/[id]/attendance",
+                  params: { id: String(session.id) },
+                })
               }
             >
               Mark attendance
@@ -60,12 +81,17 @@ export function LiveSessionHero({ session }: { session: HeroSession }) {
           ) : null}
           <Button
             variant={session.inProgress ? "secondary" : "primary"}
-            onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(session.id) } })}
+            onPress={() =>
+              router.push({ pathname: "/session/[id]", params: { id: String(session.id) } })
+            }
           >
             Open session
           </Button>
           {session.inProgress && session.youtubeUrl ? (
-            <Button variant="secondary" onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}>
+            <Button
+              variant="secondary"
+              onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}
+            >
               Join stream
             </Button>
           ) : null}

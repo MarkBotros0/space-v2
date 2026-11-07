@@ -75,7 +75,7 @@ describe("Manage items", () => {
   it("does not show Results to an admin", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     await open(detail({ status: "COMPLETED" }));
-    await screen.findByText("Roster");
+    await screen.findByText("Students and groups");
     expect(screen.queryByText("Results")).toBeNull();
   });
 });

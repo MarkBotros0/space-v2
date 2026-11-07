@@ -24,7 +24,6 @@ const assignment = (over: Partial<DashboardDueItem> & { id: number }): Dashboard
 const quiz = (over: Partial<StudentQuizResult> & { quizId: number }): StudentQuizResult => ({
   title: `Quiz ${over.quizId}`,
   kind: "ONLINE",
-  resultsReleased: true,
   maxScore: 10,
   score: null,
   notes: null,
@@ -32,6 +31,7 @@ const quiz = (over: Partial<StudentQuizResult> & { quizId: number }): StudentQui
   sessionTitle: null,
   sessionDate: null,
   attemptStatus: null,
+  resultsReleased: true,
   ...over,
 });
 

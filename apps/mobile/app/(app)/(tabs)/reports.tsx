@@ -1,27 +1,26 @@
+import { useState } from "react";
 import { View } from "react-native";
 
 import { ExportMenu } from "../../../src/components/ExportMenu";
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
-import { EmptyState, Text } from "../../../src/design/ui";
-import { EngagementCards } from "../../../src/screens/reports/engagement-cards";
+import { EmptyState, SegmentedControl } from "../../../src/design/ui";
 import { OrganisationSection } from "../../../src/screens/reports/organisation-section";
-import { scopeLine } from "../../../src/screens/reports/scope-line";
-import { SeasonPicker } from "../../../src/screens/reports/season-picker";
+import { SeasonReport } from "../../../src/screens/reports/season-report";
 import { useReportsScope } from "../../../src/screens/reports/use-reports-scope";
 import { MentorReports } from "../../../src/screens/mentor/mentor-reports";
 import { useSessionStore } from "../../../src/store/session";
 
 function StaffReports() {
   const role = useSessionStore((s) => s.user?.role ?? null);
+  const seasonAdminIds = useSessionStore((s) => s.scopes?.seasonAdminIds);
+  const [tab, setTab] = useState<"season" | "organisation">("season");
 
   // LEADER and STUDENT have no surface in this domain (R109, R110) and the API
   // refuses them explicitly. The screen does not ask. MENTOR is routed away below.
   const canView = role === "SUPER" || role === "ADMIN";
   const isSuper = role === "SUPER";
-
-  const { seasonId, setSeasonId, permitted, summary, atRiskRows, moreFailed, showMore, refresh, refreshing } =
-    useReportsScope(canView);
+  const scope = useReportsScope(canView);
+  const { seasonId, ready, summary, refresh, refreshing } = scope;
 
   if (!canView) {
     return (
@@ -31,12 +30,12 @@ function StaffReports() {
     );
   }
 
+  const showingOrganisation = isSuper && tab === "organisation";
   return (
     <Screen
       title="Reports"
-      subtitle={summary.data ? scopeLine(seasonId, summary.data.scope) : undefined}
       trailing={
-        summary.data ? (
+        summary.data && ready && !showingOrganisation ? (
           <ExportMenu
             sheet
             seasonId={seasonId}
@@ -50,41 +49,26 @@ function StaffReports() {
       refreshing={refreshing}
     >
       <View className="flex-col gap-4">
-        {/* Org-wide, so it sits above the chips: the chips sit right over what they scope. */}
-        {isSuper ? <OrganisationSection /> : null}
-
-        {/* Outside the loading/error branches: a season that keeps failing must not
-            strand the caller, who can always pick a different one. */}
-        {permitted.length > 0 ? (
-          <SeasonPicker seasons={permitted} selected={seasonId} onSelect={setSeasonId} />
+        {/* SUPER also reads the whole organisation: its own view, not a block above the season. */}
+        {isSuper ? (
+          <SegmentedControl
+            options={[
+              { value: "season", label: "Season" },
+              { value: "organisation", label: "Organisation" },
+            ]}
+            value={tab}
+            onChange={(v) => setTab(v as "season" | "organisation")}
+          />
         ) : null}
-
-        {summary.isPending ? (
-          <RouteSkeleton />
-        ) : summary.isError ? (
-          <RouteError onRetry={() => void summary.refetch()} />
+        {showingOrganisation ? (
+          <OrganisationSection />
         ) : (
-          <>
-            {summary.data.scope.truncated ? (
-              <Text className="text-xs text-warning-700 dark:text-warning-300">
-                Some seasons you asked for aren&apos;t in your scope.
-              </Text>
-            ) : null}
-
-            {summary.data.enrollmentCount === 0 && summary.data.attendanceTrend.length === 0 ? (
-              <EmptyState
-                title="No data in this scope"
-                description="Pick a season with activity, or wait until the first session has run."
-              />
-            ) : (
-              <EngagementCards
-                summary={summary.data}
-                atRiskRows={atRiskRows}
-                onShowMore={showMore}
-                moreFailed={moreFailed}
-              />
-            )}
-          </>
+          <SeasonReport
+            scope={scope}
+            allowAll={isSuper}
+            // A finished season in an admin's History: its student pages aren't theirs any more.
+            canOpenStudent={(row) => isSuper || (seasonAdminIds ?? []).includes(row.seasonId)}
+          />
         )}
       </View>
     </Screen>

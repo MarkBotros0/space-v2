@@ -71,17 +71,17 @@ it("lists my groups as grouped rows: members, past seasons apart, group and stud
   renderWithProviders(<GroupsScreen />);
 
   expect(await screen.findByText("Sara Student")).toBeTruthy();
-  expect(screen.getByText("Groups")).toBeTruthy();
-  expect(screen.getByText("3 groups")).toBeTruthy();
-  expect(screen.getByText("SPRING 2026")).toBeTruthy();
+  expect(screen.getByText("My group")).toBeTruthy();
+  expect(screen.getByText("Spring 2026 · 2 students")).toBeTruthy();
+  // A student with no name is listed by email.
   expect(screen.getByText("noname@jpc.test")).toBeTruthy();
-  expect((await screen.findAllByText("No students yet.")).length).toBe(2);
-  // Past seasons render after the current ones, under their own eyebrow (spec 05 §9).
+  expect((await screen.findAllByText("No students in this group yet.")).length).toBe(1);
+  // Past groups render after the current ones, under their own header (spec 05 §9).
   const order = screen.UNSAFE_root.findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string").map((n: { props: { children?: unknown } }) => n.props.children as string);
-  expect(order.indexOf("Group A")).toBeLessThan(order.indexOf("PAST SEASONS"));
-  expect(order.indexOf("PAST SEASONS")).toBeLessThan(order.indexOf("Older group"));
+  expect(order.indexOf("Group A")).toBeLessThan(order.indexOf("PAST GROUPS"));
+  expect(order.indexOf("PAST GROUPS")).toBeLessThan(order.indexOf("Older group"));
   // A season being set up (DRAFT) is upcoming, not past.
-  expect(order.indexOf("Next group")).toBeLessThan(order.indexOf("PAST SEASONS"));
+  expect(order.indexOf("Next group")).toBeLessThan(order.indexOf("PAST GROUPS"));
 
   fireEvent.press(screen.getByText("Group A"));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "3" } });
@@ -97,7 +97,7 @@ it("a group's subtitle counts the students listed under it, not the list's activ
 
   // The row says 8 (active enrolments); two are listed (active and completed members).
   expect(await screen.findByText("Sara Student")).toBeTruthy();
-  expect(screen.getByText("2 students")).toBeTruthy();
+  expect(screen.getByText("Spring 2026 · 2 students")).toBeTruthy();
   expect(screen.queryByText("8 students")).toBeNull();
 });
 
@@ -106,14 +106,14 @@ it("a leader who leads nothing gets v1's empty page and no request (R87)", () =>
 
   renderWithProviders(<GroupsScreen />);
 
-  expect(screen.getByText("You don't lead any groups yet.")).toBeTruthy();
-  expect(screen.getByText("No groups")).toBeTruthy();
+  expect(screen.getByText("You don't lead a group yet.")).toBeTruthy();
+  expect(screen.getByText("No group")).toBeTruthy();
   expect(screen.getByText("An admin will add you to a group when you're ready.")).toBeTruthy();
   expect(get).not.toHaveBeenCalled();
 });
 
 
-it("shows members with emails for a staff caller", async () => {
+it("shows the leaders' emails but no student emails for a staff caller", async () => {
   get.mockResolvedValue({
     data: {
       data: {
@@ -129,7 +129,9 @@ it("shows members with emails for a staff caller", async () => {
   renderWithProviders(<GroupDetailScreen />);
 
   expect(await screen.findByText("Test student")).toBeTruthy();
-  expect(screen.getByText("s@jpc.test")).toBeTruthy();
+  // Students are listed by name only (StudentList shows no emails).
+  expect(screen.queryByText("s@jpc.test")).toBeNull();
+  expect(screen.getByText("l@jpc.test")).toBeTruthy();
   expect(get).toHaveBeenCalledWith("/api/v1/groups/3");
   expect(screen.queryByText("Edit group")).toBeNull();
 });

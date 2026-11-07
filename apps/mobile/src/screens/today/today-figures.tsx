@@ -1,26 +1,19 @@
 import { useRouter } from "expo-router";
 import { View } from "react-native";
-import type { SeasonProgress, StudentDashboard } from "@space/shared";
+import type { StudentDashboard } from "@space/shared";
 
+import { SeasonPulse, type PulseFigure } from "../../design/home/season-pulse";
 import { InlineError } from "../../design/layout/route-states";
-import { GroupedList, ListRow, StatTile } from "../../design/ui";
 import type { useMyAttendance } from "../../hooks/use-self-service";
-import { WORK_HREF } from "../work/work-model";
 
 const NO_VALUE = "—";
 
-function seasonLine(progress: SeasonProgress | null): string | undefined {
-  if (progress === null) return undefined;
-  const { pct, sessionsHeld: held, sessionsTotal: total } = progress;
-  if (pct === null) return "No sessions scheduled yet";
-  if (pct >= 100) return `Session ${held} of ${total} · complete`;
-  const left = total - held;
-  return `${left} ${left === 1 ? "session" : "sessions"} to go · ${pct}% done`;
-}
-
 /**
- * P2-6: a 2×2 tile grid, then the season row. The attendance tiles come from
- * their own query (spec 19 §7, D14), so when it fails only those two step aside.
+ * The student's season at a glance (owner, 2026-11-07: Home less stacked):
+ * one card with the ring for how far through it is, sessions held, and their
+ * own figures (absence budget left, D14; streak; assignments pending). The
+ * attendance figures come from their own query (spec 19 §7), so when it fails
+ * only those two step aside, with the error above. Opens the season page.
  */
 export function TodayFigures({
   data,
@@ -31,8 +24,18 @@ export function TodayFigures({
 }) {
   const router = useRouter();
   const { progress, season } = data;
+  if (!season) return null;
   const budget = attendance.data?.budget;
   const streak = attendance.data?.streak ?? null;
+  const figures: PulseFigure[] = [
+    ...(attendance.isError
+      ? []
+      : [
+          { value: budget ? `${budget.remainingPct}%` : NO_VALUE, label: "Absence budget left" },
+          { value: streak === null ? NO_VALUE : String(streak), label: "Streak" },
+        ]),
+    { value: String(data.assignments?.outstandingCount ?? 0), label: "Assignments pending" },
+  ];
 
   return (
     <View className="gap-3">
@@ -42,38 +45,14 @@ export function TodayFigures({
           onRetry={() => void attendance.refetch()}
         />
       ) : null}
-      <View className="flex-row flex-wrap gap-3">
-        {attendance.isError ? null : (
-          <>
-            <StatTile
-              label="Absence budget left"
-              value={budget ? `${budget.remainingPct}%` : NO_VALUE}
-              onPress={() => router.push("/attendance")}
-            />
-            <StatTile label="Streak" value={streak ?? NO_VALUE} />
-          </>
-        )}
-        <StatTile
-          label="Assignments pending"
-          value={data.assignments?.outstandingCount ?? 0}
-          onPress={() => router.push(WORK_HREF)}
-        />
-        <StatTile
-          label="Sessions done"
-          value={progress ? `${progress.sessionsHeld}/${progress.sessionsTotal}` : NO_VALUE}
-        />
-      </View>
-      {season ? (
-        <GroupedList>
-          <ListRow
-            title={season.title}
-            subtitle={seasonLine(progress)}
-            titleLines={2}
-            chevron
-            onPress={() => router.push("/season")}
-          />
-        </GroupedList>
-      ) : null}
+      <SeasonPulse
+        title={season.title}
+        progressPct={progress?.pct ?? null}
+        sessionsHeld={progress?.sessionsHeld ?? 0}
+        sessionsTotal={progress?.sessionsTotal ?? 0}
+        figures={figures}
+        onPress={() => router.push("/season")}
+      />
     </View>
   );
 }
