@@ -19,7 +19,8 @@ export async function loadSeasonEndCheck(
     deletedAt: null,
     seasonEnrollments: { some: { seasonId, status: "ACTIVE" as const } },
   };
-  const [enrollments, sessions, submissions, attempts] = await Promise.all([
+  const [season, enrollments, sessions, submissions, attempts] = await Promise.all([
+    client.season.findUniqueOrThrow({ where: { id: seasonId }, select: { graduatesOnPass: true } }),
     client.seasonEnrollment.findMany({
       where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
       orderBy: { studentUser: { name: "asc" } },
@@ -89,6 +90,7 @@ export async function loadSeasonEndCheck(
     .filter((s) => s.missing > 0);
 
   return {
+    graduatesOnPass: season.graduatesOnPass,
     blockers: {
       submissions: submissions.map((s) => ({
         publicId: s.publicId,

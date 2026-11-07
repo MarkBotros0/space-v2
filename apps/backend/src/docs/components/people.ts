@@ -42,6 +42,7 @@ export const peopleSchemas = {
       title: { type: "string" },
       program: { type: "string" },
       requiredProgram: { type: ["string", "null"], description: "The program someone must have finished to join. Sent to SUPER and this season's admins and leaders; left out for everyone else." },
+      graduatesOnPass: { type: "boolean", description: "Passing this season makes an alumnus. Sent as `requiredProgram` is; left out for everyone else." },
       year: { type: "integer" },
       description: { type: ["string", "null"] },
       status: { $ref: "#/components/schemas/SeasonStatus" },
@@ -124,6 +125,11 @@ export const peopleSchemas = {
         maxLength: 60,
         description:
           "A program a student must have passed to join. SUPER only, and changeable only while the season is a draft (else 409 `season_not_draft`); omitted leaves it as it is, null clears it. Can't equal `program` (400, \"A season can't require its own program.\").",
+      },
+      graduatesOnPass: {
+        type: "boolean",
+        description:
+          "Everyone who passes becomes an alumnus when the season ends. SUPER only (a season admin's PATCH gets 403 `forbidden_field`), and changeable until the season has finished (else 409 `season_finished`); omitted leaves it as it is, default false.",
       },
       year: { type: "integer", minimum: 2000, maximum: 2100 },
       description: { type: ["string", "null"], maxLength: 2000 },

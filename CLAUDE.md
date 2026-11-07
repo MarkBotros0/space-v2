@@ -315,6 +315,18 @@ sonner-native toasts, so flows shoot toasts best-effort.
   graduation year (`StudentProfile.universityGraduationYear`, may be in the
   future — not `User.graduationYear`, which marks a JPCS alumnus).
 
+### Graduating seasons (owner, 2026-11-07)
+
+Students graduate by passing a season a super marked **Graduating season**
+(`Season.graduatesOnPass`; super-only, changeable until the season has finished).
+End graduates everyone who passed in its own transaction, whoever ends it; the
+year is `graduationYearFor` (the smaller of the end year and the current year, org
+time). Correcting a result to Passed on such a season graduates then; Did not pass
+never removes alumni status. `POST /students/:id/graduate` is the exception: without
+a pass it answers `not_qualified`, and `override: true` is audited. Backfills and old
+results never graduate anyone. The app's second confirmation is the same sheet changing
+its words: never close one modal and open another, iOS can drop the second.
+
 ### Student work: two tabs (owner, 2026-11-06)
 
 A student's bar is Today · Calendar · To do (`/work`) · Submitted

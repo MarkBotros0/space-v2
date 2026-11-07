@@ -12,7 +12,7 @@ export async function loadSeasonResults(seasonId: number): Promise<SeasonResultR
         studentUserId: true,
         result: true,
         resultReason: true,
-        studentUser: { select: { name: true } },
+        studentUser: { select: { name: true, graduationYear: true } },
         group: { select: { name: true } },
       },
     }),
@@ -27,6 +27,7 @@ export async function loadSeasonResults(seasonId: number): Promise<SeasonResultR
   return enrollments.map((e) => ({
     userId: e.studentUserId,
     name: e.studentUser.name,
+    isAlumnus: e.studentUser.graduationYear !== null,
     groupName: e.group?.name ?? null,
     attendancePct: attendancePct(attended.get(e.studentUserId) ?? 0, sessionCount),
     result: e.result,

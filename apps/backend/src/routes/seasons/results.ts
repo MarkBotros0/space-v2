@@ -4,8 +4,11 @@ import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
+import { graduationYearFor } from "../../lib/org-time";
 import { loadSeasonResults } from "../../lib/queries/season-results";
+import { graduatePerson } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
+import { lockPeople } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import { updateSeasonResultRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
@@ -21,7 +24,11 @@ export async function getSeasonResults(req: Request, res: Response) {
   return apiOk(res, { results: await loadSeasonResults(id) });
 }
 
-/** Correct one student's result after the season ended. SUPER only. */
+/**
+ * Correct one student's result after the season ended. SUPER only. Passed on a
+ * graduating season graduates them then; Did not pass never takes alumni status
+ * away. The flag is frozen once the season has finished, so it can be read first.
+ */
 export async function updateSeasonResult(req: Request, res: Response) {
   const user = requireUser(req);
   if (!isSuper(user)) return forbidden(res);
@@ -31,7 +38,10 @@ export async function updateSeasonResult(req: Request, res: Response) {
   const parsed = updateSeasonResultRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid result body.", 400);
 
-  const season = await db.season.findFirst({ where: { id, deletedAt: null }, select: { status: true } });
+  const season = await db.season.findFirst({
+    where: { id, deletedAt: null },
+    select: { status: true, endDate: true, graduatesOnPass: true },
+  });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
   if (season.status !== "COMPLETED" && season.status !== "ARCHIVED") {
     return apiError(res, "not_finished", "Results can be corrected once the season has ended.", 409);
@@ -47,12 +57,20 @@ export async function updateSeasonResult(req: Request, res: Response) {
 
   const { result } = parsed.data;
   const reason = result === "NOT_PASSED" ? parsed.data.reason?.trim() || null : null;
-  await db.seasonEnrollment.update({
-    where: { studentUserId_seasonId: { studentUserId, seasonId: id } },
-    data: { result, resultReason: reason, resultSetAt: new Date() },
+  const now = new Date();
+  const graduated = await db.$transaction(async (tx) => {
+    await lockPeople(tx, [studentUserId]);
+    await tx.seasonEnrollment.update({
+      where: { studentUserId_seasonId: { studentUserId, seasonId: id } },
+      data: { result, resultReason: reason, resultSetAt: now },
+    });
+    if (result !== "PASSED" || !season.graduatesOnPass) return false;
+    const outcome = await graduatePerson(tx, studentUserId, graduationYearFor(season.endDate, now));
+    return typeof outcome !== "string";
   });
   auditLog("season.result_correct", user.userId, studentUserId, { season: id });
-  return apiOk(res, { userId: studentUserId, result, reason });
+  if (graduated) auditLog("student.graduate", user.userId, studentUserId, { season: id });
+  return apiOk(res, { userId: studentUserId, result, reason, graduated });
 }
 
 /** ACTIVE seasons whose end date has passed: all for SUPER, the caller's own for an admin, none otherwise. */

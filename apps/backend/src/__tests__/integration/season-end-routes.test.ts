@@ -98,6 +98,7 @@ describe("POST /seasons/:id/end", () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({
       season: { id: season.id, code: season.code, status: "COMPLETED" },
+      graduated: 0,
     });
     expect(await statusOf(season.id)).toBe("COMPLETED");
 

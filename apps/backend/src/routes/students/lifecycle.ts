@@ -6,7 +6,7 @@ import { auditLog } from "../../lib/audit";
 import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { parseId } from "../../lib/parse-id";
-import { graduatePerson } from "../../lib/queries/students/writes";
+import { graduatePerson, hasPassedGraduatingSeason } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
@@ -25,6 +25,10 @@ import { graduateStudentRequestSchema } from "../../../../../packages/shared/src
  * Irreversible (R61): a second graduation is refused rather than silently
  * overwriting the year. Takes the person's lock, since a seat write reads
  * graduationYear under it.
+ *
+ * Passing a graduating season is how people graduate (owner, 2026-11-07), and End
+ * does that itself. Anyone else needs `override`, the one extra confirmation; the
+ * audit line says so when it was actually needed.
  */
 export async function graduateStudent(req: Request, res: Response) {
   const user = requireUser(req);
@@ -38,19 +42,31 @@ export async function graduateStudent(req: Request, res: Response) {
   if (!parsed.success) {
     return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid graduation year.", 400);
   }
-  const { graduationYear } = parsed.data;
+  const { graduationYear, override } = parsed.data;
 
   const outcome = await db.$transaction(async (tx) => {
     await lockPeople(tx, [id]);
-    return graduatePerson(tx, id, graduationYear);
+    const student = await tx.user.findFirst({
+      where: { id, role: "STUDENT", deletedAt: null },
+      select: { name: true, graduationYear: true },
+    });
+    if (!student) return "not_found" as const;
+    if (student.graduationYear !== null) return "already_graduated" as const;
+    const qualified = await hasPassedGraduatingSeason(tx, id);
+    if (!qualified && !override) return { notQualified: student.name };
+    const done = await graduatePerson(tx, id, graduationYear);
+    return typeof done === "string" ? done : { ...done, overridden: !qualified };
   });
 
   if (outcome === "not_found") return apiError(res, "not_found", "Student not found.", 404);
   if (outcome === "already_graduated") {
     return apiError(res, "already_graduated", "This student has already graduated.", 409);
   }
+  if ("notQualified" in outcome) {
+    return apiError(res, "not_qualified", `${outcome.notQualified} hasn't passed a graduating season.`, 409);
+  }
 
-  auditLog("student.graduate", user.userId, id);
+  auditLog("student.graduate", user.userId, id, outcome.overridden ? { override: true } : {});
   return apiOk(res, { id, graduationYear, enrollmentsCompleted: outcome.enrollmentsCompleted });
 }
 

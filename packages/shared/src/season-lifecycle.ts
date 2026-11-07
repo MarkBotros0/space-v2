@@ -52,6 +52,8 @@ export type SeasonStartCheck = z.infer<typeof seasonStartCheckSchema>;
 
 /** What stops a season from ending, and the students it would end for. */
 export const seasonEndCheckSchema = z.object({
+  /** Everyone who passes becomes an alumnus when the season ends. */
+  graduatesOnPass: z.boolean(),
   blockers: z.object({
     submissions: z.array(
       z.object({ publicId: z.string(), assignmentTitle: z.string(), studentName: z.string() }),
@@ -99,9 +101,17 @@ export const endSeasonRequestSchema = z
   .strict();
 export type EndSeasonRequest = z.infer<typeof endSeasonRequestSchema>;
 
+export const endSeasonResponseSchema = z.object({
+  season: z.object({ id: z.number(), code: z.string(), status: z.string() }),
+  /** How many became alumni just now; anyone who already was doesn't count. */
+  graduated: z.number().int().nonnegative(),
+});
+export type EndSeasonResponse = z.infer<typeof endSeasonResponseSchema>;
+
 export const seasonResultRowSchema = z.object({
   userId: z.number(),
   name: z.string(),
+  isAlumnus: z.boolean(),
   groupName: z.string().nullable(),
   attendancePct: z.number(),
   result: enrollmentResultSchema.nullable(),

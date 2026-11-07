@@ -197,7 +197,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Graduate a student (SUPER only)",
       description:
-        "SUPER only (R55). Body `{ graduationYear }`, 1990 through the current year, evaluated per request. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at), and marks the student's sessions stale so the current-season claim is re-read. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
+        "SUPER only (R55). Body `{ graduationYear, override? }`, the year 1990 through the current year, evaluated per request. People normally graduate by passing a graduating season, at End. Someone without a COMPLETED, PASSED enrolment in a finished season with `graduatesOnPass` is refused with 409 `not_qualified` (\"Mina hasn't passed a graduating season.\") unless `override` is true; the `student.graduate` audit line records an override that was needed. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at), and marks the student's sessions stale so the current-season claim is re-read. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -206,7 +206,10 @@ export const studentPaths = {
             schema: {
               type: "object",
               required: ["graduationYear"],
-              properties: { graduationYear: { type: "integer", minimum: 1990 } },
+              properties: {
+                graduationYear: { type: "integer", minimum: 1990 },
+                override: { type: "boolean", description: "Graduate someone who hasn't passed a graduating season." },
+              },
             },
           },
         },
@@ -227,7 +230,7 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`already_graduated`."),
+        409: conflict("`already_graduated` or `not_qualified`."),
       },
     },
   },

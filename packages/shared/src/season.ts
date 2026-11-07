@@ -27,6 +27,8 @@ export type SeasonDetailGroup = z.infer<typeof seasonDetailGroupSchema>;
 export const seasonDetailSchema = seasonListItemSchema.extend({
   /** Only super and this season's staff are sent it; absent for everyone else, null when none is set. */
   requiredProgram: z.string().nullable().optional(),
+  /** Passing this season makes an alumnus. Sent as `requiredProgram` is. */
+  graduatesOnPass: z.boolean().optional(),
   description: z.string().nullable(),
   sessionCount: z.number(),
   studentCount: z.number(),
@@ -68,6 +70,8 @@ const seasonWriteFields = z.object({
   program: z.string().min(1).max(60),
   /** SUPER only, and only while the season is a draft. Undefined leaves it as it is. */
   requiredProgram: z.string().trim().min(1).max(60).nullish(),
+  /** SUPER only, until the season has finished. Undefined leaves it as it is. */
+  graduatesOnPass: z.boolean().optional(),
   year: z.number().int().min(2000).max(2100),
   description: z.string().max(2000).nullish(),
   startDate: z.string().datetime({ offset: true }),

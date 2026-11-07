@@ -16,6 +16,7 @@ describe("graduateStudentRequestSchema", () => {
   it("accepts 1990 through the current year, evaluated per call (R58 — v1 captured the year at module load)", () => {
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: 1990 }).success).toBe(true);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear }).success).toBe(true);
+    expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear, override: true }).success).toBe(true);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear + 1 }).success).toBe(false);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: 1989 }).success).toBe(false);
   });

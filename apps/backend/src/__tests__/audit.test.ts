@@ -3,6 +3,9 @@ import { auditLog, formatAuditLine } from "../lib/audit";
 describe("audit lines (spec 06 D15 — who did what to whom, never a field value)", () => {
   it("formats operation, actor and subject and nothing else", () => {
     expect(formatAuditLine("student.graduate", 3, 41)).toBe("[audit] student.graduate actor=3 subject=41");
+    expect(formatAuditLine("student.graduate", 3, 41, { override: true })).toBe(
+      "[audit] student.graduate actor=3 subject=41 override=true",
+    );
   });
 
   it("writes exactly one info line", () => {

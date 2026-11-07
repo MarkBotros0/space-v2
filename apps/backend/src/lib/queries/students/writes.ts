@@ -144,8 +144,8 @@ export async function enrollStudentsInSeason(
 export type GraduationOutcome = "not_found" | "already_graduated" | { enrollmentsCompleted: number };
 
 /**
- * One person's graduation, as `POST /students/:id/graduate` and a season's bulk
- * graduation both do it: sets graduationYear (the alumnus marker; role stays
+ * One person's graduation, as `POST /students/:id/graduate` and a corrected
+ * result on a graduating season both do it: sets graduationYear (the alumnus marker; role stays
  * STUDENT, R57), completes EVERY ACTIVE enrolment with no result (R48/R60), and
  * ends live access tokens so the new claims are picked up. Terminal enrolments
  * are history and aren't touched. Call it after `lockPeople`.
@@ -173,4 +173,44 @@ export async function graduatePerson(
   });
   await markSessionsStale(tx, [id]);
   return { enrollmentsCompleted: completed.count };
+}
+
+/**
+ * A graduating season's End: everyone in `ids` who is a live student and not yet
+ * an alumnus graduates, the same as `graduatePerson` but in a flat statement count
+ * for the whole season. Any other live seat they hold ends too; the season being
+ * ended has already closed its own. Returns who graduated. The caller holds their
+ * locks and marks sessions stale.
+ */
+export async function graduatePassed(
+  tx: Prisma.TransactionClient,
+  ids: number[],
+  graduationYear: number,
+): Promise<number[]> {
+  const who = { id: { in: ids }, role: "STUDENT" as const, deletedAt: null, graduationYear: null };
+  const graduating = (await tx.user.findMany({ where: who, select: { id: true } })).map((u) => u.id);
+  if (graduating.length === 0) return [];
+  await tx.user.updateMany({ where: { id: { in: graduating }, graduationYear: null }, data: { graduationYear } });
+  await tx.seasonEnrollment.updateMany({
+    where: { studentUserId: { in: graduating }, status: "ACTIVE" },
+    data: { status: "COMPLETED", completedAt: new Date() },
+  });
+  return graduating;
+}
+
+/**
+ * The rule the graduate action checks: a COMPLETED, PASSED enrolment in a finished
+ * season marked as graduating. Anyone else needs a super's override.
+ */
+export async function hasPassedGraduatingSeason(tx: Prisma.TransactionClient, studentUserId: number): Promise<boolean> {
+  const row = await tx.seasonEnrollment.findFirst({
+    where: {
+      studentUserId,
+      status: "COMPLETED",
+      result: "PASSED",
+      season: { graduatesOnPass: true, status: { in: ["COMPLETED", "ARCHIVED"] }, deletedAt: null },
+    },
+    select: { id: true },
+  });
+  return row !== null;
 }

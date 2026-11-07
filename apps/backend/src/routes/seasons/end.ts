@@ -6,7 +6,9 @@ import { auditLog } from "../../lib/audit";
 import { seasonPeopleIds } from "../../lib/auth/season-people";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
+import { graduationYearFor } from "../../lib/org-time";
 import { loadSeasonEndCheck } from "../../lib/queries/season-end";
+import { graduatePassed } from "../../lib/queries/students/writes";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { lockPeople, lockSeason } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
@@ -41,8 +43,10 @@ class EndRefused extends Error {
 
 /**
  * End a season in one transaction: complete it, give every ACTIVE student a
- * PASSED / NOT_PASSED result and mark everyone's sessions stale so the finished
- * season drops out of their scopes. The season's row is locked first, so a seat
+ * PASSED / NOT_PASSED result, graduate those who passed if it is a graduating
+ * season, and mark everyone's sessions stale so the finished season drops out of
+ * their scopes and a graduate's next token says alumnus. The season's row is
+ * locked first, so its flag is read as End will act on it, and a seat
  * write goes in wholly before this or sees the season finished. It is claimed
  * with a conditional update, so of two concurrent Ends exactly one proceeds, and
  * the blocker check runs after the claim, on the data the claim protects.
@@ -57,7 +61,7 @@ export async function endSeason(req: Request, res: Response) {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid end-season body.", 400);
   const reasons = new Map(parsed.data.notPassed.map((n) => [n.userId, n.reason?.trim() || null]));
 
-  const season = await db.season.findFirst({ where: { id, deletedAt: null }, select: { status: true } });
+  const season = await db.season.findFirst({ where: { id, deletedAt: null }, select: { status: true, endDate: true } });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
   if (season.status !== "ACTIVE") {
     return apiError(res, "season_not_active", "Only an active season can be ended.", 409);
@@ -112,11 +116,19 @@ export async function endSeason(req: Request, res: Response) {
       // start still carries the old grants and must fall before the cut-off.
       const people = await seasonPeopleIds(tx, id);
       await lockPeople(tx, people);
+      // Under the people's locks: a seat write elsewhere reads graduationYear under them.
+      const graduated = check.graduatesOnPass
+        ? await graduatePassed(tx, passedIds, graduationYearFor(season.endDate, now))
+        : [];
       await markSessionsStale(tx, people, new Date());
-      return tx.season.findUniqueOrThrow({ where: { id }, select: { id: true, code: true, status: true } });
+      const row = await tx.season.findUniqueOrThrow({ where: { id }, select: { id: true, code: true, status: true } });
+      return { season: row, graduated };
     }, { timeout: 30_000 });
     auditLog("season.end", user.userId, user.userId, { season: id });
-    return apiOk(res, { season: ended });
+    for (const graduate of ended.graduated) {
+      auditLog("student.graduate", user.userId, graduate, { season: id });
+    }
+    return apiOk(res, { season: ended.season, graduated: ended.graduated.length });
   } catch (err) {
     if (err instanceof EndRefused) return apiError(res, err.code, err.message, err.status);
     throw err;

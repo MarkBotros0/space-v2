@@ -39,7 +39,11 @@ export type AuditOperation =
   | "season.result_correct";
 
 /** Extra ids that locate a change — ids only, like the rest of the line. */
-export type AuditScope = { season?: number };
+export type AuditScope = {
+  season?: number;
+  /** A super let this past the rule it would otherwise have failed. */
+  override?: true;
+};
 
 export function formatAuditLine(
   operation: AuditOperation,
@@ -47,8 +51,9 @@ export function formatAuditLine(
   subjectId: number,
   scope: AuditScope = {},
 ): string {
-  const extra = scope.season !== undefined ? ` season=${scope.season}` : "";
-  return `[audit] ${operation} actor=${actorId} subject=${subjectId}${extra}`;
+  const season = scope.season !== undefined ? ` season=${scope.season}` : "";
+  const override = scope.override ? " override=true" : "";
+  return `[audit] ${operation} actor=${actorId} subject=${subjectId}${season}${override}`;
 }
 
 export function auditLog(
