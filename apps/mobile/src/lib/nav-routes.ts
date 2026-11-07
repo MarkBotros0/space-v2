@@ -12,6 +12,7 @@ const NAV_ROUTES: Readonly<Record<string, Href>> = {
   "/assignments": "/assignments",
   "/attendance": "/attendance",
   "/calendar": "/calendar",
+  "/community": "/community",
   "/coursework": "/coursework",
   "/dashboard": "/dashboard",
   "/events": "/events",
@@ -29,7 +30,6 @@ const NAV_ROUTES: Readonly<Record<string, Href>> = {
   "/students/alumni": "/students/alumni",
   "/students/dropped": "/students/dropped",
   "/submissions": "/submissions",
-  "/users": "/users",
   "/work": "/work",
 };
 

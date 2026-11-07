@@ -1,7 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
-import { BULK_INVITE_BATCH_SIZE, type BulkInviteResponse, type UserStatus } from "@space/shared";
+import {
+  BULK_INVITE_BATCH_SIZE,
+  type BulkInviteResponse,
+  type UserRole,
+  type UserStatus,
+} from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
@@ -71,6 +76,17 @@ function usePendingInvitesRow(enabled: boolean) {
   );
 }
 
+/** Who: everyone, or one role (a season role is derived from live seats, server-side). */
+const ROLES: { role: UserRole | undefined; label: string }[] = [
+  { role: undefined, label: "Everyone" },
+  { role: "STUDENT", label: "Students" },
+  { role: "LEADER", label: "Leaders" },
+  { role: "ADMIN", label: "Admins" },
+  { role: "MENTOR", label: "Mentors" },
+  { role: "SUPER", label: "Supers" },
+];
+
+/** Where their account stands. */
 const FILTERS: { status: UserStatus | undefined; label: string }[] = [
   { status: undefined, label: "All" },
   { status: "active", label: "Active" },
@@ -79,7 +95,12 @@ const FILTERS: { status: UserStatus | undefined; label: string }[] = [
   { status: "inactive", label: "Inactive" },
 ];
 
-export default function UsersScreen() {
+/**
+ * Community (owner, 2026-11-07): Super's tab of everyone in the community,
+ * whatever their role, in place of the Students tab and the Users page. New
+ * member creates any account (/users/new) and mails its invite.
+ */
+export default function CommunityScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ status?: string }>();
   const role = useSessionStore((s) => s.user?.role ?? null);
@@ -89,18 +110,19 @@ export default function UsersScreen() {
   const { search, q, setSearch, commit } = useDebouncedSearch();
   // Today links here with ?status=pending; the chips take over from there.
   const [status, setStatus] = useState<UserStatus | undefined>(() => parseUserStatus(params.status));
+  const [roleFilter, setRoleFilter] = useState<UserRole | undefined>(undefined);
   const isSuper = role === "SUPER";
   const pendingRow = usePendingInvitesRow(isSuper);
 
-  const users$ = useUsers({ q, status }, { enabled: isSuper });
+  const users$ = useUsers({ q, status, role: roleFilter }, { enabled: isSuper });
 
   if (!isSuper) {
     // navFor gives only SUPER a /users entry, but a route file is reachable
     // by URL regardless — the screen guards itself (ruling C8's spirit;
     // the API behind it 403s anyway).
     return (
-      <Screen title="Users">
-        <EmptyState title="Not available" description="Only SUPER accounts can manage users." />
+      <Screen title="Community">
+        <EmptyState title="Not available" description="Only a super admin can see the whole community." />
       </Screen>
     );
   }
@@ -110,9 +132,9 @@ export default function UsersScreen() {
 
   return (
     <Screen
-      title="Users"
-      subtitle={total === undefined ? undefined : `${total} total`}
-      trailing={<Button size="sm" onPress={() => router.push("/users/new")}>New user</Button>}
+      title="Community"
+      subtitle={total === undefined ? undefined : `${total} ${total === 1 ? "member" : "members"}`}
+      trailing={<Button size="sm" onPress={() => router.push("/users/new")}>New member</Button>}
       refreshing={users$.isRefetching}
       onRefresh={() => void users$.refetch()}
     >
@@ -130,7 +152,17 @@ export default function UsersScreen() {
           placeholder="Search name or email"
           onSubmitEditing={commit}
         />
-        <View className="flex-row flex-wrap gap-2">
+        <View accessibilityLabel="Role" className="flex-row flex-wrap gap-2">
+          {ROLES.map((r) => (
+            <ChoiceChip
+              key={r.label}
+              label={r.label}
+              selected={roleFilter === r.role}
+              onPress={() => setRoleFilter(r.role)}
+            />
+          ))}
+        </View>
+        <View accessibilityLabel="Account" className="flex-row flex-wrap gap-2">
           {FILTERS.map((f) => (
             <ChoiceChip
               key={f.label}
@@ -144,11 +176,11 @@ export default function UsersScreen() {
           <RouteSkeleton />
         ) : users$.isError ? (
           <RouteError onRetry={() => void users$.refetch()} />
-        ) : users.length === 0 && (q !== "" || status !== undefined) ? (
+        ) : users.length === 0 && (q !== "" || status !== undefined || roleFilter !== undefined) ? (
           <EmptyState
-            title="No users"
+            title="No members"
             description={
-              q !== "" ? "No accounts match this search." : "No accounts match this filter."
+              q !== "" ? "Nobody matches this search." : "Nobody matches these filters."
             }
           />
         ) : (

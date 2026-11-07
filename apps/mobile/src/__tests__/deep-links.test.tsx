@@ -36,7 +36,7 @@ describe("deep links land on their own screen (URLs unchanged)", () => {
     // Task 12 moved these out of (tabs) onto the stack; their URLs stay.
     ["/notifications", "screen:/notifications"],
     ["/events", "screen:/events"],
-    ["/users", "screen:/users"],
+    ["/community", "screen:/community"],
     ["/students/alumni", "screen:/students/alumni"],
     ["/students/dropped", "screen:/students/dropped"],
     ["/attendance", "screen:/attendance"],

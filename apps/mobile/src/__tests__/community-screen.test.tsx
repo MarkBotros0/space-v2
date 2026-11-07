@@ -17,7 +17,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import UsersScreen from "../../app/(app)/users/index";
+import UsersScreen from "../../app/(app)/(tabs)/community";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -63,7 +63,7 @@ beforeEach(() => {
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
-describe("UsersScreen", () => {
+describe("CommunityScreen", () => {
   it("renders the list with server-derived status badges (R81 — never re-derived)", async () => {
     useSessionStore.setState(superSession);
     get.mockResolvedValue({ data: { data: { users: rows, nextCursor: null, total: 2 } } });
@@ -143,12 +143,12 @@ describe("UsersScreen", () => {
       user: { ...superSession.user, role: "STUDENT" as const },
     });
     renderWithProviders(<UsersScreen />);
-    expect(screen.getByText("Users")).toBeTruthy();
+    expect(screen.getByText("Community")).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
   });
 });
 
-describe("UsersScreen — Plan 10 entry points", () => {
+describe("CommunityScreen — Plan 10 entry points", () => {
   const routeGets = (pending: number) =>
     get.mockImplementation((url: string) =>
       url === "/api/v1/users/invites/pending"
@@ -156,11 +156,11 @@ describe("UsersScreen — Plan 10 entry points", () => {
         : Promise.resolve({ data: { data: { users: rows, nextCursor: null, total: 2 } } }),
     );
 
-  it("offers New user", async () => {
+  it("offers New member", async () => {
     useSessionStore.setState(superSession);
     routeGets(0);
     renderWithProviders(<UsersScreen />);
-    fireEvent.press(await screen.findByText("New user"));
+    fireEvent.press(await screen.findByText("New member"));
     expect(mockPush).toHaveBeenCalledWith("/users/new");
   });
 
@@ -209,7 +209,7 @@ describe("UsersScreen — Plan 10 entry points", () => {
 const chip = (label: string) =>
   screen.getAllByLabelText(label).find((e) => e.props.accessibilityState?.selected !== undefined)!;
 
-describe("UsersScreen — status filter and rows", () => {
+describe("CommunityScreen — status filter and rows", () => {
   const usersUrls = () =>
     get.mock.calls.map((c) => c[0] as string).filter((u) => u.startsWith("/api/v1/users?") || u === "/api/v1/users");
 
@@ -229,6 +229,19 @@ describe("UsersScreen — status filter and rows", () => {
     expect(chip("No invite").props.accessibilityState.selected).toBe(true);
     expect(chip("All").props.accessibilityState.selected).toBe(false);
     expect(usersUrls()).toEqual(["/api/v1/users?status=pending"]);
+  });
+
+  // Owner 2026-11-07: the Community tab narrows by role as well as by account.
+  it("narrows to one role, and back to everyone", async () => {
+    renderWithProviders(<UsersScreen />);
+    await screen.findByText("Active Ann");
+    expect(chip("Everyone").props.accessibilityState.selected).toBe(true);
+    fireEvent.press(chip("Mentors"));
+    await waitFor(() => expect(usersUrls()).toContain("/api/v1/users?role=MENTOR"));
+    expect(chip("Mentors").props.accessibilityState.selected).toBe(true);
+    fireEvent.press(chip("Everyone"));
+    expect(chip("Everyone").props.accessibilityState.selected).toBe(true);
+    expect(screen.getByText("2 members")).toBeTruthy();
   });
 
   it("ignores an unknown status param", async () => {

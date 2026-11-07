@@ -54,7 +54,7 @@ export default function ImportScreen() {
         <ImportResultStep
           header={header}
           result={flow.result}
-          onViewUsers={() => router.push("/users")}
+          onViewUsers={() => router.push("/community")}
           onStartOver={flow.startOver}
         />
       </Screen>

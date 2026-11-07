@@ -92,7 +92,7 @@ describe("UserDetailScreen", () => {
       }),
     );
     // v1 user-form.tsx:117: a save lands back on the users list, with a word.
-    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/users"));
+    await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/community"));
     expect(toast.success).toHaveBeenCalledWith("Changes saved.");
   });
 

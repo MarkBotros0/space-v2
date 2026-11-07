@@ -60,6 +60,8 @@ const SUPER: RoleNav = {
     { href: "/seasons", label: "Seasons", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/events", label: "JPC Events", icon: "events" },
+    // Owner 2026-11-07: everyone, whatever their role; it replaces Users.
+    { href: "/community", label: "Community", icon: "users" },
     { href: "/students", label: "Students", icon: "students" },
     { href: "/students/alumni", label: "Alumni", icon: "alumni" },
     { href: "/students/dropped", label: "Dropped students", icon: "dropped" },
@@ -69,7 +71,6 @@ const SUPER: RoleNav = {
     // change, or the route is reachable only by typing a URL a phone user
     // cannot type (spec D14).
     { href: "/notes", label: "My notes", icon: "notes" },
-    { href: "/users", label: "Users", icon: "users" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
   ],
@@ -77,7 +78,7 @@ const SUPER: RoleNav = {
     { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/seasons", label: "Seasons", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/students", label: "Students", icon: "students" },
+    { href: "/community", label: "Community", icon: "users" },
     { href: "/more", label: "More", icon: "more" },
   ],
 };

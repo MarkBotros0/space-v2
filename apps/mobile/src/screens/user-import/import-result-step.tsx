@@ -51,7 +51,7 @@ export function ImportResultStep({
         </View>
       ))}
       <View className="flex-col gap-2">
-        <Button onPress={onViewUsers}>View users</Button>
+        <Button onPress={onViewUsers}>View community</Button>
         <Button variant="outline" onPress={onStartOver}>
           Import another file
         </Button>

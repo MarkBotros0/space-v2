@@ -45,7 +45,7 @@ describe("role tabs", () => {
   });
 
   it.each([
-    ["SUPER", navByRole.SUPER, ["Home", "Seasons", "Calendar", "Students", "More"]],
+    ["SUPER", navByRole.SUPER, ["Home", "Seasons", "Calendar", "Community", "More"]],
     ["ADMIN", navByRole.ADMIN, ["Home", "Calendar", "Groups", "Work", "More"]],
     ["LEADER", navByRole.LEADER, ["Home", "My group", "Calendar", "Submissions", "More"]],
     ["MENTOR", navByRole.MENTOR, ["Home", "Students", "Reports", "Notes", "Profile"]],

@@ -140,20 +140,21 @@ describe("deleted, go to the list: nothing of the deleted record stays under Bac
 });
 
 describe("save, then show the record", () => {
-  it("user: /users → /user/3 → dismissTo(/users) leaves one users list", async () => {
-    const result = await open("SUPER", "/users", "screen:/users");
+  it("user: /community → /user/3 → dismissTo(/community) is back on the tab", async () => {
+    const result = await open("SUPER", "/community", "screen:/community");
     await act(() => router.push("/user/3"));
 
-    await act(() => router.dismissTo("/users"));
-    expect(result.getPathname()).toBe("/users");
-    expect(stack(result)).toEqual(["(tabs)", "users/index"]);
+    await act(() => router.dismissTo("/community"));
+    expect(result.getPathname()).toBe("/community");
+    expect(stack(result)).toEqual(["(tabs)"]);
   });
 
-  it("user opened cold: dismissTo(/users) swaps the detail for the list", async () => {
+  it("user opened cold: dismissTo(/community) pops to the tab", async () => {
     const result = await open("SUPER", "/user/3", "screen:/user/[id]");
 
-    await act(() => router.dismissTo("/users"));
-    expect(stack(result)).toEqual(["(tabs)", "users/index"]);
+    await act(() => router.dismissTo("/community"));
+    expect(result.getPathname()).toBe("/community");
+    expect(stack(result)).toEqual(["(tabs)"]);
   });
 
   it("season saved under a new code: one detail, at the new URL, and Back goes to the list", async () => {

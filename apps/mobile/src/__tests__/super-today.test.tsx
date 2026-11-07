@@ -65,7 +65,7 @@ describe("Super Today", () => {
     serveStaff(get, { table: base() });
     const first = renderWithProviders(<DashboardScreen />);
     fireEvent.press(await screen.findByLabelText("Not invited yet: 5"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/users", params: { status: "pending" } });
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/community", params: { status: "pending" } });
     first.unmount();
 
     serveStaff(get, { table: { ...base(), "/api/v1/users/invites/pending": { pending: 0 } } });

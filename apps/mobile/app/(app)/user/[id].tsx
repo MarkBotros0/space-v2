@@ -117,7 +117,7 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
                 toast.success("Changes saved.");
                 // Back to the list this was opened from (or the list in this
                 // detail's place, if it was opened elsewhere): never a second list.
-                router.dismissTo("/users");
+                router.dismissTo("/community");
               },
               onError: (err) =>
                 setMessage(

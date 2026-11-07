@@ -78,7 +78,7 @@ export function NeedsActionList({
       value: invites,
       icon: MailPlus,
       tone: "info",
-      onPress: () => router.push({ pathname: "/users", params: { status: "pending" } }),
+      onPress: () => router.push({ pathname: "/community", params: { status: "pending" } }),
     });
 
   return (

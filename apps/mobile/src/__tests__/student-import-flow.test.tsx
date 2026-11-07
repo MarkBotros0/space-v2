@@ -258,7 +258,7 @@ describe("ImportScreen — step 3, result", () => {
 });
 
 describe("ImportScreen — alumni mode and the way out", () => {
-  it("imports as alumni of a graduation year with no season, then offers View users", async () => {
+  it("imports as alumni of a graduation year with no season, then offers View community", async () => {
     useSessionStore.setState(superSession);
     post
       .mockResolvedValueOnce(previewBody())
@@ -282,7 +282,7 @@ describe("ImportScreen — alumni mode and the way out", () => {
       graduationYear: 2020,
       onExisting: "skip",
     });
-    fireEvent.press(await screen.findByText("View users"));
-    expect(mockPush).toHaveBeenCalledWith("/users");
+    fireEvent.press(await screen.findByText("View community"));
+    expect(mockPush).toHaveBeenCalledWith("/community");
   });
 });

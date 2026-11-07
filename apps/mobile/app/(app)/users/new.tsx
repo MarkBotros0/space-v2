@@ -25,7 +25,7 @@ export default function NewUserScreen() {
 
   if (!isSuper) {
     return (
-      <Screen title="New user">
+      <Screen title="New member">
         <EmptyState title="Not available" description="Only SUPER accounts can create users." />
       </Screen>
     );
@@ -36,10 +36,10 @@ export default function NewUserScreen() {
       onSuccess: (created) => {
         // The account exists either way; an undelivered invite is withdrawn
         // server-side, so the detail screen offers "Send invite" again.
-        if (created.inviteSent) toast.success("User created. Their invite is on its way.");
+        if (created.inviteSent) toast.success("Member added. Their invite is on its way.");
         else {
           toast.error(
-            "User created, but the invite email couldn't be sent. Use Send invite on their page once email works.",
+            "Member added, but the invite email couldn't be sent. Use Send invite on their page once email works.",
           );
         }
         router.replace({ pathname: "/user/[id]", params: { id: String(created.userId) } });
@@ -50,7 +50,7 @@ export default function NewUserScreen() {
   return (
     <UserForm
       mode="create"
-      title="New user"
+      title="New member"
       subtitle="They'll get an email invite to choose their own password. No temporary password is created."
       initial={NEW_USER_VALUES}
       submitting={createUser.isPending}
