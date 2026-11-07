@@ -68,7 +68,7 @@ describe("while studying", () => {
     expect(useSessionStore.getState().nav()).toBe(navByRole.STUDENT);
   });
 
-  it("Today is a student's, reading the student dashboard", async () => {
+  it("Home is a student's, reading the student dashboard", async () => {
     expect(dashboardBranchFor({ role: "STUDENT", graduationYear: 2025, activeSeasonId: 7 })).toBe("STUDENT");
     serve({ [DASHBOARD]: studentDashboard, [EVENTS]: { events: [], total: 0 } });
     renderWithProviders(<DashboardScreen />);
@@ -123,10 +123,10 @@ describe("while studying", () => {
 describe("once the season is over", () => {
   beforeEach(() => useSessionStore.setState(finished));
 
-  it("Today, tabs and guard are the alumni's again", () => {
+  it("Home, tabs and guard are the alumni's again", () => {
     expect(dashboardBranchFor({ role: "STUDENT", graduationYear: 2025, activeSeasonId: null })).toBe("ALUMNI");
     expect(useSessionStore.getState().nav()?.tabs.map((t) => t.label)).toEqual([
-      "Today", "Events", "History", "Profile", "More",
+      "Home", "Events", "History", "Profile", "More",
     ]);
     captured.segments = ["(app)", "(tabs)", "work"];
     renderWithProviders(<AppLayout />);
