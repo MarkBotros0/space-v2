@@ -48,7 +48,8 @@ describe("ONLINE grading", () => {
     const quiz = await db.quiz.create({
       data: {
         seasonId, sessionId, title: "Graded quiz", kind: "ONLINE",
-        maxScore: 7, publishedAt: new Date(),
+        // Released, so a grade notifies; held results: quizzes-release-routes.
+        maxScore: 7, publishedAt: new Date(), resultsReleasedAt: new Date(),
       },
       select: { id: true },
     });
