@@ -29,7 +29,8 @@ describe("OpenAPI: announcements", () => {
   });
 
   it("resolves every $ref under the announcement paths", () => {
-    const refs = collectRefs(announcementPaths);
+    const announcementSchemas = Object.entries(doc.components.schemas).filter(([k]) => /Announcement/.test(k));
+    const refs = collectRefs([announcementPaths, announcementSchemas]);
     expect(refs.length).toBeGreaterThan(0);
     for (const ref of refs) {
       const m = /^#\/components\/(schemas|responses)\/(.+)$/.exec(ref);

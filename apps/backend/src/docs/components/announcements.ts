@@ -1,4 +1,4 @@
-/** News (announcement) schemas. Mirrors `packages/shared/src/announcement.ts`. Assembled by `../openapi.ts`. */
+/** Announcement schemas. Mirrors `packages/shared/src/announcement.ts`. Assembled by `../openapi.ts`. */
 const listItemProps = {
   id: { type: "integer" },
   audience: { type: "string", enum: ["COMMUNITY", "SEASON"] },
@@ -66,6 +66,7 @@ export const announcementSchemas = {
     },
   },
   CreateAnnouncementRequest: {
+    description: "`title` and `body` are trimmed before the length checks.",
     oneOf: [
       {
         type: "object",
@@ -92,6 +93,7 @@ export const announcementSchemas = {
     discriminator: { propertyName: "audience" },
   },
   UpdateAnnouncementRequest: {
+    description: "`title` and `body` are trimmed before the length checks.",
     type: "object",
     minProperties: 1,
     additionalProperties: false,
