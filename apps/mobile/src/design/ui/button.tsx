@@ -1,11 +1,11 @@
 /**
  * Redesign Button: variants primary | secondary | destructive | plain, sizes
- * md (min-height 46) | sm (min-height 44), radius 14, spring press scale.
+ * md (min-height 46) | sm (min-height 44), radius 14, dims while pressed.
  * v1's names stay as aliases so no call site changes: default -> primary,
  * outline -> secondary, ghost/link -> plain (link keeps an underlined label),
  * default/lg/icon-lg -> md, xs/sm/icon/icon-xs/icon-sm -> sm.
  * The outer Pressable takes the caller's layout classes (self-start, flex-1,
- * w-full); the Animated.View inside it carries only the press scale, which
+ * w-full); the Animated.View inside it carries only the press dim, which
  * also runs under reduced motion (it is feedback, not travel), and the View
  * inside that carries the look. Classes never go on the Animated.View: on a
  * device css-interop merges them with the animated style and Reanimated drops
@@ -21,7 +21,7 @@ import { Children, cloneElement, isValidElement, type ReactElement, type ReactNo
 import { ActivityIndicator, Pressable, type PressableProps, View } from "react-native";
 import Animated from "react-native-reanimated";
 
-import { usePressScale } from "../motion";
+import { usePressDim } from "../motion";
 import { useThemeColors } from "../theme/use-theme-colors";
 import { cn } from "../lib/cn";
 import { withTextRuns } from "../lib/text-runs";
@@ -165,7 +165,7 @@ function Button({
   onPress,
   ...props
 }: ButtonProps) {
-  const press = usePressScale();
+  const press = usePressDim();
   const colors = useThemeColors();
   const blocked = !!disabled || loading;
   const dimmed = blocked && !loading;

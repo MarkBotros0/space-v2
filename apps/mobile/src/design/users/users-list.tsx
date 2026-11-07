@@ -47,12 +47,11 @@ export function UsersList({
 }) {
   return (
     <GroupedList>
-      {rows.map((row, i) => {
+      {rows.map((row) => {
         const actions = renderActions?.(row);
         return (
           <View key={row.id}>
             <ListRow
-              index={i}
               title={row.name || row.email}
               detail={row.name ? row.email : undefined}
               subtitle={rowMeta(row)}

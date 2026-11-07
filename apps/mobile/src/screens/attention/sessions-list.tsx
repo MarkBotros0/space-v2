@@ -58,10 +58,9 @@ export function SessionsWithoutAttendance({ role, seasonId }: { role: "ADMIN" | 
       <View className="flex-col gap-4">
         {groups.map((g) => (
           <GroupedList key={g.seasonId} header={groups.length > 1 ? g.title : undefined}>
-            {g.rows.map((s, i) => (
+            {g.rows.map((s) => (
               <ListRow
                 key={s.id}
-                index={i}
                 title={s.title}
                 subtitle={joinMeta([formatWeekdayDay(s.dayKey), formatWallTime(s.startTime)])}
                 chevron

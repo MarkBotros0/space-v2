@@ -1,8 +1,9 @@
 /**
  * Redesign bottom sheet on RN Modal (transparent) + Reanimated + a
- * gesture-handler pan. In: SPRING.gentle; out: DURATION.base timing, exits
- * faster than entrances; backdrop fades. Drag down past 30% of the sheet's
- * height, or release faster than 800, to dismiss; otherwise it springs back
+ * gesture-handler pan. In: SHEET_IN_MS ease-out, stopping dead (no spring, no
+ * overshoot: owner, 2026-11-07); out: DURATION.base, exits faster than
+ * entrances; backdrop fades. Drag down past 30% of the sheet's
+ * height, or release faster than 800, to dismiss; otherwise it eases back
  * (never overscrolls above rest). Reduced motion: a DURATION.fast opacity
  * crossfade with the sheet at its final position.
  * The Modal is its own window on Android, so it gets its own
@@ -21,15 +22,17 @@
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { DURATION, SPRING, useReducedMotion } from "../motion";
+import { DURATION, EASE_OUT, useReducedMotion } from "../motion";
 import { useKeyboardInset } from "../lib/keyboard-inset";
 import { useKeyboardBottomOffset } from "../lib/keyboard-offset";
 import { SaveBarBody, type SaveBarProps } from "../layout/save-bar";
 import { Text } from "./text";
 
+/** A sheet's entrance: long enough to show where it came from, never bouncing. */
+const SHEET_IN_MS = 260;
 const DISMISS_FRACTION = 0.3;
 const DISMISS_VELOCITY = 800;
 const OFFSCREEN = 1000;
@@ -65,7 +68,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
         translateY.value = 0;
         progress.value = withTiming(1, { duration: DURATION.fast });
       } else {
-        translateY.value = withSpring(0, SPRING.gentle);
+        translateY.value = withTiming(0, { duration: SHEET_IN_MS, easing: EASE_OUT });
         progress.value = withTiming(1, { duration: DURATION.base });
       }
       return;
@@ -100,7 +103,7 @@ function Sheet({ open, onClose, title, children, footer }: SheetProps) {
       // Ask the parent to close; if it refuses (open stays true) the sheet must come back,
       // and if it agrees the open effect below takes over and animates the exit.
       if (far || e.velocityY > DISMISS_VELOCITY) onClose();
-      translateY.value = withSpring(0, SPRING.gentle);
+      translateY.value = withTiming(0, { duration: DURATION.fast, easing: EASE_OUT });
     },
   });
 

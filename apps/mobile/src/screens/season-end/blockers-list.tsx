@@ -36,10 +36,9 @@ export function BlockersList({ blockers }: { blockers: SeasonEndCheck["blockers"
       />
       {submissions.length > 0 ? (
         <Group title={`${plural(submissions.length, "submission", "submissions")} not reviewed`}>
-          {submissions.map((s, i) => (
+          {submissions.map((s) => (
             <ListRow
               key={s.publicId}
-              index={i}
               title={s.assignmentTitle}
               subtitle={s.studentName}
               chevron
@@ -50,10 +49,9 @@ export function BlockersList({ blockers }: { blockers: SeasonEndCheck["blockers"
       ) : null}
       {quizAttempts.length > 0 ? (
         <Group title={`${plural(quizAttempts.length, "quiz attempt", "quiz attempts")} not graded`}>
-          {quizAttempts.map((q, i) => (
+          {quizAttempts.map((q) => (
             <ListRow
               key={q.attemptId}
-              index={i}
               title={q.quizTitle}
               subtitle={q.studentName}
               chevron
@@ -64,10 +62,9 @@ export function BlockersList({ blockers }: { blockers: SeasonEndCheck["blockers"
       ) : null}
       {attendance.length > 0 ? (
         <Group title={`${plural(attendance.length, "session", "sessions")} without attendance`}>
-          {attendance.map((a, i) => (
+          {attendance.map((a) => (
             <ListRow
               key={a.sessionId}
-              index={i}
               title={a.title}
               subtitle={joinMeta([formatDateTime(a.startsAt), `${a.missing} not marked`])}
               chevron

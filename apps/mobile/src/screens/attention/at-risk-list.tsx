@@ -33,10 +33,9 @@ export function StudentsAtRisk({ seasonId }: { seasonId: number | undefined }) {
     body = (
       <View className="flex-col gap-4">
         <GroupedList>
-          {rows.map((r, i) => (
+          {rows.map((r) => (
             <ListRow
               key={`${r.studentUserId}:${r.seasonId}`}
-              index={i}
               title={r.name}
               subtitle={joinMeta([
                 seasonId === undefined && r.seasonTitle,

@@ -37,10 +37,9 @@ export function LeaderQuizzesCard({ sessionId }: { sessionId: number }) {
   }
   return (
     <GroupedList header="Quizzes">
-      {quizzes.data.map((q, i) => (
+      {quizzes.data.map((q) => (
         <ListRow
           key={q.id}
-          index={i}
           title={q.title}
           titleLines={2}
           // "· Draft" is v2's: an unpublished online quiz has nothing to grade yet.

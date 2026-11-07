@@ -1,13 +1,12 @@
 /**
  * StatusChip and the status vocabulary: one tone + label per backend status.
- * The label crossfades (DURATION.fast) when it changes; reduced motion swaps
- * it instantly. Never wraps mid-word and never shrinks in a row.
+ * The label swaps instantly when it changes (no fade: owner, 2026-11-07).
+ * Never wraps mid-word and never shrinks in a row.
  * dueChip never reads the device clock: the server sends `isOverdue` and org-clock
  * day keys, so a student and their leader see the same chip in any timezone.
  */
 import { cva } from "class-variance-authority";
 import { View } from "react-native";
-import Animated, { FadeIn } from "react-native-reanimated";
 import type {
   AttendanceStatus,
   EnrollmentStatus,
@@ -18,7 +17,6 @@ import type {
 } from "@space/shared";
 
 import { daysBetween } from "../../lib/calendar-grid";
-import { DURATION, useReducedMotion } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
@@ -53,23 +51,20 @@ const chipTextVariants = cva("font-medium", {
 export { chipVariants, chipTextVariants };
 
 export function StatusChip({ tone, label, className }: ChipSpec & { className?: string }) {
-  const reduced = useReducedMotion();
   return (
     <View
       accessible
       accessibilityLabel={label}
       className={cn(chipVariants({ tone }), className)}
     >
-      <Animated.View key={label} entering={reduced ? undefined : FadeIn.duration(DURATION.fast)}>
-        <Text
-          variant="caption"
-          numberOfLines={1}
-          maxFontSizeMultiplier={1.3}
-          className={chipTextVariants({ tone })}
-        >
-          {label}
-        </Text>
-      </Animated.View>
+      <Text
+        variant="caption"
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        className={chipTextVariants({ tone })}
+      >
+        {label}
+      </Text>
     </View>
   );
 }

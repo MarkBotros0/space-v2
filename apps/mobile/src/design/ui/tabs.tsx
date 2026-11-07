@@ -3,14 +3,14 @@
  * (defaultValue). On the redesign tokens: a `separator` hairline under the
  * list, the selected tab in foreground semibold over a 2px `ring` underline
  * (3:1 in both themes), the rest in muted foreground; 44pt tall, with the
- * spring press scale on the label (classes stay off the Animated.View).
+ * press dim on the label (classes stay off the Animated.View).
  * Plans 02–05 move the call sites to SegmentedControl and delete this file.
  */
 import { createContext, type ReactNode, useContext, useState } from "react";
 import { type LayoutChangeEvent, Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 
-import { usePressScale } from "../motion";
+import { usePressDim } from "../motion";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
@@ -65,7 +65,7 @@ function TabsTrigger({
   onLayout?: (e: LayoutChangeEvent) => void;
 }) {
   const ctx = useContext(TabsContext);
-  const press = usePressScale();
+  const press = usePressDim();
   const selected = ctx.value === value;
   return (
     <Pressable

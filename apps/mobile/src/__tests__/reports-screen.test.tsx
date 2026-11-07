@@ -77,7 +77,6 @@ describe("ReportsScreen — role branches", () => {
     // them exactly that data (R45).
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText("Student accounts")).toBeTruthy();
-    // Tiles count up to their figure; the number is on screen once they settle.
     expect((await screen.findAllByText("40")).length).toBeGreaterThan(0);
   });
 });

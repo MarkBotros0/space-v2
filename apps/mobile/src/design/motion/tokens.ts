@@ -1,10 +1,11 @@
-import type { WithSpringConfig } from "react-native-reanimated";
+import { Easing } from "react-native-reanimated";
 
 /** Animation durations in ms. */
 export const DURATION = { fast: 150, base: 220, slow: 320 } as const;
 
-/** Spring presets: snappy for presses and toggles, gentle for larger movement. */
-export const SPRING: { snappy: WithSpringConfig; gentle: WithSpringConfig } = {
-  snappy: { damping: 18, stiffness: 260 },
-  gentle: { damping: 22, stiffness: 160 },
-};
+/**
+ * The one easing for anything that moves (owner, 2026-11-07: calm and quick,
+ * an educational app, not a cartoon). Decelerates and stops dead: no springs,
+ * no overshoot, no bounce anywhere in the app.
+ */
+export const EASE_OUT = Easing.out(Easing.cubic);

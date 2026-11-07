@@ -14,12 +14,11 @@ export function eventChip(e: JpcEventListItem): ChipSpec | null {
   return null;
 }
 
-export function EventListRow({ event, index }: { event: JpcEventListItem; index?: number }) {
+export function EventListRow({ event }: { event: JpcEventListItem }) {
   const router = useRouter();
   const chip = eventChip(event);
   return (
     <ListRow
-      index={index}
       title={event.title}
       titleLines={3}
       // A non-breaking space keeps "8:00 PM" from wrapping between the time and AM/PM.

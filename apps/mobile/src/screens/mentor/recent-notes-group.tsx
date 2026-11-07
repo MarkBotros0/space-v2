@@ -12,10 +12,9 @@ export function RecentNotesGroup({ notes }: { notes: AuthoredNote[] }) {
       {notes.length === 0 ? (
         <ListRow title="No notes yet" />
       ) : (
-        notes.map((n, i) => (
+        notes.map((n) => (
           <ListRow
             key={n.id}
-            index={i}
             title={n.student.name}
             titleLines={2}
             subtitle={`${formatDate(n.createdAt)} · ${n.authorName} · ${n.body}`}

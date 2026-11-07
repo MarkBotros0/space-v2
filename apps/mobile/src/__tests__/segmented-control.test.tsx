@@ -3,14 +3,14 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { setReducedMotionForTests } from "../design/motion";
 import { SegmentedControl } from "../design/ui/segmented-control";
 
-const mockWithSpring = jest.fn((to: number) => to);
+const mockWithTiming = jest.fn((to: number, _config?: unknown) => to);
 
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
-  return { ...actual, __esModule: true, default: actual.default, withSpring: (...args: [number]) => mockWithSpring(...args) };
+  return { ...actual, __esModule: true, default: actual.default, withTiming: (...args: [number, unknown?]) => mockWithTiming(...args) };
 });
 
-beforeEach(() => mockWithSpring.mockClear());
+beforeEach(() => mockWithTiming.mockClear());
 afterEach(() => setReducedMotionForTests(null));
 
 const OPTIONS = [
@@ -76,17 +76,18 @@ describe("SegmentedControl", () => {
       rerender(<SegmentedControl options={OPTIONS} value="b" onChange={() => {}} />);
     }
 
-    it("does not spring under reduced motion", () => {
+    it("does not slide under reduced motion", () => {
       setReducedMotionForTests(true);
       slide();
-      expect(mockWithSpring).not.toHaveBeenCalled();
+      expect(mockWithTiming).not.toHaveBeenCalled();
     });
 
-    it("springs to the new segment when motion is on, but not on first placement", () => {
+    it("slides to the new segment in 150 ms with no spring, but not on first placement", () => {
       setReducedMotionForTests(false);
       slide();
-      expect(mockWithSpring).toHaveBeenCalledTimes(1);
-      expect(mockWithSpring.mock.calls[0]![0]).toBe(100);
+      expect(mockWithTiming).toHaveBeenCalledTimes(1);
+      expect(mockWithTiming.mock.calls[0]![0]).toBe(100);
+      expect(mockWithTiming.mock.calls[0]![1]).toMatchObject({ duration: 150 });
     });
   });
 });

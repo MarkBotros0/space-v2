@@ -119,13 +119,12 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
     body = (
       <>
         <GroupedList>
-          {students.map((item, i) => (
+          {students.map((item) => (
             <copy.Row
               // Dropped rows are enrollment-keyed (R43): one student can
               // appear once per dropped season, so the user id collides.
               key={item.droppedEnrollment?.enrollmentId ?? item.id}
               item={item as StudentListItem}
-              index={i}
             />
           ))}
         </GroupedList>

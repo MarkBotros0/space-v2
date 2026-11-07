@@ -4,7 +4,7 @@
  * large-title size with tabular numerals, the label a caption. `white` is
  * `surface`, `navy` the primary fill, `teal` the info tone; each text colour is
  * the token that reads on its fill in both themes. Pressable cards take the
- * spring press scale (the Animated.View carries only the scale; the look is on
+ * press dim (the Animated.View carries only the opacity; the look is on
  * the plain View inside it). Tiles in a row share it equally whatever their
  * content: every tile, pressable or not, is the same outer cell (TILE: flex 1,
  * basis 0, min width 0, no padding) with the look inside it. On device the
@@ -22,7 +22,7 @@ import { Flame } from "lucide-react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated from "react-native-reanimated";
 
-import { usePressScale } from "../motion";
+import { usePressDim } from "../motion";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { Text } from "../ui/text";
@@ -87,7 +87,7 @@ export function StatCard({
   icon?: "flame";
   className?: string;
 }) {
-  const press = usePressScale();
+  const press = usePressDim();
   const look = cn(
     "flex-1 flex-col items-center justify-center gap-0.5 rounded-group p-4",
     BOX[variant],

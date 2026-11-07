@@ -10,10 +10,9 @@ export function UpcomingEventsGroup({ events, header }: { events: JpcEventListIt
   const router = useRouter();
   return (
     <GroupedList header={header}>
-      {events.map((e, i) => (
+      {events.map((e) => (
         <ListRow
           key={e.id}
-          index={i}
           title={e.title}
           titleLines={2}
           subtitle={formatEventWhenShort(e)}

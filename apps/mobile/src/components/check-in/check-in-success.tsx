@@ -1,6 +1,6 @@
 /**
  * The check-in success moment: a tone disc with a check that draws itself
- * (DURATION.slow), then the season ring pulses once (SPRING.gentle). The haptic
+ * (DURATION.slow) beside the season ring; no pulse (owner, 2026-11-07). The haptic
  * and the screen reader's announcement fire once on mount. Reduced motion: the check is drawn and the ring
  * at rest from the first frame; the haptic stays. No state waits on the motion.
  * Classes stay on plain Views; the animated components take only props/styles.
@@ -8,17 +8,13 @@
 import { useEffect, useRef } from "react";
 import { AccessibilityInfo, View } from "react-native";
 import Animated, {
-  Easing,
   useAnimatedProps,
-  useAnimatedStyle,
   useSharedValue,
-  withSequence,
-  withSpring,
   withTiming,
 } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
-import { DURATION, haptic, SPRING, useReducedMotion } from "../../design/motion";
+import { DURATION, EASE_OUT, haptic, useReducedMotion } from "../../design/motion";
 import { useThemeColors } from "../../design/theme/use-theme-colors";
 import { Button, ProgressRing, RingCaption, RingValue, Text } from "../../design/ui";
 import { checkInCopy, type CheckInOutcome } from "../../lib/check-in-result";
@@ -45,7 +41,6 @@ export function CheckInSuccess({
   const copy = checkInCopy(outcome);
   const late = outcome.status === "LATE";
   const draw = useSharedValue(reduced ? 1 : 0);
-  const pulse = useSharedValue(1);
   const fired = useRef(false);
 
   useEffect(() => {
@@ -57,19 +52,13 @@ export function CheckInSuccess({
       copy.message ? `${copy.title} ${copy.message}` : copy.title,
     );
     if (reduced) return;
-    draw.value = withTiming(1, { duration: DURATION.slow, easing: Easing.out(Easing.cubic) });
-    pulse.value = withSequence(
-      withTiming(1, { duration: DURATION.slow }),
-      withSpring(1.08, SPRING.gentle),
-      withSpring(1, SPRING.gentle),
-    );
+    draw.value = withTiming(1, { duration: DURATION.slow, easing: EASE_OUT });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkProps = useAnimatedProps(() => ({
     strokeDashoffset: CHECK_LENGTH * (1 - draw.value),
   }));
-  const ringStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   const pct = attendance ? Math.round((attendance.attended / attendance.total) * 100) : 0;
 
   return (
@@ -104,14 +93,10 @@ export function CheckInSuccess({
       </View>
       {attendance ? (
         <View className="items-center gap-2">
-          <Animated.View style={ringStyle}>
-            <View>
-              <ProgressRing value={pct} size={96} strokeWidth={8}>
-                <RingValue>{`${pct}%`}</RingValue>
-                <RingCaption>{"Attended"}</RingCaption>
-              </ProgressRing>
-            </View>
-          </Animated.View>
+          <ProgressRing value={pct} size={96} strokeWidth={8}>
+            <RingValue>{`${pct}%`}</RingValue>
+            <RingCaption>{"Attended"}</RingCaption>
+          </ProgressRing>
           <Text variant="subhead" className="text-center text-muted-foreground">
             {`Season attendance · ${attendance.attended} of ${attendance.total} sessions`}
           </Text>

@@ -114,7 +114,7 @@ describe("CheckInSuccess", () => {
     expect(screen.queryByLabelText(/percent/)).toBeNull();
   });
 
-  it("animates the check and ring when motion is allowed, and still shows the title", () => {
+  it("draws the check when motion is allowed, and still shows the title", () => {
     setReducedMotionForTests(false);
     renderWithProviders(<CheckInSuccess outcome={present} attendance={{ attended: 1, total: 1 }} />);
     expect(screen.getByText("You're checked in!")).toBeTruthy();

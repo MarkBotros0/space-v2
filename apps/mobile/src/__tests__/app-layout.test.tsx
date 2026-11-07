@@ -86,7 +86,8 @@ describe("shell", () => {
   it("gives neither tabs nor detail screens a navigator header: Screen owns the top (R14)", () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), scopes);
     renderWithProviders(<TabsLayout />);
-    expect(captured.tabsProps.screenOptions).toMatchObject({ headerShown: false, animation: "fade", transitionSpec: { config: { duration: 220 } } });
+    // Tabs switch instantly (owner, 2026-11-07): no cross-fade between tab screens.
+    expect(captured.tabsProps.screenOptions).toEqual({ headerShown: false, animation: "none" });
     renderWithProviders(<AppLayout />);
     for (const screenDecl of captured.stackScreens) {
       expect(screenDecl.options).toMatchObject({ headerShown: false });

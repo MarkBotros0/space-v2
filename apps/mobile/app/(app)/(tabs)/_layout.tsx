@@ -6,7 +6,6 @@ import { ScreenErrorBoundary } from "../../../src/design/layout/error-boundary";
 import { PillTabBar } from "../../../src/design/layout/floating-tab-bar";
 import { TabBarPresenceContext } from "../../../src/design/layout/shell-context";
 import { useResetTabBarOnFocus } from "../../../src/design/layout/use-reset-tab-bar-on-focus";
-import { DURATION, useReducedMotion } from "../../../src/design/motion";
 import { DIRECTORY_ROUTE_HREFS, TAB_ROUTE_NAMES, routeNameForHref } from "../../../src/lib/route-names";
 import { historyThenHomeTabsRouter } from "../../../src/lib/tabs-back-router";
 import { useSessionStore } from "../../../src/store/session";
@@ -72,17 +71,9 @@ export default function TabsLayout() {
   // Object.is holds across calls with the same inputs and this can't loop.
   const nav = useSessionStore((s) => s.nav());
   useResetTabBarOnFocus();
-  // Tab content crossfades over DURATION.base (react-navigation bottom-tabs'
-  // `animation: "fade"` + `transitionSpec`); reduced motion switches tabs without drift.
-  const reduced = useReducedMotion();
-  const screenOptions = useMemo(
-    () => ({
-      headerShown: false,
-      animation: reduced ? ("none" as const) : ("fade" as const),
-      transitionSpec: { animation: "timing" as const, config: { duration: DURATION.base } },
-    }),
-    [reduced],
-  );
+  // Tabs switch instantly, as native tab bars do (owner, 2026-11-07: calm
+  // and quick; the pill's highlight is the only thing that moves).
+  const screenOptions = useMemo(() => ({ headerShown: false, animation: "none" as const }), []);
 
   const tabs: NavItem[] = nav?.tabs ?? [];
   const tabByRouteName = new Map(tabs.map((tab) => [routeNameForHref(tab.href), tab]));

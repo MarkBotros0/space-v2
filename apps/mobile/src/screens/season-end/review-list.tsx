@@ -39,12 +39,11 @@ export function ReviewList({
         </Text>
       ) : null}
       <GroupedList>
-        {students.map((s, i) => {
+        {students.map((s) => {
           const notPassed = staged[s.userId]?.result === "NOT_PASSED";
           return (
             <ListRow
               key={s.userId}
-              index={i}
               title={s.name}
               subtitle={joinMeta([s.groupName, `${s.attendancePct}% attendance`])}
               trailing={<StatusChip tone={notPassed ? "bad" : "ok"} label={notPassed ? "Did not pass" : "Passed"} />}

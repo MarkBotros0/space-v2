@@ -106,10 +106,9 @@ export function AlumniDashboard() {
             {history.data.length === 0 ? (
               <ListRow title="No past seasons" />
             ) : (
-              history.data.slice(0, HISTORY_ROWS).map((s, i) => (
+              history.data.slice(0, HISTORY_ROWS).map((s) => (
                 <ListRow
                   key={s.seasonId}
-                  index={i}
                   title={s.title}
                   titleLines={2}
                   subtitle={`${formatSeasonDay(s.startDate)} – ${formatSeasonDay(s.endDate)}${s.groupName ? ` · ${s.groupName}` : ""}`}

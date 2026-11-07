@@ -11,6 +11,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useBootSession } from "../src/hooks/use-session";
 import { BootRetry } from "../src/screens/boot-retry";
+import { LaunchScreen } from "../src/design/brand/launch-screen";
 import { GEIST_FONTS } from "../src/design/theme/fonts";
 import { applyStoredThemeMode } from "../src/design/theme/theme-mode";
 import { useThemeColors } from "../src/design/theme/use-theme-colors";
@@ -24,8 +25,9 @@ import { useSessionStore } from "../src/store/session";
 
 // Before anything renders. A no-op unless the build sets EXPO_PUBLIC_SENTRY_DSN.
 initSentry();
-// The native splash stays up until fonts, theme and the stored session are
-// settled (RootLayout below), instead of hiding on the first, still-blank frame.
+// The native splash (plain app background, app.json) stays up until fonts and
+// theme are in place, then the LaunchScreen writes the logo on the same colour
+// while the stored session settles underneath.
 keepSplashUntilReady();
 
 const queryClient = createQueryClient();
@@ -45,7 +47,9 @@ function RootLayout() {
   }, []);
   const sessionSettled = useSessionStore((s) => s.status !== "idle" && s.status !== "restoring");
   const shellReady = (fontsLoaded || Boolean(fontError)) && themeApplied;
-  useHideSplashWhen(shellReady && sessionSettled);
+  // Once per cold start: the root never remounts while the process lives.
+  const [launched, setLaunched] = useState(false);
+  useHideSplashWhen(shellReady);
   if (!shellReady) return null;
 
   return (
@@ -56,6 +60,7 @@ function RootLayout() {
           inset, the tab bar and bottom padding all read the insets from it. */}
         <SafeAreaProvider>
           <Gate />
+          {launched ? null : <LaunchScreen ready={sessionSettled} onGone={() => setLaunched(true)} />}
           <Toaster />
           <ThemedStatusBar />
         </SafeAreaProvider>

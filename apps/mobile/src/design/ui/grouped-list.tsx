@@ -2,7 +2,8 @@
  * Inset grouped list: GroupedList (surface, radius 16, hairline separators),
  * ListRow (min-height 52, one-line title by default, caption subtitle, optional trailing
  * node and chevron) and ListSectionHeader. A row is a button only when it has
- * onPress; `index` staggers its entrance via listItemEntering.
+ * onPress, and dims while pressed. Rows appear at once: no entrance animation
+ * (owner, 2026-11-07).
  *
  * A pressable row's accessibility label replaces its children's text, so
  * whatever the trailing slot says is spoken through the label: `trailingLabel`,
@@ -14,7 +15,7 @@ import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { ChevronRight } from "lucide-react-native";
 
-import { listItemEntering, useReducedMotion, usePressScale } from "../motion";
+import { usePressDim } from "../motion";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { Button } from "./button";
@@ -90,13 +91,12 @@ type ListRowProps = {
   /** Draws the title in the error tone, for an action that ends something (Sign out). */
   destructive?: boolean;
   onPress?: () => void;
-  /** Fires when a touch lands, alongside the press scale (a screen warms a screen it is about to open). */
+  /** Fires when a touch lands, alongside the press dim (a screen warms a screen it is about to open). */
   onPressIn?: () => void;
   /** Lines the title may take before it ellipsizes. Default 1; `null` sets no cap (free text read in full). */
   titleLines?: number | null;
   /** Lines the subtitle may take before it ellipsizes. Default 2; `null` sets no cap. */
   subtitleLines?: number | null;
-  index?: number;
   className?: string;
 };
 
@@ -110,10 +110,9 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
 }
 
 function ListRow({
-  title, subtitle, detail, leading, trailing, footer, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, index = 0, className,
+  title, subtitle, detail, leading, trailing, footer, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, className,
 }: ListRowProps) {
-  const reduced = useReducedMotion();
-  const press = usePressScale(0.985);
+  const press = usePressDim();
   const content = (
     <View className={cn("min-h-[52px] flex-row items-center gap-3 px-4 py-2", className)}>
       {leading ? <View className="shrink-0">{leading}</View> : null}
@@ -142,27 +141,22 @@ function ListRow({
       {chevron ? <ChevronRight testID="list-row-chevron" size={16} className="text-muted-foreground" /> : null}
     </View>
   );
+  if (!onPress) return content;
   return (
-    <Animated.View entering={listItemEntering(index, reduced)}>
-      {onPress ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={[title, [detail, subtitle].filter(Boolean).join("\n"), spokenTrailing(trailing, trailingLabel)]
-            .filter(Boolean)
-            .join(", ")}
-          onPress={onPress}
-          onPressIn={() => {
-            press.onPressIn();
-            onPressIn?.();
-          }}
-          onPressOut={press.onPressOut}
-        >
-          <Animated.View style={press.animatedStyle}>{content}</Animated.View>
-        </Pressable>
-      ) : (
-        content
-      )}
-    </Animated.View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={[title, [detail, subtitle].filter(Boolean).join("\n"), spokenTrailing(trailing, trailingLabel)]
+        .filter(Boolean)
+        .join(", ")}
+      onPress={onPress}
+      onPressIn={() => {
+        press.onPressIn();
+        onPressIn?.();
+      }}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View style={press.animatedStyle}>{content}</Animated.View>
+    </Pressable>
   );
 }
 

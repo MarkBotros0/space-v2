@@ -14,10 +14,9 @@ export function AssignmentsList({ record }: { record: SeasonRecord }) {
   }
   return (
     <GroupedList>
-      {record.assignments.map((a, index) => (
+      {record.assignments.map((a) => (
         <ListRow
           key={a.id}
-          index={index}
           title={a.title}
           titleLines={2}
           subtitle={a.dueOrgDay ? `Due ${formatDayKey(a.dueOrgDay)}` : undefined}
@@ -50,10 +49,9 @@ export function QuizzesList({ record }: { record: SeasonRecord }) {
   }
   return (
     <GroupedList>
-      {record.quizzes.map((q, index) => (
+      {record.quizzes.map((q) => (
         <ListRow
           key={`${q.kind}-${q.id}`}
-          index={index}
           title={q.title}
           titleLines={2}
           subtitle={q.score !== null ? `Score: ${q.score}` : undefined}
@@ -77,10 +75,9 @@ export function AttendanceList({ record }: { record: SeasonRecord }) {
   }
   return (
     <GroupedList>
-      {record.attendance.map((s, index) => (
+      {record.attendance.map((s) => (
         <ListRow
           key={s.sessionId}
-          index={index}
           title={s.title}
           titleLines={2}
           subtitle={formatDate(s.startsAt)}

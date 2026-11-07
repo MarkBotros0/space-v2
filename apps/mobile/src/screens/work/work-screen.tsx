@@ -34,7 +34,7 @@ function Group({ header, rows }: { header: string; rows: WorkRow[] }) {
   return (
     <GroupedList header={header}>
       {rows.map((row) => (
-        <WorkListRow key={row.key} row={row} index={0} subtitleLines={FULL_SUBTITLE_LINES} />
+        <WorkListRow key={row.key} row={row} subtitleLines={FULL_SUBTITLE_LINES} />
       ))}
     </GroupedList>
   );

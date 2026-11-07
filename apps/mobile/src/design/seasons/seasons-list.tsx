@@ -56,10 +56,9 @@ export function SeasonsList({
     <View className="flex-col gap-6">
       {groups.map((g) => (
         <GroupedList key={g.program} header={g.program}>
-          {g.seasons.map((row, i) => (
+          {g.seasons.map((row) => (
             <ListRow
               key={row.id}
-              index={i}
               title={row.title}
               subtitle={joinMeta([
                 row.code,

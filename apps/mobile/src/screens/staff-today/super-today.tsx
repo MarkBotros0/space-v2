@@ -58,12 +58,11 @@ export function SuperToday() {
         {hero ? <LiveSessionHero session={fromListItem(hero, live.length > 0)} /> : null}
         {live.length > 1 ? (
           <GroupedList header="Also happening now">
-            {live.slice(1).map((s, i) => {
+            {live.slice(1).map((s) => {
               const row = fromListItem(s, true);
               return (
                 <ListRow
                   key={s.id}
-                  index={i}
                   title={row.title}
                   subtitle={row.meta}
                   chevron

@@ -28,10 +28,9 @@ export function AtRiskGroup({
           subtitle={`No student has attendance or submissions below ${AT_RISK_PCT}%.`}
         />
       ) : (
-        rows.map((r, i) => (
+        rows.map((r) => (
           <ListRow
             key={`${r.studentUserId}:${r.seasonId}`}
-            index={i}
             title={r.name}
             titleLines={2}
             subtitle={`${r.seasonTitle} · ${r.attendancePct}% attendance · ${r.submissionPct}% submissions`}

@@ -1,5 +1,4 @@
-export { DURATION, SPRING } from "./tokens";
+export { DURATION, EASE_OUT } from "./tokens";
 export { useReducedMotion, setReducedMotionForTests } from "./use-reduced-motion";
-export { usePressScale } from "./use-press-scale";
-export { listItemEntering } from "./entering";
+export { usePressDim, PRESS_OPACITY } from "./use-press-dim";
 export { haptic } from "./haptics";

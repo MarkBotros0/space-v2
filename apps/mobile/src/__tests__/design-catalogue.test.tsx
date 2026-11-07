@@ -8,7 +8,7 @@ jest.mock("expo-router", () => ({ ...jest.requireActual("expo-router"), useRoute
 import DesignCatalogue from "../../app/(app)/design-catalogue";
 import { renderWithProviders } from "./helpers/render";
 
-const SECTIONS = ["type", "buttons", "chips", "list", "hero", "stats", "controls", "states", "checkin", "toast", "sheet", "save-bar", "people-rows", "start-issues"];
+const SECTIONS = ["logo", "type", "buttons", "chips", "list", "hero", "stats", "controls", "states", "checkin", "toast", "sheet", "save-bar", "people-rows", "start-issues"];
 
 it("renders every section when this is a sweep build", () => {
   mockSweep = true;
