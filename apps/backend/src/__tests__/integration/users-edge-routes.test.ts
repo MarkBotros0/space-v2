@@ -171,7 +171,7 @@ describe("PATCH /api/v1/users/:id", () => {
     expect(res.status).toBe(400);
   });
 
-  it("a same-role edit keeps scopes and refresh tokens", async () => {
+  it("an edit of someone serving keeps their seat and refresh tokens", async () => {
     const season = await createTestSeason();
     const admin = await createTestUser("edge-rename-admin", "ADMIN");
     await db.seasonAdmin.create({ data: { seasonId: season.id, userId: admin.id } });
@@ -181,7 +181,7 @@ describe("PATCH /api/v1/users/:id", () => {
     const res = await request(app)
       .patch(`/api/v1/users/${admin.id}`)
       .set(auth(superToken))
-      .send({ name: "Renamed Admin", role: "ADMIN", graduationYear: 2015 });
+      .send({ name: "Renamed Admin", graduationYear: 2015 });
     expect(res.status).toBe(200);
     expect(res.body.data.name).toBe("Renamed Admin");
     expect(await db.seasonAdmin.count({ where: { userId: admin.id } })).toBe(1);

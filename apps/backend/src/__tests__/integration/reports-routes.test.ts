@@ -110,15 +110,11 @@ describe("GET /api/v1/reports/engagement — the gate", () => {
     expect(a.body.data.scope).toEqual(b.body.data.scope);
   });
 
-  it("gives an ADMIN with no seasons an empty report, not a 403", async () => {
+  it("refuses a stored ADMIN with no season rows: the role comes from the rows", async () => {
     const res = await request(app)
       .get("/api/v1/reports/engagement")
       .set("authorization", `Bearer ${emptyAdminToken}`);
-    // 403 would tell an admin their account is broken. R2: an empty scope
-    // returns empty collections rather than throwing.
-    expect(res.status).toBe(200);
-    expect(res.body.data.scope.seasonIds).toEqual([]);
-    expect(res.body.data.bands).toHaveLength(4);
+    expect(res.status).toBe(403);
   });
 
   it("gives MENTOR every season (R45)", async () => {

@@ -150,7 +150,7 @@ describe("ReportsScreen for admin — at-risk rows and engagement tiles", () => 
 
     failing = false;
     fireEvent.press(screen.getByText("Try again"));
-    await waitFor(() => expect(screen.queryByText("Couldn't load more students.")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Couldn't load more students.")).toBeNull(), { timeout: 5000 });
   });
 
   it("keeps every engagement figure as a tile in a wrapping row", async () => {

@@ -2,7 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestUser, login } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 import { seedSessionFixtures } from "./sessions-setup";
 
 // 60s, not the Jest default: the shared Neon staging database autosuspends, so
@@ -139,7 +139,9 @@ describe("GET /api/v1/sessions/:id", () => {
   });
 
   it("returns 403 for a non-student with no access to the season", async () => {
-    const stranger = await createTestUser("stranger-admin", "ADMIN");
+    const stranger = await createTestUser("stranger-admin", "STUDENT");
+    const elsewhere = await createTestSeason();
+    await db.seasonAdmin.create({ data: { seasonId: elsewhere.id, userId: stranger.id } });
     const strangerToken = await login(app, stranger.email);
     const res = await request(app)
       .get(`/api/v1/sessions/${sessionId}`)

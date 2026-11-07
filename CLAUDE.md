@@ -391,7 +391,7 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 - **Season role changes sign nobody out.** Assigning or removing a season role calls
   `markSessionsStale`, so the new claim arrives on the next silent refresh;
   `revokeAllRefreshTokensForUser` is not used on these paths. Changing a stored role
-  (SUPER/MENTOR/STUDENT) or deactivating an account through `PATCH /users` still signs them out.
+  (SUPER/MENTOR/STUDENT) or deactivating an account still signs them out.
 - **`pnpm roles:convert`** (`scripts/convert-stored-roles.ts`) moves stored ADMIN/LEADER accounts
   to STUDENT. Read-only by default; `--apply` refuses while anyone lacks a `graduationYear`, else
   converts in one transaction. It is a script, not a migration, because no migration may change
