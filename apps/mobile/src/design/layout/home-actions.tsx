@@ -28,7 +28,7 @@ export function HomeActions() {
       <NotificationBell unread={unread} onPress={() => router.push("/notifications")} />
       <UserMenu
         initials={initialsOf(name, user.role.charAt(0))}
-        onPress={() => router.push("/settings/profile")}
+        onPress={() => router.push("/profile")}
       />
     </View>
   );

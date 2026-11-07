@@ -192,7 +192,6 @@ describe("AppLayout stack", () => {
       "notifications",
       "quizzes",
       "season",
-      "settings/profile",
       "students/alumni",
       "students/dropped",
       "users/index",

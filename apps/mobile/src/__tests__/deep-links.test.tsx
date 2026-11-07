@@ -25,7 +25,7 @@ beforeEach(() => {
 
 describe("deep links land on their own screen (URLs unchanged)", () => {
   it.each([
-    ["/settings/profile", "screen:/settings/profile"],
+    ["/edit-profile", "screen:/edit-profile"],
     ["/season", "screen:/season"],
     ["/calendar", "screen:/calendar"],
     ["/student/1", "screen:/student/[id]"],
@@ -60,10 +60,10 @@ describe("detail screens push on a stack above the tabs", () => {
     expect(result.getPathname()).toBe("/dashboard");
   });
 
-  it("a cold deep link to a pushed nav destination (/settings/profile) also has Home underneath", async () => {
-    const result = await renderRouter(appContext(), { initialUrl: "/settings/profile" });
-    expect(await screen.findByText("screen:/settings/profile")).toBeTruthy();
-    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "settings/profile"]);
+  it("a cold deep link to a pushed nav destination (/notifications) also has Home underneath", async () => {
+    const result = await renderRouter(appContext(), { initialUrl: "/notifications" });
+    expect(await screen.findByText("screen:/notifications")).toBeTruthy();
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "notifications"]);
 
     await act(() => router.back());
     expect(result.getPathname()).toBe("/dashboard");
@@ -113,12 +113,12 @@ describe("the tabs are one navigator, however a tab route is reached", () => {
     expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)"]);
   });
 
-  it("pushing /settings/profile (a tab for no role) from a detail stacks it, and Back returns to the detail", async () => {
+  it("pushing /edit-profile (a detail route) from a detail stacks it, and Back returns to the detail", async () => {
     const result = await renderRouter(appContext(), { initialUrl: "/student/1" });
     expect(await screen.findByText("screen:/student/[id]")).toBeTruthy();
 
-    await act(() => router.push("/settings/profile"));
-    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "student/[id]/index", "settings/profile"]);
+    await act(() => router.push("/edit-profile"));
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "student/[id]/index", "edit-profile"]);
     await act(() => router.back());
     expect(result.getPathname()).toBe("/student/1");
   });

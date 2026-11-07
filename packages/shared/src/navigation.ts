@@ -13,9 +13,9 @@ import type { UserRole } from "./auth";
  * redesign (plan 01 Task 12) puts Home (`/dashboard`, the `home` icon)
  * first for every role, at most five tabs. Nothing left the
  * navs: a destination that stopped being a tab is still in `sidebar`, which
- * is what More lists. MENTOR has no More tab; Profile links to Profile settings
- * (no Settings hub: owner, 2026-11-07). Notification settings open from the
- * gear on the Notifications screen.
+ * is what More lists. Profile is in no sidebar (owner, 2026-11-07): More's name
+ * row and Home's avatar open it, and MENTOR and alumni have it as a tab.
+ * Notification settings open from the gear on the Notifications screen.
  */
 
 export type NavIconName =
@@ -72,7 +72,6 @@ const SUPER: RoleNav = {
     { href: "/users", label: "Users", icon: "users" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -95,7 +94,6 @@ const ADMIN: RoleNav = {
     { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -115,7 +113,6 @@ const LEADER: RoleNav = {
     { href: "/submissions", label: "Submissions", icon: "submissions" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -140,9 +137,7 @@ const STUDENT: RoleNav = {
     // sidebar only — it surfaces in More. Not ALUMNI (no active season).
     { href: "/attendance", label: "Attendance", icon: "attendance" },
     { href: "/history", label: "History", icon: "history" },
-    { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -159,7 +154,6 @@ const MENTOR: RoleNav = {
     { href: "/students", label: "Students", icon: "students" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -176,9 +170,7 @@ const ALUMNI: RoleNav = {
     { href: "/dashboard", label: "Home", icon: "dashboard" },
     { href: "/calendar", label: "Events", icon: "events" },
     { href: "/history", label: "My History", icon: "history" },
-    { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
@@ -198,9 +190,7 @@ export const STUDENT_BETWEEN: RoleNav = {
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/history", label: "History", icon: "history" },
-    { href: "/profile", label: "Profile", icon: "profile" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
-    { href: "/settings/profile", label: "Profile settings", icon: "settings" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },

@@ -42,7 +42,9 @@ describe("navFor", () => {
 
   it("removes nothing: each role reaches the same destinations it did before Today moved first", () => {
     // Frozen from the pre-Task-12 navs: anything leaving the tabs stays in the
-    // sidebar, so it is still listed in More.
+    // sidebar, so it is still listed in More. Owner 2026-11-07: Profile and Profile
+    // settings are one page, opened from More's name row and Home's avatar, so
+    // neither is a sidebar entry; MENTOR and alumni keep their Profile tab.
     const before: Record<string, string[]> = {
       SUPER: [
         "/calendar",
@@ -53,7 +55,6 @@ describe("navFor", () => {
         "/notifications",
         "/reports",
         "/seasons",
-        "/settings/profile",
         "/students",
         "/students/alumni",
         "/students/dropped",
@@ -71,7 +72,6 @@ describe("navFor", () => {
         "/notifications",
         "/reports",
         "/season",
-        "/settings/profile",
       ],
       LEADER: [
         "/calendar",
@@ -81,7 +81,6 @@ describe("navFor", () => {
         "/notes",
         "/notifications",
         "/quizzes",
-        "/settings/profile",
         "/submissions",
       ],
       MENTOR: [
@@ -90,7 +89,6 @@ describe("navFor", () => {
         "/notifications",
         "/profile",
         "/reports",
-        "/settings/profile",
         "/students",
       ],
       STUDENT: [
@@ -100,9 +98,7 @@ describe("navFor", () => {
         "/history",
         "/more",
         "/notifications",
-        "/profile",
         "/season",
-        "/settings/profile",
         "/submitted",
         "/work",
       ],
@@ -113,7 +109,6 @@ describe("navFor", () => {
         "/more",
         "/notifications",
         "/profile",
-        "/settings/profile",
       ],
     };
     for (const [role, nav] of Object.entries(ALL_NAVS)) {
@@ -161,7 +156,6 @@ describe("navFor", () => {
         ["/users", "Users", "users"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings/profile", "Profile settings", "settings"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -182,7 +176,6 @@ describe("navFor", () => {
         ["/notes", "My notes", "notes"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings/profile", "Profile settings", "settings"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -202,7 +195,6 @@ describe("navFor", () => {
         ["/submissions", "Submissions", "submissions"],
         ["/quizzes", "Quizzes", "quizzes"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings/profile", "Profile settings", "settings"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -222,9 +214,7 @@ describe("navFor", () => {
         ["/submitted", "Submitted", "submitted"],
         ["/attendance", "Attendance", "attendance"],
         ["/history", "History", "history"],
-        ["/profile", "Profile", "profile"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings/profile", "Profile settings", "settings"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -241,7 +231,6 @@ describe("navFor", () => {
         ["/students", "Students", "students"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings/profile", "Profile settings", "settings"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -258,9 +247,7 @@ describe("navFor", () => {
         ["/dashboard", "Home", "dashboard"],
         ["/calendar", "Events", "events"],
         ["/history", "My History", "history"],
-        ["/profile", "Profile", "profile"],
         ["/notifications", "Notifications", "notifications"],
-        ["/settings/profile", "Profile settings", "settings"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -288,7 +275,7 @@ describe("navFor between seasons", () => {
   });
   it("STUDENT_BETWEEN sidebar has no season, work or attendance", () => {
     expect(STUDENT_BETWEEN.sidebar.map((i) => i.label)).toEqual([
-      "Dashboard", "Calendar", "History", "Profile", "Notifications", "Profile settings",
+      "Dashboard", "Calendar", "History", "Notifications",
     ]);
   });
 });

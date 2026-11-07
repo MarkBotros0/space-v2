@@ -1,7 +1,8 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { patch: jest.fn() } }));
-jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn(), push: jest.fn() }) }));
+const mockBack = jest.fn();
+jest.mock("expo-router", () => ({ useRouter: () => ({ back: mockBack, push: jest.fn() }) }));
 jest.mock("../design/ui/toaster", () => ({
   toast: { success: jest.fn(), error: jest.fn() },
   Toaster: () => null,
@@ -11,7 +12,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
-import ProfileDetailsScreen from "../../app/(app)/settings/profile";
+import ProfileDetailsScreen from "../../app/(app)/edit-profile";
 
 const patch = apiClient.patch as jest.Mock;
 const user = {
@@ -55,6 +56,13 @@ it("sends only what changed and folds the server's row into the session", async 
     expect(patch).toHaveBeenCalledWith("/api/v1/me", { address: "12 Nile St, Cairo" }),
   );
   await waitFor(() => expect(useSessionStore.getState().user?.address).toBe("12 Nile St, Cairo"));
+  // Saved: back to the read-only Profile.
+  await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+});
+
+it("keeps Save off until something changes", () => {
+  renderWithProviders(<ProfileDetailsScreen />);
+  expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
 });
 
 it("refuses a one-letter name before any request", () => {

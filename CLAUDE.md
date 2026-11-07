@@ -304,20 +304,21 @@ sonner-native toasts, so flows shoot toasts best-effort.
 
 ### Settings and account (owner, 2026-11-06)
 
-- Two settings pages, each its own More entry (no Settings hub, owner 2026-11-07):
-  `settings/profile` "Profile settings" (name, phone, date of birth, address —
-  `User` columns, PATCH /me, every role) and `settings/notifications`
-  "Notification settings" (push first; the per-kind switches show only once
-  push is on for the phone). MENTOR reaches both from Profile.
-- Home's bell opens `/notifications` and the avatar opens Profile settings: plain
+- **One Profile page** (owner, 2026-11-07): `/profile` is read-only (name, email, phone, date
+  of birth, address; a student's or alumnus's university, faculty, graduation year and
+  "School of N"), with no role badge and no season figures. Its Edit opens `/edit-profile`, one
+  form with one Save: the `User` columns (PATCH /me, every role) and, for a student or a
+  studying alumnus, the academic record (PATCH /me/profile); an alumnus's academic record is
+  read-only. Profile is in no sidebar: More's name row and Home's avatar open it (MENTOR and
+  alumni also have it as a tab). Notification settings open from the gear on Notifications.
+- Home's bell opens `/notifications` and the avatar opens Profile: plain
   buttons, never dropdowns (owner, 2026-11-07). The theme lives on More (Profile for MENTOR).
 - No password form in the app: "Forgot password?" on sign-in is the only way
   to set one. No "Sign out everywhere".
 - Sign out and Delete account (DELETE /me, a soft delete) live on More; on
   Profile for MENTOR, who has no More tab.
-- The student Profile tab edits only university, faculty and university
-  graduation year (`StudentProfile.universityGraduationYear`, may be in the
-  future — not `User.graduationYear`, which marks a JPCS alumnus).
+- A student's graduation year is the university's (`StudentProfile.universityGraduationYear`,
+  may be in the future — not `User.graduationYear`, which marks a JPCS alumnus).
 
 ### Graduating seasons (owner, 2026-11-07)
 

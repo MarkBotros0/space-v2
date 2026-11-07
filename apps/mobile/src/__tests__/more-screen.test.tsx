@@ -29,29 +29,32 @@ describe("MoreScreen", () => {
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["Current Season", "Attendance", "History", "Profile", "Profile settings"]) {
+    for (const label of ["Current Season", "Attendance", "History"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
+    // Owner 2026-11-07: Profile opens from the name row, not a row of its own.
+    expect(screen.queryByText("Profile")).toBeNull();
+    expect(screen.queryByText("Profile settings")).toBeNull();
     // Already tabs: never duplicated in More.
     expect(screen.queryByText("Work")).toBeNull();
     expect(screen.queryByText("Assignments")).toBeNull();
     expect(screen.queryByText("Quizzes")).toBeNull();
   });
 
-  it("shows the leader's More rows (v1 Quizzes + the two settings pages, plus v2's My notes and Notifications, B3-7)", () => {
+  it("shows the leader's More rows (v1 Quizzes, plus v2's My notes and Notifications, B3-7)", () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { name: "Lina Leader" }));
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["My notes", "Quizzes", "Notifications", "Profile settings"]) {
+    for (const label of ["My notes", "Quizzes", "Notifications"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
     expect(screen.queryByText("Submissions")).toBeNull();
     expect(screen.queryByText("Calendar")).toBeNull();
-    expect(screen.getByText("LEADER")).toBeTruthy();
+    expect(screen.queryByText("LEADER")).toBeNull();
   });
 
-  it("shows the account card: initials, name and role", () => {
+  it("shows the account card: initials and name, no role badge, opening Profile", () => {
     useSessionStore.setState(makeSession("STUDENT", {}, { name: "Mina Adel" }));
 
     renderWithProviders(<MoreScreen />);
@@ -60,10 +63,12 @@ describe("MoreScreen", () => {
 
     expect(screen.getByText("MA")).toBeTruthy();
     expect(screen.getByText("Mina Adel")).toBeTruthy();
-    expect(screen.getByText("STUDENT")).toBeTruthy();
+    expect(screen.queryByText("STUDENT")).toBeNull();
+    fireEvent.press(screen.getByText("Mina Adel"));
+    expect(mockPush).toHaveBeenCalledWith("/profile");
   });
 
-  it("shows a different set for an admin, and an alumnus gets only the settings pages", () => {
+  it("shows a different set for an admin, and an alumnus gets only Notifications", () => {
     useSessionStore.setState(makeSession("ADMIN"));
     const { unmount } = renderWithProviders(<MoreScreen />);
     expect(screen.getByText("Reports")).toBeTruthy();
@@ -72,7 +77,7 @@ describe("MoreScreen", () => {
 
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }));
     renderWithProviders(<MoreScreen />);
-    expect(screen.getByText("Profile settings")).toBeTruthy();
+    expect(screen.getByText("Notifications")).toBeTruthy();
     expect(screen.queryByText("Notification settings")).toBeNull();
     expect(screen.queryByText("History")).toBeNull();
   });

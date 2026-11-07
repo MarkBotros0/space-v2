@@ -1,6 +1,7 @@
 /**
  * The /more page (v1 src/components/layout/more-menu.tsx) on grouped rows: an
- * identity row (initials, name, role badge), the sidebar destinations that
+ * identity row (initials and name, no badge) that opens Profile (owner,
+ * 2026-11-07), the sidebar destinations that
  * are not tabs, Appearance with the theme toggle, and Sign out and Delete
  * account as destructive rows. Rows navigate through onNavigate. Row icons come from the
  * tab bar's map (NavIcon), so a destination looks the same in the bar and here.
@@ -13,11 +14,9 @@ import { moreItemsFor } from "../../lib/nav-routes";
 import { NavIcon } from "../icons/nav-icon";
 import { iconWithClassName } from "../lib/icon";
 import { GroupedList, ListRow } from "../ui/grouped-list";
-import { Badge } from "../ui/badge";
 import { Text } from "../ui/text";
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Screen } from "./screen";
-import { roleBadge } from "./user-menu";
 
 iconWithClassName(LogOut, Trash2);
 
@@ -31,22 +30,18 @@ function initialsFor(name: string | null, role: UserRole): string {
 
 export function MoreMenu({
   role,
-  graduationYear = null,
-  activeSeasonId = null,
   userName,
   nav,
   onNavigate,
+  onOpenProfile,
   onSignOut,
   onDeleteAccount,
 }: {
   role: UserRole;
-  /** Set for a graduated student, whose badge reads ALUMNI. */
-  graduationYear?: number | null;
-  /** With a graduation year, an alumnus studying. */
-  activeSeasonId?: number | null;
   userName: string | null;
   nav: RoleNav;
   onNavigate: (href: string) => void;
+  onOpenProfile: () => void;
   onSignOut: () => void;
   /** Omitted: no Delete account row. */
   onDeleteAccount?: () => void;
@@ -54,20 +49,21 @@ export function MoreMenu({
   // The same list more-back.test.tsx walks: sidebar entries that are not a tab.
   const items = moreItemsFor(nav);
   const name = userName?.trim() || null;
-  const badge = roleBadge(role, graduationYear, activeSeasonId);
   return (
     <Screen title="More" subtitle="Account, settings, and more places to go.">
       <View className="flex-col gap-6">
         <GroupedList>
           <ListRow
-            title={name ?? badge.label}
+            title={name ?? "Your profile"}
+            subtitle="View and edit your profile"
             titleLines={2}
             leading={
               <View className="size-10 items-center justify-center rounded-full bg-muted">
                 <Text variant="headline">{initialsFor(name, role)}</Text>
               </View>
             }
-            trailing={name ? <Badge role={badge.color}>{badge.label}</Badge> : undefined}
+            chevron
+            onPress={onOpenProfile}
           />
         </GroupedList>
         {items.length > 0 ? (

@@ -189,21 +189,21 @@ describe("Screen: home (ruling R13)", () => {
   it("home renders the bell and the user menu", () => {
     renderWithProviders(<Screen home>{body}</Screen>);
     expect(screen.getByLabelText("Notifications (3 unread)")).toBeTruthy();
-    expect(screen.getByLabelText("Profile settings")).toBeTruthy();
+    expect(screen.getByLabelText("Profile")).toBeTruthy();
   });
 
   it("a screen that is not home has neither", () => {
     renderWithProviders(<Screen title="Calendar">{body}</Screen>);
     expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
-    expect(screen.queryByLabelText("Profile settings")).toBeNull();
+    expect(screen.queryByLabelText("Profile")).toBeNull();
   });
 
-  it("the bell opens Notifications and the avatar Profile settings, as screens (owner, 2026-11-07)", () => {
+  it("the bell opens Notifications and the avatar Profile, as screens (owner, 2026-11-07)", () => {
     renderWithProviders(<Screen home>{body}</Screen>);
     fireEvent.press(screen.getByLabelText("Notifications (3 unread)"));
     expect(mockPush).toHaveBeenLastCalledWith("/notifications");
-    fireEvent.press(screen.getByLabelText("Profile settings"));
-    expect(mockPush).toHaveBeenLastCalledWith("/settings/profile");
+    fireEvent.press(screen.getByLabelText("Profile"));
+    expect(mockPush).toHaveBeenLastCalledWith("/profile");
   });
 });
 

@@ -19,7 +19,6 @@ jest.mock("../hooks/use-notifications", () => ({
 import { navByRole } from "@space/shared";
 
 import { HomeActions } from "../design/layout/home-actions";
-import { roleBadge } from "../design/layout/user-menu";
 import { dashboardBranchFor } from "../lib/dashboard-branch";
 import { useSessionStore } from "../store/session";
 import { eventRow, session } from "./helpers/calendar-fixtures";
@@ -33,6 +32,7 @@ import CalendarScreen from "../../app/(app)/(tabs)/calendar";
 import DashboardScreen from "../../app/(app)/(tabs)/dashboard";
 import HistoryScreen from "../../app/(app)/(tabs)/history";
 import ProfileScreen from "../../app/(app)/(tabs)/profile";
+import EditProfileScreen from "../../app/(app)/edit-profile";
 
 const DASHBOARD = "/api/v1/me/dashboard";
 const HISTORY = "/api/v1/me/season-history";
@@ -83,13 +83,19 @@ describe("while studying", () => {
     expect(screen.queryByTestId("redirect")).toBeNull();
   });
 
-  it("Profile is the student form, saying what they are; the university's year stays its own", async () => {
+  it("Profile names their class, and the university's year stays its own", async () => {
     serve({ [PROFILE]: { profile } });
     renderWithProviders(<ProfileScreen />);
-    expect(await screen.findByText("Alumnus · School of 2025")).toBeTruthy();
+    expect(await screen.findByText("School of 2025")).toBeTruthy();
     expect(screen.queryByText("Student")).toBeNull();
-    expect(screen.queryByText("Your alumni record")).toBeNull();
-    expect(screen.getByLabelText("University").props.value).toBe("Cairo University");
+    expect(screen.getByText("Cairo University")).toBeTruthy();
+    expect(screen.getByText("2031")).toBeTruthy();
+  });
+
+  it("Edit profile is the student's: the academic record is editable", async () => {
+    serve({ [PROFILE]: { profile } });
+    renderWithProviders(<EditProfileScreen />);
+    expect((await screen.findByLabelText("University")).props.value).toBe("Cairo University");
     expect(screen.getByLabelText("Graduation year").props.value).toBe("2031");
   });
 
@@ -114,10 +120,6 @@ describe("while studying", () => {
     renderWithProviders(<HistoryScreen />);
     expect(await screen.findByText("Seasons you've participated in")).toBeTruthy();
   });
-
-  it("the badge says they're studying, and keeps the alumni colour", () => {
-    expect(roleBadge("STUDENT", 2025, 7)).toEqual({ color: "alumni", label: "Alumnus · Studying" });
-  });
 });
 
 describe("once the season is over", () => {
@@ -133,10 +135,13 @@ describe("once the season is over", () => {
     expect(screen.getByTestId("redirect")).toHaveTextContent("/dashboard");
   });
 
-  it("Profile is the read-only alumni record", async () => {
+  it("Profile shows the alumni record, and Edit profile leaves the academic record alone", async () => {
     serve({ [PROFILE]: { profile: { ...profile, activeSeasonTitle: null } } });
-    renderWithProviders(<ProfileScreen />);
-    expect(await screen.findByText("Your alumni record")).toBeTruthy();
+    const { unmount } = renderWithProviders(<ProfileScreen />);
+    expect(await screen.findByText("School of 2025")).toBeTruthy();
+    unmount();
+    renderWithProviders(<EditProfileScreen />);
+    expect(screen.getByLabelText("Name")).toBeTruthy();
     expect(screen.queryByLabelText("University")).toBeNull();
   });
 
@@ -147,8 +152,7 @@ describe("once the season is over", () => {
     expect(screen.queryByText("Seasons you've participated in")).toBeNull();
   });
 
-  it("the badge reads ALUMNI, the menu asks for no profile", async () => {
-    expect(roleBadge("STUDENT", 2025, null)).toEqual({ color: "alumni", label: "ALUMNI" });
+  it("the menu asks for no profile", async () => {
     serve({});
     renderWithProviders(<HomeActions />);
     await settle();
