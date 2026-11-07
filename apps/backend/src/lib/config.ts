@@ -105,6 +105,10 @@ const envSchema = z.object({
   // Optional Expo access token. Required only if "enhanced push security" is
   // turned on for the project in Expo; then every send must carry it.
   EXPO_ACCESS_TOKEN: z.string().optional(),
+  // The secret Vercel Cron sends as `Authorization: Bearer …` to the daily
+  // follow-up reminder (owner, 2026-11-07). Unset: that endpoint is a 404 and
+  // no reminder is ever sent.
+  CRON_SECRET: z.string().min(16).optional(),
   // Sentry error reporting (lib/sentry.ts). Entirely off while SENTRY_DSN is
   // unset: nothing initialises and nothing is sent.
   SENTRY_DSN: z.string().optional(),
@@ -176,6 +180,7 @@ export const config = {
     parsed.data.RATE_LIMIT_STORE ?? (parsed.data.NODE_ENV === "test" ? "memory" : "postgres"),
   enablePush: parsed.data.ENABLE_PUSH,
   expoAccessToken: parsed.data.EXPO_ACCESS_TOKEN,
+  cronSecret: parsed.data.CRON_SECRET,
   sentryDsn: parsed.data.SENTRY_DSN,
   sentryEnvironment: parsed.data.SENTRY_ENVIRONMENT ?? parsed.data.NODE_ENV,
   sentryTracesSampleRate: parsed.data.SENTRY_TRACES_SAMPLE_RATE,

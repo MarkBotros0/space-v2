@@ -18,6 +18,7 @@ export * from "./user";
 export * from "./password-reset";
 export * from "./html-text";
 export * from "./note";
+export * from "./follow-up";
 export * from "./notification";
 export * from "./video-quiz";
 export * from "./forum";

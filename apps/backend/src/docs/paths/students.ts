@@ -16,6 +16,7 @@ export const studentPaths = {
         { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
         { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
         { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },
+        { name: "absentLately", in: "query", description: "MENTOR only (403 for anyone else; owner, 2026-11-07): students whose last two marked sessions that have started, in any season, were both ABSENT. A LATE or PRESENT mark breaks the run; fewer than two marks never counts. ANDed with the other filters.", schema: { type: "string", enum: ["1"] } },
         { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
       ],

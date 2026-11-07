@@ -17,6 +17,8 @@ import { studentsRouter } from "./routes/students";
 import { submissionsRouter } from "./routes/submissions";
 import { quizzesRouter } from "./routes/quizzes";
 import { seasonEngagementRouter, studentEngagementRouter } from "./routes/engagement";
+import { followUpsRouter, internalRouter, studentFollowUpsRouter } from "./routes/follow-ups";
+import { mentorSummaryRouter } from "./routes/mentor-summary";
 import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
 import { notificationsRouter } from "./routes/notifications";
 import { eventsRouter } from "./routes/events";
@@ -104,6 +106,11 @@ export function createApp(): Express {
   app.use("/api/v1/notes", notesRouter);
   app.use("/api/v1/students", studentNotesRouter);
   app.use("/api/v1/me", myNotesRouter);
+  // A mentor's follow-ups, mounted the same fall-through way (/students/:id/follow-ups).
+  app.use("/api/v1/follow-ups", followUpsRouter);
+  app.use("/api/v1/students", studentFollowUpsRouter);
+  app.use("/api/v1/internal", internalRouter);
+  app.use("/api/v1/me", mentorSummaryRouter);
   // Same fall-through mounting as the notes routers: /students/:id/engagement
   // and /seasons/:id/engagement cannot be matched by those domains' /:id
   // routes, and keeping this domain's arithmetic in one file keeps its single

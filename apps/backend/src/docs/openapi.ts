@@ -29,6 +29,7 @@ import { groupPaths } from "./paths/groups";
 import { userPaths } from "./paths/users";
 import { studentPaths } from "./paths/students";
 import { notesNotificationsPaths } from "./paths/notes-notifications";
+import { followUpPaths } from "./paths/follow-ups";
 import { sessionPaths } from "./paths/sessions";
 import { assignmentsSubmissionsPaths } from "./paths/assignments-submissions";
 import { quizAuthoringPaths } from "./paths/quizzes-authoring";
@@ -85,6 +86,7 @@ export const openApiDocument = {
     { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
     { name: "Events", description: "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)" },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
+    { name: "Follow-ups", description: "A mentor's follow-ups, the daily reminder and the mentor's Home figures" },
     { name: "Imports", description: "Paste-first bulk entry: SUPER student importer and season-scoped group importer (preview, then commit)" },
   ],
   security: [{ bearerAuth: [] }],
@@ -143,6 +145,7 @@ export const openApiDocument = {
     ...userPaths,
     ...studentPaths,
     ...notesNotificationsPaths,
+    ...followUpPaths,
     ...sessionPaths,
     ...assignmentsSubmissionsPaths,
     ...quizAuthoringPaths,

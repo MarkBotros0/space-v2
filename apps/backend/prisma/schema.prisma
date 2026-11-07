@@ -170,6 +170,8 @@ model User {
   enrollmentOverrides  SeasonEnrollment[] @relation("EnrollmentOverrideBy")
   graduationOverrides  User[]             @relation("GraduationOverrideBy")
   engagementNotesAbout EngagementNote[]   @relation("EngagementNoteStudent")
+  followUpsByMe        MentorFollowUp[]   @relation("FollowUpMentor")
+  followUpsAboutMe     MentorFollowUp[]   @relation("FollowUpStudent")
 
   notifications            Notification[]
   notificationPreference   NotificationPreference?
@@ -643,6 +645,26 @@ model EngagementNote {
 
   @@index([studentUserId, createdAt])
   @@index([authorUserId])
+}
+
+// A mentor's promise to come back to a student (owner, 2026-11-07). Due 7 days
+// after it is made; the daily reminder sends one MENTOR_FOLLOWUP to that mentor
+// and stamps remindedAt; it stays open until doneAt. At most one open per
+// mentor and student (a partial unique index in the migration).
+model MentorFollowUp {
+  id            Int       @id @default(autoincrement())
+  mentorUserId  Int
+  mentorUser    User      @relation("FollowUpMentor", fields: [mentorUserId], references: [id], onDelete: Cascade)
+  studentUserId Int
+  studentUser   User      @relation("FollowUpStudent", fields: [studentUserId], references: [id], onDelete: Cascade)
+  reason        String?
+  createdAt     DateTime  @default(now())
+  dueAt         DateTime
+  remindedAt    DateTime?
+  doneAt        DateTime?
+
+  @@index([mentorUserId, doneAt])
+  @@index([dueAt])
 }
 
 // ---------------------------------------------------------------------------

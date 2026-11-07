@@ -79,6 +79,7 @@ read outside that file). See `.env.example` for the full list.
 | `IMPORT_PREVIEW_RATE_LIMIT` | No | `30` | Import preview requests per 15 minutes per IP. |
 | `IMPORT_COMMIT_RATE_LIMIT` | No | `10` | Import commit requests per 15 minutes per IP. |
 | `RATE_LIMIT_STORE` | No | `postgres` (`memory` when `NODE_ENV=test`) | Where every rate limiter keeps its counters. `postgres` shares them across instances through the `RateLimitHit` table (migration `20261105130000_rate_limit_store` must be applied); `memory` is per process, which on serverless means per instance. |
+| `CRON_SECRET` | No | unset | The bearer secret Vercel Cron sends to `GET /api/v1/internal/follow-ups/remind` (daily, `vercel.json`). Unset: the endpoint is a 404 and no mentor follow-up reminder is sent. Set it in Vercel as a Sensitive variable named exactly `CRON_SECRET`; Vercel adds it to the cron request itself. |
 | `SENTRY_DSN` | No | unset | Turns on Sentry error reporting. Unset means Sentry is never initialised. See "Turning on Sentry" below. |
 | `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag on each event. |
 | `SENTRY_TRACES_SAMPLE_RATE` | No | `0` | Share of requests traced for performance, `0`–`1`. `0` reports errors only. |

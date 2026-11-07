@@ -89,6 +89,11 @@ export const studentListQuerySchema = z.object({
   dir: z.enum(["asc", "desc"]).default("asc"),
   /** Matches name, email or university, case-insensitive, ANDed with scope (R33). */
   q: z.string().trim().max(120).optional(),
+  /**
+   * MENTOR only (owner, 2026-11-07): students whose last two marked sessions,
+   * in any season, were both absences. Anyone else sending it gets 403.
+   */
+  absentLately: z.enum(["1"]).optional(),
   /** Row id of the last row of the previous page (enrollment id when status=dropped). */
   cursor: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),

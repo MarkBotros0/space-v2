@@ -27,6 +27,8 @@ export async function getStudentList(req: Request, res: Response) {
   const user = requireUser(req);
   const parsed = studentListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  // A mentor's filter (owner, 2026-11-07): no other role has a caller for it.
+  if (parsed.data.absentLately && user.role !== "MENTOR") return forbidden(res);
 
   const result = await listStudents(user, parsed.data);
   if (result === null) return forbidden(res);

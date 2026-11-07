@@ -120,7 +120,9 @@ export async function listNotesForStudent(
   if (scope === null) return null;
 
   const rows = await db.engagementNote.findMany({
-    where: { AND: [{ studentUserId }, scope, await noteSeasonWhere(user, studentUserId)] },
+    where: {
+      AND: [{ studentUserId }, scope, await noteSeasonWhere(user, studentUserId), writtenWithin(query.withinDays)],
+    },
     // createdAt is the domain's ordering key (R39) and the head of the
     // [studentUserId, createdAt] index; id breaks ties so the cursor is stable.
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -186,6 +188,11 @@ function authoredSeasonWhere(user: SessionUser): Prisma.EngagementNoteWhereInput
  * visibility filter a no-op over one's own notes — so it is a `where` clause,
  * not a post-filter.
  */
+/** `withinDays`: only notes written in the last N days (the mentor's "This week"). */
+export function writtenWithin(days: number | undefined, now = new Date()) {
+  return days === undefined ? {} : { createdAt: { gte: new Date(now.getTime() - days * 86_400_000) } };
+}
+
 export async function listAuthoredNotes(
   user: SessionUser,
   query: NoteListQuery,
@@ -197,6 +204,7 @@ export async function listAuthoredNotes(
       // own notes page already 404s.
       studentUser: { deletedAt: null },
       ...(query.studentId ? { studentUserId: query.studentId } : {}),
+      ...writtenWithin(query.withinDays),
       ...authoredSeasonWhere(user),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -223,7 +231,7 @@ export async function listVisibleNotes(
   if (scope === null) return null;
 
   const rows = await db.engagementNote.findMany({
-    where: { AND: [scope, { studentUser: { deletedAt: null } }] },
+    where: { AND: [scope, { studentUser: { deletedAt: null } }, writtenWithin(query.withinDays)] },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: query.limit + 1,
     ...cursorClause(query.cursor),

@@ -118,6 +118,17 @@ describe("GET /api/v1/me/visible-notes", () => {
     expect(ids).not.toContain(note.id);
   });
 
+  it("withinDays=7 keeps only the notes written in the last week (the mentor's This week)", async () => {
+    await db.engagementNote.update({
+      where: { id: f.mentorsNoteId },
+      data: { createdAt: new Date(Date.now() - 8 * 86_400_000) },
+    });
+    const week = (await get(f.mentorToken, "?limit=50&withinDays=7")).body.data.notes.map((n: { id: number }) => n.id);
+    expect(week).not.toContain(f.mentorsNoteId);
+    const all = (await get(f.mentorToken, "?limit=50")).body.data.notes.map((n: { id: number }) => n.id);
+    expect(all).toContain(f.mentorsNoteId);
+  });
+
   it.each([
     ["SUPER", () => f.superToken],
     ["ADMIN", () => f.adminToken],

@@ -13,6 +13,7 @@ export const notesNotificationsPaths = {
         idParam,
         { name: "cursor", in: "query", schema: { type: "string" } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        { name: "withinDays", in: "query", description: "Only notes written in the last N days (the mentor's This week is 7).", schema: { type: "integer", minimum: 1, maximum: 365 } },
       ],
       responses: {
         200: ok(
@@ -280,6 +281,7 @@ export const notesNotificationsPaths = {
         { name: "studentId", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "cursor", in: "query", schema: { type: "string" } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        { name: "withinDays", in: "query", description: "Only notes written in the last N days (the mentor's This week is 7).", schema: { type: "integer", minimum: 1, maximum: 365 } },
       ],
       responses: {
         200: ok(
@@ -310,6 +312,7 @@ export const notesNotificationsPaths = {
       parameters: [
         { name: "cursor", in: "query", schema: { type: "string" } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
+        { name: "withinDays", in: "query", description: "Only notes written in the last N days (the mentor's This week is 7).", schema: { type: "integer", minimum: 1, maximum: 365 } },
       ],
       responses: {
         200: ok(

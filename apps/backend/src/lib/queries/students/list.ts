@@ -9,6 +9,7 @@ import { seasonParticipant } from "../season-participants";
 import { currentSeasonEnrollmentSelect } from "./current-season";
 import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
 import { withLastSeason } from "./last-season";
+import { absentLatelyStudentIds } from "./absent-lately";
 
 export interface StudentListResult {
   students: StudentListItem[];
@@ -254,6 +255,8 @@ export async function listStudents(
           ? [{ groupStudentMemberships: { none: roster ?? {} } }]
           : [{ id: { in: await studentIdsWithCurrentGroup(query.groupId, roster) } }]),
       searchFilter(query.q),
+      // The mentor's "Absent lately" (owner, 2026-11-07); the route admits it for MENTOR only.
+      ...(query.absentLately ? [{ id: { in: await absentLatelyStudentIds() } }] : []),
     ],
   };
 

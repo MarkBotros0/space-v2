@@ -92,6 +92,8 @@ export const noteListQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
   studentId: z.coerce.number().int().positive().optional(),
+  /** Only notes written in the last N days (the mentor's "This week" is 7). */
+  withinDays: z.coerce.number().int().min(1).max(365).optional(),
 });
 export type NoteListQuery = z.output<typeof noteListQuerySchema>;
 
