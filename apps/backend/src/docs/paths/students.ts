@@ -197,7 +197,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Graduate a student (SUPER only)",
       description:
-        "SUPER only (R55). Body `{ graduationYear, override? }`, the year 1990 through the current year, evaluated per request. People normally graduate by passing a graduating season, at End. Someone without a COMPLETED, PASSED enrolment in a finished season with `graduatesOnPass` is refused with 409 `not_qualified` (\"Mina hasn't passed a graduating season.\") unless `override` is true; the `student.graduate` audit line records an override that was needed. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at), and marks the student's sessions stale so the current-season claim is re-read. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
+        "SUPER only (R55). Body `{ graduationYear, override? }`, the year 1990 through the current year, evaluated per request. People normally graduate by passing a graduating season, at End. Someone without a COMPLETED, PASSED enrolment in a finished season with `graduatesOnPass` is refused with 409 `not_qualified` (\"Mina hasn't passed a graduating season.\") unless `override` is true; the `student.graduate` audit line records an override that was needed. In one transaction: sets `graduationYear`, completes **every** ACTIVE enrollment (v1 completed only the one the profile pointed at; a row on a DRAFT season's roster is deleted instead, unless work is recorded on it), and marks the student's sessions stale so the current-season claim is re-read. WITHDRAWN and COMPLETED enrollments are untouched; `role` stays STUDENT. Irreversible: a second graduation is 409 `already_graduated`. `not_found` covers a non-student or deleted id. Writes a server-side audit line (ids only).",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -269,7 +269,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Drop an enrollment",
       description:
-        "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The one transition is ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`). `COMPLETED` is 409 `use_end_season` for everyone, SUPER included, before anything else is checked: finishing one student alone would skip pass/fail, so only ending the season or graduating completes a row. ACTIVE is not accepted in the body; `POST .../restore` is the way back. A non-ACTIVE row is 409 `not_active`. The row is transitioned in place and never deleted. Writes a server-side audit line (actor and subject ids only).",
+        "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The one transition is ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`). `COMPLETED` is 409 `use_end_season` for everyone, SUPER included, before anything else is checked: finishing one student alone would skip pass/fail, so only ending the season or graduating completes a row. ACTIVE is not accepted in the body; `POST .../restore` is the way back. The write holds the season's share lock, then the person's, and the update is conditional on ACTIVE, so a row that moved on answers 409 `not_active` rather than being overwritten. A finished season is 409 `season_finished`. A DRAFT season is 409 `season_draft`: a draft's row is a plan, so `DELETE /seasons/{id}/enrollments/{userId}` takes it off. The row is transitioned in place and never deleted. Writes a server-side audit line (actor and subject ids only).",
       parameters: [
         idParam,
         { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
@@ -295,7 +295,7 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`not_active`."),
+        409: conflict("`use_end_season`, `not_active`, `season_finished` or `season_draft`."),
       },
     },
   },

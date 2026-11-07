@@ -4,11 +4,14 @@ import type { SeasonWriteBody } from "@space/shared";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError } from "../../lib/api-response";
+import { seasonPeopleIds } from "../../lib/auth/season-people";
+import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { loadSeasonDetail } from "../../lib/queries/seasons";
 import { canAccessSeason } from "../../lib/permissions";
 import { isAdminOfSeason, isMentor, isSuper } from "../../lib/rbac";
+import { lockPeople, lockSeason } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import {
   SEASON_ADMIN_EDITABLE_FIELDS,
@@ -250,29 +253,32 @@ export async function deleteSeason(req: Request, res: Response) {
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
-  const existing = await db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
-  if (!existing) return apiError(res, "not_found", "Season not found.", 404);
-
   // Product decision on spec 02 D4 (recorded in the Revision note): v1
   // checked nothing and stranded children. v2 refuses while the season has
   // ANY enrollment or session — archive it (status ARCHIVED) instead. D4's
   // `force` escape hatch is not offered: a soft-deleted season with sessions
   // stays reachable by id everywhere (R50), which is the state D4 objects to.
-  const [enrollments, sessions] = await Promise.all([
-    db.seasonEnrollment.count({ where: { seasonId: id } }),
-    db.session.count({ where: { seasonId: id } }),
-  ]);
-  if (enrollments > 0 || sessions > 0) {
-    return apiError(
-      res,
-      "season_in_use",
-      "This season has sessions or enrollments; archive it instead.",
-      409,
-    );
-  }
+  // The check and the delete share the season's lock, so a seat going in lands
+  // wholly before the check or finds the season gone.
+  const outcome = await db.$transaction(async (tx) => {
+    await lockSeason(tx, id, "update");
+    const existing = await tx.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
+    if (!existing) return "not_found" as const;
+    const enrollments = await tx.seasonEnrollment.count({ where: { seasonId: id } });
+    const sessions = await tx.session.count({ where: { seasonId: id } });
+    if (enrollments > 0 || sessions > 0) return "in_use" as const;
 
-  // The current season is derived from live seasons, so a deleted one drops
-  // out of every scope on its own.
-  await db.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } });
+    // The current season is derived from live seasons, so a deleted one drops
+    // out of every scope on its own; its staff's next refresh picks that up now.
+    const people = await seasonPeopleIds(tx, id);
+    await lockPeople(tx, people);
+    await tx.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } });
+    await markSessionsStale(tx, people);
+    return "deleted" as const;
+  });
+  if (outcome === "not_found") return apiError(res, "not_found", "Season not found.", 404);
+  if (outcome === "in_use") {
+    return apiError(res, "season_in_use", "This season has sessions or enrollments; archive it instead.", 409);
+  }
   return apiOk(res, { deleted: true });
 }

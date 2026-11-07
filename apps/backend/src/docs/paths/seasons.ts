@@ -70,7 +70,7 @@ export const seasonPaths = {
       tags: ["Seasons"],
       summary: "Soft-delete a season",
       description:
-        "SUPER only. Refused with 409 `season_in_use` while the season has any enrollment or session — archive it instead (decision on spec 02 D4). The current season is derived from live seasons, so a deleted one drops out of every scope on its own.",
+        "SUPER only. Refused with 409 `season_in_use` while the season has any enrollment or session — archive it instead (decision on spec 02 D4). The check and the delete run under the season's lock, so a seat going in lands wholly before the check or finds the season gone. The current season is derived from live seasons, so a deleted one drops out of every scope on its own; its staff's sessions go stale, so their claims change on the next refresh.",
       parameters: [idParam],
       responses: {
         200: ok({ type: "object", properties: { deleted: { type: "boolean" } } }, "Deleted."),

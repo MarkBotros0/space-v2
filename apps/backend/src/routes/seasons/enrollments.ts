@@ -6,6 +6,7 @@ import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
+import { deleteDraftRow, hasWorkInSeason } from "../../lib/queries/students/writes";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import {
   isSeasonFinished,
@@ -119,30 +120,13 @@ export async function removeSeasonEnrollment(req: Request, res: Response) {
       return { code: "not_active", message: "Only someone active in the season can be removed." };
     }
 
-    const submission = await tx.submission.findFirst({
-      where: { studentUserId: userId, assignment: { seasonId } },
-      select: { id: true },
-    });
-    const attempt = await tx.quizAttempt.findFirst({
-      where: { studentUserId: userId, quiz: { seasonId } },
-      select: { id: true },
-    });
-    const attendance = await tx.attendance.findFirst({
-      where: { studentUserId: userId, session: { seasonId } },
-      select: { id: true },
-    });
-    const grade = await tx.quizGrade.findFirst({
-      where: { studentUserId: userId, quiz: { seasonId } },
-      select: { id: true },
-    });
     // Refused, not deleted along with the row: a record left behind couldn't be
     // cleared once they're off the roster, and re-adding them would revive it.
-    if (submission || attempt || attendance || grade) {
+    if (await hasWorkInSeason(tx, userId, seasonId)) {
       return { code: "has_work", message: "This person already has work or attendance recorded in this season." };
     }
 
-    await tx.groupStudent.deleteMany({ where: { seasonId, studentUserId: userId } });
-    await tx.seasonEnrollment.delete({ where: { id: row.id } });
+    await deleteDraftRow(tx, { id: row.id, seasonId, studentUserId: userId });
     await markSessionsStale(tx, [userId]);
     return null;
   });

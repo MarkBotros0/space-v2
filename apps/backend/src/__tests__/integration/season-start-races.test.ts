@@ -8,6 +8,7 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { lockSeason, type SeasonLockMode } from "../../lib/roles";
 import { createTestUser, login, reviewedOf } from "./fixtures";
+import { behind, holdTransaction } from "./lock-holds";
 import {
   app,
   as,
@@ -23,61 +24,16 @@ jest.setTimeout(120000);
 beforeAll(seedEnrollmentFixtures);
 afterAll(teardownEnrollmentFixtures);
 
-const HOLD_MS = 25_000;
-
-/**
- * Opens a transaction holding the season's row and whatever `work` does, and
- * keeps it open until `release`. The transaction's own timeout bounds a failure.
- */
-async function hold(seasonId: number, mode: SeasonLockMode, work: (tx: Prisma.TransactionClient) => Promise<unknown>) {
-  let release = () => {};
-  const gate = new Promise<void>((resolve) => (release = resolve));
-  let ready = (_pid: number) => {};
-  const held = new Promise<number>((resolve) => (ready = resolve));
-  const done = db.$transaction(
-    async (tx) => {
-      await lockSeason(tx, seasonId, mode);
-      await work(tx);
-      const rows = await tx.$queryRaw<{ pid: number }[]>`SELECT pg_backend_pid() AS pid`;
-      ready(rows[0]!.pid);
-      await gate;
-    },
-    { timeout: HOLD_MS, maxWait: 10_000 },
-  );
-  const pid = await Promise.race([held, done.then(() => Promise.reject(new Error("hold ended early")))]);
-  return { pid, release, done };
-}
-
-/** Until a backend is queued behind `pid`. Fails, rather than hangs, if nothing ever is. */
-async function untilBlockedBehind(pid: number) {
-  const deadline = Date.now() + 15_000;
-  while (Date.now() < deadline) {
-    const rows = await db.$queryRaw<{ n: number }[]>`
-      SELECT count(*)::int AS n FROM pg_stat_activity WHERE ${pid}::int = ANY(pg_blocking_pids(pid))`;
-    if (rows[0]!.n > 0) return;
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  throw new Error("nothing queued behind the held season row");
-}
+/** Holds the season's row and whatever `work` does, until `release`. */
+const hold = (seasonId: number, mode: SeasonLockMode, work: (tx: Prisma.TransactionClient) => Promise<unknown>) =>
+  holdTransaction(async (tx) => {
+    await lockSeason(tx, seasonId, mode);
+    await work(tx);
+  });
 
 /** A season "being started" by another request: locked and ACTIVE, uncommitted. */
 const startingNow = (seasonId: number) =>
   hold(seasonId, "update", (tx) => tx.season.update({ where: { id: seasonId }, data: { status: "ACTIVE" } }));
-
-/** One held side, one route behind it: returns the route's answer once the hold commits. */
-async function behind<T>(
-  held: { pid: number; release: () => void; done: Promise<unknown> },
-  send: () => PromiseLike<T>,
-): Promise<T> {
-  const answer = Promise.resolve(send());
-  try {
-    await untilBlockedBehind(held.pid);
-  } finally {
-    held.release();
-    await held.done;
-  }
-  return answer;
-}
 
 const activeRoleRows = async (userId: number) => {
   const live = { status: "ACTIVE", deletedAt: null } as const;

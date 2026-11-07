@@ -10,6 +10,7 @@ import { isUniqueViolation } from "../../lib/prisma-errors";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import {
   isSeasonFinished,
+  lockPeople,
   readSeatSeason,
   refusalStatus,
   restoreStudentSeat,
@@ -98,6 +99,9 @@ async function enrollOne(
  * The row is transitioned in place, never deleted. COMPLETED is refused for
  * everyone, before anything is read: finishing one student alone would skip
  * pass/fail, so End season and graduation are the only ways to complete a row.
+ *
+ * A seat write like any other: the season's share lock, then the person, then
+ * the row. A drop goes in wholly before End's check or finds the season finished.
  */
 export async function updateEnrollment(req: Request, res: Response) {
   const user = requireUser(req);
@@ -118,28 +122,38 @@ export async function updateEnrollment(req: Request, res: Response) {
   // existed (R65).
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
-  const enrollment = await db.seasonEnrollment.findUnique({
-    where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
-    select: { id: true, status: true },
-  });
-  if (!enrollment) return apiError(res, "not_found", "Enrollment not found.", 404);
-  if (enrollment.status !== "ACTIVE") {
-    // R49: only an active row can be dropped; a restore is the one way back (R50).
-    return apiError(res, "not_active", "Only an active enrollment can be dropped.", 409);
-  }
+  const { dropReason } = parsed.data;
+  const outcome = await db.$transaction(async (tx): Promise<SeatRefusal | { id: number; status: string }> => {
+    const season = await readSeatSeason(tx, seasonId);
+    if (!season) return { code: "not_found", message: "Enrollment not found." };
+    if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
+    // A draft's row is a plan: dropping would leave a "Did not finish" for a season they were never in.
+    if (season.status === "DRAFT") {
+      return { code: "season_draft", message: "This season hasn't started. Remove them from it instead." };
+    }
+    await lockPeople(tx, [id]);
 
-  const updated = await db.$transaction(async (tx) => {
-    const row = await tx.seasonEnrollment.update({
-      where: { id: enrollment.id },
-      data: { status: "WITHDRAWN", droppedAt: new Date(), dropReason: parsed.data.dropReason ?? null },
+    const where = { studentUserId: id, seasonId };
+    // Conditional, so a row that moved on since it was last read is never overwritten.
+    const [row] = await tx.seasonEnrollment.updateManyAndReturn({
+      where: { ...where, status: "ACTIVE" },
+      data: { status: "WITHDRAWN", droppedAt: new Date(), dropReason: dropReason ?? null },
       select: { id: true, status: true },
     });
+    if (!row) {
+      const exists = await tx.seasonEnrollment.count({ where });
+      // R49: only an active row can be dropped; a restore is the one way back (R50).
+      return exists > 0
+        ? { code: "not_active", message: "Only an active enrollment can be dropped." }
+        : { code: "not_found", message: "Enrollment not found." };
+    }
     // The student's derived current season may have just changed.
     await markSessionsStale(tx, [id]);
     return row;
   });
+  if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
   auditLog("enrollment.drop", user.userId, id);
-  return apiOk(res, updated);
+  return apiOk(res, outcome);
 }
 
 /**

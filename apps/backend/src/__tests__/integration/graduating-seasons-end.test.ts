@@ -44,12 +44,12 @@ describe("End of a graduating season", () => {
 
   it("closes a graduate's seat in another season with no result, as graduating anyone does", async () => {
     const seasonId = await seasonOf("ACTIVE", true);
-    const draft = await seasonOf("DRAFT", false);
+    const other = await seasonOf("ACTIVE", false);
     const student = await person("Held");
     await enrol(seasonId, student.id);
-    await enrol(draft, student.id);
+    await enrol(other, student.id);
     expect((await end(seasonId)).status).toBe(200);
-    expect(await rowOf(draft, student.id)).toMatchObject({ status: "COMPLETED", result: null });
+    expect(await rowOf(other, student.id)).toMatchObject({ status: "COMPLETED", result: null });
   });
 
   it("ends the graduate's session; the next refresh reads alumni", async () => {

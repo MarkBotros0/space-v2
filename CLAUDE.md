@@ -385,7 +385,11 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 - **`lib/roles` guards every seat write**: `activeRolesFor` reads a person's one active role,
   `lockPeople` / `lockSeason` take the row locks, and the refusal helpers (`seatRefusal`,
   `checkStudentSeat`, ...) answer 409 with the reason in words. Lock order is **Season, then
-  People**, always; a new seat-writing path takes both in that order inside its transaction.
+  People, then rows**, always; a new seat-writing path takes them in that order inside its
+  transaction. That covers every enrolment-status write: a drop refuses a finished season
+  (`season_finished`) and a draft (`season_draft`; Remove is the way off a draft), and updates only
+  `where status ACTIVE`. End locks People before it writes a row and graduates only those whose row
+  it completed. `deleteSeason` checks and deletes under the Season lock, and marks its staff stale.
   Staff must be alumni (`graduationYear` set), with no override; a student in a regular season must
   not be.
 - **Season role changes sign nobody out.** Assigning or removing a season role calls
@@ -399,7 +403,8 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 - **Graduation.** Super marks a season Graduating (`Season.graduatesOnPass`). Passing it graduates
   the student automatically at End (see "Graduating seasons" above). Super may graduate an
   exception without a pass via `POST /students/:id/graduate` with `override: true`, behind one
-  extra confirm; it is audited.
+  extra confirm; it is audited. Graduating deletes a place on a draft's roster, under Remove's rule
+  (with work recorded on it, the row completes instead), and completes the rest.
 
 ## Community model, Build 1 (owner rulings, 2026-11-06)
 

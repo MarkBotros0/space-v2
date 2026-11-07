@@ -99,11 +99,18 @@ export async function endSeason(req: Request, res: Response) {
         throw new EndRefused("bad_request", 400, "notPassed names a student who is not active in this season.");
       }
 
+      // Season, people, rows: the same order as a graduation or a correction, which
+      // hold the person and then write the row. A person is seated only under the
+      // season's lock, so this list can't grow.
+      const people = await seasonPeopleIds(tx, id);
+      await lockPeople(tx, people);
+
       const passedIds = [...activeIds].filter((uid) => !reasons.has(uid));
       const stamp = { status: "COMPLETED" as const, completedAt: now, resultSetAt: now };
-      await tx.seasonEnrollment.updateMany({
+      const completed = await tx.seasonEnrollment.updateManyAndReturn({
         where: { seasonId: id, status: "ACTIVE", studentUserId: { in: passedIds } },
         data: { ...stamp, result: "PASSED", resultReason: null },
+        select: { studentUserId: true },
       });
       for (const [uid, reason] of reasons) {
         await tx.seasonEnrollment.updateMany({
@@ -123,14 +130,14 @@ export async function endSeason(req: Request, res: Response) {
       if (unreviewed > 0) {
         throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
       }
+      // Only those whose row was completed just now: someone who left it while End
+      // waited for them didn't pass. Under the people's locks, since a seat write
+      // elsewhere reads graduationYear under them.
+      const graduated = check.graduatesOnPass
+        ? await graduatePassed(tx, completed.map((c) => c.studentUserId), graduationYearFor(season.endDate, now))
+        : [];
       // Stamped now, not at the transaction's start: a token refreshed after that
       // start still carries the old grants and must fall before the cut-off.
-      const people = await seasonPeopleIds(tx, id);
-      await lockPeople(tx, people);
-      // Under the people's locks: a seat write elsewhere reads graduationYear under them.
-      const graduated = check.graduatesOnPass
-        ? await graduatePassed(tx, passedIds, graduationYearFor(season.endDate, now))
-        : [];
       await markSessionsStale(tx, people, new Date());
       const row = await tx.season.findUniqueOrThrow({ where: { id }, select: { id: true, code: true, status: true } });
       return { season: row, graduated };
