@@ -283,6 +283,29 @@ describe("StudentToday: figures", () => {
     expect(mockPush).toHaveBeenCalledWith("/season");
   });
 
+  // Owner 2026-11-07: the season, then the session and its check-in, then To do.
+  it("puts the season card first, then the session, then To do", async () => {
+    serve(routes());
+    renderWithProviders(<StudentToday />);
+    await screen.findByText("Check In");
+    await screen.findByLabelText("Open Spring 2099");
+    const texts: string[] = [];
+    const walk = (n: unknown): void => {
+      if (typeof n === "string") texts.push(n);
+      else if (Array.isArray(n)) n.forEach(walk);
+      else if (n && typeof n === "object") {
+        const node = n as { props?: { accessibilityLabel?: string }; children?: unknown[] };
+        if (node.props?.accessibilityLabel) texts.push(node.props.accessibilityLabel);
+        node.children?.forEach(walk);
+      }
+    };
+    walk(screen.toJSON());
+    const at = (t: string) => texts.findIndex((x) => x === t || x.startsWith(t));
+    expect(at("Open Spring 2099")).toBeGreaterThanOrEqual(0);
+    expect(at("Open Spring 2099")).toBeLessThan(at("Week 6"));
+    expect(at("Week 6")).toBeLessThan(at("TO DO"));
+  });
+
   it("season card: nothing scheduled, and complete", async () => {
     const none = { ...studentDashboard, progress: { sessionsHeld: 0, sessionsTotal: 0, pct: null } };
     serve(routes({ [DASHBOARD]: none }));

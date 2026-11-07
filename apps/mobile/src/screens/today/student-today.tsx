@@ -117,6 +117,8 @@ export function StudentToday() {
       ) : data.season ? (
         <View className="flex-col gap-4">
           {stale}
+          {/* Owner 2026-11-07: the season first, then the session and its check-in, then To do. */}
+          <TodayFigures data={data} attendance={attendance} />
           <NextSessionHero
             session={data.nextSession}
             todayOrgDay={data.todayOrgDay}
@@ -128,7 +130,6 @@ export function StudentToday() {
             todayOrgDay={data.todayOrgDay}
           />
           {late > 0 ? <LateCallout count={late} /> : null}
-          <TodayFigures data={data} attendance={attendance} />
           <UpcomingEventsCard query={events} />
         </View>
       ) : (
