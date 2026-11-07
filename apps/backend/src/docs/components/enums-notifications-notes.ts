@@ -29,7 +29,7 @@ export const enumsNotificationsNotesSchemas = {
     required: ["id", "type", "title", "body", "link", "target", "readAt", "createdAt"],
     properties: {
       id: { type: "integer" },
-      type: { type: "string", enum: ["ASSIGNMENT_CREATED", "SUBMISSION_REVIEWED", "SESSION_RESCHEDULED", "LOW_ATTENDANCE_FLAG", "MENTOR_FOLLOWUP", "QUIZ_GRADED", "QUIZ_PUBLISHED", "SUBMISSION_RECEIVED", "SESSION_CANCELLED"] },
+      type: { type: "string", enum: ["ASSIGNMENT_CREATED", "SUBMISSION_REVIEWED", "SESSION_RESCHEDULED", "LOW_ATTENDANCE_FLAG", "MENTOR_FOLLOWUP", "QUIZ_GRADED", "QUIZ_PUBLISHED", "SUBMISSION_RECEIVED", "SESSION_CANCELLED", "ANNOUNCEMENT"] },
       title: { type: "string" },
       body: { type: ["string", "null"] },
       link: { type: ["string", "null"], description: "The raw v1 path, still written for v1's benefit. Render `target`." },
@@ -40,7 +40,7 @@ export const enumsNotificationsNotesSchemas = {
   },
   NotificationPreferences: {
     type: "object",
-    required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup", "quizGraded", "quizPublished", "submissionReceived", "sessionCancelled"],
+    required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup", "quizGraded", "quizPublished", "submissionReceived", "sessionCancelled", "announcement"],
     description: "One boolean per notification type — all nine keys. A user with no stored row is opted in to everything.",
     properties: {
       assignmentCreated: { type: "boolean" },
@@ -52,6 +52,7 @@ export const enumsNotificationsNotesSchemas = {
       quizPublished: { type: "boolean" },
       submissionReceived: { type: "boolean" },
       sessionCancelled: { type: "boolean" },
+      announcement: { type: "boolean" },
     },
   },
   DeviceRegistration: {

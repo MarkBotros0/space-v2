@@ -46,5 +46,8 @@ export function routeForTarget(target: NotificationTarget | null): NotificationR
         : { pathname: "/student/[id]", params: { id: String(target.entityId) } };
     case "submission":
       return { pathname: "/submission/[publicId]", params: { publicId: target.entityId } };
+    case "announcement":
+      // No /news/[id] route yet (Task 6 adds it and returns it here).
+      return null;
   }
 }

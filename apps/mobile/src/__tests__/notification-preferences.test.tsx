@@ -27,6 +27,7 @@ const allTrue = {
   quizPublished: true,
   submissionReceived: true,
   sessionCancelled: true,
+  announcement: true,
 };
 
 beforeEach(() => {

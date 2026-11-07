@@ -30,6 +30,7 @@ export const notificationEntityTypeSchema = z.enum([
   "calendar",
   "student",
   "submission",
+  "announcement",
 ]);
 export type NotificationEntityType = z.infer<typeof notificationEntityTypeSchema>;
 
@@ -125,6 +126,7 @@ export const NOTIFICATION_PREFERENCE_KEY_BY_TYPE = {
   QUIZ_PUBLISHED: "quizPublished",
   SUBMISSION_RECEIVED: "submissionReceived",
   SESSION_CANCELLED: "sessionCancelled",
+  ANNOUNCEMENT: "announcement",
 } as const satisfies Record<NotificationType, string>;
 
 export type NotificationPreferenceKey =
@@ -149,6 +151,7 @@ export const notificationPreferencesSchema = z.object({
   quizPublished: z.boolean(),
   submissionReceived: z.boolean(),
   sessionCancelled: z.boolean(),
+  announcement: z.boolean(),
 }) satisfies z.ZodType<Record<NotificationPreferenceKey, boolean>>;
 export type NotificationPreferences = z.infer<typeof notificationPreferencesSchema>;
 
@@ -163,6 +166,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   quizPublished: true,
   submissionReceived: true,
   sessionCancelled: true,
+  announcement: true,
 };
 
 export const notificationPreferencesResponseSchema = z.object({
@@ -193,6 +197,7 @@ export const PUSH_NOTIFICATION_TYPES = [
   "QUIZ_PUBLISHED",
   "SUBMISSION_RECEIVED",
   "SESSION_CANCELLED",
+  "ANNOUNCEMENT",
 ] as const satisfies readonly NotificationType[];
 
 export function shouldPush(type: NotificationType): boolean {

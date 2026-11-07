@@ -62,6 +62,10 @@ const LABELS: Record<ShownKey, { label: string; help: string }> = {
     // Spec D12: v1's copy said three. The rule is two.
     help: "When a student you lead/admin misses two in a row.",
   },
+  announcement: {
+    label: "News",
+    help: "When an admin or super posts news to you or your season.",
+  },
 };
 
 /** What a student is sent: their work, their quizzes, their sessions. */

@@ -20,6 +20,7 @@ export * from "./html-text";
 export * from "./note";
 export * from "./follow-up";
 export * from "./notification";
+export * from "./announcement";
 export * from "./video-quiz";
 export * from "./forum";
 export * from "./event";
