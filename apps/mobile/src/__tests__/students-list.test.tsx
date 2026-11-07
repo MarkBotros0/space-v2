@@ -351,6 +351,10 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     renderWithProviders(<StudentsScreen />);
     expect(await screen.findByText("Cairo University · Engineering")).toBeTruthy();
     expect(screen.queryByText(/Spring 2099/)).toBeNull();
+    // Their people are a Community of members, students and alumni alike (owner, 2026-11-07).
+    expect(screen.getByText("Community")).toBeTruthy();
+    expect(screen.getByLabelText("Search members")).toBeTruthy();
+    expect(screen.queryByText("Students")).toBeNull();
     fireEvent.press(screen.getByLabelText("Filter"));
     expect(await screen.findByText("WHO")).toBeTruthy();
     expect(screen.queryByText("GROUP")).toBeNull();
@@ -365,6 +369,6 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     serve();
     renderWithProviders(<StudentsScreen />);
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&absentLately=1"));
-    expect(await screen.findByText("1 student absent lately")).toBeTruthy();
+    expect(await screen.findByText("1 member absent lately")).toBeTruthy();
   });
 });

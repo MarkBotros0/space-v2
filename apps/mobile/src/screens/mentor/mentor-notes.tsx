@@ -33,7 +33,7 @@ export function MentorNotes({ initialRange }: { initialRange: Range }) {
       <EmptyState
         icon={Flag}
         title={range === "week" ? "No notes this week" : "No notes yet"}
-        description="Notes written about students appear here. Open a student to write one."
+        description="Notes written about members appear here. Open a member to write one."
       />
     );
   else

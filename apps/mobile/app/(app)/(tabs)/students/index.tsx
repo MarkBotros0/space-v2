@@ -14,6 +14,8 @@ export default function StudentsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ show?: string; absent?: string }>();
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  // A mentor's people are their Community of members, students and alumni alike (owner, 2026-11-07).
+  const isMentor = useSessionStore((s) => s.user?.role === "MENTOR");
   // LEADER is included: their nav has no /students tab, but the endpoint
   // narrows them to their groups' members, and the route stays reachable by
   // navigation (spec 06 §9's leader-roster decision, answered "yes, scoped").
@@ -23,7 +25,7 @@ export default function StudentsScreen() {
       // The mentor's Home card "Absent lately" opens the list on it.
       absentLately={params.absent === "1"}
       allowedRoles={["SUPER", "ADMIN", "MENTOR", "LEADER"]}
-      title="Students"
+      title={isMentor ? "Community" : "Students"}
       // Creation is SUPER-only (Plan 7's POST /students).
       headerAction={
         isSuper ? <Button onPress={() => router.push("/students/new")}>New student</Button> : null

@@ -48,8 +48,9 @@ const COPY = {
 } as const;
 
 /** The mentor's count line: no "your seasons" (owner, 2026-11-07). */
+/** A mentor's people are members, students and alumni alike (owner, 2026-11-07). */
 function mentorSubtitle(n: number, absent: boolean): string {
-  const people = `${n} ${n === 1 ? "student" : "students"}`;
+  const people = `${n} ${n === 1 ? "member" : "members"}`;
   return absent ? `${people} absent lately` : people;
 }
 
@@ -131,17 +132,19 @@ export function StudentList({
     body = (
       <EmptyState
         icon={copy.icon}
-        title={filtered ? "No matches" : copy.emptyTitle}
+        title={filtered ? "No matches" : mentor && shown === "active" ? "No members yet" : copy.emptyTitle}
         description={
           q
-            ? "No students match your search."
+            ? `No ${mentor ? "members" : "students"} match your search.`
             : view.absentLately
               ? "Nobody has missed their last two sessions."
               : view.groupId !== null
               ? "No students are in that group."
               : view.seasonId !== null
                 ? "No students are in that season."
-                : copy.emptyDescription
+                : mentor && shown === "active"
+                  ? "Members will appear here once they join a season."
+                  : copy.emptyDescription
         }
       />
     );
@@ -176,10 +179,10 @@ export function StudentList({
       {/* Owner 2026-11-07: Filter is an icon button in the search row. */}
       <View className="flex-row items-center gap-2">
         <SearchField
-          accessibilityLabel="Search students"
+          accessibilityLabel={mentor ? "Search members" : "Search students"}
           value={search}
           onChangeText={setSearch}
-          placeholder="Search students"
+          placeholder={mentor ? "Search members" : "Search students"}
           onSubmitEditing={commit}
           className="min-w-0 flex-1"
         />

@@ -78,7 +78,7 @@ export function MentorDashboard() {
               onPress={() => router.push({ pathname: "/notes", params: { range: "week" } })}
             />
             <FigureTile
-              label="Students"
+              label="Members"
               value={String(summary.data.students)}
               icon={Users}
               onPress={() => router.push("/students")}

@@ -67,7 +67,7 @@ export default function FollowUpsScreen() {
       <EmptyState
         icon={Flag}
         title="No follow-ups"
-        description="Open a student and tap Follow up to come back to them in a week."
+        description="Open a member and tap Follow up to come back to them in a week."
       />
     );
   } else {

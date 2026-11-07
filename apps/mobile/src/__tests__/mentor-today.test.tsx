@@ -63,7 +63,7 @@ describe("MentorDashboard (owner, 2026-11-07)", () => {
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/students", params: { absent: "1" } });
     fireEvent.press(screen.getByLabelText(/^Notes this week/));
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/notes", params: { range: "week" } });
-    fireEvent.press(screen.getByLabelText(/^Students/));
+    fireEvent.press(screen.getByLabelText(/^Members/));
     expect(mockPush).toHaveBeenLastCalledWith("/students");
   });
 

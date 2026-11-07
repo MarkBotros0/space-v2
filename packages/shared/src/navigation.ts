@@ -16,6 +16,9 @@ import type { UserRole } from "./auth";
  * is what More lists. Profile is in no sidebar (owner, 2026-11-07): More's name
  * row and Home's avatar open it, and MENTOR and alumni have it as a tab.
  * Notification settings open from the gear on the Notifications screen.
+ *
+ * The mentor's /students is their **Community** of members, students and alumni
+ * alike (owner, 2026-11-07): the route keeps its name, the words do not.
  */
 
 export type NavIconName =
@@ -150,14 +153,14 @@ const STUDENT: RoleNav = {
 const MENTOR: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-    { href: "/students", label: "Students", icon: "students" },
+    { href: "/students", label: "Community", icon: "users" },
     { href: "/notes", label: "Notes", icon: "notes" },
     { href: "/follow-ups", label: "Follow-ups", icon: "followUps" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
   ],
   tabs: [
     { href: "/dashboard", label: "Home", icon: "home" },
-    { href: "/students", label: "Students", icon: "students" },
+    { href: "/students", label: "Community", icon: "users" },
     { href: "/notes", label: "Notes", icon: "notes" },
     { href: "/follow-ups", label: "Follow-ups", icon: "followUps" },
     { href: "/profile", label: "Profile", icon: "profile" },

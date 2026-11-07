@@ -461,7 +461,7 @@ Spec: `docs/superpowers/specs/2026-11-07-mentor-redesign-design.md`. A mentor wa
 students across seasons, so **the mentor sees nothing season-shaped**: no This season card, no
 at-risk, no seasons, no groups, no Reports (`/reports` refuses them in the app; it is a pushed
 route now, a tab for no role).
-- **Nav:** Home · Students · Notes · Follow-ups · Profile.
+- **Nav:** Home · Community (`/students`; their people are **members**, students and alumni alike, never "students" in the copy) · Notes · Follow-ups · Profile.
 - **Home** (`MentorDashboard`): four numbers from `GET /me/mentor-summary`, each the total of the
   list it opens: Follow-ups due (`/follow-ups`), Absent lately (`/students?absent=1`), Notes this
   week (`/notes?range=week`), Students. Then recent notes and events.
