@@ -54,7 +54,8 @@ describe("ReportsScreen for admin and super — frame and export", () => {
     // The two buttons moved into a sheet; nothing is offered inline any more.
     expect(screen.queryByText("Export engagement")).toBeNull();
 
-    fireEvent.press(screen.getByLabelText("Export"));
+    // Export appears once the opening season's summary has loaded, after the header.
+    fireEvent.press(await screen.findByLabelText("Export"));
     fireEvent.press(await screen.findByText("Export engagement"));
 
     await waitFor(() =>
