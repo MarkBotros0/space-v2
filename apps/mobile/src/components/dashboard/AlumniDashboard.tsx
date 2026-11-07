@@ -91,11 +91,7 @@ export function AlumniDashboard() {
             />
             {others.length > 0 ? <UpcomingEventsGroup events={others} header="Also coming up" /> : null}
           </>
-        ) : (
-          <GroupedList header="Upcoming events">
-            <ListRow title="No upcoming events" subtitle="Nothing is scheduled from today onwards." />
-          </GroupedList>
-        )}
+        ) : null}
 
         {history.isPending ? (
           <Loading header="Your history" />

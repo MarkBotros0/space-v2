@@ -12,11 +12,13 @@ import { formatEventWhenShort } from "../../lib/format";
  * v1 components/events/upcoming-events-card.tsx — the card on all six
  * dashboards (spec 19 R5). The window (today onwards in the org zone), the cap
  * and the visibility rule are the server's (Plan 14); this renders rows.
- * Unlike v1 it says so when there is nothing (D19/R10), and a row without a
- * url opens v2's event screen.
+ * With no upcoming events it renders nothing (owner, 2026-11-07: Today hides
+ * an empty card; the Events screen still says so). A row without a url opens
+ * v2's event screen.
  */
 export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventListResponse> }) {
   const router = useRouter();
+  if (query.isSuccess && query.data.events.length === 0) return null;
 
   return (
     <View className="rounded-group bg-surface p-4">
@@ -34,13 +36,6 @@ export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventLi
           <Button variant="outline" size="sm" onPress={() => void query.refetch()}>
             Try again
           </Button>
-        </View>
-      ) : query.data.events.length === 0 ? (
-        <View className="mt-2">
-          <Text className="text-sm font-semibold text-foreground">No upcoming events</Text>
-          <Text className="text-sm italic text-muted-foreground">
-            Nothing is scheduled from today onwards.
-          </Text>
         </View>
       ) : (
         <View className="mt-2 flex-col gap-2.5">
