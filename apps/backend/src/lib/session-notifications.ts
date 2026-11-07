@@ -54,7 +54,7 @@ export async function prepareSessionCancelledNotice(
         select: { studentUserId: true },
       }),
       db.groupLeader.findMany({
-        where: { group: { seasonId }, user: { deletedAt: null } },
+        where: { group: { seasonId, season: { status: "ACTIVE" } }, user: { deletedAt: null } },
         select: { userId: true },
       }),
     ]);

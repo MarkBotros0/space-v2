@@ -5,6 +5,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { flagLowAttendance } from "../../lib/attendance-notifications";
+import { prepareSessionCancelledNotice } from "../../lib/session-notifications";
 import { loadScopes } from "../../lib/auth/scopes";
 import { signAccessToken } from "../../lib/auth/tokens";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
@@ -88,5 +89,21 @@ describe("two absences in a row", () => {
     await flagLowAttendance(second.id, [{ studentUserId: w.student, status: "ABSENT" }]);
     expect(await notified(w.admin, "LOW_ATTENDANCE_FLAG")).toBe(expected);
     expect(await notified(w.leader, "LOW_ATTENDANCE_FLAG")).toBe(expected);
+  });
+});
+
+describe("a cancelled session", () => {
+  it.each<[Status, boolean]>([
+    ["DRAFT", false],
+    ["ACTIVE", true],
+    ["COMPLETED", false],
+    ["ARCHIVED", false],
+  ])("in a %s season: telling its leader is %s", async (status, told) => {
+    const w = await world(status, `cancel-${status.toLowerCase()}`);
+    const session = await db.session.create({
+      data: { seasonId: w.seasonId, title: "Later", startsAt: new Date(Date.now() + 86_400_000), durationMinutes: 60 },
+    });
+    const notice = await prepareSessionCancelledNotice(w.seasonId, [session.id]);
+    expect((notice?.recipientIds ?? []).includes(w.leader)).toBe(told);
   });
 });
