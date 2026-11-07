@@ -3,7 +3,7 @@
  * mentor/students/[id]), and a student reading their own record. Top to
  * bottom (owner, 2026-11-07): the alumnus chip when there is one, this season
  * at a glance (one card), the details that are filled in, then the sections
- * behind choice chips. Their payload carries no phone, date of birth or
+ * behind choice chips. Their payload carries the phone but no date of birth or
  * internal notes (spec 06 D3/C8), so those rows are absent. `staffTabs={false}`
  * is the student's own view: Seasons only, as the staff endpoints refuse the rest.
  */

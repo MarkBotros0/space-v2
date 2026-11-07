@@ -26,12 +26,13 @@ export const studentProfilePublicSchema = z
     activeSeasonId: z.number().nullable(),
     activeSeasonTitle: z.string().nullable(),
     activeSeasonCode: z.string().nullable(),
+    /** Every staff role may call a student (owner, 2026-11-07: leaders and mentors too). */
+    phone: z.string().nullable(),
   })
   .strict();
 
 /** + the personal data SUPER/ADMIN and the student themselves may read. */
 export const studentProfilePrivateSchema = studentProfilePublicSchema.extend({
-  phone: z.string().nullable(),
   dateOfBirth: z.string().nullable(),
 });
 

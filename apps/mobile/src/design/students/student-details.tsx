@@ -3,7 +3,7 @@
  * view of the page. Only what is filled in is shown (owner, 2026-11-07: rows of
  * "—" made the page messy); with nothing at all it says so. The phone row calls.
  * Which fields exist depends on the payload's arm (spec 06 D3): a leader's and
- * a mentor's carry no phone, date of birth or internal notes. No email: the
+ * a mentor's carry the phone but no date of birth or internal notes. No email: the
  * community doesn't contact each other by email.
  */
 import { dateOnlyFromIso, type GraduatedByException } from "@space/shared";
