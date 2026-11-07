@@ -379,7 +379,8 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 
 - **The role claim is derived.** `loadScopes` (`lib/auth/scopes.ts`) computes `role` on every token
   from live season rows: a SeasonAdmin row means ADMIN, a GroupLeader row means LEADER, in a DRAFT
-  or ACTIVE, non-deleted season. Stored `User.role` means **SUPER, MENTOR or STUDENT only**; SUPER
+  or ACTIVE, non-deleted season (someone serving or enrolled in an ACTIVE season gets nothing from
+  a DRAFT one until it starts). Stored `User.role` means **SUPER, MENTOR or STUDENT only**; SUPER
   and MENTOR are permanent and ignore season rows. Never gate on the stored role for staff.
 - **`lib/roles` guards every seat write**: `activeRolesFor` reads a person's one active role,
   `lockPeople` / `lockSeason` take the row locks, and the refusal helpers (`seatRefusal`,
@@ -387,9 +388,10 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   People**, always; a new seat-writing path takes both in that order inside its transaction.
   Staff must be alumni (`graduationYear` set), with no override; a student in a regular season must
   not be.
-- **Role changes sign nobody out.** Assigning or removing a season role calls `markSessionsStale`,
-  so the new claim arrives on the next silent refresh; `revokeAllRefreshTokensForUser` is not
-  used on these paths.
+- **Season role changes sign nobody out.** Assigning or removing a season role calls
+  `markSessionsStale`, so the new claim arrives on the next silent refresh;
+  `revokeAllRefreshTokensForUser` is not used on these paths. Changing a stored role
+  (SUPER/MENTOR/STUDENT) or deactivating an account through `PATCH /users` still signs them out.
 - **`pnpm roles:convert`** (`scripts/convert-stored-roles.ts`) moves stored ADMIN/LEADER accounts
   to STUDENT. Read-only by default; `--apply` refuses while anyone lacks a `graduationYear`, else
   converts in one transaction. It is a script, not a migration, because no migration may change
@@ -401,8 +403,8 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 
 ## Community model, Build 1 (owner rulings, 2026-11-06)
 
-Design: `docs/superpowers/specs/2026-11-06-community-model-design.md`. Three TestFlight builds; only
-Build 1 exists.
+Design: `docs/superpowers/specs/2026-11-06-community-model-design.md`. Three TestFlight builds; Build 1
+and Build 2 (see "Roles") are written, Build 3 (community-wide seasons) isn't.
 
 - **One active role.** Every user has zero or one active role: a student in one ACTIVE season, or
   serving (admin and/or leader of one group) in one ACTIVE season; Super and Mentor are permanent
