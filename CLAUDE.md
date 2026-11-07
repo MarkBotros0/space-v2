@@ -371,6 +371,18 @@ assignment handed in and the last quiz taken, with See all to My work. Student H
 with the season card, then the next session, then To do; while check-in is open and they
 haven't checked in, the session leads. There is no attendance streak anywhere.
 
+### A season's overview (owner, 2026-11-07)
+
+`/seasons/[code]` is one page: the summary and figures, the next step, then one **People** card
+(`design/seasons/people-card.tsx`): Admins (Super only), then each group with its leaders and up to
+six of its students as pills, then "Not in a group". New group, Move students (the roster) and Manage
+admins (`/seasons/[code]/admins`) live inside it; there is no separate Groups or Admins section. The
+Manage tiles name what they open, never "Manage ...": Sessions (`/seasons/[code]/sessions`),
+Assignments and Quizzes (the staff lists with `?seasonId`), Add people, End season, Results. Edit
+and Duplicate are icon buttons beside the name. **A finished season is read-only**: people, groups
+and sessions are read, nothing is added, moved or marked; a note offers "Duplicate as a draft".
+Finished seasons still never reopen.
+
 ### Motion: calm and quick (owner, 2026-11-06 and 2026-11-07)
 
 It is an educational app: motion is for orientation, never decoration or play. The owner
