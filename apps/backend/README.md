@@ -67,6 +67,8 @@ read outside that file). See `.env.example` for the full list.
 | `GMAIL_USER` | No | unset | Paired with `GMAIL_APP_PASSWORD`. |
 | `GMAIL_APP_PASSWORD` | No | unset | |
 | `AUTH_URL` | No | unset | Base URL used to build a clickable link in notification emails. |
+| `APP_STORE_URL` | No | unset | The app's App Store page. Once set, every email ends with "Don't have the app yet?" and a button to it. Leave unset until the app is published. |
+| `PLAY_STORE_URL` | No | unset | The app's Google Play page, shown beside the App Store button the same way. |
 | `STORAGE_DRIVER` | No | `local` | `"local"` writes to `LOCAL_UPLOADS_DIR`; `"s3"` is a throwing stub, as in v1. |
 | `LOCAL_UPLOADS_DIR` | No | `./uploads` | Only used when `STORAGE_DRIVER=local`. |
 | `MAX_UPLOAD_BYTES` | No | `26214400` (25 MB) | Hard ceiling multer enforces before the per-assignment `maxFileSizeMb` check runs. |

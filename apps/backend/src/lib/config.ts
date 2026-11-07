@@ -27,6 +27,11 @@ const envSchema = z.object({
   // Base URL used to turn a notification's relative link into one a recipient
   // can click in an email. Unset means the email omits the button.
   AUTH_URL: z.string().optional(),
+  // Where the emails send someone without the app (owner, 2026-11-07). Unset
+  // until the app is published (the store pages don't exist yet); the emails
+  // show a store's button only once its URL is set.
+  APP_STORE_URL: z.string().url().optional(),
+  PLAY_STORE_URL: z.string().url().optional(),
   // "local" writes to LOCAL_UPLOADS_DIR; "s3" is stubbed and throws on use.
   STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
   LOCAL_UPLOADS_DIR: z.string().default("./uploads"),
@@ -153,6 +158,8 @@ export const config = {
   gmailUser: parsed.data.GMAIL_USER,
   gmailAppPassword: parsed.data.GMAIL_APP_PASSWORD,
   authUrl: parsed.data.AUTH_URL,
+  appStoreUrl: parsed.data.APP_STORE_URL,
+  playStoreUrl: parsed.data.PLAY_STORE_URL,
   storageDriver: parsed.data.STORAGE_DRIVER,
   localUploadsDir: parsed.data.LOCAL_UPLOADS_DIR,
   maxUploadBytes: parsed.data.MAX_UPLOAD_BYTES,
