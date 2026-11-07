@@ -7,7 +7,7 @@ import type { PeopleCandidate } from "@space/shared";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
-import { ConfirmDialog, EmptyState, ListSectionHeader, toast } from "../../design/ui";
+import { Button, ConfirmDialog, EmptyState, ListSectionHeader, toast } from "../../design/ui";
 import { useAddSeasonPeople, useSeasonPeople } from "../../hooks/use-season-people";
 import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
 import { CandidateRow } from "./candidate-row";
@@ -34,7 +34,16 @@ const keyOf = (item: PeopleItem) => item.key;
  * the filters, so narrowing the list never loses one. Adding is all or nothing:
  * a refusal refetches and takes off the selection whoever can't join any more.
  */
-export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; seasonTitle: string }) {
+export function PeopleList({
+  seasonId,
+  seasonTitle,
+  onInviteNew,
+}: {
+  seasonId: number;
+  seasonTitle: string;
+  /** Someone with no account yet: the invite form (owner, 2026-11-07: season admins invite people). */
+  onInviteNew?: () => void;
+}) {
   const router = useRouter();
   const candidates = useSeasonPeople(seasonId, { enabled: true });
   const add = useAddSeasonPeople(seasonId);
@@ -138,6 +147,7 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
       subtitle={requiredProgram ? `Requires ${requiredProgram}` : undefined}
       scroll={false}
       footer={footer}
+      trailing={onInviteNew ? <Button onPress={onInviteNew}>Invite new</Button> : undefined}
     >
       {body}
     </Screen>
@@ -151,6 +161,7 @@ export function PeopleList({ seasonId, seasonTitle }: { seasonId: number; season
         icon={Users}
         title="No one to add"
         description="There are no student accounts to add to this season."
+        action={onInviteNew ? { label: "Invite someone new", onPress: onInviteNew } : undefined}
       />,
     );
   }

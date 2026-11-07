@@ -7,7 +7,7 @@ import { parseId } from "../../lib/parse-id";
 import { canEditStudent } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { createStudentRows } from "../../lib/queries/students";
-import { isSuper } from "../../lib/rbac";
+import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import { newPersonRefusal, readSeatSeason, refusalStatus, type SeatRefusal } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import {
@@ -39,16 +39,18 @@ const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "name", "email", "notes"]);
 
 export async function createStudent(req: Request, res: Response) {
   const user = requireUser(req);
-  // v2 ruling (roadmap Plan 7): creation is SUPER-only. v1 admitted any ADMIN
-  // with no season scoping at all — an admin could create a student pointed
-  // at any season in the system (spec 06 §4.3, D4).
-  if (!isSuper(user)) {
-    return apiError(res, "forbidden", "Only a super user can create students.", 403);
-  }
-
   const parsed = createStudentRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid student body.", 400);
   const body = parsed.data;
+
+  // A Super creates anyone, with or without a season. A season's admin invites
+  // a new person into that season only (owner, 2026-11-07), never seasonless:
+  // v1 admitted any ADMIN with no scoping at all, pointed at any season (spec 06
+  // §4.3, D4), which is what Plan 7 closed. The token's seasonAdminIds cover a
+  // DRAFT or ACTIVE season; a finished one is refused below for everyone.
+  if (!isSuper(user) && (body.seasonId == null || !isAdminOfSeason(user, body.seasonId))) {
+    return apiError(res, "forbidden", "Only a super user or this season's admin can add people.", 403);
+  }
 
   if (body.seasonId != null) {
     const season = await db.season.findFirst({

@@ -80,12 +80,35 @@ describe("POST /api/v1/students", () => {
     expect(count).toBe(0);
   });
 
-  it("refuses ADMIN — creation is SUPER-only in v2 (v1's ADMIN create was unscoped, spec 06 §4.3)", async () => {
+  it("refuses an ADMIN creating a student with no season (v1's ADMIN create was unscoped, spec 06 §4.3)", async () => {
     const res = await request(app)
       .post("/api/v1/students")
       .set("authorization", `Bearer ${adminToken}`)
       .send({ name: "Nope Student", email: testEmail("nope") });
     expect(res.status).toBe(403);
+  });
+
+  it("refuses an ADMIN creating a student into a season they don't run", async () => {
+    const res = await request(app)
+      .post("/api/v1/students")
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ name: "Nope Student", email: testEmail("nope-b"), seasonId: seasonBId });
+    expect(res.status).toBe(403);
+    expect(await db.user.count({ where: { email: testEmail("nope-b") } })).toBe(0);
+  });
+
+  it("lets a season's admin invite a new person into that season (owner, 2026-11-07)", async () => {
+    const email = testEmail("admin-invited");
+    const res = await request(app)
+      .post("/api/v1/students")
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ name: "Admin Invited", email, seasonId: seasonAId });
+    expect(res.status).toBe(201);
+    const enrolment = await db.seasonEnrollment.findFirst({
+      where: { studentUserId: res.body.data.id, seasonId: seasonAId },
+      select: { status: true },
+    });
+    expect(enrolment?.status).toBe("ACTIVE");
   });
 
   it("refuses a duplicate email with 409, not a Prisma error (R18)", async () => {
