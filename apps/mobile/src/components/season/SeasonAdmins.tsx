@@ -4,9 +4,10 @@ import { View } from "react-native";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, ConfirmDialog, GroupedList, ListRow, Skeleton, Text, toast } from "../../design/ui";
+import { useGroupDetails, useSeasonGroups } from "../../hooks/use-groups";
 import { useAddSeasonAdmin, useRemoveSeasonAdmin, useSeasonAdmins } from "../../hooks/use-season-admins";
 import { apiErrorMessage } from "../../lib/api-error";
-import { StaffPickerSheet } from "../../screens/season-people/staff-picker-sheet";
+import { StaffPickerSheet, type StaffPick } from "../../screens/season-people/staff-picker-sheet";
 
 iconWithClassName(Trash2, UserPlus);
 
@@ -14,8 +15,9 @@ iconWithClassName(Trash2, UserPlus);
  * SUPER's "Admins" card on the season detail overview. V2-ONLY: v1 had no way
  * to create a SeasonAdmin row (owner decision). Lists the season's admins with
  * a confirmed remove, and adds one through the staff picker sheet (alumni with
- * no active role). A refusal is said in the sheet, in the server's words. Seats
- * don't sign anyone out: the person's next token refresh picks the role up.
+ * no active role, and this season's leaders). A refusal is said in the sheet, in
+ * the server's words. Seats don't sign anyone out: the person's next token
+ * refresh picks the role up.
  */
 export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seasonTitle: string }) {
   const admins = useSeasonAdmins(seasonId, { enabled: true });
@@ -26,6 +28,14 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
 
   const current = useMemo(() => admins.data ?? [], [admins.data]);
   const takenIds = useMemo(() => current.map((a) => a.userId), [current]);
+  // This season's leaders may also be its admin, though they aren't free staff
+  // candidates. Read only once the sheet opens: the list rows carry no leader ids.
+  const groups = useSeasonGroups(picking ? seasonId : null);
+  const groupIds = useMemo(() => (picking ? (groups.data ?? []).map((g) => g.id) : []), [picking, groups.data]);
+  const groupDetails = useGroupDetails(groupIds);
+  const leaders: StaffPick[] = groupDetails.flatMap((g) =>
+    (g.data?.leaders ?? []).map((l) => ({ id: l.id, name: l.name ?? l.email ?? "Unnamed", description: "Leads a group" })),
+  );
 
   let list;
   if (admins.isPending)
@@ -93,6 +103,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         seasonId={seasonId}
         title="Add admin"
         excludeIds={takenIds}
+        extra={leaders}
         confirm={(person) => ({
           title: "Add admin?",
           description: `${person.name} will be able to administer ${seasonTitle}.`,

@@ -67,6 +67,7 @@ beforeEach(() => {
     if (url === "/api/v1/seasons/7/admins") return Promise.resolve({ data: { data: { admins } } });
     if (url === "/api/v1/seasons/7/staff-candidates")
       return candidates(person(21, "Pat Admin"), person(22, "Rana Admin"));
+    if (url === "/api/v1/seasons/7/groups") return Promise.resolve({ data: { data: { groups: [] } } });
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 });
@@ -115,6 +116,43 @@ describe("Admins card on the SUPER season detail", () => {
     fireEvent.press(await screen.findByText("Sam Admin"));
     expect(screen.getByText("Sam Admin will be able to administer TEST 2099.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
+  });
+
+  it("offers this season's leaders too, since one may also be its admin", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    get.mockImplementation((url: string) => {
+      if (url === "/api/v1/seasons/by-code/s7") return Promise.resolve({ data: { data: detail } });
+      if (url === "/api/v1/seasons/7/sessions") return Promise.resolve({ data: { data: { sessions: [] } } });
+      if (url === "/api/v1/seasons/7/admins") return Promise.resolve({ data: { data: { admins } } });
+      if (url === "/api/v1/seasons/7/staff-candidates") return candidates(person(22, "Rana Admin"));
+      if (url === "/api/v1/seasons/7/groups") {
+        const row = { id: 70, name: "Group A", description: null, studentCount: 0, leaderNames: ["Lina Leader"], seasonId: 7, seasonCode: "s7", seasonTitle: "TEST 2099" };
+        return Promise.resolve({ data: { data: { groups: [row] } } });
+      }
+      if (url === "/api/v1/groups/70") {
+        return Promise.resolve({
+          data: {
+            data: {
+              id: 70, name: "Group A", description: null, seasonId: 7, seasonCode: "s7", seasonTitle: "TEST 2099",
+              leaders: [{ id: 21, name: "Pat Admin" }, { id: 23, name: "Lina Leader" }],
+              students: [], canManage: true,
+            },
+          },
+        });
+      }
+      return Promise.reject(new Error(`unexpected GET ${url}`));
+    });
+    post.mockResolvedValue({ data: { data: { admins } } });
+    renderWithProviders(<SeasonDetailScreen />);
+    await screen.findByText("Pat Admin");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/groups/70");
+
+    fireEvent.press(screen.getByText("Add admin"));
+    fireEvent.press(await screen.findByText("Lina Leader"));
+    fireEvent.press(screen.getByText("Add"));
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 23 }));
+    // Already an admin: a leader who is one stays out of the list.
+    expect(screen.getAllByText("Pat Admin")).toHaveLength(1);
   });
 
   it("adds the tapped admin, toasts, and refreshes the season, users and dashboard", async () => {

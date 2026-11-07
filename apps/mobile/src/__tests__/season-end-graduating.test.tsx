@@ -110,7 +110,7 @@ describe("Correcting a result on a graduating season", () => {
     await screen.findByText("Mina");
   };
   const KEEPS = "This doesn't remove their alumni status.";
-  const WILL = "They'll graduate when you save.";
+  const WILL = "They'll graduate when you save. Any season they're in now ends for them.";
 
   it("says Did not pass doesn't remove alumni status", async () => {
     await open(true);
