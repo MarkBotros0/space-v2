@@ -22,10 +22,19 @@ function StudentAvatar({ item }: { item: StudentListItem }) {
   );
 }
 
-/** An active student: name over university, faculty, season and group; the email when none of those is known. */
+/**
+ * The season a row names (owner, 2026-11-07): the active one, else the latest
+ * finished one, said as such.
+ */
+export function seasonLine(item: StudentListItem): string | null {
+  if (item.activeSeasonTitle) return item.activeSeasonTitle;
+  return item.lastSeasonTitle ? `Last season: ${item.lastSeasonTitle}` : null;
+}
+
+/** A student: name over their season, group and university; the email when none of those is known. */
 export function ActiveStudentRow({ item }: RowProps) {
   const open = useOpenStudent(item);
-  const meta = joinMeta([item.university, item.faculty, item.activeSeasonTitle, item.currentGroupName]);
+  const meta = joinMeta([seasonLine(item), item.currentGroupName, item.university]);
   return (
     <ListRow
       title={item.name}
@@ -43,7 +52,7 @@ export function AlumnusRow({ item }: RowProps) {
   return (
     <ListRow
       title={item.name}
-      subtitle={joinMeta([year, item.university])}
+      subtitle={joinMeta([year, seasonLine(item), item.university])}
       leading={<StudentAvatar item={item} />}
       chevron
       onPress={open}

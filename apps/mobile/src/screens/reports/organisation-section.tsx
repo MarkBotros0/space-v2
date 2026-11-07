@@ -60,7 +60,7 @@ export function OrganisationSection() {
             value={data.totalStudentsNotGraduated}
           />
         </TilePress>
-        <TilePress onPress={() => router.push("/students/alumni")}>
+        <TilePress onPress={() => router.push({ pathname: "/students", params: { show: "alumni" } })}>
           <StatTile className="flex-none" label="Alumni" value={data.totalAlumni} />
         </TilePress>
         <TilePress onPress={() => router.push("/seasons")}>

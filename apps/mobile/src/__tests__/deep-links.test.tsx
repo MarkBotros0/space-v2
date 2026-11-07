@@ -37,8 +37,6 @@ describe("deep links land on their own screen (URLs unchanged)", () => {
     ["/notifications", "screen:/notifications"],
     ["/events", "screen:/events"],
     ["/community", "screen:/community"],
-    ["/students/alumni", "screen:/students/alumni"],
-    ["/students/dropped", "screen:/students/dropped"],
     ["/attendance", "screen:/attendance"],
     ["/students", "screen:/students"],
   ])("%s", async (url, text) => {

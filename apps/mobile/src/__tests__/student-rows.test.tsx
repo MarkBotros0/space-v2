@@ -39,7 +39,7 @@ describe("ActiveStudentRow", () => {
     expect(screen.queryByText(/—/)).toBeNull();
   });
 
-  it("joins university, faculty, season and group, and opens the student", () => {
+  it("names the season, group and university, and opens the student", () => {
     renderWithProviders(
       <GroupedList>
         <ActiveStudentRow
@@ -54,7 +54,7 @@ describe("ActiveStudentRow", () => {
       </GroupedList>,
     );
     fireEvent.press(
-      screen.getByLabelText("Sara Student, Cairo University · Engineering · Spring 2099 · Group A"),
+      screen.getByLabelText("Sara Student, Spring 2099 · Group A · Cairo University"),
     );
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
   });

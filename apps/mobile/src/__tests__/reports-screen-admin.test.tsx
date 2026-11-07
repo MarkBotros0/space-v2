@@ -265,7 +265,7 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     fireEvent.press(await screen.findByLabelText("Student accounts: 40"));
     expect(mockPush).toHaveBeenCalledWith("/students");
     fireEvent.press(screen.getByLabelText("Alumni: 12"));
-    expect(mockPush).toHaveBeenCalledWith("/students/alumni");
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/students", params: { show: "alumni" } });
     fireEvent.press(screen.getByLabelText("Active seasons: 2"));
     expect(mockPush).toHaveBeenCalledWith("/seasons");
     expect(screen.getByTestId("organisation-tiles").props.className).toContain("flex-wrap");

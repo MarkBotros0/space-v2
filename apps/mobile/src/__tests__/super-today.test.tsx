@@ -120,7 +120,7 @@ describe("Super Today", () => {
     renderWithProviders(<DashboardScreen />);
 
     fireEvent.press(await screen.findByLabelText("Alumni: 12"));
-    expect(mockPush).toHaveBeenCalledWith("/students/alumni");
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/students", params: { show: "alumni" } });
     fireEvent.press(screen.getByLabelText("Students (not graduated): 40"));
     expect(mockPush).toHaveBeenCalledWith("/students");
     fireEvent.press(screen.getByLabelText(/^Seasons: /));

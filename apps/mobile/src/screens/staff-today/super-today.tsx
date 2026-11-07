@@ -102,7 +102,7 @@ export function SuperToday() {
                   label: "Alumni",
                   value: String(org.data.totalAlumni),
                   icon: GraduationCap,
-                  onPress: () => router.push("/students/alumni"),
+                  onPress: () => router.push({ pathname: "/students", params: { show: "alumni" } }),
                 },
                 {
                   label: "Seasons",

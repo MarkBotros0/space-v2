@@ -5,8 +5,10 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
 }));
 const mockPush = jest.fn();
+let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush }),
+  useLocalSearchParams: () => mockParams,
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -14,8 +16,6 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
 import StudentsScreen from "../../app/(app)/(tabs)/students/index";
-import AlumniScreen from "../../app/(app)/students/alumni";
-import DroppedScreen from "../../app/(app)/students/dropped";
 
 const get = apiClient.get as jest.Mock;
 
@@ -58,6 +58,7 @@ const page = (students: unknown[], nextCursor: number | null = null, total = stu
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
 });
 
@@ -71,7 +72,7 @@ describe("StudentsScreen (active)", () => {
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText(/Spring 2099/)).toBeTruthy();
     expect(screen.getByText("1 student in your seasons")).toBeTruthy();
-    expect(screen.getByText("Cairo University · Engineering · Spring 2099 · Group A")).toBeTruthy();
+    expect(screen.getByText("Spring 2099 · Group A · Cairo University")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=active");
   });
 
@@ -149,21 +150,32 @@ describe("StudentsScreen (active)", () => {
     expect(style.paddingBottom).toBeGreaterThanOrEqual(96);
   });
 
-  it("links to Alumni and Dropped by role, as before", async () => {
+  // Owner 2026-11-07: Alumni and Dropped are a filter on the list, not pages linked above it.
+  it("offers Alumni and Dropped in the filter sheet, by role", async () => {
     get.mockResolvedValue(page([activeRow]));
     useSessionStore.setState(superSession);
     const { unmount } = renderWithProviders(<StudentsScreen />);
-    fireEvent.press(await screen.findByLabelText("Alumni"));
-    fireEvent.press(screen.getByLabelText("Dropped students"));
-    expect(mockPush).toHaveBeenCalledWith("/students/alumni");
-    expect(mockPush).toHaveBeenCalledWith("/students/dropped");
+    await screen.findByText("Sara Student");
+    expect(screen.queryByText("Dropped students")).toBeNull();
+    fireEvent.press(screen.getByLabelText("Filter"));
+    fireEvent.press(await screen.findByLabelText(/^Alumni/));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=alumni"));
+    expect(screen.getByLabelText(/^Dropped/)).toBeTruthy();
     unmount();
 
     useSessionStore.setState(mentorSession);
     renderWithProviders(<StudentsScreen />);
     await screen.findByText("Sara Student");
-    expect(screen.getByLabelText("Alumni")).toBeTruthy();
-    expect(screen.queryByLabelText("Dropped students")).toBeNull();
+    fireEvent.press(screen.getByLabelText("Filter"));
+    expect(await screen.findByLabelText(/^Alumni/)).toBeTruthy();
+    expect(screen.queryByLabelText(/^Dropped/)).toBeNull();
+  });
+
+  it("names the latest finished season when there is no active one", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue(page([{ ...activeRow, activeSeasonTitle: null, lastSeasonTitle: "GBV 2025", currentGroupName: null }]));
+    renderWithProviders(<StudentsScreen />);
+    expect(await screen.findByText("Last season: GBV 2025 · Cairo University")).toBeTruthy();
   });
 
   it("loads the next page through the cursor", async () => {
@@ -183,21 +195,22 @@ describe("StudentsScreen (active)", () => {
   });
 });
 
-describe("AlumniScreen", () => {
+describe("Students on the Alumni filter (?show=alumni)", () => {
   it("queries status=alumni and shows the class year", async () => {
     useSessionStore.setState(superSession);
+    mockParams = { show: "alumni" };
     get.mockResolvedValue(
       page([{ ...activeRow, graduationYear: 2024, activeSeasonTitle: null, currentGroupName: null }]),
     );
 
-    renderWithProviders(<AlumniScreen />);
+    renderWithProviders(<StudentsScreen />);
 
     expect(await screen.findByLabelText(/School of 2024/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=alumni");
   });
 });
 
-describe("DroppedScreen", () => {
+describe("Students on the Dropped filter (?show=dropped)", () => {
   it("renders one row per dropped enrollment (R43), with the reason", async () => {
     const d1 = {
       ...activeRow,
@@ -224,9 +237,10 @@ describe("DroppedScreen", () => {
       },
     };
     useSessionStore.setState(superSession);
+    mockParams = { show: "dropped" };
     get.mockResolvedValue(page([d1, d2]));
 
-    renderWithProviders(<DroppedScreen />);
+    renderWithProviders(<StudentsScreen />);
 
     // The same student twice — enrollment-keyed, never collapsed by user id.
     expect(await screen.findAllByText("Dina Dropped")).toHaveLength(2);
@@ -235,13 +249,16 @@ describe("DroppedScreen", () => {
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=dropped");
   });
 
-  it("hides the list from MENTOR — the endpoint refuses them, so the screen never asks", async () => {
+  it("never asks a MENTOR's for it: the endpoint refuses them, so the list stays on students", async () => {
     useSessionStore.setState(mentorSession);
+    mockParams = { show: "dropped" };
+    get.mockResolvedValue(page([activeRow]));
 
-    renderWithProviders(<DroppedScreen />);
+    renderWithProviders(<StudentsScreen />);
 
-    expect(await screen.findByText(/isn't available for your role/)).toBeTruthy();
-    expect(get).not.toHaveBeenCalled();
+    expect(await screen.findByText("Sara Student")).toBeTruthy();
+    expect(get).toHaveBeenCalledWith("/api/v1/students?status=active");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students?status=dropped");
   });
 });
 
@@ -274,34 +291,57 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     });
   }
 
-  it("applies group, sort and direction from the filter sheet, immediately per pick", async () => {
+  it("gives a SUPER seasons first, then that season's groups, then sort, each applied at once", async () => {
     useSessionStore.setState(superSession);
     serve();
     renderWithProviders(<StudentsScreen />);
     await screen.findByText("Sara Student");
 
     fireEvent.press(screen.getByLabelText("Filter"));
+    // No group until a season is picked.
+    expect(await screen.findByLabelText(/^All seasons/)).toBeTruthy();
+    expect(screen.queryByLabelText(/^Group A/)).toBeNull();
+    fireEvent.press(await screen.findByLabelText(/^Spring 2099/));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&seasonId=7"));
     fireEvent.press(await screen.findByLabelText(/^Group A/));
-    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=3"));
-
-    fireEvent.press(screen.getByLabelText("Unassigned"));
-    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none"));
+    await waitFor(() =>
+      expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&seasonId=7&groupId=3"),
+    );
 
     fireEvent.press(screen.getByLabelText("University"));
     fireEvent.press(screen.getByRole("tab", { name: "Z to A" }));
     await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none&sort=university&dir=desc"),
+      expect(get).toHaveBeenCalledWith(
+        "/api/v1/students?status=active&seasonId=7&groupId=3&sort=university&dir=desc",
+      ),
     );
-    // The chip counts the filters in force: a group and a sort.
+    // The button counts the filters in force: a season, a group and a sort.
     fireEvent.press(screen.getByText("Done"));
-    expect(screen.getByLabelText("Filter, 2 active")).toBeTruthy();
+    expect(screen.getByLabelText("Filter, 3 active")).toBeTruthy();
   });
 
-  it("offers no filter on the dropped list, whose rows are enrollments", async () => {
-    useSessionStore.setState(superSession);
+  it("gives other staff every group they can read, with Unassigned", async () => {
+    useSessionStore.setState(mentorSession);
     serve();
-    renderWithProviders(<DroppedScreen />);
+    renderWithProviders(<StudentsScreen />);
+    await screen.findByText("Sara Student");
+    fireEvent.press(screen.getByLabelText("Filter"));
+    expect(screen.queryByLabelText(/^All seasons/)).toBeNull();
+    fireEvent.press(await screen.findByLabelText(/^Group A/));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=3"));
+    fireEvent.press(screen.getByLabelText("Unassigned"));
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&groupId=none"));
+  });
+
+  it("keeps only Show on the dropped list, whose rows are enrollments", async () => {
+    useSessionStore.setState(superSession);
+    mockParams = { show: "dropped" };
+    serve();
+    renderWithProviders(<StudentsScreen />);
     await waitFor(() => expect(get).toHaveBeenCalled());
-    expect(screen.queryByLabelText(/^Filter/)).toBeNull();
+    fireEvent.press(screen.getByLabelText("Filter, 1 active"));
+    expect(await screen.findByText("SHOW")).toBeTruthy();
+    expect(screen.queryByText("SORT BY")).toBeNull();
+    expect(screen.queryByText("SEASON")).toBeNull();
   });
 });

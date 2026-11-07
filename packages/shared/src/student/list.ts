@@ -29,6 +29,11 @@ export const studentListItemSchema = z.object({
   graduationYear: z.number().nullable(),
   activeSeasonTitle: z.string().nullable(),
   /**
+   * With no active season, the latest finished season they completed (owner,
+   * 2026-11-07), else null. Optional: the dropped list doesn't send it.
+   */
+  lastSeasonTitle: z.string().nullable().optional(),
+  /**
    * The student's current group from GroupStudent — the ONE question that
    * table may answer, and only advisorily (ruling C9). Every per-season
    * membership decision in this domain goes through SeasonEnrollment instead.

@@ -192,9 +192,6 @@ describe("AppLayout stack", () => {
       "notifications",
       "quizzes",
       "season",
-      "students/alumni",
-      "students/dropped",
-      "users/index",
     ]);
     useSessionStore.getState().setSession(makeUser("SUPER"), scopes);
     renderWithProviders(<AppLayout />);

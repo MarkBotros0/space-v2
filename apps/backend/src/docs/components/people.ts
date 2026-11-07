@@ -266,6 +266,7 @@ export const peopleSchemas = {
       universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
       graduationYear: { type: ["integer", "null"] },
       activeSeasonTitle: { type: ["string", "null"] },
+      lastSeasonTitle: { type: ["string", "null"], description: "With no active season, the latest finished season they completed (the active and alumni lists only)." },
       currentGroupName: { type: ["string", "null"], description: "Advisory: the most recent GroupStudent membership, any season (C9)." },
       droppedEnrollment: {
         description: "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",

@@ -8,6 +8,7 @@ import { canReadAllStudents, isMentor, isSuper } from "../../rbac";
 import { seasonParticipant } from "../season-participants";
 import { currentSeasonEnrollmentSelect } from "./current-season";
 import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
+import { withLastSeason } from "./last-season";
 
 export interface StudentListResult {
   students: StudentListItem[];
@@ -178,7 +179,7 @@ async function listByRelatedSort(
     return row ? [row] : [];
   });
   return {
-    students: page.map(toListItem),
+    students: await withLastSeason(page.map(toListItem), user),
     nextCursor: start + query.limit < keyed.length ? (page[page.length - 1]?.id ?? null) : null,
     total: keyed.length,
   };
@@ -274,7 +275,7 @@ export async function listStudents(
 
   const page = rows.slice(0, query.limit);
   return {
-    students: page.map(toListItem),
+    students: await withLastSeason(page.map(toListItem), user),
     nextCursor: rows.length > query.limit ? (page[page.length - 1]?.id ?? null) : null,
     total,
   };

@@ -13,6 +13,7 @@ export * from "./empty-state";
 export * from "./field";
 export * from "./file-upload";
 export * from "./form-field";
+export * from "./filter-button";
 export * from "./grouped-list";
 export * from "./hero-card";
 export * from "./input";

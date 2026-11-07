@@ -1,14 +1,12 @@
-import { useState, type ReactNode } from "react";
-import { useRouter } from "expo-router";
+import { useEffect, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import type { StudentListItem, StudentListStatus, UserRole } from "@space/shared";
 
 import { NAV_ICONS } from "../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { Screen } from "../design/layout/screen";
-import { Button, ChoiceChip, EmptyState, GroupedList, ListRow, SearchField } from "../design/ui";
+import { Button, EmptyState, FilterButton, GroupedList, SearchField } from "../design/ui";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
-import { joinMeta } from "../lib/join-meta";
 import {
   StudentFilterSheet,
   activeFilterCount,
@@ -71,11 +69,21 @@ export function StudentList({
   headerAction,
   embedded = false,
 }: StudentListProps) {
-  const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const allowed = role !== null && allowedRoles.includes(role);
   const { search, q, setSearch, commit } = useDebouncedSearch();
   const [view, setView] = useState<StudentListView>(DEFAULT_STUDENT_VIEW);
+  // Who the list shows (owner, 2026-11-07: Alumni and Dropped are a filter, not
+  // pages). Starts at the caller's; a link with ?show= changes it.
+  const [picked, setShown] = useState<StudentListStatus>(status);
+  useEffect(() => setShown(status), [status]);
+  const showOptions: StudentListStatus[] = [
+    "active",
+    ...(role !== null && ALUMNI_ROLES.includes(role) ? (["alumni"] as const) : []),
+    ...(role !== null && DROPPED_ROLES.includes(role) ? (["dropped"] as const) : []),
+  ];
+  // A list the role may not read is never asked for: the endpoint would refuse it.
+  const shown = showOptions.includes(picked) ? picked : "active";
   const [filtering, setFiltering] = useState(false);
   const {
     data,
@@ -86,7 +94,7 @@ export function StudentList({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useStudentList(status, q, allowed, view);
+  } = useStudentList(shown, q, allowed, view);
 
   if (!allowed) {
     return (
@@ -98,9 +106,9 @@ export function StudentList({
 
   const students = data?.pages.flatMap((p) => p.students) ?? [];
   const total = data?.pages[0]?.total ?? 0;
-  const copy = COPY[status];
-  const filtered = q !== "" || view.groupId !== null;
-  const filters = activeFilterCount(view);
+  const copy = COPY[shown];
+  const filtered = q !== "" || view.groupId !== null || view.seasonId !== null;
+  const filters = activeFilterCount(view) + (shown !== "active" ? 1 : 0);
 
   let body: ReactNode;
   if (isPending) body = <RouteSkeleton />;
@@ -115,7 +123,9 @@ export function StudentList({
             ? "No students match your search."
             : view.groupId !== null
               ? "No students are in that group."
-              : copy.emptyDescription
+              : view.seasonId !== null
+                ? "No students are in that season."
+                : copy.emptyDescription
         }
       />
     );
@@ -144,48 +154,36 @@ export function StudentList({
       </>
     );
 
-  const showAlumni = role !== null && ALUMNI_ROLES.includes(role);
-  const showDropped = role !== null && DROPPED_ROLES.includes(role);
-
   const content = (
     <View className="flex-col gap-3">
-      {status === "active" && (showAlumni || showDropped) ? (
-        <GroupedList>
-          {showAlumni ? (
-            <ListRow title="Alumni" chevron onPress={() => router.push("/students/alumni")} />
-          ) : null}
-          {showDropped ? (
-            <ListRow
-              title="Dropped students"
-              chevron
-              onPress={() => router.push("/students/dropped")}
-            />
-          ) : null}
-        </GroupedList>
-      ) : null}
-      <SearchField
-        accessibilityLabel="Search students"
-        value={search}
-        onChangeText={setSearch}
-        placeholder="Search students"
-        onSubmitEditing={commit}
+      {/* Owner 2026-11-07: Filter is an icon button in the search row. */}
+      <View className="flex-row items-center gap-2">
+        <SearchField
+          accessibilityLabel="Search students"
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search students"
+          onSubmitEditing={commit}
+          className="min-w-0 flex-1"
+        />
+        <FilterButton active={filters} onPress={() => setFiltering(true)} />
+      </View>
+      <StudentFilterSheet
+        open={filtering}
+        onClose={() => setFiltering(false)}
+        view={view}
+        onChange={setView}
+        bySeason={role === "SUPER"}
+        show={{
+          value: shown,
+          options: showOptions,
+          // Each list has its own rows and filters: start it afresh.
+          onChange: (next) => {
+            setShown(next);
+            setView(DEFAULT_STUDENT_VIEW);
+          },
+        }}
       />
-      {status === "active" ? (
-        <>
-          <ChoiceChip
-            label={joinMeta(["Filter", filters > 0 ? filters : null])}
-            accessibilityLabel={filters > 0 ? `Filter, ${filters} active` : "Filter"}
-            selected={filters > 0}
-            onPress={() => setFiltering(true)}
-          />
-          <StudentFilterSheet
-            open={filtering}
-            onClose={() => setFiltering(false)}
-            view={view}
-            onChange={setView}
-          />
-        </>
-      ) : null}
       {body}
     </View>
   );
