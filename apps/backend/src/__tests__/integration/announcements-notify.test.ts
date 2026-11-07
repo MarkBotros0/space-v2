@@ -1,3 +1,11 @@
+// A community post reaches every account in the database: push is stubbed so a
+// run against a shared database never sends a real notification to a phone.
+const mockSendPush = jest.fn().mockResolvedValue(undefined);
+jest.mock("../../lib/push", () => ({
+  ...jest.requireActual("../../lib/push"),
+  sendPushToUsers: (...args: unknown[]) => mockSendPush(...args),
+}));
+
 import request from "supertest";
 
 import { createApp } from "../../app";
