@@ -5,38 +5,37 @@ import { useRouter } from "expo-router";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { SeasonsList } from "../../../../src/design/seasons/seasons-list";
-import { Button, ChoiceChip, EmptyState } from "../../../../src/design/ui";
+import { Button, EmptyState, SegmentedControl } from "../../../../src/design/ui";
 import { useSeasons } from "../../../../src/hooks/use-seasons";
 import { useSessionStore } from "../../../../src/store/session";
 
 /**
  * SUPER's seasons list (v1 /super/seasons, B5-2): title, "New season" and the
  * program-grouped list (editing is on the season detail). ADMIN and MENTOR may reach this
- * route and see the same list read-only. V2-ONLY kept: the program filter
- * chips (G20; spec 02 §9 — "filters, not routes"), exact string match (v1
- * R44) over the role-scoped list already loaded (Plan 6 D-16.5), standing in
- * for v1's /super/seasons/program/[program] and /year/[year] pages (B5-3).
+ * route and see the same list read-only. The status filter works over the role-scoped list
+ * already loaded. The list groups by program, so program chips would only repeat it (owner, 2026-11-07).
  */
 const STAFF_ROLES = new Set(["SUPER", "ADMIN", "MENTOR"]);
 
-function ProgramFilter({
-  programs,
-  value,
-  onChange,
-}: {
-  programs: string[];
-  value: string | null;
-  onChange: (program: string | null) => void;
-}) {
-  if (programs.length < 2) return null;
-  return (
-    <View className="flex-row flex-wrap gap-2">
-      <ChoiceChip label="All programs" selected={value === null} onPress={() => onChange(null)} />
-      {programs.map((p) => (
-        <ChoiceChip key={p} label={p} selected={value === p} onPress={() => onChange(p)} />
-      ))}
-    </View>
-  );
+type StatusFilter = "all" | "active" | "draft" | "finished";
+
+const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "active", label: "Active" },
+  { value: "draft", label: "Draft" },
+  { value: "finished", label: "Finished" },
+];
+
+const NONE_WITH_STATUS: Record<Exclude<StatusFilter, "all">, string> = {
+  active: "No active seasons",
+  draft: "No draft seasons",
+  finished: "No finished seasons",
+};
+
+function matchesStatus(status: string, filter: StatusFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "finished") return status === "COMPLETED" || status === "ARCHIVED";
+  return status === filter.toUpperCase();
 }
 
 export default function SeasonsScreen() {
@@ -45,7 +44,7 @@ export default function SeasonsScreen() {
   const isStaff = role !== null && STAFF_ROLES.has(role);
   const isSuper = role === "SUPER";
   const seasons = useSeasons(isStaff);
-  const [program, setProgram] = useState<string | null>(null);
+  const [status, setStatus] = useState<StatusFilter>("all");
 
   if (!isStaff) {
     return (
@@ -59,12 +58,8 @@ export default function SeasonsScreen() {
   }
 
   const newSeason = () => router.push("/seasons/new");
-  const programs = seasons.data
-    ? Array.from(new Set(seasons.data.map((s) => s.program))).sort((a, b) => a.localeCompare(b))
-    : [];
-  const visible = seasons.data
-    ? seasons.data.filter((s) => program === null || s.program === program)
-    : [];
+  const visible = seasons.data ? seasons.data.filter((s) => matchesStatus(s.status, status)) : [];
+  const hasSeasons = (seasons.data?.length ?? 0) > 0;
 
   return (
     <Screen
@@ -86,14 +81,24 @@ export default function SeasonsScreen() {
           <RouteError onRetry={() => void seasons.refetch()} />
         ) : (
           <>
-            <ProgramFilter programs={programs} value={program} onChange={setProgram} />
-            <SeasonsList
-              rows={visible}
-              onOpen={(row) =>
-                router.push({ pathname: "/seasons/[code]", params: { code: row.code } })
-              }
-              emptyAction={isSuper ? <Button onPress={newSeason}>New season</Button> : undefined}
-            />
+            {hasSeasons ? (
+              <SegmentedControl
+                options={STATUS_OPTIONS}
+                value={status}
+                onChange={(next) => setStatus(next as StatusFilter)}
+              />
+            ) : null}
+            {status !== "all" && visible.length === 0 ? (
+              <EmptyState title={NONE_WITH_STATUS[status]} />
+            ) : (
+              <SeasonsList
+                rows={visible}
+                onOpen={(row) =>
+                  router.push({ pathname: "/seasons/[code]", params: { code: row.code } })
+                }
+                emptyAction={isSuper ? <Button onPress={newSeason}>New season</Button> : undefined}
+              />
+            )}
           </>
         )}
       </View>
