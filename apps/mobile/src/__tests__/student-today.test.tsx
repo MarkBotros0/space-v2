@@ -304,7 +304,8 @@ describe("StudentToday: figures", () => {
     expect(await screen.findByText("Couldn't load your attendance.")).toBeTruthy();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
     expect(screen.getByLabelText("Sessions held: 3 of 4")).toBeTruthy();
-    expect(screen.queryByLabelText(/^Absence budget left/)).toBeNull();
+    // The failed read settles after the dashboard's first paint under a loaded run.
+    await waitFor(() => expect(screen.queryByLabelText(/^Absence budget left/)).toBeNull());
     expect(screen.queryByLabelText(/^Streak/)).toBeNull();
   });
 
