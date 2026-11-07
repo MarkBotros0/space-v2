@@ -21,7 +21,7 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
   });
   if (!quiz) return null;
 
-  const [students, grades] = await Promise.all([
+  const [students, grades, enrollments] = await Promise.all([
     db.user.findMany({
       // R100: deleted users are not on the sheet; ordered by name.
       where: { id: { in: studentIds }, deletedAt: null },
@@ -35,8 +35,14 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
         gradedBy: { select: { name: true } },
       },
     }),
+    // The group each student is in this season, so the sheet can list them by group.
+    db.seasonEnrollment.findMany({
+      where: { seasonId: quiz.seasonId, studentUserId: { in: studentIds } },
+      select: { studentUserId: true, group: { select: { name: true } } },
+    }),
   ]);
   const gradeBy = new Map(grades.map((g) => [g.studentUserId, g]));
+  const groupBy = new Map(enrollments.map((e) => [e.studentUserId, e.group?.name ?? null]));
 
   return {
     id: quiz.id,
@@ -51,6 +57,7 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
       return {
         studentUserId: s.id,
         studentName: s.name,
+        groupName: groupBy.get(s.id) ?? null,
         score: g?.score ?? null,
         notes: g?.notes ?? null,
         gradedAt: g?.gradedAt ?? null,

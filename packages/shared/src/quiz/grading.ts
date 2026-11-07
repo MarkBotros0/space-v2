@@ -9,6 +9,8 @@ import { quizAttemptStatusSchema, quizKindSchema, quizQuestionTypeSchema } from 
 export const quizGradeRowSchema = z.object({
   studentUserId: z.number(),
   studentName: z.string().nullable(),
+  /** The student's group in the quiz's season, for listing by group (owner, 2026-11-07). */
+  groupName: z.string().nullable(),
   score: z.number().nullable(),
   notes: z.string().nullable(),
   gradedAt: z.string().nullable(),

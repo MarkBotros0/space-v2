@@ -186,10 +186,11 @@ export const quizSchemas = {
   },
   QuizGradeRow: {
     type: "object",
-    required: ["studentUserId", "studentName", "score", "notes", "gradedAt", "gradedByName"],
+    required: ["studentUserId", "studentName", "groupName", "score", "notes", "gradedAt", "gradedByName"],
     properties: {
       studentUserId: { type: "integer" },
       studentName: { type: ["string", "null"] },
+      groupName: { type: ["string", "null"], description: "The student's group in the quiz's season." },
       score: { type: ["integer", "null"] },
       notes: { type: ["string", "null"] },
       gradedAt: { type: ["string", "null"], format: "date-time" },

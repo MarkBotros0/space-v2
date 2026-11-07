@@ -9,6 +9,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { haptic } from "../../../../src/design/motion";
 import { Button, EmptyState, Text, toast } from "../../../../src/design/ui";
+import { StudentList } from "../../../../src/design/students/student-list";
 import { GroupedList, ListRow } from "../../../../src/design/ui/grouped-list";
 import { StatusChip, statusChip } from "../../../../src/design/ui/status-chip";
 import {
@@ -102,28 +103,31 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
       ) : sheetQuery.isError || !sheet ? (
         <RouteError onRetry={() => void sheetQuery.refetch()} />
       ) : (
-        <GroupedList>
-          {sheet.rows.map((r) => (
-            <ListRow
-              key={r.studentUserId}
-              title={r.studentName ?? "Student"}
-              titleLines={2}
-              subtitle={r.notes ?? undefined}
-              trailing={
-                <Text variant="body" tabular className="text-foreground">
-                  {r.score == null ? "Not graded" : unbreakable(`${r.score} / ${sheet.maxScore}`)}
-                </Text>
-              }
-              trailingLabel={r.score == null ? "Not graded" : `${r.score} of ${sheet.maxScore}`}
-              chevron
-              onPress={() => {
-                setError(null);
-                setShown(r.studentUserId);
-                setOpen(true);
-              }}
-            />
-          ))}
-        </GroupedList>
+        // Search, a page at a time, and a header per group (owner, 2026-11-07).
+        <StudentList
+          items={sheet.rows.map((r) => ({
+            id: r.studentUserId,
+            name: r.studentName ?? "Student",
+            group: r.groupName,
+            subtitle: r.notes ?? undefined,
+            row: r,
+          }))}
+          trailing={({ row: r }) =>
+            r.score == null ? (
+              <StatusChip tone="neutral" label="Not graded" />
+            ) : (
+              <Text variant="body" tabular className="text-foreground">
+                {unbreakable(`${r.score} / ${sheet.maxScore}`)}
+              </Text>
+            )
+          }
+          trailingLabel={({ row: r }) => (r.score == null ? "Not graded" : `${r.score} of ${sheet.maxScore}`)}
+          onPress={({ row: r }) => {
+            setError(null);
+            setShown(r.studentUserId);
+            setOpen(true);
+          }}
+        />
       )}
       {sheet && row ? (
         <PaperGradeSheet
