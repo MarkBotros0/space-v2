@@ -90,7 +90,8 @@ describe("sendInviteEmail", () => {
     expect(sendMail).toHaveBeenCalledTimes(1);
     const call = sendMail.mock.calls[0][0];
     expect(call.to).toBe("new@example.test");
-    expect(call.html).toContain("CODE-abc_123");
+    // The code is shown in groups of four (spans, no spaces): its text is still the code exactly.
+    expect(call.html.replace(/<[^>]+>/g, "")).toContain("CODE-abc_123");
     expect(call.html).toContain("2030");
   });
 

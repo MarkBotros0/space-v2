@@ -1,5 +1,5 @@
 import { buildNotificationHtml, inlineAttachments } from "../lib/email";
-import { buildInviteHtml, storeLinksHtml } from "../lib/email-templates";
+import { buildInviteHtml, codeGroupsHtml, storeLinksHtml } from "../lib/email-templates";
 import { escapeHtml } from "../lib/html";
 
 describe("lib/html", () => {
@@ -32,35 +32,60 @@ describe("buildNotificationHtml", () => {
 describe("email templates", () => {
   const none = { appStore: null, googlePlay: null };
 
-  it("walks an invitee through three steps to the code, which is labelled and wraps", () => {
+  it("walks an invitee through three steps to the code, which is labelled", () => {
     const html = buildInviteHtml("CODE-abc_123", "Nov 14, 2026, 7:21 AM", none);
     expect(html).toContain("I have an invite code");
     expect(html).toContain("Your invite code");
-    expect(html).toContain("CODE-abc_123");
-    expect(html).toContain("word-break:break-all");
     expect(html).toContain("Nov 14, 2026, 7:21 AM");
   });
 
-  it("is drawn dark, so a mail app's dark mode has nothing to invert", () => {
+  // Gmail on iOS inverts even a dark email in dark mode (the old one came out lavender), so the
+  // design is light with no navy fill, and the app's dark tokens sit behind the media query.
+  it("is light with the app's dark tokens for clients that honour dark mode", () => {
     const html = buildInviteHtml("C", "soon", none);
-    expect(html).not.toMatch(/background-color:#1F3260/i);
-    expect(html).toContain('name="color-scheme" content="dark"');
+    expect(html).toContain('name="color-scheme" content="light dark"');
+    expect(html).toContain("@media (prefers-color-scheme: dark)");
+    expect(html).not.toMatch(/background-color:#(1F3260|16204A)[;"]/i);
   });
 
-  it("shows no store block while neither store link is set", () => {
-    expect(storeLinksHtml(none)).toBe("");
+  // Owner 2026-11-07: TestFlight-only for now, so both badges show, unlinked, as coming soon.
+  it("shows both badges unlinked as coming soon while neither store link is set", () => {
+    const html = storeLinksHtml(none);
+    expect(html).toContain("coming soon to the App Store and Google Play");
+    expect(html).toContain("cid:app-store-badge");
+    expect(html).toContain("Get it on Google Play");
+    expect(html).not.toContain("<a ");
     expect(buildInviteHtml("C", "soon", none)).not.toContain("Don't have the app yet?");
   });
 
-  it("shows a button only for the store that has a link", () => {
+  it("links only the store that has a link and says the other is coming soon", () => {
     const html = storeLinksHtml({ appStore: "https://apps.example.test/jpc", googlePlay: null });
     expect(html).toContain("Don't have the app yet?");
     expect(html).toContain('href="https://apps.example.test/jpc"');
-    expect(html).not.toContain("Google Play");
+    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toContain("Get it on Google Play");
+    expect(html).toContain("Coming soon to Google Play.");
+  });
+
+  it("says nothing is coming soon once both links are set", () => {
+    const html = storeLinksHtml({ appStore: "https://a.example.test", googlePlay: "https://g.example.test" });
+    expect(html.match(/<a /g)).toHaveLength(2);
+    expect(html).not.toMatch(/coming soon/i);
   });
 });
 
 describe("the code box", () => {
+  it("shows the code in groups of four, with no whitespace to copy", () => {
+    expect(codeGroupsHtml("SJHUlxNsnGw81kpvVS")).toBe(
+      ["SJHU", "lxNs", "nGw8", "1kpv", "VS"]
+        .map((g) => `<span style="display:inline-block;white-space:nowrap;margin:0 10px 4px 0;">${g}</span>`)
+        .join(""),
+    );
+    const html = buildInviteHtml("CODE-abc_123", "soon", { appStore: null, googlePlay: null });
+    const selectable = html.match(/user-select:all;">(.*?)<\/span><\/div>/)![1]!;
+    expect(selectable.replace(/<[^>]+>/g, "")).toBe("CODE-abc_123");
+  });
+
   it("selects the whole code in one tap and says how to copy it", () => {
     const html = buildInviteHtml("CODE-abc_123", "soon", { appStore: null, googlePlay: null });
     expect(html).toContain("user-select:all");
@@ -69,13 +94,9 @@ describe("the code box", () => {
 });
 
 describe("inline images", () => {
-  it("attach the logo always, and a store badge only when its link is shown", () => {
-    const without = inlineAttachments(buildInviteHtml("C", "soon", { appStore: null, googlePlay: null }));
-    expect(without.map((a) => a.cid)).toEqual(["jpc-logo"]);
-    const withApple = inlineAttachments(
-      buildInviteHtml("C", "soon", { appStore: "https://apps.example.test/jpc", googlePlay: null }),
-    );
-    expect(withApple.map((a) => a.cid)).toEqual(["jpc-logo", "app-store-badge"]);
-    expect(withApple[0]!.content.subarray(1, 4).toString()).toBe("PNG");
+  it("attach the logo and both store badges, linked or not", () => {
+    const attached = inlineAttachments(buildInviteHtml("C", "soon", { appStore: null, googlePlay: null }));
+    expect(attached.map((a) => a.cid)).toEqual(["jpc-logo", "app-store-badge", "google-play-badge"]);
+    expect(attached[0]!.content.subarray(1, 4).toString()).toBe("PNG");
   });
 });
