@@ -33,3 +33,4 @@ export {
   type ForumAudience,
 } from "./forum";
 export { canExportSeasonWorkbook, reportScopeFor, type ReportScope } from "./report";
+export { announcementFlags, canReadAnnouncement, type AnnouncementFlags } from "./announcement";

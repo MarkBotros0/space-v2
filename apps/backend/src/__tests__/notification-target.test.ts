@@ -12,12 +12,13 @@ describe("parseNotificationLink", () => {
     ["/admin/students/12", { entityType: "student", entityId: 12 }],
     ["/leader/students/12", { entityType: "student", entityId: 12 }],
     ["/leader/submissions/Ab3dE5gH9k", { entityType: "submission", entityId: "Ab3dE5gH9k" }],
+    ["/news/12", { entityType: "announcement", entityId: 12 }],
   ])("maps %s", (link, expected) => {
     expect(parseNotificationLink(link)).toEqual(expected);
   });
 
-  it("knows exactly six shapes — v1's five plus SUBMISSION_RECEIVED's", () => {
-    expect(NOTIFICATION_LINK_PATTERNS).toHaveLength(6);
+  it("knows exactly seven shapes — v1's five plus SUBMISSION_RECEIVED's and ANNOUNCEMENT's", () => {
+    expect(NOTIFICATION_LINK_PATTERNS).toHaveLength(7);
   });
 
   it("keeps a submission's publicId a string, never a number", () => {
