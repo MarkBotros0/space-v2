@@ -4,6 +4,7 @@ import nodemailer, { type Transporter } from "nodemailer";
 import { PASSWORD_RESET_TTL_MINUTES } from "../../../../packages/shared/src/index";
 
 import { config } from "./config";
+import { INLINE_IMAGES } from "./email-assets";
 import {
   INVITE_SUBJECT,
   buildInviteHtml,
@@ -50,6 +51,27 @@ function storeLinks(): StoreLinks {
     appStore: appStoreUrl ? escapeHtml(appStoreUrl) : null,
     googlePlay: playStoreUrl ? escapeHtml(playStoreUrl) : null,
   };
+}
+
+/** The inline images an email's HTML refers to (cid:...), as attachments that travel with it. */
+export function inlineAttachments(html: string) {
+  return INLINE_IMAGES.filter((img) => html.includes(`cid:${img.cid}`)).map((img) => ({
+    filename: img.filename,
+    content: Buffer.from(img.base64, "base64"),
+    contentType: "image/png",
+    cid: img.cid,
+  }));
+}
+
+/** Every email goes out with the inline images its HTML uses. */
+function sendHtml(to: string, subject: string, html: string) {
+  return getTransporter().sendMail({
+    from: fromAddress(),
+    to,
+    subject,
+    html,
+    attachments: inlineAttachments(html),
+  });
 }
 
 function fromAddress(): string {
@@ -107,12 +129,7 @@ export async function sendNotificationEmail(
   const appUrl = (config.authUrl ?? "").replace(/\/$/, "");
   const viewLink = appUrl ? `${appUrl}${link ?? ""}` : null;
 
-  await getTransporter().sendMail({
-    from: fromAddress(),
-    to: email,
-    subject: `JPC Space — ${title}`,
-    html: buildNotificationHtml(title, body, viewLink),
-  });
+  await sendHtml(email, `JPC Space — ${title}`, buildNotificationHtml(title, body, viewLink));
 }
 
 /**
@@ -146,12 +163,7 @@ export async function sendInviteEmail(email: string, code: string, expiresAt: Da
     return;
   }
 
-  await getTransporter().sendMail({
-    from: fromAddress(),
-    to: email,
-    subject: INVITE_SUBJECT,
-    html: buildInviteHtml(code, formatInOrgTime(expiresAt), storeLinks()),
-  });
+  await sendHtml(email, INVITE_SUBJECT, buildInviteHtml(code, formatInOrgTime(expiresAt), storeLinks()));
 }
 
 /**
@@ -175,16 +187,11 @@ export async function sendPasswordResetEmail(email: string, code: string, expire
   }
 
   const link = `${config.mobileAppScheme}://reset-password?token=${code}`;
-  await getTransporter().sendMail({
-    from: fromAddress(),
-    to: email,
-    subject: "JPC Space — Password Reset",
-    html: buildPasswordResetHtml(
+  await sendHtml(email, "JPC Space — Password Reset", buildPasswordResetHtml(
       link,
       code,
       PASSWORD_RESET_TTL_MINUTES,
       formatInOrgTime(expiresAt),
       storeLinks(),
-    ),
-  });
+    ));
 }

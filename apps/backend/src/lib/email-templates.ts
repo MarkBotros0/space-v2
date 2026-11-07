@@ -1,27 +1,32 @@
+import { APP_STORE_BADGE, GOOGLE_PLAY_BADGE, JPC_LOGO } from "./email-assets";
+
 /**
  * The emails' HTML, drawn with the mobile app's design system (owner,
- * 2026-11-07): its light tokens (tokens.json), the 16 radius of a card and
- * 14 of a control, the system font, navy text with the teal accent. Email
- * clients take inline styles and tables only, so the values are literals here.
+ * 2026-11-07): its dark tokens (tokens.json; the owner preferred the dark version), the 16 radius of a card and
+ * 14 of a control, the system font, light text with the teal accent, the
+ * logo mark in the header and the stores' own badges (inline cid images,
+ * email-assets.ts). Email clients take inline styles and tables only, so the
+ * values are literals here.
  *
- * Built to survive a mail app's dark mode: nothing important sits on a
- * coloured block (Gmail inverts a navy header into lavender), so the card is
- * white with navy text and only a thin teal bar carries the brand colour.
+ * Dark by design, so a mail app's dark mode has nothing to invert (Gmail turned
+ * the old navy header lavender), and it says so with color-scheme. A thin
+ * teal bar carries the brand colour.
  *
  * Every interpolation the caller doesn't control is escaped by the caller
  * (ruling C11); these helpers take strings that are already safe.
  */
 
 const T = {
-  page: "#F4F6FB", // background
-  card: "#FFFFFF", // surface
-  text: "#142048", // foreground
-  muted: "#4B5878", // muted-foreground
-  line: "#DCE2EF", // separator
+  page: "#0B1230", // background (dark)
+  card: "#16204A", // surface
+  text: "#ECEFF7", // foreground
+  muted: "#ABB7D4", // muted-foreground
+  line: "#2A3A63", // separator
   teal: "#7DCED1", // secondary (brand teal)
-  info: "#2E7679", // info / ring
-  infoSoft: "#E2F4F5", // info-soft
-  navy: "#142048", // primary
+  info: "#7DCED1", // info
+  infoSoft: "#103436", // info-soft
+  button: "#7DCED1", // primary
+  buttonText: "#103436", // primary-foreground
 } as const;
 
 const FONT = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
@@ -34,16 +39,18 @@ export interface StoreLinks {
 }
 
 /**
- * "Don't have the app yet?" and a button per store that has a link
- * (secondary: a light fill, navy text). Nothing at all while neither is set.
+ * "Don't have the app yet?" and each store's official badge that has a link
+ * (40 tall, side by side, wrapping on a narrow phone). Nothing at all while
+ * neither link is set.
  */
 export function storeLinksHtml(links: StoreLinks): string {
   if (!links.appStore && !links.googlePlay) return "";
-  const pill = (href: string, label: string) =>
-    `<a href="${href}" style="display:inline-block;margin:0 8px 8px 0;padding:10px 16px;border:1px solid ${T.line};border-radius:14px;background-color:${T.page};font-size:14px;font-weight:600;color:${T.navy};text-decoration:none;">${label}</a>`;
-  return `<div style="margin:8px 0 0 0;padding-top:20px;border-top:1px solid ${T.line};">
-    <p style="margin:0 0 12px 0;font-size:14px;line-height:1.5;color:${T.muted};">Don't have the app yet? Get JPC Space first:</p>
-    ${links.appStore ? pill(links.appStore, "Download on the App Store") : ""}${links.googlePlay ? pill(links.googlePlay, "Get it on Google Play") : ""}
+  const badge = (href: string, cid: string, alt: string, width: number) =>
+    `<a href="${href}" style="display:inline-block;margin:0 10px 10px 0;text-decoration:none;"><img src="cid:${cid}" alt="${alt}" width="${width}" height="40" style="display:block;border:0;height:40px;width:${width}px;"></a>`;
+  return `<div style="margin:12px 0 0 0;padding-top:24px;border-top:1px solid ${T.line};">
+    <p style="margin:0 0 4px 0;font-size:16px;font-weight:600;line-height:1.4;color:${T.text};">Don't have the app yet?</p>
+    <p style="margin:0 0 16px 0;font-size:14px;line-height:1.5;color:${T.muted};">Get JPC Space on your phone first, then come back to this email.</p>
+    ${links.appStore ? badge(links.appStore, APP_STORE_BADGE.cid, "Download on the App Store", 120) : ""}${links.googlePlay ? badge(links.googlePlay, GOOGLE_PLAY_BADGE.cid, "Get it on Google Play", 135) : ""}
   </div>`;
 }
 
@@ -54,23 +61,25 @@ export function renderShell(title: string, lead: string, bodyHtml: string): stri
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light">
-  <meta name="supported-color-schemes" content="light">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
   <title>${title}</title>
 </head>
 <body style="margin:0;padding:0;background-color:${T.page};font-family:${FONT};color:${T.text};">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:${T.page};">
     <tr><td align="center" style="padding:32px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;table-layout:fixed;">
-        <tr><td style="padding:0 4px 16px 4px;">
-          <span style="font-size:16px;font-weight:700;color:${T.navy};letter-spacing:0.2px;">JPC Space</span>
-          <span style="display:inline-block;width:8px;height:8px;border-radius:4px;background-color:${T.teal};margin-left:4px;"></span>
+        <tr><td style="padding:0 4px 20px 4px;">
+          <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+            <td style="padding-right:12px;"><img src="cid:${JPC_LOGO.cid}" alt="" width="40" height="40" style="display:block;border:0;width:40px;height:40px;border-radius:10px;"></td>
+            <td style="font-size:18px;font-weight:700;color:${T.text};letter-spacing:0.2px;">JPC Space</td>
+          </tr></table>
         </td></tr>
         <tr><td style="background-color:${T.card};border:1px solid ${T.line};border-radius:16px;overflow:hidden;">
-          <div style="height:4px;background-color:${T.teal};font-size:0;line-height:0;">&nbsp;</div>
-          <div style="padding:32px 28px;">
-            <h1 style="margin:0 0 8px 0;font-size:24px;line-height:1.3;font-weight:700;color:${T.text};">${title}</h1>
-            <p style="margin:0 0 24px 0;font-size:16px;line-height:1.5;color:${T.muted};">${lead}</p>
+          <div style="height:4px;background-color:${T.teal};background-image:linear-gradient(90deg, ${T.teal}, ${T.infoSoft});font-size:0;line-height:0;">&nbsp;</div>
+          <div style="padding:32px 24px 28px 24px;">
+            <h1 style="margin:0 0 8px 0;font-size:28px;line-height:1.25;font-weight:800;letter-spacing:-0.3px;color:${T.text};">${title}</h1>
+            <p style="margin:0 0 28px 0;font-size:16px;line-height:1.5;color:${T.muted};">${lead}</p>
             ${bodyHtml}
           </div>
         </td></tr>
@@ -90,10 +99,10 @@ export function paragraph(html: string, muted = false): string {
   return `<p style="margin:0 0 16px 0;font-size:${muted ? 14 : 16}px;line-height:1.6;color:${muted ? T.muted : T.text};">${html}</p>`;
 }
 
-/** The primary action: the app's primary button (navy, 14 radius, 48 tall). */
+/** The primary action: the app's primary button (teal, 14 radius, 48 tall). */
 export function buttonHtml(href: string, label: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;"><tr><td style="background-color:${T.navy};border-radius:14px;">
-    <a href="${href}" style="display:inline-block;padding:14px 24px;font-size:16px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:14px;">${label}</a>
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;"><tr><td style="background-color:${T.button};border-radius:14px;">
+    <a href="${href}" style="display:inline-block;padding:14px 24px;font-size:16px;font-weight:600;color:${T.buttonText};text-decoration:none;border-radius:14px;">${label}</a>
   </td></tr></table>`;
 }
 
@@ -112,11 +121,17 @@ export function stepsHtml(steps: string[]): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 8px 0;">${rows}</table>`;
 }
 
-/** A code to copy: labelled, large, in the info callout, wrapping anywhere so it never overflows a phone. */
+/**
+ * A code to copy: labelled, large, in the info callout, wrapping anywhere so it
+ * never overflows a phone. An email can't run a Copy button (mail apps strip
+ * scripts), so one tap selects the whole code (user-select: all) and the hint
+ * under it says so (owner, 2026-11-07: a copy button for the codes).
+ */
 export function codeBoxHtml(label: string, code: string): string {
   return `<div style="margin:0 0 16px 0;padding:16px;border:1px solid ${T.info};border-radius:14px;background-color:${T.infoSoft};">
     <p style="margin:0 0 8px 0;font-size:12px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:${T.info};">${label}</p>
-    <p style="margin:0;font-family:${MONO};font-size:20px;line-height:1.5;letter-spacing:1.5px;color:${T.text};word-break:break-all;overflow-wrap:anywhere;">${code}</p>
+    <p style="margin:0;font-family:${MONO};font-size:20px;line-height:1.5;letter-spacing:1.5px;color:${T.text};word-break:break-all;overflow-wrap:anywhere;"><span style="-webkit-user-select:all;user-select:all;word-break:break-all;">${code}</span></p>
+    <p style="margin:8px 0 0 0;font-size:12px;line-height:1.5;color:${T.muted};">Tap the code to select all of it, then Copy.</p>
   </div>`;
 }
 
@@ -128,7 +143,7 @@ export function buildInviteHtml(code: string, expiresText: string, stores: Store
     ${stepsHtml([
       "Open the <strong>JPC Space</strong> app on your phone.",
       "On the sign-in screen, tap <strong>&ldquo;I have an invite code&rdquo;</strong>.",
-      "Paste the code below (press and hold it to copy), then choose your password.",
+      "Copy the code below, paste it in, then choose your password.",
     ])}
     ${codeBoxHtml("Your invite code", code)}
     ${paragraph(`The code works once and expires on ${expiresText}. If it runs out, ask whoever invited you to send a new one.`, true)}

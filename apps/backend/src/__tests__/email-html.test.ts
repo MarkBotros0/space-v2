@@ -1,4 +1,4 @@
-import { buildNotificationHtml } from "../lib/email";
+import { buildNotificationHtml, inlineAttachments } from "../lib/email";
 import { buildInviteHtml, storeLinksHtml } from "../lib/email-templates";
 import { escapeHtml } from "../lib/html";
 
@@ -17,7 +17,8 @@ describe("buildNotificationHtml", () => {
 
   it("escapes the body", () => {
     const html = buildNotificationHtml("Follow-up flagged", "<img src=x onerror=alert(1)>", null);
-    expect(html).not.toContain("<img");
+    // The logo is an <img> of ours; the injected one must not be.
+    expect(html).not.toContain("<img src=x");
     expect(html).toContain("&lt;img");
   });
 
@@ -40,10 +41,10 @@ describe("email templates", () => {
     expect(html).toContain("Nov 14, 2026, 7:21 AM");
   });
 
-  it("puts no brand colour behind the title, so a mail app's dark mode can't turn it lavender", () => {
+  it("is drawn dark, so a mail app's dark mode has nothing to invert", () => {
     const html = buildInviteHtml("C", "soon", none);
     expect(html).not.toMatch(/background-color:#1F3260/i);
-    expect(html).toContain('name="color-scheme" content="light"');
+    expect(html).toContain('name="color-scheme" content="dark"');
   });
 
   it("shows no store block while neither store link is set", () => {
@@ -56,5 +57,25 @@ describe("email templates", () => {
     expect(html).toContain("Don't have the app yet?");
     expect(html).toContain('href="https://apps.example.test/jpc"');
     expect(html).not.toContain("Google Play");
+  });
+});
+
+describe("the code box", () => {
+  it("selects the whole code in one tap and says how to copy it", () => {
+    const html = buildInviteHtml("CODE-abc_123", "soon", { appStore: null, googlePlay: null });
+    expect(html).toContain("user-select:all");
+    expect(html).toContain("Tap the code to select all of it, then Copy.");
+  });
+});
+
+describe("inline images", () => {
+  it("attach the logo always, and a store badge only when its link is shown", () => {
+    const without = inlineAttachments(buildInviteHtml("C", "soon", { appStore: null, googlePlay: null }));
+    expect(without.map((a) => a.cid)).toEqual(["jpc-logo"]);
+    const withApple = inlineAttachments(
+      buildInviteHtml("C", "soon", { appStore: "https://apps.example.test/jpc", googlePlay: null }),
+    );
+    expect(withApple.map((a) => a.cid)).toEqual(["jpc-logo", "app-store-badge"]);
+    expect(withApple[0]!.content.subarray(1, 4).toString()).toBe("PNG");
   });
 });
