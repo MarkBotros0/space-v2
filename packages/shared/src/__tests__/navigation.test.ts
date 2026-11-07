@@ -53,27 +53,25 @@ describe("navFor", () => {
         "/notifications",
         "/reports",
         "/seasons",
-        "/settings/notifications",
         "/settings/profile",
         "/students",
         "/students/alumni",
         "/students/dropped",
         "/users",
       ],
+      // Owner, 2026-11-07: Students live under Groups, and Assignments and
+      // Quizzes under Work (/coursework), so those three leave ADMIN's nav.
       ADMIN: [
-        "/assignments",
         "/calendar",
+        "/coursework",
         "/dashboard",
         "/groups",
         "/more",
         "/notes",
         "/notifications",
-        "/quizzes",
         "/reports",
         "/season",
-        "/settings/notifications",
         "/settings/profile",
-        "/students",
       ],
       LEADER: [
         "/calendar",
@@ -83,7 +81,6 @@ describe("navFor", () => {
         "/notes",
         "/notifications",
         "/quizzes",
-        "/settings/notifications",
         "/settings/profile",
         "/submissions",
       ],
@@ -93,7 +90,6 @@ describe("navFor", () => {
         "/notifications",
         "/profile",
         "/reports",
-        "/settings/notifications",
         "/settings/profile",
         "/students",
       ],
@@ -106,7 +102,6 @@ describe("navFor", () => {
         "/notifications",
         "/profile",
         "/season",
-        "/settings/notifications",
         "/settings/profile",
         "/submitted",
         "/work",
@@ -118,7 +113,6 @@ describe("navFor", () => {
         "/more",
         "/notifications",
         "/profile",
-        "/settings/notifications",
         "/settings/profile",
       ],
     };
@@ -168,7 +162,6 @@ describe("navFor", () => {
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
         ["/settings/profile", "Profile settings", "settings"],
-        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -185,20 +178,17 @@ describe("navFor", () => {
         ["/season", "My Season", "season"],
         ["/calendar", "Calendar", "calendar"],
         ["/groups", "Groups", "groups"],
-        ["/students", "Students", "students"],
+        ["/coursework", "Work", "assignments"],
         ["/notes", "My notes", "notes"],
-        ["/assignments", "Assignments", "assignments"],
-        ["/quizzes", "Quizzes", "quizzes"],
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
         ["/settings/profile", "Profile settings", "settings"],
-        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
         ["/calendar", "Calendar", "calendar"],
         ["/groups", "Groups", "groups"],
-        ["/students", "Students", "students"],
+        ["/coursework", "Work", "assignments"],
         ["/more", "More", "more"],
       ],
     });
@@ -206,18 +196,17 @@ describe("navFor", () => {
     expect(shape(navByRole.LEADER)).toEqual({
       sidebar: [
         ["/dashboard", "Dashboard", "dashboard"],
-        ["/groups", "Groups", "groups"],
+        ["/groups", "My group", "groups"],
         ["/notes", "My notes", "notes"],
         ["/calendar", "Calendar", "calendar"],
         ["/submissions", "Submissions", "submissions"],
         ["/quizzes", "Quizzes", "quizzes"],
         ["/notifications", "Notifications", "notifications"],
         ["/settings/profile", "Profile settings", "settings"],
-        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
-        ["/groups", "Groups", "groups"],
+        ["/groups", "My group", "groups"],
         ["/calendar", "Calendar", "calendar"],
         ["/submissions", "Submissions", "submissions"],
         ["/more", "More", "more"],
@@ -236,7 +225,6 @@ describe("navFor", () => {
         ["/profile", "Profile", "profile"],
         ["/notifications", "Notifications", "notifications"],
         ["/settings/profile", "Profile settings", "settings"],
-        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -254,7 +242,6 @@ describe("navFor", () => {
         ["/reports", "Reports", "reports"],
         ["/notifications", "Notifications", "notifications"],
         ["/settings/profile", "Profile settings", "settings"],
-        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -274,7 +261,6 @@ describe("navFor", () => {
         ["/profile", "Profile", "profile"],
         ["/notifications", "Notifications", "notifications"],
         ["/settings/profile", "Profile settings", "settings"],
-        ["/settings/notifications", "Notification settings", "notifications"],
       ],
       tabs: [
         ["/dashboard", "Home", "home"],
@@ -303,7 +289,6 @@ describe("navFor between seasons", () => {
   it("STUDENT_BETWEEN sidebar has no season, work or attendance", () => {
     expect(STUDENT_BETWEEN.sidebar.map((i) => i.label)).toEqual([
       "Dashboard", "Calendar", "History", "Profile", "Notifications", "Profile settings",
-      "Notification settings",
     ]);
   });
 });

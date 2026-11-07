@@ -63,12 +63,14 @@ describe("studentDetailPublicSchema", () => {
   const publicProfile = {
     university: null, faculty: null, universityGraduationYear: null,
     activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null,
+    // Leaders and mentors see the phone (owner, 2026-11-07).
+    phone: "01001234567",
   };
 
   it("REFUSES a payload carrying a withheld field — the leak detector (spec 06 D3)", () => {
-    // The public profile is .strict(): a server that leaks `phone` to a
+    // The public profile is .strict(): a server that leaks the date of birth to a
     // LEADER/MENTOR client fails the parse instead of quietly delivering it.
-    const leaked = { ...base, profile: { ...publicProfile, phone: "+20 100" } };
+    const leaked = { ...base, profile: { ...publicProfile, dateOfBirth: "2000-01-01" } };
     expect(studentDetailPublicSchema.safeParse(leaked).success).toBe(false);
     expect(studentDetailPublicSchema.safeParse({ ...base, profile: publicProfile }).success).toBe(true);
   });
