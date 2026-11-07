@@ -47,6 +47,10 @@ export type StartIssue = z.infer<typeof startIssueSchema>;
 export const seasonStartCheckSchema = z.object({
   ready: z.boolean(),
   items: z.array(startIssueSchema),
+  /** Other ACTIVE seasons that must end first: any, for a community-wide draft; a community-wide one, for a regular draft. */
+  seasonsInTheWay: z.array(
+    z.object({ id: z.number(), code: z.string(), title: z.string(), message: z.string() }),
+  ),
 });
 export type SeasonStartCheck = z.infer<typeof seasonStartCheckSchema>;
 
@@ -81,6 +85,8 @@ export const seasonEndCheckSchema = z.object({
       name: z.string(),
       groupName: z.string().nullable(),
       attendancePct: z.number(),
+      /** Their class (School of N); null for a non-alumnus. */
+      graduationYear: z.number().int().nullable(),
     }),
   ),
 });

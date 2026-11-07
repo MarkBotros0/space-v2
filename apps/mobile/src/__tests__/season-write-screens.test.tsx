@@ -71,6 +71,7 @@ describe("NewSeasonScreen (/seasons/new)", () => {
         description: null,
         requiredProgram: null,
         graduatesOnPass: false,
+        isCommunityWide: false,
         startDate: `${day}T00:00:00.000Z`,
         endDate: `${day}T00:00:00.000Z`,
         status: "DRAFT",

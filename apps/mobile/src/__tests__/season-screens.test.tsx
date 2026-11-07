@@ -60,13 +60,14 @@ describe("SeasonsScreen (SUPER)", () => {
     renderWithProviders(<SeasonsScreen />);
     expect(await screen.findByText("Spring 2027")).toBeTruthy();
     expect(screen.getByText("TEST")).toBeTruthy();
-    expect(screen.getByText("Draft")).toBeTruthy();
-    expect(screen.getByText("Active")).toBeTruthy();
+    // Once in the status filter, and once per season with that status.
+    expect(screen.getAllByText("Draft").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("Active").length).toBeGreaterThan(1);
     expect(screen.queryByText("Create and manage program seasons.")).toBeNull();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
   });
 
-  it("shows a row's code and dates with no trailing separator, and one program shows no chips", async () => {
+  it("shows a row's code and dates with no trailing separator, with no program chips", async () => {
     renderWithProviders(<SeasonsScreen />);
     expect(await screen.findByText("s8 · Jan 1, 2027 – Dec 31, 2027")).toBeTruthy();
     expect(screen.queryByText("All programs")).toBeNull();
@@ -106,6 +107,7 @@ describe("SeasonsScreen (non-SUPER)", () => {
     get.mockResolvedValue({ data: { data: { seasons: [] } } });
     renderWithProviders(<SeasonsScreen />);
     expect(await screen.findByText("No seasons yet")).toBeTruthy();
+    expect(screen.queryByText(/Create your first season/)).toBeNull();
     expect(screen.queryByText("New season")).toBeNull();
   });
 
@@ -223,15 +225,35 @@ describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => 
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s8" } });
   });
 
-  it("filters by program with exact matching (v1 R44), client-side (D-16.5)", async () => {
+  it("filters by status over the list already loaded, with no program chips", async () => {
     renderWithProviders(<SeasonsScreen />);
     await screen.findByText("Spring 2027");
-    // The chip comes first; once filtered, the list repeats the name as its heading.
-    fireEvent.press(screen.getAllByText("GBV")[0]!);
+    expect(screen.queryByText("All programs")).toBeNull();
+    fireEvent.press(screen.getByText("Finished"));
     expect(screen.queryByText("Spring 2027")).toBeNull();
-    expect(screen.getByText("GBV 2027")).toBeTruthy();
-    fireEvent.press(screen.getByText("All programs"));
+    expect(screen.getByText("No finished seasons")).toBeTruthy();
+    fireEvent.press(screen.getByText("All"));
     expect(screen.getByText("Spring 2027")).toBeTruthy();
     expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts a completed and an archived season as finished, and only them", async () => {
+    get.mockResolvedValue({
+      data: {
+        data: {
+          seasons: [
+            { id: 1, code: "a", title: "Done one", program: "A", year: 2025, status: "COMPLETED", startDate: "2025-01-01T00:00:00.000Z", endDate: "2025-02-01T00:00:00.000Z" },
+            { id: 2, code: "b", title: "Done two", program: "A", year: 2024, status: "ARCHIVED", startDate: "2024-01-01T00:00:00.000Z", endDate: "2024-02-01T00:00:00.000Z" },
+            { id: 3, code: "c", title: "Running", program: "B", year: 2026, status: "ACTIVE", startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-02-01T00:00:00.000Z" },
+          ],
+        },
+      },
+    });
+    renderWithProviders(<SeasonsScreen />);
+    await screen.findByText("Running");
+    fireEvent.press(screen.getByText("Finished"));
+    expect(screen.getByText("Done one")).toBeTruthy();
+    expect(screen.getByText("Done two")).toBeTruthy();
+    expect(screen.queryByText("Running")).toBeNull();
   });
 });

@@ -34,7 +34,7 @@ const issue = (over: Record<string, unknown> = {}) => ({
   userId: 1, name: "Mina", seat: "student", reason: "already_in_role",
   message: "Mina is already a student in GBV 2026", otherSeasonCode: "gbv-2026", ...over,
 });
-const ready = { ready: true, items: [] };
+const ready = { ready: true, items: [], seasonsInTheWay: [] };
 
 let checks: unknown[];
 function serve(season = detail()) {
@@ -82,8 +82,21 @@ describe("not ready", () => {
     issue({ userId: 4, name: "Hany", seat: "admin", reason: "is_alumnus", message: "Hany is an alumnus", otherSeasonCode: null }),
   ];
 
+  it("lists the seasons in the way first, each with its message and Open {title}", async () => {
+    const way = { id: 3, code: "3g-2026", title: "3G 2026", message: "3G 2026 is still running. End it first." };
+    checks = [{ ready: false, seasonsInTheWay: [way], items: [issue()] }];
+    serve();
+    renderStacked(<StartSeasonScreen />);
+    expect(await screen.findByText("3G 2026 is still running. End it first.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start season" })).toBeNull();
+    fireEvent.press(screen.getByRole("button", { name: "Open 3G 2026" }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "3g-2026" } });
+    const order = screen.getAllByText(/is still running|is already a student/).map((n) => n.props.children);
+    expect(order).toEqual(["3G 2026 is still running. End it first.", "Mina is already a student in GBV 2026"]);
+  });
+
   it("groups by seat with counts, shows reasons in words and no Start", async () => {
-    checks = [{ ready: false, items }];
+    checks = [{ ready: false, seasonsInTheWay: [], items }];
     serve();
     renderStacked(<StartSeasonScreen />);
     expect(await screen.findByText("Sort these out first")).toBeTruthy();
@@ -95,7 +108,7 @@ describe("not ready", () => {
   });
 
   it("offers Override only for did_not_pass and never_finished, and Open for another season", async () => {
-    checks = [{ ready: false, items }];
+    checks = [{ ready: false, seasonsInTheWay: [], items }];
     serve();
     renderStacked(<StartSeasonScreen />);
     await screen.findByText("Sort these out first");
@@ -105,7 +118,7 @@ describe("not ready", () => {
   });
 
   it("Remove on a student deletes the enrollment and refetches; Start appears when empty", async () => {
-    checks = [{ ready: false, items: [issue()] }, ready];
+    checks = [{ ready: false, seasonsInTheWay: [], items: [issue()] }, ready];
     serve();
     renderStacked(<StartSeasonScreen />);
     await screen.findByText("Sort these out first");
@@ -116,7 +129,7 @@ describe("not ready", () => {
   });
 
   it("Remove on a student with work says why in a toast", async () => {
-    checks = [{ ready: false, items: [issue()] }];
+    checks = [{ ready: false, seasonsInTheWay: [], items: [issue()] }];
     serve();
     del.mockRejectedValue(apiFail(409, "has_work", "Mina has work in this season"));
     renderStacked(<StartSeasonScreen />);
@@ -126,7 +139,7 @@ describe("not ready", () => {
   });
 
   it("Remove on an admin calls the season admin route", async () => {
-    checks = [{ ready: false, items: [items[3]] }, ready];
+    checks = [{ ready: false, seasonsInTheWay: [], items: [items[3]] }, ready];
     serve();
     del.mockResolvedValue({ data: { data: { admins: [] } } });
     renderStacked(<StartSeasonScreen />);
@@ -136,7 +149,7 @@ describe("not ready", () => {
   });
 
   it("a leader is fixed on the season screen (no group id here)", async () => {
-    checks = [{ ready: false, items: [items[2]] }];
+    checks = [{ ready: false, seasonsInTheWay: [], items: [items[2]] }];
     serve();
     renderStacked(<StartSeasonScreen />);
     await screen.findByText("Sort these out first");
@@ -146,7 +159,7 @@ describe("not ready", () => {
   });
 
   it("Override confirms with the issue's wording, posts, refetches", async () => {
-    checks = [{ ready: false, items: [items[1]] }, ready];
+    checks = [{ ready: false, seasonsInTheWay: [], items: [items[1]] }, ready];
     serve();
     renderStacked(<StartSeasonScreen />);
     await screen.findByText("Sort these out first");
@@ -158,7 +171,7 @@ describe("not ready", () => {
   });
 
   it("a start_blocked 409 reloads the list with a toast", async () => {
-    checks = [ready, { ready: false, items: [issue()] }];
+    checks = [ready, { ready: false, seasonsInTheWay: [], items: [issue()] }];
     serve();
     post.mockRejectedValue(apiFail(409, "start_blocked", "Mina is already a student in GBV 2026"));
     renderStacked(<StartSeasonScreen />);

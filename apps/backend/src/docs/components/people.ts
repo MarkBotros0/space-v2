@@ -30,6 +30,7 @@ export const peopleSchemas = {
       program: { type: "string", example: "GBV" },
       year: { type: "integer" },
       status: { $ref: "#/components/schemas/SeasonStatus" },
+      isCommunityWide: { type: "boolean", description: "Anyone may take part as a student, alumni too." },
       startDate: { type: "string", format: "date-time" },
       endDate: { type: "string", format: "date-time" },
     },
@@ -43,6 +44,7 @@ export const peopleSchemas = {
       program: { type: "string" },
       requiredProgram: { type: ["string", "null"], description: "The program someone must have finished to join. Sent to SUPER and this season's admins and leaders; left out for everyone else." },
       graduatesOnPass: { type: "boolean", description: "Passing this season makes an alumnus. Sent as `requiredProgram` is; left out for everyone else." },
+      isCommunityWide: { type: "boolean", description: "Anyone may take part as a student, alumni too; the season has no required program and graduates nobody." },
       year: { type: "integer" },
       description: { type: ["string", "null"] },
       status: { $ref: "#/components/schemas/SeasonStatus" },
@@ -130,6 +132,11 @@ export const peopleSchemas = {
         type: "boolean",
         description:
           "Everyone who passes becomes an alumnus when the season ends. SUPER only (a season admin's PATCH gets 403 `forbidden_field`), and changeable until the season has finished (else 409 `season_finished`); omitted leaves it as it is, default false.",
+      },
+      isCommunityWide: {
+        type: "boolean",
+        description:
+          "Anyone may study, alumni too. SUPER only (a season admin's PATCH gets 403 `forbidden_field`), changeable only while the season is a draft (else 409 `season_started`, \"This season has started, so this can't change.\"); omitted leaves it as it is, default false. Together with `graduatesOnPass` or a `requiredProgram`: 409 `community_wide_rules`.",
       },
       year: { type: "integer", minimum: 2000, maximum: 2100 },
       description: { type: ["string", "null"], maxLength: 2000 },

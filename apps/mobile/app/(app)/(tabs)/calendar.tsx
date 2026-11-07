@@ -1,4 +1,4 @@
-import { isAlumnus } from "@space/shared";
+import { isAlumnus, isStudyingAlumnus } from "@space/shared";
 import { Calendar as CalendarIcon } from "lucide-react-native";
 
 import { Screen } from "../../../src/design/layout/screen";
@@ -20,12 +20,17 @@ import { useSessionStore } from "../../../src/store/session";
  */
 export default function CalendarScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
-  // navFor's rule (shared): a graduated student.
-  const alumnus = useSessionStore(
-    (s) =>
-      s.user != null &&
-      isAlumnus({ role: s.user.role, graduationYear: s.scopes?.graduationYear ?? null }),
-  );
+  // navFor's rule (shared): a graduated student, unless studying. They get the
+  // student calendar; /events already answers them with their alumni-only events.
+  const alumnusNotStudying = useSessionStore((s) => {
+    if (s.user == null) return false;
+    const audience = {
+      role: s.user.role,
+      graduationYear: s.scopes?.graduationYear ?? null,
+      activeSeasonId: s.scopes?.activeSeasonId ?? null,
+    };
+    return isAlumnus(audience) && !isStudyingAlumnus(audience);
+  });
   const leadsNothing = useSessionStore(
     (s) => s.user?.role === "LEADER" && (s.scopes?.groupLeaderIds.length ?? 0) === 0,
   );
@@ -55,6 +60,6 @@ export default function CalendarScreen() {
   if (role === "LEADER") return <LeaderCalendar />;
   if (role === "SUPER") return <SuperCalendar />;
   if (role === "ADMIN") return <AdminCalendar />;
-  if (alumnus) return <AlumniCalendar />;
+  if (alumnusNotStudying) return <AlumniCalendar />;
   return <StudentCalendar />;
 }

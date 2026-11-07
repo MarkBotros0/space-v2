@@ -16,6 +16,7 @@ import { requireUser } from "../../middleware/require-auth";
 import {
   SEASON_ADMIN_EDITABLE_FIELDS,
   OWN_PROGRAM_MESSAGE,
+  COMMUNITY_WIDE_RULES_MESSAGE,
   seasonAdminPatchSchema,
   seasonWriteRequestSchema,
 } from "../../../../../packages/shared/src/index";
@@ -59,6 +60,7 @@ export async function listSeasons(req: Request, res: Response) {
       program: true,
       year: true,
       status: true,
+      isCommunityWide: true,
       startDate: true,
       endDate: true,
     },
@@ -114,6 +116,7 @@ function seasonColumns(body: SeasonWriteBody) {
     // Undefined leaves the column alone on an update; create takes the default (null).
     requiredProgram: body.requiredProgram,
     graduatesOnPass: body.graduatesOnPass,
+    isCommunityWide: body.isCommunityWide,
     year: body.year,
     description: body.description ?? null,
     startDate: new Date(body.startDate),
@@ -134,6 +137,10 @@ export async function createSeason(req: Request, res: Response) {
   const body = parsed.data;
   // No season skips Start: it runs the checks and moves the people.
   if (body.status !== "DRAFT") return apiError(res, "bad_request", "A new season is created as a draft.", 400);
+
+  if (body.isCommunityWide && (body.graduatesOnPass || body.requiredProgram)) {
+    return apiError(res, "community_wide_rules", COMMUNITY_WIDE_RULES_MESSAGE, 409);
+  }
 
   // v1 R7: the check has no deletedAt filter — a soft-deleted season keeps its code.
   const clash = await db.season.findUnique({ where: { code: body.code }, select: { id: true } });
@@ -181,7 +188,7 @@ export async function updateSeason(req: Request, res: Response) {
 
   const existing = await db.season.findFirst({
     where: { id, deletedAt: null },
-    select: { id: true, status: true, requiredProgram: true, graduatesOnPass: true },
+    select: { id: true, status: true, requiredProgram: true, graduatesOnPass: true, isCommunityWide: true },
   });
   if (!existing) return apiError(res, "not_found", "Season not found.", 404);
 
@@ -200,6 +207,15 @@ export async function updateSeason(req: Request, res: Response) {
     // Who may join is settled before the season starts.
     if (body.requiredProgram !== undefined && body.requiredProgram !== existing.requiredProgram && existing.status !== "DRAFT") {
       return apiError(res, "season_not_draft", "The required program can only change while the season is a draft.", 409);
+    }
+    // Fixed at Start: who may study is settled before anyone is seated for real.
+    if (body.isCommunityWide !== undefined && body.isCommunityWide !== existing.isCommunityWide && existing.status !== "DRAFT") {
+      return apiError(res, "season_started", "This season has started, so this can't change.", 409);
+    }
+    const wideAfter = body.isCommunityWide ?? existing.isCommunityWide;
+    const graduatesAfter = body.graduatesOnPass ?? existing.graduatesOnPass;
+    if (wideAfter && (graduatesAfter || requiredAfter)) {
+      return apiError(res, "community_wide_rules", COMMUNITY_WIDE_RULES_MESSAGE, 409);
     }
     // Until the season has finished; End reads it under the season's lock, and the
     // write below only lands while the status is still the one checked here.

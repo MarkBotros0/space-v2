@@ -5,6 +5,7 @@ import type { Prisma } from "../../../generated/prisma/client";
 import type { SessionUser } from "../../auth/tokens";
 import { staffRosterWhere } from "../../permissions";
 import { canReadAllStudents, isMentor, isSuper } from "../../rbac";
+import { seasonParticipant } from "../season-participants";
 import { currentSeasonEnrollmentSelect } from "./current-season";
 import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
 
@@ -183,6 +184,32 @@ async function listByRelatedSort(
   };
 }
 
+/**
+ * R29/R38: graduationYear is the whole alumnus marker; the two global lists are
+ * the same table filtered on the same column. A list of one season's people
+ * (filtered to it or to one of its groups, or a staff member's own roster) also
+ * holds the alumni who study in a community-wide season there. A regular season's graduates stay off.
+ */
+function graduationFilter(
+  query: StudentListQuery,
+  roster: Prisma.SeasonEnrollmentWhereInput | null,
+): Prisma.UserWhereInput {
+  if (query.status === "alumni") return { graduationYear: { not: null } };
+  const group = typeof query.groupId === "number" ? query.groupId : null;
+  if (!query.seasonId && !roster && group === null) return { graduationYear: null };
+  const studying: Prisma.SeasonEnrollmentWhereInput = {
+    AND: [
+      // A season's own list shows any status (C9), dropped included; the roster-only branch lists participants.
+      query.seasonId ? {} : seasonParticipant,
+      { season: { isCommunityWide: true } },
+      query.seasonId ? { seasonId: query.seasonId } : {},
+      group !== null ? { groupId: group } : {},
+      roster ?? {},
+    ],
+  };
+  return { OR: [{ graduationYear: null }, { seasonEnrollments: { some: studying } }] };
+}
+
 /** Returns null when the caller may not read this surface at all → 403. */
 export async function listStudents(
   user: SessionUser,
@@ -209,9 +236,7 @@ export async function listStudents(
   const where: Prisma.UserWhereInput = {
     AND: [
       { role: "STUDENT", deletedAt: null },
-      // R29/R38: graduationYear is the whole alumnus marker; the two lists
-      // are the same table filtered on the same column.
-      { graduationYear: query.status === "alumni" ? { not: null } : null },
+      graduationFilter(query, roster),
       ...(scope.kind === "ids" ? [{ id: { in: scope.ids } }] : []),
       // Season filter through enrollments, any status (C9). For staff, only on
       // their roster: a season they don't serve in finds nobody, rather than

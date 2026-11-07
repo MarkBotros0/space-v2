@@ -5,7 +5,7 @@ import {
   countViolations,
   findRoleRuleViolations,
 } from "../../../scripts/community-preflight";
-import { findReviewLists } from "../../../scripts/community-preflight-review";
+import { findReviewLists, printReviewLists } from "../../../scripts/community-preflight-review";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 
 jest.setTimeout(120000);
@@ -284,5 +284,50 @@ describe("applyRefusal", () => {
       data: { seasonId: season.id, studentUserId: student.id, status: "COMPLETED", result: "NOT_PASSED" },
     });
     expect(await applyRefusal(await clean())).toMatch(/\d+ enrolment\(s\) already have a result/);
+  });
+});
+
+describe("community-wide seasons", () => {
+  const wide = async () => {
+    const s = await active();
+    await db.season.update({ where: { id: s.id }, data: { isCommunityWide: true } });
+    return s;
+  };
+
+  it("alumniHoldingActiveEnrollment skips a community-wide season but lists a regular one", async () => {
+    const [w, r] = [await wide(), await active()];
+    const inWide = await createTestUser("pf-cw-alum-w", "STUDENT");
+    const inRegular = await createTestUser("pf-cw-alum-r", "STUDENT");
+    await db.user.updateMany({ where: { id: { in: [inWide.id, inRegular.id] } }, data: { graduationYear: 2020 } });
+    await enrol(w.id, inWide.id);
+    await enrol(r.id, inRegular.id);
+    const listed = users((await findReviewLists()).alumniHoldingActiveEnrollment);
+    expect(listed).toContain(inRegular.id);
+    expect(listed).not.toContain(inWide.id);
+  });
+
+  it("prints a plain-words label saying listed alumni would see the student app", async () => {
+    const r = await active();
+    const a = await createTestUser("pf-cw-label", "STUDENT");
+    await db.user.update({ where: { id: a.id }, data: { graduationYear: 2020 } });
+    await enrol(r.id, a.id);
+    const out: string[] = [];
+    await printReviewLists((...args) => out.push(args.join(" ")));
+    expect(out.join("\n")).toMatch(/would see the student app/);
+  });
+
+  it("reports a community-wide season with another ACTIVE season, and blocks --apply", async () => {
+    const w = await wide();
+    await active();
+    const v = await findRoleRuleViolations();
+    expect(v.communityWideNotAlone.map((x) => x.seasonId)).toContain(w.id);
+    expect(await applyRefusal(v)).toMatch(/violations/);
+  });
+
+  it("is clean when the community-wide season is the only ACTIVE one", async () => {
+    await cleanupTestData();
+    const w = await wide();
+    const v = await findRoleRuleViolations();
+    expect(v.communityWideNotAlone.map((x) => x.seasonId)).not.toContain(w.id);
   });
 });

@@ -6,9 +6,9 @@ import request from "supertest";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { lockSeason, type SeasonLockMode } from "../../lib/roles";
+import { lockSeason, lockSeasonStart, type SeasonLockMode } from "../../lib/roles";
 import { createTestUser, login, reviewedOf } from "./fixtures";
-import { behind, holdTransaction } from "./lock-holds";
+import { behind, holdTransaction, untilWaiting } from "./lock-holds";
 import {
   app,
   as,
@@ -240,5 +240,26 @@ describe("a Start or End and the season's other inserts", () => {
       held.release();
       await held.done;
     }
+  });
+});
+
+describe("two Starts at once", () => {
+  it("a community-wide and a regular Start: exactly one runs, the other is start_blocked", async () => {
+    const wideDraft = await season("DRAFT", "Everyone");
+    await db.season.update({ where: { id: wideDraft }, data: { isCommunityWide: true } });
+    const regular = await season("DRAFT", "Regular");
+    const held = await holdTransaction((tx) => lockSeasonStart(tx));
+    const starts = [wideDraft, regular].map((id) =>
+      Promise.resolve(request(app).post(`/api/v1/seasons/${id}/start`).set(superCall()).send({})),
+    );
+    try {
+      await untilWaiting(2);
+    } finally {
+      held.release();
+      await held.done;
+    }
+    const answers = await Promise.all(starts);
+    expect(answers.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(answers.find((r) => r.status === 409)!.body.error.code).toBe("start_blocked");
   });
 });

@@ -206,7 +206,7 @@ describe("DashboardScreen — ALUMNI", () => {
 
   it("greets by first name with the class year and never calls /me/dashboard (D21)", async () => {
     useSessionStore.setState(
-      makeSession("STUDENT", { graduationYear: 2024 }, { name: "  Nour Adel " }),
+      makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }, { name: "  Nour Adel " }),
     );
     serve({
       [EVENTS]: events,
@@ -234,7 +234,7 @@ describe("dashboard body", () => {
 
   it.each([
     ["STUDENT", { activeSeasonId: null }],
-    ["STUDENT", { graduationYear: 2024 }],
+    ["STUDENT", { activeSeasonId: null, graduationYear: 2024 }],
   ] as const)(
     "%s %j: Home's frame carries the bell and menu once, the body none",
     async (role, scopes) => {

@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 import { View } from "react-native";
 
+import { CommunityWideField } from "./CommunityWideField";
 import { FieldCell, FieldRow, FormSection } from "../../design/forms/form-section";
 import {
   DatePicker,
@@ -152,6 +153,7 @@ export function TakingPartSection({
   requiredChoices,
   savedRequired,
   graduating,
+  communityWide,
 }: {
   v: SeasonFormValues;
   errors: Errors;
@@ -161,10 +163,26 @@ export function TakingPartSection({
   savedRequired: string;
   /** "edit": the switch; "locked": shown, the season has finished; "hidden": not a super. */
   graduating: "edit" | "locked" | "hidden";
+  /** "edit": the switch; "locked": shown, the season has started; "hidden": not a super. */
+  communityWide: "edit" | "locked" | "hidden";
 }) {
   return (
     <FormSection title="Who takes part">
-      {canSetRequired ? (
+      {communityWide !== "hidden" ? (
+        <CommunityWideField
+          value={v.isCommunityWide}
+          editable={communityWide === "edit"}
+          // A community-wide season has no required program and graduates nobody.
+          onChange={(isCommunityWide) =>
+            patch(
+              isCommunityWide
+                ? { isCommunityWide, graduatesOnPass: false, requiredProgram: "" }
+                : { isCommunityWide },
+            )
+          }
+        />
+      ) : null}
+      {v.isCommunityWide ? null : canSetRequired ? (
         <FormField
           label="Required program"
           description="Someone must have finished this program to join. None means anyone can."
@@ -202,7 +220,7 @@ export function TakingPartSection({
           </Text>
         </View>
       )}
-      {graduating === "edit" ? (
+      {v.isCommunityWide ? null : graduating === "edit" ? (
         <View className="flex-row items-center gap-3">
           <View className="min-w-0 flex-1 gap-0.5">
             <Text variant="headline" onPress={() => patch({ graduatesOnPass: !v.graduatesOnPass })}>

@@ -167,7 +167,8 @@ export async function deleteDraftRow(
 }
 
 /**
- * A graduate's places on draft rosters: a plan, not history, so they go, or a
+ * A graduate's places on regular draft rosters (a community-wide season keeps its
+ * alumni): a plan, not history, so they go, or a
  * COMPLETED row with no result would show in History once the draft starts. Work
  * recorded on one keeps it (the graduation then completes it), as Remove refuses.
  * Takes no season lock: the caller holds the people and the season comes first. A
@@ -175,7 +176,7 @@ export async function deleteDraftRow(
  */
 async function clearDraftRows(tx: Prisma.TransactionClient, studentUserIds: number[]): Promise<void> {
   const rows = await tx.seasonEnrollment.findMany({
-    where: { studentUserId: { in: studentUserIds }, status: "ACTIVE", season: { status: "DRAFT" } },
+    where: { studentUserId: { in: studentUserIds }, status: "ACTIVE", season: { status: "DRAFT", isCommunityWide: false } },
     select: { id: true, seasonId: true, studentUserId: true },
   });
   for (const row of rows) {
@@ -188,7 +189,8 @@ export type GraduationOutcome = "not_found" | "already_graduated" | { enrollment
 /**
  * One person's graduation, as `POST /students/:id/graduate` and a corrected
  * result on a graduating season both do it: sets graduationYear (the alumnus marker; role stays
- * STUDENT, R57), completes EVERY ACTIVE enrolment with no result (R48/R60), a
+ * STUDENT, R57), completes every ACTIVE enrolment in a regular season with no result (R48/R60; a
+ * community-wide season carries on), a
  * draft's row excepted (`clearDraftRows`), and
  * ends live access tokens so the new claims are picked up. Terminal enrolments
  * are history and aren't touched. Call it after `lockPeople`.
@@ -223,7 +225,7 @@ export async function graduatePerson(
   if (marked.count === 0) return "already_graduated";
   await clearDraftRows(tx, [id]);
   const completed = await tx.seasonEnrollment.updateMany({
-    where: { studentUserId: id, status: "ACTIVE" },
+    where: { studentUserId: id, status: "ACTIVE", season: { isCommunityWide: false } },
     data: { status: "COMPLETED", completedAt: new Date() },
   });
   await markSessionsStale(tx, [id]);
@@ -248,7 +250,7 @@ export async function graduatePassed(
   await tx.user.updateMany({ where: { id: { in: graduating }, graduationYear: null }, data: { graduationYear } });
   await clearDraftRows(tx, graduating);
   await tx.seasonEnrollment.updateMany({
-    where: { studentUserId: { in: graduating }, status: "ACTIVE" },
+    where: { studentUserId: { in: graduating }, status: "ACTIVE", season: { isCommunityWide: false } },
     data: { status: "COMPLETED", completedAt: new Date() },
   });
   return graduating;

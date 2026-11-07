@@ -24,7 +24,8 @@ All paths below are relative to the server root. Everything except
 | POST | `/api/v1/seasons/:id/admins` | SUPER only. `{ userId }`; ADMIN-role, active users only; idempotent. |
 | DELETE | `/api/v1/seasons/:id/admins/:userId` | SUPER only. Idempotent. Add and remove revoke the user's refresh tokens. |
 | GET | `/api/v1/seasons/overdue` | ACTIVE seasons past their end date: all for SUPER, own for ADMIN, else empty. |
-| GET | `/api/v1/seasons/:id/start-check` | SUPER. `{ ready, items }`: who stops a draft from starting, and why. 409 `not_draft`. |
+| PATCH | `/api/v1/seasons/:id` (`isCommunityWide`) | SUPER only, while a DRAFT. A community-wide season runs alone, has no required program and graduates nobody: with `graduatesOnPass` or a `requiredProgram` it is 409 `community_wide_rules`. Alumni may study in it. |
+| GET | `/api/v1/seasons/:id/start-check` | SUPER. `{ ready, items, seasonsInTheWay }`: who stops a draft from starting, and why, and the ACTIVE seasons that must end first (any, for a community-wide draft; a community-wide one, for a regular draft). 409 `not_draft`. |
 | POST | `/api/v1/seasons/:id/start` | SUPER. Re-runs the check under locks, then ACTIVE and everyone's sessions stale. 409 `start_blocked`, `not_draft`. |
 | GET | `/api/v1/seasons/:id/end-check` | What blocks ending the season, and the students it ends for. |
 | POST | `/api/v1/seasons/:id/end` | Season admin or SUPER. `{ notPassed }`; 409 `season_unfinished` while blockers stand, `season_not_active` if already ended. |

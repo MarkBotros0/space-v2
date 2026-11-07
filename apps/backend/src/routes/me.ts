@@ -27,7 +27,7 @@ import {
 import { loadMyProfile } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
 import { makeLimiter } from "../lib/rate-limit";
-import { isAlumnus } from "../lib/rbac";
+import { isAlumnus, isStudyingAlumnus } from "../lib/rbac";
 import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { meDevicesRouter } from "./me-devices";
@@ -248,7 +248,7 @@ meRouter.get("/profile", requireAuth, async (req, res) => {
 meRouter.patch("/profile", requireAuth, async (req, res) => {
   const user = requireUser(req);
   if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
-  if (isAlumnus(user)) {
+  if (isAlumnus(user) && !isStudyingAlumnus(user)) {
     return apiError(res, "forbidden", "Alumni records are read-only — contact the JPC team to update your details.", 403);
   }
   if (typeof req.body !== "object" || req.body === null || Array.isArray(req.body)) {
@@ -360,8 +360,9 @@ meRouter.get("/dashboard", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const now = new Date();
 
-  // An alumnus's Home is /me + /events; this endpoint has nothing for them.
-  if (isAlumnus(user)) return forbidden(res);
+  // An alumnus's Home is /me + /events; this endpoint has nothing for them,
+  // unless they're studying: then their Home is a student's.
+  if (isAlumnus(user) && !isStudyingAlumnus(user)) return forbidden(res);
   // A student's season is their token's, never a parameter (D22, C8).
   if (user.role === "STUDENT") return apiOk(res, await loadStudentDashboard(user, now));
   if (user.role === "MENTOR") return apiOk(res, await loadMentorDashboard());

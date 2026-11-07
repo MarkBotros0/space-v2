@@ -92,7 +92,7 @@ export const myProfileSchema = z
     name: z.string(),
     email: z.string(),
     avatarPath: z.string().nullable(),
-    /** Non-null = alumnus (read-only profile). */
+    /** Non-null = alumnus (read-only profile, unless studying in a community-wide season). */
     graduationYear: z.number().int().nullable(),
     activeSeasonTitle: z.string().nullable(),
     university: z.string().nullable(),

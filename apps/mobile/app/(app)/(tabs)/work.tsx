@@ -7,8 +7,9 @@ import { useSessionStore } from "../../../src/store/session";
 /**
  * /work — the student's To do tab: open assignments and quizzes (P2-1, split 2026-11-06). A tab for no other
  * role, so a staff deep link gets what every shared route says, not a student's
- * reads. An alumnus has the STUDENT role and never reaches this far: (app)'s
- * layout sends them to /dashboard first (isBlockedForAlumni).
+ * reads. An alumnus who isn't studying has the STUDENT role and never reaches this
+ * far: (app)'s layout sends them to /dashboard first (isBlockedForAlumni). One
+ * studying in a community-wide season (isStudyingAlumnus) gets this tab like any student.
  */
 export default function WorkTab() {
   const role = useSessionStore((s) => s.user?.role ?? null);

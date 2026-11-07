@@ -7,15 +7,16 @@ import { seasonPeopleIds } from "../../lib/auth/season-people";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { loadSeasonStartCheck } from "../../lib/queries/season-start";
-import { lockPeople, readSeatSeason, refusalStatus, type SeatRefusal } from "../../lib/roles";
+import { lockPeople, lockSeasonStart, readSeatSeason, refusalStatus, type SeatRefusal } from "../../lib/roles";
 import type { SeasonStartCheck } from "../../../../../packages/shared/src/index";
 import { requireSuper } from "../users/super-only";
 import { NOT_DRAFT, SEASON_NOT_FOUND } from "./enrollments";
 
 /** `"Mina is already leading a group in GBV 2026, and 2 more to clear."` */
-function blockedMessage(items: SeasonStartCheck["items"]): string {
-  const first = items[0]!.message;
-  const rest = items.length - 1;
+function blockedMessage(check: SeasonStartCheck): string {
+  const messages = [...check.seasonsInTheWay.map((s) => s.message), ...check.items.map((i) => i.message)];
+  const first = messages[0]!;
+  const rest = messages.length - 1;
   return rest === 0 ? first : `${first.replace(/\.$/, "")}, and ${rest} more to clear.`;
 }
 
@@ -31,7 +32,7 @@ export async function getSeasonStartCheck(req: Request, res: Response) {
 
   const season = await db.season.findFirst({
     where: { id, deletedAt: null },
-    select: { id: true, status: true, program: true, requiredProgram: true },
+    select: { id: true, status: true, program: true, requiredProgram: true, isCommunityWide: true },
   });
   if (!season) return refuse(res, SEASON_NOT_FOUND);
   if (season.status !== "DRAFT") return refuse(res, NOT_DRAFT);
@@ -39,11 +40,12 @@ export async function getSeasonStartCheck(req: Request, res: Response) {
 }
 
 /**
- * `POST /seasons/:id/start`: SUPER only. The one way a draft goes live. Holds the
+ * `POST /seasons/:id/start`: SUPER only. The one way a draft goes live. Takes the global start
+ * lock, so every start is serialised and a community-wide season runs alone, then holds the
  * season, so no seat can be written around the check, then everyone in it, so
- * none of them takes a role elsewhere meanwhile. Of two starts sharing a person
- * the second sees the first's season as ACTIVE. Everyone refreshes into their
- * role: no one is signed out.
+ * none of them takes a role elsewhere meanwhile. Because starts run one after another,
+ * two never race over a shared person: the later one sees the earlier season as ACTIVE.
+ * Everyone refreshes into their role: no one is signed out.
  */
 export async function startSeason(req: Request, res: Response) {
   const user = requireSuper(req, res);
@@ -53,6 +55,7 @@ export async function startSeason(req: Request, res: Response) {
 
   const outcome = await db.$transaction(
     async (tx) => {
+      await lockSeasonStart(tx);
       const season = await readSeatSeason(tx, id, "update");
       if (!season) return SEASON_NOT_FOUND;
       if (season.status !== "DRAFT") return NOT_DRAFT;
@@ -60,7 +63,7 @@ export async function startSeason(req: Request, res: Response) {
       const people = await seasonPeopleIds(tx, id);
       await lockPeople(tx, people);
       const check = await loadSeasonStartCheck(season, tx);
-      if (!check.ready) return { code: "start_blocked", message: blockedMessage(check.items) };
+      if (!check.ready) return { code: "start_blocked", message: blockedMessage(check) };
 
       const started = await tx.season.update({
         where: { id },

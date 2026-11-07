@@ -54,6 +54,7 @@ export async function eventVisibilityFilter(
   if (isSuper(user)) return {};
 
   const branches: Prisma.JpcEventWhereInput[] = [{ visibility: "ALL" }];
+  // The fact, not the experience: an alumnus studying keeps their alumni events.
   if (isAlumnus(user) || user.role !== "STUDENT") {
     branches.push({ visibility: "ALUMNI_ONLY" });
   }

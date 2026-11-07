@@ -136,9 +136,10 @@ export default function EndSeasonScreen() {
   const title = season.data?.title ?? "this season";
   const graduating = check.data?.graduatesOnPass ? total - notPassed.length : 0;
   const description =
-    `This finishes ${title} for ${plural(total, "student", "students")}` +
-    (notPassed.length > 0 ? `, including ${notPassed.length} who did not pass` : "") +
+    `This finishes ${title}` +
+    (notPassed.length > 0 ? `, and ${plural(notPassed.length, "student", "students")} did not pass` : "") +
     ". Their leaders and admins lose access." +
+    ` This ends the season for ${plural(total, "person", "people")}.` +
     (graduating > 0 ? ` ${plural(graduating, "person", "people")} will graduate.` : "");
 
   return (

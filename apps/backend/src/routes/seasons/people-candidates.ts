@@ -19,12 +19,14 @@ import { requireUser } from "../../middleware/require-auth";
 import { forbidden } from "../respond";
 
 /**
- * Who a season's people picker lists. Build 3 widens this for community-wide
- * seasons (alumni as students); until the flag exists, every season is regular
- * and the pool is non-alumni student accounts.
+ * Who a season's people picker lists: non-alumni student accounts, or in a
+ * community-wide season every student account, alumni too. Super and Mentor
+ * stay out by role; stored ADMIN/LEADER no longer exist after roles:convert.
  */
-function poolFor(_season: { id: number }): Prisma.UserWhereInput {
-  return { deletedAt: null, role: "STUDENT", graduationYear: null };
+function poolFor(season: { isCommunityWide: boolean }): Prisma.UserWhereInput {
+  return season.isCommunityWide
+    ? { deletedAt: null, role: "STUDENT" }
+    : { deletedAt: null, role: "STUDENT", graduationYear: null };
 }
 
 type Availability = PeopleCandidate["availability"];
@@ -64,25 +66,29 @@ export async function listPeopleCandidates(req: Request, res: Response) {
 
   const season = await db.season.findFirst({
     where: { id: seasonId, deletedAt: null },
-    select: { id: true, title: true, program: true, status: true, requiredProgram: true },
+    select: { id: true, title: true, program: true, status: true, requiredProgram: true, isCommunityWide: true },
   });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
 
   const people = await db.user.findMany({
     where: poolFor(season),
     orderBy: [{ name: "asc" }, { id: "asc" }],
-    select: { id: true, name: true },
+    select: { id: true, name: true, graduationYear: true },
   });
   const ids = people.map((p) => p.id);
 
-  const [history, roles, here] = await Promise.all([
+  const [history, roles, here, admins, leaders] = await Promise.all([
     loadHistory(db, ids, seasonId),
     activeRolesFor(db, ids),
     db.seasonEnrollment.findMany({
       where: { seasonId, studentUserId: { in: ids } },
       select: { studentUserId: true, status: true },
     }),
+    // activeRolesFor only sees ACTIVE seasons: a DRAFT's own staff are read here.
+    db.seasonAdmin.findMany({ where: { seasonId, userId: { in: ids } }, select: { userId: true } }),
+    db.groupLeader.findMany({ where: { group: { seasonId }, userId: { in: ids } }, select: { userId: true } }),
   ]);
+  const servingHere = new Set([...admins, ...leaders].map((r) => r.userId));
   const standings = standingsFrom(ids, history, season);
   const hereBy = new Map(here.map((e) => [e.studentUserId, e]));
   const lasts = new Map(ids.map((id) => [id, latestOf(history.get(id) ?? [])]));
@@ -102,7 +108,7 @@ export async function listPeopleCandidates(req: Request, res: Response) {
           attendancePct: pcts.get(lastEntry.enrollmentId) ?? null,
         }
       : null;
-    const base = { id: p.id, name: p.name, last, overridable: false };
+    const base = { id: p.id, name: p.name, pool: p.graduationYear === null ? ("student" as const) : ("alumni" as const), last, overridable: false };
 
     const enrolment = hereBy.get(p.id);
     if (enrolment) {
@@ -130,6 +136,14 @@ export async function listPeopleCandidates(req: Request, res: Response) {
         overridable: callerIsSuper,
       };
     }
+    if (!role && servingHere.has(p.id)) {
+      return {
+        ...base,
+        availability: "in_role",
+        reason: `${p.name} is serving in this season.`,
+        selectable: season.status === "DRAFT",
+      };
+    }
     if (role) {
       return {
         ...base,
@@ -151,5 +165,5 @@ export async function listPeopleCandidates(req: Request, res: Response) {
   });
 
   rows.sort((a, b) => RANK[a.availability] - RANK[b.availability] || a.name.localeCompare(b.name) || a.id - b.id);
-  return apiOk(res, { season: { id: season.id, title: season.title, requiredProgram: season.requiredProgram }, people: rows });
+  return apiOk(res, { season: { id: season.id, title: season.title, requiredProgram: season.requiredProgram, isCommunityWide: season.isCommunityWide }, people: rows });
 }

@@ -176,7 +176,7 @@ describe("guards on the stack layout cover tabs and detail routes", () => {
   });
 
   it.each(["/work", "/assignments", "/quizzes", "/season", "/attendance"])("sends an alumnus from %s to the dashboard (REG-81)", async (url) => {
-    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ graduationYear: 2024 }));
+    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2024 }));
     const result = await renderRouter(appContext(), { initialUrl: url });
     expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
     expect(result.getPathname()).toBe("/dashboard");

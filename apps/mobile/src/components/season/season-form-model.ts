@@ -10,6 +10,8 @@ export interface SeasonFormValues {
   requiredProgram: string;
   /** Everyone who passes becomes an alumnus when the season ends. */
   graduatesOnPass: boolean;
+  /** Everyone may take part as a student, alumni too; it runs alone. */
+  isCommunityWide: boolean;
   year: string;
   description: string;
   /** Calendar days "YYYY-MM-DD" (spec 02 D12: stored as UTC midnight). */
@@ -25,6 +27,7 @@ export const NEW_SEASON_VALUES: SeasonFormValues = {
   program: "",
   requiredProgram: "",
   graduatesOnPass: false,
+  isCommunityWide: false,
   year: String(new Date().getFullYear()),
   description: "",
   startDay: "",
@@ -88,6 +91,7 @@ export function toBody(
   v: SeasonFormValues,
   canSetRequired: boolean,
   canSetGraduating: boolean,
+  canSetCommunity: boolean,
 ): SeasonIdentityInput {
   return {
     code: v.code,
@@ -96,9 +100,10 @@ export function toBody(
     description: v.description.trim() === "" ? null : v.description,
     // Settled before the season starts: left out once it has, so the server has nothing to refuse.
     ...(canSetRequired
-      ? { requiredProgram: v.requiredProgram === "" ? null : v.requiredProgram }
+      ? { requiredProgram: v.requiredProgram === "" || v.isCommunityWide ? null : v.requiredProgram }
       : {}),
     ...(canSetGraduating ? { graduatesOnPass: v.graduatesOnPass } : {}),
+    ...(canSetCommunity ? { isCommunityWide: v.isCommunityWide } : {}),
     startDate: `${v.startDay}T00:00:00.000Z`,
     endDate: `${v.endDay}T00:00:00.000Z`,
     status: v.status,

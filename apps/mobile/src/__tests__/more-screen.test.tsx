@@ -70,7 +70,7 @@ describe("MoreScreen", () => {
     expect(screen.getByText("My Season")).toBeTruthy();
     unmount();
 
-    useSessionStore.setState(makeSession("STUDENT", { graduationYear: 2024 }));
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }));
     renderWithProviders(<MoreScreen />);
     expect(screen.getByText("Profile settings")).toBeTruthy();
     expect(screen.queryByText("Notification settings")).toBeNull();

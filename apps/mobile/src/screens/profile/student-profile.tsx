@@ -73,7 +73,11 @@ function LoadedProfile({
       refreshing={refreshing}
     >
       <View className="flex-col gap-6">
-        <IdentityCard name={p.name} email={p.email} badge="Student" />
+        <IdentityCard
+          name={p.name}
+          email={p.email}
+          badge={p.graduationYear !== null ? `Alumnus · School of ${p.graduationYear}` : "Student"}
+        />
         {activeSeasonId !== null ? (
           <View className="gap-3">
             <View testID="profile-figures-pair" className="flex-row flex-wrap gap-3">

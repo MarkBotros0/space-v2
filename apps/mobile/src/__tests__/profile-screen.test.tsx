@@ -211,7 +211,7 @@ describe("ProfileScreen — STUDENT", () => {
 
 describe("ProfileScreen — ALUMNI", () => {
   it("is a read-only record with no form and no attendance query", async () => {
-    useSessionStore.setState(makeSession("STUDENT", { graduationYear: 2024 }));
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }));
     routeGets({ ...profile, graduationYear: 2024, activeSeasonTitle: null });
 
     renderWithProviders(<ProfileScreen />);

@@ -6,8 +6,6 @@ import type { JpcEventListItem, SessionListItem } from "@space/shared";
 import { CalendarGrid } from "../../components/calendar/CalendarGrid";
 import { Legend, type CalendarContext } from "../../components/calendar/CalendarEntries";
 import { useEvents } from "../../hooks/use-events";
-import { useCurrentSeasonId } from "../../hooks/use-seasons";
-import { useSeasonSessions } from "../../hooks/use-sessions";
 import {
   deviceTodayKey,
   initialAnchor,
@@ -41,7 +39,7 @@ interface Source {
 
 /**
  * The Upcoming / Week / Month toggle with its stepper (REG-75) around a
- * pinned season's sessions already in hand. "Today" is the device's date;
+ * events (and sessions, when given) already in hand. "Today" is the device's date;
  * every day, time and order comes from the server's org-clock values (X13).
  */
 function CalendarSurface({ source }: { source: Source }) {
@@ -108,61 +106,31 @@ function CalendarSurface({ source }: { source: Source }) {
   );
 }
 
-/** ALUMNI — the pinned season's sessions and the org's events, on grouped rows. */
+/**
+ * ALUMNI — the org's events, on grouped rows. Only an alumnus who is not studying
+ * reaches this (one studying has a season and gets the student calendar), so there
+ * is never a season to pin: events are all there is, and their loading and failure
+ * are the screen's own states.
+ */
 export function AlumniCalendar() {
-  const current = useCurrentSeasonId();
-  const sessions = useSeasonSessions(current.seasonId);
-  // Two queries, interleaved on the client — exactly what v1's calendar pages
-  // do (season-calendar.tsx merges a session list and an event list). A single
-  // /api/v1/calendar endpoint is the tidier shape and is deliberately deferred
-  // (D-15.1). The events query is NOT allowed to fail the screen: its error is
-  // swallowed into an empty array, because a calendar with no JPC events is
-  // still a calendar and a calendar with no sessions is not.
   const events = useEvents();
   const eventRows = events.data ?? [];
 
   let body: ReactNode;
-  if (current.isPending) body = <RouteSkeleton />;
-  else if (current.isError) body = <RouteError onRetry={current.refetch} />;
-  else if (current.seasonId === null)
-    // No season: events are all there is, so (unlike the with-season path) their
-    // loading and failure are the screen's own states.
-    body =
-      eventRows.length === 0 && events.isPending ? (
-        <RouteSkeleton />
-      ) : eventRows.length === 0 && events.isError ? (
-        <RouteError onRetry={() => void events.refetch()} />
-      ) : eventRows.length === 0 ? (
-        <EmptyState
-          icon={CalendarIcon}
-          title="No season to show"
-          description="You aren't in a season right now, so there are no sessions on your calendar."
-        />
-      ) : (
-        <CalendarSurface source={{ sessions: [], events: eventRows }} />
-      );
-  else if (sessions.isPending) body = <RouteSkeleton />;
-  else if (sessions.isError) body = <RouteError onRetry={() => void sessions.refetch()} />;
-  else if (sessions.data.length === 0 && eventRows.length === 0)
+  if (eventRows.length === 0 && events.isPending) body = <RouteSkeleton />;
+  else if (eventRows.length === 0 && events.isError) body = <RouteError onRetry={() => void events.refetch()} />;
+  else if (eventRows.length === 0)
     body = (
       <EmptyState
         icon={CalendarIcon}
-        title="No sessions"
-        description="This season doesn't have any sessions yet."
+        title="No season to show"
+        description="You aren't in a season right now, so there are no sessions on your calendar."
       />
     );
-  else body = <CalendarSurface source={{ sessions: sessions.data, events: eventRows }} />;
+  else body = <CalendarSurface source={{ sessions: [], events: eventRows }} />;
 
   return (
-    <Screen
-      title="Events"
-      onRefresh={() => {
-        void events.refetch();
-        if (current.seasonId !== null) void sessions.refetch();
-        else current.refetch();
-      }}
-      refreshing={sessions.isRefetching || events.isRefetching}
-    >
+    <Screen title="Events" onRefresh={() => void events.refetch()} refreshing={events.isRefetching}>
       {body}
     </Screen>
   );

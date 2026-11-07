@@ -1,4 +1,4 @@
-import { isAlumnus } from "@space/shared";
+import { isAlumnus, isStudyingAlumnus } from "@space/shared";
 import { Redirect, Stack, useSegments } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -102,11 +102,15 @@ const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
  */
 export default function AppLayout() {
   const status = useSessionStore((s) => s.status);
-  const alumnus = useSessionStore(
-    (s) =>
-      s.user != null &&
-      isAlumnus({ role: s.user.role, graduationYear: s.scopes?.graduationYear ?? null }),
-  );
+  const alumnusNotStudying = useSessionStore((s) => {
+    if (s.user == null) return false;
+    const audience = {
+      role: s.user.role,
+      graduationYear: s.scopes?.graduationYear ?? null,
+      activeSeasonId: s.scopes?.activeSeasonId ?? null,
+    };
+    return isAlumnus(audience) && !isStudyingAlumnus(audience);
+  });
   const segments = useSegments();
 
   // The boot gate (Task 6, app/_layout.tsx) has already resolved "idle" and
@@ -117,8 +121,9 @@ export default function AppLayout() {
   // v1 role-layout.tsx: an alumnus is kept out of the active-student area and sent
   // to the read-only portal (here: Home). Reaching a student-only destination by
   // deep link or stale navigation state lands here (REG-81). A tab's segments
-  // carry the "(tabs)" group; isBlockedForAlumni skips groups.
-  if (alumnus && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
+  // carry the "(tabs)" group; isBlockedForAlumni skips groups. An alumnus studying
+  // in a community-wide season is in that area, like any student.
+  if (alumnusNotStudying && isBlockedForAlumni(segments)) return <Redirect href="/dashboard" />;
 
   // The tabs are one navigator (singularTabsRouter): a push to a tab route
   // from a detail (a link to a list, Home's bell and user menu) returns to

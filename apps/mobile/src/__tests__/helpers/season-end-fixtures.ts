@@ -22,7 +22,7 @@ export const detail = (over: Record<string, unknown> = {}) => ({
 export const subs = (n: number) =>
   Array.from({ length: n }, (_, i) => ({ publicId: `pub${i}`, assignmentTitle: `Essay ${i}`, studentName: `Student ${i}` }));
 export const students = (n: number) =>
-  Array.from({ length: n }, (_, i) => ({ userId: i + 1, name: `Student ${i + 1}`, groupName: "Group A", attendancePct: 90 }));
+  Array.from({ length: n }, (_, i) => ({ userId: i + 1, name: `Student ${i + 1}`, groupName: "Group A", attendancePct: 90, graduationYear: null as number | null }));
 export const check = (blockers: Partial<{ submissions: unknown[]; quizAttempts: unknown[]; attendance: unknown[] }>, n = 3, graduatesOnPass = false) => ({
   graduatesOnPass,
   blockers: { submissions: [], quizAttempts: [], attendance: [], ...blockers },

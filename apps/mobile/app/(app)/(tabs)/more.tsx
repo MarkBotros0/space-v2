@@ -12,6 +12,7 @@ export default function MoreScreen() {
   const router = useRouter();
   const user = useSessionStore((s) => s.user);
   const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
+  const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const nav = useSessionStore((s) => s.nav());
   const logout = useLogout();
   const deleteFlow = useDeleteAccountFlow();
@@ -23,6 +24,7 @@ export default function MoreScreen() {
       <MoreMenu
         role={user.role}
         graduationYear={graduationYear}
+        activeSeasonId={activeSeasonId}
         userName={user.name}
         nav={nav}
         onNavigate={(href) => {

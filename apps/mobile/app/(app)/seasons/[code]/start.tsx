@@ -124,6 +124,7 @@ export default function StartSeasonScreen() {
     body = (
       <IssueList
         items={check.data.items}
+        seasonsInTheWay={check.data.seasonsInTheWay}
         actions={{
           seasonCode: code,
           seasonTitle: title,

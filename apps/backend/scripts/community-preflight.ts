@@ -10,6 +10,7 @@
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
 import { printReviewLists } from "./community-preflight-review";
+import { findCommunityWideNotAlone, type CommunityWideNotAlone } from "./community-preflight-wide";
 
 /** Every way the data breaks "zero or one active role". Each list is one rule. */
 export interface Violations {
@@ -31,6 +32,8 @@ export interface Violations {
   supersWithSeasonRoles: { userId: number; seasonId: number; row: "admin" | "leader" }[];
   /** A non-student, or anyone serving in an ACTIVE season, who also holds an ACTIVE enrolment in one. */
   staffWithActiveEnrollment: { userId: number; seasonId: number }[];
+  /** An ACTIVE community-wide season while any other season is ACTIVE: it must run alone. */
+  communityWideNotAlone: CommunityWideNotAlone[];
 }
 
 /** "Active" means a role in a season whose status is ACTIVE. Draft, finished and deleted seasons don't count. */
@@ -50,7 +53,7 @@ const inManySeasons = (rows: { userId: number; seasonId: number }[]) =>
     .filter((v) => v.seasons > 1);
 
 export async function findRoleRuleViolations(): Promise<Violations> {
-  const [leaderRows, adminRows, enrolmentRows] = await Promise.all([
+  const [leaderRows, adminRows, enrolmentRows, wideNotAlone] = await Promise.all([
     db.groupLeader.findMany({
       where: { group: { season: ACTIVE_SEASON }, user: LIVE_USER },
       select: { userId: true, user: { select: { role: true } }, group: { select: { seasonId: true } } },
@@ -63,6 +66,7 @@ export async function findRoleRuleViolations(): Promise<Violations> {
       where: { status: "ACTIVE", season: ACTIVE_SEASON, studentUser: LIVE_USER },
       select: { studentUserId: true, seasonId: true, studentUser: { select: { role: true } } },
     }),
+    findCommunityWideNotAlone(),
   ]);
   const leaders = leaderRows.map((r) => ({ userId: r.userId, seasonId: r.group.seasonId, role: r.user.role }));
   const admins = adminRows.map((r) => ({ userId: r.userId, seasonId: r.seasonId, role: r.user.role }));
@@ -110,6 +114,7 @@ export async function findRoleRuleViolations(): Promise<Violations> {
       ...onlyRole(leaders, "SUPER").map((r) => ({ ...asRow(r), row: "leader" as const })),
     ],
     staffWithActiveEnrollment: enrolments.filter((e) => e.role !== "STUDENT" || serving.has(e.userId)).map(asRow),
+    communityWideNotAlone: wideNotAlone ?? [],
   };
 }
 
@@ -150,6 +155,9 @@ function isMissingResultColumn(err: unknown): boolean {
 export async function readOnlyReport(log: (...args: unknown[]) => void): Promise<void> {
   const violations = await findRoleRuleViolations();
   log("Role-rule violations:", JSON.stringify(violations, null, 2));
+  if ((await findCommunityWideNotAlone()) === null) {
+    log("communityWideNotAlone is unknown: this database has no `isCommunityWide` column yet.");
+  }
   await printReviewLists(log);
   try {
     log("Would change:", await backfillResults({ dryRun: true }));

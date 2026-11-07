@@ -1,4 +1,4 @@
-import { ALL_NAV_HREFS, ALL_TAB_HREFS, STUDENT_BETWEEN, isAlumnus, navByRole, navFor } from "../navigation";
+import { ALL_NAV_HREFS, ALL_TAB_HREFS, STUDENT_BETWEEN, isAlumnus, isStudyingAlumnus, navByRole, navFor } from "../navigation";
 import type { RoleNav } from "../navigation";
 
 const base = { role: "STUDENT" as const, graduationYear: null as number | null, activeSeasonId: 1 as number | null };
@@ -298,5 +298,27 @@ describe("isAlumnus", () => {
     expect(isAlumnus({ role: "STUDENT", graduationYear: 2025 })).toBe(true);
     expect(isAlumnus({ role: "STUDENT", graduationYear: null })).toBe(false);
     expect(isAlumnus({ role: "LEADER", graduationYear: 2025 })).toBe(false);
+  });
+});
+
+describe("isStudyingAlumnus (community-wide seasons)", () => {
+  const studying = { role: "STUDENT" as const, graduationYear: 2025, activeSeasonId: 7 };
+
+  it("is an alumnus with an active season, and nobody else", () => {
+    expect(isStudyingAlumnus(studying)).toBe(true);
+    expect(isStudyingAlumnus({ ...studying, activeSeasonId: null })).toBe(false);
+    expect(isStudyingAlumnus({ ...studying, graduationYear: null })).toBe(false);
+    expect(isStudyingAlumnus({ ...studying, role: "LEADER" })).toBe(false);
+  });
+
+  it("gets the student nav, and stays an alumnus", () => {
+    expect(navFor(studying)).toBe(navByRole.STUDENT);
+    expect(isAlumnus(studying)).toBe(true);
+  });
+
+  it("gets the alumni nav back once the season is over", () => {
+    expect(navFor({ ...studying, activeSeasonId: null }).tabs.map((t) => t.label)).toEqual([
+      "Home", "Events", "History", "Profile", "More",
+    ]);
   });
 });

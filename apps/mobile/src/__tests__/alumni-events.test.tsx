@@ -14,7 +14,7 @@ import { makeSession } from "./helpers/session";
 import { eventRow, session } from "./helpers/calendar-fixtures";
 
 const get = apiClient.get as jest.Mock;
-const alumnus = makeSession("STUDENT", { activeSeasonId: 7, graduationYear: 2025 }, { id: 9 });
+const alumnus = makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2025 }, { id: 9 });
 
 const NOW = new Date();
 const dayKeyIn = (n: number) => {
@@ -36,13 +36,13 @@ const dump = (tree: unknown): string => {
 };
 const iso = (k: string, hh = "09") => `${k}T${hh}:00:00.000Z`;
 
-function serve(opts: { events?: unknown[] | "fail"; sessions?: unknown[]; season?: number | null }) {
+function serve(opts: { events?: unknown[] | "fail" }) {
   get.mockImplementation((url: string) => {
     if (url.startsWith("/api/v1/events"))
       return opts.events === "fail"
         ? Promise.reject(new Error("boom"))
         : Promise.resolve({ data: { data: { events: opts.events ?? [], total: 0 } } });
-    return Promise.resolve({ data: { data: { sessions: opts.sessions ?? [] } } });
+    return Promise.reject(new Error(`unexpected ${url}`));
   });
 }
 
@@ -51,6 +51,7 @@ const reunion = {
   visibility: "ALUMNI_ONLY" as const,
 };
 const open = eventRow(3, "Open day", iso(dayKeyIn(1)), dayKeyIn(1), null);
+const townHall = eventRow(4, "Town hall", iso(deviceTodayKey(), "17"), deviceTodayKey(), "17:00");
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -70,10 +71,7 @@ describe("AlumniCalendar — Events", () => {
   });
 
   it("lists upcoming days as grouped headers with the cue as text and no legend", async () => {
-    serve({
-      events: [reunion, open],
-      sessions: [session(1, "Kickoff", iso(deviceTodayKey(), "17"), deviceTodayKey())],
-    });
+    serve({ events: [reunion, open, townHall] });
     renderWithProviders(<AlumniCalendar />);
     await screen.findByText("Alumni reunion dinner");
     expect(screen.getByText("in 3 days")).toBeTruthy();
@@ -92,16 +90,6 @@ describe("AlumniCalendar — Events", () => {
     expect(screen.getAllByText("Alumni only")).toHaveLength(1);
     fireEvent.press(screen.getByText("Alumni reunion dinner"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "2" } });
-  });
-
-  it("keeps a session's badge chip and pushes the session", async () => {
-    serve({ sessions: [session(5, "Mentor chat", iso(dayKeyIn(2), "18"), dayKeyIn(2))] });
-    renderWithProviders(<AlumniCalendar />);
-    await screen.findByText("Mentor chat");
-    // The segment and the badge chip both read "Upcoming".
-    expect(screen.getAllByText("Upcoming")).toHaveLength(2);
-    fireEvent.press(screen.getByText("Mentor chat"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "5" } });
   });
 
   it("puts a season code in the subtitle rather than a second chip", async () => {
@@ -138,43 +126,34 @@ describe("AlumniCalendar — Events", () => {
   });
 
   it("Week keeps Nothing scheduled for an empty day and lists rows with EventDayRows", async () => {
-    serve({ events: [] , sessions: [session(1, "Kickoff", iso(deviceTodayKey(), "17"), deviceTodayKey())] });
+    serve({ events: [townHall] });
     renderWithProviders(<AlumniCalendar />);
-    await screen.findByText("Kickoff");
+    await screen.findByText("Town hall");
     fireEvent.press(screen.getByLabelText("Week"));
     expect(screen.getAllByText("Nothing scheduled").length).toBeGreaterThan(0);
-    fireEvent.press(screen.getByText("Kickoff"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "1" } });
+    fireEvent.press(screen.getByText("Town hall"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "4" } });
   });
 
-  it("keeps the empty, no-season and error copy", async () => {
+  it("keeps the empty and error copy", async () => {
     serve({});
     const { unmount } = renderWithProviders(<AlumniCalendar />);
-    expect(await screen.findByText("No sessions")).toBeTruthy();
+    expect(await screen.findByText("No season to show")).toBeTruthy();
     unmount();
 
-    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2025 }));
-    serve({});
-    const second = renderWithProviders(<AlumniCalendar />);
-    expect(await screen.findByText("No season to show")).toBeTruthy();
-    second.unmount();
-
-    useSessionStore.setState(alumnus);
     get.mockRejectedValue(new Error("boom"));
     renderWithProviders(<AlumniCalendar />);
     expect(await screen.findAllByText("Try again")).toBeTruthy();
   });
 
-  it("with no season: a skeleton while events load, not the empty state", async () => {
-    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2025 }));
+  it("a skeleton while events load, not the empty state", async () => {
     get.mockImplementation(() => new Promise(() => {}));
     renderWithProviders(<AlumniCalendar />);
     expect(await screen.findByLabelText("Loading")).toBeTruthy();
     expect(screen.queryByText("No season to show")).toBeNull();
   });
 
-  it("with no season: a failed events query shows Try again, and it refetches", async () => {
-    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2025 }));
+  it("a failed events query shows Try again, and it refetches", async () => {
     serve({ events: "fail" });
     renderWithProviders(<AlumniCalendar />);
     const retry = await screen.findByText("Try again");
@@ -184,12 +163,6 @@ describe("AlumniCalendar — Events", () => {
     fireEvent.press(retry);
     expect(await screen.findByText("Open day")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/events");
-  });
-
-  it("still shows sessions when the events query fails", async () => {
-    serve({ events: "fail", sessions: [session(5, "Mentor chat", iso(dayKeyIn(2), "18"), dayKeyIn(2))] });
-    renderWithProviders(<AlumniCalendar />);
-    expect(await screen.findByText("Mentor chat")).toBeTruthy();
   });
 });
 

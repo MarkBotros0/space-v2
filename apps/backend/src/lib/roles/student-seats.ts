@@ -7,7 +7,7 @@ import { activeRolesFor, lockPeople, lockSeason, type ActiveRole, type SeasonLoc
 import { seatRefusal, type SeatPerson, type SeatRefusal } from "./seat-rules";
 import { describeBlock, loadStandings, standingsFrom, type StandingSeason } from "./standing";
 
-export type StudentSeatSeason = StandingSeason & { status: SeasonStatus };
+export type StudentSeatSeason = StandingSeason & { status: SeasonStatus; isCommunityWide: boolean };
 
 export type StudentSeatOptions = { overridden: boolean; actorIsSuper: boolean };
 
@@ -26,7 +26,7 @@ export async function readSeatSeason(
   await lockSeason(tx, seasonId, mode);
   return tx.season.findFirst({
     where: { id: seasonId, deletedAt: null },
-    select: { id: true, status: true, program: true, requiredProgram: true },
+    select: { id: true, status: true, program: true, requiredProgram: true, isCommunityWide: true },
   });
 }
 

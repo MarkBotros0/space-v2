@@ -230,8 +230,18 @@ export function isAlumnus(user: Pick<NavAudience, "role" | "graduationYear">): b
   return user.role === "STUDENT" && user.graduationYear != null;
 }
 
-/** Alumni get their own nav (isAlumnus); everyone else their role's. */
+/**
+ * An alumnus holding a student seat in a live season (only a community-wide one
+ * can seat them). `isAlumnus` stays the permanent fact; this decides the
+ * experience: they get the student portal until the season ends for them.
+ */
+export function isStudyingAlumnus(user: NavAudience): boolean {
+  return isAlumnus(user) && user.activeSeasonId != null;
+}
+
+/** Alumni get their own nav (isAlumnus), unless studying; everyone else their role's. */
 export function navFor(user: NavAudience): RoleNav {
+  if (isStudyingAlumnus(user)) return STUDENT;
   if (isAlumnus(user)) return ALUMNI;
   if (user.role === "STUDENT" && user.activeSeasonId == null) return STUDENT_BETWEEN;
   return navByRole[user.role];

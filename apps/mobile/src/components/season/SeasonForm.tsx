@@ -77,6 +77,7 @@ export function SeasonForm({
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
   const seasonFinished = initial.status === "COMPLETED" || initial.status === "ARCHIVED";
   const canSetGraduating = isSuper && !seasonFinished;
+  const canSetCommunity = isSuper && canSetRequired;
   const requiredChoices = requiredProgramChoices(
     seasons.data ?? [],
     v.program,
@@ -94,7 +95,7 @@ export function SeasonForm({
   };
 
   const submit = () => {
-    const body = toBody(v, canSetRequired, canSetGraduating);
+    const body = toBody(v, canSetRequired, canSetGraduating, canSetCommunity);
     const parsed = seasonWriteRequestSchema.safeParse(body);
     if (!parsed.success) {
       setErrors(firstErrorByField(parsed.error));
@@ -138,6 +139,7 @@ export function SeasonForm({
           requiredChoices={requiredChoices}
           savedRequired={initial.requiredProgram}
           graduating={canSetGraduating ? "edit" : isSuper ? "locked" : "hidden"}
+          communityWide={canSetCommunity ? "edit" : isSuper ? "locked" : "hidden"}
         />
         <FormSection title="About">
           <FormField label="Description" error={errors.description}>

@@ -3,7 +3,7 @@
  * 2026-11-07: no dropdown; the theme and Sign out live on More, and on
  * Profile for MENTOR). Also the role badge rule the More menu uses.
  */
-import { isAlumnus, type UserRole } from "@space/shared";
+import { isAlumnus, isStudyingAlumnus, type UserRole } from "@space/shared";
 import { Pressable } from "react-native";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -24,9 +24,11 @@ export const ROLE_COLOR: Record<UserRole, RoleColor> = {
 export function roleBadge(
   role: UserRole,
   graduationYear: number | null | undefined,
+  activeSeasonId: number | null = null,
 ): { color: RoleColor; label: string } {
-  if (isAlumnus({ role, graduationYear: graduationYear ?? null }))
-    return { color: "alumni", label: "ALUMNI" };
+  const audience = { role, graduationYear: graduationYear ?? null, activeSeasonId };
+  if (isStudyingAlumnus(audience)) return { color: "alumni", label: "Alumnus · Studying" };
+  if (isAlumnus(audience)) return { color: "alumni", label: "ALUMNI" };
   return { color: ROLE_COLOR[role], label: role };
 }
 

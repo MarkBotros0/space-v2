@@ -72,7 +72,8 @@ describe("a token that changes role on refresh", () => {
   it("re-renders the tabs and starts the queries the new role reads, without an error", async () => {
     useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: 5, graduationYear: 2020 }));
     renderWithProviders(<Shell />);
-    expect(labels()).toEqual(["Home", "Events", "History", "Profile", "More"]);
+    // Studying in a community-wide season: a student's tabs, until they serve.
+    expect(labels()).toEqual(["Home", "Calendar", "To do", "Submitted", "More"]);
     expect(screen.getByTestId("season").props.children).toBe("5");
     expect(get).not.toHaveBeenCalled();
 
@@ -81,5 +82,17 @@ describe("a token that changes role on refresh", () => {
     expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
     await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
+  });
+
+  it("takes a real alumnus (no season) who becomes a leader again to the leader's tabs and queries", async () => {
+    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2020 }));
+    renderWithProviders(<Shell />);
+    expect(labels()).toEqual(["Home", "Events", "History", "Profile", "More"]);
+    expect(screen.getByTestId("season").props.children).toBe("null");
+
+    act(() => useSessionStore.getState().setSession(makeUser("LEADER"), makeScopes({ activeSeasonId: null, graduationYear: 2020, groupLeaderIds: [3] })));
+
+    expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
+    await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));
   });
 });

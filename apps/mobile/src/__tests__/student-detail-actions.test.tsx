@@ -193,7 +193,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
       expect(screen.getByText("They become an alumnus permanently. This can't be undone in the app.")).toBeTruthy();
       expect(screen.getByText(`They'll be listed as School of ${new Date().getFullYear()}.`)).toBeTruthy();
       expect(screen.getByText("They can be appointed leader or admin, and can no longer join regular seasons as a student.")).toBeTruthy();
-      expect(screen.getByText("Any season they're in now ends for them, with no result.")).toBeTruthy();
+      expect(screen.getByText("Any regular season they're in now ends for them, with no result. A community-wide season carries on.")).toBeTruthy();
       expect(screen.getByText("Your name and your reason are recorded.")).toBeTruthy();
       expect(screen.queryByLabelText("JPCS graduation year")).toBeNull();
       expect(screen.getAllByTestId("sheet")).toHaveLength(1);

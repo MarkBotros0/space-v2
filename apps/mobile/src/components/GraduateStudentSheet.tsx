@@ -155,7 +155,7 @@ export function GraduateStudentSheet({
             <Text variant="subhead">
               They can be appointed leader or admin, and can no longer join regular seasons as a student.
             </Text>
-            <Text variant="subhead">Any season they&apos;re in now ends for them, with no result.</Text>
+            <Text variant="subhead">Any regular season they&apos;re in now ends for them, with no result. A community-wide season carries on.</Text>
             <Text variant="subhead">Your name and your reason are recorded.</Text>
           </View>
           <FormField

@@ -8,6 +8,7 @@ jest.mock("../db/client", () => ({
     user: { findMany: (...a: unknown[]) => mockFindMany(...a) },
     groupLeader: { findMany: (...a: unknown[]) => mockFindMany(...a) },
     seasonAdmin: { findMany: (...a: unknown[]) => mockFindMany(...a) },
+    season: { findMany: (...a: unknown[]) => mockFindMany(...a) },
     seasonEnrollment: {
       findMany: (...a: unknown[]) => mockFindMany(...a),
       count: (...a: unknown[]) => mockCount(...a),
@@ -54,6 +55,32 @@ describe("readOnlyReport", () => {
     await readOnlyReport((...a) => lines.push(a.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(" ")));
     expect(lines.join("\n")).toMatch(/Would change.*markedPassed/);
     expect(lines.join("\n")).toMatch(/--apply would be: allowed/);
+  });
+});
+
+describe("readOnlyReport community-wide check", () => {
+  it("reports an ACTIVE community-wide season that has company", async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockImplementation(async (args: { select?: { isCommunityWide?: boolean } }) =>
+      args?.select?.isCommunityWide
+        ? [{ id: 11, isCommunityWide: true }, { id: 12, isCommunityWide: false }]
+        : [],
+    );
+    const lines: string[] = [];
+    await readOnlyReport((...a) => lines.push(a.map((x) => (typeof x === "string" ? x : JSON.stringify(x))).join(" ")));
+    expect(lines.join("\n")).toMatch(/communityWideNotAlone/);
+    expect(lines.join("\n")).toMatch(/"seasonId":\s*11/);
+  });
+
+  it("says it is unknown when the column is missing", async () => {
+    mockCount.mockResolvedValue(0);
+    mockFindMany.mockImplementation(async (args: { select?: { isCommunityWide?: boolean } }) => {
+      if (args?.select?.isCommunityWide) throw Object.assign(new Error("no column"), { code: "P2022" });
+      return [];
+    });
+    const lines: string[] = [];
+    await readOnlyReport((...a) => lines.push(a.map(String).join(" ")));
+    expect(lines.join("\n")).toMatch(/communityWideNotAlone is unknown/);
   });
 });
 

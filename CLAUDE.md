@@ -437,12 +437,50 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   exception without a pass via `POST /students/:id/graduate` with `override: true`, which needs
   a reason and a tick (stored on the user, shown to SUPER only); it is audited without the reason. `PATCH /users` can't set or clear a stored STUDENT's year (409
   `use_graduate`); changing one year to another corrects a typo, audited and marked stale. Graduating deletes a place on a draft's roster, under Remove's rule
-  (with work recorded on it, the row completes instead), and completes the rest.
+  (with work recorded on it, the row completes instead), and completes the rest of their regular-season places. **A community-wide season is never touched** (owner 2026-11-07): the graduate stays in it, draft or live, as an alumnus, keeps their group and gets a result at End.
+
+## Community-wide seasons (Build 3, owner rulings 2026-11-07)
+
+- **The flag.** `Season.isCommunityWide`: set on create, then changed only by Super and only while the
+  season is a DRAFT (`season_started` after). It is refused together with `graduatesOnPass` or a
+  `requiredProgram` (409 `community_wide_rules`): such a season graduates nobody, requires no program and
+  keeps pass results. The season form hides both options once it is on.
+- **It runs alone.** Start refuses (`start_blocked`) a community-wide draft while any other season is
+  ACTIVE, and a regular draft while a community-wide one is. `GET /seasons/:id/start-check` lists them as
+  `seasonsInTheWay` (id, code, title, message) and `ready` is false while any stands. `startSeason` takes
+  `lockSeasonStart` (an advisory transaction lock on one fixed key) before anything else, so every start is
+  serialised; lock order is global start lock (Start only), Season, People, rows. One person both serving
+  and a student in one draft is a single `already_in_role` item in the student seat.
+- **The picker.** `GET /seasons/:id/people-candidates` rows carry a `pool` (`student` | `alumni`); a
+  community-wide season lists alumni, never Super or Mentor, and a regular one lists none. The mobile
+  picker shows a Students and an Alumni tab, and **Select all available ticks both tabs** at once and
+  shows the count (`Select all available (186)`); unticking is by hand. With no required program nobody
+  is blocked, so an alumnus who did not pass an earlier community-wide season is simply `available`.
+- **`isStudyingAlumnus` against `isAlumnus`** (`packages/shared/src/navigation.ts`, mirrored over a token in
+  `lib/rbac.ts`). `isAlumnus` (role STUDENT and `graduationYear` set) is the permanent fact: the Alumni
+  list, alumni-only events, the class "School of N" and the 403s on student pages. `isStudyingAlumnus`
+  (an alumnus whose token has `activeSeasonId`, i.e. an ACTIVE enrolment in an ACTIVE season, only a
+  community-wide one can seat them) decides the **experience**: `navFor`, Today's branch, the student
+  dashboard, quizzes, submissions, check-in and profile edits behave as a student's. Gates read
+  `isAlumnus(u) && !isStudyingAlumnus(u)` to refuse.
+- **Where a studying alumnus is listed.** They stay under the Alumni list (`status=alumni`) and off the
+  global active Students list, which filters on `graduationYear: null`. A list of one season's people
+  (`seasonId`, a `groupId` of it, or a staff member's own roster) also holds them when that season is
+  community-wide, via `graduationFilter` in `lib/queries/students/list.ts`; so do the season roster,
+  attendance, trackers, reports and End's review. A regular season's graduates never appear. A dropped alumnus stays on their season's own list, as any
+  dropped student does (`seasonId` matches any status).
+- **Ending.** End-check students carry `graduationYear` (the review shows "School of N"), the confirm says
+  how many people it ends the season for, and End graduates nobody and keeps every class. Alumni return to
+  the alumni portal on their next refresh (`activeSeasonId` null), and their old attempts are refused.
+- **Preflight.** `pnpm preflight:community` reports `communityWideNotAlone` (one row per ACTIVE
+  community-wide season with another ACTIVE season alongside, `otherActiveSeasons`): a violation that blocks
+  `--apply`, and "unknown" on a database without the `isCommunityWide` column. Alumni in a community-wide
+  season are not listed as a review item; listed alumni are labelled as seeing the student app.
 
 ## Community model, Build 1 (owner rulings, 2026-11-06)
 
 Design: `docs/superpowers/specs/2026-11-06-community-model-design.md`. Three TestFlight builds; Build 1
-and Build 2 (see "Roles") are written, Build 3 (community-wide seasons) isn't.
+and Build 2 (see "Roles") and Build 3 (see "Community-wide seasons") are written.
 
 - **One active role.** Every user has zero or one active role: a student in one ACTIVE season, or
   serving (admin and/or leader of one group) in one ACTIVE season; Super and Mentor are permanent
@@ -457,7 +495,8 @@ and Build 2 (see "Roles") are written, Build 3 (community-wide seasons) isn't.
   Build 2 added review lists (information only, never blocking `--apply`): stored ADMIN/LEADER
   without a `graduationYear`; live seat holders who aren't alumni; seat rows in DRAFT seasons
   (reported apart, not violations); stored STUDENTs holding live seats, split by `graduationYear`;
-  alumni holding an ACTIVE enrolment in an ACTIVE season.
+  alumni holding an ACTIVE enrolment in an ACTIVE regular season (a community-wide season's alumni are
+  not listed).
   Run it against any database a release will reach before it; the backfill is not part of a
   migration because the old Neon database is kept and v1 writes it.
 - **Season lifecycle.** DRAFT -> ACTIVE -> COMPLETED (-> ARCHIVED). **End season** (`POST

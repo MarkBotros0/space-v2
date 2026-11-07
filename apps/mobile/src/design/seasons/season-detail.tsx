@@ -38,6 +38,7 @@ function SeasonSummary({ season, today }: { season: SeasonDetail; today: string 
       <View className="flex-row flex-wrap items-center gap-2">
         <StatusChip {...statusChip("season", season.status)} />
         {season.graduatesOnPass ? <StatusChip tone="ok" label="Graduating season" /> : null}
+        {season.isCommunityWide ? <StatusChip tone="info" label="Community-wide" /> : null}
       </View>
       <Text variant="headline">
         {`${formatSeasonDay(season.startDate)} – ${formatSeasonDay(season.endDate)}`}

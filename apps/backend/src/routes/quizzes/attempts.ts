@@ -6,7 +6,7 @@ import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import type { SessionUser } from "../../lib/auth/tokens";
 import { hasActiveEnrollment } from "../../lib/permissions";
-import { isAlumnus } from "../../lib/rbac";
+import { isAlumnus, isStudyingAlumnus } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { saveQuizAnswersRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
@@ -17,13 +17,13 @@ import { loadStudentQuizDetail } from "./student-detail";
  * Whether this student may WRITE an attempt in the quiz's season.
  *
  * Deliberately stricter than `canAccessSeason`, whose student branch accepts
- * any enrolment row: a dropped or completed student, or an alumnus (read-only
- * by definition, see `isAlumnus`), must not start, save or submit an attempt in
- * a season they no longer have a live place in. Same rule video-quiz and
- * check-in already apply (`hasActiveEnrollment`).
+ * any enrolment row: a dropped or completed student, or an alumnus who isn't
+ * studying (read-only, see `isAlumnus`), must not start, save or submit an
+ * attempt in a season they no longer have a live place in. Same rule video-quiz
+ * and check-in already apply (`hasActiveEnrollment`).
  */
 async function canTakeQuizIn(user: SessionUser, seasonId: number): Promise<boolean> {
-  if (isAlumnus(user)) return false;
+  if (isAlumnus(user) && !isStudyingAlumnus(user)) return false;
   return hasActiveEnrollment(user, seasonId);
 }
 
