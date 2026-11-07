@@ -4,7 +4,6 @@ import { Keyboard, RefreshControl, ScrollView, StyleSheet, Text as RNText } from
 import { ShellFrame } from "../design/layout/shell-frame";
 import { Eyebrow, PageTitle } from "../design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
-import { StatCard } from "../design/students/stat-card";
 import { renderWithProviders } from "./helpers/render";
 
 describe("ShellFrame", () => {
@@ -108,42 +107,6 @@ describe("route states", () => {
     expect(screen.getByText("Something went wrong")).toBeTruthy();
     fireEvent.press(screen.getByText("Try again"));
     expect(onRetry).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("StatCard", () => {
-  it("labels itself label: value and presses when given onPress", () => {
-    const onPress = jest.fn();
-    render(
-      <StatCard label="Absence budget left" value="42%" sublabel="this season" onPress={onPress} />,
-    );
-    fireEvent.press(screen.getByLabelText("Absence budget left: 42%"));
-    expect(onPress).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("Absence budget\nleft this season")).toBeTruthy();
-  });
-
-  it("keeps the label to at most two lines, so a long word shrinks instead of splitting", () => {
-    render(<StatCard label="Assignments" value="2" />);
-    const label = screen.getByText("Assignments", { includeHiddenElements: true });
-    expect(label.props.numberOfLines).toBe(1);
-    expect(label.props.adjustsFontSizeToFit).toBe(true);
-  });
-
-  it("shows the flame for a positive streak", () => {
-    render(<StatCard label="Streak" value="3" icon="flame" />);
-    expect(screen.getByLabelText("Streak: 3")).toBeTruthy();
-    expect(screen.getByTestId("stat-card-flame", { includeHiddenElements: true })).toBeTruthy();
-  });
-
-  it("renders the navy and teal variants", () => {
-    render(
-      <>
-        <StatCard label="Seasons" value="1" variant="navy" />
-        <StatCard label="Pending" value="2" variant="teal" />
-      </>,
-    );
-    expect(screen.getByLabelText("Seasons: 1")).toBeTruthy();
-    expect(screen.getByLabelText("Pending: 2")).toBeTruthy();
   });
 });
 

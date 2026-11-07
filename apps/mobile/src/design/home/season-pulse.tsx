@@ -1,7 +1,7 @@
 /**
  * How the season is going, in one card: a ring for how far through it is,
  * "4 of 10" sessions held beside it, and the caller's figures under that
- * (staff: attendance and students; a student: their absence budget, streak and
+ * (staff: attendance and students; a student: their absence budget and
  * pending work). Opens the season, or the group, when the caller says where.
  */
 import { ChevronRight } from "lucide-react-native";

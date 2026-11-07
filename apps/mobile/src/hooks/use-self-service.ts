@@ -65,7 +65,7 @@ export function useMySeason(seasonId: number | null): UseQueryResult<MySeason | 
   });
 }
 
-/** Plan 16's dashboard budget/streak tile reads this same hook and key (spec 19 §7). */
+/** Plan 16's dashboard budget tile reads this same hook and key (spec 19 §7). */
 export function useMyAttendance(seasonId: number | null): UseQueryResult<MyAttendanceResponse> {
   return useQuery({
     queryKey: queryKeys.me.attendance(seasonId),

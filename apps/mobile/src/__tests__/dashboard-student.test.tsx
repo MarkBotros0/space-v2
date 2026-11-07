@@ -87,7 +87,7 @@ describe("DashboardScreen — STUDENT", () => {
     expect(await screen.findByText("Hi, Sara")).toBeTruthy();
     expect(await screen.findByLabelText("Sessions held: 3 of 4")).toBeTruthy();
     expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
-    expect(screen.getByLabelText("Streak: 2")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Streak/)).toBeNull();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
     expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
     expect(screen.getByText("1 assignment submitted late this season")).toBeTruthy();

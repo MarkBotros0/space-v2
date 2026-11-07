@@ -49,8 +49,8 @@ function SessionRow({ row }: { row: MyAttendanceSession }) {
 }
 
 /**
- * /attendance — v1 /student/attendance (spec 04 R93–R96). The budget, the
- * streak and every per-session cost come from GET /me/attendance, computed
+ * /attendance — v1 /student/attendance (spec 04 R93–R96). The budget
+ * and every per-session cost come from GET /me/attendance, computed
  * once in lib/attendance-budget.ts (C4); Plan 16's dashboard tile reads the
  * same query key, so the two can never disagree.
  */

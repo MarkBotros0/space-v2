@@ -11,9 +11,9 @@ const NO_VALUE = "—";
 /**
  * The student's season at a glance (owner, 2026-11-07: Home less stacked):
  * one card with the ring for how far through it is, sessions held, and their
- * own figures (absence budget left, D14; streak; assignments pending). The
- * attendance figures come from their own query (spec 19 §7), so when it fails
- * only those two step aside, with the error above. Opens the season page.
+ * own figures (absence budget left, D14; assignments pending; no streak, owner
+ * 2026-11-07). The budget comes from its own query (spec 19 §7), so when it fails
+ * only it steps aside, with the error above. Opens the season page.
  */
 export function TodayFigures({
   data,
@@ -26,13 +26,11 @@ export function TodayFigures({
   const { progress, season } = data;
   if (!season) return null;
   const budget = attendance.data?.budget;
-  const streak = attendance.data?.streak ?? null;
   const figures: PulseFigure[] = [
     ...(attendance.isError
       ? []
       : [
           { value: budget ? `${budget.remainingPct}%` : NO_VALUE, label: "Absence budget left" },
-          { value: streak === null ? NO_VALUE : String(streak), label: "Streak" },
         ]),
     { value: String(data.assignments?.outstandingCount ?? 0), label: "Assignments pending" },
   ];

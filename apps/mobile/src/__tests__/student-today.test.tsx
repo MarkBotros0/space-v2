@@ -275,7 +275,8 @@ describe("StudentToday: figures", () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
     expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
-    expect(screen.getByLabelText("Streak: 2")).toBeTruthy();
+    // Owner 2026-11-07: no streak anywhere.
+    expect(screen.queryByLabelText(/^Streak/)).toBeNull();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
     expect(screen.getByLabelText("Sessions held: 3 of 4")).toBeTruthy();
     expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
