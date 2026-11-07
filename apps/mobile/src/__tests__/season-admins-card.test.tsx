@@ -111,7 +111,8 @@ describe("Admins screen (SUPER), opened from the People card", () => {
     // Someone else makes Rana an admin: she leaves the list while her dialog is open.
     const rana = { ...pat, userId: 22, name: "Rana Admin", email: "rana@jpc.test" };
     act(() => client!.setQueryData(queryKeys.seasons.admins(7), [pat, rana]));
-    await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull());
+    // The dialog leaves after its exit fade; under a full parallel run that can outlast 1s.
+    await waitFor(() => expect(screen.queryByText("Add admin?")).toBeNull(), { timeout: 5000 });
 
     fireEvent.press(await screen.findByText("Sam Admin"));
     expect(screen.getByText("Sam Admin will be able to administer TEST 2099.")).toBeTruthy();
