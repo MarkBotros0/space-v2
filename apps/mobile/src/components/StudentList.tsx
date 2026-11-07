@@ -6,17 +6,13 @@ import type { StudentListItem, StudentListStatus, UserRole } from "@space/shared
 import { NAV_ICONS } from "../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { Screen } from "../design/layout/screen";
-import {
-  Button,
-  ChoiceChip,
-  EmptyState,
-  GroupedList,
-  ListRow,
-  SearchField,
-} from "../design/ui";
+import { Button, ChoiceChip, EmptyState, GroupedList, ListRow, SearchField } from "../design/ui";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
 import { joinMeta } from "../lib/join-meta";
-import { StudentFilterSheet, activeFilterCount } from "../screens/students-list/student-filter-sheet";
+import {
+  StudentFilterSheet,
+  activeFilterCount,
+} from "../screens/students-list/student-filter-sheet";
 import {
   ActiveStudentRow,
   AlumnusRow,
@@ -60,13 +56,21 @@ export interface StudentListProps {
   title: string;
   /** Rendered with the page's other header buttons — e.g. "New student" for SUPER. */
   headerAction?: ReactNode;
+  /** Inside another screen (the admin's Groups tab): the list without its own Screen. */
+  embedded?: boolean;
 }
 
 /**
  * v1 /admin/students, /alumni and /dropped (and, for SUPER, the same pages
  * under /super): title, count line, search, v1's DataTable (phone cards).
  */
-export function StudentList({ status, allowedRoles, title, headerAction }: StudentListProps) {
+export function StudentList({
+  status,
+  allowedRoles,
+  title,
+  headerAction,
+  embedded = false,
+}: StudentListProps) {
   const router = useRouter();
   const role = useSessionStore((s) => s.user?.role ?? null);
   const allowed = role !== null && allowedRoles.includes(role);
@@ -143,6 +147,49 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
   const showAlumni = role !== null && ALUMNI_ROLES.includes(role);
   const showDropped = role !== null && DROPPED_ROLES.includes(role);
 
+  const content = (
+    <View className="flex-col gap-3">
+      {status === "active" && (showAlumni || showDropped) ? (
+        <GroupedList>
+          {showAlumni ? (
+            <ListRow title="Alumni" chevron onPress={() => router.push("/students/alumni")} />
+          ) : null}
+          {showDropped ? (
+            <ListRow
+              title="Dropped students"
+              chevron
+              onPress={() => router.push("/students/dropped")}
+            />
+          ) : null}
+        </GroupedList>
+      ) : null}
+      <SearchField
+        accessibilityLabel="Search students"
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search students"
+        onSubmitEditing={commit}
+      />
+      {status === "active" ? (
+        <>
+          <ChoiceChip
+            label={joinMeta(["Filter", filters > 0 ? filters : null])}
+            accessibilityLabel={filters > 0 ? `Filter, ${filters} active` : "Filter"}
+            selected={filters > 0}
+            onPress={() => setFiltering(true)}
+          />
+          <StudentFilterSheet
+            open={filtering}
+            onClose={() => setFiltering(false)}
+            view={view}
+            onChange={setView}
+          />
+        </>
+      ) : null}
+      {body}
+    </View>
+  );
+  if (embedded) return content;
   return (
     <Screen
       title={title}
@@ -153,50 +200,7 @@ export function StudentList({ status, allowedRoles, title, headerAction }: Stude
       onRefresh={() => void refetch()}
       refreshing={isRefetching}
     >
-      <View className="flex-col gap-3">
-        {status === "active" && (showAlumni || showDropped) ? (
-          <GroupedList>
-            {showAlumni ? (
-              <ListRow
-                title="Alumni"
-                chevron
-                onPress={() => router.push("/students/alumni")}
-              />
-            ) : null}
-            {showDropped ? (
-              <ListRow
-                title="Dropped students"
-                chevron
-                onPress={() => router.push("/students/dropped")}
-              />
-            ) : null}
-          </GroupedList>
-        ) : null}
-        <SearchField
-          accessibilityLabel="Search students"
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search students"
-          onSubmitEditing={commit}
-        />
-        {status === "active" ? (
-          <>
-            <ChoiceChip
-              label={joinMeta(["Filter", filters > 0 ? filters : null])}
-              accessibilityLabel={filters > 0 ? `Filter, ${filters} active` : "Filter"}
-              selected={filters > 0}
-              onPress={() => setFiltering(true)}
-            />
-            <StudentFilterSheet
-              open={filtering}
-              onClose={() => setFiltering(false)}
-              view={view}
-              onChange={setView}
-            />
-          </>
-        ) : null}
-        {body}
-      </View>
+      {content}
     </Screen>
   );
 }

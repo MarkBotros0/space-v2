@@ -88,11 +88,11 @@ const ADMIN: RoleNav = {
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
     { href: "/season", label: "My Season", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
+    // Owner, 2026-11-07: Groups holds the students too, and Work holds the
+    // assignments and quizzes, so neither has its own entry.
     { href: "/groups", label: "Groups", icon: "groups" },
-    { href: "/students", label: "Students", icon: "students" },
+    { href: "/coursework", label: "Work", icon: "assignments" },
     { href: "/notes", label: "My notes", icon: "notes" },
-    { href: "/assignments", label: "Assignments", icon: "assignments" },
-    { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/reports", label: "Reports", icon: "reports" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
     { href: "/settings/profile", label: "Profile settings", icon: "settings" },
@@ -101,7 +101,7 @@ const ADMIN: RoleNav = {
     { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/groups", label: "Groups", icon: "groups" },
-    { href: "/students", label: "Students", icon: "students" },
+    { href: "/coursework", label: "Work", icon: "assignments" },
     { href: "/more", label: "More", icon: "more" },
   ],
 };

@@ -1,9 +1,11 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { useRouter } from "expo-router";
 import { View } from "react-native";
 import type { GroupListItem } from "@space/shared";
 
 import { SeasonSwitcher } from "../../components/SeasonSwitcher";
+import { StudentList } from "../../components/StudentList";
+import { SegmentedControl } from "../../design/ui/segmented-control";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
@@ -28,9 +30,12 @@ export function groupMeta(g: GroupListItem): string {
  * (Plan 6 D-16.16; spec 05 §9) — v1 forced one season with a redirect (R91)
  * and refused SUPER (R92); neither is ported. The actions sit under the
  * title in a wrapping row so the title never shares its line with them.
+ * For ADMIN it is also the students' home (owner, 2026-11-07: no Students
+ * tab): a segmented control switches to the searchable student list.
  */
 export function AdminGroups() {
   const router = useRouter();
+  const [view, setView] = useState<"groups" | "students">("groups");
   const selection = useStaffSeasonSelection(true);
   const groups = useSeasonGroups(selection.seasonId);
   const season = selection.season;
@@ -63,9 +68,7 @@ export function AdminGroups() {
             title={row.name}
             subtitle={groupMeta(row)}
             chevron
-            onPress={() =>
-              router.push({ pathname: "/group/[id]", params: { id: String(row.id) } })
-            }
+            onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(row.id) } })}
           />
         ))}
       </GroupedList>
@@ -84,25 +87,47 @@ export function AdminGroups() {
       }}
     >
       <View className="flex-col gap-4">
-        {season ? (
-          <View className="flex-row flex-wrap gap-2">
-            <Button
-              variant="secondary"
-              onPress={() =>
-                router.push({ pathname: "/seasons/[code]/roster", params: { code: season.code } })
-              }
-            >
-              Assign to groups
-            </Button>
-            <Button onPress={newGroup}>New group</Button>
-          </View>
-        ) : null}
-        <SeasonSwitcher
-          seasons={selection.seasons}
-          selectedId={selection.seasonId}
-          onSelect={selection.setSeasonId}
+        <SegmentedControl
+          options={[
+            { value: "groups", label: "Groups" },
+            { value: "students", label: "Students" },
+          ]}
+          value={view}
+          onChange={(v) => setView(v as "groups" | "students")}
         />
-        {body}
+        {view === "students" ? (
+          <StudentList
+            status="active"
+            allowedRoles={["SUPER", "ADMIN"]}
+            title="Students"
+            embedded
+          />
+        ) : (
+          <>
+            {season ? (
+              <View className="flex-row flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/seasons/[code]/roster",
+                      params: { code: season.code },
+                    })
+                  }
+                >
+                  Assign to groups
+                </Button>
+                <Button onPress={newGroup}>New group</Button>
+              </View>
+            ) : null}
+            <SeasonSwitcher
+              seasons={selection.seasons}
+              selectedId={selection.seasonId}
+              onSelect={selection.setSeasonId}
+            />
+            {body}
+          </>
+        )}
       </View>
     </Screen>
   );
