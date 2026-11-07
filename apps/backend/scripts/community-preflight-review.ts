@@ -22,7 +22,11 @@ export interface ReviewLists {
   draftSeatHolders: SeatRow[];
   /** Stored STUDENTs holding live seats: their role comes from the rows already. */
   storedStudentsHoldingSeats: { withGraduationYear: SeatRow[]; withoutGraduationYear: SeatRow[] };
-  /** A regular season's students are non-alumni: these people count on a roster but act as alumni. */
+  /**
+   * Alumni left on a regular ACTIVE season's roster (a community-wide season is where
+   * alumni belong, so it is excluded). They would see the student app, not the alumni
+   * one. A list to review, never a violation: it doesn't block `--apply`.
+   */
   alumniHoldingActiveEnrollment: { userId: number; seasonId: number }[];
 }
 
@@ -67,7 +71,7 @@ export async function findReviewLists(): Promise<ReviewLists> {
     db.seasonEnrollment.findMany({
       where: {
         status: "ACTIVE",
-        season: { status: "ACTIVE", deletedAt: null },
+        season: { status: "ACTIVE", deletedAt: null, isCommunityWide: false },
         studentUser: { ...LIVE_USER, graduationYear: { not: null } },
       },
       select: { studentUserId: true, seasonId: true },
@@ -96,6 +100,11 @@ export async function printReviewLists(log: (...args: unknown[]) => void): Promi
   try {
     const lists = await findReviewLists();
     log("Review lists (information, not violations; they never block --apply):", JSON.stringify(lists, null, 2));
+    if (lists.alumniHoldingActiveEnrollment.length > 0) {
+      log(
+        `alumniHoldingActiveEnrollment: ${lists.alumniHoldingActiveEnrollment.length} alumni are enrolled in a regular active season, so they would see the student app instead of the alumni one. Review them; this does not block --apply.`,
+      );
+    }
   } catch (err) {
     if (!isMissingSchema(err)) throw err;
     log("Review lists are unknown: this database isn't migrated far enough to read them.");

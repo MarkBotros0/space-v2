@@ -85,6 +85,8 @@ export const seasonEndCheckSchema = z.object({
       name: z.string(),
       groupName: z.string().nullable(),
       attendancePct: z.number(),
+      /** Their class (School of N); null for a non-alumnus. */
+      graduationYear: z.number().int().nullable(),
     }),
   ),
 });

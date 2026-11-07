@@ -153,7 +153,7 @@ export const seasonPaths = {
                   attendance: { type: "array", items: { type: "object", properties: { sessionId: { type: "integer" }, title: { type: "string" }, startsAt: { type: "string", format: "date-time" }, missing: { type: "integer" } } } },
                 },
               },
-              students: { type: "array", items: { type: "object", properties: { userId: { type: "integer" }, name: { type: "string" }, groupName: { type: "string", nullable: true }, attendancePct: { type: "integer" } } } },
+              students: { type: "array", items: { type: "object", properties: { userId: { type: "integer" }, name: { type: "string" }, groupName: { type: "string", nullable: true }, attendancePct: { type: "integer" }, graduationYear: { type: "integer", nullable: true } } } },
             },
           },
           "The end check.",

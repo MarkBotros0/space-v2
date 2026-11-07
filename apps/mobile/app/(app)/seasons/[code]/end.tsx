@@ -139,6 +139,7 @@ export default function EndSeasonScreen() {
     `This finishes ${title} for ${plural(total, "student", "students")}` +
     (notPassed.length > 0 ? `, including ${notPassed.length} who did not pass` : "") +
     ". Their leaders and admins lose access." +
+    ` This ends the season for ${plural(total, "person", "people")}.` +
     (graduating > 0 ? ` ${plural(graduating, "person", "people")} will graduate.` : "");
 
   return (

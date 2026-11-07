@@ -27,7 +27,7 @@ export async function loadSeasonEndCheck(
       select: {
         studentUserId: true,
         enrolledAt: true,
-        studentUser: { select: { name: true } },
+        studentUser: { select: { name: true, graduationYear: true } },
         group: { select: { name: true } },
       },
     }),
@@ -109,6 +109,7 @@ export async function loadSeasonEndCheck(
       userId: e.studentUserId,
       name: e.studentUser.name,
       groupName: e.group?.name ?? null,
+      graduationYear: e.studentUser.graduationYear,
       attendancePct: attendancePct(attendedByStudent.get(e.studentUserId) ?? 0, sessions.length),
     })),
   };

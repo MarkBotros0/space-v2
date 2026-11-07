@@ -45,6 +45,7 @@ export function ReviewList({
             <ListRow
               key={s.userId}
               title={s.name}
+              detail={s.graduationYear === null ? undefined : `School of ${s.graduationYear}`}
               subtitle={joinMeta([s.groupName, `${s.attendancePct}% attendance`])}
               trailing={<StatusChip tone={notPassed ? "bad" : "ok"} label={notPassed ? "Did not pass" : "Passed"} />}
               trailingLabel={notPassed ? "Did not pass" : "Passed"}

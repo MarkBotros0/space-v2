@@ -127,7 +127,7 @@ describe("End season screen", () => {
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     expect(
       await screen.findByText(
-        "This finishes GBV 2026 for 84 students, including 2 who did not pass. Their leaders and admins lose access.",
+        "This finishes GBV 2026 for 84 students, including 2 who did not pass. Their leaders and admins lose access. This ends the season for 84 people.",
       ),
     ).toBeTruthy();
     confirmEnd();
@@ -152,7 +152,7 @@ describe("End season screen", () => {
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    expect(await screen.findByText("This finishes GBV 2026 for 1 student. Their leaders and admins lose access.")).toBeTruthy();
+    expect(await screen.findByText("This finishes GBV 2026 for 1 student. Their leaders and admins lose access. This ends the season for 1 person.")).toBeTruthy();
     confirmEnd();
     await waitFor(() => expect(mockDismissAll).toHaveBeenCalled());
     expect(mockBack).not.toHaveBeenCalled();
