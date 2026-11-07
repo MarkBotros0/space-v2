@@ -60,6 +60,7 @@ const base = {
 };
 
 const publicProfile = {
+  phone: "+20 100 000 0000",
   university: "Cairo University",
   faculty: "Engineering",
   universityGraduationYear: 2027,
@@ -69,7 +70,6 @@ const publicProfile = {
 };
 const internalProfile = {
   ...publicProfile,
-  phone: "+20 100 000 0000",
   dateOfBirth: null,
   notes: "Watch attendance",
 };
@@ -108,7 +108,7 @@ describe("StudentDetailScreen", () => {
     expect(screen.getByText(/Moved away/)).toBeTruthy();
   });
 
-  it("shows no notes or phone to MENTOR — the public arm has no such fields", async () => {
+  it("shows MENTOR the phone with Call, but no internal notes — the public arm has no such field", async () => {
     useSessionStore.setState(mentorSession);
     // The mentor arm's payload: dropReason nulled, profile is the public cut.
     get.mockResolvedValue({
@@ -125,8 +125,10 @@ describe("StudentDetailScreen", () => {
 
     expect((await screen.findAllByText("Sara Student")).length).toBeGreaterThan(0);
     expect(screen.queryByText("Watch attendance")).toBeNull();
-    expect(screen.queryByText(/\+20 100 000 0000/)).toBeNull();
-    expect(screen.queryByText("Call")).toBeNull();
+    expect(screen.getByText("+20 100 000 0000")).toBeTruthy();
+    expect(screen.getByLabelText("Call +20 100 000 0000")).toBeTruthy();
+    expect(screen.queryByText("Internal notes · staff only")).toBeNull();
+    expect(screen.queryByText("Date of birth")).toBeNull();
   });
 
   it("fails loudly when the server leaks a withheld field to a narrow role", async () => {
@@ -236,9 +238,11 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(screen.queryByText("sara@jpc.test")).toBeNull();
     expect(screen.queryByText(/leader view/)).toBeNull();
     expect(screen.queryByText("Email")).toBeNull();
-    expect(screen.queryByText("Call")).toBeNull();
-    expect(screen.queryByText("Phone")).toBeNull();
+    // A leader sees the phone (4999d4cf) but not the date of birth or internal notes.
+    expect(screen.getByText("Phone")).toBeTruthy();
+    expect(screen.getByLabelText("Call +20 100 000 0000")).toBeTruthy();
     expect(screen.queryByText("Date of birth")).toBeNull();
+    expect(screen.queryByText("Internal notes · staff only")).toBeNull();
     for (const label of ["University", "Faculty", "Graduation year"]) expect(screen.getByText(label)).toBeTruthy();
     expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
     expect(screen.getByLabelText("Submissions: 100%, 2 of 2")).toBeTruthy();

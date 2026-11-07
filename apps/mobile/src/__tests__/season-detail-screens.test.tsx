@@ -76,7 +76,7 @@ beforeEach(() => {
 });
 
 describe("SeasonDetailScreen (/seasons/[code])", () => {
-  it("gives SUPER edit plus the admin workspace actions, in v1's tabs", async () => {
+  it("gives SUPER edit plus the admin workspace actions, as tiles", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
@@ -85,7 +85,9 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(screen.getByText("Code: s7")).toBeTruthy();
     expect(screen.getByText("Draft")).toBeTruthy();
     expect(screen.getByText("Jan 1, 2099 – Dec 31, 2099")).toBeTruthy();
-    expect(screen.getByText("4 students in 1 group")).toBeTruthy();
+    expect(screen.getByLabelText("4 students")).toBeTruthy();
+    expect(screen.getByLabelText("1 group")).toBeTruthy();
+    expect(screen.getByLabelText("1 session")).toBeTruthy();
     expect(screen.getByText("Spring.")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Edit season"));
@@ -93,7 +95,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
       pathname: "/seasons/[code]/edit",
       params: { code: "s7" },
     });
-    fireEvent.press(screen.getByText("Roster"));
+    fireEvent.press(screen.getByText("Students and groups"));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/seasons/[code]/roster",
       params: { code: "s7" },
@@ -108,7 +110,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Roster")).toBeTruthy();
+    expect(await screen.findByText("Students and groups")).toBeTruthy();
     expect(screen.queryByText("Edit season")).toBeNull();
     // REG-72: the admin's own edit lives here now that /season redirects a one-season admin.
     expect(screen.getByText("Save changes")).toBeTruthy();
@@ -119,22 +121,23 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     routeGets(detail({ canAdminister: false }));
     renderWithProviders(<SeasonDetailScreen />);
     expect(await screen.findByText("TEST 2099")).toBeTruthy();
-    expect(screen.queryByText("Roster")).toBeNull();
+    expect(screen.queryByText("Students and groups")).toBeNull();
     expect(screen.queryByText("New session")).toBeNull();
   });
 
-  it("lists groups and sessions under their tabs and opens them", async () => {
+  it("lists groups on the page and sessions behind Show all, and opens them", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Groups"));
-    expect(screen.getByText("1 GROUP")).toBeTruthy();
+    expect(await screen.findByText("GROUPS (1)")).toBeTruthy();
     expect(screen.getByText("4 students · Leaders: Lina")).toBeTruthy();
     fireEvent.press(screen.getByText("Group A"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/group/[id]", params: { id: "3" } });
 
-    fireEvent.press(screen.getByText("Sessions"));
+    expect(screen.getByText("SESSIONS (1)")).toBeTruthy();
+    expect(screen.queryByText("Kickoff")).toBeNull();
+    fireEvent.press(screen.getByLabelText("Show all sessions"));
     expect(await screen.findByText("Kickoff")).toBeTruthy();
     expect(screen.getByText("Sun, Mar 1, 2099 · 8:00 PM · 90 min")).toBeTruthy();
     fireEvent.press(screen.getByText("Kickoff"));
@@ -146,29 +149,27 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     });
   });
 
-  it("shows three segments without counts and switches content between them", async () => {
+  it("is one page, not tabs: no Overview segment, and Hide folds the sessions away", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Overview")).toBeTruthy();
-    expect(screen.getByText("Groups")).toBeTruthy();
-    expect(screen.getByText("Sessions")).toBeTruthy();
-    expect(screen.getByText("Enrollment")).toBeTruthy();
-    fireEvent.press(screen.getByText("Groups"));
+    expect(await screen.findByText("GROUPS (1)")).toBeTruthy();
+    expect(screen.queryByText("Overview")).toBeNull();
     expect(screen.queryByText("Enrollment")).toBeNull();
     expect(screen.getByText("Group A")).toBeTruthy();
-    fireEvent.press(screen.getByText("Sessions"));
-    expect(screen.queryByText("Group A")).toBeNull();
+    fireEvent.press(screen.getByLabelText("Show all sessions"));
     expect(await screen.findByText("Kickoff")).toBeTruthy();
-    fireEvent.press(screen.getByText("Overview"));
-    expect(screen.getByText("Enrollment")).toBeTruthy();
+    expect(screen.getByText("Group A")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Hide sessions"));
+    expect(screen.queryByText("Kickoff")).toBeNull();
   });
 
-  it("pluralises enrollment: one student in one group, three students in two groups", async () => {
+  it("pluralises its figures: one student and group, three students in two groups", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail({ studentCount: 1 }));
     const first = renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("1 student in 1 group")).toBeTruthy();
+    expect(await screen.findByLabelText("1 student")).toBeTruthy();
+    expect(screen.getByLabelText("1 group")).toBeTruthy();
     first.unmount();
 
     routeGets(
@@ -181,22 +182,20 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
       }),
     );
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("3 students in 2 groups")).toBeTruthy();
-    fireEvent.press(screen.getByText("Groups"));
-    expect(screen.getByText("2 GROUPS")).toBeTruthy();
+    expect(await screen.findByLabelText("3 students")).toBeTruthy();
+    expect(screen.getByLabelText("2 groups")).toBeTruthy();
+    expect(screen.getByText("GROUPS (2)")).toBeTruthy();
     expect(screen.getByText("2 students · No leader yet")).toBeTruthy();
     expect(screen.getByText("1 student · Leaders: Omar, Lina")).toBeTruthy();
   });
 
-  it("lists all five Manage rows for a SUPER, each with a chevron", async () => {
+  it("lists every Manage tile for a SUPER", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
-    await screen.findByText("Roster");
-    expect(
-      screen.getAllByTestId("list-row-chevron", { includeHiddenElements: true }).length,
-    ).toBeGreaterThanOrEqual(5);
-    for (const label of ["Roster", "New group", "New session", "Edit season", "Duplicate season"])
+    await screen.findByText("Students and groups");
+    expect(screen.getByTestId("season-actions")).toBeTruthy();
+    for (const label of ["Students and groups", "New group", "New session", "Edit season", "Duplicate season"])
       expect(screen.getByText(label)).toBeTruthy();
   });
 
@@ -204,7 +203,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
-    await screen.findByText("Roster");
+    await screen.findByText("Students and groups");
     expect(screen.getByText("New group")).toBeTruthy();
     expect(screen.getByText("New session")).toBeTruthy();
     expect(screen.queryByText("Duplicate season")).toBeNull();
@@ -218,7 +217,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     await screen.findByText("TEST 2099");
     expect(screen.queryByText("Manage")).toBeNull();
     expect(screen.queryByText("MANAGE")).toBeNull();
-    for (const label of ["Roster", "New group", "New session", "Edit season", "Duplicate season"])
+    for (const label of ["Students and groups", "New group", "New session", "Edit season", "Duplicate season"])
       expect(screen.queryByText(label)).toBeNull();
   });
 
@@ -228,7 +227,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByText("TEST 2099");
     expect(screen.queryByText("MANAGE")).toBeNull();
-    expect(screen.queryByText("Roster")).toBeNull();
+    expect(screen.queryByText("Students and groups")).toBeNull();
     expect(screen.queryByText("Season settings")).toBeNull();
     expect(screen.queryByText("Save changes")).toBeNull();
     expect(screen.queryByText("ADMINS")).toBeNull();
@@ -243,12 +242,13 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(get).not.toHaveBeenCalled();
   });
 
-  it("shows v1's empty groups state", async () => {
+  it("shows no Groups list when the season has none", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail({ groups: [] }));
     renderWithProviders(<SeasonDetailScreen />);
-    fireEvent.press(await screen.findByText("Groups"));
-    expect(screen.getByText("No groups yet")).toBeTruthy();
+    await screen.findByText("TEST 2099");
+    expect(screen.queryByText(/^GROUPS \(/)).toBeNull();
+    expect(screen.queryByText("Group A")).toBeNull();
   });
 });
 
@@ -321,9 +321,8 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     patch.mockResolvedValue({ data: { data: { id: 7, code: "gbv-2099" } } });
     renderWithProviders(<SeasonEditScreen />);
 
-    await screen.findByLabelText("Code");
+    fireEvent.press(await screen.findByLabelText("Change code"));
     fireEvent.changeText(screen.getByLabelText("Code"), "GBV 2099");
-    fireEvent.press(screen.getByLabelText("Status"));
     fireEvent.press(await screen.findByText("Archived"));
     fireEvent.press(screen.getByText("Save changes"));
 
@@ -350,7 +349,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonEditScreen />);
-    await screen.findByLabelText("Code");
+    fireEvent.press(await screen.findByLabelText("Change code"));
     fireEvent.changeText(screen.getByLabelText("Code"), "x");
     fireEvent.press(screen.getByText("Save changes"));
     expect(screen.getByLabelText("Code").props.accessibilityHint).toMatch(/2–40/);
@@ -380,7 +379,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Delete"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7"));
-    expect(await screen.findByText(/can't be deleted\. Archive it instead/)).toBeTruthy();
+    expect(await screen.findByText(/can't be deleted\. Archive it once it has finished/)).toBeTruthy();
 
     del.mockResolvedValueOnce({ data: { data: { deleted: true } } });
     fireEvent.press(screen.getByText("Delete season"));

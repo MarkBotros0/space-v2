@@ -123,6 +123,7 @@ describe("SeasonEditScreen save", () => {
   it("saves the full body from the fixed save bar and dismisses to the (possibly new) code", async () => {
     patch.mockResolvedValue({ data: { data: { id: 7, code: "gbv-2027" } } });
     renderWithProviders(<SeasonEditScreen />);
+    fireEvent.press(await screen.findByLabelText("Change code"));
     fireEvent.changeText(await screen.findByLabelText("Code"), "gbv-2027");
     fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Save changes"));
     await waitFor(() =>
@@ -153,7 +154,7 @@ describe("SeasonEditScreen save", () => {
       }),
     );
     renderWithProviders(<SeasonEditScreen />);
-    await screen.findByLabelText("Code");
+    await screen.findByLabelText("Change code");
     fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Save changes"));
     expect(await screen.findByText("Code taken.")).toBeTruthy();
   });
@@ -168,7 +169,7 @@ describe("SeasonEditScreen delete", () => {
   it("promises only what the server does: an empty season can be deleted", async () => {
     renderWithProviders(<SeasonEditScreen />);
     fireEvent.press(await screen.findByText("Delete season"));
-    expect(await screen.findByText(/Only an empty season can be deleted/)).toBeTruthy();
+    expect(await screen.findByText(/one with no sessions and no enrollments/)).toBeTruthy();
     expect(screen.queryByText(/are preserved/)).toBeNull();
   });
 
@@ -188,7 +189,7 @@ describe("SeasonEditScreen delete", () => {
     fireEvent.press(await screen.findByText("Delete"));
 
     await waitFor(() =>
-      expect(alertSpy).toHaveBeenCalledWith("Season in use", expect.stringMatching(/Archive it instead/)),
+      expect(alertSpy).toHaveBeenCalledWith("Season in use", expect.stringMatching(/Archive it once it has finished/)),
     );
     expect(mockReplace).not.toHaveBeenCalled();
     alertSpy.mockRestore();

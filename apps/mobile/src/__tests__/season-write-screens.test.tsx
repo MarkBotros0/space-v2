@@ -37,9 +37,10 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     renderWithProviders(<NewSeasonScreen />);
     fireEvent.changeText(screen.getByLabelText("Program"), "Spring GBV");
     fireEvent.changeText(screen.getByLabelText("Year"), "2028");
-    expect(screen.getByLabelText("Code").props.value).toBe("spring-gbv-2028");
+    expect(screen.getByText("spring-gbv-2028")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Year"), "2029");
-    expect(screen.getByLabelText("Code").props.value).toBe("spring-gbv-2029");
+    expect(screen.getByText("spring-gbv-2029")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Change code"));
     fireEvent.changeText(screen.getByLabelText("Code"), "mine");
     fireEvent.changeText(screen.getByLabelText("Year"), "2030");
     expect(screen.getByLabelText("Code").props.value).toBe("mine");
@@ -136,7 +137,7 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     post.mockResolvedValue({ data: { data: { id: 99, code: "gbv-2028" } } });
     renderWithProviders(<NewSeasonScreen />);
     expect(screen.getByText("Graduating season")).toBeTruthy();
-    expect(screen.getByText("Everyone who passes becomes an alumnus when the season ends, School of the season's year.")).toBeTruthy();
+    expect(screen.getByText("Everyone who passes becomes an alumnus when it ends, School of its year.")).toBeTruthy();
 
     fireEvent.press(screen.getByRole("switch", { name: "Graduating season" }));
     fireEvent.changeText(screen.getByLabelText("Program"), "GBV");

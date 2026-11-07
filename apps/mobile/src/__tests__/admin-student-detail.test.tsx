@@ -37,6 +37,7 @@ const enrollment = (seasonId: number) => ({
   attendancePct: null,
 });
 const publicProfile = {
+  phone: null,
   university: null, faculty: null, universityGraduationYear: null,
   activeSeasonId: 7, activeSeasonTitle: "Season 7", activeSeasonCode: "S7",
 };

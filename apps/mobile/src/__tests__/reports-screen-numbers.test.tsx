@@ -1,5 +1,5 @@
 // apps/mobile/src/__tests__/reports-screen-numbers.test.tsx
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn() },
@@ -54,7 +54,7 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("Students at risk (1 of 1)")).toBeTruthy();
+    expect(await screen.findByText("STUDENTS AT RISK (1 OF 1)")).toBeTruthy();
     expect(screen.getByText(/50% attendance · 100% submissions/)).toBeTruthy();
   });
 
@@ -139,7 +139,8 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("How these numbers are calculated")).toBeTruthy();
+    // The notes are folded away until asked for.
+    fireEvent.press(await screen.findByText("How are these calculated?"));
     expect(
       screen.getByText(/Submission % counts only assignments assigned to that student/),
     ).toBeTruthy();
@@ -168,13 +169,28 @@ describe("ReportsScreen — the numbers it renders", () => {
     await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(1));
   });
 
-  it("shows an empty state when the scope has no data", async () => {
+  it("says there are no seasons when the scope has none", async () => {
     useSessionStore.setState(sessionFor("ADMIN"));
     get.mockResolvedValue({
       data: {
         data: {
           ...summary,
           scope: { seasonIds: [], seasons: [], truncated: false, label: "No seasons" },
+        },
+      },
+    });
+
+    renderWithProviders(<ReportsScreen />);
+
+    expect(await screen.findByText("No seasons yet")).toBeTruthy();
+  });
+
+  it("shows an empty state when the season has no data", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    get.mockResolvedValue({
+      data: {
+        data: {
+          ...summary,
           attendanceTrend: [],
           completion: [],
           bands: [
@@ -193,37 +209,87 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     renderWithProviders(<ReportsScreen />);
 
-    expect(await screen.findByText("No data in this scope")).toBeTruthy();
+    expect(await screen.findByText("Nothing to report yet")).toBeTruthy();
   });
 });
 
-describe("ReportsScreen — the season picker", () => {
-  it("seeds itself from the scope the API returned, not from a second request", async () => {
+describe("ReportsScreen — the season header and History", () => {
+  const seasonIdOf = (u: string) => new URLSearchParams(u.split("?")[1] ?? "").get("seasonId");
+
+  it("opens on the active season, asking unscoped first and then for that season", async () => {
     useSessionStore.setState(sessionFor("SUPER"));
     mockEndpoints({ withOrg: true });
 
     renderWithProviders(<ReportsScreen />);
 
-    // By accessibility label, not text: "Spring 2099" is also the at-risk row's
-    // season caption and a chart label, and "All seasons" is also the scope
-    // caption, so getByText would throw on multiple matches.
-    expect(await screen.findByLabelText("Season filter: All seasons")).toBeTruthy();
-    expect(screen.getByLabelText("Season filter: Spring 2099")).toBeTruthy();
-    // The permitted set is already on scope.seasons; asking GET /seasons again
-    // would be a second round trip for data the first response carried.
+    const header = await screen.findByTestId("report-season");
+    expect(within(header).getByText("Spring 2099")).toBeTruthy();
+    expect(within(header).getByText("Running now")).toBeTruthy();
+    await waitFor(() => {
+      const urls = get.mock.calls.map((c) => String(c[0]));
+      expect(urls.some((u) => seasonIdOf(u) === "7")).toBe(true);
+    });
+    // The permitted set came from the first response: no GET /seasons round trip.
     expect(get.mock.calls.map((c) => String(c[0]))).not.toContain("/api/v1/seasons");
   });
 
-  it("refetches scoped to one season on press", async () => {
+  it("opens on the season that ended last when none is running", async () => {
+    useSessionStore.setState(sessionFor("MENTOR"));
+    const ended = (id: number, title: string, endDate: string) => ({
+      id,
+      code: `s${id}`,
+      title,
+      status: "COMPLETED" as const,
+      endDate,
+    });
+    const scope = {
+      ...summary.scope,
+      seasons: [
+        ended(8, "Autumn 2098", "2098-12-20T00:00:00.000Z"),
+        ended(9, "Spring 2098", "2098-06-30T00:00:00.000Z"),
+      ],
+    };
+    get.mockImplementation((url: string) =>
+      Promise.resolve({ data: { data: url.includes("engagement/students") ? { scope, rows: [], nextCursor: null, total: 0 } : { ...summary, scope } } }),
+    );
+
+    renderWithProviders(<ReportsScreen />);
+
+    const header = await screen.findByTestId("report-season");
+    expect(within(header).getByText("Autumn 2098")).toBeTruthy();
+    expect(within(header).getByText("Ended Dec 20, 2098")).toBeTruthy();
+  });
+
+  it("lists current then past seasons in History and refetches scoped to the one picked", async () => {
+    useSessionStore.setState(sessionFor("ADMIN"));
+    mockEndpoints();
+
+    renderWithProviders(<ReportsScreen />);
+    fireEvent.press(await screen.findByLabelText("Choose another season"));
+
+    expect(await screen.findByText("CURRENT")).toBeTruthy();
+    expect(screen.getByText("PAST SEASONS")).toBeTruthy();
+    // An admin has no All seasons.
+    expect(screen.queryByText("All seasons")).toBeNull();
+    fireEvent.press(screen.getByText("Autumn 2098"));
+
+    await waitFor(() => {
+      const urls = get.mock.calls.map((c) => String(c[0]));
+      expect(urls.some((u) => seasonIdOf(u) === "8")).toBe(true);
+    });
+    expect(within(await screen.findByTestId("report-season")).getByText("Autumn 2098")).toBeTruthy();
+  });
+
+  it("offers All seasons in History to SUPER", async () => {
     useSessionStore.setState(sessionFor("SUPER"));
     mockEndpoints({ withOrg: true });
 
     renderWithProviders(<ReportsScreen />);
-    fireEvent.press(await screen.findByLabelText("Season filter: Autumn 2099"));
+    fireEvent.press(await screen.findByLabelText("Choose another season"));
+    fireEvent.press(await screen.findByText("All seasons"));
 
-    await waitFor(() => {
-      const urls = get.mock.calls.map((c) => String(c[0]));
-      expect(urls.some((u) => u.includes("seasonId=8"))).toBe(true);
-    });
+    expect(
+      await within(screen.getByTestId("report-season")).findByText("Every season together (2)"),
+    ).toBeTruthy();
   });
 });
