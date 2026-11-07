@@ -285,6 +285,7 @@ model Season {
   program        String // e.g. "GBV" — the recurring program; groups a season's year history
   requiredProgram String? // a program a student must have passed to join; SUPER-only, draft-only
   graduatesOnPass Boolean @default(false) // passing makes an alumnus; SUPER-only, frozen once finished
+  isCommunityWide Boolean @default(false) // anyone may study, alumni too; no required program, graduates nobody; SUPER-only, draft-only
   year           Int // e.g. 2026 — the cohort year within the program
   description    String?
   startDate      DateTime

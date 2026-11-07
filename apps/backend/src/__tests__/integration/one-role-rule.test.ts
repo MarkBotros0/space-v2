@@ -70,7 +70,7 @@ const refusalFor = (person: Person, seat: Seat) =>
 
 const seatIn = (kind: Seat["kind"], season: { id: number; status: SeasonStatus }): Seat => ({
   kind,
-  season: { id: season.id, status: season.status },
+  season: { id: season.id, status: season.status, isCommunityWide: false },
 });
 
 describe("seatRefusal", () => {

@@ -25,7 +25,7 @@ const SEATS: StartIssue["seat"][] = ["admin", "leader", "student"];
  * Start calls this holding the season and its people, so what it reads stands.
  */
 export async function loadSeasonStartCheck(
-  season: StandingSeason,
+  season: StandingSeason & { isCommunityWide: boolean },
   client: Prisma.TransactionClient = db,
 ): Promise<SeasonStartCheck> {
   const admins = await client.seasonAdmin.findMany({ where: { seasonId: season.id }, select: { userId: true } });
@@ -64,13 +64,13 @@ export async function loadSeasonStartCheck(
       const issue = (reason: StartIssue["reason"], message: string, otherSeasonCode: string | null = null) =>
         items.push({ userId: person.id, name: person.name, seat, reason, message, otherSeasonCode });
 
-      const ineligible = eligibilityRefusal(person, seat);
+      const ineligible = eligibilityRefusal(person, seat, season);
       if (ineligible) {
         issue(ineligible.code, ineligible.message);
         continue;
       }
       const role = active.get(person.id);
-      const inRole = inRoleRefusal(person, { kind: seat, season: { id: season.id, status: AS_STARTED } }, role);
+      const inRole = inRoleRefusal(person, { kind: seat, season: { id: season.id, status: AS_STARTED, isCommunityWide: season.isCommunityWide } }, role);
       if (inRole) issue(inRole.code, inRole.message, role!.seasonCode);
 
       const led = groupsLed.get(person.id) ?? 0;

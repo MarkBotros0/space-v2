@@ -12,10 +12,11 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Text,
   Textarea,
 } from "../../design/ui";
+import { CommunityWideField } from "./CommunityWideField";
+import { GraduatingField } from "./GraduatingField";
 import { FormField } from "../../design/ui/form-field";
 import { useSeasons } from "../../hooks/use-seasons";
 import { firstErrorByField } from "../../lib/form-errors";
@@ -30,6 +31,8 @@ export interface SeasonFormValues {
   requiredProgram: string;
   /** Everyone who passes becomes an alumnus when the season ends. */
   graduatesOnPass: boolean;
+  /** Anyone may study, alumni too; no required program, graduates nobody. */
+  isCommunityWide: boolean;
   year: string;
   description: string;
   /** Calendar days "YYYY-MM-DD" (spec 02 D12: stored as UTC midnight). */
@@ -45,6 +48,7 @@ export const NEW_SEASON_VALUES: SeasonFormValues = {
   program: "",
   requiredProgram: "",
   graduatesOnPass: false,
+  isCommunityWide: false,
   year: String(new Date().getFullYear()),
   description: "",
   startDay: "",
@@ -104,15 +108,21 @@ export const dayToDate = (day: string): Date | null => {
   return isValid(d) ? d : null;
 };
 
-function toBody(v: SeasonFormValues, canSetRequired: boolean, canSetGraduating: boolean): SeasonIdentityInput {
+function toBody(
+  v: SeasonFormValues,
+  canSetRequired: boolean,
+  canSetGraduating: boolean,
+  canSetCommunity: boolean,
+): SeasonIdentityInput {
   return {
     code: v.code,
     program: v.program,
     year: Number(v.year),
     description: v.description.trim() === "" ? null : v.description,
     // Settled before the season starts: left out once it has, so the server has nothing to refuse.
-    ...(canSetRequired ? { requiredProgram: v.requiredProgram === "" ? null : v.requiredProgram } : {}),
-    ...(canSetGraduating ? { graduatesOnPass: v.graduatesOnPass } : {}),
+    ...(canSetRequired ? { requiredProgram: v.requiredProgram === "" || v.isCommunityWide ? null : v.requiredProgram } : {}),
+    ...(canSetGraduating ? { graduatesOnPass: v.graduatesOnPass && !v.isCommunityWide } : {}),
+    ...(canSetCommunity ? { isCommunityWide: v.isCommunityWide } : {}),
     startDate: `${v.startDay}T00:00:00.000Z`,
     endDate: `${v.endDay}T00:00:00.000Z`,
     status: v.status,
@@ -162,6 +172,7 @@ export function SeasonForm({
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
   const seasonFinished = initial.status === "COMPLETED" || initial.status === "ARCHIVED";
   const canSetGraduating = isSuper && !seasonFinished;
+  const canSetCommunity = isSuper && canSetRequired;
   const requiredChoices = requiredProgramChoices(seasons.data ?? [], v.program, initial.requiredProgram);
 
   const patch = (next: Partial<SeasonFormValues>) => {
@@ -175,7 +186,7 @@ export function SeasonForm({
   };
 
   const submit = () => {
-    const body = toBody(v, canSetRequired, canSetGraduating);
+    const body = toBody(v, canSetRequired, canSetGraduating, canSetCommunity);
     const parsed = seasonWriteRequestSchema.safeParse(body);
     if (!parsed.success) {
       setErrors(firstErrorByField(parsed.error));
@@ -214,7 +225,16 @@ export function SeasonForm({
             placeholder="GBV"
           />
         </FormField>
-        {canSetRequired ? (
+        {isSuper ? (
+          <CommunityWideField
+            value={v.isCommunityWide}
+            editable={canSetCommunity}
+            onChange={(isCommunityWide) =>
+              patch(isCommunityWide ? { isCommunityWide, graduatesOnPass: false, requiredProgram: "" } : { isCommunityWide })
+            }
+          />
+        ) : null}
+        {v.isCommunityWide ? null : canSetRequired ? (
           <FormField
             label="Required program"
             description="Someone must have finished this program to join. Leave as None if anyone can."
@@ -249,33 +269,13 @@ export function SeasonForm({
             </Text>
           </View>
         )}
-        {canSetGraduating ? (
-          <View className="flex-col gap-1">
-            <View className="flex-row items-center gap-3">
-              <Text
-                className="min-w-0 flex-1 text-sm font-semibold text-foreground"
-                onPress={() => patch({ graduatesOnPass: !v.graduatesOnPass })}
-              >
-                Graduating season
-              </Text>
-              <Switch
-                accessibilityLabel="Graduating season"
-                checked={v.graduatesOnPass}
-                onCheckedChange={(graduatesOnPass) => patch({ graduatesOnPass })}
-              />
-            </View>
-            <Text variant="subhead" className="text-muted-foreground">
-              Everyone who passes becomes an alumnus when the season ends, School of the season&apos;s year.
-            </Text>
-          </View>
-        ) : isSuper ? (
-          <View className="flex-col gap-1">
-            <Text className="text-sm font-semibold text-foreground">Graduating season</Text>
-            <Text variant="body" className="text-foreground">
-              {initial.graduatesOnPass ? "Yes" : "No"}. It can&apos;t change now the season has finished.
-            </Text>
-          </View>
-        ) : null}
+        {v.isCommunityWide || !isSuper ? null : (
+          <GraduatingField
+            value={v.graduatesOnPass}
+            editable={canSetGraduating}
+            onChange={(graduatesOnPass) => patch({ graduatesOnPass })}
+          />
+        )}
         <FormField label="Year" required error={errors.year}>
           <Input
             accessibilityLabel="Year"

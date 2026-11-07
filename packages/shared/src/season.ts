@@ -15,6 +15,8 @@ export const seasonListItemSchema = z.object({
   id: z.number(), code: z.string(), title: z.string(), program: z.string(),
   year: z.number(), status: seasonStatusSchema,
   startDate: z.string(), endDate: z.string(),
+  /** Anyone may take part as a student, alumni too. Absent means a regular season. */
+  isCommunityWide: z.boolean().optional(),
 });
 export type SeasonListItem = z.infer<typeof seasonListItemSchema>;
 
@@ -61,6 +63,7 @@ export function isValidSeasonCode(code: string): boolean {
 }
 
 const CODE_MESSAGE = "Code must be 2–40 lowercase letters, numbers, and dashes.";
+export const COMMUNITY_WIDE_RULES_MESSAGE = "A community-wide season has no required program and graduates nobody.";
 export const OWN_PROGRAM_MESSAGE = "A season can't require its own program.";
 const DATE_ORDER_MESSAGE = "End date must be on or after start date.";
 
@@ -72,6 +75,8 @@ const seasonWriteFields = z.object({
   requiredProgram: z.string().trim().min(1).max(60).nullish(),
   /** SUPER only, until the season has finished. Undefined leaves it as it is. */
   graduatesOnPass: z.boolean().optional(),
+  /** SUPER only, and only while the season is a draft. Undefined leaves it as it is. */
+  isCommunityWide: z.boolean().optional(),
   year: z.number().int().min(2000).max(2100),
   description: z.string().max(2000).nullish(),
   startDate: z.string().datetime({ offset: true }),

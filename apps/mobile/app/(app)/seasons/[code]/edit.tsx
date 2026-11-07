@@ -22,6 +22,7 @@ const fromDetail = (s: SeasonDetail): SeasonFormValues => ({
   program: s.program,
   requiredProgram: s.requiredProgram ?? "",
   graduatesOnPass: s.graduatesOnPass ?? false,
+  isCommunityWide: s.isCommunityWide ?? false,
   year: String(s.year),
   description: s.description ?? "",
   // Season dates are calendar days stored as UTC midnight (spec 02 D12).

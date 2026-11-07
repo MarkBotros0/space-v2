@@ -64,7 +64,12 @@ export function SeasonDetailView({
           <GroupedList>
             <ListRow
               title="Status"
-              trailing={<StatusChip {...statusChip("season", season.status)} />}
+              trailing={
+                <View className="flex-col items-end gap-1">
+                  <StatusChip {...statusChip("season", season.status)} />
+                  {season.isCommunityWide ? <StatusChip tone="info" label="Community-wide" /> : null}
+                </View>
+              }
             />
             <ListRow
               title="Dates"

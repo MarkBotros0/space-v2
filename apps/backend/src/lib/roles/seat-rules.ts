@@ -4,7 +4,7 @@ import { describeActiveRole, type ActiveRole } from "./active-role";
 
 export type Seat = {
   kind: "admin" | "leader" | "student";
-  season: { id: number; status: SeasonStatus };
+  season: { id: number; status: SeasonStatus; isCommunityWide: boolean };
 };
 
 /** `role` is the stored `User.role`, not the derived one. */
@@ -24,12 +24,13 @@ const PERMANENT_ROLES: Partial<Record<UserRole, string>> = {
 };
 
 /**
- * Whether a regular season refuses this person a student seat. Every season is
- * regular until Build 3 adds community-wide seasons, which change only this:
- * `clashesWithActiveRole` already refuses an alumnus serving in the same season.
+ * Whether this season refuses this person a student seat. A regular season bars
+ * an alumnus; a community-wide one doesn't, and that is the one place the rule
+ * lives: `clashesWithActiveRole` already refuses an alumnus serving in the same
+ * season, and a Super or Mentor is refused as permanent whatever the season.
  */
-function isBarredFromStudentSeat(person: SeatPerson): boolean {
-  return person.graduationYear !== null;
+function isBarredFromStudentSeat(person: SeatPerson, season: { isCommunityWide: boolean }): boolean {
+  return !season.isCommunityWide && person.graduationYear !== null;
 }
 
 /**
@@ -48,6 +49,7 @@ function clashesWithActiveRole(seat: Seat, active: ActiveRole | undefined): acti
 export function eligibilityRefusal(
   person: SeatPerson,
   kind: Seat["kind"],
+  season: { isCommunityWide: boolean },
 ): (SeatRefusal & { code: "user_inactive" | "permanent_role" | "not_alumnus" | "is_alumnus" }) | null {
   if (person.deletedAt) {
     return { code: "user_inactive", message: "That account is deactivated." };
@@ -65,7 +67,7 @@ export function eligibilityRefusal(
     return { code: "not_alumnus", message: `Only alumni can serve. ${person.name} hasn't graduated.` };
   }
 
-  if (kind === "student" && isBarredFromStudentSeat(person)) {
+  if (kind === "student" && isBarredFromStudentSeat(person, season)) {
     return { code: "is_alumnus", message: `${person.name} is an alumnus and can't join as a student.` };
   }
 
@@ -96,7 +98,7 @@ export async function seatRefusal(
   seat: Seat,
   active: ActiveRole | undefined,
 ): Promise<SeatRefusal | null> {
-  const ineligible = eligibilityRefusal(person, seat.kind);
+  const ineligible = eligibilityRefusal(person, seat.kind, seat.season);
   if (ineligible) return ineligible;
 
   if (seat.season.status === "COMPLETED" || seat.season.status === "ARCHIVED") {

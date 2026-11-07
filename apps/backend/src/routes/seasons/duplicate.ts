@@ -30,7 +30,7 @@ export async function duplicateSeason(req: Request, res: Response) {
   const source = await db.season.findFirst({
     where: { id: sourceId, deletedAt: null },
     select: {
-      program: true, requiredProgram: true, graduatesOnPass: true, description: true, startDate: true,
+      program: true, requiredProgram: true, graduatesOnPass: true, isCommunityWide: true, description: true, startDate: true,
       absenceBudgetMinutes: true, absenceWeightMinutes: true,
       groups: { select: { id: true, name: true, description: true } },
       sessions: {
@@ -72,6 +72,7 @@ export async function duplicateSeason(req: Request, res: Response) {
           program: source.program,
           requiredProgram: source.requiredProgram,
           graduatesOnPass: source.graduatesOnPass,
+          isCommunityWide: source.isCommunityWide,
           year: input.year,
           description: source.description,
           startDate,

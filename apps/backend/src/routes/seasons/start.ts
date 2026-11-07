@@ -31,7 +31,7 @@ export async function getSeasonStartCheck(req: Request, res: Response) {
 
   const season = await db.season.findFirst({
     where: { id, deletedAt: null },
-    select: { id: true, status: true, program: true, requiredProgram: true },
+    select: { id: true, status: true, program: true, requiredProgram: true, isCommunityWide: true },
   });
   if (!season) return refuse(res, SEASON_NOT_FOUND);
   if (season.status !== "DRAFT") return refuse(res, NOT_DRAFT);

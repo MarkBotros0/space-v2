@@ -65,7 +65,12 @@ export function SeasonsList({
                 `${keepTogether(formatSeasonDay(row.startDate))} – ${keepTogether(formatSeasonDay(row.endDate))}`,
               ])}
               subtitleLines={3}
-              trailing={<StatusChip {...statusChip("season", row.status)} />}
+              trailing={
+                <View className="flex-col items-end gap-1">
+                  <StatusChip {...statusChip("season", row.status)} />
+                  {row.isCommunityWide ? <StatusChip tone="info" label="Community-wide" /> : null}
+                </View>
+              }
               chevron
               onPress={() => onOpen(row)}
             />

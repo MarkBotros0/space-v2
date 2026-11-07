@@ -12,6 +12,7 @@ export interface SeasonDetailRow {
   /** Only for super and this season's staff; left out for everyone else. */
   requiredProgram?: string | null;
   graduatesOnPass?: boolean;
+  isCommunityWide: boolean;
   year: number;
   description: string | null;
   status: SeasonStatus;
@@ -40,6 +41,7 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
       program: true,
       requiredProgram: true,
       graduatesOnPass: true,
+      isCommunityWide: true,
       year: true,
       description: true,
       status: true,
@@ -81,6 +83,7 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
     title: season.title,
     program: season.program,
     ...(staff ? { requiredProgram: season.requiredProgram, graduatesOnPass: season.graduatesOnPass } : {}),
+    isCommunityWide: season.isCommunityWide,
     year: season.year,
     description: season.description,
     status: season.status,
