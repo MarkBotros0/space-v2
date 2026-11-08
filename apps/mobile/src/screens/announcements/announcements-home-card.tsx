@@ -1,13 +1,16 @@
 import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
+import { ChevronRight, Megaphone } from "lucide-react-native";
 import type { AnnouncementListItem } from "@space/shared";
 
+import { iconWithClassName } from "../../design/lib/icon";
 import { usePressDim } from "../../design/motion";
-import { PillButton, Text } from "../../design/ui";
+import { Text } from "../../design/ui";
 import { useAnnouncementUnread } from "../../hooks/use-announcements";
 import { useRefreshOnResume } from "../../hooks/use-refresh-on-resume";
-import { AudienceChip } from "./audience-chip";
+
+iconWithClassName(ChevronRight, Megaphone);
 
 /**
  * Home's Announcements card: the latest unread post, and how many more wait.
@@ -22,7 +25,11 @@ export function AnnouncementsHomeCard() {
   return <AnnouncementsHomeCardView count={data.count} latest={data.latest} />;
 }
 
-/** The card itself, from data in hand: the hook's wrapper above, and the design catalogue's fixed samples. */
+/**
+ * The card itself, from data in hand: the hook's wrapper above, and the design catalogue's fixed samples.
+ * One compact row (owner, 2026-11-08): it says a post is new in words, shows the latest post's first
+ * line, and opens that post. The full feed stays on More.
+ */
 export function AnnouncementsHomeCardView({
   count,
   latest,
@@ -32,47 +39,37 @@ export function AnnouncementsHomeCardView({
 }) {
   const router = useRouter();
   const press = usePressDim();
-  const unread = `${count} unread`;
+  const heading = count === 1 ? "New announcement" : `${count} new announcements`;
   // The label replaces the children for a screen reader, so it must name the post it opens.
-  const label = `Announcements, ${unread}. ${latest.title}${count > 1 ? `, and ${count - 1} more` : ""}`;
+  const label = `${heading}. ${latest.excerpt}`;
 
   return (
-    <View className="flex-col gap-2">
-      <View className="flex-row items-center justify-between gap-2">
-        <Text variant="headline" className="min-w-0 flex-1">
-          Announcements
-        </Text>
-        <PillButton label="See all" onPress={() => router.push("/announcements")} />
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        onPress={() =>
-          router.push({ pathname: "/announcements/[id]", params: { id: String(latest.id) } })
-        }
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-      >
-        <Animated.View style={press.animatedStyle}>
-          <View className="min-h-[44px] flex-col gap-2 rounded-group bg-surface px-4 py-3">
-            <View className="flex-row flex-wrap items-center gap-2">
-              <AudienceChip audience={latest.audience} seasonTitle={latest.seasonTitle} />
-              <Text variant="caption" className="font-semibold text-primary">
-                {unread}
-              </Text>
-            </View>
-            <Text variant="headline">{latest.title}</Text>
-            <Text variant="body" numberOfLines={2} className="text-muted-foreground">
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Opens the announcement"
+      onPress={() =>
+        router.push({ pathname: "/announcements/[id]", params: { id: String(latest.id) } })
+      }
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
+    >
+      <Animated.View style={press.animatedStyle}>
+        <View className="min-h-[56px] flex-row items-center gap-3 rounded-group bg-surface px-4 py-2.5">
+          <View className="size-9 shrink-0 items-center justify-center rounded-full bg-unread-soft">
+            <Megaphone size={18} className="text-primary" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text variant="subhead" className="font-semibold text-foreground">
+              {heading}
+            </Text>
+            <Text variant="subhead" numberOfLines={1} className="text-muted-foreground">
               {latest.excerpt}
             </Text>
-            {count > 1 ? (
-              <Text variant="caption" className="text-muted-foreground">
-                {`and ${count - 1} more`}
-              </Text>
-            ) : null}
           </View>
-        </Animated.View>
-      </Pressable>
-    </View>
+          <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+        </View>
+      </Animated.View>
+    </Pressable>
   );
 }

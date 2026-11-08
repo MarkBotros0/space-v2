@@ -134,7 +134,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Write something
           <ModalHeader>
             <ModalTitle>URL</ModalTitle>
           </ModalHeader>
-          <Input accessibilityLabel="URL" value={linkUrl} onChangeText={setLinkUrl} autoCapitalize="none" keyboardType="url" autoFocus />
+          <Input accessibilityLabel="URL" value={linkUrl} onChangeText={setLinkUrl} autoCapitalize="none" keyboardType="url" />
           <ModalFooter>
             <Button variant="outline" onPress={() => setLinkOpen(false)}>
               Cancel

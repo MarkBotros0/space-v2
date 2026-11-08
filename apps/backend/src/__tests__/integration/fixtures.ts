@@ -128,10 +128,10 @@ export async function login(app: Express, email: string): Promise<string> {
 export async function cleanupTestData(): Promise<void> {
   await db.jpcEvent.deleteMany({ where: { title: { startsWith: TEST_PREFIX } } });
 
-  // Announcement posts: by title prefix, or by a test author. Their notifications point
+  // Announcement posts: by body prefix, or by a test author. Their notifications point
   // at /announcements/<id> with no foreign key, so they go first.
   const posts = await db.announcement.findMany({
-    where: { OR: [{ title: { startsWith: TEST_PREFIX } }, { author: testUserFilter }] },
+    where: { OR: [{ body: { startsWith: TEST_PREFIX } }, { author: testUserFilter }] },
     select: { id: true },
   });
   if (posts.length > 0) {

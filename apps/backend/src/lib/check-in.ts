@@ -34,3 +34,22 @@ export function checkInState(session: CheckInTimes, now: Date = new Date()): Che
 export function isCheckInOpen(session: CheckInTimes, now: Date = new Date()): boolean {
   return checkInState(session, now) === "open";
 }
+
+/**
+ * Students see check-in, and may check in, only from an hour before the
+ * session starts (owner, 2026-11-08). An admin may open it earlier (to put the
+ * code up, say); until the hour it still reads as not open to students.
+ */
+export const STUDENT_CHECK_IN_LEAD_MS = 60 * 60 * 1000;
+
+export function isStudentCheckInWindow(startsAt: Date, now: Date = new Date()): boolean {
+  return now.getTime() >= startsAt.getTime() - STUDENT_CHECK_IN_LEAD_MS;
+}
+
+/** What a student is told: open only while check-in is open and the session's hour has come. */
+export function isCheckInOpenForStudent(
+  session: CheckInTimes & { startsAt: Date },
+  now: Date = new Date(),
+): boolean {
+  return isCheckInOpen(session, now) && isStudentCheckInWindow(session.startsAt, now);
+}

@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { announcementAudienceSchema } from "./enums";
 
-export const ANNOUNCEMENT_TITLE_MAX = 120;
 export const ANNOUNCEMENT_BODY_MAX = 5000;
 export const ANNOUNCEMENT_EXCERPT_LENGTH = 280;
 export const ANNOUNCEMENT_PUSH_LENGTH = 120;
@@ -17,7 +16,6 @@ export const announcementListItemSchema = z.object({
   audience: announcementAudienceSchema,
   seasonId: z.number().int().nullable(),
   seasonTitle: z.string().nullable(),
-  title: z.string(),
   excerpt: z.string(),
   /** Null once the author's account is gone ("Former member"). */
   authorName: z.string().nullable(),
@@ -61,26 +59,19 @@ export const announcementTargetsResponseSchema = z.object({
 });
 export type AnnouncementTargetsResponse = z.infer<typeof announcementTargetsResponseSchema>;
 
-const titleField = z.string().trim().min(1).max(ANNOUNCEMENT_TITLE_MAX);
 const bodyField = z.string().trim().min(1).max(ANNOUNCEMENT_BODY_MAX);
 
 export const createAnnouncementRequestSchema = z.discriminatedUnion("audience", [
-  z.object({ audience: z.literal("COMMUNITY"), title: titleField, body: bodyField }).strict(),
+  z.object({ audience: z.literal("COMMUNITY"), body: bodyField }).strict(),
   z
     .object({
       audience: z.literal("SEASON"),
       seasonId: z.number().int().positive(),
-      title: titleField,
       body: bodyField,
     })
     .strict(),
 ]);
 export type CreateAnnouncementRequest = z.infer<typeof createAnnouncementRequestSchema>;
 
-export const updateAnnouncementRequestSchema = z
-  .object({ title: titleField.optional(), body: bodyField.optional() })
-  .strict()
-  .refine((v) => v.title !== undefined || v.body !== undefined, {
-    message: "Provide a title or a body",
-  });
+export const updateAnnouncementRequestSchema = z.object({ body: bodyField }).strict();
 export type UpdateAnnouncementRequest = z.infer<typeof updateAnnouncementRequestSchema>;

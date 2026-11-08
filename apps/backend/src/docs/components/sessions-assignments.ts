@@ -44,7 +44,7 @@ export const sessionsAssignmentsSchemas = {
       checkInOpen: {
         type: "boolean",
         description:
-          "True only while `POST /sessions/check-in` would actually accept a scan: opened, not explicitly closed, and within three hours of opening. Both endpoints derive this from the same predicate, so the read cannot advertise a window the write refuses.",
+          "True only while `POST /sessions/check-in` would actually accept a scan: opened, not explicitly closed, and within three hours of opening; for a STUDENT caller, also no earlier than an hour before the session starts. Both endpoints derive this from the same predicate, so the read cannot advertise a window the write refuses.",
       },
       myAttendance: {
         type: ["object", "null"],

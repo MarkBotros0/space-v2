@@ -10,7 +10,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestUser, login, testEventTitle } from "./fixtures";
+import { cleanupTestData, createTestUser, login } from "./fixtures";
 import { seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 
 jest.setTimeout(60000);
@@ -67,7 +67,7 @@ describe("announcement notifications", () => {
     const author = await createTestUser("announceauthor2", "ADMIN");
     await db.seasonAdmin.create({ data: { seasonId: f.seasonId, userId: author.id } });
     const token = await login(app, author.email);
-    const id = await publish(token, { audience: "SEASON", seasonId: f.seasonId, title: testEventTitle("n1"), body: "Bring a pen." });
+    const id = await publish(token, { audience: "SEASON", seasonId: f.seasonId, body: "Bring a pen." });
     await waitForRows(studentIds[0]!, id, 1);
     await settle();
     for (const uid of [...studentIds, leaderId, f.userIds.admin]) expect(await rowsFor(uid, id)).toBe(1);
@@ -75,12 +75,12 @@ describe("announcement notifications", () => {
       expect(await rowsFor(uid, id)).toBe(0);
     }
     const row = await db.notification.findFirstOrThrow({ where: { userId: studentIds[0], link: `/announcements/${id}` } });
-    expect(row).toMatchObject({ type: "ANNOUNCEMENT", body: "Bring a pen." });
+    expect(row).toMatchObject({ type: "ANNOUNCEMENT", title: "New announcement", body: "Bring a pen." });
   });
 
   it("community post notifies a test student and the mentor but not the author", async () => {
     const long = "x".repeat(300);
-    const id = await publish(f.tokens.superUser, { audience: "COMMUNITY", title: testEventTitle("n2"), body: long });
+    const id = await publish(f.tokens.superUser, { audience: "COMMUNITY", body: long });
     await waitForRows(mentorId, id, 1);
     await settle();
     expect(await rowsFor(studentIds[0]!, id)).toBe(1);
@@ -92,7 +92,7 @@ describe("announcement notifications", () => {
 
   it("cuts the push body by code point: an emoji at the limit stays whole", async () => {
     const body = `${"x".repeat(119)}\u{1F600}tail`;
-    const id = await publish(f.tokens.superUser, { audience: "COMMUNITY", title: testEventTitle("n2e"), body });
+    const id = await publish(f.tokens.superUser, { audience: "COMMUNITY", body });
     await waitForRows(mentorId, id, 1);
     await settle();
     const row = await db.notification.findFirstOrThrow({ where: { userId: mentorId, link: `/announcements/${id}` } });
@@ -105,13 +105,13 @@ describe("announcement notifications", () => {
       create: { userId: studentIds[0]!, announcement: false },
       update: { announcement: false },
     });
-    const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, title: testEventTitle("n3"), body: "Quiet." });
+    const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, body: "Quiet." });
     await waitForRows(studentIds[0]!, id, 1);
     expect(await rowsFor(studentIds[0]!, id)).toBe(1);
   });
 
   it("edit sends nothing new", async () => {
-    const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, title: testEventTitle("n4"), body: "Once." });
+    const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, body: "Once." });
     await waitForRows(studentIds[0]!, id, 1);
     await settle();
     const before = await db.notification.count({ where: { link: `/announcements/${id}` } });
@@ -122,7 +122,7 @@ describe("announcement notifications", () => {
   });
 
   it("notification target parses to announcement id", async () => {
-    const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, title: testEventTitle("n5"), body: "Look." });
+    const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, body: "Look." });
     await waitForRows(studentIds[0]!, id, 1);
     const res = await request(app).get("/api/v1/notifications").set(as(f.tokens.student));
     expect(res.status).toBe(200);

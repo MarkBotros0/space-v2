@@ -22,6 +22,7 @@
  * `PageTitle` in the content until their batch moves them here.
  */
 import { useQueryClient } from "@tanstack/react-query";
+import { NavigationContext } from "expo-router/react-navigation";
 import { cssInterop } from "nativewind";
 import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, Platform, RefreshControl, View } from "react-native";
@@ -51,6 +52,7 @@ import { OfflineBanner } from "./offline-banner";
 import { ScreenFooterContext, TabBarPresenceContext, useShellBottomPadding } from "./shell-context";
 import {
   INITIAL_SCROLL_STEP,
+  onTabReselect,
   type ScrollStep,
   scrollDirectionStep,
   useTabBarScroll,
@@ -182,6 +184,16 @@ export function Screen({
     getOffset: () => scrollY.value,
     getBarHeight: () => footerHeightRef.current,
   });
+  // The open tab pressed again (owner, 2026-11-08, as Instagram does): scroll to the top, or
+  // reload once already there. Only the focused screen under the pill answers it.
+  const navigation = useContext(NavigationContext);
+  const reselect = useRef<() => void>(() => {});
+  reselect.current = () => {
+    if (!hasTabBar || (navigation && !navigation.isFocused())) return;
+    if (scrollY.value > 1) keyboard.scrollProps.ref.current?.scrollTo({ y: 0, animated: !reduced });
+    else pull.onRefresh?.();
+  };
+  useEffect(() => onTabReselect(() => reselect.current()), []);
   // Above the pill on a tab, on the bottom inset on a detail screen; on the keyboard while it is open.
   const footerOffset = (closed: number) =>
     keyboardBottomOffset({ os: Platform.OS, keyboard: keyboard.inset, insetBottom, closed });
@@ -311,7 +323,7 @@ export function Screen({
           contentContainerStyle={{ paddingBottom: contentBottom }}
           refreshControl={
             pull.onRefresh ? (
-              <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />
+              <RefreshControl key={pull.key} refreshing={pull.refreshing} onRefresh={pull.onRefresh} />
             ) : undefined
           }
         >

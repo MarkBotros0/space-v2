@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { PillTabBar } from "../design/layout/floating-tab-bar";
 import { PillHighlight } from "../design/layout/pill-highlight";
-import { resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scroll";
+import { onTabReselect, resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scroll";
 import { setReducedMotionForTests } from "../design/motion";
 import { routeNameForHref } from "../lib/route-names";
 
@@ -293,16 +293,34 @@ describe("navigation the pill did not start", () => {
   });
 });
 
-describe("solid fill (owner ruling R38)", () => {
-  it.each(["ios", "android"] as const)("is one opaque bg-pill on %s, with no blur", (os) => {
-    jest.replaceProperty(Platform, "OS", os);
+describe("fill (owner, 2026-11-08: frosted on iOS like Instagram, solid on Android)", () => {
+  it("is the navy at 80% over a blur on iOS", () => {
+    jest.replaceProperty(Platform, "OS", "ios");
+    renderBar();
+    const fill = screen.getByTestId("pill-fill").props.className as string;
+    expect(fill.split(" ")).toContain("bg-pill/80");
+    expect(screen.getByTestId("pill-blur")).toBeTruthy();
+  });
+
+  it("is one opaque bg-pill on Android, with no blur (no blur target there, R30)", () => {
+    jest.replaceProperty(Platform, "OS", "android");
     renderBar();
     const fill = screen.getByTestId("pill-fill").props.className as string;
     expect(fill.split(" ")).toContain("bg-pill");
-    expect(fill).not.toContain("pill-solid");
-    const name = (type: unknown) =>
-      typeof type === "string" ? type : ((type as { name?: string } | null)?.name ?? "");
-    expect(screen.UNSAFE_root.findAll((n) => name(n.type).includes("Blur"))).toHaveLength(0);
+    expect(screen.queryByTestId("pill-blur")).toBeNull();
+  });
+});
+
+describe("pressing the open tab (owner, 2026-11-08)", () => {
+  it("asks its screen to go to the top instead of navigating", () => {
+    const nav = jest.fn();
+    render(barTree("dashboard", nav));
+    const heard = jest.fn();
+    const off = onTabReselect(heard);
+    fireEvent.press(screen.getByLabelText("Home"));
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(nav).not.toHaveBeenCalled();
+    off();
   });
 });
 

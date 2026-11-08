@@ -36,7 +36,7 @@ describe("AnnouncementsScreen", () => {
       noTargets,
     );
     renderWithProviders(<AnnouncementsScreen />);
-    expect(await screen.findByText("Post 1")).toBeTruthy();
+    expect(await screen.findByText("Excerpt 1")).toBeTruthy();
     expect(screen.getByText("Spring 2026")).toBeTruthy();
     expect(screen.getByText("Everyone")).toBeTruthy();
     expect(screen.getByText("Excerpt 1")).toBeTruthy();
@@ -47,9 +47,9 @@ describe("AnnouncementsScreen", () => {
   it("says New in words on an unread post only, and opens it on press", async () => {
     serve([listItem(1, { isRead: false }), listItem(2)], noTargets);
     renderWithProviders(<AnnouncementsScreen />);
-    await screen.findByText("Post 1");
+    await screen.findByText("Excerpt 1");
     expect(screen.getAllByText("New")).toHaveLength(1);
-    fireEvent.press(screen.getByLabelText(/^Post 1/));
+    fireEvent.press(screen.getByLabelText(/^Excerpt 1/));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/announcements/[id]",
       params: { id: "1" },
@@ -59,7 +59,7 @@ describe("AnnouncementsScreen", () => {
   it("shows New post only when the viewer can post somewhere", async () => {
     serve([listItem(1)], noTargets);
     const first = renderWithProviders(<AnnouncementsScreen />);
-    await screen.findByText("Post 1");
+    await screen.findByText("Excerpt 1");
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/announcements/targets"));
     expect(screen.queryByText("New post")).toBeNull();
     first.unmount();

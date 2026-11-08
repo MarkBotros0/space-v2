@@ -99,7 +99,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
       expect(screen.getByRole("button", { name: label })).toBeTruthy();
     // Adding people lives in the People card, not a tile (owner, 2026-11-07).
     expect(screen.queryByRole("button", { name: "Add people" })).toBeNull();
-    expect(screen.getByText("Select from community")).toBeTruthy();
+    expect(screen.getByText("Community")).toBeTruthy();
     // Each card names what it opens, without "Manage" (owner, 2026-11-07).
     for (const gone of ["New session", "Students and groups", "Manage quizzes", "Manage assignments", "Manage sessions"])
       expect(screen.queryByText(gone)).toBeNull();
@@ -143,7 +143,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(screen.getByText("4 students")).toBeTruthy();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/roster");
     expect(screen.getByRole("button", { name: "Sessions" })).toBeTruthy();
-    for (const label of ["Assignments", "Quizzes", "New group", "Move students between groups", "Select from community", "Invite new"])
+    for (const label of ["Assignments", "Quizzes", "New group", "Move students between groups", "Community", "Invite new"])
       expect(screen.queryByText(label)).toBeNull();
   });
 
@@ -152,7 +152,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     routeGets(detail({ canAdminister: false }));
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByText("TEST 2099");
-    for (const label of ["Assignments", "Quizzes", "New group", "Select from community", "Invite new", "Save changes"])
+    for (const label of ["Assignments", "Quizzes", "New group", "Community", "Invite new", "Save changes"])
       expect(screen.queryByText(label)).toBeNull();
     expect(screen.queryByLabelText("Edit season")).toBeNull();
   });
@@ -186,7 +186,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(await screen.findByText("Pat Admin")).toBeTruthy();
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText("Leader: Lina")).toBeTruthy();
-    for (const label of ["New group", "Move students between groups", "Assignments", "Quizzes", "Select from community", "Invite new", "End season"])
+    for (const label of ["New group", "Move students between groups", "Assignments", "Quizzes", "Community", "Invite new", "End season"])
       expect(screen.queryByText(label)).toBeNull();
     expect(screen.queryByLabelText("Manage admins")).toBeNull();
     expect(screen.getByRole("button", { name: "Sessions" })).toBeTruthy();

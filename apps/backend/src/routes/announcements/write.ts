@@ -34,7 +34,7 @@ export async function createPost(req: Request, res: Response) {
   if (verdict === "season_finished") return apiError(res, "season_finished", "This season has finished.", 409);
 
   const row = await db.announcement.create({
-    data: { audience: input.audience, seasonId, title: input.title, body: input.body, authorId: user.userId },
+    data: { audience: input.audience, seasonId, body: input.body, authorId: user.userId },
     select: ANNOUNCEMENT_SELECT,
   });
   auditLog("announcement.create", user.userId, row.id, seasonId !== null ? { season: seasonId } : {});

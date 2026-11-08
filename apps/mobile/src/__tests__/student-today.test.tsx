@@ -311,16 +311,16 @@ describe("StudentToday: figures", () => {
     expect(at("Week 6")).toBeLessThan(at("TO DO"));
   });
 
-  // Owner 2026-11-07: while check-in is open, the session leads.
-  it("puts the session first while check-in is open and they haven't checked in", async () => {
+  // Owner 2026-11-08: the season ring, then announcements, then the session, even with check-in open.
+  it("keeps the season first and the session before To do while check-in is open", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
     await screen.findByText("Check In");
     await screen.findByLabelText("Open Spring 2099");
     const at = order();
-    expect(at("Week 6")).toBeGreaterThanOrEqual(0);
-    expect(at("Week 6")).toBeLessThan(at("Open Spring 2099"));
-    expect(at("Open Spring 2099")).toBeLessThan(at("TO DO"));
+    expect(at("Open Spring 2099")).toBeGreaterThanOrEqual(0);
+    expect(at("Open Spring 2099")).toBeLessThan(at("Week 6"));
+    expect(at("Week 6")).toBeLessThan(at("TO DO"));
   });
 
   it("goes back to the season first once they have checked in", async () => {
@@ -364,10 +364,11 @@ describe("StudentToday: figures", () => {
     expect(screen.queryByLabelText(/^Streak/)).toBeNull();
   });
 
-  it("keeps the late callout's copy", async () => {
+  it("shows no late-submissions note (owner, 2026-11-08)", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    expect(await screen.findByText("1 assignment submitted late this season")).toBeTruthy();
+    expect(await screen.findByLabelText(/^Assignments pending/)).toBeTruthy();
+    expect(screen.queryByText(/submitted late this season/)).toBeNull();
   });
 });
 

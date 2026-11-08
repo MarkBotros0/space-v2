@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import {
   ANNOUNCEMENT_BODY_MAX,
-  ANNOUNCEMENT_TITLE_MAX,
   createAnnouncementRequestSchema,
   type AnnouncementTargetsResponse,
   type CreateAnnouncementRequest,
@@ -12,7 +11,6 @@ import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
 import {
   FormField,
-  Input,
   SegmentedControl,
   Select,
   SelectContent,
@@ -31,16 +29,15 @@ const AUDIENCE_OPTIONS = [
   { value: "SEASON", label: "A season" },
 ];
 
-export type PostFormValues = { title: string; body: string };
+export type PostFormValues = { body: string };
 
-type Fields = { title?: string; body?: string; season?: string };
+type Fields = { body?: string; season?: string };
 
 /** Field errors from the shared schema, keyed by the field they belong to. */
 function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Fields {
   const out: Fields = {};
   for (const issue of issues) {
     const key = issue.path[0];
-    if (key === "title") out.title ??= "Enter a title (up to 120 characters).";
     if (key === "body") out.body ??= "Enter a message (up to 5000 characters).";
   }
   return out;
@@ -72,7 +69,6 @@ type Props = {
 export function PostForm(props: Props) {
   const { screenTitle, saveLabel, error, pending, initial } = props;
   const targets = props.mode === "create" ? props.targets : null;
-  const [title, setTitle] = useState(initial?.title ?? "");
   const [body, setBody] = useState(initial?.body ?? "");
   const [errors, setErrors] = useState<Fields>({});
   const [confirming, setConfirming] = useState(false);
@@ -95,7 +91,7 @@ export function PostForm(props: Props) {
   const reach = toSeason ? (chosen?.reach ?? 0) : (targets?.communityReach ?? 0);
 
   function buildRequest(): CreateAnnouncementRequest | null {
-    const base = { title, body };
+    const base = { body };
     const parsed = createAnnouncementRequestSchema.safeParse(
       toSeason ? { audience: "SEASON", seasonId: seasonId ?? 0, ...base } : { audience: "COMMUNITY", ...base },
     );
@@ -108,7 +104,7 @@ export function PostForm(props: Props) {
   function submit(): void {
     const request = buildRequest();
     if (request === null) return;
-    if (props.mode === "edit") props.onSubmit({ title: request.title, body: request.body });
+    if (props.mode === "edit") props.onSubmit({ body: request.body });
     else setConfirming(true);
   }
 
@@ -156,15 +152,6 @@ export function PostForm(props: Props) {
           <Text variant="headline" className="text-foreground">{`To: ${toLabel}`}</Text>
         )}
 
-        <FormField label="Title" error={errors.title}>
-          <Input
-            accessibilityLabel="Title"
-            value={title}
-            maxLength={ANNOUNCEMENT_TITLE_MAX}
-            onChangeText={setTitle}
-            returnKeyType="next"
-          />
-        </FormField>
         <FormField label="Message" error={errors.body}>
           <Textarea
             accessibilityLabel="Message"

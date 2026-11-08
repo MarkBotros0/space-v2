@@ -4,7 +4,6 @@ export const listItem = (id: number, over: Record<string, unknown> = {}) => ({
   audience: "COMMUNITY",
   seasonId: null,
   seasonTitle: null,
-  title: `Post ${id}`,
   excerpt: `Excerpt ${id}`,
   authorName: "Sam Author",
   createdAt: "2026-11-03T12:00:00.000Z",

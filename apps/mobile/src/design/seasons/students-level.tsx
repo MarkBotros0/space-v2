@@ -74,7 +74,7 @@ export function StudentsLevel({
             {onSelectFromCommunity ? (
               <Button variant="secondary" className="min-w-[140px] flex-1" onPress={onSelectFromCommunity}>
                 <Users size={16} className="text-foreground" />
-                Select from community
+                Community
               </Button>
             ) : null}
             {onInviteNew ? (
@@ -85,7 +85,7 @@ export function StudentsLevel({
             ) : null}
           </View>
           <Text variant="caption" className="text-muted-foreground">
-            Select from community: people who already have an account. Invite new: someone who has never signed
+            Community: people who already have an account. Invite new: someone who has never signed
             in. They get an email.
           </Text>
         </View>

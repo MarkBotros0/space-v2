@@ -13,7 +13,7 @@ import type { SweepPeople } from "./people";
  * the community post unread, the sweep student has both, and the season's admin
  * wrote the season post. Seeded last for that reason, and a check below fails
  * the seed if the dates or authors would ever make a post read-by-default.
- * Titles say they are sweep data. No notifications are written: the flows only
+ * Bodies start "[Sweep]" to say they are sweep data. No notifications are written: the flows only
  * open the feed, a post and the form.
  */
 export async function seedAnnouncementScenario({ user, admin, season }: SweepPeople): Promise<void> {
@@ -24,16 +24,14 @@ export async function seedAnnouncementScenario({ user, admin, season }: SweepPeo
     data: [
       {
         audience: "COMMUNITY",
-        title: "[Sweep] Community test announcement",
-        body: "This is fake text for the UI sweep. It goes to everyone in the community.\n\nA second paragraph, to check line breaks.",
+        body: "[Sweep] This is fake text for the UI sweep. It goes to everyone in the community.\n\nA second paragraph, to check line breaks.",
         authorId: announcer.id,
         createdAt,
       },
       {
         audience: "SEASON",
         seasonId: season.id,
-        title: "[Sweep] Season test announcement",
-        body: "This is fake text for the UI sweep. It goes to the current season only.",
+        body: "[Sweep] This is fake text for the UI sweep. It goes to the current season only.",
         authorId: admin.id,
         createdAt,
       },

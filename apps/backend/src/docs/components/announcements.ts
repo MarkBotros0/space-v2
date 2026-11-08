@@ -4,7 +4,6 @@ const listItemProps = {
   audience: { type: "string", enum: ["COMMUNITY", "SEASON"] },
   seasonId: { type: ["integer", "null"] },
   seasonTitle: { type: ["string", "null"] },
-  title: { type: "string" },
   authorName: { type: ["string", "null"], description: "Null once the author's account is gone (\"Former member\")." },
   createdAt: { type: "string", format: "date-time" },
   editedAt: { type: ["string", "null"], format: "date-time" },
@@ -14,12 +13,12 @@ const listItemProps = {
 export const announcementSchemas = {
   AnnouncementListItem: {
     type: "object",
-    required: ["id", "audience", "seasonId", "seasonTitle", "title", "excerpt", "authorName", "createdAt", "editedAt", "isRead"],
+    required: ["id", "audience", "seasonId", "seasonTitle", "excerpt", "authorName", "createdAt", "editedAt", "isRead"],
     properties: { ...listItemProps, excerpt: { type: "string", description: "First 280 characters of the body." } },
   },
   AnnouncementDetail: {
     type: "object",
-    required: ["id", "audience", "seasonId", "seasonTitle", "title", "authorName", "createdAt", "editedAt", "isRead", "body", "canEdit", "canDelete", "seasonFinished"],
+    required: ["id", "audience", "seasonId", "seasonTitle", "authorName", "createdAt", "editedAt", "isRead", "body", "canEdit", "canDelete", "seasonFinished"],
     properties: {
       ...listItemProps,
       body: { type: "string", description: "Plain text, never HTML." },
@@ -66,26 +65,24 @@ export const announcementSchemas = {
     },
   },
   CreateAnnouncementRequest: {
-    description: "`title` and `body` are trimmed before the length checks.",
+    description: "`body` is trimmed before the length check.",
     oneOf: [
       {
         type: "object",
-        required: ["audience", "title", "body"],
+        required: ["audience", "body"],
         additionalProperties: false,
         properties: {
           audience: { type: "string", const: "COMMUNITY" },
-          title: { type: "string", minLength: 1, maxLength: 120 },
           body: { type: "string", minLength: 1, maxLength: 5000 },
         },
       },
       {
         type: "object",
-        required: ["audience", "seasonId", "title", "body"],
+        required: ["audience", "seasonId", "body"],
         additionalProperties: false,
         properties: {
           audience: { type: "string", const: "SEASON" },
           seasonId: { type: "integer", minimum: 1 },
-          title: { type: "string", minLength: 1, maxLength: 120 },
           body: { type: "string", minLength: 1, maxLength: 5000 },
         },
       },
@@ -93,12 +90,11 @@ export const announcementSchemas = {
     discriminator: { propertyName: "audience" },
   },
   UpdateAnnouncementRequest: {
-    description: "`title` and `body` are trimmed before the length checks.",
+    description: "`body` is trimmed before the length check.",
     type: "object",
-    minProperties: 1,
+    required: ["body"],
     additionalProperties: false,
     properties: {
-      title: { type: "string", minLength: 1, maxLength: 120 },
       body: { type: "string", minLength: 1, maxLength: 5000 },
     },
   },

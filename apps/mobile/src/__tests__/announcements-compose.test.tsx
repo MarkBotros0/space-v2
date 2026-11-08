@@ -45,9 +45,8 @@ function apiError(status: number, code: string, message: string) {
 
 const sheetBar = () => within(screen.getByTestId("sheet-save-bar"));
 
-async function fill(title: string, body: string) {
-  fireEvent.changeText(await screen.findByLabelText("Title"), title);
-  fireEvent.changeText(screen.getByLabelText("Message"), body);
+async function fill(body: string) {
+  fireEvent.changeText(await screen.findByLabelText("Message"), body);
 }
 
 beforeEach(() => {
@@ -78,15 +77,16 @@ describe("New announcement", () => {
     targetsAre({ community: false, communityReach: 0, seasons: [] });
     renderWithProviders(<NewAnnouncementScreen />);
     expect(await screen.findByText("You can't post announcements here")).toBeTruthy();
-    expect(screen.queryByLabelText("Title")).toBeNull();
+    expect(screen.queryByLabelText("Message")).toBeNull();
   });
 
   it("shows field errors inline and does not open the confirm sheet when empty", async () => {
     targetsAre(adminTargets);
     renderWithProviders(<NewAnnouncementScreen />);
-    await screen.findByLabelText("Title");
+    await screen.findByLabelText("Message");
+    // A post is its message alone: there is no title field.
+    expect(screen.queryByLabelText("Title")).toBeNull();
     fireEvent.press(screen.getByText("Post"));
-    expect(screen.getByLabelText("Title").props.accessibilityHint).toBeTruthy();
     expect(screen.getByLabelText("Message").props.accessibilityHint).toBeTruthy();
     expect(screen.queryByText("Post to Test Season?")).toBeNull();
     expect(post).not.toHaveBeenCalled();
@@ -96,7 +96,7 @@ describe("New announcement", () => {
     targetsAre(superTargets);
     post.mockResolvedValue(ok(detailItem(42)));
     renderWithProviders(<NewAnnouncementScreen />);
-    await fill("  Hello  ", "Body text");
+    await fill("  Body text  ");
     fireEvent.press(screen.getByText("Post"));
     expect(await screen.findByText("Post to Everyone?")).toBeTruthy();
     expect(screen.getByText("This notifies 120 people.")).toBeTruthy();
@@ -110,7 +110,6 @@ describe("New announcement", () => {
     );
     expect(post).toHaveBeenCalledWith("/api/v1/announcements", {
       audience: "COMMUNITY",
-      title: "Hello",
       body: "Body text",
     });
   });
@@ -119,7 +118,7 @@ describe("New announcement", () => {
     targetsAre(adminTargets);
     post.mockResolvedValue(ok(detailItem(43, { audience: "SEASON", seasonId: 3 })));
     renderWithProviders(<NewAnnouncementScreen />);
-    await fill("Hi", "There");
+    await fill("There");
     fireEvent.press(screen.getByText("Post"));
     expect(await screen.findByText("Post to Test Season?")).toBeTruthy();
     expect(screen.getByText("This notifies 1 person.")).toBeTruthy();
@@ -128,7 +127,6 @@ describe("New announcement", () => {
     expect(post).toHaveBeenCalledWith("/api/v1/announcements", {
       audience: "SEASON",
       seasonId: 3,
-      title: "Hi",
       body: "There",
     });
   });
@@ -136,7 +134,7 @@ describe("New announcement", () => {
   it("cancel closes the sheet without posting", async () => {
     targetsAre(adminTargets);
     renderWithProviders(<NewAnnouncementScreen />);
-    await fill("Hi", "There");
+    await fill("There");
     fireEvent.press(screen.getByText("Post"));
     await screen.findByText("Post to Test Season?");
     fireEvent.press(sheetBar().getByText("Cancel"));
@@ -147,7 +145,7 @@ describe("New announcement", () => {
     targetsAre(adminTargets);
     post.mockRejectedValue(apiError(409, "season_finished", "This season has finished."));
     renderWithProviders(<NewAnnouncementScreen />);
-    await fill("Hi", "There");
+    await fill("There");
     fireEvent.press(screen.getByText("Post"));
     await screen.findByText("Post to Test Season?");
     fireEvent.press(sheetBar().getByText("Post"));
@@ -158,7 +156,7 @@ describe("New announcement", () => {
   it("shows the message counter past 4000 characters and not at 4000", async () => {
     targetsAre(adminTargets);
     renderWithProviders(<NewAnnouncementScreen />);
-    await fill("Hi", "a".repeat(4000));
+    await fill("a".repeat(4000));
     expect(screen.queryByText(/ \/ 5000$/)).toBeNull();
     fireEvent.changeText(screen.getByLabelText("Message"), "a".repeat(4001));
     expect(screen.getByText("4001 / 5000")).toBeTruthy();
@@ -168,7 +166,7 @@ describe("New announcement", () => {
     targetsAre(adminTargets);
     post.mockRejectedValue(apiError(409, "season_finished", "This season has finished."));
     renderWithProviders(<NewAnnouncementScreen />);
-    await fill("Hi", "There");
+    await fill("There");
     fireEvent.press(screen.getByText("Post"));
     await screen.findByText("Post to Test Season?");
     fireEvent.press(sheetBar().getByText("Post"));
@@ -180,17 +178,17 @@ describe("New announcement", () => {
 describe("Edit announcement", () => {
   it("shows To read-only and goes back after saving", async () => {
     get.mockReturnValue(
-      ok(detailItem(7, { canEdit: true, audience: "SEASON", seasonId: 3, seasonTitle: "Test Season", title: "Old", body: "Old body" })),
+      ok(detailItem(7, { canEdit: true, audience: "SEASON", seasonId: 3, seasonTitle: "Test Season", body: "Old body" })),
     );
     patch.mockResolvedValue(ok(detailItem(7)));
     renderWithProviders(<EditAnnouncementScreen />);
     expect(await screen.findByText("To: Test Season")).toBeTruthy();
     expect(screen.queryByText("A season")).toBeNull();
-    expect(screen.getByLabelText("Title").props.value).toBe("Old");
-    fireEvent.changeText(screen.getByLabelText("Title"), "New");
+    expect(screen.getByLabelText("Message").props.value).toBe("Old body");
+    fireEvent.changeText(screen.getByLabelText("Message"), "New body");
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
-    expect(patch).toHaveBeenCalledWith("/api/v1/announcements/7", { title: "New", body: "Old body" });
+    expect(patch).toHaveBeenCalledWith("/api/v1/announcements/7", { body: "New body" });
   });
 
   it("says Everyone for a community post", async () => {
@@ -203,7 +201,7 @@ describe("Edit announcement", () => {
     get.mockReturnValue(ok(detailItem(7, { canEdit: false })));
     renderWithProviders(<EditAnnouncementScreen />);
     expect(await screen.findByText("This announcement can't be edited")).toBeTruthy();
-    expect(screen.queryByLabelText("Title")).toBeNull();
+    expect(screen.queryByLabelText("Message")).toBeNull();
   });
 
   it("shows the same empty state for a removed post", async () => {
@@ -217,8 +215,8 @@ describe("Edit announcement", () => {
     get.mockReturnValue(ok(detailItem(7, { canEdit: true })));
     patch.mockRejectedValue(apiError(409, "season_finished", "This season has finished."));
     renderWithProviders(<EditAnnouncementScreen />);
-    await screen.findByLabelText("Title");
-    fireEvent.changeText(screen.getByLabelText("Title"), "x");
+    await screen.findByLabelText("Message");
+    fireEvent.changeText(screen.getByLabelText("Message"), "x");
     fireEvent.press(screen.getByText("Save"));
     expect(await screen.findByText("This season has finished.")).toBeTruthy();
     expect(mockBack).not.toHaveBeenCalled();

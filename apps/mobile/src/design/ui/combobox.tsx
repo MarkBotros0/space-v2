@@ -41,7 +41,6 @@ export function OptionSearch({ value, onChangeText }: { value: string; onChangeT
   return (
     <View className="pb-2">
       <TextInput
-        autoFocus
         value={value}
         onChangeText={onChangeText}
         placeholder="Search…"

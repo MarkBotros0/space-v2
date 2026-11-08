@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
-import { isCheckInOpen } from "../../lib/check-in";
+import { isCheckInOpen, isCheckInOpenForStudent } from "../../lib/check-in";
 import {
   addWeeksInOrgTime,
   orgDayKey,
@@ -136,7 +136,8 @@ export async function getSession(req: Request, res: Response) {
     seasonId: session.seasonId,
     seasonCode: session.season.code,
     seasonTitle: session.season.title,
-    checkInOpen: isCheckInOpen(session),
+    // A student is told it's open only from an hour before the start; staff see the real state.
+    checkInOpen: user.role === "STUDENT" ? isCheckInOpenForStudent(session) : isCheckInOpen(session),
     myAttendance,
     canMarkAttendance: await canMarkAttendance(user, id),
     // Ruling C4: the client renders this and never re-derives it. It is the

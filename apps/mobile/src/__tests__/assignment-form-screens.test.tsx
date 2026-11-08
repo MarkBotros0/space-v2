@@ -160,7 +160,7 @@ beforeEach(() => {
 describe("NewAssignmentScreen", () => {
   beforeEach(() => useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] })));
 
-  it("creates a group-targeted assignment due at an org-clock time, then opens it", async () => {
+  it("creates a whole-season assignment due at an org-clock time, then opens it", async () => {
     serve();
     post.mockResolvedValue({ data: { data: { ...detail, id: 77 } } });
     renderWithProviders(<NewAssignmentScreen />);
@@ -175,9 +175,9 @@ describe("NewAssignmentScreen", () => {
     fireEvent.press(screen.getByRole("menuitem", { name: "18" }));
     fireEvent.press(screen.getByLabelText("Minute"));
     fireEvent.press(screen.getByRole("menuitem", { name: "30" }));
-    fireEvent.press(screen.getByLabelText("Specific groups"));
-    fireEvent.press(screen.getByLabelText("Groups"));
-    fireEvent.press(screen.getByRole("checkbox", { name: /Group B/ }));
+    // An assignment always goes to the whole season: there is no "Assign to" choice.
+    expect(screen.queryByText("Assign to")).toBeNull();
+    expect(screen.queryByLabelText("Specific groups")).toBeNull();
     fireEvent.press(screen.getByText("Create assignment"));
 
     // The device composes no instant: it sends the day and time it was given.
@@ -187,8 +187,8 @@ describe("NewAssignmentScreen", () => {
         title: "Week 4 reflection",
         dueDay: day,
         dueTime: "18:30",
-        isAllGroups: false,
-        groupIds: [4],
+        isAllGroups: true,
+        groupIds: [],
       }),
     );
     await waitFor(() =>
@@ -250,20 +250,6 @@ describe("NewAssignmentScreen", () => {
     );
   });
 
-  it("refuses 'specific groups' with none ticked, using the shared schema's words, without calling the API", async () => {
-    serve();
-    renderWithProviders(<NewAssignmentScreen />);
-
-    fireEvent.changeText(await screen.findByLabelText("Title"), "Nobody");
-    fireEvent.press(screen.getByLabelText("Specific groups"));
-    fireEvent.press(screen.getByText("Create assignment"));
-
-    expect(
-      await screen.findByText("Choose at least one group, or target the whole season."),
-    ).toBeTruthy();
-    expect(post).not.toHaveBeenCalled();
-  });
-
   it("shows the server's refusal verbatim and stays on the form", async () => {
     serve();
     post.mockRejectedValue(
@@ -317,7 +303,7 @@ describe("EditAssignmentScreen", () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
-  it("pre-fills from the server's org fields and PATCHes the whole assignment (R67)", async () => {
+  it("pre-fills from the server's org fields and PATCHes the whole assignment, to the whole season (R67)", async () => {
     serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
     patch.mockResolvedValue({ data: { data: { ...detail, title: "Essay two" } } });
     renderWithProviders(<EditAssignmentScreen />);
@@ -337,29 +323,12 @@ describe("EditAssignmentScreen", () => {
         dueTime: "23:59",
         maxFileSizeMb: 10,
         allowedMimeCategories: ["pdf"],
-        isAllGroups: false,
-        groupIds: [3],
+        // An older group-targeted assignment saves as whole-season: the form has no groups.
+        isAllGroups: true,
+        groupIds: [],
       }),
     );
     await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
-  });
-
-  it("warns when narrowing the targets would hide work students already started (§10 item 5)", async () => {
-    serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
-    renderWithProviders(<EditAssignmentScreen />);
-
-    await screen.findByDisplayValue("Essay one");
-    expect(screen.queryByText(/already started or submitted/)).toBeNull();
-    fireEvent.press(screen.getByLabelText("Groups"));
-    fireEvent.press(screen.getByRole("checkbox", { name: /Group A/ })); // untick
-    fireEvent.press(screen.getByRole("checkbox", { name: /Group B/ })); // tick
-
-    // Sara (SUBMITTED, Group A) is hidden by this edit; Nadia (not started) is not counted.
-    expect(
-      await screen.findByText(
-        "1 student in groups you removed has already started or submitted work. They will no longer see this assignment; their work is kept.",
-      ),
-    ).toBeTruthy();
   });
 
   it("clears the due date", async () => {

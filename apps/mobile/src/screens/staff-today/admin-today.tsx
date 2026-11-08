@@ -20,44 +20,51 @@ import { useSessionStore } from "../../store/session";
 import { fromDashboardSession, LiveSessionHero } from "./live-session-hero";
 import { NeedsActionList } from "./needs-action-list";
 
-/** The season at a glance, then its students at risk by name. */
+/** The season at a glance: first on Home, always (owner, 2026-11-08). */
 function SeasonFigures({ data }: { data: StaffSeasonDashboard }) {
   const router = useRouter();
   const { progress, cohort, season } = data;
   return (
-    <>
-      <PeoplePreview
-        header="Students at risk"
-        people={cohort.atRisk.map((r) => ({
-          id: r.studentUserId,
-          name: r.studentName,
-          reason: joinMeta([
-            `${r.submissionsCompleted}/${r.submissionsExpected} submitted`,
-            r.attendanceTotal > 0 && `${r.attendancePct}% attendance`,
-          ]),
-        }))}
-        total={cohort.atRiskTotal}
-        onOpen={(id) => router.push({ pathname: "/student/[id]", params: { id: String(id) } })}
-        onSeeAll={() =>
-          router.push({ pathname: "/attention/at-risk", params: { seasonId: String(season.id) } })
-        }
-      />
-      <SeasonPulse
-        title={season.title}
-        progressPct={progress.pct}
-        sessionsHeld={progress.sessionsHeld}
-        sessionsTotal={progress.sessionsTotal}
-        figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
-        onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: season.code } })}
-      />
-    </>
+    <SeasonPulse
+      title={season.title}
+      progressPct={progress.pct}
+      sessionsHeld={progress.sessionsHeld}
+      sessionsTotal={progress.sessionsTotal}
+      figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
+      onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: season.code } })}
+    />
+  );
+}
+
+/** The season's students at risk, by name. */
+function AtRiskPreview({ data }: { data: StaffSeasonDashboard }) {
+  const router = useRouter();
+  const { cohort, season } = data;
+  return (
+    <PeoplePreview
+      header="Students at risk"
+      people={cohort.atRisk.map((r) => ({
+        id: r.studentUserId,
+        name: r.studentName,
+        reason: joinMeta([
+          `${r.submissionsCompleted}/${r.submissionsExpected} submitted`,
+          r.attendanceTotal > 0 && `${r.attendancePct}% attendance`,
+        ]),
+      }))}
+      total={cohort.atRiskTotal}
+      onOpen={(id) => router.push({ pathname: "/student/[id]", params: { id: String(id) } })}
+      onSeeAll={() =>
+        router.push({ pathname: "/attention/at-risk", params: { seasonId: String(season.id) } })
+      }
+    />
   );
 }
 
 /**
- * Admin Home (owner, 2026-11-07: less of a stacked list): the live session,
- * what needs action as coloured tiles, the students at risk by name, the
- * season at a glance (its ring opens the season), events. Assignments and
+ * Admin Home (owner, 2026-11-07: less of a stacked list; 2026-11-08: the
+ * season ring first): the season at a glance (its ring opens the season), the
+ * live session, what needs action as coloured tiles, the students at risk by
+ * name, events. Assignments and
  * quizzes live on the Work tab. `useStaffToday` and the dashboard share query
  * keys with every list they open, so nothing is fetched twice.
  */
@@ -91,23 +98,11 @@ export function AdminToday() {
       dash.data && next ? (
         <LiveSessionHero session={fromDashboardSession(next, dash.data.season.title)} />
       ) : null;
-    const live = next?.isInProgress === true;
     body = (
       <>
-        {/* Time-critical first (a session in progress, overdue seasons), then the card. */}
-        {live ? hero : null}
-        <OverdueCallout />
-        <AnnouncementsHomeCard />
-        {live ? null : hero}
-        {today.isPending ? (
-          <RouteSkeleton />
-        ) : (
-          <NeedsActionList
-            needs={today.needs}
-            scopeSeasonId={today.scopeSeasonId}
-            onRetry={today.refetch}
-          />
-        )}
+        {/* Owner 2026-11-08: the season ring first, then announcements, then the
+            session (live or next), an overdue season, what needs action and the
+            students at risk. */}
         {dash.isPending ? (
           <RouteSkeleton />
         ) : dash.isError || !dash.data ? (
@@ -118,6 +113,19 @@ export function AdminToday() {
         ) : (
           <SeasonFigures data={dash.data} />
         )}
+        <AnnouncementsHomeCard />
+        {hero}
+        <OverdueCallout />
+        {today.isPending ? (
+          <RouteSkeleton />
+        ) : (
+          <NeedsActionList
+            needs={today.needs}
+            scopeSeasonId={today.scopeSeasonId}
+            onRetry={today.refetch}
+          />
+        )}
+        {dash.data ? <AtRiskPreview data={dash.data} /> : null}
         <UpcomingEventsCard query={events} />
       </>
     );

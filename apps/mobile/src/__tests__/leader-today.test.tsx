@@ -219,7 +219,7 @@ describe("LeaderToday", () => {
   });
 
   // Owner 2026-11-07: the group's season card sits right under the session.
-  it("puts the group card right under the session, above the tiles and the names", async () => {
+  it("puts the group card first, then the session, the tiles and the names (owner, 2026-11-08)", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
     await screen.findByText("STUDENTS AT RISK");
@@ -235,9 +235,9 @@ describe("LeaderToday", () => {
     };
     walk(screen.toJSON());
     const at = (t: string) => texts.indexOf(t);
-    expect(at("No upcoming sessions.")).toBeGreaterThanOrEqual(0);
-    expect(at("No upcoming sessions.")).toBeLessThan(at("Open Group A, Group B"));
-    expect(at("Open Group A, Group B")).toBeLessThan(at("WAITING FOR YOU"));
+    expect(at("Open Group A, Group B")).toBeGreaterThanOrEqual(0);
+    expect(at("Open Group A, Group B")).toBeLessThan(at("No upcoming sessions."));
+    expect(at("No upcoming sessions.")).toBeLessThan(at("WAITING FOR YOU"));
     expect(at("WAITING FOR YOU")).toBeLessThan(at("STUDENTS AT RISK"));
   });
 

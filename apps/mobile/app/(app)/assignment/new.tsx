@@ -3,7 +3,6 @@ import { useRouter } from "expo-router";
 
 import { AssignmentForm, NEW_ASSIGNMENT_VALUES } from "../../../src/components/assignment-form";
 import { useCreateAssignment } from "../../../src/hooks/use-assignment-writes";
-import { useSeasonGroups } from "../../../src/hooks/use-groups";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState } from "../../../src/design/ui";
@@ -20,7 +19,6 @@ import { useSessionStore } from "../../../src/store/session";
 function NewAssignment() {
   const router = useRouter();
   const current = useCurrentSeasonId();
-  const groups = useSeasonGroups(current.seasonId);
   const sessions = useSeasonSessions(current.seasonId);
   const season = useSeasonDetail(current.seasonId);
   const create = useCreateAssignment();
@@ -37,24 +35,16 @@ function NewAssignment() {
     body = (
       <EmptyState title="No season" description="There's no season to add an assignment to." />
     );
-  } else if (groups.isPending || sessions.isPending) {
+  } else if (sessions.isPending) {
     body = <RouteSkeleton />;
-  } else if (groups.isError || sessions.isError) {
-    body = (
-      <RouteError
-        onRetry={() => {
-          void groups.refetch();
-          void sessions.refetch();
-        }}
-      />
-    );
+  } else if (sessions.isError) {
+    body = <RouteError onRetry={() => void sessions.refetch()} />;
   } else {
     return (
       <AssignmentForm
         title="New assignment"
         subtitle={subtitle}
         initial={NEW_ASSIGNMENT_VALUES}
-        groups={groups.data}
         sessions={sessions.data}
         submitLabel="Create assignment"
         submitting={create.isPending}

@@ -1,9 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type {
-  AssignmentTrackerRow,
   AssignmentWriteBody,
-  GroupListItem,
   MimeCategory,
   SessionListItem,
 } from "@space/shared";
@@ -26,7 +24,6 @@ import {
 import {
   dateToDay,
   dayToDate,
-  orphanedWorkCount,
   partsToTime,
   timeToParts,
   toAssignmentBody,
@@ -93,21 +90,16 @@ const FIELD_OF_ISSUE: Record<string, string> = {
   forumMinWords: "forumMinWords",
   maxFileSizeMb: "maxFileSizeMb",
   allowedMimeCategories: "mime",
-  isAllGroups: "groups",
-  groupIds: "groups",
 };
 
 export interface AssignmentFormProps {
   title: string;
   subtitle?: string;
   initial: AssignmentFormValues;
-  groups: GroupListItem[];
   sessions: SessionListItem[];
   submitLabel: string;
   submitting: boolean;
   serverError: string | null;
-  /** Edit only: the tracker's rows, for the narrowing warning. */
-  trackerRows?: AssignmentTrackerRow[];
   onSubmit: (body: AssignmentWriteBody) => void;
 }
 
@@ -115,12 +107,10 @@ export function AssignmentForm({
   title,
   subtitle,
   initial,
-  groups,
   sessions,
   submitLabel,
   submitting,
   serverError,
-  trackerRows,
   onSubmit,
 }: AssignmentFormProps) {
   const [v, setV] = useState<AssignmentFormValues>(initial);
@@ -130,7 +120,6 @@ export function AssignmentForm({
     setV((prev) => ({ ...prev, [key]: value }));
 
   const isForum = v.type === "FORUM";
-  const orphaned = trackerRows ? orphanedWorkCount(trackerRows, v) : 0;
 
   const submit = () => {
     const parsed = toAssignmentBody(v);
@@ -154,7 +143,6 @@ export function AssignmentForm({
     // The server's org-calendar day (X13), not startsAt in the device zone.
     description: formatDayKey(s.dayKey),
   }));
-  const groupOptions = groups.map((g) => ({ value: String(g.id), label: g.name }));
   const mimeOptions = (Object.keys(MIME_CATEGORY_LABELS) as MimeCategory[]).map((c) => ({
     value: c,
     label: MIME_CATEGORY_LABELS[c],
@@ -317,41 +305,6 @@ export function AssignmentForm({
               </View>
             ) : null}
           </Fieldset>
-        ) : null}
-
-        <Fieldset legend="Assign to">
-          <Radio
-            label="All students in this season"
-            selected={v.targetMode === "all"}
-            onPress={() => set("targetMode", "all")}
-          />
-          <Radio
-            label="Specific groups"
-            selected={v.targetMode === "groups"}
-            onPress={() => set("targetMode", "groups")}
-          />
-          {v.targetMode === "groups" ? (
-            <View className="mt-1">
-              <FormField label="Groups" error={errors.groups}>
-                <MultiSelect
-                  accessibilityLabel="Groups"
-                  options={groupOptions}
-                  value={v.groupIds.map(String)}
-                  onChange={(ids) => set("groupIds", ids.map(Number))}
-                  placeholder="Pick groups…"
-                  emptyMessage="This season has no groups yet."
-                />
-              </FormField>
-            </View>
-          ) : null}
-        </Fieldset>
-
-        {orphaned > 0 ? (
-          <Text className="text-sm text-warning-700 dark:text-warning-300">
-            {`${orphaned} student${orphaned === 1 ? "" : "s"} in groups you removed ${
-              orphaned === 1 ? "has" : "have"
-            } already started or submitted work. They will no longer see this assignment; their work is kept.`}
-          </Text>
         ) : null}
       </View>
     </FormScreen>

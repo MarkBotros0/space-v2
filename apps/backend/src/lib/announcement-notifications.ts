@@ -48,7 +48,6 @@ export function notifyAnnouncement(post: {
   audience: "COMMUNITY" | "SEASON";
   seasonId: number | null;
   authorId: number | null;
-  title: string;
   body: string;
 }): void {
   runInBackground(
@@ -57,7 +56,8 @@ export function notifyAnnouncement(post: {
       const recipients = await announcementRecipients(post, post.authorId);
       await createNotificationsBulk(recipients, {
         type: "ANNOUNCEMENT",
-        title: post.title,
+        // A post has no title of its own: the message is the push body.
+        title: "New announcement",
         // By code point: a slice would cut an emoji's surrogate pair in half.
         body: Array.from(post.body).slice(0, ANNOUNCEMENT_PUSH_LENGTH).join(""),
         link: `/announcements/${post.id}`,

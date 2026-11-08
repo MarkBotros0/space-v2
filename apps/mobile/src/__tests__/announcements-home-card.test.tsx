@@ -64,44 +64,41 @@ describe("AnnouncementsHomeCard", () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20));
     });
-    expect(screen.queryByText("Announcements")).toBeNull();
+    expect(screen.queryByText(/new announcement/i)).toBeNull();
     expect(screen.queryByText(/Couldn't/)).toBeNull();
   });
 
-  it("shows the latest post and 'and 2 more' at a count of 3", async () => {
-    serveUnread({ count: 3, latest: listItem(9, { title: "Camp dates" }) });
+  it("is one compact row: says a post is new and shows its first line, truncated", async () => {
+    serveUnread({ count: 1, latest: listItem(9, { excerpt: "Camp dates" }) });
     renderWithProviders(<AnnouncementsHomeCard />);
     expect(await screen.findByText("Camp dates")).toBeTruthy();
-    expect(screen.getByText("Announcements")).toBeTruthy();
-    expect(screen.getByText("Everyone")).toBeTruthy();
-    expect(screen.getByText("and 2 more")).toBeTruthy();
-    expect(screen.getByLabelText("Announcements, 3 unread. Camp dates, and 2 more")).toBeTruthy();
+    expect(screen.getByText("New announcement")).toBeTruthy();
+    expect(screen.getByText("Camp dates").props.numberOfLines).toBe(1);
+    expect(screen.queryByRole("button", { name: /See all/ })).toBeNull();
+    expect(screen.getByLabelText("New announcement. Camp dates")).toBeTruthy();
   });
 
-  it("says nothing about more at a count of 1", async () => {
-    serveUnread({ count: 1, latest: listItem(9, { title: "Camp dates" }) });
+  it("counts several unread posts in words", async () => {
+    serveUnread({ count: 3, latest: listItem(9, { excerpt: "Camp dates" }) });
     renderWithProviders(<AnnouncementsHomeCard />);
-    expect(await screen.findByText("Camp dates")).toBeTruthy();
-    expect(screen.queryByText(/more/)).toBeNull();
-    expect(screen.getByLabelText("Announcements, 1 unread. Camp dates")).toBeTruthy();
+    expect(await screen.findByText("3 new announcements")).toBeTruthy();
+    expect(screen.getByLabelText("3 new announcements. Camp dates")).toBeTruthy();
   });
 
-  it("opens the post on press and the list from See all", async () => {
-    serveUnread({ count: 3, latest: listItem(9, { title: "Camp dates" }) });
+  it("opens the latest post on press", async () => {
+    serveUnread({ count: 3, latest: listItem(9, { excerpt: "Camp dates" }) });
     renderWithProviders(<AnnouncementsHomeCard />);
     fireEvent.press(await screen.findByText("Camp dates"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/announcements/[id]", params: { id: "9" } });
-    fireEvent.press(screen.getByRole("button", { name: /See all/ }));
-    expect(mockPush).toHaveBeenCalledWith("/announcements");
   });
 });
 
 describe("Super Home card placement", () => {
-  it("renders the card under the overdue callout and above Seasons", async () => {
+  it("renders the card under the season rings (owner, 2026-11-08)", async () => {
     const table = staffRoutes({
       "/api/v1/reports/organisation": organisation,
       "/api/v1/users/invites/pending": { pending: 5 },
-      "/api/v1/announcements/unread": { count: 2, latest: listItem(4, { title: "Camp dates" }) },
+      "/api/v1/announcements/unread": { count: 2, latest: listItem(4, { excerpt: "Camp dates" }) },
     });
     get.mockImplementation((url: string) => {
       if (url in table) return ok(table[url]);
@@ -111,6 +108,6 @@ describe("Super Home card placement", () => {
     expect(await screen.findByText("Camp dates")).toBeTruthy();
     expect(await screen.findByLabelText("Open Season 7")).toBeTruthy();
     const text = flatten(screen.toJSON());
-    expect(text.indexOf("Camp dates")).toBeLessThan(text.indexOf("Open Season 7"));
+    expect(text.indexOf("Open Season 7")).toBeLessThan(text.indexOf("Camp dates"));
   });
 });

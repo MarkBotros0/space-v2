@@ -18,6 +18,7 @@ import { useThemeColors } from "../src/design/theme/use-theme-colors";
 import { Toaster } from "../src/design/ui/toaster";
 import { PushNotificationsBridge } from "../src/components/PushNotificationsBridge";
 import { ScreenErrorBoundary } from "../src/design/layout/error-boundary";
+import { OfflineScreen } from "../src/design/layout/offline-screen";
 import { clearCacheOnUserChange, createQueryClient } from "../src/lib/query-client";
 import { initSentry, wrapRoot } from "../src/lib/sentry";
 import { keepSplashUntilReady, useHideSplashWhen } from "../src/lib/splash";
@@ -60,6 +61,8 @@ function RootLayout() {
           inset, the tab bar and bottom padding all read the insets from it. */}
         <SafeAreaProvider>
           <Gate />
+          {/* Over every screen while there's no connection; under the launch logo. */}
+          <OfflineScreen />
           {launched ? null : <LaunchScreen ready={sessionSettled} onGone={() => setLaunched(true)} />}
           <Toaster />
           <ThemedStatusBar />

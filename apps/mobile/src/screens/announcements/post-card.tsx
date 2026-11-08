@@ -14,7 +14,7 @@ export function PostCard({ post, onPress }: { post: AnnouncementListItem; onPres
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[post.title, post.isRead ? null : "New", meta].filter(Boolean).join(", ")}
+      accessibilityLabel={[post.excerpt, post.isRead ? null : "New", meta].filter(Boolean).join(", ")}
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
@@ -32,10 +32,7 @@ export function PostCard({ post, onPress }: { post: AnnouncementListItem; onPres
               </View>
             )}
           </View>
-          <Text variant="headline" className={post.isRead ? "font-normal" : undefined}>
-            {post.title}
-          </Text>
-          <Text variant="body" numberOfLines={3} className="text-muted-foreground">
+          <Text variant="body" numberOfLines={4} className={post.isRead ? undefined : "font-semibold"}>
             {post.excerpt}
           </Text>
           <Text variant="caption" className="text-muted-foreground">

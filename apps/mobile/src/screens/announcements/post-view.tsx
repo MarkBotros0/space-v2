@@ -34,9 +34,6 @@ export function PostView({ post }: { post: AnnouncementDetail }) {
   return (
     <View className="flex-col gap-4">
       <AudienceChip audience={post.audience} seasonTitle={post.seasonTitle} />
-      <Text variant="title" accessibilityRole="header">
-        {post.title}
-      </Text>
       <Text variant="caption" className="text-muted-foreground">
         {announcementMeta(post, true)}
       </Text>

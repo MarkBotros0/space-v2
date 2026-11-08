@@ -35,6 +35,24 @@ export function useTabBarVisible(): boolean {
   return useTabBarStore((s) => s.visible);
 }
 
+/**
+ * Pressing the tab that is already open (owner, 2026-11-08, as Instagram does):
+ * the open screen scrolls to the top, or, already at the top, reloads. The bar
+ * emits; each `Screen` listens and acts only while its own route is focused.
+ */
+const reselectListeners = new Set<() => void>();
+
+export function emitTabReselect(): void {
+  for (const listener of [...reselectListeners]) listener();
+}
+
+export function onTabReselect(listener: () => void): () => void {
+  reselectListeners.add(listener);
+  return () => {
+    reselectListeners.delete(listener);
+  };
+}
+
 /** Shows the bar again (tests; a tab switch). */
 export function resetTabBarScroll(): void {
   useTabBarStore.setState({ visible: true });

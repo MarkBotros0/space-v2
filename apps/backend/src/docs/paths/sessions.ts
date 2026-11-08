@@ -298,7 +298,7 @@ export const sessionPaths = {
       tags: ["Sessions"],
       summary: "Student self check-in",
       description:
-        "Marks the caller PRESENT, or LATE with the whole minutes elapsed since the session's start (ruling C3 — not since check-in opened). Check-in hard-stops three hours after opening even if never explicitly closed.",
+        "Marks the caller PRESENT, or LATE with the whole minutes elapsed since the session's start (ruling C3 — not since check-in opened). Check-in hard-stops three hours after opening even if never explicitly closed. A student is refused with 409 `not_open` until an hour before the session starts, even when an admin opened it earlier.",
       requestBody: {
         required: true,
         content: {

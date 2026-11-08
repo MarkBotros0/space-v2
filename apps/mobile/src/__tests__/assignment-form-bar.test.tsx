@@ -85,17 +85,6 @@ describe("assignment form on the fixed save bar", () => {
     expect(screen.getByLabelText("Title").props.accessibilityHint).toBeUndefined();
   });
 
-  it("no groups ticked puts the schema's words on the Groups field", async () => {
-    serve();
-    renderStacked(<NewAssignmentScreen />);
-    fireEvent.changeText(await screen.findByLabelText("Title"), "Nobody");
-    fireEvent.press(screen.getByLabelText("Specific groups"));
-    fireEvent.press(bar().getByText("Create assignment"));
-
-    expect(await screen.findByText("Choose at least one group, or target the whole season.")).toBeTruthy();
-    expect(bar().getByText("Fix the fields marked above.")).toBeTruthy();
-  });
-
   it("a server refusal is the bar's hint", async () => {
     serve();
     post.mockRejectedValue(

@@ -3,9 +3,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import type { AssignmentDetail } from "@space/shared";
 
 import { AssignmentForm, valuesFromDetail } from "../../../../src/components/assignment-form";
-import { useAssignmentDetail, useAssignmentTracker } from "../../../../src/hooks/use-assignments";
+import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import { useUpdateAssignment } from "../../../../src/hooks/use-assignment-writes";
-import { useSeasonGroups } from "../../../../src/hooks/use-groups";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
@@ -14,29 +13,21 @@ import { EmptyState } from "../../../../src/design/ui";
 
 function EditForm({ detail }: { detail: AssignmentDetail }) {
   const router = useRouter();
-  const groups = useSeasonGroups(detail.seasonId);
   const sessions = useSeasonSessions(detail.seasonId);
-  // Only feeds the narrowing warning — a failure must not block editing.
-  const tracker = useAssignmentTracker(detail.id);
   const update = useUpdateAssignment(detail.id);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  if (groups.isPending || sessions.isPending) {
+  if (sessions.isPending) {
     return (
       <Screen title="Edit assignment" subtitle={detail.title}>
         <RouteSkeleton />
       </Screen>
     );
   }
-  if (groups.isError || sessions.isError) {
+  if (sessions.isError) {
     return (
       <Screen title="Edit assignment" subtitle={detail.title}>
-        <RouteError
-          onRetry={() => {
-            void groups.refetch();
-            void sessions.refetch();
-          }}
-        />
+        <RouteError onRetry={() => void sessions.refetch()} />
       </Screen>
     );
   }
@@ -46,9 +37,7 @@ function EditForm({ detail }: { detail: AssignmentDetail }) {
       title="Edit assignment"
       subtitle={detail.title}
       initial={valuesFromDetail(detail)}
-      groups={groups.data}
       sessions={sessions.data}
-      trackerRows={tracker.data?.rows}
       submitLabel="Save changes"
       submitting={update.isPending}
       serverError={serverError}

@@ -14,7 +14,7 @@ appId: com.jpc.space
     visible: '(?i)community'
     timeout: 40000
 - scrollUntilVisible:
-    element: '\[Sweep\] Community test announcement'
+    element: '(?s)\[Sweep\] .*everyone in the community.*'
     direction: DOWN
     centerElement: true
     timeout: 20000
@@ -33,7 +33,7 @@ appId: com.jpc.space
     env:
       TARGET: 'Announcements.*'
 - extendedWaitUntil:
-    visible: '\[Sweep\] Community test announcement'
+    visible: '(?s)\[Sweep\] .*everyone in the community.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -47,7 +47,7 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: '\[Sweep\] Community test announcement'
+      TARGET: '(?s)\[Sweep\] .*everyone in the community.*'
 - extendedWaitUntil:
     visible: 'This is fake text for the UI sweep.*'
     timeout: 40000
@@ -61,8 +61,6 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s56-06-new
-- tapOn: 'Title'
-- inputText: 'Sweep test title'
 - tapOn: 'Message'
 - inputText: 'Sweep test message, never posted.'
 - waitForAnimationToEnd:

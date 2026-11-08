@@ -905,7 +905,6 @@ model Announcement {
   id        Int                  @id @default(autoincrement())
   audience  AnnouncementAudience
   seasonId  Int? // required when SEASON, null when COMMUNITY (checked in the route; a CHECK constraint too)
-  title     String // 1..120 after trim
   body      String // 1..5000 after trim, plain text
   authorId  Int? // SetNull: the post outlives a deleted author ("Former member")
   createdAt DateTime             @default(now())

@@ -30,11 +30,10 @@ beforeEach(() => {
 });
 
 describe("AnnouncementScreen", () => {
-  it("shows the audience, title, meta line and a linkified body", async () => {
+  it("shows the audience, meta line and a linkified body", async () => {
     get.mockReturnValue(ok(detailItem(7, { audience: "SEASON", seasonTitle: "Spring 2026" })));
     renderWithProviders(<AnnouncementScreen />);
-    expect((await screen.findAllByText("Post 7")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Spring 2026")).toBeTruthy();
+    expect(await screen.findByText("Spring 2026")).toBeTruthy();
     expect(screen.getByText(/^Sam Author · 3 Nov 2026, \d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByRole("link")).toBeTruthy();
   });
@@ -49,14 +48,14 @@ describe("AnnouncementScreen", () => {
     post.mockClear();
     get.mockReturnValue(ok(detailItem(7, { isRead: true })));
     renderWithProviders(<AnnouncementScreen />);
-    await screen.findAllByText("Post 7");
+    await screen.findByText(/^Sam Author/);
     expect(post).not.toHaveBeenCalled();
   });
 
   it("shows Edit and Delete only with canEdit and canDelete", async () => {
     get.mockReturnValue(ok(detailItem(7)));
     const first = renderWithProviders(<AnnouncementScreen />);
-    await screen.findAllByText("Post 7");
+    await screen.findByText(/^Sam Author/);
     expect(screen.queryByLabelText("Edit announcement")).toBeNull();
     expect(screen.queryByLabelText("Delete announcement")).toBeNull();
     first.unmount();

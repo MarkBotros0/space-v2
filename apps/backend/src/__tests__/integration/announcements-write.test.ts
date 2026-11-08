@@ -10,7 +10,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login, testEventTitle } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 import { insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 
 jest.setTimeout(60000);
@@ -26,7 +26,6 @@ const post = (token: string, body: object) =>
 const seasonBody = (seasonId: number, extra: object = {}) => ({
   audience: "SEASON",
   seasonId,
-  title: testEventTitle("write"),
   body: "  Hello class.  ",
   ...extra,
 });
@@ -62,7 +61,6 @@ describe("POST /announcements", () => {
   it("super posts to the community", async () => {
     const res = await post(f.tokens.superUser, {
       audience: "COMMUNITY",
-      title: testEventTitle("write"),
       body: "All hands.",
     });
     expect(res.status).toBe(201);
@@ -79,7 +77,7 @@ describe("POST /announcements", () => {
   });
 
   it("admin cannot post to community", async () => {
-    const res = await post(f.tokens.admin, { audience: "COMMUNITY", title: "t", body: "b" });
+    const res = await post(f.tokens.admin, { audience: "COMMUNITY", body: "b" });
     expect(res.status).toBe(403);
   });
 
@@ -91,11 +89,11 @@ describe("POST /announcements", () => {
   it("leader and student cannot post", async () => {
     expect((await post(f.tokens.leader, seasonBody(f.seasonId))).status).toBe(403);
     expect((await post(f.tokens.student, seasonBody(f.seasonId))).status).toBe(403);
-    expect((await post(f.tokens.mentor, { audience: "COMMUNITY", title: "t", body: "b" })).status).toBe(403);
+    expect((await post(f.tokens.mentor, { audience: "COMMUNITY", body: "b" })).status).toBe(403);
   });
 
   it("invalid body is 400, unknown season 404", async () => {
-    expect((await post(f.tokens.admin, { audience: "SEASON", title: "  ", body: "b", seasonId: f.seasonId })).status).toBe(400);
+    expect((await post(f.tokens.admin, { audience: "SEASON", body: "  ", seasonId: f.seasonId })).status).toBe(400);
     expect((await post(f.tokens.superUser, seasonBody(999999999))).status).toBe(404);
   });
 
@@ -126,7 +124,7 @@ describe("PATCH and DELETE /announcements/:id", () => {
     const res = await request(app)
       .patch(`/api/v1/announcements/${id}`)
       .set(as(f.tokens.admin))
-      .send({ title: testEventTitle("edited") });
+      .send({ body: "Edited." });
     expect(res.status).toBe(200);
     expect(res.body.data.editedAt).not.toBeNull();
     expect(res.body.data.audience).toBe("SEASON");

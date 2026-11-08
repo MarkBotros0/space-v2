@@ -118,11 +118,17 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     expect(contrast(rgbOf(t["pill-active"]), bg)).toBeGreaterThanOrEqual(3);
   });
 
-  // R38 (owner, 2026-11-05): the pill is solid on both platforms, so nothing scrolled
-  // beneath it can show through, and there is one fill token, not a per-platform pair.
-  it("the pill fill is fully opaque, and pill-solid is gone", () => {
+  // The token stays opaque (Android draws it as is); iOS frosts it at 80% (owner, 2026-11-08).
+  it("the pill fill token is fully opaque, and pill-solid is gone", () => {
     expect(parse(t.pill ?? "").alpha).toBe(1);
     expect(t["pill-solid"]).toBeUndefined();
+  });
+
+  // iOS: the 80% fill over white, the worst case under the blur, still reads.
+  it("pill text reads on the frosted iOS fill over white", () => {
+    const fill = parse(t.pill ?? "").rgb.map((c) => c * 0.8 + 255 * 0.2);
+    expect(contrast(rgbOf(t["pill-foreground"]), fill)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(rgbOf(t["pill-active"]), fill)).toBeGreaterThanOrEqual(3);
   });
 
   // The active tab: the pill over white (worst case), then the 20% teal highlight over that.

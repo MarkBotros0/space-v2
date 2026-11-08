@@ -9,7 +9,6 @@ export const ANNOUNCEMENT_SELECT = {
   id: true,
   audience: true,
   seasonId: true,
-  title: true,
   body: true,
   authorId: true,
   createdAt: true,
@@ -22,7 +21,6 @@ export interface AnnouncementRow {
   id: number;
   audience: "COMMUNITY" | "SEASON";
   seasonId: number | null;
-  title: string;
   body: string;
   authorId: number | null;
   createdAt: Date;
@@ -45,7 +43,6 @@ function common(row: AnnouncementRow, isRead: boolean) {
     audience: row.audience,
     seasonId: row.seasonId,
     seasonTitle: row.season?.title ?? null,
-    title: row.title,
     // A deleted account (DELETE /me) reads as no author: the app says "Former member".
     authorName: row.author && !row.author.deletedAt ? row.author.name : null,
     createdAt: row.createdAt.toISOString(),

@@ -1,6 +1,7 @@
 /**
- * How the season is going, in one card: a ring for how far through it is,
- * "4 of 10" sessions held beside it, and the caller's figures under that
+ * How the season is going, in one card (always first on Home, owner
+ * 2026-11-08): a ring for how far through it is, sessions held beside it
+ * ("4 / 10", "6 to go"), and the caller's figures in a row under a hairline
  * (staff: attendance and students; a student: their absence budget and
  * pending work). Opens the season, or the group, when the caller says where.
  */
@@ -15,15 +16,16 @@ import { Text } from "../ui/text";
 
 iconWithClassName(ChevronRight);
 
+/** A secondary figure: one equal column of the row under the ring. Its label may take two lines. */
 function Figure({ value, label }: { value: string; label: string }) {
   return (
-    <View accessible accessibilityLabel={`${label}: ${value}`} className="gap-0.5">
+    <View accessible accessibilityLabel={`${label}: ${value}`} className="min-w-0 flex-1 gap-0.5">
       <Text variant="title" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
         {value}
       </Text>
       <Text
         variant="caption"
-        numberOfLines={1}
+        numberOfLines={2}
         maxFontSizeMultiplier={1.3}
         className="text-muted-foreground"
       >
@@ -64,6 +66,7 @@ export function SeasonPulse({
 }) {
   const press = usePressDim();
   const pct = progressPct ?? 0;
+  const toGo = Math.max(0, sessionsTotal - sessionsHeld);
   return (
     <Pressable
       accessibilityRole={onPress ? "button" : undefined}
@@ -88,20 +91,38 @@ export function SeasonPulse({
             </View>
             {onPress ? <ChevronRight size={18} className="shrink-0 text-muted-foreground" /> : null}
           </View>
-          <View className="flex-row items-center gap-5">
-            <ProgressRing value={pct} label={`Season progress ${pct}%`}>
+          <View className="flex-row items-center gap-4">
+            <ProgressRing value={pct} size={112} strokeWidth={10} label={`Season progress ${pct}%`}>
               <RingValue>{`${pct}%`}</RingValue>
               <RingCaption>Through</RingCaption>
             </ProgressRing>
-            <View className="min-w-0 flex-1 gap-3">
-              <Figure value={`${sessionsHeld} of ${sessionsTotal}`} label="Sessions held" />
-              <View className="flex-row flex-wrap gap-x-6 gap-y-3">
-                {figures.map((f) => (
-                  <Figure key={f.label} value={f.value} label={f.label} />
-                ))}
+            <View className="min-w-0 flex-1 gap-1">
+              <View accessible accessibilityLabel={`Sessions held: ${sessionsHeld} of ${sessionsTotal}`} className="gap-0.5">
+                <Text variant="largeTitle" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
+                  {`${sessionsHeld}`}
+                  <Text variant="title" className="text-muted-foreground">{` / ${sessionsTotal}`}</Text>
+                </Text>
+                <Text variant="subhead" numberOfLines={1} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
+                  Sessions held
+                </Text>
               </View>
+              {toGo > 0 ? (
+                <Text variant="caption" numberOfLines={1} maxFontSizeMultiplier={1.3} className="font-semibold text-foreground">
+                  {toGo === 1 ? "1 to go" : `${toGo} to go`}
+                </Text>
+              ) : null}
             </View>
           </View>
+          {figures.length > 0 ? (
+            <View className="flex-row items-stretch gap-3 border-t border-separator pt-3">
+              {figures.map((f, i) => (
+                <View key={f.label} className="min-w-0 flex-1 flex-row items-stretch gap-3">
+                  {i > 0 ? <View className="w-px bg-separator" /> : null}
+                  <Figure value={f.value} label={f.label} />
+                </View>
+              ))}
+            </View>
+          ) : null}
         </View>
       </Animated.View>
     </Pressable>

@@ -201,7 +201,7 @@ export function GroupForm({
 
         <FormField
           label="Members"
-          description={`Pick from the people already in ${seasonTitle}. To add someone to the season, use Select from community or Invite new on the season page.${editing ? " Saving replaces this group's leaders and its members." : ""}`}
+          description={`Pick from the people already in ${seasonTitle}. To add someone to the season, use Community or Invite new on the season page.${editing ? " Saving replaces this group's leaders and its members." : ""}`}
           error={errors.studentIds}
         >
           <MembersField

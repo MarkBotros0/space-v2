@@ -22,7 +22,7 @@ import { atRiskReason } from "./at-risk-reason";
 import { LeaderSessionSection, isOnTheDay } from "./session-section";
 import { useLiveTodayRefresh } from "./use-live-refresh";
 
-/** `card` is Home's Announcements card, placed right under a session that is on its day. */
+/** Season ring first, then `card` (Home's Announcements card), then the session (owner, 2026-11-08). */
 function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
   const router = useRouter();
   const { progress, cohort, submissions, quizzes } = data;
@@ -63,9 +63,6 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
 
   return (
     <>
-      <LeaderSessionSection session={data.nextSession} checkIn={data.leaderSession} />
-      {card}
-      {/* Owner 2026-11-07: the group's season card sits right under the session. */}
       <SeasonPulse
         title={data.groups.map((g) => g.name).join(", ") || data.season.title}
         progressPct={progress.pct}
@@ -74,6 +71,8 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
         figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
         onPress={toGroup}
       />
+      {card}
+      <LeaderSessionSection session={data.nextSession} checkIn={data.leaderSession} />
       <View className="gap-2">
         <ListSectionHeader className="pb-0">Waiting for you</ListSectionHeader>
         <CountGrid tiles={tiles} />
@@ -133,7 +132,6 @@ export function LeaderToday() {
 
   const named = (name ?? "").trim() !== "";
   const data = dash.data;
-  const onTheDay = !state && !!data && isOnTheDay(data.nextSession);
   return (
     <Screen
       home
@@ -144,9 +142,9 @@ export function LeaderToday() {
       onRefresh={refresh}
     >
       <View className="flex-col gap-4">
-        {/* Under anything time-critical: on a session day the card follows the session section. */}
-        {onTheDay ? null : <AnnouncementsHomeCard />}
-        {state ?? (data ? <Body data={data} card={onTheDay ? <AnnouncementsHomeCard /> : null} /> : null)}
+        {/* With no season body to place it, the card leads. */}
+        {state || !data ? <AnnouncementsHomeCard /> : null}
+        {state ?? (data ? <Body data={data} card={<AnnouncementsHomeCard />} /> : null)}
         {/* V2-ONLY no-season branch keeps the events card (D19). */}
         {noSeason || data ? <UpcomingEventsCard query={events} /> : null}
       </View>

@@ -6,18 +6,16 @@ import {
 } from "../index";
 
 describe("announcement contracts", () => {
-  const ok = { audience: "COMMUNITY", title: "Hello", body: "World" };
+  const ok = { audience: "COMMUNITY", body: "World" };
 
   it("accepts valid community and season posts and trims", () => {
-    expect(createAnnouncementRequestSchema.parse({ ...ok, title: "  Hi  " }).title).toBe("Hi");
-    expect(
-      createAnnouncementRequestSchema.safeParse({ audience: "SEASON", seasonId: 3, title: "t", body: "b" }).success,
-    ).toBe(true);
+    expect(createAnnouncementRequestSchema.parse({ ...ok, body: "  Hi  " }).body).toBe("Hi");
+    expect(createAnnouncementRequestSchema.safeParse({ audience: "SEASON", seasonId: 3, body: "b" }).success).toBe(true);
   });
 
-  it("rejects a 121-char title and accepts 120", () => {
-    expect(createAnnouncementRequestSchema.safeParse({ ...ok, title: "a".repeat(121) }).success).toBe(false);
-    expect(createAnnouncementRequestSchema.safeParse({ ...ok, title: "a".repeat(120) }).success).toBe(true);
+  it("has no title: a post sending one is refused", () => {
+    expect(createAnnouncementRequestSchema.safeParse({ ...ok, title: "Hello" }).success).toBe(false);
+    expect(updateAnnouncementRequestSchema.safeParse({ body: "b", title: "x" }).success).toBe(false);
   });
 
   it("rejects an empty-after-trim body and a 5001-char body", () => {
@@ -27,14 +25,14 @@ describe("announcement contracts", () => {
   });
 
   it("requires seasonId for SEASON and forbids it for COMMUNITY", () => {
-    expect(createAnnouncementRequestSchema.safeParse({ audience: "SEASON", title: "t", body: "b" }).success).toBe(false);
+    expect(createAnnouncementRequestSchema.safeParse({ audience: "SEASON", body: "b" }).success).toBe(false);
     expect(createAnnouncementRequestSchema.safeParse({ ...ok, seasonId: 3 }).success).toBe(false);
   });
 
-  it("update schema needs at least one key and is strict", () => {
+  it("update schema needs the body and is strict", () => {
     expect(updateAnnouncementRequestSchema.safeParse({}).success).toBe(false);
-    expect(updateAnnouncementRequestSchema.safeParse({ title: "x" }).success).toBe(true);
-    expect(updateAnnouncementRequestSchema.safeParse({ title: "x", audience: "SEASON" }).success).toBe(false);
+    expect(updateAnnouncementRequestSchema.safeParse({ body: "x" }).success).toBe(true);
+    expect(updateAnnouncementRequestSchema.safeParse({ body: "x", audience: "SEASON" }).success).toBe(false);
   });
 
   it("registers the announcement preference and push", () => {

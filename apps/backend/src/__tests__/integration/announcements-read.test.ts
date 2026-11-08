@@ -26,7 +26,7 @@ afterEach(async () => {
   // Only marks on test posts or by test users: no other row can match.
   await db.announcementRead.deleteMany({
     where: {
-      OR: [{ announcement: { title: { startsWith: TEST_PREFIX } } }, { user: testUserFilter }],
+      OR: [{ announcement: { body: { startsWith: TEST_PREFIX } } }, { user: testUserFilter }],
     },
   });
   if (extraPosts.length > 0) {

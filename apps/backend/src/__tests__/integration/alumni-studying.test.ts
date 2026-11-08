@@ -49,7 +49,7 @@ beforeAll(async () => {
     ],
   });
   sessionId = (await db.session.create({
-    data: { seasonId: wideId, title: "Wide session", startsAt: new Date("2099-03-01T18:00:00.000Z"), durationMinutes: 90 },
+    data: { seasonId: wideId, title: "Wide session", startsAt: new Date(Date.now() + 30 * 60_000), durationMinutes: 90 },
     select: { id: true },
   })).id;
   assignmentId = (await db.assignment.create({

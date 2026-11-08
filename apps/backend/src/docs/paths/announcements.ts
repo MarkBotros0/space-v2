@@ -22,7 +22,7 @@ export const announcementPaths = {
       tags: ["Announcements"],
       summary: "Publish a post",
       description:
-        "Audience COMMUNITY (SUPER) or SEASON with a `seasonId` (that season's admin, or SUPER). The season must be ACTIVE: a draft is 409 `season_draft`, a finished one 409 `season_finished`; an unknown season is 404. Title 1 to 120 and body 1 to 5000 characters after trimming, plain text only (never HTML); unknown fields are rejected with 400. Notifies the audience (type `ANNOUNCEMENT`, link `/announcements/<id>`), never the author.",
+        "Audience COMMUNITY (SUPER) or SEASON with a `seasonId` (that season's admin, or SUPER). The season must be ACTIVE: a draft is 409 `season_draft`, a finished one 409 `season_finished`; an unknown season is 404. Body 1 to 5000 characters after trimming (a post has no title), plain text only (never HTML); unknown fields are rejected with 400. Notifies the audience (type `ANNOUNCEMENT`, titled \"New announcement\", link `/announcements/<id>`), never the author.",
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/CreateAnnouncementRequest" } } },
@@ -79,7 +79,7 @@ export const announcementPaths = {
       tags: ["Announcements"],
       summary: "Edit a post",
       description:
-        "Title and/or body (at least one), same limits as publishing; the audience never changes. Stamps `editedAt`. Only SUPER, or the post's author while they still administer its season, may edit. Nobody may edit a finished season's post: 409 `season_finished`, checked before the permission.",
+        "The new body, same limit as publishing; the audience never changes. Stamps `editedAt`. Only SUPER, or the post's author while they still administer its season, may edit. Nobody may edit a finished season's post: 409 `season_finished`, checked before the permission.",
       parameters: [idParam],
       requestBody: {
         required: true,

@@ -91,7 +91,7 @@ describe("season screen entry points", () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets();
     renderWithProviders(<SeasonDetailScreen />);
-    fireEvent.press(await screen.findByText("Select from community"));
+    fireEvent.press(await screen.findByText("Community"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/people", params: { code: "s7" } });
     fireEvent.press(screen.getByText("Invite new"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/invite", params: { code: "s7" } });
@@ -114,7 +114,7 @@ describe("season screen entry points", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     routeGets();
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Select from community")).toBeTruthy();
+    expect(await screen.findByText("Community")).toBeTruthy();
     expect(screen.getByText("Invite new")).toBeTruthy();
     expect(screen.queryByText("Start season")).toBeNull();
   });
@@ -123,7 +123,7 @@ describe("season screen entry points", () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail({ status: "ACTIVE" }));
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Select from community")).toBeTruthy();
+    expect(await screen.findByText("Community")).toBeTruthy();
     expect(screen.queryByTestId("students-suggestion")).toBeNull();
     expect(screen.queryByText("Start season")).toBeNull();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/people-candidates");
@@ -134,7 +134,7 @@ describe("season screen entry points", () => {
     routeGets(detail({ status }));
     renderWithProviders(<SeasonDetailScreen />);
     await screen.findByLabelText("Edit season");
-    expect(screen.queryByText("Select from community")).toBeNull();
+    expect(screen.queryByText("Community")).toBeNull();
     expect(screen.queryByText("Invite new")).toBeNull();
     expect(screen.queryByText("Start season")).toBeNull();
   });

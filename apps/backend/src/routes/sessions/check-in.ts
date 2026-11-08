@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
-import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen } from "../../lib/check-in";
+import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen, isStudentCheckInWindow } from "../../lib/check-in";
 import { orgWallTime } from "../../lib/org-time";
 import { parseId } from "../../lib/parse-id";
 import { newPublicId } from "../../lib/public-id";
@@ -41,6 +41,11 @@ export async function studentCheckIn(req: Request, res: Response) {
   // A draft's roster doesn't count yet, and the session's existence says nothing.
   if (!enrollment || enrollment.status !== "ACTIVE" || enrollment.season.status !== "ACTIVE") {
     return apiError(res, "not_enrolled", "You're not enrolled in this season.", 403);
+  }
+
+  // Opened early by an admin, but students wait for the hour before the start (owner, 2026-11-08).
+  if (!isStudentCheckInWindow(session.startsAt, now)) {
+    return apiError(res, "not_open", "Check-in opens an hour before the session.", 409);
   }
 
   const existing = await db.attendance.findUnique({

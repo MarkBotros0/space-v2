@@ -82,9 +82,28 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     expect(await screen.findByLabelText("Open Season 8")).toBeTruthy();
     expect(screen.getAllByTestId("season-pulse")).toHaveLength(2);
     expect(screen.getByText("Community-wide")).toBeTruthy();
-    expect(screen.getAllByText("3 of 4").length).toBe(2);
+    expect(screen.getAllByLabelText("Sessions held: 3 of 4").length).toBe(2);
     fireEvent.press(screen.getByLabelText("Open Season 7"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s7" } });
+  });
+
+  it("puts the Community tiles first, above the season rings (owner, 2026-11-08)", async () => {
+    serveStaff(get, { table: base() });
+    renderWithProviders(<DashboardScreen />);
+    await screen.findByLabelText("Open Season 7");
+    const texts: string[] = [];
+    const walk = (n: unknown): void => {
+      if (typeof n === "string") texts.push(n);
+      else if (Array.isArray(n)) n.forEach(walk);
+      else if (n && typeof n === "object") {
+        const node = n as { props?: { accessibilityLabel?: string }; children?: unknown[] };
+        if (node.props?.accessibilityLabel) texts.push(node.props.accessibilityLabel);
+        node.children?.forEach(walk);
+      }
+    };
+    walk(screen.toJSON());
+    expect(texts.indexOf("COMMUNITY")).toBeGreaterThanOrEqual(0);
+    expect(texts.indexOf("COMMUNITY")).toBeLessThan(texts.indexOf("Open Season 7"));
   });
 
   it("lists drafts under Coming up with their start and enrolled count", async () => {

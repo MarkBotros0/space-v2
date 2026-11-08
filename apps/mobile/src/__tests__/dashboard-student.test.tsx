@@ -90,7 +90,7 @@ describe("DashboardScreen — STUDENT", () => {
     expect(screen.queryByLabelText(/^Streak/)).toBeNull();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
     expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
-    expect(screen.getByText("1 assignment submitted late this season")).toBeTruthy();
+    expect(screen.queryByText(/submitted late this season/)).toBeNull();
     expect(screen.getByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Sun, Mar 1 · 6:00 PM · 90 min · Hall")).toBeTruthy();
     // Overdue from the server's flag; the far-off essay is behind "See all" (P2-5).

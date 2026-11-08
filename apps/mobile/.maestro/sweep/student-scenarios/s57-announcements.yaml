@@ -12,7 +12,7 @@ appId: com.jpc.space
     visible: 'Hi, .*'
     timeout: 40000
 - scrollUntilVisible:
-    element: '\[Sweep\] .* test announcement'
+    element: '(?s)\[Sweep\] This is fake text.*'
     direction: DOWN
     centerElement: true
     timeout: 20000
@@ -31,7 +31,7 @@ appId: com.jpc.space
     env:
       TARGET: 'Announcements.*'
 - extendedWaitUntil:
-    visible: '\[Sweep\] .* test announcement'
+    visible: '(?s)\[Sweep\] This is fake text.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -45,7 +45,7 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: '\[Sweep\] Community test announcement'
+      TARGET: '(?s)\[Sweep\] .*everyone in the community.*'
 - extendedWaitUntil:
     visible: 'This is fake text for the UI sweep.*'
     timeout: 40000

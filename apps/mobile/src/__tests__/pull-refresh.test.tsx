@@ -1,4 +1,6 @@
+import type React from "react";
 import { act, renderHook } from "@testing-library/react-native";
+import { NavigationContext } from "expo-router/react-navigation";
 
 import { PULL_MIN_MS, usePullRefresh } from "../design/lib/pull-refresh";
 
@@ -35,4 +37,35 @@ it("keeps spinning while the screen is still loading, then stops", () => {
 it("passes a background refetch through, and offers no pull without onRefresh", () => {
   expect(renderHook(() => usePullRefresh(true, () => {})).result.current.refreshing).toBe(true);
   expect(renderHook(() => usePullRefresh(false, undefined)).result.current.onRefresh).toBeUndefined();
+});
+
+describe("navigation", () => {
+  function fakeNavigation() {
+    const listeners: Record<string, Set<() => void>> = { focus: new Set(), blur: new Set() };
+    return {
+      emit: (event: "focus" | "blur") => listeners[event]!.forEach((fn) => fn()),
+      value: {
+        addListener: (event: "focus" | "blur", fn: () => void) => {
+          listeners[event]!.add(fn);
+          return () => listeners[event]!.delete(fn);
+        },
+      },
+    };
+  }
+
+  it("drops a pull on blur and remounts the control on focus, so a spinner can't hang after navigating", () => {
+    const nav = fakeNavigation();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <NavigationContext.Provider value={nav.value as never}>{children}</NavigationContext.Provider>
+    );
+    const { result } = renderHook(() => usePullRefresh(false, () => {}), { wrapper });
+    const firstKey = result.current.key;
+    act(() => result.current.onRefresh!());
+    expect(result.current.refreshing).toBe(true);
+    act(() => nav.emit("blur"));
+    expect(result.current.refreshing).toBe(false);
+    act(() => nav.emit("focus"));
+    expect(result.current.key).not.toBe(firstKey);
+    expect(result.current.refreshing).toBe(false);
+  });
 });

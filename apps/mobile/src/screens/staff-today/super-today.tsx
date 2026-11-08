@@ -90,15 +90,8 @@ export function SuperToday() {
       onRefresh={refresh}
     >
       <View className="flex-col gap-4">
-        <OverdueCallout />
-        <AnnouncementsHomeCard />
-        {seasons.isPending ? (
-          <RouteSkeleton />
-        ) : seasons.isError ? (
-          <InlineError message="Couldn't load the seasons." onRetry={() => void seasons.refetch()} />
-        ) : (
-          <SuperSeasons seasons={seasons.data} org={org.data} />
-        )}
+        {/* Owner 2026-11-08: the community figures first, then the season rings,
+            announcements and the overdue callout. */}
         <View className="gap-2">
           <ListSectionHeader className="pb-0">Community</ListSectionHeader>
           {org.isPending ? (
@@ -115,6 +108,15 @@ export function SuperToday() {
             </>
           )}
         </View>
+        {seasons.isPending ? (
+          <RouteSkeleton />
+        ) : seasons.isError ? (
+          <InlineError message="Couldn't load the seasons." onRetry={() => void seasons.refetch()} />
+        ) : (
+          <SuperSeasons seasons={seasons.data} org={org.data} />
+        )}
+        <AnnouncementsHomeCard />
+        <OverdueCallout />
         <UpcomingEventsCard query={events} />
       </View>
     </Screen>

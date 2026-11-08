@@ -52,7 +52,7 @@ describe("Admin Today", () => {
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });
 
-  it("orders the live session, then what needs action, then the figures", async () => {
+  it("orders the season ring first, then the live session, then what needs action (owner, 2026-11-08)", async () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
 
@@ -61,7 +61,7 @@ describe("Admin Today", () => {
     expect(screen.getByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Week 6")).toBeTruthy();
     expect(screen.getByText(/Spring 2099 · .*· 90 min · Hall/)).toBeTruthy();
-    const at = order("Happening now", "NEEDS ACTION", "Sessions held", "Upcoming events");
+    const at = order("Sessions held", "Happening now", "NEEDS ACTION", "Upcoming events");
     expect(at[0]).toBeGreaterThan(-1);
     expect(at[1]).toBeGreaterThan(at[0]!);
     expect(at[2]).toBeGreaterThan(at[1]!);

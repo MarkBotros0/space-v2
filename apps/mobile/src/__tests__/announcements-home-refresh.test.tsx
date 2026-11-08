@@ -22,7 +22,7 @@ import { serveStaff, staffRoutes } from "./helpers/staff-today-fixtures";
 import DashboardScreen from "../../app/(app)/(tabs)/dashboard";
 
 const UNREAD_URL = "/api/v1/announcements/unread";
-const unread = { count: 1, latest: listItem(4, { title: "Camp dates" }) };
+const unread = { count: 1, latest: listItem(4, { excerpt: "Camp dates" }) };
 const reads = () => requested().filter((u) => u === UNREAD_URL).length;
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
 

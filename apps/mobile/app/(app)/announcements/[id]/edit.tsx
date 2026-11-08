@@ -8,7 +8,7 @@ import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { PostForm } from "../../../../src/screens/announcements/post-form";
 
-/** /announcements/[id]/edit: change a post's title or message. Where it went can't change. */
+/** /announcements/[id]/edit: change a post's message. Where it went can't change. */
 export default function EditAnnouncementScreen() {
   const router = useRouter();
   const { id: raw } = useLocalSearchParams<{ id: string }>();
@@ -35,7 +35,7 @@ export default function EditAnnouncementScreen() {
       screenTitle="Edit announcement"
       saveLabel="Save"
       toLabel={data.audience === "SEASON" ? (data.seasonTitle ?? "A season") : "Everyone"}
-      initial={{ title: data.title, body: data.body }}
+      initial={{ body: data.body }}
       pending={update.isPending}
       error={update.isError ? apiErrorMessage(update.error, "Couldn't save. Try again.") : null}
       onSubmit={(values) => update.mutate(values, { onSuccess: () => router.back() })}

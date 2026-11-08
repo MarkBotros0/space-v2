@@ -1,12 +1,9 @@
-import { AlertTriangle } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { iconWithClassName } from "../../design/lib/icon";
-import { Text } from "../../design/ui";
 import { DASHBOARD_STALE_TIME, useStudentDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useStudentQuizList } from "../../hooks/use-quizzes";
@@ -23,22 +20,9 @@ import { NextSessionHero } from "./next-session-hero";
 import { OpenWorkList } from "./open-work-list";
 import { TodayFigures } from "./today-figures";
 
-iconWithClassName(AlertTriangle);
-
-function LateCallout({ count }: { count: number }) {
-  return (
-    <View className="flex-row items-center gap-2 rounded-control bg-warn-soft p-3">
-      <AlertTriangle size={16} className="shrink-0 text-warn" />
-      <Text variant="subhead" className="min-w-0 flex-1 text-warn">
-        {`${count} ${count === 1 ? "assignment" : "assignments"} submitted late this season`}
-      </Text>
-    </View>
-  );
-}
-
 /**
- * The student's Today: what to do now, first. Next session and its check-in,
- * then the work that is open, then the figures. Copy rulings kept from v2:
+ * The student's Today (owner, 2026-11-08): the season ring, announcements,
+ * the next session and its check-in, then the work that is open. Copy rulings kept from v2:
  * "Absence budget left" (D14), "Join stream" only while a session runs (D13),
  * the events card with its empty state (D19). The season-bound reads are gated
  * on what the server says, so a student who isn't enrolled sends none of them.
@@ -91,8 +75,6 @@ export function StudentToday() {
     }
   });
 
-  const late = data?.assignments?.lateSubmittedCount ?? 0;
-  const checkInFirst = detail.data?.checkInOpen === true && detail.data.myAttendance === null;
   const hero = data ? (
     <NextSessionHero session={data.nextSession} todayOrgDay={data.todayOrgDay} detail={detail} />
   ) : null;
@@ -122,18 +104,15 @@ export function StudentToday() {
       ) : data.season ? (
         <View className="flex-col gap-4">
           {stale}
-          {/* Owner 2026-11-07: the season first, then the session, then To do; while
-              check-in is open and they haven't checked in, the session leads. */}
-          {checkInFirst ? hero : null}
-          <AnnouncementsHomeCard />
+          {/* Owner 2026-11-08: the season ring first, then announcements, then the session. */}
           <TodayFigures data={data} attendance={attendance} />
-          {checkInFirst ? null : hero}
+          <AnnouncementsHomeCard />
+          {hero}
           <OpenWorkList
             open={data.assignments?.open ?? []}
             quizzes={quizzes}
             todayOrgDay={data.todayOrgDay}
           />
-          {late > 0 ? <LateCallout count={late} /> : null}
           <UpcomingEventsCard query={events} />
         </View>
       ) : (

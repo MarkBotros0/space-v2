@@ -40,7 +40,8 @@ beforeAll(async () => {
     data: {
       seasonId,
       title: "Session One",
-      startsAt: new Date("2099-03-01T18:00:00.000Z"),
+      // Inside the student's hour before the start (owner, 2026-11-08), so a scan is accepted.
+      startsAt: new Date(Date.now() + 30 * 60_000),
       durationMinutes: 90,
     },
     select: { id: true },
@@ -209,6 +210,36 @@ describe("POST /api/v1/sessions/check-in", () => {
       .set("authorization", `Bearer ${studentToken}`);
     expect(expired.status).toBe(200);
     expect(expired.body.data.checkInOpen).toBe(false);
+  });
+
+  it("an early-opened check-in reads closed to a student and refuses their scan until an hour before the start", async () => {
+    const early = await db.session.create({
+      data: { seasonId, title: "Tomorrow", startsAt: new Date(Date.now() + 2 * 60 * 60_000), durationMinutes: 60 },
+      select: { id: true },
+    });
+    const opened = await request(app)
+      .post(`/api/v1/sessions/${early.id}/check-in-open`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(opened.status).toBe(200);
+
+    const asStudent = await request(app)
+      .get(`/api/v1/sessions/${early.id}`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(asStudent.body.data.checkInOpen).toBe(false);
+    // Staff still see the real state: the admin opened it.
+    const asAdmin = await request(app)
+      .get(`/api/v1/sessions/${early.id}`)
+      .set("authorization", `Bearer ${adminToken}`);
+    expect(asAdmin.body.data.checkInOpen).toBe(true);
+
+    const scan = await request(app)
+      .post("/api/v1/sessions/check-in")
+      .set("authorization", `Bearer ${studentToken}`)
+      .send({ token: opened.body.data.checkInToken });
+    expect(scan.status).toBe(409);
+    expect(scan.body.error.code).toBe("not_open");
+    expect(await db.attendance.count({ where: { sessionId: early.id } })).toBe(0);
+    await db.session.delete({ where: { id: early.id } });
   });
 
   it("returns 400 when the token is missing", async () => {

@@ -259,8 +259,9 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
   StatusChip / `statusChip` / `dueChip`, GroupedList / ListRow, HeroCard, StatTile,
   SegmentedControl, SearchField, EmptyState (`tone`), Sheet / SheetSaveBar, Toast
   (`toaster.tsx`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
-  `tab-bar-scroll`. The pill is solid on iOS and Android (owner 2026-11-05, R38): one
-  opaque `bg-pill`, no blur, no per-platform fill. Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
+  `tab-bar-scroll`. The pill is frosted on iOS like Instagram's bar (owner 2026-11-08: `bg-pill/80` over an
+  expo-blur `BlurView`) and solid `bg-pill` on Android (no blur target there, R30). Pressing the open
+  tab scrolls its screen to the top, or reloads it when already there (`emitTabReselect`). Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
   title, headline, body, subhead, caption); it carries the body defaults because React
   Native text inherits nothing. Button, Badge and the pills carry no self-alignment:
   where one sits in a block, add `self-start`.
@@ -337,9 +338,9 @@ Spec: `docs/superpowers/specs/2026-11-07-news-announcements-design.md` (it still
 - **Unread:** posts addressed to you, newer than your account, from the last 30 days, never your own. A Super's unread counts community posts only. `announcementUnreadFilter` feeds `/unread`, More's count, Home's card and each item's `isRead`.
 - **Notifications:** `ANNOUNCEMENT`, link `/announcements/<id>`. A community post goes to every active account but the author; a season post to its live students, admins and leaders (not Supers). The "New announcements" switch (every role) turns off push only. An edit sends nothing; notifications never email.
 - **Routes:** `/api/v1/announcements` (`GET /`, `/unread`, `/targets`, `/:id`; `POST /`, `/:id/read`; `PATCH` and `DELETE /:id`). Mobile: `/announcements` (pushed), `/announcements/[id]`, `/announcements/new`, `/announcements/[id]/edit` (detail routes), screens in `src/screens/announcements/`.
-- **Where it shows:** a row on More for every role (unread count in words and in its screen-reader label, nothing on the tab) and `AnnouncementsHomeCard` on Home, which renders nothing while loading, on error or with nothing unread.
-- **Text:** title 1 to 120, message 1 to 5000, plain text. Links in a post open only if they are http(s); the rest stay text. No body in a log or Sentry event.
-- **Sweep:** `seed-sweep/announcements.ts` seeds one community and one season post (titles start "[Sweep]"); flows `super-scenarios/s56` and `student-scenarios/s57`, catalogue section `announcements` (s90).
+- **Where it shows:** a row on More for every role (unread count in words and in its screen-reader label, nothing on the tab) and `AnnouncementsHomeCard` on Home: one compact row ("New announcement" / "N new announcements", the latest post's first line, opens that post; owner 2026-11-08), nothing while loading, on error or with nothing unread.
+- **Text:** no title (owner, 2026-11-08): a post is its message, 1 to 5000, plain text; its push is titled "New announcement". Links in a post open only if they are http(s); the rest stay text. No body in a log or Sentry event.
+- **Sweep:** `seed-sweep/announcements.ts` seeds one community and one season post (bodies start "[Sweep]"); flows `super-scenarios/s56` and `student-scenarios/s57`, catalogue section `announcements` (s90).
 
 ### Graduating seasons (owner, 2026-11-07)
 
@@ -399,8 +400,8 @@ Finished seasons still never reopen.
 
 **Putting people into a season** (owner, 2026-11-07; spec
 `docs/superpowers/specs/2026-11-07-season-people-entry-design.md`). There is no Add people tile: the
-People card's Students level has the two ways in, named the same everywhere, **Select from community**
-(`/seasons/[code]/people`, people with an account) and **Invite new** (`/seasons/[code]/invite`); each
+People card's Students level has the two ways in, **Community** (owner 2026-11-08; the button and links say
+Community, the picker screen is titled Select from community; `/seasons/[code]/people`, people with an account) and **Invite new** (`/seasons/[code]/invite`); each
 screen links to the other with `replace`. The picker's **Add the people who passed** chooser ticks a
 finished season's passers (`people-candidates` `season.sources`, per person `places`); the season this
 one normally follows (`suggestedSourceId`: the last finished season of `requiredProgram`, else of its
@@ -451,6 +452,24 @@ found the tab bar, the sheets and the segmented control bouncy and "like a carto
   itself on check-in, and the launch logo writing itself once per cold start.
 - One motion per interaction. Don't add new animations unless the owner asks; always
   honour reduced motion.
+
+### Home, check-in and offline (owner, 2026-11-08)
+
+- **Home order, every role with a season:** the season ring (`SeasonPulse`) first, always; then
+  `AnnouncementsHomeCard` (one compact row); then the session (live or next), callouts, work, people,
+  events. Roles without a ring (mentor, alumni, between seasons) lead with the announcements row.
+  Super is the exception: its Community tiles come first, then the season rings.
+  Student Home has no late-submissions note.
+- **Check-in for students opens an hour before the session** (`isCheckInOpenForStudent`,
+  `lib/check-in.ts`). An admin may open it earlier; until the hour, a student reads `checkInOpen`
+  false and a scan answers 409 `not_open`. Staff see the real state.
+- **Offline:** `OfflineScreen` (`design/layout/offline-screen.tsx`, mounted in `app/_layout.tsx`) covers
+  the app after 1.5 s without a connection and leaves by itself on reconnect.
+- **Assignments always go to the whole season:** the form has no "Assign to" (the API still accepts
+  `groupIds`; saving an older group-targeted assignment widens it to the season).
+- **Pull to refresh:** `design/lib/pull-refresh.ts` drops a pull on blur and remounts the
+  RefreshControl on focus, because iOS leaves the spinner hanging if `refreshing` turns false while the
+  screen is off the window. No input auto-focuses on open.
 
 ### Rules from the UI sweep
 

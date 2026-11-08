@@ -40,7 +40,7 @@ export default function InviteToSeasonScreen() {
               Already have an account?
             </Text>
             <PillButton
-              label="Select from community"
+              label="Community"
               onPress={() => router.replace({ pathname: "/seasons/[code]/people", params: { code: s.code } })}
             />
           </View>

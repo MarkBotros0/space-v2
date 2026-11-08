@@ -32,7 +32,7 @@ export interface AnnouncementFixtures {
   };
 }
 
-/** Inserts a post directly; the title carries the test prefix so cleanup finds it. */
+/** Inserts a post directly; the body carries the test prefix so cleanup finds it. */
 export async function insertPost(data: {
   audience: "COMMUNITY" | "SEASON";
   seasonId?: number;
@@ -44,8 +44,7 @@ export async function insertPost(data: {
       audience: data.audience,
       seasonId: data.seasonId ?? null,
       authorId: data.authorId ?? null,
-      title: testEventTitle("announce"),
-      body: "A plain-text body.",
+      body: `${testEventTitle("announce")} A plain-text body.`,
       ...(data.createdAt ? { createdAt: data.createdAt } : {}),
     },
     select: { id: true },

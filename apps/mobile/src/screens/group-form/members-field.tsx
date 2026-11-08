@@ -35,7 +35,7 @@ export function MembersField({
   seasonTitle: string;
   value: number[];
   onChange: (ids: number[]) => void;
-  /** Back to the season page, where Select from community and Invite new live. */
+  /** Back to the season page, where Community and Invite new live. */
   onOpenSeason?: () => void;
   status: "loading" | "error" | "ready";
 }) {
