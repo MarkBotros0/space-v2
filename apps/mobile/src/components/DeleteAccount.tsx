@@ -10,7 +10,7 @@ import { useSessionStore } from "../store/session";
 
 /**
  * "Delete account" behind a confirmation (owner, 2026-11-06: it lives on More,
- * and on Profile for MENTOR, who has no More tab). Returns the opener for a
+ * for every role). Returns the opener for a
  * row and the dialog to render once next to it.
  */
 export function useDeleteAccountFlow(): { request: () => void; dialog: ReactNode } {

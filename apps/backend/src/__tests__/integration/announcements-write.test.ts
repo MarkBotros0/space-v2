@@ -12,12 +12,12 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { announcementRecipients } from "../../lib/announcement-notifications";
 import { cleanupTestData, createTestSeason, createTestUser, login, testEventTitle } from "./fixtures";
-import { insertPost, seedNewsFixtures, type NewsFixtures } from "./announcements-setup";
+import { insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 
 jest.setTimeout(60000);
 
 const app = createApp();
-let f: NewsFixtures;
+let f: AnnouncementFixtures;
 let draftSeasonId: number;
 let draftAdminToken: string;
 
@@ -33,7 +33,7 @@ const seasonBody = (seasonId: number, extra: object = {}) => ({
 });
 
 beforeAll(async () => {
-  f = await seedNewsFixtures(app);
+  f = await seedAnnouncementFixtures(app);
   draftSeasonId = (await createTestSeason({ status: "DRAFT" })).id;
   // An admin serving in an ACTIVE season has no access to a draft (scopes.ts), so the draft needs its own admin.
   const draftAdmin = await createTestUser("newsdraftadmin", "ADMIN");

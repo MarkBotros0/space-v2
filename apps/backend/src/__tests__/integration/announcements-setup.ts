@@ -9,7 +9,7 @@ import {
   testEventTitle,
 } from "./fixtures";
 
-export interface NewsFixtures {
+export interface AnnouncementFixtures {
   seasonId: number;
   finishedSeasonId: number;
   otherSeasonId: number;
@@ -54,12 +54,12 @@ export async function insertPost(data: {
 }
 
 /**
- * The News read suites' beforeAll body. A live community-wide season (so an
+ * The announcement suites' beforeAll body. A live community-wide season (so an
  * alumnus can study in it), a finished one, and another live one; one post of
  * each, authored by the Super. Tokens come from real logins, so the scopes are
  * derived for real.
  */
-export async function seedNewsFixtures(app: Express): Promise<NewsFixtures> {
+export async function seedAnnouncementFixtures(app: Express): Promise<AnnouncementFixtures> {
   await cleanupTestData();
 
   const live = await createTestSeason();

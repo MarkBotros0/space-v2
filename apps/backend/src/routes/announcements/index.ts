@@ -5,7 +5,7 @@ import { listTargets } from "./targets";
 import { createPost, deletePost, updatePost } from "./write";
 import { getOne, listFeed, markRead, unreadSummary } from "./read";
 
-/** News. Mounted at /api/v1/announcements, a prefix this router owns exclusively. */
+/** Announcements. Mounted at /api/v1/announcements, a prefix this router owns exclusively. */
 export const announcementsRouter = Router();
 announcementsRouter.use(requireAuth);
 

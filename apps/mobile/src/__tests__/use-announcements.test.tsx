@@ -125,24 +125,27 @@ describe("useAnnouncement", () => {
   });
 });
 
+/** What the table below needs of a mutation: each hook takes its own variables, so the call casts them. */
+type Mut = { mutateAsync: (variables: never) => Promise<unknown> };
+
 describe("mutations invalidate announcements.all", () => {
   it.each([
-    ["mark read", () => useMarkAnnouncementRead(), (m: any) => m.mutateAsync(5), "post", {}],
+    ["mark read", () => useMarkAnnouncementRead(), (m: Mut) => m.mutateAsync(5 as never), "post", {}],
     [
       "create",
       () => useCreateAnnouncement(),
-      (m: any) => m.mutateAsync({ audience: "COMMUNITY", title: "T", body: "B" }),
+      (m: Mut) => m.mutateAsync({ audience: "COMMUNITY", title: "T", body: "B" } as never),
       "post",
       { data: { data: detail(5) } },
     ],
     [
       "update",
       () => useUpdateAnnouncement(5),
-      (m: any) => m.mutateAsync({ title: "T2" }),
+      (m: Mut) => m.mutateAsync({ title: "T2" } as never),
       "patch",
       { data: { data: detail(5) } },
     ],
-    ["delete", () => useDeleteAnnouncement(), (m: any) => m.mutateAsync(5), "delete", { status: 204 }],
+    ["delete", () => useDeleteAnnouncement(), (m: Mut) => m.mutateAsync(5 as never), "delete", { status: 204 }],
   ] as const)("%s", async (_n, hook, run, verb, response) => {
     api[verb].mockResolvedValue(response);
     const spy = jest.spyOn(client, "invalidateQueries");

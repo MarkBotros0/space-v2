@@ -9,17 +9,17 @@ import {
   announcementPageResponseSchema,
   announcementUnreadResponseSchema,
 } from "../../../../../packages/shared/src/index";
-import { insertPost, seedNewsFixtures, type NewsFixtures } from "./announcements-setup";
+import { insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 import { TEST_PREFIX, cleanupTestData, testUserFilter } from "./fixtures";
 
 jest.setTimeout(60000);
 
 const app = createApp();
-let f: NewsFixtures;
+let f: AnnouncementFixtures;
 const extraPosts: number[] = [];
 
 beforeAll(async () => {
-  f = await seedNewsFixtures(app);
+  f = await seedAnnouncementFixtures(app);
 });
 
 afterEach(async () => {

@@ -119,8 +119,8 @@ export function PostForm(props: Props) {
     >
       <View className="flex-col gap-4">
         {error ? (
-          <View className="rounded-control border border-destructive bg-surface px-3 py-2.5">
-            <Text variant="subhead" className="text-bad" accessibilityRole="alert">
+          <View accessible accessibilityRole="alert" accessibilityLiveRegion="polite" className="rounded-control bg-bad-soft px-3 py-2">
+            <Text variant="subhead" className="text-bad">
               {error}
             </Text>
           </View>

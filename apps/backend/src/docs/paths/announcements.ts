@@ -8,7 +8,7 @@ export const announcementPaths = {
   "/api/v1/announcements": {
     get: {
       tags: ["Announcements"],
-      summary: "The news feed",
+      summary: "The announcements feed",
       description:
         "Newest first, 20 per page, cursor paged. Everyone signed in sees COMMUNITY posts; a SEASON post is visible to that season's people and to SUPER. MENTOR sees community posts only. Each item carries `isRead` for the caller. An unknown or malformed `cursor` is 400.",
       parameters: [{ name: "cursor", in: "query", schema: { type: "string" }, description: "`nextCursor` of the previous page." }],

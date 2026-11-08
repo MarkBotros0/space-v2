@@ -1,7 +1,7 @@
 /**
  * The avatar in Home's title row: a button that opens Profile (owner,
- * 2026-11-07: no dropdown; the theme and Sign out live on More, and on
- * Profile for MENTOR).
+ * 2026-11-07: no dropdown; the theme, Sign out and Delete account live on
+ * More for every role).
  */
 import { Pressable } from "react-native";
 

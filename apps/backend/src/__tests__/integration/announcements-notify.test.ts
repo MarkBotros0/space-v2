@@ -11,12 +11,12 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { cleanupTestData, createTestUser, login, testEventTitle } from "./fixtures";
-import { seedNewsFixtures, type NewsFixtures } from "./announcements-setup";
+import { seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 
 jest.setTimeout(60000);
 
 const app = createApp();
-let f: NewsFixtures;
+let f: AnnouncementFixtures;
 let mentorId: number;
 let leaderId: number;
 let droppedId: number;
@@ -47,7 +47,7 @@ async function publish(token: string, body: object): Promise<number> {
 }
 
 beforeAll(async () => {
-  f = await seedNewsFixtures(app);
+  f = await seedAnnouncementFixtures(app);
   const idFor = async (label: string) =>
     (await db.user.findFirstOrThrow({ where: { email: { startsWith: `space-v2-test-${label}-` } }, select: { id: true } })).id;
   mentorId = await idFor("newsmentor");

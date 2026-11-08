@@ -154,6 +154,27 @@ describe("New announcement", () => {
     expect(await screen.findByText("This season has finished.")).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
   });
+
+  it("shows the message counter past 4000 characters and not at 4000", async () => {
+    targetsAre(adminTargets);
+    renderWithProviders(<NewAnnouncementScreen />);
+    await fill("Hi", "a".repeat(4000));
+    expect(screen.queryByText(/ \/ 5000$/)).toBeNull();
+    fireEvent.changeText(screen.getByLabelText("Message"), "a".repeat(4001));
+    expect(screen.getByText("4001 / 5000")).toBeTruthy();
+  });
+
+  it("announces a write error as a polite live region", async () => {
+    targetsAre(adminTargets);
+    post.mockRejectedValue(apiError(409, "season_finished", "This season has finished."));
+    renderWithProviders(<NewAnnouncementScreen />);
+    await fill("Hi", "There");
+    fireEvent.press(screen.getByText("Post"));
+    await screen.findByText("Post to Test Season?");
+    fireEvent.press(sheetBar().getByText("Post"));
+    await screen.findByText("This season has finished.");
+    expect(screen.getByRole("alert").props.accessibilityLiveRegion).toBe("polite");
+  });
 });
 
 describe("Edit announcement", () => {
