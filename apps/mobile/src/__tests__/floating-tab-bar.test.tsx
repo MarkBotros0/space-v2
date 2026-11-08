@@ -293,20 +293,13 @@ describe("navigation the pill did not start", () => {
   });
 });
 
-describe("fill (owner, 2026-11-08: frosted on iOS like Instagram, solid on Android)", () => {
-  it("is the navy at 80% over a blur on iOS", () => {
-    jest.replaceProperty(Platform, "OS", "ios");
-    renderBar();
-    const fill = screen.getByTestId("pill-fill").props.className as string;
-    expect(fill.split(" ")).toContain("bg-pill/80");
-    expect(screen.getByTestId("pill-blur")).toBeTruthy();
-  });
-
-  it("is one opaque bg-pill on Android, with no blur (no blur target there, R30)", () => {
-    jest.replaceProperty(Platform, "OS", "android");
+describe("fill (owner R38, reaffirmed 2026-11-08)", () => {
+  it.each(["ios", "android"] as const)("is one opaque bg-pill on %s, with no blur", (os) => {
+    jest.replaceProperty(Platform, "OS", os);
     renderBar();
     const fill = screen.getByTestId("pill-fill").props.className as string;
     expect(fill.split(" ")).toContain("bg-pill");
+    expect(fill).not.toMatch(/bg-pill\//);
     expect(screen.queryByTestId("pill-blur")).toBeNull();
   });
 });

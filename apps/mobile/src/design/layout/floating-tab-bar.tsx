@@ -1,8 +1,7 @@
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import type { NavItem } from "@space/shared";
-import { BlurView } from "expo-blur";
 import { useEffect, useRef, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,14 +14,11 @@ import { PillHighlight } from "./pill-highlight";
 import { emitTabReselect, resetTabBarScroll, setTabSwipeHandler, useTabBarVisible } from "./tab-bar-scroll";
 
 /**
- * The floating pill. Frosted on iOS like Instagram's bar (owner, 2026-11-08,
- * superseding R38's solid pill there): the navy `bg-pill` fill at 80% over a
- * BlurView, so content scrolling under it shows through, softened. Android
- * stays solid: since Expo SDK 55 a real blur needs a `blurTarget` the tab
- * navigator cannot give a bar it renders beside its scenes, and a see-through
- * fill without blur let content read through the labels (R30). Shape, shadow,
- * hide-on-scroll motion and the sliding highlight are unchanged. Pressing the
- * open tab scrolls its screen to the top, or reloads it there.
+ * The floating pill: solid on iOS and Android (owner ruling R38, 2026-11-05;
+ * reaffirmed 2026-11-08 after a frosted iOS try), one opaque navy `bg-pill`
+ * fill, no blur and no per-platform fill. It keeps its floating shape,
+ * shadow, hide-on-scroll motion and sliding highlight. Pressing the open tab
+ * scrolls its screen to the top, or reloads it there.
  */
 const PILL_HEIGHT = 64;
 
@@ -48,7 +44,6 @@ export function PillTabBar({
   navigateToTab,
 }: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
-  const frosted = Platform.OS === "ios";
   const reduced = useReducedMotion();
   // A screen reader keeps the pill up (M7): VoiceOver could otherwise focus a
   // tab moved off-screen, and activating it through `pointerEvents="none"` is
@@ -137,13 +132,7 @@ export function PillTabBar({
           className="h-16 w-full max-w-md flex-row items-center overflow-hidden rounded-full border border-white/10 px-2"
           style={shadowStyle("lift")}
         >
-          {frosted ? (
-            <BlurView testID="pill-blur" intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : null}
-          <View
-            testID="pill-fill"
-            className={frosted ? "absolute inset-0 bg-pill/80" : "absolute inset-0 bg-pill"}
-          />
+          <View testID="pill-fill" className="absolute inset-0 bg-pill" />
           <PillHighlight target={active ? (layouts[active] ?? null) : null} />
           {shown.map((item) => {
             const name = routeNameForHref(item.href);

@@ -259,8 +259,8 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
   StatusChip / `statusChip` / `dueChip`, GroupedList / ListRow, HeroCard, StatTile,
   SegmentedControl, SearchField, EmptyState (`tone`), Sheet / SheetSaveBar, Toast
   (`toaster.tsx`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
-  `tab-bar-scroll`. The pill is frosted on iOS like Instagram's bar (owner 2026-11-08: `bg-pill/80` over an
-  expo-blur `BlurView`) and solid `bg-pill` on Android (no blur target there, R30). Pressing the open
+  `tab-bar-scroll`. The pill is one solid `bg-pill` on iOS and Android (R38; owner 2026-11-08 tried a
+  frosted iOS pill and kept the solid one). Pressing the open
   tab scrolls its screen to the top, or reloads it when already there (`emitTabReselect`).
   Swiping left or right on a tab opens the next or previous tab in the pill (`swipeTabs`, a Pan in
   `(tabs)/_layout.tsx`; instant, never from the outer 24pt). Test roots need a `GestureHandlerRootView`. Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
