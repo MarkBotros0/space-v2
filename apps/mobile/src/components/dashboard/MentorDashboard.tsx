@@ -13,6 +13,7 @@ import { useMentorSummary } from "../../hooks/use-follow-ups";
 import { useVisibleNotes } from "../../hooks/use-notes";
 import { firstName } from "../../lib/format";
 import { RecentNotesGroup } from "../../screens/mentor/recent-notes-group";
+import { AnnouncementsHomeCard } from "../../screens/announcements/announcements-home-card";
 import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
 
@@ -48,6 +49,7 @@ export function MentorDashboard() {
       refreshing={summary.isRefetching || notes.isRefetching || events.isRefetching}
     >
       <View className="flex-col gap-6">
+        <AnnouncementsHomeCard />
         {summary.isPending ? (
           <View accessible accessibilityLabel="Loading" className="flex-row flex-wrap gap-3">
             <Skeleton className="h-[104px] min-w-[140px] flex-1 basis-[45%] rounded-group" />

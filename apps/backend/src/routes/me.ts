@@ -301,6 +301,7 @@ const PREFERENCE_SELECT = {
   quizPublished: true,
   submissionReceived: true,
   sessionCancelled: true,
+  announcement: true,
 } as const;
 
 /**

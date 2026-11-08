@@ -16,7 +16,7 @@ import {
 } from "../index";
 
 describe("notificationTypeSchema", () => {
-  it("mirrors the nine values of NotificationType in prisma/schema.prisma", () => {
+  it("mirrors the ten values of NotificationType in prisma/schema.prisma", () => {
     expect(notificationTypeSchema.options).toEqual([
       "ASSIGNMENT_CREATED",
       "SUBMISSION_REVIEWED",
@@ -27,12 +27,13 @@ describe("notificationTypeSchema", () => {
       "QUIZ_PUBLISHED",
       "SUBMISSION_RECEIVED",
       "SESSION_CANCELLED",
+      "ANNOUNCEMENT",
     ]);
   });
 });
 
 describe("notificationPreferencesSchema", () => {
-  it("carries one key per notification type — all nine, derived from the enum", () => {
+  it("carries one key per notification type — all ten, derived from the enum", () => {
     // v1 lost quizGraded precisely by hand-writing five of six field names
     // (spec R56, R57). The shape is derived here, and this is the runtime
     // half of that guarantee; the `satisfies` in the source is the compile half.
@@ -41,7 +42,7 @@ describe("notificationPreferencesSchema", () => {
         .map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t])
         .sort(),
     );
-    expect(NOTIFICATION_PREFERENCE_KEYS).toHaveLength(9);
+    expect(NOTIFICATION_PREFERENCE_KEYS).toHaveLength(10);
     expect(NOTIFICATION_PREFERENCE_KEYS).toContain("quizGraded");
   });
 
@@ -62,6 +63,7 @@ describe("notificationPreferencesSchema", () => {
       quizPublished: true,
       submissionReceived: true,
       sessionCancelled: true,
+      announcement: true,
     });
   });
 
@@ -173,6 +175,7 @@ describe("notificationSchema", () => {
 describe("push policy", () => {
   it("pushes every notification type", () => {
     expect([...PUSH_NOTIFICATION_TYPES].sort()).toEqual([
+      "ANNOUNCEMENT",
       "ASSIGNMENT_CREATED",
       "LOW_ATTENDANCE_FLAG",
       "MENTOR_FOLLOWUP",

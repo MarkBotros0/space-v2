@@ -14,6 +14,7 @@ import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { useStaffToday } from "../../hooks/use-staff-today";
 import { firstName } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { OverdueCallout } from "../season-end/overdue-callout";
 import { useSessionStore } from "../../store/session";
 import { fromDashboardSession, LiveSessionHero } from "./live-session-hero";
@@ -125,7 +126,10 @@ export function AdminToday() {
       refreshing={today.isRefetching || dash.isRefetching || events.isRefetching}
       onRefresh={refresh}
     >
-      <View className="flex-col gap-4">{body}</View>
+      <View className="flex-col gap-4">
+        <AnnouncementsHomeCard />
+        {body}
+      </View>
     </Screen>
   );
 }

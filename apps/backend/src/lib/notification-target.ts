@@ -41,6 +41,8 @@ export const NOTIFICATION_LINK_PATTERNS: readonly {
   // opens the same submission. Addressed by publicId: every submission route
   // takes it, and newPublicId()'s alphabet is [0-9A-Za-z].
   { re: /^\/leader\/submissions\/([0-9A-Za-z]+)$/, entityType: "submission", id: "publicId" },
+  // ANNOUNCEMENT (v2-only): the post's detail screen.
+  { re: /^\/announcements\/(\d+)$/, entityType: "announcement", id: "number" },
 ];
 
 export function parseNotificationLink(link: string | null): NotificationTarget | null {

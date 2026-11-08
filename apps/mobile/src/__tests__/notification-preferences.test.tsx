@@ -27,6 +27,7 @@ const allTrue = {
   quizPublished: true,
   submissionReceived: true,
   sessionCancelled: true,
+  announcement: true,
 };
 
 beforeEach(() => {
@@ -63,14 +64,14 @@ describe("NotificationPreferences", () => {
   });
 
   // Owner 2026-11-07: only the switches for what this person can get; no mentor follow-ups.
-  it("shows a student their six switches and none of the staff ones", async () => {
+  it("shows a student their seven switches and none of the staff ones", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByLabelText("New assignments")).toBeTruthy();
-    for (const label of ["Submission reviewed", "New quizzes", "Quiz graded", "Session rescheduled", "Session cancelled"]) {
+    for (const label of ["Submission reviewed", "New quizzes", "Quiz graded", "Session rescheduled", "Session cancelled", "New announcements"]) {
       expect(screen.getByLabelText(label)).toBeTruthy();
     }
-    expect(screen.getAllByRole("switch")).toHaveLength(6);
+    expect(screen.getAllByRole("switch")).toHaveLength(7);
     expect(screen.queryByLabelText("Submissions received")).toBeNull();
     expect(screen.queryByLabelText("Low-attendance flags")).toBeNull();
     expect(screen.queryByLabelText("Mentor follow-ups")).toBeNull();
@@ -81,28 +82,32 @@ describe("NotificationPreferences", () => {
     const { unmount } = renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByLabelText("Submissions received")).toBeTruthy();
     expect(screen.getByLabelText("Low-attendance flags")).toBeTruthy();
-    expect(screen.getAllByRole("switch")).toHaveLength(2);
+    expect(screen.getByLabelText("New announcements")).toBeTruthy();
+    expect(screen.getAllByRole("switch")).toHaveLength(3);
     unmount();
 
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByLabelText("Low-attendance flags")).toBeTruthy();
-    expect(screen.getAllByRole("switch")).toHaveLength(1);
+    expect(screen.getByLabelText("New announcements")).toBeTruthy();
+    expect(screen.getAllByRole("switch")).toHaveLength(2);
     expect(screen.queryByLabelText("Mentor follow-ups")).toBeNull();
   });
 
-  it("tells a super there is nothing to turn off", async () => {
+  it("gives a super one switch: New announcements", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<NotificationPreferences />);
-    expect(await screen.findByText("Nothing you're sent can be turned off here.")).toBeTruthy();
-    expect(screen.queryAllByRole("switch")).toHaveLength(0);
+    expect(await screen.findByLabelText("New announcements")).toBeTruthy();
+    expect(screen.getAllByRole("switch")).toHaveLength(1);
+    expect(screen.queryByText(/can be turned off/)).toBeNull();
   });
 
-  it("gives a mentor their one switch: follow-up reminders (owner, 2026-11-07)", async () => {
+  it("gives a mentor follow-up reminders and announcements (owner, 2026-11-07)", async () => {
     useSessionStore.setState(makeSession("MENTOR"));
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByLabelText("Follow-up reminders")).toBeTruthy();
-    expect(screen.getAllByRole("switch")).toHaveLength(1);
+    expect(screen.getByLabelText("New announcements")).toBeTruthy();
+    expect(screen.getAllByRole("switch")).toHaveLength(2);
   });
 
   it("explains each new type in its help text", async () => {

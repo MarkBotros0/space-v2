@@ -35,6 +35,16 @@ describe("routeForTarget", () => {
     });
   });
 
+  it("opens the announcement, or the feed when there is no id", () => {
+    expect(routeForTarget({ entityType: "announcement", entityId: 7 })).toEqual({
+      pathname: "/announcements/[id]",
+      params: { id: "7" },
+    });
+    expect(routeForTarget({ entityType: "announcement", entityId: null })).toEqual({
+      pathname: "/announcements",
+    });
+  });
+
   it("returns null for a notification with no resolvable target", () => {
     expect(routeForTarget(null)).toBeNull();
   });

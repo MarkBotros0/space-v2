@@ -128,6 +128,19 @@ export async function login(app: Express, email: string): Promise<string> {
 export async function cleanupTestData(): Promise<void> {
   await db.jpcEvent.deleteMany({ where: { title: { startsWith: TEST_PREFIX } } });
 
+  // News posts: by title prefix, or by a test author. Their notifications point
+  // at /announcements/<id> with no foreign key, so they go first.
+  const posts = await db.announcement.findMany({
+    where: { OR: [{ title: { startsWith: TEST_PREFIX } }, { author: testUserFilter }] },
+    select: { id: true },
+  });
+  if (posts.length > 0) {
+    await db.notification.deleteMany({
+      where: { link: { in: posts.map((p) => `/announcements/${p.id}`) } },
+    });
+    await db.announcement.deleteMany({ where: { id: { in: posts.map((p) => p.id) } } });
+  }
+
   const seasons = await db.season.findMany({
     where: { code: { startsWith: TEST_PREFIX } },
     select: { id: true },

@@ -17,6 +17,7 @@ import { useSessionDetail } from "../../hooks/use-session-detail";
 import { firstName, formatLongDay } from "../../lib/format";
 import { DEFAULT_STALE_TIME } from "../../lib/query-client";
 import { useSessionStore } from "../../store/session";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { BetweenSeasons } from "./between-seasons";
 import { NextSessionHero } from "./next-session-hero";
 import { OpenWorkList } from "./open-work-list";
@@ -124,6 +125,7 @@ export function StudentToday() {
           {/* Owner 2026-11-07: the season first, then the session, then To do; while
               check-in is open and they haven't checked in, the session leads. */}
           {checkInFirst ? hero : null}
+          <AnnouncementsHomeCard />
           <TodayFigures data={data} attendance={attendance} />
           {checkInFirst ? null : hero}
           <OpenWorkList
@@ -137,6 +139,7 @@ export function StudentToday() {
       ) : (
         <View className="flex-col gap-4">
           {stale}
+          <AnnouncementsHomeCard />
           <BetweenSeasons history={history} />
           <UpcomingEventsCard query={events} />
         </View>

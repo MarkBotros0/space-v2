@@ -21,6 +21,8 @@ import type { NotificationTarget } from "@space/shared";
  */
 export type NotificationRoute =
   | { pathname: "/assignment/[id]"; params: { id: string } }
+  | { pathname: "/announcements/[id]"; params: { id: string } }
+  | { pathname: "/announcements" }
   | { pathname: "/assignments" }
   | { pathname: "/quizzes" }
   | { pathname: "/calendar" }
@@ -46,5 +48,9 @@ export function routeForTarget(target: NotificationTarget | null): NotificationR
         : { pathname: "/student/[id]", params: { id: String(target.entityId) } };
     case "submission":
       return { pathname: "/submission/[publicId]", params: { publicId: target.entityId } };
+    case "announcement":
+      return target.entityId === null
+        ? { pathname: "/announcements" }
+        : { pathname: "/announcements/[id]", params: { id: String(target.entityId) } };
   }
 }

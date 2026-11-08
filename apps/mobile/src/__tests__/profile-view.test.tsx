@@ -114,19 +114,17 @@ describe("Profile — alumni", () => {
   });
 });
 
-describe("Profile — MENTOR (no More tab)", () => {
-  it("carries Notifications, the theme, Sign out and Delete, and calls no student endpoint", async () => {
+describe("Profile — MENTOR (More tab, owner 2026-11-07)", () => {
+  it("is read-only identity: the account actions are on More, and no student endpoint is called", () => {
     useSessionStore.setState(makeSession("MENTOR", {}, { name: "Maged Mentor", email: "maged@jpc.test" }));
     renderWithProviders(<ProfileScreen />);
     expect(screen.getByText("Maged Mentor")).toBeTruthy();
     expect(screen.queryByText("MENTOR")).toBeNull();
     expect(screen.queryByText("Academic")).toBeNull();
-    fireEvent.press(screen.getByRole("button", { name: "Notifications" }));
-    expect(mockPush).toHaveBeenCalledWith("/notifications");
-    expect(screen.getByText("Appearance")).toBeTruthy();
-    expect(screen.getByText("Delete account")).toBeTruthy();
-    fireEvent.press(screen.getByText("Sign out"));
-    await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText("Notifications")).toBeNull();
+    expect(screen.queryByText("Appearance")).toBeNull();
+    expect(screen.queryByText("Sign out")).toBeNull();
+    expect(screen.queryByText("Delete account")).toBeNull();
     expect(get).not.toHaveBeenCalled();
   });
 });

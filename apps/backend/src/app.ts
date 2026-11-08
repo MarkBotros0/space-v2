@@ -21,6 +21,7 @@ import { followUpsRouter, internalRouter, studentFollowUpsRouter } from "./route
 import { mentorSummaryRouter } from "./routes/mentor-summary";
 import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
 import { notificationsRouter } from "./routes/notifications";
+import { announcementsRouter } from "./routes/announcements";
 import { eventsRouter } from "./routes/events";
 import { forumRouter } from "./routes/forum";
 import { videoQuizRouter } from "./routes/video-quiz";
@@ -91,6 +92,7 @@ export function createApp(): Express {
   // falls straight through to the prefixed routers and the catch-all 404.
   app.use("/api/v1", forumRouter);
   app.use("/api/v1", videoQuizRouter);
+  app.use("/api/v1/announcements", announcementsRouter);
   app.use("/api/v1/events", eventsRouter);
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);

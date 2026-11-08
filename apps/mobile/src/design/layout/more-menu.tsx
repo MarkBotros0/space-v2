@@ -10,10 +10,12 @@ import type { RoleNav, UserRole } from "@space/shared";
 import { LogOut, Trash2 } from "lucide-react-native";
 import { View } from "react-native";
 
+import { useAnnouncementUnread } from "../../hooks/use-announcements";
 import { moreItemsFor } from "../../lib/nav-routes";
 import { NavIcon } from "../icons/nav-icon";
 import { iconWithClassName } from "../lib/icon";
 import { GroupedList, ListRow } from "../ui/grouped-list";
+import { StatusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
 import { ThemeToggle } from "../ui/theme-toggle";
 import { Screen } from "./screen";
@@ -48,6 +50,7 @@ export function MoreMenu({
 }) {
   // The same list more-back.test.tsx walks: sidebar entries that are not a tab.
   const items = moreItemsFor(nav);
+  const unread = useAnnouncementUnread().data?.count ?? 0;
   const name = userName?.trim() || null;
   return (
     <Screen title="More" subtitle="Account, settings, and more places to go.">
@@ -73,6 +76,15 @@ export function MoreMenu({
                 key={item.href}
                 title={item.label}
                 leading={<NavIcon name={item.icon} size={20} className="text-foreground" />}
+                // The count is words ("2 new"), never a bare colour dot; the row's label says "N unread".
+                trailing={
+                  item.href === "/announcements" && unread > 0 ? (
+                    <StatusChip tone="info" label={`${unread > 99 ? "99+" : unread} new`} />
+                  ) : undefined
+                }
+                trailingLabel={
+                  item.href === "/announcements" && unread > 0 ? `${unread} unread` : undefined
+                }
                 chevron
                 onPress={() => onNavigate(item.href)}
               />

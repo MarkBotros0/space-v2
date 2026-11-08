@@ -38,6 +38,7 @@ describe("notification preferences", () => {
     quizPublished: true,
     submissionReceived: true,
     sessionCancelled: true,
+    announcement: true,
   };
 
   afterEach(async () => {

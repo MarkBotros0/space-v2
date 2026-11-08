@@ -17,7 +17,7 @@ export const enumsNotificationsNotesSchemas = {
     required: ["entityType", "entityId"],
     description: "Route-independent reference derived server-side from the stored v1 link (spec D1). Clients never parse `link`.",
     properties: {
-      entityType: { type: "string", enum: ["assignment", "quiz", "calendar", "student", "submission"] },
+      entityType: { type: "string", enum: ["assignment", "quiz", "calendar", "student", "submission", "announcement"] },
       entityId: {
         type: ["integer", "string", "null"],
         description: "A string (the submission's `publicId`) when `entityType` is `submission`; otherwise an integer id, or null for the list-level targets (`quiz`, `calendar`).",
@@ -29,7 +29,7 @@ export const enumsNotificationsNotesSchemas = {
     required: ["id", "type", "title", "body", "link", "target", "readAt", "createdAt"],
     properties: {
       id: { type: "integer" },
-      type: { type: "string", enum: ["ASSIGNMENT_CREATED", "SUBMISSION_REVIEWED", "SESSION_RESCHEDULED", "LOW_ATTENDANCE_FLAG", "MENTOR_FOLLOWUP", "QUIZ_GRADED", "QUIZ_PUBLISHED", "SUBMISSION_RECEIVED", "SESSION_CANCELLED"] },
+      type: { type: "string", enum: ["ASSIGNMENT_CREATED", "SUBMISSION_REVIEWED", "SESSION_RESCHEDULED", "LOW_ATTENDANCE_FLAG", "MENTOR_FOLLOWUP", "QUIZ_GRADED", "QUIZ_PUBLISHED", "SUBMISSION_RECEIVED", "SESSION_CANCELLED", "ANNOUNCEMENT"] },
       title: { type: "string" },
       body: { type: ["string", "null"] },
       link: { type: ["string", "null"], description: "The raw v1 path, still written for v1's benefit. Render `target`." },
@@ -40,8 +40,8 @@ export const enumsNotificationsNotesSchemas = {
   },
   NotificationPreferences: {
     type: "object",
-    required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup", "quizGraded", "quizPublished", "submissionReceived", "sessionCancelled"],
-    description: "One boolean per notification type — all nine keys. A user with no stored row is opted in to everything.",
+    required: ["assignmentCreated", "submissionReviewed", "sessionRescheduled", "lowAttendanceFlag", "mentorFollowup", "quizGraded", "quizPublished", "submissionReceived", "sessionCancelled", "announcement"],
+    description: "One boolean per notification type — all ten keys. A user with no stored row is opted in to everything.",
     properties: {
       assignmentCreated: { type: "boolean" },
       submissionReviewed: { type: "boolean" },
@@ -52,6 +52,7 @@ export const enumsNotificationsNotesSchemas = {
       quizPublished: { type: "boolean" },
       submissionReceived: { type: "boolean" },
       sessionCancelled: { type: "boolean" },
+      announcement: { type: "boolean" },
     },
   },
   DeviceRegistration: {

@@ -36,8 +36,12 @@ export const notificationTypeSchema = z.enum([
   "QUIZ_PUBLISHED",
   "SUBMISSION_RECEIVED",
   "SESSION_CANCELLED",
+  "ANNOUNCEMENT",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
+
+export const announcementAudienceSchema = z.enum(["COMMUNITY", "SEASON"]);
+export type AnnouncementAudience = z.infer<typeof announcementAudienceSchema>;
 
 export const jpcVisibilitySchema = z.enum(["ALL", "ALUMNI_ONLY", "SEASON"]);
 export type JpcVisibility = z.infer<typeof jpcVisibilitySchema>;

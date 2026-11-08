@@ -242,6 +242,14 @@ export const queryKeys = {
     // serves the old season's figures. null for the mentor.
     me: (seasonId: number | null) => [...queryKeys.dashboard.all, "me", { seasonId }] as const,
   },
+  announcements: {
+    all: ["announcements"] as const,
+    feed: () => [...queryKeys.announcements.all, "feed"] as const,
+    unread: () => [...queryKeys.announcements.all, "unread"] as const,
+    // Nullable per this file's header convention — no -1 sentinel.
+    detail: (id: number | null) => [...queryKeys.announcements.all, "detail", { id }] as const,
+    targets: () => [...queryKeys.announcements.all, "targets"] as const,
+  },
   events: {
     all: ["events"] as const,
     list: () => [...queryKeys.events.all, "list"] as const,

@@ -14,7 +14,9 @@ import type { UserRole } from "./auth";
  * first for every role, at most five tabs. Nothing left the
  * navs: a destination that stopped being a tab is still in `sidebar`, which
  * is what More lists. Profile is in no sidebar (owner, 2026-11-07): More's name
- * row and Home's avatar open it, and MENTOR and alumni have it as a tab.
+ * row and Home's avatar open it, and alumni alone have it as a tab (the mentor's
+ * last tab is More, owner 2026-11-07, like every other role's). Announcements is second
+ * in every sidebar, so it is in every More.
  * Notification settings open from the gear on the Notifications screen.
  *
  * The mentor's /students is their **Community** of members, students and alumni
@@ -45,7 +47,8 @@ export type NavIconName =
   | "settings"
   | "todo"
   | "submitted"
-  | "followUps";
+  | "followUps"
+  | "announcements";
 
 export interface NavItem {
   href: string;
@@ -61,6 +64,7 @@ export interface RoleNav {
 const SUPER: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/announcements", label: "Announcements", icon: "announcements" },
     { href: "/seasons", label: "Seasons", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/events", label: "JPC Events", icon: "events" },
@@ -88,6 +92,7 @@ const SUPER: RoleNav = {
 const ADMIN: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/announcements", label: "Announcements", icon: "announcements" },
     { href: "/season", label: "My Season", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     // Owner, 2026-11-07: Groups holds the students too, and Work holds the
@@ -110,6 +115,7 @@ const ADMIN: RoleNav = {
 const LEADER: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/announcements", label: "Announcements", icon: "announcements" },
     { href: "/groups", label: "My group", icon: "groups" },
     { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
@@ -129,6 +135,7 @@ const LEADER: RoleNav = {
 const STUDENT: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/announcements", label: "Announcements", icon: "announcements" },
     { href: "/season", label: "Current Season", icon: "season" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     // Owner, 2026-11-07: one My work tab, what to do on top and what was
@@ -153,6 +160,7 @@ const STUDENT: RoleNav = {
 const MENTOR: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/announcements", label: "Announcements", icon: "announcements" },
     { href: "/students", label: "Community", icon: "users" },
     { href: "/notes", label: "Notes", icon: "notes" },
     { href: "/follow-ups", label: "Follow-ups", icon: "followUps" },
@@ -163,7 +171,7 @@ const MENTOR: RoleNav = {
     { href: "/students", label: "Community", icon: "users" },
     { href: "/notes", label: "Notes", icon: "notes" },
     { href: "/follow-ups", label: "Follow-ups", icon: "followUps" },
-    { href: "/profile", label: "Profile", icon: "profile" },
+    { href: "/more", label: "More", icon: "more" },
   ],
 };
 
@@ -171,6 +179,7 @@ const MENTOR: RoleNav = {
 const ALUMNI: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Home", icon: "dashboard" },
+    { href: "/announcements", label: "Announcements", icon: "announcements" },
     { href: "/calendar", label: "Events", icon: "events" },
     { href: "/history", label: "My History", icon: "history" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
@@ -191,6 +200,7 @@ const ALUMNI: RoleNav = {
 export const STUDENT_BETWEEN: RoleNav = {
   sidebar: [
     { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { href: "/announcements", label: "Announcements", icon: "announcements" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
     { href: "/history", label: "History", icon: "history" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
@@ -269,7 +279,7 @@ export const ALL_NAV_HREFS: readonly string[] = hrefUnion(ALL_NAVS);
  * from the same seven navs as `ALL_NAV_HREFS`. The mobile app keeps these
  * routes in its `Tabs` group; every other nav href (Settings, Notifications,
  * Events, …: a More entry for every role that has it, a Profile link for
- * MENTOR) pushes on the stack above the tabs, so Back from it returns to the
+ * alumni) pushes on the stack above the tabs, so Back from it returns to the
  * screen it was opened from. Derived, never re-listed.
  */
 export const ALL_TAB_HREFS: readonly string[] = Array.from(

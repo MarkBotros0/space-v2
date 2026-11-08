@@ -20,6 +20,7 @@ const NAV_ROUTES: Readonly<Record<string, Href>> = {
   "/groups": "/groups",
   "/history": "/history",
   "/more": "/more",
+  "/announcements": "/announcements",
   "/notes": "/notes",
   "/notifications": "/notifications",
   "/profile": "/profile",

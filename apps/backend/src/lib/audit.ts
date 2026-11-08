@@ -38,7 +38,12 @@ export type AuditOperation =
   // Ending a season, and a later correction of one student's result.
   | "season.start"
   | "season.end"
-  | "season.result_correct";
+  | "season.result_correct"
+  // News posts. The subject is the post id; the season rides along as a scope
+  // id (none for a community post). Never the title or body.
+  | "announcement.create"
+  | "announcement.update"
+  | "announcement.delete";
 
 /** Extra ids that locate a change — ids only, like the rest of the line. */
 export type AuditScope = {

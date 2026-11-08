@@ -10,6 +10,7 @@ import { useSeasonHistory } from "../../hooks/use-self-service";
 import { firstName, formatEventWhenShort, formatSeasonDay } from "../../lib/format";
 import { FinishedSeasonCard } from "../../screens/today/finished-season-card";
 import { UpcomingEventsGroup } from "../../screens/events/upcoming-events-group";
+import { AnnouncementsHomeCard } from "../../screens/announcements/announcements-home-card";
 import { useSessionStore } from "../../store/session";
 
 const HISTORY_ROWS = 3;
@@ -63,6 +64,7 @@ export function AlumniDashboard() {
       refreshing={events.isRefetching || history.isRefetching}
     >
       <View className="flex-col gap-6">
+        <AnnouncementsHomeCard />
         {latest && latest.outcome !== "DROPPED" ? <FinishedSeasonCard row={latest} /> : null}
         {events.isPending ? (
           <Loading />

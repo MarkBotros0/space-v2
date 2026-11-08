@@ -34,6 +34,9 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "assignment/[id]/index",
   "assignment/[id]/edit",
   "assignment/new",
+  "announcements/[id]/index",
+  "announcements/[id]/edit",
+  "announcements/new",
   // No role has it in its nav since Work took it (2026-11-07), but Season, the staff
   // panel and notifications still open it.
   "assignments",
@@ -145,7 +148,7 @@ export default function AppLayout() {
           {DETAIL_ROUTE_NAMES.map((name) => (
             <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
           ))}
-          {/* Settings, Notifications, Events, …: opened from More (MENTOR: Profile),
+          {/* Settings, Notifications, Events, …: opened from More,
               so they push like a detail and Back returns there (ruling R19). */}
           {PUSHED_NAV_ROUTE_NAMES.map((name) => (
             <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />

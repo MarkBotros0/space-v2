@@ -80,6 +80,12 @@ enum NotificationType {
   QUIZ_PUBLISHED
   SUBMISSION_RECEIVED
   SESSION_CANCELLED
+  ANNOUNCEMENT
+}
+
+enum AnnouncementAudience {
+  COMMUNITY
+  SEASON
 }
 
 enum JpcVisibility {
@@ -114,6 +120,8 @@ enum QuizAttemptStatus {
 // ---------------------------------------------------------------------------
 
 model User {
+  announcementsAuthored Announcement[]     @relation("AnnouncementAuthor")
+  announcementReads     AnnouncementRead[]
   id           Int       @id @default(autoincrement())
   email        String    @unique
   name         String
@@ -282,6 +290,7 @@ model StudentProfile {
 // ---------------------------------------------------------------------------
 
 model Season {
+  announcements Announcement[]
   id             Int          @id @default(autoincrement())
   code           String       @unique // e.g. "gbv-2026" — URL identifier
   title          String // e.g. "GBV 2026" — display title
@@ -701,6 +710,7 @@ model NotificationPreference {
   quizPublished      Boolean @default(true)
   submissionReceived Boolean @default(true)
   sessionCancelled   Boolean @default(true)
+  announcement       Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -889,4 +899,33 @@ model RateLimitHit {
   resetAt DateTime @db.Timestamptz(3)
 
   @@index([resetAt])
+}
+
+model Announcement {
+  id        Int                  @id @default(autoincrement())
+  audience  AnnouncementAudience
+  seasonId  Int? // required when SEASON, null when COMMUNITY (checked in the route; a CHECK constraint too)
+  title     String // 1..120 after trim
+  body      String // 1..5000 after trim, plain text
+  authorId  Int? // SetNull: the post outlives a deleted author ("Former member")
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  editedAt  DateTime? // set by PATCH only; drives "Edited"
+  season    Season?              @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  author    User?                @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  reads     AnnouncementRead[]
+
+  @@index([audience, createdAt])
+  @@index([seasonId, createdAt])
+}
+
+model AnnouncementRead {
+  announcementId Int
+  userId         Int
+  readAt         DateTime     @default(now())
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@index([userId])
 }

@@ -29,6 +29,7 @@ const PREF_FIELD = {
   QUIZ_PUBLISHED: "quizPublished",
   SUBMISSION_RECEIVED: "submissionReceived",
   SESSION_CANCELLED: "sessionCancelled",
+  ANNOUNCEMENT: "announcement",
 } as const satisfies Record<NotificationType, string>;
 
 export interface BulkNotificationResult {

@@ -8,7 +8,7 @@ import { appContext, muteTabsAnchorWarning } from "./helpers/router-context";
 import { makeScopes, makeUser } from "./helpers/session";
 
 // Ruling R19 (spec goal 7, "Back returns where you came from"): a destination
-// opened from More (MENTOR: from Profile) returns there on Back, for every
+// opened from More returns there on Back, for every
 // role. Two mechanisms, both walked here through the real navigators:
 //   - a nav href that is a tab for NO role (Settings, Events, …) lives on the
 //     stack above the tabs, so Back pops it;
@@ -57,6 +57,7 @@ describe("Back from a More destination returns to More (R19)", () => {
     ["ADMIN", navByRole.ADMIN],
     ["LEADER", navByRole.LEADER],
     ["STUDENT", navByRole.STUDENT],
+    ["MENTOR", navByRole.MENTOR],
     ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null })],
   ])("%s: every entry More lists", async (role, nav) => {
     signIn(role);
@@ -72,18 +73,6 @@ describe("Back from a More destination returns to More (R19)", () => {
     // And More itself goes Back to the tab it was opened from.
     await act(() => router.back());
     expect(result.getPathname()).toBe("/dashboard");
-  });
-
-  it("MENTOR (no More tab): Notifications opened from Profile returns to Profile", async () => {
-    signIn("MENTOR");
-    const result = await renderRouter(appContext(), { initialUrl: "/dashboard" });
-    expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
-    await act(() => router.navigate("/profile"));
-
-    // Profile's Notifications row (Notification settings opens from the bell).
-    await openEachAndComeBack(result, ["/notifications"], "/profile");
-    // The rest of the mentor's sidebar is the mentor's own tabs.
-    expect(moreItemsFor(navByRole.MENTOR).map((item) => item.href)).toEqual(["/notifications"]);
   });
 });
 

@@ -309,13 +309,13 @@ sonner-native toasts, so flows shoot toasts best-effort.
   "School of N"), with no role badge and no season figures. Its Edit opens `/edit-profile`, one
   form with one Save: the `User` columns (PATCH /me, every role) and, for a student or a
   studying alumnus, the academic record (PATCH /me/profile); an alumnus's academic record is
-  read-only. Profile is in no sidebar: More's name row and Home's avatar open it (MENTOR and
-  alumni also have it as a tab). Notification settings open from the gear on Notifications.
+  read-only. Profile is in no sidebar: More's name row and Home's avatar open it (a tab for
+  alumni only). Notification settings open from the gear on Notifications.
 - Home's bell opens `/notifications` and the avatar opens Profile: plain
-  buttons, never dropdowns (owner, 2026-11-07). The theme lives on More (Profile for MENTOR).
+  buttons, never dropdowns (owner, 2026-11-07). The theme lives on More, for every role.
 - Notification settings show only the kinds a person can be sent: a student's six, a group
   leader's Submissions received and Low-attendance flags, a season admin's Low-attendance
-  flags, a mentor's Follow-up reminders; Super is told nothing there can be turned off. A note's
+  flags, a mentor's Follow-up reminders; every role also gets New announcements, so Super has a switch too. A note's
   follow-up flag notifies nobody (owner, 2026-11-07); the mentor's own follow-ups (see "The
   mentor") send the only `MENTOR_FOLLOWUP`.
 - A student's page (staff view): the This season card shows Attendance, Assignments and
@@ -323,10 +323,23 @@ sonner-native toasts, so flows shoot toasts best-effort.
   score; its tabs run Submissions, Attendance, Notes, Seasons, the first open.
 - No password form in the app: "Forgot password?" on sign-in is the only way
   to set one. No "Sign out everywhere".
-- Sign out and Delete account (DELETE /me, a soft delete) live on More; on
-  Profile for MENTOR, who has no More tab.
+- Sign out and Delete account (DELETE /me, a soft delete) live on More, for every role
+  (the mentor has a More tab too).
 - A student's graduation year is the university's (`StudentProfile.universityGraduationYear`,
   may be in the future — not `User.graduationYear`, which marks a JPCS alumnus).
+
+### Announcements (owner, 2026-11-07; renamed from News 2026-11-08)
+
+Spec: `docs/superpowers/specs/2026-11-07-news-announcements-design.md` (it still says News).
+- **Who posts:** a Super to the community or to any ACTIVE season; an admin to their own ACTIVE season. A draft refuses (`season_draft`), a finished season refuses (`season_finished`). Leaders and mentors never post.
+- **Who reads:** the community post, everyone; a season post, its `seasonParticipant` students, its live admins and leaders, and Supers. Mentors read community posts only. One gate: `announcementVisibilityFilter` (`lib/queries/announcements.ts`).
+- **Edit and delete:** the author while still admin of that season, or a Super. Nobody edits a finished season's post; a Super may still delete one. Audience and season never change after posting; delete is permanent.
+- **Unread:** posts addressed to you, newer than your account, from the last 30 days, never your own. A Super's unread counts community posts only. `announcementUnreadFilter` feeds `/unread`, More's count, Home's card and each item's `isRead`.
+- **Notifications:** `ANNOUNCEMENT`, link `/announcements/<id>`. A community post goes to every active account but the author; a season post to its live students, admins and leaders (not Supers). The "New announcements" switch (every role) turns off push only. An edit sends nothing; notifications never email.
+- **Routes:** `/api/v1/announcements` (`GET /`, `/unread`, `/targets`, `/:id`; `POST /`, `/:id/read`; `PATCH` and `DELETE /:id`). Mobile: `/announcements` (pushed), `/announcements/[id]`, `/announcements/new`, `/announcements/[id]/edit` (detail routes), screens in `src/screens/announcements/`.
+- **Where it shows:** a row on More for every role (unread count in words and in its screen-reader label, nothing on the tab) and `AnnouncementsHomeCard` on Home, which renders nothing while loading, on error or with nothing unread.
+- **Text:** title 1 to 120, message 1 to 5000, plain text. Links in a post open only if they are http(s); the rest stay text. No body in a log or Sentry event.
+- **Sweep:** `seed-sweep/announcements.ts` seeds one community and one season post (titles start "[Sweep]"); flows `super-scenarios/s56` and `student-scenarios/s57`, catalogue section `announcements` (s90).
 
 ### Graduating seasons (owner, 2026-11-07)
 
@@ -474,7 +487,7 @@ Spec: `docs/superpowers/specs/2026-11-07-mentor-redesign-design.md`. A mentor wa
 students across seasons, so **the mentor sees nothing season-shaped**: no This season card, no
 at-risk, no seasons, no groups, no Reports (`/reports` refuses them in the app; it is a pushed
 route now, a tab for no role).
-- **Nav:** Home · Community (`/students`; their people are **members**, students and alumni alike, never "students" in the copy) · Notes · Follow-ups · Profile.
+- **Nav:** Home · Community (`/students`; their people are **members**, students and alumni alike, never "students" in the copy) · Notes · Follow-ups · More (their profile is More's name row).
 - **Home** (`MentorDashboard`): four numbers from `GET /me/mentor-summary`, each the total of the
   list it opens: Follow-ups due (`/follow-ups`), Absent lately (`/students?absent=1`), Notes this
   week (`/notes?range=week`), Students. Then recent notes and events.
