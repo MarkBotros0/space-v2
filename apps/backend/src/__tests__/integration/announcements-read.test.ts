@@ -10,7 +10,7 @@ import {
   announcementUnreadResponseSchema,
 } from "../../../../../packages/shared/src/index";
 import { insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
-import { TEST_PREFIX, cleanupTestData, testUserFilter } from "./fixtures";
+import { TEST_PREFIX, cleanupTestData, createTestSeason, createTestUser, testUserFilter } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -250,4 +250,51 @@ it("cursor tie-break: posts sharing one createdAt page with no duplicate or gap"
   // Ties break on id descending.
   const tied = seen.filter((id) => ids.includes(id));
   expect(tied).toEqual([...ids].sort((a, b) => b - a));
+});
+
+it("hides a soft-deleted season's posts from everyone but a Super", async () => {
+  const season = await createTestSeason({ status: "COMPLETED" });
+  await db.seasonEnrollment.create({
+    data: { seasonId: season.id, studentUserId: f.userIds.student, status: "COMPLETED" },
+  });
+  const postId = await insertPost({ audience: "SEASON", seasonId: season.id, authorId: f.userIds.superUser });
+  extraPosts.push(postId);
+  // Guard: while the season is alive the enrolled student reads it.
+  expect(await feedIds(f.tokens.student)).toContain(postId);
+  expect(await detailStatus(f.tokens.student, postId)).toBe(200);
+
+  await db.season.update({ where: { id: season.id }, data: { deletedAt: new Date() } });
+  expect(await feedIds(f.tokens.student)).not.toContain(postId);
+  expect(await detailStatus(f.tokens.student, postId)).toBe(404);
+  expect(await feedIds(f.tokens.superUser)).toContain(postId);
+});
+
+it("shows a soft-deleted author as no author (Former member), live authors by name", async () => {
+  const author = await createTestUser("announceleaver", "ADMIN");
+  const postId = await insertPost({ audience: "COMMUNITY", authorId: author.id });
+  extraPosts.push(postId);
+  const authorOf = async () => {
+    const list = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
+    const detail = await request(app).get(`/api/v1/announcements/${postId}`).set(auth(f.tokens.student));
+    const item = list.body.data.items.find((i: Item) => i.id === postId);
+    return [item.authorName, detail.body.data.authorName];
+  };
+  expect(await authorOf()).toEqual(Array(2).fill("Test announceleaver"));
+
+  await db.user.update({ where: { id: author.id }, data: { deletedAt: new Date() } });
+  expect(await authorOf()).toEqual([null, null]);
+});
+
+it("cuts the excerpt by code point: an emoji at the limit stays whole", async () => {
+  const postId = await insertPost({ audience: "COMMUNITY", authorId: f.userIds.superUser });
+  extraPosts.push(postId);
+  // The emoji is code point 279 (two UTF-16 units): a plain slice(0, 279) would keep half of it.
+  await db.announcement.update({
+    where: { id: postId },
+    data: { body: `${"a".repeat(278)}\u{1F600}${"b".repeat(10)}` },
+  });
+  const list = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
+  const item = list.body.data.items.find((i: Item) => i.id === postId);
+  expect(item.excerpt).toBe(`${"a".repeat(278)}\u{1F600}…`);
+  expect(item.excerpt).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/);
 });

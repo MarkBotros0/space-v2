@@ -10,7 +10,6 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { announcementRecipients } from "../../lib/announcement-notifications";
 import { cleanupTestData, createTestSeason, createTestUser, login, testEventTitle } from "./fixtures";
 import { insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 
@@ -36,7 +35,7 @@ beforeAll(async () => {
   f = await seedAnnouncementFixtures(app);
   draftSeasonId = (await createTestSeason({ status: "DRAFT" })).id;
   // An admin serving in an ACTIVE season has no access to a draft (scopes.ts), so the draft needs its own admin.
-  const draftAdmin = await createTestUser("newsdraftadmin", "ADMIN");
+  const draftAdmin = await createTestUser("announcedraftadmin", "ADMIN");
   await db.seasonAdmin.create({ data: { seasonId: draftSeasonId, userId: draftAdmin.id } });
   draftAdminToken = await login(app, draftAdmin.email);
 });
@@ -68,6 +67,15 @@ describe("POST /announcements", () => {
     });
     expect(res.status).toBe(201);
     expect(res.body.data.audience).toBe("COMMUNITY");
+    // The fan-out reaches every account and runs after the response: wait for all of
+    // its rows, or they land after cleanup and linger in real inboxes.
+    const link = `/announcements/${res.body.data.id}`;
+    const everyoneButAuthor = await db.user.count({ where: { deletedAt: null, id: { not: f.userIds.superUser } } });
+    const deadline = Date.now() + 30_000;
+    while ((await db.notification.count({ where: { link } })) < everyoneButAuthor) {
+      if (Date.now() > deadline) throw new Error("the community fan-out did not finish");
+      await new Promise((r) => setTimeout(r, 100));
+    }
   });
 
   it("admin cannot post to community", async () => {
@@ -140,7 +148,7 @@ describe("PATCH and DELETE /announcements/:id", () => {
   });
 
   it("former admin cannot edit", async () => {
-    const author = await createTestUser("newsdemoted", "ADMIN");
+    const author = await createTestUser("announcedemoted", "ADMIN");
     await db.seasonAdmin.create({ data: { seasonId: f.seasonId, userId: author.id } });
     const t1 = await login(app, author.email);
     const own = (await post(t1, seasonBody(f.seasonId))).body.data.id as number;
@@ -164,7 +172,7 @@ describe("PATCH and DELETE /announcements/:id", () => {
   });
 
   it("super deletes a finished season's post, its author cannot", async () => {
-    const author = await createTestUser("newsfinauthor", "STUDENT");
+    const author = await createTestUser("announcefinauthor", "STUDENT");
     await db.studentProfile.create({ data: { userId: author.id } });
     await db.seasonEnrollment.create({ data: { seasonId: f.finishedSeasonId, studentUserId: author.id, status: "COMPLETED" } });
     const authored = await insertPost({ audience: "SEASON", seasonId: f.finishedSeasonId, authorId: author.id });
@@ -195,8 +203,16 @@ describe("GET /announcements/targets", () => {
     expect(ids).not.toContain(f.finishedSeasonId);
     expect(ids).not.toContain(draftSeasonId);
     const mine = sup.body.data.seasons.find((s: { id: number }) => s.id === f.seasonId);
-    expect(mine.reach).toBe((await announcementRecipients({ audience: "SEASON", seasonId: f.seasonId }, f.userIds.superUser)).length);
-    expect(sup.body.data.communityReach).toBe((await announcementRecipients({ audience: "COMMUNITY" }, f.userIds.superUser)).length);
+    // The live season's reach, from the fixtures: its student, the alumnus studying in it, its admin and its
+    // leader (4), plus the "former admin" test's author, who ends up enrolled in it. The dropped student,
+    // the Super and the Mentor are not counted.
+    expect(mine.reach).toBe(5);
+    // The other season has one enrolled student and no staff.
+    expect(sup.body.data.seasons.find((s: { id: number }) => s.id === f.otherSeasonId).reach).toBe(1);
+    // Every live account but the author, counted straight from the table, not by the function under test.
+    expect(sup.body.data.communityReach).toBe(
+      await db.user.count({ where: { deletedAt: null, id: { not: f.userIds.superUser } } }),
+    );
 
     const adm = await request(app).get("/api/v1/announcements/targets").set(as(f.tokens.admin));
     expect(adm.body.data.community).toBe(false);

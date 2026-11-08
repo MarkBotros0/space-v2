@@ -50,11 +50,11 @@ beforeAll(async () => {
   f = await seedAnnouncementFixtures(app);
   const idFor = async (label: string) =>
     (await db.user.findFirstOrThrow({ where: { email: { startsWith: `space-v2-test-${label}-` } }, select: { id: true } })).id;
-  mentorId = await idFor("newsmentor");
-  leaderId = await idFor("newsleader");
-  droppedId = await idFor("newsdropped");
-  finishedStudentId = await idFor("newsfinished");
-  studentIds = [await idFor("newsstudent"), await idFor("newsalumnus")];
+  mentorId = await idFor("announcementor");
+  leaderId = await idFor("announceleader");
+  droppedId = await idFor("announcedropped");
+  finishedStudentId = await idFor("announcefinished");
+  studentIds = [await idFor("announcestudent"), await idFor("announcealumnus")];
 });
 
 afterAll(async () => {
@@ -64,7 +64,7 @@ afterAll(async () => {
 
 describe("announcement notifications", () => {
   it("season post notifies live students, admins and leaders, not the author, super, mentor, dropped or finished-season people", async () => {
-    const author = await createTestUser("newsauthor2", "ADMIN");
+    const author = await createTestUser("announceauthor2", "ADMIN");
     await db.seasonAdmin.create({ data: { seasonId: f.seasonId, userId: author.id } });
     const token = await login(app, author.email);
     const id = await publish(token, { audience: "SEASON", seasonId: f.seasonId, title: testEventTitle("n1"), body: "Bring a pen." });
@@ -88,6 +88,15 @@ describe("announcement notifications", () => {
     expect(await rowsFor(f.userIds.superUser, id)).toBe(0);
     const row = await db.notification.findFirstOrThrow({ where: { userId: mentorId, link: `/announcements/${id}` } });
     expect(row.body).toBe("x".repeat(120));
+  });
+
+  it("cuts the push body by code point: an emoji at the limit stays whole", async () => {
+    const body = `${"x".repeat(119)}\u{1F600}tail`;
+    const id = await publish(f.tokens.superUser, { audience: "COMMUNITY", title: testEventTitle("n2e"), body });
+    await waitForRows(mentorId, id, 1);
+    await settle();
+    const row = await db.notification.findFirstOrThrow({ where: { userId: mentorId, link: `/announcements/${id}` } });
+    expect(row.body).toBe(`${"x".repeat(119)}\u{1F600}`);
   });
 
   it("turned-off announcement preference still writes the row", async () => {

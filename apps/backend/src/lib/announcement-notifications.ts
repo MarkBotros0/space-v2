@@ -58,7 +58,8 @@ export function notifyAnnouncement(post: {
       await createNotificationsBulk(recipients, {
         type: "ANNOUNCEMENT",
         title: post.title,
-        body: post.body.slice(0, ANNOUNCEMENT_PUSH_LENGTH),
+        // By code point: a slice would cut an emoji's surrogate pair in half.
+        body: Array.from(post.body).slice(0, ANNOUNCEMENT_PUSH_LENGTH).join(""),
         link: `/announcements/${post.id}`,
       });
     })(),

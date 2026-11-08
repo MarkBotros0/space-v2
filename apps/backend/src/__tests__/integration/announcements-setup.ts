@@ -44,7 +44,7 @@ export async function insertPost(data: {
       audience: data.audience,
       seasonId: data.seasonId ?? null,
       authorId: data.authorId ?? null,
-      title: testEventTitle("news"),
+      title: testEventTitle("announce"),
       body: "A plain-text body.",
       ...(data.createdAt ? { createdAt: data.createdAt } : {}),
     },
@@ -67,16 +67,16 @@ export async function seedAnnouncementFixtures(app: Express): Promise<Announceme
   const finished = await createTestSeason({ status: "COMPLETED" });
   const other = await createTestSeason();
 
-  const admin = await createTestUser("newsadmin", "ADMIN");
-  const leader = await createTestUser("newsleader", "LEADER");
-  const student = await createTestUser("newsstudent", "STUDENT");
-  const dropped = await createTestUser("newsdropped", "STUDENT");
-  const alumnus = await createTestUser("newsalumnus", "STUDENT");
-  const finishedStudent = await createTestUser("newsfinished", "STUDENT");
-  const formerAdmin = await createTestUser("newsformer", "ADMIN");
-  const otherStudent = await createTestUser("newsother", "STUDENT");
-  const mentor = await createTestUser("newsmentor", "MENTOR");
-  const superUser = await createTestUser("newssuper", "SUPER");
+  const admin = await createTestUser("announceadmin", "ADMIN");
+  const leader = await createTestUser("announceleader", "LEADER");
+  const student = await createTestUser("announcestudent", "STUDENT");
+  const dropped = await createTestUser("announcedropped", "STUDENT");
+  const alumnus = await createTestUser("announcealumnus", "STUDENT");
+  const finishedStudent = await createTestUser("announcefinished", "STUDENT");
+  const formerAdmin = await createTestUser("announceformer", "ADMIN");
+  const otherStudent = await createTestUser("announceother", "STUDENT");
+  const mentor = await createTestUser("announcementor", "MENTOR");
+  const superUser = await createTestUser("announcesuper", "SUPER");
 
   await db.user.update({ where: { id: alumnus.id }, data: { graduationYear: 2098 } });
   for (const u of [student, dropped, alumnus, finishedStudent, otherStudent]) {
@@ -84,7 +84,7 @@ export async function seedAnnouncementFixtures(app: Express): Promise<Announceme
   }
 
   const group = await db.group.create({
-    data: { seasonId: live.id, name: "News A", leaders: { create: { userId: leader.id } } },
+    data: { seasonId: live.id, name: "Announce A", leaders: { create: { userId: leader.id } } },
     select: { id: true },
   });
   await db.seasonAdmin.createMany({

@@ -15,7 +15,7 @@ export const ANNOUNCEMENT_SELECT = {
   createdAt: true,
   editedAt: true,
   season: { select: { title: true, status: true } },
-  author: { select: { name: true } },
+  author: { select: { name: true, deletedAt: true } },
 } as const;
 
 export interface AnnouncementRow {
@@ -28,14 +28,15 @@ export interface AnnouncementRow {
   createdAt: Date;
   editedAt: Date | null;
   season: { title: string; status: string } | null;
-  author: { name: string } | null;
+  author: { name: string; deletedAt: Date | null } | null;
 }
 
+/** Cut by code point, so an emoji (a surrogate pair) is never split at the limit. */
 function excerptOf(body: string): string {
-  const text = body.trim();
-  return text.length <= ANNOUNCEMENT_EXCERPT_LENGTH
-    ? text
-    : `${text.slice(0, ANNOUNCEMENT_EXCERPT_LENGTH - 1).trimEnd()}…`;
+  const chars = Array.from(body.trim());
+  return chars.length <= ANNOUNCEMENT_EXCERPT_LENGTH
+    ? chars.join("")
+    : `${chars.slice(0, ANNOUNCEMENT_EXCERPT_LENGTH - 1).join("").trimEnd()}…`;
 }
 
 function common(row: AnnouncementRow, isRead: boolean) {
@@ -45,7 +46,8 @@ function common(row: AnnouncementRow, isRead: boolean) {
     seasonId: row.seasonId,
     seasonTitle: row.season?.title ?? null,
     title: row.title,
-    authorName: row.author?.name ?? null,
+    // A deleted account (DELETE /me) reads as no author: the app says "Former member".
+    authorName: row.author && !row.author.deletedAt ? row.author.name : null,
     createdAt: row.createdAt.toISOString(),
     editedAt: row.editedAt ? row.editedAt.toISOString() : null,
     isRead,

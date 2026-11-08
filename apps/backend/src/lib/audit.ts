@@ -39,7 +39,7 @@ export type AuditOperation =
   | "season.start"
   | "season.end"
   | "season.result_correct"
-  // News posts. The subject is the post id; the season rides along as a scope
+  // Announcement posts. The subject is the post id; the season rides along as a scope
   // id (none for a community post). Never the title or body.
   | "announcement.create"
   | "announcement.update"
