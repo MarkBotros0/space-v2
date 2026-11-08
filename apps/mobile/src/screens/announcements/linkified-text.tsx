@@ -6,7 +6,7 @@ import { Text } from "../../design/ui";
 export type LinkRun = { kind: "text"; value: string } | { kind: "link"; url: string };
 
 const URL_PATTERN = /https?:\/\/[^\s<>]+/gi;
-const TRAILING = /[.,)]+$/;
+const TRAILING = /[.,;:!?'")\]]+$/;
 
 /**
  * Splits plain text into text and link runs. Only `http(s)://` URLs are links
@@ -45,7 +45,7 @@ export function LinkifiedText({ text }: { text: string }) {
             variant="body"
             accessibilityRole="link"
             className="text-primary"
-            onPress={() => void Linking.openURL(run.url)}
+            onPress={() => void Linking.openURL(run.url).catch(() => undefined)}
           >
             {run.url}
           </Text>

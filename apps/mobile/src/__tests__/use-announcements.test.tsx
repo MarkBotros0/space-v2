@@ -62,7 +62,10 @@ describe("useAnnouncementFeed", () => {
       await result.current.fetchNextPage();
     });
     expect(api.get).toHaveBeenLastCalledWith("/api/v1/announcements?cursor=c1");
-    expect(result.current.data?.pages.flatMap((p) => p.items.map((i) => i.id))).toEqual([2, 1]);
+    // Under load the second page can land a render after fetchNextPage resolves.
+    await waitFor(() =>
+      expect(result.current.data?.pages.flatMap((p) => p.items.map((i) => i.id))).toEqual([2, 1]),
+    );
     expect(result.current.hasNextPage).toBe(false);
   });
 
