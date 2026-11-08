@@ -1,0 +1,199 @@
+import { useEffect, useState } from "react";
+import { View } from "react-native";
+import {
+  ANNOUNCEMENT_BODY_MAX,
+  ANNOUNCEMENT_TITLE_MAX,
+  createAnnouncementRequestSchema,
+  type AnnouncementTargetsResponse,
+  type CreateAnnouncementRequest,
+} from "@space/shared";
+
+import { SaveBar } from "../../design/layout/save-bar";
+import { Screen } from "../../design/layout/screen";
+import {
+  FormField,
+  Input,
+  SegmentedControl,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Text,
+  Textarea,
+} from "../../design/ui";
+import { ConfirmPostSheet } from "./confirm-post-sheet";
+
+/** The counter shows once the message is this long. */
+const COUNTER_FROM = 4000;
+const AUDIENCE_OPTIONS = [
+  { value: "COMMUNITY", label: "Everyone" },
+  { value: "SEASON", label: "A season" },
+];
+
+export type PostFormValues = { title: string; body: string };
+
+type Fields = { title?: string; body?: string; season?: string };
+
+/** Field errors from the shared schema, keyed by the field they belong to. */
+function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Fields {
+  const out: Fields = {};
+  for (const issue of issues) {
+    const key = issue.path[0];
+    if (key === "title") out.title ??= "Enter a title (up to 120 characters).";
+    if (key === "body") out.body ??= "Enter a message (up to 5000 characters).";
+  }
+  return out;
+}
+
+type Props = {
+  screenTitle: string;
+  saveLabel: string;
+  /** A failed write's message, drawn as a callout above the fields. */
+  error: string | null;
+  pending: boolean;
+  initial?: PostFormValues;
+} & (
+  | {
+      mode: "create";
+      /** New post: who the author may post to. */
+      targets: AnnouncementTargetsResponse;
+      onSubmit: (request: CreateAnnouncementRequest) => void;
+    }
+  | {
+      mode: "edit";
+      /** Edit: where it went, read-only. */
+      toLabel: string;
+      onSubmit: (values: PostFormValues) => void;
+    }
+);
+
+/** The composer for both screens; the audience is chosen on New and read-only on Edit. */
+export function PostForm(props: Props) {
+  const { screenTitle, saveLabel, error, pending, initial } = props;
+  const targets = props.mode === "create" ? props.targets : null;
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [body, setBody] = useState(initial?.body ?? "");
+  const [errors, setErrors] = useState<Fields>({});
+  const [confirming, setConfirming] = useState(false);
+
+  const community = targets?.community ?? false;
+  const seasons = targets?.seasons ?? [];
+  const canChoose = community && seasons.length > 0;
+  const [audience, setAudience] = useState<"COMMUNITY" | "SEASON">(community ? "COMMUNITY" : "SEASON");
+  const [seasonId, setSeasonId] = useState<number | null>(seasons.length === 1 ? seasons[0]!.id : null);
+  const toSeason = targets !== null && (canChoose ? audience === "SEASON" : !community);
+  const chosen = toSeason ? (seasons.find((s) => s.id === seasonId) ?? null) : null;
+  const pickSeason = toSeason && seasons.length > 1;
+
+  // A failed post closes the confirm so its message, above the fields, is what shows.
+  useEffect(() => {
+    if (error) setConfirming(false);
+  }, [error]);
+
+  const toLabel = props.mode === "edit" ? props.toLabel : toSeason ? (chosen?.title ?? "") : "Everyone";
+  const reach = toSeason ? (chosen?.reach ?? 0) : (targets?.communityReach ?? 0);
+
+  function buildRequest(): CreateAnnouncementRequest | null {
+    const base = { title, body };
+    const parsed = createAnnouncementRequestSchema.safeParse(
+      toSeason ? { audience: "SEASON", seasonId: seasonId ?? 0, ...base } : { audience: "COMMUNITY", ...base },
+    );
+    const errs = parsed.success ? {} : fieldErrors(parsed.error.issues);
+    if (toSeason && chosen === null) errs.season = "Choose a season.";
+    setErrors(errs);
+    return parsed.success && Object.keys(errs).length === 0 ? parsed.data : null;
+  }
+
+  function submit(): void {
+    const request = buildRequest();
+    if (request === null) return;
+    if (props.mode === "edit") props.onSubmit({ title: request.title, body: request.body });
+    else setConfirming(true);
+  }
+
+  return (
+    <Screen
+      title={screenTitle}
+      footer={<SaveBar label={saveLabel} onPress={submit} loading={pending && !confirming} disabled={pending} />}
+    >
+      <View className="flex-col gap-4">
+        {error ? (
+          <View className="rounded-control border border-destructive bg-surface px-3 py-2.5">
+            <Text variant="subhead" className="text-bad" accessibilityRole="alert">
+              {error}
+            </Text>
+          </View>
+        ) : null}
+
+        {canChoose ? (
+          <SegmentedControl
+            options={AUDIENCE_OPTIONS}
+            value={audience}
+            onChange={(v) => setAudience(v as "COMMUNITY" | "SEASON")}
+          />
+        ) : null}
+        {pickSeason ? (
+          <FormField label="Season" error={errors.season}>
+            <Select
+              items={seasons.map((s) => ({ value: String(s.id), label: s.title }))}
+              value={seasonId === null ? null : String(seasonId)}
+              onValueChange={(v) => setSeasonId(Number(v))}
+            >
+              <SelectTrigger accessibilityLabel="Season">
+                <SelectValue placeholder="Choose a season" />
+              </SelectTrigger>
+              <SelectContent>
+                {seasons.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    {s.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FormField>
+        ) : (
+          <Text variant="headline" className="text-foreground">{`To: ${toLabel}`}</Text>
+        )}
+
+        <FormField label="Title" error={errors.title}>
+          <Input
+            accessibilityLabel="Title"
+            value={title}
+            maxLength={ANNOUNCEMENT_TITLE_MAX}
+            onChangeText={setTitle}
+            returnKeyType="next"
+          />
+        </FormField>
+        <FormField label="Message" error={errors.body}>
+          <Textarea
+            accessibilityLabel="Message"
+            value={body}
+            maxLength={ANNOUNCEMENT_BODY_MAX}
+            onChangeText={setBody}
+            className="min-h-40"
+          />
+          {body.length > COUNTER_FROM ? (
+            <Text variant="caption" className="text-muted-foreground">
+              {`${body.length} / ${ANNOUNCEMENT_BODY_MAX}`}
+            </Text>
+          ) : null}
+        </FormField>
+      </View>
+
+      {targets ? (
+        <ConfirmPostSheet
+          open={confirming}
+          audienceLabel={toLabel}
+          reach={reach}
+          pending={pending}
+          onClose={() => setConfirming(false)}
+          onConfirm={() => {
+            const request = buildRequest();
+            if (request !== null && props.mode === "create") props.onSubmit(request);
+          }}
+        />
+      ) : null}
+    </Screen>
+  );
+}
