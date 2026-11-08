@@ -164,4 +164,21 @@ describe("mutations invalidate announcements.all", () => {
     });
     expect(api.post).toHaveBeenCalledWith("/api/v1/announcements/5/read");
   });
+
+  it("delete removes the post's own detail query before invalidating", async () => {
+    api.delete.mockResolvedValue({ status: 204 });
+    client.setQueryData(queryKeys.announcements.detail(5), detail(5));
+    const order: string[] = [];
+    jest.spyOn(client, "removeQueries").mockImplementation(() => void order.push("remove"));
+    jest.spyOn(client, "invalidateQueries").mockImplementation(() => {
+      order.push("invalidate");
+      return Promise.resolve();
+    });
+    const { result } = renderHook(() => useDeleteAnnouncement(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync(5);
+    });
+    expect(order).toEqual(["remove", "invalidate"]);
+    expect(client.removeQueries).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.detail(5) });
+  });
 });

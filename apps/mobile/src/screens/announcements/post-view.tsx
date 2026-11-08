@@ -6,6 +6,7 @@ import type { AnnouncementDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, Text } from "../../design/ui";
+import { toast } from "../../design/ui/toaster";
 import { useDeleteAnnouncement, useMarkAnnouncementRead } from "../../hooks/use-announcements";
 import { apiErrorMessage } from "../../lib/api-error";
 import { AudienceChip } from "./audience-chip";
@@ -37,7 +38,7 @@ export function PostView({ post }: { post: AnnouncementDetail }) {
         {post.title}
       </Text>
       <Text variant="caption" className="text-muted-foreground">
-        {announcementMeta(post)}
+        {announcementMeta(post, true)}
       </Text>
       <LinkifiedText text={post.body} />
       {post.canEdit || post.canDelete ? (
@@ -82,6 +83,7 @@ export function PostView({ post }: { post: AnnouncementDetail }) {
           remove.mutate(id, {
             onSuccess: () => {
               setConfirming(false);
+              toast.success("Announcement deleted");
               router.dismissTo("/announcements");
             },
             onError: (err) => {

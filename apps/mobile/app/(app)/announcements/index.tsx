@@ -26,7 +26,18 @@ export default function AnnouncementsScreen() {
   if (feed.isPending) body = <RouteSkeleton />;
   else if (feed.isError) body = <RouteError onRetry={() => void feed.refetch()} />;
   else if (items.length === 0)
-    body = <EmptyState icon={NAV_ICONS.announcements} title="No announcements yet" />;
+    body = (
+      <EmptyState
+        icon={NAV_ICONS.announcements}
+        title="No announcements yet"
+        description={
+          canPost
+            ? `Post something for ${targets.data?.community ? "everyone" : "your season"}`
+            : undefined
+        }
+        action={canPost ? { label: "New announcement", onPress: () => router.push("/announcements/new") } : undefined}
+      />
+    );
   else
     body = (
       <View className="flex-col gap-3">

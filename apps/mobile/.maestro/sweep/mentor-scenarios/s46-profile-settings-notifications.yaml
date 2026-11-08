@@ -1,47 +1,47 @@
-# UI sweep s46 — Profile, Settings and notifications as a mentor. Read-only: nothing is saved, the flow only
-# opens, scrolls, types and looks.
+# UI sweep s46 — More, Notifications and Notification settings as a mentor. Read-only: nothing is saved,
+# the flow only opens, scrolls and looks. Sign out is shot, never tapped, and notification rows are never
+# tapped (opening one marks it read).
 appId: com.jpc.space
 ---
 - runFlow:
     file: ../_sign-in.yaml
     env:
       EMAIL: ${MENTOR_EMAIL}
-# A mentor has no More tab: Profile is the way to Settings and Sign out.
-- openLink: spacev2://profile
+# More holds the name row (Profile), Announcements, Notifications, the theme and Sign out. Settings and
+# Sign out are no longer on Profile.
+- openLink: spacev2://more
 - extendedWaitUntil:
-    visible: 'Sign out'
+    visible: 'Account, settings, and more places to go.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s46-01-profile
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Settings'
-- extendedWaitUntil:
-    visible: 'Profile, password, and notification preferences\.'
-    timeout: 40000
+- takeScreenshot: s46-01-more-top
+- scrollUntilVisible:
+    element: 'Announcements.*'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s46-02-settings
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Name'
+- takeScreenshot: s46-02-more-announcements
+- scrollUntilVisible:
+    element: 'Notifications.*'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s46-03-settings-name-kbd
-- hideKeyboard
+- takeScreenshot: s46-03-more-notifications
 # Last item has to clear the floating tab bar and the system bar.
-- scroll
-- scroll
-- scroll
+- scrollUntilVisible:
+    element: 'Sign out'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s46-04-settings-bottom
-# Rows are never tapped: opening one marks it read.
+- takeScreenshot: s46-04-more-sign-out
+# Notification settings open from the gear on Notifications, not from More.
 - openLink: spacev2://notifications
 - extendedWaitUntil:
     visible: '\d+ unread'
@@ -49,10 +49,20 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s46-05-notifications
-# Last item has to clear the floating tab bar and the system bar.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Notification settings'
+- extendedWaitUntil:
+    visible: 'Notification settings'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s46-06-notification-settings
+# Last switch has to clear the system bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s46-06-notifications-bottom
+- takeScreenshot: s46-07-notification-settings-bottom

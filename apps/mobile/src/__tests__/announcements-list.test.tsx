@@ -86,6 +86,41 @@ describe("AnnouncementsScreen", () => {
     expect(await screen.findByText("No announcements yet")).toBeTruthy();
   });
 
+  it("offers a New announcement action on an empty feed to someone who can post", async () => {
+    serve([], { community: false, communityReach: 0, seasons: [{ id: 4, code: "S4", title: "Spring", reach: 3 }] });
+    renderWithProviders(<AnnouncementsScreen />);
+    expect(await screen.findByText("Post something for your season")).toBeTruthy();
+    fireEvent.press(screen.getByText("New announcement"));
+    expect(mockPush).toHaveBeenCalledWith("/announcements/new");
+  });
+
+  it("says everyone on an empty feed when a Super can post to the community", async () => {
+    serve([], { community: true, communityReach: 9, seasons: [] });
+    renderWithProviders(<AnnouncementsScreen />);
+    expect(await screen.findByText("Post something for everyone")).toBeTruthy();
+  });
+
+  it("offers no post action on an empty feed to someone who cannot post", async () => {
+    serve([], noTargets);
+    renderWithProviders(<AnnouncementsScreen />);
+    await screen.findByText("No announcements yet");
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/announcements/targets"));
+    expect(screen.queryByText("New announcement")).toBeNull();
+  });
+
+  it("shows the error state and retries the feed", async () => {
+    get.mockImplementation((url: string) =>
+      url.startsWith("/api/v1/announcements/targets") ? ok(noTargets) : Promise.reject(new Error("boom")),
+    );
+    renderWithProviders(<AnnouncementsScreen />);
+    const retry = await screen.findByText("Try again");
+    const before = get.mock.calls.filter(([u]) => u === "/api/v1/announcements").length;
+    fireEvent.press(retry);
+    await waitFor(() =>
+      expect(get.mock.calls.filter(([u]) => u === "/api/v1/announcements").length).toBeGreaterThan(before),
+    );
+  });
+
   it("loads the next page on demand", async () => {
     serve([listItem(1)], noTargets, "c1");
     renderWithProviders(<AnnouncementsScreen />);

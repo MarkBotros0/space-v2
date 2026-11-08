@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AxiosError, type AxiosResponse } from "axios";
 
+jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
@@ -11,6 +12,7 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "7" }),
 }));
 
+import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { renderWithProviders } from "./helpers/render";
 import { detailItem, ok } from "./helpers/announcements";
@@ -33,7 +35,7 @@ describe("AnnouncementScreen", () => {
     renderWithProviders(<AnnouncementScreen />);
     expect((await screen.findAllByText("Post 7")).length).toBeGreaterThan(0);
     expect(screen.getByText("Spring 2026")).toBeTruthy();
-    expect(screen.getByText("Sam Author · 3 Nov")).toBeTruthy();
+    expect(screen.getByText(/^Sam Author · 3 Nov 2026, \d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByRole("link")).toBeTruthy();
   });
 
@@ -85,6 +87,24 @@ describe("AnnouncementScreen", () => {
     fireEvent.press(confirm[confirm.length - 1]!);
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/announcements/7"));
     await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/announcements"));
+    expect(toast.success).toHaveBeenCalledWith("Announcement deleted");
+  });
+
+  it("shows the error and stays when the delete fails", async () => {
+    get.mockReturnValue(ok(detailItem(7, { canDelete: true })));
+    del.mockRejectedValue(
+      new AxiosError("bad", "ERR_BAD_REQUEST", undefined, undefined, {
+        status: 409,
+        data: { error: { code: "conflict", message: "Season is locked." } },
+      } as AxiosResponse),
+    );
+    renderWithProviders(<AnnouncementScreen />);
+    fireEvent.press(await screen.findByLabelText("Delete announcement"));
+    const confirm = screen.getAllByText("Delete");
+    fireEvent.press(confirm[confirm.length - 1]!);
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(mockDismissTo).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("says the post was removed on a 404", async () => {

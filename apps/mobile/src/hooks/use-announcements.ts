@@ -136,10 +136,16 @@ export function useUpdateAnnouncement(id: number) {
 
 export function useDeleteAnnouncement() {
   const invalidate = useInvalidateAnnouncements();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: number): Promise<void> => {
       await apiClient.delete(`/api/v1/announcements/${id}`);
     },
-    onSuccess: invalidate,
+    onSuccess: (_data, id) => {
+      // Drop the deleted post's own query first: refetching it would 404 and flash
+      // "This post was removed" while the screen pops.
+      queryClient.removeQueries({ queryKey: queryKeys.announcements.detail(id) });
+      invalidate();
+    },
   });
 }
