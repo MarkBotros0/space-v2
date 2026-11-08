@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
+import type { AnnouncementListItem } from "@space/shared";
 
 import { usePressDim } from "../../design/motion";
 import { PillButton, Text } from "../../design/ui";
@@ -13,11 +14,21 @@ import { AudienceChip } from "./audience-chip";
  * unread (never a skeleton or an error on Home). Unread is said in words.
  */
 export function AnnouncementsHomeCard() {
-  const router = useRouter();
-  const press = usePressDim();
   const { data, isPending, isError } = useAnnouncementUnread();
   if (isPending || isError || !data || data.count === 0 || data.latest === null) return null;
-  const { count, latest } = data;
+  return <AnnouncementsHomeCardView count={data.count} latest={data.latest} />;
+}
+
+/** The card itself, from data in hand: the hook's wrapper above, and the design catalogue's fixed samples. */
+export function AnnouncementsHomeCardView({
+  count,
+  latest,
+}: {
+  count: number;
+  latest: AnnouncementListItem;
+}) {
+  const router = useRouter();
+  const press = usePressDim();
   const unread = `${count} unread`;
   // The label replaces the children for a screen reader, so it must name the post it opens.
   const label = `Announcements, ${unread}. ${latest.title}${count > 1 ? `, and ${count - 1} more` : ""}`;

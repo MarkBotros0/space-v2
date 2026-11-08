@@ -19,6 +19,7 @@ import { writeFileSync } from "node:fs";
 
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
+import { seedAnnouncementScenario } from "./seed-sweep/announcements";
 import { seedActivity } from "./seed-sweep/activity";
 import { seedCommunityScenario } from "./seed-sweep/community";
 import { seedAlumniScenario, seedMentorScenario, seedSuperScenario } from "./seed-sweep/more-roles";
@@ -54,6 +55,7 @@ async function main(): Promise<void> {
   await seedMentorScenario(people);
   await seedAlumniScenario(people);
   const community = await seedCommunityScenario(people);
+  await seedAnnouncementScenario(people);
 
   const { student, alumni, leader, admin, superUser, mentor } = people;
   // `dropped` is scenarios.ts's student3; the others are the community-model states.

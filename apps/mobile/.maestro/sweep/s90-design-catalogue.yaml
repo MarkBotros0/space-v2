@@ -185,3 +185,14 @@ appId: com.jpc.space
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 3000
+
+# Announcements: the audience chips, the post card (unread, read) and Home's card, all fixed data.
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: announcements
+- takeScreenshot: s90-16-announcements
+- scroll
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s90-17-announcements-home-card

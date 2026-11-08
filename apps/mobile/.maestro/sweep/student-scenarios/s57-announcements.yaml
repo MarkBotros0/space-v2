@@ -1,0 +1,54 @@
+# UI sweep s57 — Announcements as a student: Home's card, More's row, the feed (no New post button
+# for a student) and a post. Needs the seeded posts (apps/backend/scripts/seed-sweep/announcements.ts).
+# Read-only: nothing is saved. Opening a post marks it read, so the Home shot comes first.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${STUDENT_EMAIL}
+- openLink: spacev2://dashboard
+- extendedWaitUntil:
+    visible: 'Hi, .*'
+    timeout: 40000
+- scrollUntilVisible:
+    element: '\[Sweep\] .* test announcement'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s57-01-home-card
+- openLink: spacev2://more
+- extendedWaitUntil:
+    visible: 'Account, settings, and more places to go.'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s57-02-more
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Announcements.*'
+- extendedWaitUntil:
+    visible: '\[Sweep\] .* test announcement'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s57-03-feed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s57-04-feed-bottom
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '\[Sweep\] Community test announcement'
+- extendedWaitUntil:
+    visible: 'This is fake text for the UI sweep.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s57-05-post

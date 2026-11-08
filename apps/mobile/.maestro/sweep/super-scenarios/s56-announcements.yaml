@@ -1,0 +1,86 @@
+# UI sweep s56 — Announcements as a super admin: Home's card, More's row, the feed, a post, the
+# New announcement form with the keyboard open on Message, and its confirm sheet (then Cancel).
+# Needs the seeded posts (apps/backend/scripts/seed-sweep/announcements.ts). Read-only: nothing is
+# posted or saved; Post is tapped only to open the confirm sheet, and the sheet's Post is never
+# tapped. Opening a post marks it read, so the Home shot comes first.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${SUPER_EMAIL}
+- openLink: spacev2://dashboard
+- extendedWaitUntil:
+    visible: '(?i)community'
+    timeout: 40000
+- scrollUntilVisible:
+    element: '\[Sweep\] Community test announcement'
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s56-01-home-card
+- openLink: spacev2://more
+- extendedWaitUntil:
+    visible: 'Account, settings, and more places to go.'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s56-02-more
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Announcements.*'
+- extendedWaitUntil:
+    visible: '\[Sweep\] Community test announcement'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s56-03-feed
+# Last item has to clear the floating tab bar and the system bar.
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s56-04-feed-bottom
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '\[Sweep\] Community test announcement'
+- extendedWaitUntil:
+    visible: 'This is fake text for the UI sweep.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s56-05-post
+- openLink: spacev2://announcements/new
+- extendedWaitUntil:
+    visible: 'New announcement'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s56-06-new
+- tapOn: 'Title'
+- inputText: 'Sweep test title'
+- tapOn: 'Message'
+- inputText: 'Sweep test message, never posted.'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s56-07-new-message-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 3000
+# Post only opens the confirm sheet; the sheet's Post is never tapped.
+- tapOn: 'Post'
+- extendedWaitUntil:
+    visible: 'Post to Everyone\?'
+    timeout: 10000
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s56-08-confirm-sheet
+- tapOn: 'Cancel'
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible: 'Post to Everyone\?'
+- takeScreenshot: s56-09-confirm-cancelled
