@@ -74,7 +74,7 @@ describe("AnnouncementsHomeCard", () => {
     expect(screen.getByText("Announcements")).toBeTruthy();
     expect(screen.getByText("Everyone")).toBeTruthy();
     expect(screen.getByText("and 2 more")).toBeTruthy();
-    expect(screen.getByLabelText("Announcements, 3 unread")).toBeTruthy();
+    expect(screen.getByLabelText("Announcements, 3 unread. Camp dates, and 2 more")).toBeTruthy();
   });
 
   it("says nothing about more at a count of 1", async () => {
@@ -82,7 +82,7 @@ describe("AnnouncementsHomeCard", () => {
     renderWithProviders(<AnnouncementsHomeCard />);
     expect(await screen.findByText("Camp dates")).toBeTruthy();
     expect(screen.queryByText(/more/)).toBeNull();
-    expect(screen.getByLabelText("Announcements, 1 unread")).toBeTruthy();
+    expect(screen.getByLabelText("Announcements, 1 unread. Camp dates")).toBeTruthy();
   });
 
   it("opens the post on press and the list from See all", async () => {

@@ -16,10 +16,10 @@ import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { firstName } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { atRiskReason } from "./at-risk-reason";
 import { LeaderSessionSection, isOnTheDay } from "./session-section";
 import { useLiveTodayRefresh } from "./use-live-refresh";
-import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 
 function Body({ data }: { data: StaffSeasonDashboard }) {
   const router = useRouter();

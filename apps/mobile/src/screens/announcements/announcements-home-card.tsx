@@ -19,6 +19,8 @@ export function AnnouncementsHomeCard() {
   if (isPending || isError || !data || data.count === 0 || data.latest === null) return null;
   const { count, latest } = data;
   const unread = `${count} unread`;
+  // The label replaces the children for a screen reader, so it must name the post it opens.
+  const label = `Announcements, ${unread}. ${latest.title}${count > 1 ? `, and ${count - 1} more` : ""}`;
 
   return (
     <View className="flex-col gap-2">
@@ -30,7 +32,7 @@ export function AnnouncementsHomeCard() {
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Announcements, ${unread}`}
+        accessibilityLabel={label}
         onPress={() =>
           router.push({ pathname: "/announcements/[id]", params: { id: String(latest.id) } })
         }

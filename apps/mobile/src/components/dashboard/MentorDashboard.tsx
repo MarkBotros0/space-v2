@@ -13,8 +13,8 @@ import { useMentorSummary } from "../../hooks/use-follow-ups";
 import { useVisibleNotes } from "../../hooks/use-notes";
 import { firstName } from "../../lib/format";
 import { RecentNotesGroup } from "../../screens/mentor/recent-notes-group";
-import { useSessionStore } from "../../store/session";
 import { AnnouncementsHomeCard } from "../../screens/announcements/announcements-home-card";
+import { useSessionStore } from "../../store/session";
 import { UpcomingEventsCard } from "./UpcomingEventsCard";
 
 const NOTES_LIMIT = 5;
