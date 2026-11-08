@@ -9,7 +9,7 @@ import { renderWithProviders } from "./helpers/render";
 describe("ShellFrame", () => {
   it("adds a RefreshControl wired to onRefresh", () => {
     const onRefresh = jest.fn();
-    render(
+    renderWithProviders(
       <ShellFrame refreshing={false} onRefresh={onRefresh}>
         <RNText>body</RNText>
       </ShellFrame>,
@@ -21,7 +21,7 @@ describe("ShellFrame", () => {
   });
 
   it("has no RefreshControl without onRefresh", () => {
-    render(
+    renderWithProviders(
       <ShellFrame>
         <RNText>body</RNText>
       </ShellFrame>,
