@@ -6,6 +6,7 @@ import type { AnnouncementListItem } from "@space/shared";
 import { usePressDim } from "../../design/motion";
 import { PillButton, Text } from "../../design/ui";
 import { useAnnouncementUnread } from "../../hooks/use-announcements";
+import { useRefreshOnResume } from "../../hooks/use-refresh-on-resume";
 import { AudienceChip } from "./audience-chip";
 
 /**
@@ -14,7 +15,9 @@ import { AudienceChip } from "./audience-chip";
  * unread (never a skeleton or an error on Home). Unread is said in words.
  */
 export function AnnouncementsHomeCard() {
-  const { data, isPending, isError } = useAnnouncementUnread();
+  const { data, isPending, isError, refetch } = useAnnouncementUnread();
+  // Home tabs stay mounted: back on the screen or in the app, a post made meanwhile shows.
+  useRefreshOnResume(() => void refetch({ cancelRefetch: false }));
   if (isPending || isError || !data || data.count === 0 || data.latest === null) return null;
   return <AnnouncementsHomeCardView count={data.count} latest={data.latest} />;
 }

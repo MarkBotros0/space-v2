@@ -104,26 +104,50 @@ describe("Announcements card placement on Home", () => {
     expect(at("Camp dates")).toBeLessThan(at("Week 6"));
   });
 
-  it("admin: the card first, before the live session", async () => {
+  it("admin, session in progress: the live session, then the card", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     serveStaff(get, { table: staffRoutes({ [ANNOUNCEMENTS]: unread }) });
     renderWithProviders(<DashboardScreen />);
     await screen.findByText("Camp dates");
     await screen.findByText("Happening now");
-    expect(at("Camp dates")).toBeGreaterThanOrEqual(0);
-    expect(at("Camp dates")).toBeLessThan(at("Happening now"));
+    expect(at("Happening now")).toBeGreaterThanOrEqual(0);
+    expect(at("Happening now")).toBeLessThan(at("Camp dates"));
   });
 
-  it("leader: the card first, before the next session", async () => {
-    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5, 6] }, { name: "Lena Leader" }));
-    const dayOf = { ...liveSession, dayKey: deviceTodayKey(), isInProgress: false, youtubeUrl: null };
-    serve({
-      "/api/v1/seasons": { seasons: [seasonRow] },
-      "/api/v1/me/dashboard?seasonId=7": { ...staffDashboard("groups"), nextSession: dayOf },
-      [EVENTS]: events,
-      [UNREAD]: { unreadCount: 0 },
-      [ANNOUNCEMENTS]: unread,
+  it("admin, nothing in progress: the card first, before the next session", async () => {
+    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    const idle = { ...staffDashboard("season"), nextSession: { ...liveSession, isInProgress: false } };
+    serveStaff(get, {
+      table: staffRoutes({ [ANNOUNCEMENTS]: unread, "/api/v1/me/dashboard?seasonId=7": idle }),
     });
+    renderWithProviders(<DashboardScreen />);
+    await screen.findByText("Camp dates");
+    await screen.findByText("Next session");
+    expect(at("Camp dates")).toBeGreaterThanOrEqual(0);
+    expect(at("Camp dates")).toBeLessThan(at("Next session"));
+  });
+
+  const leaderRoutes = (nextSession: unknown) => ({
+    "/api/v1/seasons": { seasons: [seasonRow] },
+    "/api/v1/me/dashboard?seasonId=7": { ...staffDashboard("groups"), nextSession },
+    [EVENTS]: events,
+    [UNREAD]: { unreadCount: 0 },
+    [ANNOUNCEMENTS]: unread,
+  });
+
+  it("leader on a session day: the session, then the card", async () => {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5, 6] }, { name: "Lena Leader" }));
+    serve(leaderRoutes({ ...liveSession, dayKey: deviceTodayKey(), isInProgress: false, youtubeUrl: null }));
+    renderWithProviders(<LeaderToday />);
+    await screen.findByText("Camp dates");
+    await screen.findByText("Next session");
+    expect(at("Next session")).toBeGreaterThanOrEqual(0);
+    expect(at("Next session")).toBeLessThan(at("Camp dates"));
+  });
+
+  it("leader on a quiet day: the card first, before the next session", async () => {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5, 6] }, { name: "Lena Leader" }));
+    serve(leaderRoutes({ ...liveSession, isInProgress: false, youtubeUrl: null }));
     renderWithProviders(<LeaderToday />);
     await screen.findByText("Camp dates");
     await screen.findByText("Next session");

@@ -21,6 +21,7 @@
  * excepted, above): the screens still on `ShellFrame` render their own
  * `PageTitle` in the content until their batch moves them here.
  */
+import { useQueryClient } from "@tanstack/react-query";
 import { cssInterop } from "nativewind";
 import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, Platform, RefreshControl, View } from "react-native";
@@ -32,6 +33,7 @@ import Animated, {
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { queryKeys } from "../../lib/query-keys";
 import { cn } from "../lib/cn";
 import { usePullRefresh } from "../lib/pull-refresh";
 import { useKeyboardInset } from "../lib/keyboard-inset";
@@ -158,7 +160,17 @@ export function Screen({
   const back = useEffectiveBack(backProp);
   const reduced = useReducedMotion();
   const { onScrollDirection } = useTabBarScroll();
-  const pull = usePullRefresh(refreshing, onRefresh);
+  // Home's pull also re-reads the Announcements unread count its card shows (and
+  // More's count): the six Homes build their own refresh, so it is added here once.
+  const queryClient = useQueryClient();
+  const refresh =
+    home && onRefresh
+      ? () => {
+          onRefresh();
+          void queryClient.refetchQueries({ queryKey: queryKeys.announcements.unread(), type: "active" });
+        }
+      : onRefresh;
+  const pull = usePullRefresh(refreshing, refresh);
 
   const scrollY = useSharedValue(0);
   const titleBottom = useSharedValue(NOT_MEASURED);

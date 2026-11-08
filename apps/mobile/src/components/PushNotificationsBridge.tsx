@@ -39,6 +39,7 @@ export function PushNotificationsBridge() {
     const sub = Notifications.addNotificationReceivedListener(() => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.announcements.all });
     });
     return () => sub.remove();
   }, [queryClient]);

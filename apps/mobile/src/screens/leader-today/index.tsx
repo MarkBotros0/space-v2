@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
 import { ClipboardCheck, FileText, TriangleAlert } from "lucide-react-native";
 import { View } from "react-native";
@@ -21,7 +22,8 @@ import { atRiskReason } from "./at-risk-reason";
 import { LeaderSessionSection, isOnTheDay } from "./session-section";
 import { useLiveTodayRefresh } from "./use-live-refresh";
 
-function Body({ data }: { data: StaffSeasonDashboard }) {
+/** `card` is Home's Announcements card, placed right under a session that is on its day. */
+function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
   const router = useRouter();
   const { progress, cohort, submissions, quizzes } = data;
   // The figures count this season only, so the leader's queue opens on the
@@ -62,6 +64,7 @@ function Body({ data }: { data: StaffSeasonDashboard }) {
   return (
     <>
       <LeaderSessionSection session={data.nextSession} checkIn={data.leaderSession} />
+      {card}
       {/* Owner 2026-11-07: the group's season card sits right under the session. */}
       <SeasonPulse
         title={data.groups.map((g) => g.name).join(", ") || data.season.title}
@@ -130,6 +133,7 @@ export function LeaderToday() {
 
   const named = (name ?? "").trim() !== "";
   const data = dash.data;
+  const onTheDay = !state && !!data && isOnTheDay(data.nextSession);
   return (
     <Screen
       home
@@ -140,8 +144,9 @@ export function LeaderToday() {
       onRefresh={refresh}
     >
       <View className="flex-col gap-4">
-        <AnnouncementsHomeCard />
-        {state ?? (data ? <Body data={data} /> : null)}
+        {/* Under anything time-critical: on a session day the card follows the session section. */}
+        {onTheDay ? null : <AnnouncementsHomeCard />}
+        {state ?? (data ? <Body data={data} card={onTheDay ? <AnnouncementsHomeCard /> : null} /> : null)}
         {/* V2-ONLY no-season branch keeps the events card (D19). */}
         {noSeason || data ? <UpcomingEventsCard query={events} /> : null}
       </View>

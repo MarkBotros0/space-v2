@@ -63,4 +63,12 @@ describe("PushNotificationsBridge", () => {
     mockReceived?.();
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.notifications.all });
   });
+
+  it("refreshes the announcements feed and unread count when a push arrives", () => {
+    const client = new QueryClient();
+    const spy = jest.spyOn(client, "invalidateQueries");
+    mount(client);
+    mockReceived?.();
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.all });
+  });
 });

@@ -87,12 +87,18 @@ export function AdminToday() {
     );
   else {
     const next = dash.data?.nextSession;
+    const hero =
+      dash.data && next ? (
+        <LiveSessionHero session={fromDashboardSession(next, dash.data.season.title)} />
+      ) : null;
+    const live = next?.isInProgress === true;
     body = (
       <>
-        {dash.data && next ? (
-          <LiveSessionHero session={fromDashboardSession(next, dash.data.season.title)} />
-        ) : null}
+        {/* Time-critical first (a session in progress, overdue seasons), then the card. */}
+        {live ? hero : null}
         <OverdueCallout />
+        <AnnouncementsHomeCard />
+        {live ? null : hero}
         {today.isPending ? (
           <RouteSkeleton />
         ) : (
@@ -127,7 +133,10 @@ export function AdminToday() {
       onRefresh={refresh}
     >
       <View className="flex-col gap-4">
-        <AnnouncementsHomeCard />
+        {/* A season body places the card itself, under what is time-critical. */}
+        {current.isPending || current.isError || current.seasonId === null ? (
+          <AnnouncementsHomeCard />
+        ) : null}
         {body}
       </View>
     </Screen>
