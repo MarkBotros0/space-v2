@@ -12,6 +12,7 @@ import {
   FilterButton,
   GroupedList,
   ListRow,
+  PillButton,
   SearchField,
   toast,
 } from "../../../src/design/ui";
@@ -174,14 +175,20 @@ export default function CommunityScreen() {
               onOpen={(row) =>
                 router.push({ pathname: "/user/[id]", params: { id: String(row.id) } })
               }
-              renderActions={(row) =>
+              renderAction={(row) =>
                 // Row-level invite: only accounts that have never activated can be
-                // invited (R14) — the server enforces it; the button only renders
+                // invited (R14) — the server enforces it; the pill only renders
                 // where it can work.
                 row.deletedAt === null && (row.status === "pending" || row.status === "invited") ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
+                  <PillButton
+                    label={
+                      sendInvite.isPending && sendInvite.variables?.userId === row.id
+                        ? "Sending…"
+                        : row.status === "invited"
+                          ? "Resend"
+                          : "Invite"
+                    }
+                    accessibilityLabel={`${row.status === "invited" ? "Resend invite to" : "Send invite to"} ${row.name || row.email}`}
                     disabled={sendInvite.isPending}
                     onPress={() =>
                       sendInvite.mutate(
@@ -192,9 +199,7 @@ export default function CommunityScreen() {
                         },
                       )
                     }
-                  >
-                    {row.status === "invited" ? "Resend invite" : "Send invite"}
-                  </Button>
+                  />
                 ) : null
               }
             />

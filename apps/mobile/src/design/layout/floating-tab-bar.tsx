@@ -1,7 +1,7 @@
 import type { BottomTabBarProps } from "expo-router/js-tabs";
 import type { NavItem } from "@space/shared";
 import { BlurView } from "expo-blur";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,10 +9,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { routeNameForHref } from "../../lib/route-names";
 import { useScreenReaderEnabled } from "../lib/screen-reader";
 import { shadowStyle } from "../lib/shadow";
-import { DURATION, useReducedMotion } from "../motion";
+import { DURATION, haptic, useReducedMotion } from "../motion";
 import { NavLink } from "./nav-link";
 import { PillHighlight } from "./pill-highlight";
-import { emitTabReselect, resetTabBarScroll, useTabBarVisible } from "./tab-bar-scroll";
+import { emitTabReselect, resetTabBarScroll, setTabSwipeHandler, useTabBarVisible } from "./tab-bar-scroll";
 
 /**
  * The floating pill. Frosted on iOS like Instagram's bar (owner, 2026-11-08,
@@ -75,6 +75,31 @@ export function PillTabBar({
       return i >= 0 ? q.slice(i + 1) : q.length ? [] : q;
     });
   }, [routeActive]);
+  // A swipe moves to the neighbouring tab in the pill's order, as a press would
+  // (owner, 2026-11-08). From a screen that isn't in the bar (More → My notes) it does nothing.
+  const go = (name: string) => {
+    setPending((q) => [...q, name]);
+    const key = state.routes.find((r) => r.name === name)?.key;
+    if (key) navigateToTab(key);
+  };
+  const goRef = useRef(go);
+  goRef.current = go;
+  const order = shown.map((i) => routeNameForHref(i.href));
+  const orderRef = useRef(order);
+  orderRef.current = order;
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  useEffect(() => {
+    setTabSwipeHandler((step) => {
+      const at = activeRef.current ? orderRef.current.indexOf(activeRef.current) : -1;
+      const next = at < 0 ? undefined : orderRef.current[at + step];
+      if (next === undefined) return;
+      haptic("selection");
+      goRef.current(next);
+    });
+    return () => setTabSwipeHandler(null);
+  }, []);
+
   // A tab change always brings the pill back, however the last screen left it.
   const focusedKey = state.routes[state.index]?.key;
   useEffect(() => resetTabBarScroll(), [focusedKey]);
@@ -142,9 +167,7 @@ export function PillTabBar({
                     emitTabReselect();
                     return;
                   }
-                  setPending((q) => [...q, name]);
-                  const key = state.routes.find((r) => r.name === name)?.key;
-                  if (key) navigateToTab(key);
+                  go(name);
                 }}
               />
             );

@@ -4,6 +4,7 @@ import type { MockContextConfig } from "expo-router/testing-library";
 import type * as NodeFs from "node:fs";
 import type * as NodePath from "node:path";
 import { Text } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import { APP_DIR, urlOfRouteName } from "./routes";
 
@@ -26,10 +27,13 @@ function routeFiles(dir: string): string[] {
 
 function MockRoot() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
+  // The gesture root, as app/_layout.tsx has it: the tabs layout's swipe needs one above it.
   return (
-    <QueryClientProvider client={client}>
-      <Stack screenOptions={{ headerShown: false }} />
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={client}>
+        <Stack screenOptions={{ headerShown: false }} />
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }
 

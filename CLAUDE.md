@@ -261,7 +261,9 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
   (`toaster.tsx`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
   `tab-bar-scroll`. The pill is frosted on iOS like Instagram's bar (owner 2026-11-08: `bg-pill/80` over an
   expo-blur `BlurView`) and solid `bg-pill` on Android (no blur target there, R30). Pressing the open
-  tab scrolls its screen to the top, or reloads it when already there (`emitTabReselect`). Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
+  tab scrolls its screen to the top, or reloads it when already there (`emitTabReselect`).
+  Swiping left or right on a tab opens the next or previous tab in the pill (`swipeTabs`, a Pan in
+  `(tabs)/_layout.tsx`; instant, never from the outer 24pt). Test roots need a `GestureHandlerRootView`. Render text with `ui/text.tsx` and its `variant` scale (largeTitle,
   title, headline, body, subhead, caption); it carries the body defaults because React
   Native text inherits nothing. Button, Badge and the pills carry no self-alignment:
   where one sits in a block, add `self-start`.
@@ -414,7 +416,8 @@ now; an empty roster points back to the season page.
 ### People lists, sign-in and emails (owner, 2026-11-07)
 
 - **Super's Community tab** (`/community`, replacing the Students tab and the Users page) lists
-  every account. Search and a filter icon (`FilterButton`) share one row; the sheet narrows by role
+  every account (owner 2026-11-08: a row's Invite / Resend is a pill beside it, the status chip under its
+  meta line). Search and a filter icon (`FilterButton`) share one row; the sheet narrows by role
   and by account status. Its header button is **New member** (`/users/new`). "Add students in bulk"
   opens the importer, which takes plain `name, email` lines with no header row.
 - **Students list.** Filter is the icon in the search row, never a chip under it. A Super filters

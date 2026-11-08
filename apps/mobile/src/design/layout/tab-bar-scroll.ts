@@ -53,6 +53,22 @@ export function onTabReselect(listener: () => void): () => void {
   };
 }
 
+/**
+ * Swiping between tabs (owner, 2026-11-08, as Instagram does): the tabs
+ * layout detects the swipe and calls `swipeTabs`; the bar, which knows the
+ * role's tabs and the open one, registers what a swipe does. +1 is the next
+ * tab (a swipe to the left), -1 the previous one.
+ */
+let swipeHandler: ((step: 1 | -1) => void) | null = null;
+
+export function setTabSwipeHandler(handler: ((step: 1 | -1) => void) | null): void {
+  swipeHandler = handler;
+}
+
+export function swipeTabs(step: 1 | -1): void {
+  swipeHandler?.(step);
+}
+
 /** Shows the bar again (tests; a tab switch). */
 export function resetTabBarScroll(): void {
   useTabBarStore.setState({ visible: true });

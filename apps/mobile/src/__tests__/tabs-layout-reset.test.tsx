@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const mockReset = jest.fn();
 jest.mock("../design/layout/use-reset-tab-bar-on-focus", () => ({ useResetTabBarOnFocus: () => mockReset() }));
@@ -11,6 +12,10 @@ jest.mock("expo-router", () => {
 import TabsLayout from "../../app/(app)/(tabs)/_layout";
 
 it("the tabs layout registers the pill reset on focus", () => {
-  render(<TabsLayout />);
+  render(
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <TabsLayout />
+    </GestureHandlerRootView>,
+  );
   expect(mockReset).toHaveBeenCalled();
 });

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react-native";
 import type { ReactElement } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { TabBarPresenceContext } from "../../design/layout/shell-context";
@@ -33,10 +34,13 @@ export function renderWithProviders(ui: ReactElement) {
     defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { gcTime: Infinity } },
   });
 
+  // The gesture root, as app/_layout.tsx has it: the tabs layout's swipe needs one above it.
   return render(
-    <SafeAreaProvider initialMetrics={initialMetrics}>
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-    </SafeAreaProvider>,
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider initialMetrics={initialMetrics}>
+        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>,
   );
 }
 

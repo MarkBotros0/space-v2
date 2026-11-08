@@ -1,8 +1,11 @@
 /**
  * Port of v1 src/components/users/users-list.tsx as grouped rows: avatar,
  * name (or the email when there is no name) over email, role and last login,
- * the derived status as a chip, and a chevron to the edit page. `renderActions`
- * is v2-only: the row-level invite button, under the row.
+ * the derived status as a chip, and a chevron to the edit page. `renderAction`
+ * is v2-only: the row's one light action (Invite / Resend), a pill on the right
+ * (owner, 2026-11-08: the big button under every row made the list twice as
+ * tall). It sits beside the row, not inside it, so a screen reader reaches it
+ * as its own button; the chip moves under the meta line and is read with the row.
  */
 import type { ReactNode } from "react";
 import { View } from "react-native";
@@ -39,36 +42,41 @@ function rowMeta(row: UserListItem): string {
 export function UsersList({
   rows,
   onOpen,
-  renderActions,
+  renderAction,
 }: {
   rows: UserListItem[];
   onOpen: (row: UserListItem) => void;
-  renderActions?: (row: UserListItem) => ReactNode;
+  renderAction?: (row: UserListItem) => ReactNode;
 }) {
   return (
     <GroupedList>
       {rows.map((row) => {
-        const actions = renderActions?.(row);
+        const action = renderAction?.(row);
+        const chip = userStatusChip(row.status);
         return (
-          <View key={row.id}>
-            <ListRow
-              title={row.name || row.email}
-              detail={row.name ? row.email : undefined}
-              subtitle={rowMeta(row)}
-              titleLines={2}
-              subtitleLines={3}
-              leading={
-                <Avatar size="sm">
-                  <AvatarFallback>
-                    {initialsOf(row.name, row.email[0]?.toUpperCase() ?? "?")}
-                  </AvatarFallback>
-                </Avatar>
-              }
-              trailing={<StatusChip {...userStatusChip(row.status)} />}
-              chevron
-              onPress={() => onOpen(row)}
-            />
-            {actions ? <View className="items-start px-4 pb-3">{actions}</View> : null}
+          <View key={row.id} className="flex-row items-center">
+            <View className="min-w-0 flex-1">
+              <ListRow
+                title={row.name || row.email}
+                detail={row.name ? row.email : undefined}
+                subtitle={rowMeta(row)}
+                titleLines={2}
+                subtitleLines={3}
+                leading={
+                  <Avatar size="sm">
+                    <AvatarFallback>
+                      {initialsOf(row.name, row.email[0]?.toUpperCase() ?? "?")}
+                    </AvatarFallback>
+                  </Avatar>
+                }
+                footer={<StatusChip {...chip} />}
+                trailingLabel={chip.label}
+                chevron={!action}
+                className={action ? "pr-2" : undefined}
+                onPress={() => onOpen(row)}
+              />
+            </View>
+            {action ? <View className="shrink-0 pr-4">{action}</View> : null}
           </View>
         );
       })}

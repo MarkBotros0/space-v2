@@ -93,9 +93,10 @@ describe("CommunityScreen", () => {
     renderWithProviders(<UsersScreen />);
     await screen.findByText("Pending Pete");
 
-    // Exactly one invite button: Ann is active, Pete is pending.
-    const inviteButtons = screen.getAllByText("Send invite");
+    // Exactly one invite pill: Ann is active, Pete is pending. Beside the row, named for screen readers.
+    const inviteButtons = screen.getAllByText("Invite");
     expect(inviteButtons).toHaveLength(1);
+    expect(screen.getByLabelText("Send invite to Pending Pete")).toBeTruthy();
     fireEvent.press(inviteButtons[0]!);
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/users/3/invite"));
@@ -113,7 +114,7 @@ describe("CommunityScreen", () => {
     );
     renderWithProviders(<UsersScreen />);
     await screen.findByText("Pending Pete");
-    fireEvent.press(screen.getByText("Send invite"));
+    fireEvent.press(screen.getByText("Invite"));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/Email isn't set up/)));
   });
 
@@ -123,7 +124,7 @@ describe("CommunityScreen", () => {
     post.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }));
     renderWithProviders(<UsersScreen />);
     await screen.findByText("Pending Pete");
-    fireEvent.press(screen.getByText("Send invite"));
+    fireEvent.press(screen.getByText("Invite"));
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/Couldn't reach the server/)));
   });
 

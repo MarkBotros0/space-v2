@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, within } from "@testing-library/react-native";
 import { Platform, Text } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SaveBar } from "../design/layout/save-bar";
@@ -78,10 +79,13 @@ describe("Sheet lifecycle", () => {
   it("keeps the content when closed and immediately reopened", () => {
     const view = renderWithProviders(<Sheet open onClose={() => {}}><Text>body</Text></Sheet>);
     const { rerender } = view;
+    // Same root as renderWithProviders (the gesture root), so the rerender keeps the Sheet mounted.
     const ui = (open: boolean) => (
-      <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
-        <Sheet open={open} onClose={() => {}}><Text>body</Text></Sheet>
-      </SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+          <Sheet open={open} onClose={() => {}}><Text>body</Text></Sheet>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
     );
     rerender(ui(false));
     rerender(ui(true));

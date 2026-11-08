@@ -1,12 +1,19 @@
 import { Tabs } from "expo-router";
 import { useMemo } from "react";
+import { StyleSheet, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import type { NavItem } from "@space/shared";
 
 import { ScreenErrorBoundary } from "../../../src/design/layout/error-boundary";
 import { PillTabBar } from "../../../src/design/layout/floating-tab-bar";
 import { TabBarPresenceContext } from "../../../src/design/layout/shell-context";
+import { swipeTabs } from "../../../src/design/layout/tab-bar-scroll";
 import { useResetTabBarOnFocus } from "../../../src/design/layout/use-reset-tab-bar-on-focus";
-import { DIRECTORY_ROUTE_HREFS, TAB_ROUTE_NAMES, routeNameForHref } from "../../../src/lib/route-names";
+import {
+  DIRECTORY_ROUTE_HREFS,
+  TAB_ROUTE_NAMES,
+  routeNameForHref,
+} from "../../../src/lib/route-names";
 import { historyThenHomeTabsRouter } from "../../../src/lib/tabs-back-router";
 import { useSessionStore } from "../../../src/store/session";
 
@@ -48,6 +55,36 @@ export const unstable_settings = { anchor: "dashboard" };
  * app-layout-routes.test.tsx checks it against the files on disk.
  */
 export const ALL_ROUTE_NAMES: readonly string[] = TAB_ROUTE_NAMES;
+
+/** How far, or how fast, a sideways swipe must go to change tab. */
+export const SWIPE_DISTANCE = 70;
+export const SWIPE_VELOCITY = 600;
+
+/** A finished sideways swipe as a tab step: +1 next (swiped left), -1 previous, or none. */
+export function swipeStep(translationX: number, velocityX: number): 1 | -1 | null {
+  const far = Math.abs(translationX) >= SWIPE_DISTANCE;
+  const fast =
+    Math.abs(velocityX) >= SWIPE_VELOCITY && Math.abs(translationX) >= SWIPE_DISTANCE / 2;
+  if (!far && !fast) return null;
+  return translationX < 0 ? 1 : -1;
+}
+
+/**
+ * Swipe left or right on a tab to open the next or previous one (owner,
+ * 2026-11-08, as Instagram does). The tab switches at once, like a press: no
+ * page follows the finger (tabs switch instantly, calm motion). It starts only
+ * on a clearly sideways move, so vertical scrolling wins, and never from the
+ * outer 24pt, where the system back gesture lives.
+ */
+const tabSwipe = Gesture.Pan()
+  .runOnJS(true)
+  .activeOffsetX([-24, 24])
+  .failOffsetY([-14, 14])
+  .hitSlop({ left: -24, right: -24 })
+  .onEnd((e) => {
+    const step = swipeStep(e.translationX, e.velocityX);
+    if (step !== null) swipeTabs(step);
+  });
 
 /**
  * `(app)/(tabs)/_layout.tsx` — the `Tabs` navigator for every destination
@@ -94,20 +131,32 @@ export default function TabsLayout() {
   // stack layout above, for every screen.
   return (
     <TabBarPresenceContext.Provider value={true}>
-      <Tabs
-        backBehavior="history"
-        UNSTABLE_router={historyThenHomeTabsRouter}
-        screenOptions={screenOptions}
-        tabBar={(props) => <PillTabBar {...props} items={tabs} />}
-      >
-        {orderedRouteNames.map((name) => {
-          const tab = tabByRouteName.get(name);
-          return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : NOT_A_TAB} />;
-        })}
-      </Tabs>
+      <GestureDetector gesture={tabSwipe}>
+        <View style={styles.fill}>
+          <Tabs
+            backBehavior="history"
+            UNSTABLE_router={historyThenHomeTabsRouter}
+            screenOptions={screenOptions}
+            tabBar={(props) => <PillTabBar {...props} items={tabs} />}
+          >
+            {orderedRouteNames.map((name) => {
+              const tab = tabByRouteName.get(name);
+              return (
+                <Tabs.Screen
+                  key={name}
+                  name={name}
+                  options={tab ? { title: tab.label } : NOT_A_TAB}
+                />
+              );
+            })}
+          </Tabs>
+        </View>
+      </GestureDetector>
     </TabBarPresenceContext.Provider>
   );
 }
 
 /** A screen outside the role's tabs: no title, and deliberately NOT `href: null` (see TabsLayout). */
 const NOT_A_TAB = {};
+
+const styles = StyleSheet.create({ fill: { flex: 1 } });

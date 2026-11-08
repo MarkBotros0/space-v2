@@ -20,20 +20,24 @@ type PillButtonProps = {
   label: string;
   onPress: () => void;
   accessibilityLabel?: string;
+  /** Greys it and ignores presses (an action already in flight). */
+  disabled?: boolean;
   className?: string;
 };
 
-function PillButton({ label, onPress, accessibilityLabel, className }: PillButtonProps) {
+function PillButton({ label, onPress, accessibilityLabel, disabled = false, className }: PillButtonProps) {
   const press = usePressDim();
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={disabled ? { disabled: true } : undefined}
+      disabled={disabled}
       hitSlop={HIT_SLOP}
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
-      className={cn("shrink-0", className)}
+      className={cn("shrink-0", disabled && "opacity-50", className)}
     >
       <Animated.View style={press.animatedStyle}>
         <View testID="pill-button" className="min-h-[32px] items-center justify-center rounded-full bg-info-soft px-3">

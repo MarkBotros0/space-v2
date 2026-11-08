@@ -6,7 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { PillTabBar } from "../design/layout/floating-tab-bar";
 import { PillHighlight } from "../design/layout/pill-highlight";
-import { onTabReselect, resetTabBarScroll, useTabBarScroll } from "../design/layout/tab-bar-scroll";
+import { onTabReselect, resetTabBarScroll, swipeTabs, useTabBarScroll } from "../design/layout/tab-bar-scroll";
 import { setReducedMotionForTests } from "../design/motion";
 import { routeNameForHref } from "../lib/route-names";
 
@@ -368,5 +368,29 @@ describe("hide on scroll", () => {
     expect(touches()).toBe("none");
     view.rerender(barTree("history"));
     expect(touches()).toBe("box-none");
+  });
+});
+
+describe("swiping between tabs (owner, 2026-11-08)", () => {
+  it("a swipe left opens the next tab in the pill's order, a swipe right the previous", () => {
+    const nav = jest.fn();
+    const view = render(barTree("dashboard", nav));
+    act(() => swipeTabs(1));
+    expect(nav).toHaveBeenLastCalledWith("history-key");
+    // History is now the open tab, so a swipe back returns Home.
+    act(() => swipeTabs(-1));
+    expect(nav).toHaveBeenLastCalledWith("dashboard-key");
+    view.unmount();
+  });
+
+  it("stops at the ends, and does nothing from a screen that isn't in the bar", () => {
+    const nav = jest.fn();
+    const first = render(barTree("calendar", nav));
+    act(() => swipeTabs(-1));
+    first.unmount();
+    const off = render(barTree("notes", nav));
+    act(() => swipeTabs(1));
+    off.unmount();
+    expect(nav).not.toHaveBeenCalled();
   });
 });
