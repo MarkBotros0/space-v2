@@ -297,7 +297,11 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
         <EmptyState
           icon={MessagesSquare}
           title="No responses yet"
-          description="You're the first in your group to post. Check back soon."
+          description={
+            view.own !== null && !view.own.posted
+              ? "Nobody in your group has posted yet."
+              : "You're the first in your group to post. Check back soon."
+          }
         />
       ) : (
         <View className="flex-col gap-3">

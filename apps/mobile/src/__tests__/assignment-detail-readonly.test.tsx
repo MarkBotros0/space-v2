@@ -38,6 +38,7 @@ const detail = {
   type: "STANDARD" as const,
   forumMinWords: null,
   forumAllowComments: false,
+  forumPostToRead: true,
   maxFileSizeMb: 10,
   allowedMimeCategories: ["pdf" as const],
   groupIds: null,

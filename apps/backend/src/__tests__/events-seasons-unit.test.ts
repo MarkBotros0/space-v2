@@ -117,7 +117,7 @@ describe("POST /seasons/:id/duplicate", () => {
       assignments: [
         {
           title: "Essay", description: null, dueAt: null, isAllGroups: false, type: "FILE",
-          forumMinWords: null, forumAllowComments: true, maxFileSizeMb: 10, allowedMimeCategories: [],
+          forumMinWords: null, forumAllowComments: true, forumPostToRead: true, maxFileSizeMb: 10, allowedMimeCategories: [],
           sessionId: 11, targets: [{ groupId: 2 }, { groupId: 99 }],
         },
       ],

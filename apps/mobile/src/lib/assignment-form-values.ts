@@ -20,6 +20,7 @@ export interface AssignmentFormValues {
   type: "STANDARD" | "FORUM";
   forumMinWords: string;
   forumAllowComments: boolean;
+  forumPostToRead: boolean;
   acceptsFiles: boolean;
   maxFileSizeMb: string;
   allowedMimeCategories: MimeCategory[];
@@ -37,6 +38,7 @@ export const NEW_ASSIGNMENT_VALUES: AssignmentFormValues = {
   type: "STANDARD",
   forumMinWords: "50",
   forumAllowComments: false,
+  forumPostToRead: true,
   acceptsFiles: false,
   maxFileSizeMb: "10",
   allowedMimeCategories: [],
@@ -55,6 +57,7 @@ export function valuesFromDetail(d: AssignmentDetail): AssignmentFormValues {
     type: d.type,
     forumMinWords: String(d.forumMinWords ?? 50),
     forumAllowComments: d.forumAllowComments,
+    forumPostToRead: d.forumPostToRead,
     // R10: no separate flag — a size means "accepts files".
     acceptsFiles: d.maxFileSizeMb !== null,
     maxFileSizeMb: String(d.maxFileSizeMb ?? 10),
@@ -81,6 +84,7 @@ export function toAssignmentBody(v: AssignmentFormValues) {
     type: v.type,
     forumMinWords: isForum ? (v.forumMinWords.trim() === "" ? 0 : Number(v.forumMinWords)) : null,
     forumAllowComments: isForum ? v.forumAllowComments : false,
+    forumPostToRead: isForum ? v.forumPostToRead : true,
     maxFileSizeMb:
       !isForum && v.acceptsFiles
         ? v.maxFileSizeMb.trim() === ""

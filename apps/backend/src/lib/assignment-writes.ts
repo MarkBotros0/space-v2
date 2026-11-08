@@ -62,6 +62,7 @@ export function assignmentColumns(body: AssignmentWriteBody) {
     type: body.type,
     forumMinWords: body.forumMinWords,
     forumAllowComments: body.forumAllowComments,
+    forumPostToRead: body.forumPostToRead,
     maxFileSizeMb: body.maxFileSizeMb,
     allowedMimeCategories: body.allowedMimeCategories,
   };

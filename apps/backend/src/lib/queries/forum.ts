@@ -25,6 +25,7 @@ export interface ForumAssignmentRow {
   dueAt: Date | null;
   forumMinWords: number | null;
   forumAllowComments: boolean;
+  forumPostToRead: boolean;
 }
 
 /**
@@ -45,6 +46,7 @@ export async function loadForumAssignment(
       dueAt: true,
       forumMinWords: true,
       forumAllowComments: true,
+      forumPostToRead: true,
     },
   });
 }
@@ -140,7 +142,9 @@ export async function loadForumView(
     groupId: audience.kind === "student" ? audience.groupId : null,
   };
 
-  const locked = audience.kind === "student" && !(own?.posted ?? false);
+  // Only a forum set to "post before reading others" holds a student back.
+  const locked =
+    audience.kind === "student" && assignment.forumPostToRead && !(own?.posted ?? false);
   if (locked) return { ...base, locked: true, posts: [], nextCursor: null };
 
   // Peer scope — from SeasonEnrollment, not GroupStudent (ruling C9, D-14.3).
@@ -212,7 +216,9 @@ export async function loadForumView(
   const page = rows.slice(0, query.limit);
   const canComment =
     assignment.forumAllowComments &&
-    (audience.kind === "student" ? (own?.posted ?? false) : user.role !== "MENTOR");
+    (audience.kind === "student"
+      ? !assignment.forumPostToRead || (own?.posted ?? false)
+      : user.role !== "MENTOR");
 
   const posts: ForumPostData[] = await Promise.all(
     page.map(async (p) => ({

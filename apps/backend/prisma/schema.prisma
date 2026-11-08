@@ -538,6 +538,7 @@ model Assignment {
   // FORUM-type config (ignored for STANDARD assignments).
   forumMinWords      Int? // minimum word count required to post a response
   forumAllowComments Boolean @default(false) // whether students may comment on peers' responses
+  forumPostToRead    Boolean @default(true) // students see group-mates' responses only after posting their own
 
   // File upload constraints (optional — null means no file uploads accepted).
   maxFileSizeMb         Int?

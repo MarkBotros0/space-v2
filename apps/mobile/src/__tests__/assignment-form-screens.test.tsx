@@ -81,6 +81,7 @@ const detail = {
   type: "STANDARD" as const,
   forumMinWords: null,
   forumAllowComments: false,
+  forumPostToRead: true,
   maxFileSizeMb: 10,
   allowedMimeCategories: ["pdf" as const],
   groupIds: [3],
@@ -143,6 +144,7 @@ const STANDARD_DEFAULTS = {
   type: "STANDARD",
   forumMinWords: null,
   forumAllowComments: false,
+  forumPostToRead: true,
   maxFileSizeMb: null,
   allowedMimeCategories: [],
   isAllGroups: true,
@@ -208,6 +210,7 @@ describe("NewAssignmentScreen", () => {
     expect(screen.queryByLabelText("Accept file uploads")).toBeNull();
     expect(screen.getByDisplayValue("50")).toBeTruthy(); // R21 default
     fireEvent.press(screen.getByLabelText("Allow peer comments"));
+    fireEvent.press(screen.getByLabelText("Post before reading others"));
     fireEvent.press(screen.getByText("Create assignment"));
 
     await waitFor(() =>
@@ -217,6 +220,7 @@ describe("NewAssignmentScreen", () => {
         type: "FORUM",
         forumMinWords: 50,
         forumAllowComments: true,
+        forumPostToRead: false,
       }),
     );
   });

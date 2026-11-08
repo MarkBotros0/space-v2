@@ -57,12 +57,19 @@ export function trackerStatusLabel(status: AssignmentStudentStatus): string {
 export function configLabel(
   d: Pick<
     AssignmentDetail,
-    "type" | "forumMinWords" | "forumAllowComments" | "maxFileSizeMb" | "allowedMimeCategories"
+    | "type"
+    | "forumMinWords"
+    | "forumAllowComments"
+    | "forumPostToRead"
+    | "maxFileSizeMb"
+    | "allowedMimeCategories"
   >,
 ): string {
   if (d.type === "FORUM") {
-    const base = `Forum · at least ${d.forumMinWords ?? 0} words`;
-    return d.forumAllowComments ? `${base} · peer comments on` : base;
+    const parts = [`Forum · at least ${d.forumMinWords ?? 0} words`];
+    if (d.forumAllowComments) parts.push("peer comments on");
+    if (!d.forumPostToRead) parts.push("open before posting");
+    return parts.join(" · ");
   }
   // R10: a null size IS the "accepts no files" flag.
   if (d.maxFileSizeMb === null) return "Standard · no file uploads";

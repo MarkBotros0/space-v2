@@ -39,6 +39,7 @@ const forumAssignment = {
   type: "FORUM" as const,
   forumMinWords: 5,
   forumAllowComments: true,
+  forumPostToRead: true,
   maxFileSizeMb: null,
   allowedMimeCategories: [],
   groupIds: null,

@@ -81,7 +81,7 @@ export const forumViewSchema = z.object({
    * has one, even when its `submissionPublicId` is null.
    */
   own: forumOwnResponseSchema.nullable(),
-  /** True until the caller's own response is posted. Staff are never locked. */
+  /** True until the caller's own response is posted, on a forum with `forumPostToRead`. Staff are never locked. */
   locked: z.boolean(),
   minWords: z.number().nullable(),
   allowComments: z.boolean(),

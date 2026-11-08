@@ -230,6 +230,19 @@ export function AssignmentForm({
                   onCheckedChange={(on) => set("forumAllowComments", on)}
                 />
               </View>
+              <View className="flex-row items-center justify-between gap-3">
+                <View className="min-w-0 flex-1 flex-col">
+                  <Text className="text-sm font-medium">Post before reading others</Text>
+                  <Text className="text-sm text-muted-foreground">
+                    Students see their group-mates' responses only after posting their own.
+                  </Text>
+                </View>
+                <Switch
+                  accessibilityLabel="Post before reading others"
+                  checked={v.forumPostToRead}
+                  onCheckedChange={(on) => set("forumPostToRead", on)}
+                />
+              </View>
             </View>
           ) : null}
         </Fieldset>

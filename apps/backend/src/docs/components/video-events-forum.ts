@@ -220,7 +220,7 @@ export const videoEventsForumSchemas = {
       assignmentId: { type: "integer" },
       dueAt: { type: ["string", "null"], format: "date-time" },
       own: { oneOf: [{ $ref: "#/components/schemas/ForumOwnResponse" }, { type: "null" }], description: "Null for a staff reader." },
-      locked: { type: "boolean", description: "A product mechanic, not an error: a student sees no peer's work until their own response is posted. Staff are never locked." },
+      locked: { type: "boolean", description: "A product mechanic, not an error: on a forum with `forumPostToRead`, a student sees no peer's work until their own response is posted. Staff are never locked." },
       minWords: { type: ["integer", "null"] },
       allowComments: { type: "boolean" },
       groupId: { type: ["integer", "null"], description: "Null for a staff reader seeing every group." },

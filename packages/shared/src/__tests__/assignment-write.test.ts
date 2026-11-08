@@ -48,6 +48,7 @@ describe("assignmentWriteRequestSchema", () => {
       type: "STANDARD",
       forumMinWords: null,
       forumAllowComments: false,
+      forumPostToRead: true,
       maxFileSizeMb: null,
       allowedMimeCategories: [],
       isAllGroups: true,
@@ -110,6 +111,14 @@ describe("assignmentWriteRequestSchema", () => {
     });
   });
 
+  it("post-before-reading defaults on, keeps off for FORUM, is forced on for STANDARD", () => {
+    expect(assignmentWriteRequestSchema.parse({ ...valid, type: "FORUM" }).forumPostToRead).toBe(true);
+    expect(
+      assignmentWriteRequestSchema.parse({ ...valid, type: "FORUM", forumPostToRead: false }).forumPostToRead,
+    ).toBe(false);
+    expect(assignmentWriteRequestSchema.parse({ ...valid, forumPostToRead: false }).forumPostToRead).toBe(true);
+  });
+
   it("refuses 'specific groups' with none chosen — deliberate divergence from R13", () => {
     const result = assignmentWriteRequestSchema.safeParse({ ...valid, isAllGroups: false });
     expect(result.success).toBe(false);
@@ -132,7 +141,7 @@ describe("response additions", () => {
     sessionId: null, sessionTitle: null, title: "Essay one", description: null,
     dueAt: "2099-04-01T21:59:00.000Z", dueOrgDay: "2099-04-01", dueOrgTime: "23:59",
     isOverdue: false, isAllGroups: true, type: "STANDARD", forumMinWords: null,
-    forumAllowComments: false, maxFileSizeMb: null, allowedMimeCategories: [],
+    forumAllowComments: false, forumPostToRead: true, maxFileSizeMb: null, allowedMimeCategories: [],
     groupIds: [], mySubmission: null, canManage: true, readOnly: false,
   };
 

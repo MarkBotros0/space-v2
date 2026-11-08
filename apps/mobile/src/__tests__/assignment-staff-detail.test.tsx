@@ -23,7 +23,7 @@ const detail = {
   sessionId: 12, sessionTitle: "Week 4", title: "Essay one",
   description: "<p>Write about <strong>the thing</strong>.</p>", dueAt: "2099-04-01T21:59:00.000Z",
   dueOrgDay: "2099-04-01", dueOrgTime: "23:59", isOverdue: false, isAllGroups: false,
-  type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false,
+  type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false, forumPostToRead: true,
   maxFileSizeMb: 10, allowedMimeCategories: ["pdf" as const], groupIds: [3],
   mySubmission: null, canManage: true, readOnly: false,
 };

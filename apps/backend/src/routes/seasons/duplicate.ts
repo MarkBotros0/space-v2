@@ -43,7 +43,7 @@ export async function duplicateSeason(req: Request, res: Response) {
         where: { deletedAt: null },
         select: {
           title: true, description: true, dueAt: true, isAllGroups: true, type: true,
-          forumMinWords: true, forumAllowComments: true, maxFileSizeMb: true,
+          forumMinWords: true, forumAllowComments: true, forumPostToRead: true, maxFileSizeMb: true,
           allowedMimeCategories: true, sessionId: true,
           targets: { select: { groupId: true } },
         },
@@ -158,6 +158,7 @@ export async function duplicateSeason(req: Request, res: Response) {
             type: a.type,
             forumMinWords: a.forumMinWords,
             forumAllowComments: a.forumAllowComments,
+            forumPostToRead: a.forumPostToRead,
             maxFileSizeMb: a.maxFileSizeMb,
             allowedMimeCategories: a.allowedMimeCategories,
             createdById: user.userId,

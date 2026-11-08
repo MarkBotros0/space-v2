@@ -45,7 +45,7 @@ const assignment = {
   id: 41, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026", sessionId: null,
   sessionTitle: null, title: "Essay one", description: null, dueAt: null, dueOrgDay: null,
   dueOrgTime: null, isOverdue: false, isAllGroups: true, type: "STANDARD" as const,
-  forumMinWords: null, forumAllowComments: false, maxFileSizeMb: null, allowedMimeCategories: [],
+  forumMinWords: null, forumAllowComments: false, forumPostToRead: true, maxFileSizeMb: null, allowedMimeCategories: [],
   groupIds: null, mySubmission: null, canManage: false, readOnly: false,
 };
 const draft = {

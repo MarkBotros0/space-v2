@@ -175,6 +175,7 @@ export const sessionsAssignmentsSchemas = {
       type: { $ref: "#/components/schemas/AssignmentType" },
       forumMinWords: { type: ["integer", "null"] },
       forumAllowComments: { type: "boolean" },
+      forumPostToRead: { type: "boolean", description: "True: a student sees group-mates' responses only after posting their own." },
       maxFileSizeMb: { type: ["integer", "null"] },
       allowedMimeCategories: {
         type: "array",
@@ -262,6 +263,7 @@ export const sessionsAssignmentsSchemas = {
       type: { $ref: "#/components/schemas/AssignmentType" },
       forumMinWords: { type: ["integer", "null"], minimum: 0, maximum: 2000, description: "Kept only for FORUM; forced null for STANDARD." },
       forumAllowComments: { type: "boolean", default: false, description: "Kept only for FORUM; forced false for STANDARD." },
+      forumPostToRead: { type: "boolean", default: true, description: "FORUM only: a student reads group-mates' responses only after posting their own. Forced true for STANDARD." },
       maxFileSizeMb: { type: ["integer", "null"], minimum: 1, maximum: 100, description: "Null = accepts no files. Forced null for FORUM." },
       allowedMimeCategories: {
         type: "array",

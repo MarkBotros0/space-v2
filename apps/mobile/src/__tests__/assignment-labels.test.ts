@@ -36,7 +36,7 @@ describe("trackerStatusLabel", () => {
 
 describe("configLabel", () => {
   const standard = {
-    type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false,
+    type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false, forumPostToRead: true,
     maxFileSizeMb: null, allowedMimeCategories: [] as ("pdf" | "image")[],
   };
 
@@ -53,6 +53,9 @@ describe("configLabel", () => {
       "Forum · at least 50 words · peer comments on",
     );
     expect(configLabel({ ...standard, type: "FORUM" })).toBe("Forum · at least 0 words");
+    expect(configLabel({ ...standard, type: "FORUM", forumPostToRead: false })).toBe(
+      "Forum · at least 0 words · open before posting",
+    );
   });
 });
 

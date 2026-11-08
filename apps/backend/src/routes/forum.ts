@@ -161,8 +161,9 @@ forumRouter.get(
       return forbidden(res);
     }
 
-    // The same lock the feed applies: a student reads nothing until they post.
-    if (audience.kind === "student") {
+    // The same lock the feed applies: on a "post before reading others" forum
+    // a student reads nothing until they post.
+    if (audience.kind === "student" && assignment.forumPostToRead) {
       const own = await db.submission.findUnique({
         where: { assignmentId_studentUserId: { assignmentId, studentUserId: user.userId } },
         select: { status: true },
@@ -184,9 +185,8 @@ forumRouter.post(
     const assignmentId = parseId(req.params.id);
     if (assignmentId === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
 
-    if ((await loadForumAssignment(assignmentId)) === null) {
-      return apiError(res, "not_found", "Assignment not found.", 404);
-    }
+    const assignment = await loadForumAssignment(assignmentId);
+    if (assignment === null) return apiError(res, "not_found", "Assignment not found.", 404);
 
     // Before the gate, but note that canCommentOnForumSubmission also returns
     // false for a missing row, so a probe cannot tell "no such post" from "not
@@ -199,8 +199,9 @@ forumRouter.post(
 
     if (!(await canCommentOnForumSubmission(user, post.id))) return forbidden(res);
 
-    // Post-first, for students only (v1 R41). Staff bypass it by construction.
-    if (user.role === "STUDENT") {
+    // Post-first, for students only (v1 R41), on a "post before reading others"
+    // forum. Staff bypass it by construction.
+    if (user.role === "STUDENT" && assignment.forumPostToRead) {
       const own = await db.submission.findUnique({
         where: { assignmentId_studentUserId: { assignmentId, studentUserId: user.userId } },
         select: { status: true },

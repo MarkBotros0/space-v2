@@ -32,7 +32,7 @@ const detail = {
   sessionId: null, sessionTitle: null, title: "Essay one", description: null,
   dueAt: null, dueOrgDay: null, dueOrgTime: null, isOverdue: false,
   isAllGroups: true, type: "STANDARD" as const, forumMinWords: null,
-  forumAllowComments: false, maxFileSizeMb: null, allowedMimeCategories: [],
+  forumAllowComments: false, forumPostToRead: true, maxFileSizeMb: null, allowedMimeCategories: [],
   groupIds: [], mySubmission: null, canManage: true, readOnly: false,
 };
 

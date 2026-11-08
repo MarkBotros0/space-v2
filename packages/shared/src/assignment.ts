@@ -121,6 +121,8 @@ export const assignmentDetailSchema = z.object({
   type: assignmentTypeSchema,
   forumMinWords: z.number().nullable(),
   forumAllowComments: z.boolean(),
+  /** True: a student sees group-mates' responses only after posting their own. */
+  forumPostToRead: z.boolean(),
   /** Null means this assignment accepts no file uploads — there is no separate flag. */
   maxFileSizeMb: z.number().nullable(),
   allowedMimeCategories: z.array(mimeCategorySchema),
@@ -191,6 +193,8 @@ const assignmentWriteBase = z.object({
   type: assignmentTypeSchema.default("STANDARD"),
   forumMinWords: z.number().int().min(0).max(2000).nullable().optional(),
   forumAllowComments: z.boolean().default(false),
+  /** Defaults to v1's behaviour: post your own response to read your group's. */
+  forumPostToRead: z.boolean().default(true),
   maxFileSizeMb: z.number().int().min(1).max(100).nullable().optional(),
   allowedMimeCategories: z.array(mimeCategorySchema).default([]),
   /**
@@ -238,6 +242,7 @@ function normalizeAssignmentWrite(value: AssignmentWriteParsed) {
     type: value.type,
     forumMinWords: isForum ? (value.forumMinWords ?? null) : null,
     forumAllowComments: isForum ? value.forumAllowComments : false,
+    forumPostToRead: isForum ? value.forumPostToRead : true,
     maxFileSizeMb: isForum ? null : (value.maxFileSizeMb ?? null),
     allowedMimeCategories: isForum ? [] : value.allowedMimeCategories,
     isAllGroups: value.isAllGroups,
