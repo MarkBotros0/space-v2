@@ -5,16 +5,19 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState } from "../../../../src/design/ui";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { parsePositiveInt } from "../../../../src/lib/params";
 import { PeopleList } from "../../../../src/screens/season-people/people-list";
 
 /**
- * Add people to a season (people picker). The server's own `canAdminister`
- * gates it: this season's admins and a super admin. Entry point: the season screen.
- * Invite new opens the form for someone with no account yet.
+ * Select from community: add people who already have an account (owner,
+ * 2026-11-07). The server's own `canAdminister` gates it: this season's admins
+ * and a super admin. Entry points: the season page's People card and its
+ * suggestion (`?from=<season id>` opens with that season's passers ticked).
+ * Invite new, for someone with no account yet, swaps this screen for its form.
  */
 export default function SeasonPeopleScreen() {
   const router = useRouter();
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
+  const { code: raw, from: rawFrom } = useLocalSearchParams<{ code: string; from?: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
   const season = useSeasonByCode(code);
 
@@ -24,9 +27,11 @@ export default function SeasonPeopleScreen() {
       <PeopleList
         seasonId={season.data.id}
         seasonTitle={season.data.title}
+        isDraft={status === "DRAFT"}
+        from={parsePositiveInt(rawFrom)}
         onInviteNew={
           status === "DRAFT" || status === "ACTIVE"
-            ? () => router.push({ pathname: "/seasons/[code]/invite", params: { code: seasonCode } })
+            ? () => router.replace({ pathname: "/seasons/[code]/invite", params: { code: seasonCode } })
             : undefined
         }
       />
@@ -39,5 +44,5 @@ export default function SeasonPeopleScreen() {
   else if (season.isPending) body = <RouteSkeleton />;
   else
     body = <EmptyState title="Not available" description="Only this season's admins can add people to it." />;
-  return <Screen title="Add people">{body}</Screen>;
+  return <Screen title="Select from community">{body}</Screen>;
 }

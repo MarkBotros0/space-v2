@@ -130,15 +130,18 @@ describe("CheckInSuccess", () => {
 });
 
 describe("StudentCheckInCard on the hero", () => {
-  it("uses the onHero button and the hero caption", () => {
+  it("uses the onHero button, and draws nothing while check-in is closed", () => {
     const detail = {
       id: 1, title: "W", description: null, startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15",
       startTime: "20:00", durationMinutes: 90, location: null, youtubeUrl: null, recurrenceGroupId: null,
       seasonId: 7, seasonCode: "s7", seasonTitle: "S", checkInOpen: false, myAttendance: null,
       canMarkAttendance: false, canManageCheckIn: false,
     };
-    renderWithProviders(<StudentCheckInCard detail={detail} onHero />);
-    expect(screen.getByText("Check-in isn't open right now").props.className).toContain("text-hero-muted");
-    expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
+    const closed = renderWithProviders(<StudentCheckInCard detail={detail} onHero />);
+    expect(screen.queryByText("Check In")).toBeNull();
+    expect(screen.queryByText("Check-in isn't open right now")).toBeNull();
+    closed.unmount();
+    renderWithProviders(<StudentCheckInCard detail={{ ...detail, checkInOpen: true }} onHero />);
+    expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBeFalsy();
   });
 });

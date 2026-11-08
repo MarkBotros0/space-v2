@@ -76,6 +76,12 @@ export const peopleCandidateSchema = z.object({
   reason: z.string().nullable(),
   selectable: z.boolean(),
   overridable: z.boolean(),
+  /**
+   * How each of their places in a finished season ended, for "add the people
+   * who passed <season>": `passed`, `not_passed` (completed without a pass) or
+   * `dropped`. One entry per finished season they were in.
+   */
+  places: z.array(z.object({ seasonId: z.number(), outcome: z.enum(["passed", "not_passed", "dropped"]) })),
 });
 export type PeopleCandidate = z.infer<typeof peopleCandidateSchema>;
 
@@ -86,6 +92,26 @@ export const peopleCandidatesResponseSchema = z.object({
     title: z.string(),
     requiredProgram: z.string().nullable(),
     isCommunityWide: z.boolean(),
+    /**
+     * The season this one normally follows, preselected in the picker: the last
+     * finished season of `requiredProgram`, else of its own `program`. Null for a
+     * community-wide season or when none has finished.
+     */
+    suggestedSourceId: z.number().nullable(),
+    /**
+     * Finished seasons whose passers can be brought in, newest end first:
+     * `passed` that this list holds, `graduated` passers who are alumni now and
+     * so not listed by a regular season. Seasons with neither are left out.
+     */
+    sources: z.array(
+      z.object({
+        id: z.number(),
+        code: z.string(),
+        title: z.string(),
+        passed: z.number().int().min(0),
+        graduated: z.number().int().min(0),
+      }),
+    ),
   }),
   people: z.array(peopleCandidateSchema),
 });
@@ -94,8 +120,8 @@ export type PeopleCandidatesResponse = z.infer<typeof peopleCandidatesResponseSc
 const seatUserIds = z.array(z.number().int().positive());
 
 /**
- * `POST /seasons/:id/enrollments`: all or nothing. `overrideUserIds` is who a
- * SUPER lets in past a block, so each must be among those being added.
+ * `POST /seasons/:id/enrollments`: all or nothing. `overrideUserIds` is who the
+ * season's admin or a SUPER lets in past a block, so each must be among those being added.
  */
 export const addSeasonEnrollmentsRequestSchema = z
   .object({

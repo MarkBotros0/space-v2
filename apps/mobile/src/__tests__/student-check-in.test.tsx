@@ -158,13 +158,14 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
     expect(screen.getByText("Enter code instead")).toBeTruthy();
   });
 
-  it("offers nothing to scan while check-in is not open — the server's flag decides (C4, R73)", async () => {
+  it("shows no Check In at all while check-in is not open — the server's flag decides (C4, R73)", async () => {
     serve({ ...detail, checkInOpen: false });
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(await screen.findByText("Check-in isn't open right now")).toBeTruthy();
-    // v1 keeps the button visible but disabled.
-    expect(screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled).toBe(true);
+    expect(await screen.findByText("8:00 PM – 9:30 PM · 90 min")).toBeTruthy();
+    // Owner 2026-11-07: no disabled button and no "not open" line (v1 showed it disabled).
+    expect(screen.queryByText("Check In")).toBeNull();
+    expect(screen.queryByText("Check-in isn't open right now")).toBeNull();
   });
 
   it("shows a student who already scanned in when they did, with no controls", async () => {

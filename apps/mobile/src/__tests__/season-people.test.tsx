@@ -51,6 +51,7 @@ type Row = {
   reason: string | null;
   selectable: boolean;
   overridable: boolean;
+  places: { seasonId: number; outcome: "passed" | "not_passed" | "dropped" }[];
 };
 const passed = (seasonTitle: string, pct: number) => ({ seasonTitle, outcome: "PASSED" as const, attendancePct: pct });
 const row = (r: Partial<Row> & Pick<Row, "id" | "name">): Row => ({
@@ -60,6 +61,7 @@ const row = (r: Partial<Row> & Pick<Row, "id" | "name">): Row => ({
   reason: null,
   selectable: true,
   overridable: false,
+  places: [],
   ...r,
 });
 
@@ -111,7 +113,7 @@ function serve(rows: Row[], isCommunityWide = false) {
   list = rows;
   candidates = () =>
     Promise.resolve({
-      data: { data: { season: { id: 7, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide }, people: list } },
+      data: { data: { season: { id: 7, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide, suggestedSourceId: null, sources: [] }, people: list } },
     });
 }
 
@@ -143,8 +145,8 @@ const bar = () => screen.getByTestId("save-bar");
 describe("layout", () => {
   it("titles the screen and says which program it requires", async () => {
     await open();
-    expect(screen.getAllByText("Add people to LEAD 2027").length).toBeGreaterThan(0);
-    expect(screen.getByText("Requires GBV")).toBeTruthy();
+    expect(screen.getAllByText("Select from community").length).toBeGreaterThan(0);
+    expect(screen.getByText("Add people who already have an account to LEAD 2027. Requires GBV.")).toBeTruthy();
     expect(screen.getAllByText("GBV 2026 - Passed - 88%").length).toBeGreaterThan(0);
     expect(screen.getByText("GBV 2025 - Passed - 95%")).toBeTruthy();
   });
@@ -323,14 +325,19 @@ describe("students and alumni tabs", () => {
 });
 
 describe("override", () => {
-  it("is offered to a super admin only, on blocked rows", async () => {
+  it("is offered on blocked rows when the server says so", async () => {
     await open();
     expect(screen.getAllByText("Override")).toHaveLength(2);
   });
 
-  it("is not offered to an admin", async () => {
-    serve(people(false));
+  it("is offered to the season's admin too (owner, 2026-11-07)", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
+    await open();
+    expect(screen.getAllByText("Override")).toHaveLength(2);
+  });
+
+  it("isn't offered where the server withholds it", async () => {
+    serve(people(false));
     await open();
     expect(screen.queryByText("Override")).toBeNull();
     expect(screen.getByText("Did not pass GBV 2026")).toBeTruthy();

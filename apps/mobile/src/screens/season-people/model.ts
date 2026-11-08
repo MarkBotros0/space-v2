@@ -1,5 +1,7 @@
 import type { PeopleCandidate } from "@space/shared";
 
+import { isStraggler, outcomeIn, passersToTick, type SourceSeason } from "./source";
+
 type Availability = PeopleCandidate["availability"];
 
 export const ANY_SEASON = "any";
@@ -34,9 +36,10 @@ export function filterPeople(people: PeopleCandidate[], f: PeopleFilters): Peopl
   );
 }
 
+const row = (person: PeopleCandidate): PeopleItem => ({ kind: "row", key: String(person.id), person });
+
 /** Available, then already passed (no headers), then each unavailable kind under its header. */
-export function buildItems(people: PeopleCandidate[]): PeopleItem[] {
-  const row = (person: PeopleCandidate): PeopleItem => ({ kind: "row", key: String(person.id), person });
+function standingItems(people: PeopleCandidate[]): PeopleItem[] {
   const items: PeopleItem[] = [];
   for (const kind of ["available", "already_passed"] as const) {
     items.push(...people.filter((p) => p.availability === kind).map(row));
@@ -47,6 +50,43 @@ export function buildItems(people: PeopleCandidate[]): PeopleItem[] {
     items.push({ kind: "header", key: `header-${availability}`, title }, ...rows.map(row));
   }
   return items;
+}
+
+/**
+ * The list's rows. With a season to bring people in from: its passers who can
+ * join, then those who didn't pass it or dropped out (ticked only on purpose),
+ * then everyone else as without one.
+ */
+export function buildItems(people: PeopleCandidate[], source: SourceSeason | null = null): PeopleItem[] {
+  if (!source) return standingItems(people);
+  const passers = new Set(passersToTick(people, source.id));
+  const stragglers = people.filter((p) => !passers.has(p.id) && isStraggler(p, source.id));
+  const apart = new Set([...passers, ...stragglers.map((p) => p.id)]);
+  const rest = people.filter((p) => !apart.has(p.id));
+  const items: PeopleItem[] = [];
+  if (passers.size > 0) {
+    items.push(
+      { kind: "header", key: "header-passed", title: `Passed ${source.title} (${passers.size})` },
+      ...people.filter((p) => passers.has(p.id)).map(row),
+    );
+  }
+  if (stragglers.length > 0) {
+    items.push({ kind: "header", key: "header-stragglers", title: `Didn't finish ${source.title}` }, ...stragglers.map(row));
+  }
+  const others = standingItems(rest);
+  if (others.length > 0 && items.length > 0 && others[0]!.kind === "row") {
+    items.push({ kind: "header", key: "header-rest", title: "Everyone else" });
+  }
+  return [...items, ...others];
+}
+
+/** Why a row sits under "Didn't finish": shown on the row, in words. */
+export function sourceLine(p: PeopleCandidate, source: SourceSeason | null): string | null {
+  if (!source) return null;
+  const o = outcomeIn(p, source.id);
+  if (o === "not_passed") return `Did not pass ${source.title}`;
+  if (o === "dropped") return `Dropped out of ${source.title}`;
+  return null;
 }
 
 /** The titles present among the people, for the "Last season" choices. */

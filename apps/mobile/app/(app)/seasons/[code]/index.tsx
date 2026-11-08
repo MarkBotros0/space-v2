@@ -8,7 +8,6 @@ import {
   FileQuestion,
   Flag,
   Pencil,
-  UserPlus,
 } from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
@@ -25,6 +24,8 @@ import { Button, EmptyState } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonRoster } from "../../../../src/hooks/use-group-admin";
 import { useSeasonAdmins } from "../../../../src/hooks/use-season-admins";
+import { useSeasonPeople } from "../../../../src/hooks/use-season-people";
+import { seasonSuggestion } from "../../../../src/screens/season-people/source";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { countOf } from "../../../../src/lib/plural";
 import { useSessionStore } from "../../../../src/store/session";
@@ -36,8 +37,8 @@ iconWithClassName(Pencil, Copy);
  * One overview, no tabs (owner, 2026-11-07): the season at a glance, its
  * figures, the next step it waits for, who is in it as one People card
  * (admins, then groups with their leaders, then students), and what can be
- * done to it as tiles: Sessions, Assignments, Quizzes, Add people, End season,
- * Results. Whoever the server says administers it (canAdminister, C4) reads the
+ * done to it as tiles: Sessions, Assignments, Quizzes, End season, Results.
+ * Adding people lives in the People card, not a tile (owner, 2026-11-07). Whoever the server says administers it (canAdminister, C4) reads the
  * roster and manages; a SUPER also reads the admins, and edits or duplicates
  * from the buttons beside the name. An ADMIN edits description and budgets
  * (REG-72) at the foot.
@@ -55,6 +56,9 @@ export default function SeasonDetailScreen() {
   const admins = useSeasonAdmins(seasonId, { enabled: isSuper && seasonId !== null });
   // The students under each group; only whoever administers the season may read them.
   const roster = useSeasonRoster(detail.data?.canAdminister ? seasonId : null);
+  // A draft's "N people passed <last season>" suggestion reads the picker's own list (cached for it).
+  const suggestFor = detail.data?.canAdminister && detail.data.status === "DRAFT";
+  const candidates = useSeasonPeople(seasonId, { enabled: !!suggestFor });
   // The org's day for the timeline; never waited on, and a failure leaves the device's.
   const orgToday = useStaffOrgToday(
     detail.data && (detail.data.canAdminister || isSuper) ? detail.data.id : null,
@@ -64,6 +68,7 @@ export default function SeasonDetailScreen() {
     if (code !== null) void detail.refetch();
     if (isSuper && seasonId !== null) void admins.refetch();
     if (detail.data?.canAdminister) void roster.refetch();
+    if (suggestFor) void candidates.refetch();
   };
 
   let body: ReactNode;
@@ -83,6 +88,7 @@ export default function SeasonDetailScreen() {
     const params = { code: s.code };
     const go = {
       people: () => router.push({ pathname: "/seasons/[code]/people", params }),
+      invite: () => router.push({ pathname: "/seasons/[code]/invite", params }),
       start: () => router.push({ pathname: "/seasons/[code]/start", params }),
       end: () => router.push({ pathname: "/seasons/[code]/end", params }),
     };
@@ -114,16 +120,6 @@ export default function SeasonDetailScreen() {
           onPress: () => router.push({ pathname: "/quizzes", params: seasonParam }),
         },
       );
-    }
-    // Setup entry points. Only a season that is still running or about to: a finished one takes no one.
-    const open = s.status === "DRAFT" || s.status === "ACTIVE";
-    if (open && manage) {
-      actions.push({
-        label: "Add people",
-        hint: "Students, leaders and admins",
-        icon: UserPlus,
-        onPress: go.people,
-      });
     }
     // Past its end date, End season is the next step instead of a tile.
     if (s.status === "ACTIVE" && manage && !pastEnd) {
@@ -172,8 +168,25 @@ export default function SeasonDetailScreen() {
       else adminState = { state: "ready", names: admins.data.map((a) => a.name) };
     }
 
+    const suggested = suggestFor && candidates.data ? seasonSuggestion(candidates.data) : null;
     const people = (
       <PeopleCard
+        seasonTitle={s.title}
+        onSelectFromCommunity={canAdminister ? go.people : undefined}
+        onInviteNew={canAdminister ? go.invite : undefined}
+        suggestion={
+          suggested
+            ? {
+                title: suggested.source.title,
+                count: suggested.count,
+                onAdd: () =>
+                  router.push({
+                    pathname: "/seasons/[code]/people",
+                    params: { code: s.code, from: String(suggested.source.id) },
+                  }),
+              }
+            : null
+        }
         groups={s.groups}
         studentCount={s.studentCount}
         admins={adminState}

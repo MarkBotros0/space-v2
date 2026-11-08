@@ -51,6 +51,11 @@ const reads = (url: string) => requested().filter((u) => u === url).length;
 const tick = (ms: number) => act(async () => { await jest.advanceTimersByTimeAsync(ms); });
 const checkInDisabled = () =>
   screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled;
+/** The next session's detail has answered: while check-in is closed there is no button to wait for. */
+const detailLoaded = async () => {
+  await waitFor(() => expect(reads(NEXT_SESSION_DETAIL)).toBeGreaterThan(0));
+  await tick(0);
+};
 
 /** The listeners AppState has right now, so a test can bring the app back. */
 function captureAppState() {
@@ -83,21 +88,23 @@ afterEach(() => {
 });
 
 describe("Today's Check In follows the server", () => {
-  it("the leader opens check-in: the button enables without a pull", async () => {
+  it("the leader opens check-in: the button appears without a pull", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    expect(await screen.findByText("Check In")).toBeTruthy();
-    expect(checkInDisabled()).toBe(true);
+    await detailLoaded();
+    // Owner 2026-11-07: no Check In at all while check-in isn't open.
+    expect(screen.queryByText("Check In")).toBeNull();
 
     serve(routes({ ...sessionDetail, checkInOpen: true }));
     await tick(LIVE_ROSTER_REFRESH_MS);
-    await waitFor(() => expect(checkInDisabled()).toBeFalsy());
+    expect(await screen.findByText("Check In")).toBeTruthy();
+    expect(checkInDisabled()).toBeFalsy();
   });
 
   it("stops reading once the student is checked in", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
+    await detailLoaded();
     serve(
       routes({
         ...sessionDetail,
@@ -115,7 +122,7 @@ describe("Today's Check In follows the server", () => {
   it("does not poll a session that isn't today, by the server's day", async () => {
     serve(routes(closed, { ...studentDashboard, todayOrgDay: "2099-02-27" }));
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
+    await detailLoaded();
     const before = reads(NEXT_SESSION_DETAIL);
     await tick(LIVE_ROSTER_REFRESH_MS * 2);
     expect(reads(NEXT_SESSION_DETAIL)).toBe(before);
@@ -124,7 +131,7 @@ describe("Today's Check In follows the server", () => {
   it("clears its timer on unmount and while the tab is out of focus; focus reads at once", async () => {
     serve(routes());
     const view = renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
+    await detailLoaded();
 
     setFocused(false);
     const blurred = reads(NEXT_SESSION_DETAIL);
@@ -142,7 +149,7 @@ describe("Today's Check In follows the server", () => {
   });
 
   it("a failed read keeps the button on screen", async () => {
-    serve(routes());
+    serve(routes({ ...sessionDetail, checkInOpen: true }));
     renderWithProviders(<StudentToday />);
     await screen.findByText("Check In");
     get.mockImplementation(() => Promise.reject(new Error("blip")));
@@ -231,7 +238,7 @@ describe("the pull's spinner belongs to the pull", () => {
   it("a poll in flight doesn't raise it", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
+    await detailLoaded();
     const release = hold(NEXT_SESSION_DETAIL);
     const before = reads(NEXT_SESSION_DETAIL);
     await tick(LIVE_ROSTER_REFRESH_MS);
@@ -246,7 +253,7 @@ describe("the pull's spinner belongs to the pull", () => {
     const appState = captureAppState();
     serve(routes());
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
+    await detailLoaded();
     await tick(31_000);
     // Events: past their freshness, and unlike session detail not polled meanwhile.
     const release = hold(EVENTS);
@@ -261,7 +268,7 @@ describe("the pull's spinner belongs to the pull", () => {
   it("a pull raises it until every read has answered", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
+    await detailLoaded();
     const release = hold(NEXT_SESSION_DETAIL);
     await pull();
     expect(control().refreshing).toBe(true);
@@ -272,7 +279,7 @@ describe("the pull's spinner belongs to the pull", () => {
   it("offline, a pull doesn't leave it up over a paused read", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Check In");
+    await detailLoaded();
     act(() => onlineManager.setOnline(false));
     try {
       await pull();

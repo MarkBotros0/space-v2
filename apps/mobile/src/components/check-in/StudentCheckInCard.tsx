@@ -22,6 +22,16 @@ iconWithClassName(QrCode);
 const NOT_A_CODE = "That doesn't look like a check-in code";
 
 /**
+ * Whether the card shows anything (owner, 2026-11-07: no Check In at all while
+ * check-in isn't open): the button while it is open and the student has no
+ * attendance yet, or the time they scanned in. A leader's mark shows nothing.
+ */
+export function checkInVisible(detail: SessionDetail): boolean {
+  const checkedInAt = detail.myAttendance?.checkedInAt ?? null;
+  return checkedInAt !== null || (detail.checkInOpen && detail.myAttendance === null);
+}
+
+/**
  * The leader opens check-in while this card is on screen, and Today stays
  * mounted: without this the button stays disabled until a pull. Same query key
  * as the screen's read, so a refetch is what moves `detail`. On focus and on the
@@ -49,9 +59,18 @@ function useLiveCheckIn(detail: SessionDetail) {
 }
 
 /**
+ * Keeps the session fresh while the card has nothing to show, so the button
+ * appears the moment the leader opens check-in. Renders nothing.
+ */
+export function CheckInWatcher({ detail }: { detail: SessionDetail }) {
+  useLiveCheckIn(detail);
+  return null;
+}
+
+/**
  * The student's check-in on /session/[id] (v1 student-checkin-button.tsx): a
- * full-width "Check In" button, disabled until check-in opens, that opens a
- * scan sheet. Unlike v1 it POSTS the token rather than navigating to a
+ * full-width "Check In" button, shown only while check-in is open (owner,
+ * 2026-11-07; v1 showed it disabled), that opens a scan sheet. Unlike v1 it POSTS the token rather than navigating to a
  * write-on-render page (R69/R72, spec 04 D3), shows the result in the sheet,
  * and keeps a typed-code fallback. Whether check-in is open is the server's
  * `checkInOpen` (C4) — never the client's own three-hour sum (R51, R73).
@@ -185,14 +204,15 @@ export function StudentCheckInCard({
           : "Scan check-in code";
 
   const caption = onHero ? "text-hero-muted" : "text-muted-foreground";
+  // Nothing to show, unless a sheet is mid-flow when check-in closes.
+  if (!checkInVisible(detail) && !open) return null;
   return (
     <View className="flex-col items-start gap-1.5">
-      {checkedInAt === null && !marked ? (
+      {enabled && !marked ? (
         <Button
           variant={onHero ? "onHero" : "primary"}
           size="lg"
           className="min-h-[44px] w-full"
-          disabled={!enabled}
           onPress={openSheet}
         >
           <QrCode
@@ -207,10 +227,6 @@ export function StudentCheckInCard({
           variant="subhead"
           className={caption}
         >{`You checked in at ${formatSessionTime(checkedInAt)}.`}</Text>
-      ) : !detail.checkInOpen && !marked ? (
-        <Text variant="subhead" className={caption}>
-          Check-in isn't open right now
-        </Text>
       ) : null}
       <Sheet open={open} onClose={() => setOpen(false)} title={sheetTitle}>
         <View className="pb-4">

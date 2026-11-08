@@ -15,7 +15,7 @@ export const seasonEnrollmentPaths = {
       tags: ["Seasons"],
       summary: "Add people to a season, all or nothing (SUPER or that season's admin)",
       description:
-        "Under each person's row lock, refuses anyone with a row in this season (a dropped person stays dropped; only a restore brings them back), a deactivated account, a super or mentor, an alumnus, anyone with an active role when this season is ACTIVE (a draft only holds them; Start's checklist catches the clash), and anyone the season's `requiredProgram` blocks. `already_passed` is allowed. One refusal adds nobody: 409 `people_unavailable`, whose message names the first and counts the rest: `Mina is already leading a group in GBV 2026, and 2 others can't join.`\n\n`overrideUserIds` (SUPER only, each one among `userIds`; anyone else sending it gets 403) lets those people past the block, not past anything else, and records `overrideById` and `overrideAt` on the rows of those actually blocked. Marks sessions stale.",
+        "Under each person's row lock, refuses anyone with a row in this season (a dropped person stays dropped; only a restore brings them back), a deactivated account, a super or mentor, an alumnus, anyone with an active role when this season is ACTIVE (a draft only holds them; Start's checklist catches the clash), and anyone the season's `requiredProgram` blocks. `already_passed` is allowed. One refusal adds nobody: 409 `people_unavailable`, whose message names the first and counts the rest: `Mina is already leading a group in GBV 2026, and 2 others can't join.`\n\n`overrideUserIds` (each one among `userIds`; the season's admin or a SUPER, owner 2026-11-07) lets those people past the block, not past anything else, and records `overrideById` and `overrideAt` on the rows of those actually blocked. Marks sessions stale.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -68,7 +68,7 @@ export const seasonEnrollmentPaths = {
   "/api/v1/seasons/{id}/enrollments/{userId}/override": {
     post: {
       tags: ["Seasons"],
-      summary: "Override a block for someone on a draft's roster (SUPER only)",
+      summary: "Override a block for someone on a draft's roster (SUPER or that season's admin)",
       description: "Records `overrideById` and `overrideAt` on the person's active row, for Start's checklist.",
       parameters: [idParam, userIdParam],
       responses: {

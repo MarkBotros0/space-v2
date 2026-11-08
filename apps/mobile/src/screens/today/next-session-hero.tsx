@@ -3,7 +3,11 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { Linking, View } from "react-native";
 import type { DashboardSession, SessionDetail } from "@space/shared";
 
-import { StudentCheckInCard } from "../../components/check-in/StudentCheckInCard";
+import {
+  CheckInWatcher,
+  StudentCheckInCard,
+  checkInVisible,
+} from "../../components/check-in/StudentCheckInCard";
 import { Button, HeroCard } from "../../design/ui";
 import { dayCue } from "../../lib/calendar-grid";
 import { formatWallTime, formatWeekdayDay, formatMinutes } from "../../lib/format";
@@ -36,34 +40,36 @@ export function NextSessionHero({
       : NEXT_SESSION;
   const where = session.location ? ` · ${session.location}` : "";
   const stream = session.isInProgress ? session.youtubeUrl : null;
-  const hasAction = detail.data !== undefined || detail.isPending || stream !== null;
+  // No Check In while check-in isn't open (owner, 2026-11-07); the watcher brings it in when it opens.
+  const showCheckIn = detail.data !== undefined && checkInVisible(detail.data);
+  const hasAction = showCheckIn || stream !== null;
 
   return (
-    <HeroCard
-      tone="brand"
-      eyebrow={eyebrow}
-      title={session.title}
-      meta={`${formatWeekdayDay(session.dayKey)} · ${formatWallTime(session.time)} · ${formatMinutes(session.durationMinutes)}${where}`}
-      onTitlePress={() =>
-        router.push({ pathname: "/session/[id]", params: { id: String(session.id) } })
-      }
-      action={
-        hasAction ? (
-          <View className="w-full gap-2">
-            {detail.data ? (
-              <StudentCheckInCard detail={detail.data} onHero />
-            ) : detail.isPending ? (
-              // Holds the button's height so the list below doesn't jump when it lands.
-              <View className="min-h-[46px]" />
-            ) : null}
-            {stream ? (
-              <Button variant="onHero" onPress={() => void Linking.openURL(stream)}>
-                Join stream
-              </Button>
-            ) : null}
-          </View>
-        ) : undefined
-      }
-    />
+    <>
+      {detail.data && !showCheckIn ? <CheckInWatcher detail={detail.data} /> : null}
+      <HeroCard
+        tone="brand"
+        eyebrow={eyebrow}
+        title={session.title}
+        meta={`${formatWeekdayDay(session.dayKey)} · ${formatWallTime(session.time)} · ${formatMinutes(session.durationMinutes)}${where}`}
+        onTitlePress={() =>
+          router.push({ pathname: "/session/[id]", params: { id: String(session.id) } })
+        }
+        action={
+          hasAction ? (
+            <View className="w-full gap-2">
+              {showCheckIn && detail.data ? (
+                <StudentCheckInCard detail={detail.data} onHero />
+              ) : null}
+              {stream ? (
+                <Button variant="onHero" onPress={() => void Linking.openURL(stream)}>
+                  Join stream
+                </Button>
+              ) : null}
+            </View>
+          ) : undefined
+        }
+      />
+    </>
   );
 }

@@ -1,14 +1,17 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
+import { useRouter } from "expo-router";
 import { Trash2, UserPlus } from "lucide-react-native";
 import { groupWriteRequestSchema, type GroupDetail } from "@space/shared";
 
 import { FormScreen } from "../design/layout/form-screen";
 import { iconWithClassName } from "../design/lib/icon";
-import { Button, FormField, GroupedList, Input, ListRow, MultiSelect, Text, Textarea } from "../design/ui";
+import { Button, FormField, GroupedList, Input, ListRow, Text, Textarea } from "../design/ui";
 import { useSeasonRoster, type GroupWriteInput } from "../hooks/use-group-admin";
+import { useSeasonDetail } from "../hooks/use-seasons";
 import { useSeasonAdmins, useStaffCandidates } from "../hooks/use-season-admins";
 import { firstErrorByField } from "../lib/form-errors";
+import { MembersField } from "../screens/group-form/members-field";
 import { StaffPickerSheet } from "../screens/season-people/staff-picker-sheet";
 import { useSessionStore } from "../store/session";
 
@@ -23,9 +26,11 @@ export interface GroupFormValues {
 
 /**
  * Create/edit a group (v1 group-form.tsx: Name, Description, Leaders and
- * Students as MultiSelects; spec 05 §9), on `FormScreen`'s pinned save bar with the server message as its hint. Students
- * are picked from the season ROSTER (ACTIVE enrolments, C9), never the global
- * student table. The server checks newly added leaders against the one-role
+ * Students; spec 05 §9), on `FormScreen`'s pinned save bar with the server
+ * message as its hint. Members are picked from the season ROSTER (C9), never
+ * the global student table, in `MembersField`'s sections, each row saying
+ * where the person is now (owner, 2026-11-07); adding someone to the season
+ * happens on the season page, never here. The server checks newly added leaders against the one-role
  * rule and students against the roster, and its refusal is shown verbatim via
  * `message`. Saving
  * REPLACES the group's leader and student lists (spec 05 R30) — the form says
@@ -71,6 +76,9 @@ export function GroupForm({
   const scopes = useSessionStore((st) => st.scopes);
   const seasonAdmins = useSeasonAdmins(seasonId, { enabled: me?.role === "SUPER" });
   const roster = useSeasonRoster(seasonId);
+  const season = useSeasonDetail(seasonId);
+  const router = useRouter();
+  const seasonTitle = season.data?.title ?? "this season";
   const [values, setValues] = useState(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // The "Fix the fields" hint belongs to the values that failed; any edit makes a new object.
@@ -106,18 +114,6 @@ export function GroupForm({
   const pickable = leaderOptions
     .filter((o) => !values.leaderIds.includes(Number(o.value)))
     .map((o) => ({ id: Number(o.value), name: o.label, description: o.description }));
-  const studentOptions = (roster.data ?? []).map((r) => {
-    const hint =
-      r.groupId !== null && r.groupId !== groupId
-        ? `Now in ${r.groupName ?? "another group"} — saving moves them here.`
-        : null;
-    return {
-      value: String(r.userId),
-      label: r.name ?? r.email,
-      description: hint ? `${r.email} · ${hint}` : r.email,
-    };
-  });
-
   const editing = groupId !== null;
 
   return (
@@ -204,23 +200,22 @@ export function GroupForm({
         />
 
         <FormField
-          label="Students"
-          description={`Students enrolled in this group for the current season. Adding a student here will move them out of any other group.${editing ? " Saving replaces this group's leaders and its student list." : ""}`}
+          label="Members"
+          description={`Pick from the people already in ${seasonTitle}. To add someone to the season, use Select from community or Invite new on the season page.${editing ? " Saving replaces this group's leaders and its members." : ""}`}
           error={errors.studentIds}
         >
-          <MultiSelect
-            accessibilityLabel="Students"
-            options={studentOptions}
-            value={values.studentIds.map(String)}
-            onChange={(ids) => setValues({ ...values, studentIds: ids.map(Number) })}
-            placeholder={
-              roster.isPending
-                ? "Loading…"
-                : roster.isError
-                  ? "Couldn't load the roster."
-                  : "Pick students…"
+          <MembersField
+            roster={roster.data ?? []}
+            groupId={groupId}
+            seasonTitle={seasonTitle}
+            value={values.studentIds}
+            onChange={(ids) => setValues({ ...values, studentIds: ids })}
+            status={roster.isPending ? "loading" : roster.isError ? "error" : "ready"}
+            onOpenSeason={
+              season.data
+                ? () => router.dismissTo({ pathname: "/seasons/[code]", params: { code: season.data.code } })
+                : undefined
             }
-            emptyMessage="No students found."
           />
         </FormField>
 

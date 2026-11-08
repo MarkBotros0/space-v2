@@ -303,8 +303,8 @@ describe("StudentToday: figures", () => {
   it("puts the season card first, then the session, then To do", async () => {
     serve(routes({ [NEXT_SESSION_DETAIL]: { ...sessionDetail, checkInOpen: false } }));
     renderWithProviders(<StudentToday />);
-    await screen.findByText("Check-in isn't open right now");
     await screen.findByLabelText("Open Spring 2099");
+    await screen.findByText("Week 6");
     const at = order();
     expect(at("Open Spring 2099")).toBeGreaterThanOrEqual(0);
     expect(at("Open Spring 2099")).toBeLessThan(at("Week 6"));
