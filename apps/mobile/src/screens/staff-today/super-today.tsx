@@ -17,6 +17,7 @@ import { firstName } from "../../lib/format";
 import { queryKeys } from "../../lib/query-keys";
 import { useSessionStore } from "../../store/session";
 import { OverdueCallout } from "../season-end/overdue-callout";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { SuperSeasons } from "./super-seasons";
 
 /**
@@ -90,6 +91,7 @@ export function SuperToday() {
     >
       <View className="flex-col gap-4">
         <OverdueCallout />
+        <AnnouncementsHomeCard />
         {seasons.isPending ? (
           <RouteSkeleton />
         ) : seasons.isError ? (

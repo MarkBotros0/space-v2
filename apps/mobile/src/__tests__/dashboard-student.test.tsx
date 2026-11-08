@@ -112,6 +112,8 @@ describe("DashboardScreen — STUDENT", () => {
         EVENTS,
         NEXT_SESSION_DETAIL,
         STUDENT_QUIZZES,
+        // The Announcements card's own read.
+        "/api/v1/announcements/unread",
       ]),
     );
   });
@@ -221,7 +223,9 @@ describe("DashboardScreen — ALUMNI", () => {
     fireEvent.press(await screen.findByText("View my history"));
     expect(mockPush).toHaveBeenCalledWith("/history");
     expect(await screen.findByText("Open day")).toBeTruthy();
-    expect(new Set(requested())).toEqual(new Set([EVENTS, "/api/v1/me/season-history"]));
+    expect(new Set(requested())).toEqual(
+      new Set([EVENTS, "/api/v1/me/season-history", "/api/v1/announcements/unread"]),
+    );
   });
 });
 

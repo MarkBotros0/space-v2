@@ -18,6 +18,7 @@ import { OverdueCallout } from "../season-end/overdue-callout";
 import { useSessionStore } from "../../store/session";
 import { fromDashboardSession, LiveSessionHero } from "./live-session-hero";
 import { NeedsActionList } from "./needs-action-list";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 
 /** The season at a glance, then its students at risk by name. */
 function SeasonFigures({ data }: { data: StaffSeasonDashboard }) {
@@ -125,7 +126,10 @@ export function AdminToday() {
       refreshing={today.isRefetching || dash.isRefetching || events.isRefetching}
       onRefresh={refresh}
     >
-      <View className="flex-col gap-4">{body}</View>
+      <View className="flex-col gap-4">
+        <AnnouncementsHomeCard />
+        {body}
+      </View>
     </Screen>
   );
 }

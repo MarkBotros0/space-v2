@@ -63,8 +63,8 @@ const LABELS: Record<ShownKey, { label: string; help: string }> = {
     help: "When a student you lead/admin misses two in a row.",
   },
   announcement: {
-    label: "News",
-    help: "When an admin or super posts news to you or your season.",
+    label: "New announcements",
+    help: "When an admin or super posts an announcement to you or your season.",
   },
 };
 
@@ -76,24 +76,27 @@ const STUDENT_KEYS: ShownKey[] = [
   "quizGraded",
   "sessionRescheduled",
   "sessionCancelled",
+  "announcement",
 ];
 
 /**
  * Only the switches for notifications this person can get (owner, 2026-11-07): a
  * student's six; a group leader's handed-in work and low-attendance flags; a
  * season admin's low-attendance flags; a mentor's follow-up reminders (owner,
- * 2026-11-07). SUPER is sent none of these.
+ * 2026-11-07). Everyone also gets New announcements, last; for SUPER it is the only switch.
  */
 export function preferenceKeysFor(
   role: UserRole | null,
   scopes: { seasonAdminIds: number[]; groupLeaderIds: number[] } | null,
 ): ShownKey[] {
   if (role === "STUDENT") return STUDENT_KEYS;
-  if (role === "MENTOR") return ["mentorFollowup"];
+  if (role === "MENTOR") return ["mentorFollowup", "announcement"];
   const keys: ShownKey[] = [];
   if (scopes && scopes.groupLeaderIds.length > 0) keys.push("submissionReceived");
   if (scopes && (scopes.groupLeaderIds.length > 0 || scopes.seasonAdminIds.length > 0))
     keys.push("lowAttendanceFlag");
+  // Everyone, Super included, is sent announcements.
+  keys.push("announcement");
   return keys;
 }
 
@@ -169,12 +172,6 @@ export function NotificationPreferences() {
                 Try again
               </Button>
             </View>
-          ) : keys.length === 0 ? (
-            <View className="rounded-group bg-surface p-4">
-              <Text variant="subhead" className="text-muted-foreground">
-                Nothing you're sent can be turned off here.
-              </Text>
-            </View>
           ) : (
             <GroupedList>
               {keys.map((key) => (
@@ -198,11 +195,9 @@ export function NotificationPreferences() {
           {/* Spec D4: the inbox row is always written; the switch governs the
               outbound channels. Saying so is the difference between a setting
               and a surprise. */}
-          {keys.length > 0 ? (
-            <Text variant="caption" className="px-4 text-muted-foreground">
-              Changes save automatically. Turning one off stops the push notifications for that kind. They will still appear in your inbox — that is your history.
-            </Text>
-          ) : null}
+          <Text variant="caption" className="px-4 text-muted-foreground">
+            Changes save automatically. Turning one off stops the push notifications for that kind. They will still appear in your inbox — that is your history.
+          </Text>
         </View>
       ) : null}
     </View>

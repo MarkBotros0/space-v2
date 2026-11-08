@@ -19,6 +19,7 @@ import { useSessionStore } from "../../store/session";
 import { atRiskReason } from "./at-risk-reason";
 import { LeaderSessionSection, isOnTheDay } from "./session-section";
 import { useLiveTodayRefresh } from "./use-live-refresh";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 
 function Body({ data }: { data: StaffSeasonDashboard }) {
   const router = useRouter();
@@ -139,6 +140,7 @@ export function LeaderToday() {
       onRefresh={refresh}
     >
       <View className="flex-col gap-4">
+        <AnnouncementsHomeCard />
         {state ?? (data ? <Body data={data} /> : null)}
         {/* V2-ONLY no-season branch keeps the events card (D19). */}
         {noSeason || data ? <UpcomingEventsCard query={events} /> : null}
