@@ -3,6 +3,7 @@ import { Router } from "express";
 import { requireAuth } from "../../middleware/require-auth";
 import { listTargets } from "./targets";
 import { createPost, deletePost, updatePost } from "./write";
+import { closePoll, listVoters, reopenPoll } from "./poll-manage";
 import { castVote } from "./poll-vote";
 import { getOne, listFeed, markRead, unreadSummary } from "./read";
 
@@ -16,6 +17,9 @@ announcementsRouter.get("/unread", unreadSummary);
 announcementsRouter.get("/targets", listTargets);
 announcementsRouter.post("/", createPost);
 announcementsRouter.put("/:id/poll/vote", castVote);
+announcementsRouter.post("/:id/poll/close", closePoll);
+announcementsRouter.post("/:id/poll/reopen", reopenPoll);
+announcementsRouter.get("/:id/poll/voters", listVoters);
 announcementsRouter.get("/:id", getOne);
 announcementsRouter.post("/:id/read", markRead);
 announcementsRouter.patch("/:id", updatePost);
