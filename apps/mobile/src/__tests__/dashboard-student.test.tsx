@@ -86,7 +86,7 @@ describe("DashboardScreen — STUDENT", () => {
 
     expect(await screen.findByText("Hi, Sara")).toBeTruthy();
     expect(await screen.findByLabelText("Sessions held: 3 of 4")).toBeTruthy();
-    expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
+    expect(await screen.findByLabelText("Absences left: 0")).toBeTruthy();
     expect(screen.queryByLabelText(/^Streak/)).toBeNull();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
     expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
@@ -169,7 +169,7 @@ describe("DashboardScreen — STUDENT", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Couldn't load upcoming events.")).toBeTruthy();
-    expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
+    expect(await screen.findByLabelText("Absences left: 0")).toBeTruthy();
   });
 
   it("shows ErrorState wired to refetch when the dashboard read fails", async () => {
@@ -186,7 +186,7 @@ describe("DashboardScreen — STUDENT", () => {
   it("pull-to-refresh refetches every query the branch owns", async () => {
     serve(studentRoutes);
     renderWithProviders(<DashboardScreen />);
-    await screen.findByLabelText("Absence budget left: 42%");
+    await screen.findByLabelText("Absences left: 0");
     get.mockClear();
 
     await act(async () => {

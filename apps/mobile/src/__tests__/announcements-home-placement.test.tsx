@@ -122,9 +122,9 @@ describe("Announcements card placement on Home", () => {
     });
     renderWithProviders(<DashboardScreen />);
     await screen.findByText("Camp dates");
-    await screen.findByText("Next session");
+    await screen.findByText("Week 6");
     expect(at("Camp dates")).toBeGreaterThanOrEqual(0);
-    expect(at("Camp dates")).toBeLessThan(at("Next session"));
+    expect(at("Camp dates")).toBeLessThan(at("Week 6"));
   });
 
   const leaderRoutes = (nextSession: unknown) => ({
@@ -140,9 +140,9 @@ describe("Announcements card placement on Home", () => {
     serve(leaderRoutes({ ...liveSession, dayKey: deviceTodayKey(), isInProgress: false, youtubeUrl: null }));
     renderWithProviders(<LeaderToday />);
     await screen.findByText("Camp dates");
-    await screen.findByText("Next session");
+    await screen.findByText("Week 6");
     expect(at("Camp dates")).toBeGreaterThanOrEqual(0);
-    expect(at("Camp dates")).toBeLessThan(at("Next session"));
+    expect(at("Camp dates")).toBeLessThan(at("Week 6"));
   });
 
   it("leader on a quiet day: the card first, before the next session", async () => {
@@ -150,9 +150,9 @@ describe("Announcements card placement on Home", () => {
     serve(leaderRoutes({ ...liveSession, isInProgress: false, youtubeUrl: null }));
     renderWithProviders(<LeaderToday />);
     await screen.findByText("Camp dates");
-    await screen.findByText("Next session");
+    await screen.findByText("Week 6");
     expect(at("Camp dates")).toBeGreaterThanOrEqual(0);
-    expect(at("Camp dates")).toBeLessThan(at("Next session"));
+    expect(at("Camp dates")).toBeLessThan(at("Week 6"));
   });
 
   it("mentor: the card first, before the four numbers", async () => {

@@ -12,7 +12,8 @@ type HeroTone = "surface" | "brand";
 
 /**
  * Prominent card for the one thing that matters now: eyebrow, title, meta, optional action (a Button).
- * `tone="brand"` is the navy hero (navy in light, navy-700 in dark); its action is a Button `onHero`.
+ * `tone="brand"` is the brand hero: a soft navy tint with navy text in light (a solid navy block outweighed
+ * every other card, owner 2026-11-09), navy-700 in dark; its action is a Button `onHero` (navy in light).
  * The brand hero shows a long title in full (a clamp cut real session titles mid-word at font 1.3);
  * the default tone clamps at two lines.
  * `onTitlePress` makes the title a link to the thing it names, with a chevron; the action stays its own control.

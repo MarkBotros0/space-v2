@@ -23,7 +23,7 @@ import { TodayFigures } from "./today-figures";
 /**
  * The student's Today (owner, 2026-11-08): the season ring, announcements,
  * the next session and its check-in, then the work that is open. Copy rulings kept from v2:
- * "Absence budget left" (D14), "Join stream" only while a session runs (D13),
+ * "Absences left" (D14), "Join stream" only while a session runs (D13),
  * the events card with its empty state (D19). The season-bound reads are gated
  * on what the server says, so a student who isn't enrolled sends none of them.
  */

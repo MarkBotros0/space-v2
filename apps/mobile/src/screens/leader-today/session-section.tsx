@@ -4,9 +4,9 @@ import { Linking, View } from "react-native";
 
 import { Button } from "../../design/ui/button";
 import { PeoplePreview } from "../../design/home/people-preview";
-import { HeroCard } from "../../design/ui/hero-card";
-import { dayCue, deviceTodayKey } from "../../lib/calendar-grid";
-import { formatWallTime, formatWeekdayDay, unbreakable } from "../../lib/format";
+import { SessionHomeCard } from "../../design/home/session-card";
+import { deviceTodayKey } from "../../lib/calendar-grid";
+import { unbreakable } from "../../lib/format";
 
 /** Names shown before "See all N". */
 const NAMED = 5;
@@ -18,8 +18,8 @@ export function isOnTheDay(session: DashboardSession | null, now?: Date): boolea
 
 /**
  * The session to run and, on its day, who is still unmarked. A session that is
- * not today shows only its day cue; `checkIn` is the leader's own groups and
- * absent (`undefined`) is the same as `null`.
+ * not today is a plain card with its day cue; `checkIn` is the leader's own
+ * groups and absent (`undefined`) is the same as `null`.
  */
 export function LeaderSessionSection({
   session,
@@ -31,58 +31,46 @@ export function LeaderSessionSection({
   now?: Date;
 }) {
   const router = useRouter();
-  if (!session) return <HeroCard eyebrow="Next session" title="No upcoming sessions." />;
+  const onTheDay = isOnTheDay(session, now);
+  if (!session) return <SessionHomeCard session={null} todayKey={deviceTodayKey(now)} />;
 
   const id = String(session.id);
-  const today = deviceTodayKey(now);
-  const onTheDay = isOnTheDay(session, now);
   const missing = onTheDay ? (checkIn?.notCheckedIn ?? []) : [];
   const attendance = { pathname: "/session/[id]/attendance", params: { id } } as const;
-  const openSession = () => router.push({ pathname: "/session/[id]", params: { id } });
-
-  // Each unit is one unbreakable run: the line breaks between them, never inside one.
-  let meta = `${unbreakable(formatWeekdayDay(session.dayKey))} · ${unbreakable(formatWallTime(session.time))} · ${unbreakable(`${session.durationMinutes} min`)}${
-    session.location ? ` · ${session.location}` : ""
-  }`;
-  if (onTheDay) {
-    if (checkIn)
-      meta += ` · ${unbreakable(`${checkIn.present + checkIn.late} present`)} · ${unbreakable(`${checkIn.notCheckedIn.length} not checked in`)}`;
-  } else {
-    const cue = dayCue(session.dayKey, today);
-    if (cue) meta += ` · ${unbreakable(cue)}`;
-  }
+  const note =
+    onTheDay && checkIn
+      ? `${unbreakable(`${checkIn.present + checkIn.late} present`)} · ${unbreakable(`${checkIn.notCheckedIn.length} not checked in`)}`
+      : undefined;
 
   return (
     <View className="gap-4">
-      <HeroCard
-        tone="brand"
-        eyebrow={session.isInProgress ? "Happening now" : "Next session"}
-        title={session.title}
-        meta={meta}
+      <SessionHomeCard
+        session={session}
+        todayKey={deviceTodayKey(now)}
+        note={note}
+        // On its day the leader marks who came; a week out the card is plain and its title opens it.
         action={
-          onTheDay ? (
-            <>
-              <Button variant="onHero" onPress={() => router.push(attendance)}>
-                Take attendance
-              </Button>
-              <Button variant="secondary" onPress={openSession}>
-                Open session
-              </Button>
-              {/* D13: a stream link only while the session is running. */}
-              {session.isInProgress && session.youtubeUrl ? (
-                <Button
-                  variant="secondary"
-                  onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}
-                >
-                  Join stream
-                </Button>
-              ) : null}
-            </>
-          ) : (
-            <Button variant="onHero" onPress={openSession}>
-              Open session
-            </Button>
-          )
+          onTheDay
+            ? (onBrand) => (
+                <>
+                  <Button
+                    variant={onBrand ? "onHero" : "primary"}
+                    onPress={() => router.push(attendance)}
+                  >
+                    Mark attendance
+                  </Button>
+                  {/* D13: a stream link only while the session is running. */}
+                  {session.isInProgress && session.youtubeUrl ? (
+                    <Button
+                      variant="secondary"
+                      onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}
+                    >
+                      Join stream
+                    </Button>
+                  ) : null}
+                </>
+              )
+            : undefined
         }
       />
       <PeoplePreview

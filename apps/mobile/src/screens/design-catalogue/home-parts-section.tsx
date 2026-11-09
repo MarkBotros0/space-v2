@@ -8,20 +8,23 @@ import { CatalogueSection } from "./section";
 
 const noop = () => {};
 
-/** Home's parts: what is waiting (zero reads All clear), standing figures, the season pulse, a people preview. */
+/** Home's parts: what is waiting (zeros step aside; all zero is one row), standing figures, the season pulse, a people preview. */
 export function HomePartsSection() {
   return (
     <CatalogueSection id="home-parts" title="Home parts">
       <CountGrid
         tiles={[
-          { label: "Submissions to review", value: 3, icon: FileText, tone: "warn", onPress: noop },
+          { label: "Submissions to review", value: 3, icon: FileText, tone: "info", onPress: noop },
           { label: "Sessions without attendance", value: 0, icon: CalendarX, tone: "warn", onPress: noop },
           { label: "Students at risk", value: 2, icon: TriangleAlert, tone: "bad", onPress: noop },
         ]}
       />
+      <CountGrid
+        tiles={[{ label: "Submissions to review", value: 0, icon: FileText, tone: "info", onPress: noop }]}
+      />
       <FigureGrid
         tiles={[
-          { label: "Students (not graduated)", value: "128", icon: Users, onPress: noop },
+          { label: "Students", value: "128", icon: Users, onPress: noop },
           { label: "Alumni", value: "54", icon: GraduationCap, onPress: noop },
         ]}
       />
@@ -32,6 +35,13 @@ export function HomePartsSection() {
         sessionsTotal={10}
         figures={staffPulseFigures(86, 24)}
         onPress={noop}
+      />
+      <SeasonPulse
+        title="Spring Intensive 2026"
+        progressPct={0}
+        sessionsHeld={0}
+        sessionsTotal={0}
+        figures={staffPulseFigures(null, 3)}
       />
       <PeoplePreview
         header="Students at risk"

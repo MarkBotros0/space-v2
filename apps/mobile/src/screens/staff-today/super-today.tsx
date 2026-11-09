@@ -51,7 +51,7 @@ export function SuperToday() {
   if (org.data) {
     tiles.push(
       {
-        label: "Students (not graduated)",
+        label: "Students",
         value: String(org.data.totalStudentsNotGraduated),
         icon: Users,
         onPress: () => router.push("/students"),
@@ -90,8 +90,9 @@ export function SuperToday() {
       onRefresh={refresh}
     >
       <View className="flex-col gap-4">
-        {/* Owner 2026-11-08: the community figures first, then the season rings,
-            announcements and the overdue callout. */}
+        {/* Owner 2026-11-08: the community figures first; 2026-11-09: then an
+            overdue season's End prompt, then the seasons as rows, announcements
+            and events. */}
         <View className="gap-2">
           <ListSectionHeader className="pb-0">Community</ListSectionHeader>
           {org.isPending ? (
@@ -108,6 +109,7 @@ export function SuperToday() {
             </>
           )}
         </View>
+        <OverdueCallout />
         {seasons.isPending ? (
           <RouteSkeleton />
         ) : seasons.isError ? (
@@ -116,7 +118,6 @@ export function SuperToday() {
           <SuperSeasons seasons={seasons.data} org={org.data} />
         )}
         <AnnouncementsHomeCard />
-        <OverdueCallout />
         <UpcomingEventsCard query={events} />
       </View>
     </Screen>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { ClipboardCheck, FileText, TriangleAlert } from "lucide-react-native";
+import { ClipboardCheck, FileText } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
 
@@ -38,7 +38,7 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
       label: "Submissions to review",
       value: submissions.pendingReview,
       icon: FileText,
-      tone: "warn",
+      tone: "info",
       onPress: toSubmissions,
     },
     ...(hasQuizzes
@@ -47,24 +47,19 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
             label: "Quizzes to grade",
             value: quizzes.pending,
             icon: ClipboardCheck,
-            tone: "warn" as const,
+            tone: "info" as const,
             onPress: () => router.push("/quizzes"),
           },
         ]
       : []),
-    {
-      label: "Students at risk",
-      value: cohort.atRiskTotal,
-      icon: TriangleAlert,
-      tone: "bad",
-      onPress: toGroup,
-    },
   ];
+  // The students at risk are named in the list right below, so they get no tile of their own.
 
   return (
     <>
       <SeasonPulse
-        title={data.groups.map((g) => g.name).join(", ") || data.season.title}
+        // The header already names the group; the ring is the season's (owner, 2026-11-09).
+        title={data.season.title}
         progressPct={progress.pct}
         sessionsHeld={progress.sessionsHeld}
         sessionsTotal={progress.sessionsTotal}

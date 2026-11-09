@@ -1,73 +1,39 @@
 import type { UseQueryResult } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
-import { Linking, Pressable, View } from "react-native";
+import { View } from "react-native";
 import type { JpcEventListResponse } from "@space/shared";
 
-import { NavIcon } from "../../design/icons/nav-icon";
-import { Eyebrow } from "../../design/layout/page-title";
-import { Button, Skeleton, Text } from "../../design/ui";
-import { formatEventWhenShort } from "../../lib/format";
+import { InlineError } from "../../design/layout/route-states";
+import { GroupedList, Skeleton } from "../../design/ui";
+import { UpcomingEventsGroup } from "../../screens/events/upcoming-events-group";
+
+const HEADER = "Upcoming events";
 
 /**
- * v1 components/events/upcoming-events-card.tsx — the card on all six
- * dashboards (spec 19 R5). The window (today onwards in the org zone), the cap
- * and the visibility rule are the server's (Plan 14); this renders rows.
- * With no upcoming events it renders nothing (owner, 2026-11-07: Today hides
- * an empty card; the Events screen still says so). A row without a url opens
- * v2's event screen.
+ * v1 components/events/upcoming-events-card.tsx — the events on all six Homes
+ * (spec 19 R5). The window (today onwards in the org zone), the cap and the
+ * visibility rule are the server's (Plan 14); this renders rows. With no
+ * upcoming events it renders nothing (owner, 2026-11-07: Today hides an empty
+ * card; the Events screen still says so). The rows are the same grouped rows,
+ * label above and chevron, as every other list on Home (owner, 2026-11-09): a
+ * row with a url opens it, otherwise v2's event screen (v1 R11).
  */
 export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventListResponse> }) {
-  const router = useRouter();
   if (query.isSuccess && query.data.events.length === 0) return null;
-
+  if (query.isSuccess) return <UpcomingEventsGroup events={query.data.events} header={HEADER} />;
   return (
-    <View className="rounded-group bg-surface p-4">
-      <Eyebrow>Upcoming events</Eyebrow>
+    <GroupedList header={HEADER}>
       {query.isPending ? (
-        <View accessible accessibilityLabel="Loading" className="mt-2 flex-col gap-2.5">
+        <View accessible accessibilityLabel="Loading" className="flex-col gap-2.5 p-4">
           <Skeleton className="h-9" />
           <Skeleton className="h-9" />
-        </View>
-      ) : query.isError ? (
-        <View className="mt-2 flex-col items-start gap-2">
-          <Text className="text-sm text-error-600 dark:text-error-400">
-            Couldn't load upcoming events.
-          </Text>
-          <Button variant="outline" size="sm" onPress={() => void query.refetch()}>
-            Try again
-          </Button>
         </View>
       ) : (
-        <View className="mt-2 flex-col gap-2.5">
-          {query.data.events.map((e) => {
-            const when = formatEventWhenShort(e);
-            return (
-              <Pressable
-                key={e.id}
-                accessibilityRole={e.url ? "link" : "button"}
-                accessibilityLabel={`${e.title}, ${when}`}
-                className="flex-row items-start gap-3 active:opacity-80"
-                onPress={() => {
-                  // v1: an event with a url is an external link as a whole row (R11).
-                  if (e.url) void Linking.openURL(e.url);
-                  else router.push({ pathname: "/event/[id]", params: { id: String(e.id) } });
-                }}
-              >
-                <NavIcon name="events" size={16} className="mt-0.5 shrink-0 text-brand-teal-700 dark:text-brand-teal-400" />
-                <View className="min-w-0 flex-1">
-                  <Text
-                    numberOfLines={1}
-                    className="text-sm font-bold text-brand-navy-900 dark:text-foreground"
-                  >
-                    {e.title}
-                  </Text>
-                  <Text className="text-xs text-muted-foreground">{when}</Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
+        <InlineError
+          className="p-4"
+          message="Couldn't load upcoming events."
+          onRetry={() => void query.refetch()}
+        />
       )}
-    </View>
+    </GroupedList>
   );
 }

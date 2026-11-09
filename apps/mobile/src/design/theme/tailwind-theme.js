@@ -193,12 +193,12 @@ const semantic = {
     "pill-foreground": "#D4DAEA",
     "pill-active": "#ABDFE2",
     "pill-active-label": "#FFFFFF",
-    "hero": "#142048",
-    "hero-foreground": "#FFFFFF",
-    "hero-eyebrow": "#ABDFE2",
-    "hero-muted": "#D4DAEA",
-    "on-hero": "#7DCED1",
-    "on-hero-foreground": "#103436"
+    "hero": "#E3E8F4",
+    "hero-foreground": "#142048",
+    "hero-eyebrow": "#1E5254",
+    "hero-muted": "#4B5878",
+    "on-hero": "#142048",
+    "on-hero-foreground": "#FFFFFF"
   },
   "dark": {
     "background": "#0B1230",

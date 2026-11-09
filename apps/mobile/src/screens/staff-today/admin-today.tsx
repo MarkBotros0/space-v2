@@ -17,7 +17,7 @@ import { joinMeta } from "../../lib/join-meta";
 import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { OverdueCallout } from "../season-end/overdue-callout";
 import { useSessionStore } from "../../store/session";
-import { fromDashboardSession, LiveSessionHero } from "./live-session-hero";
+import { LiveSessionHero } from "./live-session-hero";
 import { NeedsActionList } from "./needs-action-list";
 
 /** The season at a glance: first on Home, always (owner, 2026-11-08). */
@@ -96,13 +96,13 @@ export function AdminToday() {
     const next = dash.data?.nextSession;
     const hero =
       dash.data && next ? (
-        <LiveSessionHero session={fromDashboardSession(next, dash.data.season.title)} />
+        <LiveSessionHero session={next} todayKey={dash.data.todayOrgDay} />
       ) : null;
     body = (
       <>
-        {/* Owner 2026-11-08: the season ring first, then announcements, then the
-            session (live or next), an overdue season, what needs action and the
-            students at risk. */}
+        {/* Owner 2026-11-08: the season ring first; 2026-11-09: then an overdue
+            season, announcements, the session (live or next), what needs action
+            and the students at risk. */}
         {dash.isPending ? (
           <RouteSkeleton />
         ) : dash.isError || !dash.data ? (
@@ -113,9 +113,9 @@ export function AdminToday() {
         ) : (
           <SeasonFigures data={dash.data} />
         )}
+        <OverdueCallout />
         <AnnouncementsHomeCard />
         {hero}
-        <OverdueCallout />
         {today.isPending ? (
           <RouteSkeleton />
         ) : (
@@ -123,6 +123,7 @@ export function AdminToday() {
             needs={today.needs}
             scopeSeasonId={today.scopeSeasonId}
             onRetry={today.refetch}
+            atRiskTile={false}
           />
         )}
         {dash.data ? <AtRiskPreview data={dash.data} /> : null}

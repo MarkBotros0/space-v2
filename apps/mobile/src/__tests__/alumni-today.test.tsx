@@ -65,22 +65,24 @@ describe("AlumniDashboard", () => {
     expect(screen.getAllByText("Open day")).toHaveLength(1);
     expect(screen.getByText("ALSO COMING UP")).toBeTruthy();
     expect(screen.getByText("Gala")).toBeTruthy();
-    expect(screen.getByText("View event")).toBeTruthy();
+    // The title is the link; no separate button (owner, 2026-11-09).
+    expect(screen.getByRole("link", { name: "Open day" })).toBeTruthy();
+    expect(screen.queryByText("View event")).toBeNull();
   });
 
-  it("hero action pushes the event when it has no url", async () => {
+  it("the hero's title pushes the event when it has no url", async () => {
     serve({ [EVENTS]: { events: [event], total: 1 }, [HISTORY]: { seasons: [] } });
     renderWithProviders(<AlumniDashboard />);
-    fireEvent.press(await screen.findByText("View event"));
+    fireEvent.press(await screen.findByRole("link", { name: "Open day" }));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "3" } });
     expect(screen.queryByText("ALSO COMING UP")).toBeNull();
   });
 
-  it("hero action opens the link when the event has a url", async () => {
+  it("the hero's title opens the link when the event has a url", async () => {
     const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
     serve({ [EVENTS]: { events: [gala], total: 1 }, [HISTORY]: { seasons: [] } });
     renderWithProviders(<AlumniDashboard />);
-    fireEvent.press(await screen.findByText("Open link"));
+    fireEvent.press(await screen.findByRole("link", { name: "Gala" }));
     expect(openURL).toHaveBeenCalledWith("https://jpc.example/gala");
     expect(mockPush).not.toHaveBeenCalled();
   });
@@ -106,15 +108,23 @@ describe("AlumniDashboard", () => {
     expect(screen.queryByText("Next event")).toBeNull();
   });
 
-  it("lists at most three past seasons with the attendance chip and opens history", async () => {
+  it("lists at most three earlier seasons, never the one in Your last season, and opens history", async () => {
     serve({
       [EVENTS]: { events: [], total: 0 },
       [HISTORY]: {
-        seasons: [row(1, "Season A"), row(2, "Season B", null), row(3, "Season C"), row(4, "Season D")],
+        seasons: [
+          row(9, "Season Z"),
+          row(1, "Season A"),
+          row(2, "Season B", null),
+          row(3, "Season C"),
+          row(4, "Season D"),
+        ],
       },
     });
     renderWithProviders(<AlumniDashboard />);
     expect(await screen.findByText("Season A")).toBeTruthy();
+    expect(screen.getByText("Season Z finished")).toBeTruthy();
+    expect(screen.queryByText("Season Z")).toBeNull();
     expect(screen.getByText("YOUR HISTORY")).toBeTruthy();
     expect(screen.queryByText("Season D")).toBeNull();
     expect(screen.getAllByText("85% attended")).toHaveLength(3);

@@ -56,7 +56,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByLabelText("Open Season 7")).toBeTruthy();
+    expect(await screen.findByText("Season 7")).toBeTruthy();
     expect(screen.queryByText("NEEDS ACTION")).toBeNull();
     expect(screen.queryByText(/Submissions to review/)).toBeNull();
     expect(screen.queryByText(/Sessions without attendance/)).toBeNull();
@@ -68,7 +68,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     expect(urls.some((u) => u.includes("/sessions"))).toBe(false);
   });
 
-  it("gives each running season its pulse, opening the season", async () => {
+  it("gives each running season one row with a small ring and its figures, opening the season (owner, 2026-11-09)", async () => {
     serveStaff(get, {
       table: base({
         "/api/v1/seasons": {
@@ -79,18 +79,19 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByLabelText("Open Season 8")).toBeTruthy();
-    expect(screen.getAllByTestId("season-pulse")).toHaveLength(2);
-    expect(screen.getByText("Community-wide")).toBeTruthy();
-    expect(screen.getAllByLabelText("Sessions held: 3 of 4").length).toBe(2);
-    fireEvent.press(screen.getByLabelText("Open Season 7"));
+    expect(await screen.findByText("SEASONS")).toBeTruthy();
+    expect(await screen.findByText(/^3 of 4 sessions held · 33% attendance · 3 students · Community-wide$/)).toBeTruthy();
+    expect(screen.getByText("3 of 4 sessions held · 33% attendance · 3 students")).toBeTruthy();
+    expect(screen.queryByTestId("season-pulse")).toBeNull();
+    expect(screen.getByLabelText("Season 7 progress 75%")).toBeTruthy();
+    fireEvent.press(screen.getByText("Season 7"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]", params: { code: "s7" } });
   });
 
-  it("puts the Community tiles first, above the season rings (owner, 2026-11-08)", async () => {
+  it("puts the Community tiles first, above the seasons (owner, 2026-11-08)", async () => {
     serveStaff(get, { table: base() });
     renderWithProviders(<DashboardScreen />);
-    await screen.findByLabelText("Open Season 7");
+    await screen.findByText("Season 7");
     const texts: string[] = [];
     const walk = (n: unknown): void => {
       if (typeof n === "string") texts.push(n);
@@ -103,7 +104,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     };
     walk(screen.toJSON());
     expect(texts.indexOf("COMMUNITY")).toBeGreaterThanOrEqual(0);
-    expect(texts.indexOf("COMMUNITY")).toBeLessThan(texts.indexOf("Open Season 7"));
+    expect(texts.indexOf("COMMUNITY")).toBeLessThan(texts.indexOf("SEASONS"));
   });
 
   it("lists drafts under Coming up with their start and enrolled count", async () => {
@@ -134,7 +135,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     expect(await screen.findByText("No season running")).toBeTruthy();
     fireEvent.press(screen.getByText("New season"));
     expect(mockPush).toHaveBeenCalledWith("/seasons/new");
-    expect(await screen.findByLabelText("Students (not graduated): 40")).toBeTruthy();
+    expect(await screen.findByLabelText("Students: 40")).toBeTruthy();
     expect(screen.getByText("Open day")).toBeTruthy();
   });
 
@@ -144,7 +145,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
 
     fireEvent.press(await screen.findByLabelText("Alumni: 12"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/students", params: { show: "alumni" } });
-    fireEvent.press(screen.getByLabelText("Students (not graduated): 40"));
+    fireEvent.press(screen.getByLabelText("Students: 40"));
     expect(mockPush).toHaveBeenCalledWith("/students");
     fireEvent.press(await screen.findByLabelText("Not invited yet: 5"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/community", params: { status: "pending" } });

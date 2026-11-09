@@ -4,7 +4,7 @@ import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { InlineError } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { Button, GroupedList, HeroCard, ListRow, Skeleton, StatusChip } from "../../design/ui";
+import { GroupedList, HeroCard, ListRow, Skeleton, StatusChip } from "../../design/ui";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useSeasonHistory } from "../../hooks/use-self-service";
 import { firstName, formatEventWhenShort, formatSeasonDay } from "../../lib/format";
@@ -35,8 +35,9 @@ function Failed({ header, message, onRetry }: { header: string; message: string;
 }
 
 /**
- * The alumnus's Today: the next event as the one hero, the others as rows, then
- * the last few seasons. Its data is the events list and `/me/season-history` —
+ * The alumnus's Today: the next event as the one hero (its title opens it, as the
+ * session card's does), the others as rows, then the last few seasons. The season
+ * in "Your last season" is not listed again under Your history (owner, 2026-11-09). Its data is the events list and `/me/season-history` —
  * never `/me/dashboard`, which answers an alumnus 403 (spec 19 §7).
  */
 export function AlumniDashboard() {
@@ -52,7 +53,13 @@ export function AlumniDashboard() {
     void history.refetch();
   };
   const latest = history.data?.[0];
+  const showLatest = latest !== undefined && latest.outcome !== "DROPPED";
+  const earlier = (history.data ?? []).slice(showLatest ? 1 : 0, (showLatest ? 1 : 0) + HISTORY_ROWS);
   const [next, ...others] = events.data?.events ?? [];
+  const openEvent = (e: NonNullable<typeof next>) => {
+    if (e.url) void Linking.openURL(e.url);
+    else router.push({ pathname: "/event/[id]", params: { id: String(e.id) } });
+  };
 
   return (
     <Screen
@@ -65,7 +72,7 @@ export function AlumniDashboard() {
     >
       <View className="flex-col gap-6">
         <AnnouncementsHomeCard />
-        {latest && latest.outcome !== "DROPPED" ? <FinishedSeasonCard row={latest} /> : null}
+        {showLatest ? <FinishedSeasonCard row={latest} /> : null}
         {events.isPending ? (
           <Loading />
         ) : events.isError ? (
@@ -76,20 +83,7 @@ export function AlumniDashboard() {
               eyebrow="Next event"
               title={next.title}
               meta={formatEventWhenShort(next)}
-              action={
-                next.url ? (
-                  <Button variant="primary" onPress={() => void Linking.openURL(next.url!)}>
-                    Open link
-                  </Button>
-                ) : (
-                  <Button
-                    variant="primary"
-                    onPress={() => router.push({ pathname: "/event/[id]", params: { id: String(next.id) } })}
-                  >
-                    View event
-                  </Button>
-                )
-              }
+              onTitlePress={() => openEvent(next)}
             />
             {others.length > 0 ? <UpcomingEventsGroup events={others} header="Also coming up" /> : null}
           </>
@@ -104,7 +98,7 @@ export function AlumniDashboard() {
             {history.data.length === 0 ? (
               <ListRow title="No past seasons" />
             ) : (
-              history.data.slice(0, HISTORY_ROWS).map((s) => (
+              earlier.map((s) => (
                 <ListRow
                   key={s.seasonId}
                   title={s.title}

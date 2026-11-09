@@ -77,11 +77,30 @@ describe("MentorDashboard (owner, 2026-11-07)", () => {
     expect(screen.queryByText(/at risk/i)).toBeNull();
   });
 
-  it("says All clear on a quiet day", async () => {
+  it("a quiet day is one All caught up row instead of two zero tiles", async () => {
     serve(routes({ [SUMMARY]: { followUpsDue: 0, absentLately: 0, notesThisWeek: 0, students: 120 } }));
     renderWithProviders(<MentorDashboard />);
-    expect(await screen.findByLabelText("Follow-ups due: none, all clear")).toBeTruthy();
-    expect(screen.getByLabelText("Absent lately: none, all clear")).toBeTruthy();
+    expect(await screen.findByLabelText("No follow-ups due, nobody absent lately")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Follow-ups due/)).toBeNull();
+    expect(screen.queryByLabelText(/^Absent lately/)).toBeNull();
+    expect(screen.getByLabelText(/^Members/)).toBeTruthy();
+  });
+
+  it("one zero steps aside and the other count stays", async () => {
+    serve(routes({ [SUMMARY]: { followUpsDue: 0, absentLately: 3, notesThisWeek: 0, students: 120 } }));
+    renderWithProviders(<MentorDashboard />);
+    expect(await screen.findByLabelText("Absent lately: 3")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Follow-ups due/)).toBeNull();
+    expect(screen.queryByLabelText("No follow-ups due, nobody absent lately")).toBeNull();
+  });
+
+  it("names a note's author only when it is someone else", async () => {
+    const mine = { ...note, id: 2, authorId: 1, authorName: "Me Myself", student: { ...note.student, id: 10, name: "Sue Student" } };
+    serve(routes({ [NOTES]: { notes: [note, mine], nextCursor: null } }));
+    renderWithProviders(<MentorDashboard />);
+    expect(await screen.findByText(/Mina Mentor · Checked in about the essay/)).toBeTruthy();
+    expect(screen.getByText("Sue Student")).toBeTruthy();
+    expect(screen.queryByText(/Me Myself/)).toBeNull();
   });
 
   it("lists the newest notes and opens all of them", async () => {

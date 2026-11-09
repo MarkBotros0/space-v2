@@ -5,7 +5,7 @@ import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { InlineError } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { CountTile } from "../../design/home/count-tile";
+import { AllCaughtUp, CountTile } from "../../design/home/count-tile";
 import { FigureTile } from "../../design/home/figure-tile";
 import { GroupedList, Skeleton } from "../../design/ui";
 import { useUpcomingEvents } from "../../hooks/use-events";
@@ -20,9 +20,10 @@ import { UpcomingEventsCard } from "./UpcomingEventsCard";
 const NOTES_LIMIT = 5;
 
 /**
- * The mentor's Home (owner, 2026-11-07): nothing season-shaped. Four numbers,
- * each opening its list: follow-ups due, students absent lately, notes this
- * week, everyone. Then the newest notes and the upcoming events every Home keeps.
+ * The mentor's Home (owner, 2026-11-07): nothing season-shaped. Up to four
+ * numbers, each opening its list: follow-ups due and students absent lately
+ * (shown only when above zero; both zero is one "All caught up" row, owner
+ * 2026-11-09), notes this week, everyone. Then the newest notes and the upcoming events every Home keeps.
  * The numbers are the totals of the lists they open (GET /me/mentor-summary).
  */
 export function MentorDashboard() {
@@ -59,20 +60,29 @@ export function MentorDashboard() {
           <InlineError message="Couldn't load your numbers." onRetry={() => void summary.refetch()} />
         ) : (
           <View testID="mentor-figures" className="flex-row flex-wrap gap-3">
-            <CountTile
-              label="Follow-ups due"
-              value={summary.data.followUpsDue}
-              icon={Flag}
-              tone="warn"
-              onPress={() => router.push("/follow-ups")}
-            />
-            <CountTile
-              label="Absent lately"
-              value={summary.data.absentLately}
-              icon={UserX}
-              tone="bad"
-              onPress={() => router.push({ pathname: "/students", params: { absent: "1" } })}
-            />
+            {summary.data.followUpsDue === 0 && summary.data.absentLately === 0 ? (
+              <View className="w-full">
+                <AllCaughtUp label="No follow-ups due, nobody absent lately" />
+              </View>
+            ) : null}
+            {summary.data.followUpsDue > 0 ? (
+              <CountTile
+                label="Follow-ups due"
+                value={summary.data.followUpsDue}
+                icon={Flag}
+                tone="warn"
+                onPress={() => router.push("/follow-ups")}
+              />
+            ) : null}
+            {summary.data.absentLately > 0 ? (
+              <CountTile
+                label="Absent lately"
+                value={summary.data.absentLately}
+                icon={UserX}
+                tone="bad"
+                onPress={() => router.push({ pathname: "/students", params: { absent: "1" } })}
+              />
+            ) : null}
             <FigureTile
               label="Notes this week"
               value={String(summary.data.notesThisWeek)}

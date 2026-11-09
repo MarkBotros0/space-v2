@@ -47,8 +47,8 @@ describe("A running season's Needs attention (owner, 2026-11-07)", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByLabelText("Students at risk: 2"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/at-risk", params: { seasonId: "7" } });
-    fireEvent.press(screen.getByLabelText(/^Sessions without attendance: /));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/sessions", params: { seasonId: "7" } });
+    // No session is missing attendance, so that tile steps aside (owner, 2026-11-09).
+    expect(screen.queryByLabelText(/^Sessions without attendance/)).toBeNull();
     expect(screen.queryByLabelText(/^Not invited yet/)).toBeNull();
     const urls = get.mock.calls.map(([u]) => u as string);
     expect(urls.filter((u) => u.startsWith("/api/v1/submissions?")).every((u) => u.includes("seasonId=7"))).toBe(true);

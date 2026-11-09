@@ -60,8 +60,10 @@ describe("Admin Today", () => {
     expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.getByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Week 6")).toBeTruthy();
-    expect(screen.getByText(/Spring 2099 · .*· 90 min · Hall/)).toBeTruthy();
-    const at = order("Sessions held", "Happening now", "NEEDS ACTION", "Upcoming events");
+    // The ring above names the season, so the session's meta line doesn't repeat it.
+    expect(screen.getByText(/90 min · Hall/)).toBeTruthy();
+    expect(screen.queryByText(/Spring 2099 · /)).toBeNull();
+    const at = order("sessions held", "Happening now", "NEEDS ACTION", "UPCOMING EVENTS");
     expect(at[0]).toBeGreaterThan(-1);
     expect(at[1]).toBeGreaterThan(at[0]!);
     expect(at[2]).toBeGreaterThan(at[1]!);
@@ -72,26 +74,29 @@ describe("Admin Today", () => {
     expect(screen.getByLabelText("Attendance: 33%")).toBeTruthy();
   });
 
-  it("Mark attendance opens the attendance sheet; Open session the session; Join stream stays while live", async () => {
+  it("Mark attendance opens the attendance sheet; the title the session; Join stream stays while live", async () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
 
     fireEvent.press(await screen.findByText("Mark attendance"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]/attendance", params: { id: "11" } });
-    fireEvent.press(screen.getByText("Open session"));
+    fireEvent.press(screen.getByRole("link", { name: "Week 6" }));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/session/[id]", params: { id: "11" } });
     expect(screen.getByText("Join stream")).toBeTruthy();
+    expect(screen.queryByText("Open session")).toBeNull();
+    expect(screen.getByTestId("hero-card").props.className).toContain("bg-hero");
   });
 
-  it("a session that has not started has no Mark attendance and no stream", async () => {
+  it("a session that has not started is a plain card: no Mark attendance, no stream", async () => {
     const next = { ...staffDashboard("season"), nextSession: { ...staffDashboard("season").nextSession, isInProgress: false } };
     serveStaff(get, { table: staffRoutes({ "/api/v1/me/dashboard?seasonId=7": next }) });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("Next session")).toBeTruthy();
+    expect(await screen.findByText("Next session · Today")).toBeTruthy();
     expect(screen.queryByText("Mark attendance")).toBeNull();
     expect(screen.queryByText("Join stream")).toBeNull();
-    expect(screen.getByText("Open session")).toBeTruthy();
+    expect(screen.queryByText("Open session")).toBeNull();
+    expect(screen.getByTestId("hero-card").props.className).toContain("bg-surface");
   });
 
   it("the review row opens exactly the queue it counts: pending, in this season", async () => {
@@ -102,21 +107,22 @@ describe("Admin Today", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByLabelText("Sessions without attendance: 1"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/sessions", params: { seasonId: "7" } });
-    fireEvent.press(screen.getByLabelText("Students at risk: 2"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/at-risk", params: { seasonId: "7" } });
+    // The students at risk are named in the list below, so Home gives them no tile.
+    expect(screen.queryByLabelText(/^Students at risk:/)).toBeNull();
     expect(screen.queryByLabelText(/Not invited yet/)).toBeNull();
   });
 
-  it("a zero count is an All clear tile beside the ones with work in them", async () => {
-    serveStaff(get, { pending: 0, atRisk: 1 });
+  it("a zero count steps aside: only the tiles with work in them show", async () => {
+    serveStaff(get, { pending: 0 });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByLabelText("Students at risk: 1")).toBeTruthy();
-    expect(screen.getByLabelText("Submissions to review: none, all clear")).toBeTruthy();
-    expect(screen.getByText("Submissions to review · All clear")).toBeTruthy();
+    expect(await screen.findByLabelText("Sessions without attendance: 1")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Submissions to review/)).toBeNull();
+    expect(screen.queryByText(/All clear/)).toBeNull();
+    expect(screen.queryByTestId("all-caught-up")).toBeNull();
   });
 
-  it("every Needs action tile reads All clear only when its count is exactly zero", async () => {
+  it("all zero is one All caught up row", async () => {
     serveStaff(get, {
       pending: 0,
       atRisk: 0,
@@ -124,9 +130,10 @@ describe("Admin Today", () => {
     });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByLabelText("Submissions to review: none, all clear")).toBeTruthy();
-    expect(screen.getByLabelText("Sessions without attendance: none, all clear")).toBeTruthy();
-    expect(screen.getByLabelText("Students at risk: none, all clear")).toBeTruthy();
+    expect(await screen.findByLabelText("All caught up")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Submissions to review/)).toBeNull();
+    expect(screen.queryByLabelText(/^Sessions without attendance/)).toBeNull();
+    expect(screen.queryByTestId("count-grid")).toBeNull();
   });
 
   it("a failed sessions read shows a retry in place of that row, never Nothing needs action", async () => {
@@ -138,7 +145,8 @@ describe("Admin Today", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText(/Couldn't load sessions with no attendance/)).toBeTruthy();
-    expect(screen.queryByLabelText("Sessions without attendance: none, all clear")).toBeNull();
+    expect(screen.queryByLabelText(/^Sessions without attendance/)).toBeNull();
+    expect(screen.queryByLabelText("All caught up")).toBeNull();
     const before = requested().filter((u) => u.endsWith("/sessions")).length;
     fireEvent.press(screen.getAllByText("Try again")[0]!);
     await waitFor(() => expect(requested().filter((u) => u.endsWith("/sessions")).length).toBeGreaterThan(before));

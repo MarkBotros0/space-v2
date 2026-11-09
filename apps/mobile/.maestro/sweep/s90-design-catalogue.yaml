@@ -257,6 +257,12 @@ appId: com.jpc.space
 - runFlow:
     file: _catalogue-section.yaml
     env:
+      SECTION: session-home-card
+- takeScreenshot: s90-18b-session-home-card
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
       SECTION: leader-today
 - takeScreenshot: s90-19-leader-today
 

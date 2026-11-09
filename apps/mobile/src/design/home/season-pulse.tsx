@@ -1,8 +1,9 @@
 /**
  * How the season is going, in one card (always first on Home, owner
- * 2026-11-08): a ring for how far through it is, sessions held beside it
- * ("4 / 10", "6 to go"), and the caller's figures in a row under a hairline
- * (staff: attendance and students; a student: their absence budget and
+ * 2026-11-08): a ring for how far through it is, and beside it what is left
+ * ("6 to go", "4 of 10 sessions held") so the two don't say the same thing
+ * twice (owner, 2026-11-09); then the caller's figures in a row under a
+ * hairline (staff: attendance and students; a student: absences left and
  * pending work). Opens the season, or the group, when the caller says where.
  */
 import { ChevronRight } from "lucide-react-native";
@@ -94,23 +95,26 @@ export function SeasonPulse({
           <View className="flex-row items-center gap-4">
             <ProgressRing value={pct} size={112} strokeWidth={10} label={`Season progress ${pct}%`}>
               <RingValue>{`${pct}%`}</RingValue>
-              <RingCaption>Through</RingCaption>
+              <RingCaption className="normal-case tracking-normal">through</RingCaption>
             </ProgressRing>
             <View className="min-w-0 flex-1 gap-1">
               <View accessible accessibilityLabel={`Sessions held: ${sessionsHeld} of ${sessionsTotal}`} className="gap-0.5">
-                <Text variant="largeTitle" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
-                  {`${sessionsHeld}`}
-                  <Text variant="title" className="text-muted-foreground">{` / ${sessionsTotal}`}</Text>
-                </Text>
-                <Text variant="subhead" numberOfLines={1} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
-                  Sessions held
-                </Text>
+                {toGo > 0 ? (
+                  <Text variant="largeTitle" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
+                    {`${toGo}`}
+                    <Text variant="title" className="text-muted-foreground">{" to go"}</Text>
+                  </Text>
+                ) : (
+                  <Text variant="title" numberOfLines={2} maxFontSizeMultiplier={1.3}>
+                    {sessionsTotal === 0 ? "No sessions yet" : "All sessions held"}
+                  </Text>
+                )}
+                {sessionsTotal > 0 ? (
+                  <Text variant="subhead" numberOfLines={2} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
+                    {`${sessionsHeld} of ${sessionsTotal} sessions held`}
+                  </Text>
+                ) : null}
               </View>
-              {toGo > 0 ? (
-                <Text variant="caption" numberOfLines={1} maxFontSizeMultiplier={1.3} className="font-semibold text-foreground">
-                  {toGo === 1 ? "1 to go" : `${toGo} to go`}
-                </Text>
-              ) : null}
             </View>
           </View>
           {figures.length > 0 ? (

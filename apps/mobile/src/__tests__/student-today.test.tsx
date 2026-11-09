@@ -17,6 +17,7 @@ jest.mock("../design/layout/home-actions", () => {
 
 import { WORK_HREF } from "../screens/work/work-model";
 import { StudentToday } from "../screens/today/student-today";
+import { absencesLeft } from "../screens/today/today-figures";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
@@ -274,7 +275,7 @@ describe("StudentToday: figures", () => {
   it("shows the season card with the student's figures, and routes it (P2-6)", async () => {
     serve(routes());
     renderWithProviders(<StudentToday />);
-    expect(await screen.findByLabelText("Absence budget left: 42%")).toBeTruthy();
+    expect(await screen.findByLabelText("Absences left: 0")).toBeTruthy();
     // Owner 2026-11-07: no streak anywhere.
     expect(screen.queryByLabelText(/^Streak/)).toBeNull();
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
@@ -282,6 +283,23 @@ describe("StudentToday: figures", () => {
     expect(screen.getByLabelText("Season progress 75%")).toBeTruthy();
     fireEvent.press(screen.getByLabelText("Open Spring 2099"));
     expect(mockPush).toHaveBeenCalledWith("/season");
+  });
+
+  it("counts the full absences the budget still allows, rounding down (owner, 2026-11-09)", () => {
+    const at = (minutesUsed: number, absenceWeightMinutes = 90) =>
+      absencesLeft({
+        ...myAttendance,
+        season: { ...myAttendance.season!, absenceWeightMinutes },
+        budget: { ...myAttendance.budget!, budgetMinutes: 180, minutesUsed },
+      });
+    expect(at(0)).toBe(2);
+    expect(at(90)).toBe(1);
+    // A late used 15 minutes: one more full absence still fits.
+    expect(at(15)).toBe(1);
+    expect(at(105)).toBe(0);
+    expect(at(400)).toBe(0);
+    expect(absencesLeft(undefined)).toBeNull();
+    expect(absencesLeft({ ...myAttendance, budget: null })).toBeNull();
   });
 
   function order(): (t: string) => number {
@@ -360,7 +378,7 @@ describe("StudentToday: figures", () => {
     expect(screen.getByLabelText("Assignments pending: 2")).toBeTruthy();
     expect(screen.getByLabelText("Sessions held: 3 of 4")).toBeTruthy();
     // The failed read settles after the dashboard's first paint under a loaded run.
-    await waitFor(() => expect(screen.queryByLabelText(/^Absence budget left/)).toBeNull());
+    await waitFor(() => expect(screen.queryByLabelText(/^Absences? left/)).toBeNull());
     expect(screen.queryByLabelText(/^Streak/)).toBeNull();
   });
 
@@ -410,7 +428,7 @@ describe("StudentToday: not enrolled and failures", () => {
     renderWithProviders(<StudentToday />);
     await screen.findByText("Check In");
     await screen.findByText("Week 6 quiz");
-    await screen.findByLabelText("Absence budget left: 42%");
+    await screen.findByLabelText("Absences left: 0");
     get.mockClear();
 
     await act(async () => {

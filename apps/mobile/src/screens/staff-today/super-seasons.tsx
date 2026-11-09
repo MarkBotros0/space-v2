@@ -3,14 +3,13 @@ import { CalendarPlus } from "lucide-react-native";
 import { View } from "react-native";
 import type { OrganisationReport, SeasonListItem } from "@space/shared";
 
-import { SeasonPulse, staffPulseFigures } from "../../design/home/season-pulse";
-import { InlineError, RouteSkeleton } from "../../design/layout/route-states";
 import {
   Button,
   EmptyState,
   GroupedList,
   ListRow,
-  ListSectionHeader,
+  ProgressRing,
+  Skeleton,
   StatusChip,
   statusChip,
 } from "../../design/ui";
@@ -21,36 +20,53 @@ import { countOf } from "../../lib/plural";
 
 const byStart = (a: SeasonListItem, b: SeasonListItem) => a.startDate.localeCompare(b.startDate);
 
-/** One running season at a glance: the same card a season admin sees on Home. */
+/**
+ * One running season as a row (owner, 2026-11-09: a full ring card per season
+ * pushed everything else screens down): a small ring for how far through it is,
+ * then sessions held, attendance and students in words. Its figures read the
+ * season's own dashboard query; while that loads or fails the row still opens
+ * the season, and a failure says so in the row with a retry.
+ */
 function RunningSeason({ season }: { season: SeasonListItem }) {
   const router = useRouter();
   const dash = useSeasonStaffDashboard(season.id);
-  if (dash.isPending) return <RouteSkeleton />;
-  if (dash.isError) {
-    return (
-      <InlineError
-        message={`Couldn't load ${season.title}.`}
-        onRetry={() => void dash.refetch()}
-      />
-    );
+  const open = () => router.push({ pathname: "/seasons/[code]", params: { code: season.code } });
+  const pct = dash.data?.progress.pct ?? 0;
+  let subtitle: string;
+  if (dash.isPending) subtitle = "Loading…";
+  else if (dash.isError) subtitle = "Couldn't load its figures. Tap to retry.";
+  else {
+    const { progress, cohort } = dash.data;
+    subtitle = joinMeta([
+      progress.sessionsTotal === 0
+        ? "No sessions yet"
+        : `${progress.sessionsHeld} of ${progress.sessionsTotal} sessions held`,
+      cohort.meanAttendancePct === null ? null : `${cohort.meanAttendancePct}% attendance`,
+      countOf(cohort.studentCount, "student"),
+      season.isCommunityWide ? "Community-wide" : null,
+    ]);
   }
-  const { progress, cohort } = dash.data;
   return (
-    <SeasonPulse
+    <ListRow
       title={season.title}
-      subtitle={season.isCommunityWide ? "Community-wide" : undefined}
-      progressPct={progress.pct}
-      sessionsHeld={progress.sessionsHeld}
-      sessionsTotal={progress.sessionsTotal}
-      figures={staffPulseFigures(cohort.meanAttendancePct, cohort.studentCount)}
-      onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: season.code } })}
+      subtitle={subtitle}
+      subtitleLines={2}
+      leading={
+        dash.isPending ? (
+          <Skeleton className="size-11 rounded-full" />
+        ) : (
+          <ProgressRing value={pct} size={44} strokeWidth={5} label={`${season.title} progress ${pct}%`} />
+        )
+      }
+      chevron
+      onPress={dash.isError ? () => void dash.refetch() : open}
     />
   );
 }
 
 /**
  * Super Home's Seasons section (owner, 2026-11-07: "just an overview of the
- * students and season"): one pulse per ACTIVE season, then the drafts under
+ * students and season"): one row per ACTIVE season, then the drafts under
  * Coming up. The work inside a season (review, attendance, at risk) lives on
  * its page, never here.
  */
@@ -83,13 +99,15 @@ export function SuperSeasons({
   }
 
   return (
-    <View className="gap-2">
-      <ListSectionHeader className="pb-0">Seasons</ListSectionHeader>
-      <View className="gap-4">
-        {running.map((s) => (
-          <RunningSeason key={s.id} season={s} />
-        ))}
-        {drafts.length > 0 ? (
+    <View className="gap-4">
+      {running.length > 0 ? (
+        <GroupedList header="Seasons">
+          {running.map((s) => (
+            <RunningSeason key={s.id} season={s} />
+          ))}
+        </GroupedList>
+      ) : null}
+      {drafts.length > 0 ? (
           <GroupedList header="Coming up">
             {drafts.map((s) => {
               const count = enrolled.get(s.id);
@@ -111,7 +129,6 @@ export function SuperSeasons({
             })}
           </GroupedList>
         ) : null}
-      </View>
     </View>
   );
 }

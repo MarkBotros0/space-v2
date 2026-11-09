@@ -494,17 +494,17 @@
   --pill-active-alpha: 1;
   --pill-active-label: 255 255 255;
   --pill-active-label-alpha: 1;
-  --hero: 20 32 72;
+  --hero: 227 232 244;
   --hero-alpha: 1;
-  --hero-foreground: 255 255 255;
+  --hero-foreground: 20 32 72;
   --hero-foreground-alpha: 1;
-  --hero-eyebrow: 171 223 226;
+  --hero-eyebrow: 30 82 84;
   --hero-eyebrow-alpha: 1;
-  --hero-muted: 212 218 234;
+  --hero-muted: 75 88 120;
   --hero-muted-alpha: 1;
-  --on-hero: 125 206 209;
+  --on-hero: 20 32 72;
   --on-hero-alpha: 1;
-  --on-hero-foreground: 16 52 54;
+  --on-hero-foreground: 255 255 255;
   --on-hero-foreground-alpha: 1;
 }
 
