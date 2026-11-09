@@ -197,6 +197,12 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
       (generated output, Markdown), printWidth **120** (D11), one formatting-only commit listed in
       `.git-blame-ignore-revs`, and `pnpm lint` runs `prettier --check` first — 5f883938 config, 750d3714 width 120, dcfd39e6 format (874 files; lint, typecheck, unit 3,185, build, integration 1,598 all pass), then lint enforcement + blame-ignore + CLAUDE.md
 - [ ] 1.16 Full verification + UI sweep spot-check (button variants) + wave summary + PR → **STOP**
+      Verification 2026-11-09 (fd09b462): lint, typecheck, build, unit 329 / 536 / 2,304, integration
+      133 suites / 1,582 tests / 4 snapshots (was 1,598: the 16 tests of the three removed routes), logs
+      `~/logs/space-v2-refactor-wave1.log` and `-wave1-int.log`. The first full run caught 4 role-module rows
+      still expecting the removed season engagement route (fixed in fd09b462). UI sweep: no emulator or
+      Maestro on this devbox; instead old vs new `buttonVariants`/`buttonTextVariants` were compared for all
+      72 legacy→new pairs and are string-identical, so no screen changes. PR: waiting on the owner (push).
 
 ### Wave 2 — shared foundations (`refactor/wave-2-foundations`)
 
