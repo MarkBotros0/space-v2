@@ -101,6 +101,18 @@ describe("PUT /announcements/:id/poll/vote", () => {
     expect(await votesOf(other.pollId, f.userIds.student)).toEqual([]);
   });
 
+  it("is backed by the database: a vote row's poll must be its option's poll (DB-029)", async () => {
+    const p = await seasonPoll(false);
+    const [otherOptionId] = (await seasonPoll(false)).optionIds;
+    if (otherOptionId === undefined) throw new Error("seasonPoll made no options");
+    await expect(
+      db.announcementPollVote.create({
+        data: { pollId: p.pollId, optionId: otherOptionId, userId: f.userIds.student },
+      }),
+    ).rejects.toMatchObject({ code: "P2003" });
+    expect(await votesOf(p.pollId, f.userIds.student)).toEqual([]);
+  });
+
   it("refuses an empty list, a missing version and extra fields", async () => {
     const p = await seasonPoll(false);
     for (const body of [

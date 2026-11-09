@@ -258,7 +258,7 @@ snapshot updated, `schema.prisma` updated where expressible.
 - [x] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14) — `20261110020000_group_student_student_idx`; cycle + drift empty + snapshot (+1 index)
 - [x] 3.3 IDX-4 open follow-ups partial index — `20261110030000_mentor_follow_up_due_open_idx` (SQL-only, noted on the model; `migrate diff` ignores it, so no drift); cycle + snapshot (+1 index)
 - [x] 3.4 IDX-5 `Session(startsAt)` (cross-season calendar range) — `20261110040000_session_starts_at_idx`; cycle + drift empty + snapshot (+1 index)
-- [ ] 3.5 IDX-8 + DB-029 composite FK on `AnnouncementPollVote` (`NOT VALID` → `VALIDATE`)
+- [x] 3.5 IDX-8 + DB-029 composite FK on `AnnouncementPollVote` (`NOT VALID` → `VALIDATE`) — `20261110050000_poll_vote_option_poll_fk`: cleanup (D9) + `@@unique([id, pollId])` + composite FK `NOT VALID` in one transaction, `VALIDATE` after it; replaces the optionId FK (same cascades); cycle + drift empty + snapshot (+1 index, FK swapped); new integration test (P2003 on a mismatched row)
 - [ ] 3.6 Missing base columns DB-021 / DB-030 (MentorFollowUp, SessionVideoProgress, AnnouncementPoll, AnnouncementPollOption)
 - [ ] 3.7 DB-015: every `DateTime` → `timestamptz(3)` (`USING … AT TIME ZONE 'UTC'`), `User.dateOfBirth` → `date`
 - [ ] 3.8 DB-004 (D9): `UPDATE "User" SET email = lower(trim(email))`, then `CHECK (email = lower(email))`

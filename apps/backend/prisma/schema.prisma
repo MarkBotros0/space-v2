@@ -959,6 +959,8 @@ model AnnouncementPollOption {
   poll     AnnouncementPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   votes    AnnouncementPollVote[]
 
+  // Target of the vote's (optionId, pollId) FK: a vote's poll is its option's poll (DB-029).
+  @@unique([id, pollId])
   @@index([pollId, position])
 }
 
@@ -967,7 +969,7 @@ model AnnouncementPollVote {
   pollId    Int
   userId    Int
   createdAt DateTime               @default(now())
-  option    AnnouncementPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  option    AnnouncementPollOption @relation(fields: [optionId, pollId], references: [id, pollId], onDelete: Cascade)
   poll      AnnouncementPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
