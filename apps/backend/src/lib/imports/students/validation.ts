@@ -95,17 +95,13 @@ export interface ExistingUser {
 type Queryable = Pick<typeof db, "$queryRaw">;
 
 /**
- * Every candidate address in one statement, matched on `lower(email)`.
- *
- * Raw SQL because Prisma's `mode: "insensitive"` would need one OR branch per
- * address — a 2000-branch WHERE for a full paste. `deletedAt` is deliberately
+ * Every candidate address in one statement. The keys are normalised (trimmed,
+ * lowercased) and every stored address is lowercase (CHECK
+ * User_email_lowercase_check), so an exact match on the unique email index finds
+ * them; raw SQL keeps it one statement for a 2000-row paste. `deletedAt` is deliberately
  * NOT filtered (spec R27/R43, kept): un-deleted matching would let an import
  * resurrect an account somebody removed on purpose. The caller distinguishes
  * the two cases and reports `previously_removed` (D-16.14).
- *
- * This is a sequential scan on User — there is no functional index on
- * `lower(email)`. Acceptable here: the table is small, and both preview and
- * commit are rate-limited (D-16.21).
  */
 export async function findExistingByEmail(client: Queryable, emails: string[]): Promise<Map<string, ExistingUser>> {
   const keys = [...new Set(emails.map(normaliseEmail))];
@@ -114,7 +110,7 @@ export async function findExistingByEmail(client: Queryable, emails: string[]): 
   const rows = await client.$queryRaw<ExistingUser[]>`
     SELECT id, email, role::text AS role, "deletedAt"
     FROM "User"
-    WHERE lower(email) = ANY(${keys}::text[])
+    WHERE email = ANY(${keys}::text[])
   `;
   return new Map(rows.map((r) => [normaliseEmail(r.email), r]));
 }

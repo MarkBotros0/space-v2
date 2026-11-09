@@ -62,19 +62,26 @@ describe("verifyCredentials", () => {
 });
 
 describe("verifyCredentials email matching", () => {
-  it("falls back to a unique case-insensitive match when there is no exact one", async () => {
+  // Every stored address is lowercase (CHECK User_email_lowercase_check), so the
+  // typed one is normalised and matched exactly on the unique index (DB-004).
+  it("finds a capitalised, padded address by its lowercase form", async () => {
     const hash = await bcrypt.hash("pw-123456", 4);
-    mockFindUnique.mockResolvedValueOnce(null);
-    mockFindMany.mockResolvedValueOnce([
-      { id: 3, email: "foo@x.com", name: "Foo", role: "STUDENT", deletedAt: null, passwordHash: hash },
-    ]);
-    const user = await verifyCredentials("Foo@x.com", "pw-123456");
+    mockFindUnique.mockResolvedValueOnce({
+      id: 3,
+      email: "foo@x.com",
+      name: "Foo",
+      role: "STUDENT",
+      deletedAt: null,
+      passwordHash: hash,
+    });
+    const user = await verifyCredentials(" Foo@X.com ", "pw-123456");
     expect(user?.email).toBe("foo@x.com");
+    expect(mockFindUnique.mock.calls[0][0].where).toEqual({ email: "foo@x.com" });
   });
 
-  it("refuses an ambiguous case-insensitive match", async () => {
+  it("never falls back to a case-insensitive scan", async () => {
     mockFindUnique.mockResolvedValueOnce(null);
-    mockFindMany.mockResolvedValueOnce([{ id: 3 }, { id: 4 }]);
     await expect(verifyCredentials("Foo@x.com", "pw")).resolves.toBeNull();
+    expect(mockFindMany).not.toHaveBeenCalled();
   });
 });

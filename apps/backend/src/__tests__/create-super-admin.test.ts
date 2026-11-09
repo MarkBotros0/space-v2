@@ -41,7 +41,7 @@ describe("createSuperAdmin", () => {
     await createSuperAdmin(input);
     expect(mockFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { email: { equals: "owner@jpc.test", mode: "insensitive" } },
+        where: { email: "owner@jpc.test" },
       }),
     );
   });

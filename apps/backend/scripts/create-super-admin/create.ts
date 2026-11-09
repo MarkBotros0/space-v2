@@ -31,7 +31,7 @@ export async function createSuperAdmin(raw: unknown): Promise<CreateSuperAdminRe
   const { email, name, password } = parsed.data;
 
   const existing = await db.user.findFirst({
-    where: { email: { equals: email, mode: "insensitive" } },
+    where: { email },
     select: { id: true },
   });
   if (existing) return { ok: false, error: `An account for ${email} already exists.` };
