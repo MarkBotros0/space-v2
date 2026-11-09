@@ -97,13 +97,7 @@ export const IMPORT_FIELD_LABELS: Readonly<Record<ImportProfileFieldKey, string>
  * somebody removed on purpose — but reporting a soft-deleted row as "Already
  * in the system" is a lie the operator cannot act on.
  */
-const importRowStatusSchema = z.enum([
-  "new",
-  "exists",
-  "duplicate",
-  "invalid",
-  "previously_removed",
-]);
+const importRowStatusSchema = z.enum(["new", "exists", "duplicate", "invalid", "previously_removed"]);
 export type ImportRowStatus = z.infer<typeof importRowStatusSchema>;
 
 const cell = z.string().max(IMPORT_MAX_CELL_CHARS);
@@ -329,13 +323,7 @@ export type ImportTemplate = z.infer<typeof importTemplateSchema>;
 // ---------------------------------------------------------------------------
 
 /** v1's five (`jpc-space/src/lib/group-import.ts:6`), unchanged. */
-const groupImportRowStatusSchema = z.enum([
-  "assign",
-  "unchanged",
-  "no_student",
-  "no_group",
-  "invalid",
-]);
+const groupImportRowStatusSchema = z.enum(["assign", "unchanged", "no_student", "no_group", "invalid"]);
 
 const groupImportPreviewRowSchema = z.object({
   rowNumber: z.number().int().positive(),

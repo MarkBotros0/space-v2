@@ -19,8 +19,16 @@ export const sessionPaths = {
               properties: {
                 seasonId: { type: "integer" },
                 title: { type: "string", minLength: 2, maxLength: 120 },
-                startsAt: { type: "string", format: "date-time", description: "An instant. Send this OR startDay + startTime, never both." },
-                startDay: { type: "string", description: "YYYY-MM-DD on the org calendar. Org wall-clock start (D-16.6, Plan 5's day/time split); send exactly one of startsAt, or startDay + startTime." },
+                startsAt: {
+                  type: "string",
+                  format: "date-time",
+                  description: "An instant. Send this OR startDay + startTime, never both.",
+                },
+                startDay: {
+                  type: "string",
+                  description:
+                    "YYYY-MM-DD on the org calendar. Org wall-clock start (D-16.6, Plan 5's day/time split); send exactly one of startsAt, or startDay + startTime.",
+                },
                 startTime: { type: "string", description: "HH:mm on the org clock. Pair of startDay." },
                 durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
                 location: { type: ["string", "null"], maxLength: 200 },
@@ -80,9 +88,15 @@ export const sessionPaths = {
       summary: "Preview the sessions a scoped edit or delete would touch",
       description:
         "Season-admin only. Same season-fenced selection PATCH/DELETE use (C10). 'future' = the anchor and every sibling at or after its stored start. Totals are what DELETE refuses without force.",
-      parameters: [idParam, { name: "scope", in: "query", required: true, schema: { type: "string", enum: ["one", "future", "all"] } }],
+      parameters: [
+        idParam,
+        { name: "scope", in: "query", required: true, schema: { type: "string", enum: ["one", "future", "all"] } },
+      ],
       responses: {
-        200: ok({ type: "object" }, "The targets with dayKey, startTime, isAnchor, attendanceCount; totals attendanceCount, videoProgressCount."),
+        200: ok(
+          { type: "object" },
+          "The targets with dayKey, startTime, isAnchor, attendanceCount; totals attendanceCount, videoProgressCount.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -94,7 +108,8 @@ export const sessionPaths = {
     get: {
       tags: ["Sessions"],
       summary: "Check-in state for the admin console",
-      description: "Season-admin only. state ∈ not_open|open|expired|closed (lib/check-in.ts — the same rule the scan enforces); expiresAt/expiresAtTime only while open.",
+      description:
+        "Season-admin only. state ∈ not_open|open|expired|closed (lib/check-in.ts — the same rule the scan enforces); expiresAt/expiresAtTime only while open.",
       parameters: [idParam],
       responses: {
         200: ok({ type: "object" }, "The state."),
@@ -109,7 +124,8 @@ export const sessionPaths = {
     post: {
       tags: ["Sessions"],
       summary: "Replace the check-in token",
-      description: "Season-admin only. Timestamps untouched: an open window stays open under the new code, and the old code is rejected with invalid_token (v1 R40).",
+      description:
+        "Season-admin only. Timestamps untouched: an open window stays open under the new code, and the old code is rejected with invalid_token (v1 R40).",
       parameters: [idParam],
       responses: {
         200: ok({ type: "object", properties: { checkInToken: { type: "string" } } }, "The new token."),
@@ -165,8 +181,16 @@ export const sessionPaths = {
               required: ["title", "durationMinutes", "scope"],
               properties: {
                 title: { type: "string", minLength: 2, maxLength: 120 },
-                startsAt: { type: "string", format: "date-time", description: "An instant. Send this OR startDay + startTime, never both." },
-                startDay: { type: "string", description: "YYYY-MM-DD on the org calendar. Org wall-clock start (D-16.6, Plan 5's day/time split); send exactly one of startsAt, or startDay + startTime." },
+                startsAt: {
+                  type: "string",
+                  format: "date-time",
+                  description: "An instant. Send this OR startDay + startTime, never both.",
+                },
+                startDay: {
+                  type: "string",
+                  description:
+                    "YYYY-MM-DD on the org calendar. Org wall-clock start (D-16.6, Plan 5's day/time split); send exactly one of startsAt, or startDay + startTime.",
+                },
                 startTime: { type: "string", description: "HH:mm on the org clock. Pair of startDay." },
                 durationMinutes: { type: "integer", minimum: 15, maximum: 600 },
                 location: { type: ["string", "null"] },
@@ -225,7 +249,10 @@ export const sessionPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", properties: { roster: { type: "array", items: { $ref: "#/components/schemas/AttendanceRosterRow" } } } },
+          {
+            type: "object",
+            properties: { roster: { type: "array", items: { $ref: "#/components/schemas/AttendanceRosterRow" } } },
+          },
           "The roster.",
         ),
         400: errRef("BadRequest"),
@@ -325,7 +352,8 @@ export const sessionPaths = {
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: {
-          description: "`not_enrolled` — you have no ACTIVE enrolment in this session's season, or the season isn't ACTIVE.",
+          description:
+            "`not_enrolled` — you have no ACTIVE enrolment in this session's season, or the season isn't ACTIVE.",
           content: { "application/json": { schema: errorResponse } },
         },
         404: {
@@ -340,5 +368,4 @@ export const sessionPaths = {
       },
     },
   },
-
 } as const;

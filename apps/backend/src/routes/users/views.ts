@@ -22,14 +22,25 @@ function deriveStatus(row: StatusRow, hasLiveInvite: boolean): UserStatus {
 }
 
 export const LIST_SELECT = {
-  id: true, name: true, email: true, role: true, graduationYear: true,
-  lastLoginAt: true, deletedAt: true, passwordHash: true,
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  graduationYear: true,
+  lastLoginAt: true,
+  deletedAt: true,
+  passwordHash: true,
 } as const;
 
 type ListRow = {
-  id: number; name: string; email: string; role: UserRole;
-  graduationYear: number | null; lastLoginAt: Date | null;
-  deletedAt: Date | null; passwordHash: string | null;
+  id: number;
+  name: string;
+  email: string;
+  role: UserRole;
+  graduationYear: number | null;
+  lastLoginAt: Date | null;
+  deletedAt: Date | null;
+  passwordHash: string | null;
 };
 
 /** `role` is the derived one (`deriveRoles`), never the stored column. */
@@ -62,7 +73,9 @@ export async function loadUserDetail(id: number): Promise<UserDetail | null> {
     where: { userId: id },
     orderBy: { createdAt: "desc" },
     select: {
-      createdAt: true, expiresAt: true, usedAt: true,
+      createdAt: true,
+      expiresAt: true,
+      usedAt: true,
       invitedBy: { select: { name: true } },
     },
   });
@@ -76,8 +89,7 @@ export async function loadUserDetail(id: number): Promise<UserDetail | null> {
   });
 
   const now = new Date();
-  const hasLiveInvite =
-    invite !== null && invite.usedAt === null && invite.expiresAt > now;
+  const hasLiveInvite = invite !== null && invite.usedAt === null && invite.expiresAt > now;
 
   return {
     ...toListItem(row, hasLiveInvite, (await deriveRoles([row])).get(row.id) ?? row.role),

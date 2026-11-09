@@ -6,14 +6,14 @@ jest.mock("../db/client", () => ({
   db: { $transaction: (fn: (tx: typeof mockTx) => unknown) => fn(mockTx) },
 }));
 
-import {
-  applyConversion,
-  databaseHostType,
-  planConversion,
-} from "../../scripts/convert-stored-roles";
+import { applyConversion, databaseHostType, planConversion } from "../../scripts/convert-stored-roles";
 
 const person = (id: number, role: string, graduationYear: number | null, deletedAt: Date | null = null) => ({
-  id, email: `p${id}@jpc.test`, role, graduationYear, deletedAt,
+  id,
+  email: `p${id}@jpc.test`,
+  role,
+  graduationYear,
+  deletedAt,
 });
 
 beforeEach(() => jest.clearAllMocks());
@@ -75,10 +75,14 @@ describe("applyConversion", () => {
       data: { role: "STUDENT" },
     });
     expect(mockTx.studentProfile.upsert).toHaveBeenCalledWith({
-      where: { userId: 1 }, update: {}, create: { userId: 1, deletedAt: null },
+      where: { userId: 1 },
+      update: {},
+      create: { userId: 1, deletedAt: null },
     });
     expect(mockTx.studentProfile.upsert).toHaveBeenCalledWith({
-      where: { userId: 2 }, update: {}, create: { userId: 2, deletedAt: gone },
+      where: { userId: 2 },
+      update: {},
+      create: { userId: 2, deletedAt: gone },
     });
   });
 

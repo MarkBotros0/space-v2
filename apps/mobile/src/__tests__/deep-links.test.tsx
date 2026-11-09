@@ -116,7 +116,11 @@ describe("the tabs are one navigator, however a tab route is reached", () => {
     expect(await screen.findByText("screen:/student/[id]")).toBeTruthy();
 
     await act(() => router.push("/edit-profile"));
-    expect(appRouteNames(result.getRouterState() as NavState)).toEqual(["(tabs)", "student/[id]/index", "edit-profile"]);
+    expect(appRouteNames(result.getRouterState() as NavState)).toEqual([
+      "(tabs)",
+      "student/[id]/index",
+      "edit-profile",
+    ]);
     await act(() => router.back());
     expect(result.getPathname()).toBe("/student/1");
   });
@@ -173,10 +177,15 @@ describe("guards on the stack layout cover tabs and detail routes", () => {
     expect(result.getPathname()).toBe("/login");
   });
 
-  it.each(["/work", "/assignments", "/quizzes", "/season", "/attendance"])("sends an alumnus from %s to the dashboard (REG-81)", async (url) => {
-    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2024 }));
-    const result = await renderRouter(appContext(), { initialUrl: url });
-    expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
-    expect(result.getPathname()).toBe("/dashboard");
-  });
+  it.each(["/work", "/assignments", "/quizzes", "/season", "/attendance"])(
+    "sends an alumnus from %s to the dashboard (REG-81)",
+    async (url) => {
+      useSessionStore
+        .getState()
+        .setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2024 }));
+      const result = await renderRouter(appContext(), { initialUrl: url });
+      expect(await screen.findByText("screen:/dashboard")).toBeTruthy();
+      expect(result.getPathname()).toBe("/dashboard");
+    },
+  );
 });

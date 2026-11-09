@@ -83,8 +83,7 @@ export async function loadSeasonEndCheck(
       // Only from the session that started on or after they joined: staff can't
       // truthfully mark a late joiner for a session held before they arrived.
       missing: enrollments.filter(
-        (e) =>
-          e.enrolledAt.getTime() <= s.startsAt.getTime() && !marked.has(`${s.id}:${e.studentUserId}`),
+        (e) => e.enrolledAt.getTime() <= s.startsAt.getTime() && !marked.has(`${s.id}:${e.studentUserId}`),
       ).length,
     }))
     .filter((s) => s.missing > 0);

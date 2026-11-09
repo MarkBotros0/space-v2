@@ -105,10 +105,12 @@ describe("requiredProgram on the season detail", () => {
 
 describe("duplicate", () => {
   it("copies requiredProgram", async () => {
-    const res = await request(app)
-      .post(`/api/v1/seasons/${seasonId}/duplicate`)
-      .set(as(superToken))
-      .send({ year: 2098, code: testSeasonCode(), startDate: "2098-01-01T00:00:00.000Z", endDate: "2098-06-01T00:00:00.000Z" });
+    const res = await request(app).post(`/api/v1/seasons/${seasonId}/duplicate`).set(as(superToken)).send({
+      year: 2098,
+      code: testSeasonCode(),
+      startDate: "2098-01-01T00:00:00.000Z",
+      endDate: "2098-06-01T00:00:00.000Z",
+    });
     expect(res.status).toBe(201);
     const row = await db.season.findUniqueOrThrow({ where: { id: res.body.data.id } });
     expect(row.requiredProgram).toBe("GBV");

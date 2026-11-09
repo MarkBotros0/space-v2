@@ -19,9 +19,7 @@ function isRealCalendarDay(value: string): boolean {
   const month = Number(m[2]);
   const day = Number(m[3]);
   const probe = new Date(Date.UTC(year, month - 1, day));
-  return (
-    probe.getUTCFullYear() === year && probe.getUTCMonth() === month - 1 && probe.getUTCDate() === day
-  );
+  return probe.getUTCFullYear() === year && probe.getUTCMonth() === month - 1 && probe.getUTCDate() === day;
 }
 
 /** An organisation-calendar day, `YYYY-MM-DD`. Never derived on a device (X13). */

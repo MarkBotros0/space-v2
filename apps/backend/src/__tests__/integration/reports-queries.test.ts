@@ -1,11 +1,7 @@
 // apps/backend/src/__tests__/integration/reports-queries.test.ts
 import { db } from "../../db/client";
 import { newPublicId } from "../../lib/public-id";
-import {
-  buildEngagementSummary,
-  listEngagementRows,
-  resolveReportScope,
-} from "../../lib/queries/reports";
+import { buildEngagementSummary, listEngagementRows, resolveReportScope } from "../../lib/queries/reports";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 
 // The shared Neon staging Postgres autosuspends; the first query after idle has
@@ -157,10 +153,7 @@ describe("resolveReportScope — intersect, never check-then-run (ruling C8)", (
   });
 
   it("drops a requested season the caller may not see, and flags truncated", async () => {
-    const scope = await resolveReportScope({ kind: "seasons", seasonIds: [seasonId] }, [
-      seasonId,
-      otherSeasonId,
-    ]);
+    const scope = await resolveReportScope({ kind: "seasons", seasonIds: [seasonId] }, [seasonId, otherSeasonId]);
     // THE test this task exists for. v1's loadReportsData took whatever
     // integers the caller passed and queried them (R3); the only protection was
     // which server component called it. Here the request never reaches a where
@@ -228,10 +221,7 @@ describe("buildEngagementSummary — attendance trend", () => {
   it("windows to the most recent trendLimit sessions, still ascending", async () => {
     const scope = await resolveReportScope({ kind: "seasons", seasonIds: [seasonId] }, []);
     const summary = await buildEngagementSummary(scope, { trendLimit: 2 });
-    expect(summary.attendanceTrend.map((p) => p.sessionId)).toEqual([
-      sessionIds[2]!,
-      sessionIds[3]!,
-    ]);
+    expect(summary.attendanceTrend.map((p) => p.sessionId)).toEqual([sessionIds[2]!, sessionIds[3]!]);
   });
 
   it("honours from/to — v1 declared them and no caller ever passed them (R5)", async () => {
@@ -241,10 +231,7 @@ describe("buildEngagementSummary — attendance trend", () => {
       from: at("2020-01-08"),
       to: at("2020-01-15"),
     });
-    expect(summary.attendanceTrend.map((p) => p.sessionId)).toEqual([
-      sessionIds[1]!,
-      sessionIds[2]!,
-    ]);
+    expect(summary.attendanceTrend.map((p) => p.sessionId)).toEqual([sessionIds[1]!, sessionIds[2]!]);
   });
 
   it("never includes a future session even when `to` is far in the future", async () => {

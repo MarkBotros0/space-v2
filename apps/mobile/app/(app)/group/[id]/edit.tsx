@@ -8,12 +8,7 @@ import { FormErrorBox } from "../../../../src/design/forms/form-parts";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { Button, EmptyState, Text } from "../../../../src/design/ui";
-import {
-  useDeleteGroup,
-  useGroupImpact,
-  useSeasonRoster,
-  useUpdateGroup,
-} from "../../../../src/hooks/use-group-admin";
+import { useDeleteGroup, useGroupImpact, useSeasonRoster, useUpdateGroup } from "../../../../src/hooks/use-group-admin";
 import { useGroupDetail } from "../../../../src/hooks/use-groups";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
@@ -70,12 +65,7 @@ function DeleteGroup({ groupId }: { groupId: number }) {
         </>
       )}
       <FormErrorBox message={message} />
-      <Button
-        variant="destructive"
-        className="self-start"
-        disabled={remove.isPending}
-        onPress={onDelete}
-      >
+      <Button variant="destructive" className="self-start" disabled={remove.isPending} onPress={onDelete}>
         {armed ? "Really delete?" : "Delete group"}
       </Button>
     </View>
@@ -124,17 +114,11 @@ export default function EditGroupScreen() {
   const roster = useSeasonRoster(detail.data?.canManage ? detail.data.seasonId : null);
 
   const shell = (child: ReactNode) => <Screen title="Edit group">{child}</Screen>;
-  if (id === null)
-    return shell(<EmptyState title="Not found" description="That group link isn't valid." />);
+  if (id === null) return shell(<EmptyState title="Not found" description="That group link isn't valid." />);
   if (detail.isPending) return shell(<RouteSkeleton />);
   if (detail.isError) return shell(<RouteError onRetry={() => void detail.refetch()} />);
   if (!detail.data.canManage)
-    return shell(
-      <EmptyState
-        title="Not available"
-        description="Only this season's admins can edit its groups."
-      />,
-    );
+    return shell(<EmptyState title="Not available" description="Only this season's admins can edit its groups." />);
   if (roster.isPending) return shell(<RouteSkeleton />);
   if (roster.isError) return shell(<RouteError onRetry={() => void roster.refetch()} />);
   return <EditGroupLoaded key={detail.data.id} detail={detail.data} roster={roster.data} />;

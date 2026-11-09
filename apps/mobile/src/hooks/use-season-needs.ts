@@ -30,7 +30,11 @@ export function useSeasonNeeds(seasonId: number | null): {
   const { today } = useStaffOrgToday(seasonId);
 
   // A disabled query reports isPending forever; only an enabled one is loading.
-  const queueQ = { isError: queue.isError, isPending: on && queue.isPending, value: queue.data?.pages[0]?.counts?.pending };
+  const queueQ = {
+    isError: queue.isError,
+    isPending: on && queue.isPending,
+    value: queue.data?.pages[0]?.counts?.pending,
+  };
   const riskQ = { isError: risk.isError, isPending: on && risk.isPending, value: risk.data?.pages[0]?.total };
   const sessionsQ = {
     isError: led.isError,

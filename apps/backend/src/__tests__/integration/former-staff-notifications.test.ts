@@ -41,7 +41,9 @@ async function world(status: Status, label: string) {
   });
   await db.seasonEnrollment.create({
     data: {
-      seasonId: season.id, studentUserId: student.id, groupId: group.id,
+      seasonId: season.id,
+      studentUserId: student.id,
+      groupId: group.id,
       status: status === "COMPLETED" || status === "ARCHIVED" ? "COMPLETED" : "ACTIVE",
     },
   });

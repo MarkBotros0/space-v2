@@ -100,10 +100,7 @@ export function SuperToday() {
           ) : (
             <>
               {org.isError ? (
-                <InlineError
-                  message="Couldn't load the community figures."
-                  onRetry={() => void org.refetch()}
-                />
+                <InlineError message="Couldn't load the community figures." onRetry={() => void org.refetch()} />
               ) : null}
               <FigureGrid tiles={tiles} />
             </>

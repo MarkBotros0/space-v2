@@ -91,7 +91,9 @@ function ComposeCard({ assignmentId, view }: { assignmentId: number; view: Forum
             {`${words} ${words === 1 ? "word" : "words"}${minWords > 0 ? ` · minimum ${minWords}` : ""}`}
           </Text>
           {submit.isError ? (
-            <Text className={NOTICE.error}>{apiErrorMessage(submit.error, "Couldn't post your response. Try again.")}</Text>
+            <Text className={NOTICE.error}>
+              {apiErrorMessage(submit.error, "Couldn't post your response. Try again.")}
+            </Text>
           ) : null}
           {info && !submit.isPending ? <Text className={NOTICE.success}>{info}</Text> : null}
           <View className="flex-row justify-end">
@@ -116,7 +118,9 @@ function ComposeCard({ assignmentId, view }: { assignmentId: number; view: Forum
           </CardHeader>
           <CardContent className="flex-col gap-1">
             <RichTextView html={plainTextToHtml(own.feedback)} />
-            {own.reviewedAt ? <Text className="text-xs text-muted-foreground">{formatDate(own.reviewedAt)}</Text> : null}
+            {own.reviewedAt ? (
+              <Text className="text-xs text-muted-foreground">{formatDate(own.reviewedAt)}</Text>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
@@ -152,7 +156,9 @@ function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignme
         </View>
         <Text className="text-sm text-foreground">{comment.body}</Text>
         {remove.isError ? (
-          <Text className="text-xs text-error-700">{apiErrorMessage(remove.error, "Couldn't delete the comment.")}</Text>
+          <Text className="text-xs text-error-700">
+            {apiErrorMessage(remove.error, "Couldn't delete the comment.")}
+          </Text>
         ) : null}
       </View>
       <ConfirmDialog
@@ -172,7 +178,15 @@ function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignme
   );
 }
 
-function PostCard({ assignmentId, post, allowComments }: { assignmentId: number; post: ForumPost; allowComments: boolean }) {
+function PostCard({
+  assignmentId,
+  post,
+  allowComments,
+}: {
+  assignmentId: number;
+  post: ForumPost;
+  allowComments: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
   const comments = useForumComments(assignmentId, post.submissionPublicId, expanded);
@@ -256,7 +270,9 @@ function PostCard({ assignmentId, post, allowComments }: { assignmentId: number;
               </View>
             ) : null}
             {postComment.isError ? (
-              <Text className="text-xs text-error-700">{apiErrorMessage(postComment.error, "Couldn't post your comment.")}</Text>
+              <Text className="text-xs text-error-700">
+                {apiErrorMessage(postComment.error, "Couldn't post your comment.")}
+              </Text>
             ) : null}
           </View>
         ) : null}
@@ -272,9 +288,7 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
 
   if (query.isPending) return <Skeleton className="h-40 rounded-group" />;
   if (query.isError) {
-    return (
-      <InlineError message="Couldn't load the discussion." onRetry={() => void query.refetch()} />
-    );
+    return <InlineError message="Couldn't load the discussion." onRetry={() => void query.refetch()} />;
   }
 
   // Page one carries everything but the posts; later pages only add posts.
@@ -308,7 +322,12 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
           {/* The thread pages, so this counts what has loaded (gap note). */}
           <Eyebrow>{`Group discussion · ${posts.length}`}</Eyebrow>
           {posts.map((p) => (
-            <PostCard key={p.submissionPublicId} assignmentId={assignmentId} post={p} allowComments={view.allowComments} />
+            <PostCard
+              key={p.submissionPublicId}
+              assignmentId={assignmentId}
+              post={p}
+              allowComments={view.allowComments}
+            />
           ))}
           {query.hasNextPage ? (
             <Button

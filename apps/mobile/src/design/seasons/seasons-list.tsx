@@ -29,14 +29,7 @@ export function SeasonsList({
   emptyDescription?: string;
 }) {
   if (rows.length === 0) {
-    return (
-      <EmptyState
-        icon={CalendarIcon}
-        title={emptyTitle}
-        description={emptyDescription}
-        action={emptyAction}
-      />
-    );
+    return <EmptyState icon={CalendarIcon} title={emptyTitle} description={emptyDescription} action={emptyAction} />;
   }
 
   const programs = new Map<string, SeasonListItem[]>();

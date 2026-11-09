@@ -40,7 +40,21 @@ let droppedEnrollmentId: number;
 let deletedDroppedId: number; // soft-deleted user with a WITHDRAWN enrollment (D12)
 
 beforeAll(async () => {
-  ({ seasonAId, seasonBId, superToken, adminToken, mentorToken, leaderToken, student1Id, student1Token, student2Id, alumnusId, droppedId, droppedEnrollmentId, deletedDroppedId } = await seedStudentFixtures(app));
+  ({
+    seasonAId,
+    seasonBId,
+    superToken,
+    adminToken,
+    mentorToken,
+    leaderToken,
+    student1Id,
+    student1Token,
+    student2Id,
+    alumnusId,
+    droppedId,
+    droppedEnrollmentId,
+    deletedDroppedId,
+  } = await seedStudentFixtures(app));
 });
 
 afterAll(async () => {
@@ -50,9 +64,7 @@ afterAll(async () => {
 
 describe("GET /api/v1/students (active)", () => {
   it("returns every non-graduated, non-deleted student for SUPER, with a real total", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students?q=${PFX}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get(`/api/v1/students?q=${PFX}`).set("authorization", `Bearer ${superToken}`);
 
     expect(res.status).toBe(200);
     const ids = res.body.data.students.map((s: { id: number }) => s.id);
@@ -72,9 +84,7 @@ describe("GET /api/v1/students (active)", () => {
   });
 
   it("narrows ADMIN to students ever enrolled in their seasons (R31, kept)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students?q=${PFX}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/v1/students?q=${PFX}`).set("authorization", `Bearer ${adminToken}`);
 
     expect(res.status).toBe(200);
     const ids = res.body.data.students.map((s: { id: number }) => s.id);
@@ -85,9 +95,7 @@ describe("GET /api/v1/students (active)", () => {
   it("narrows LEADER to their groups' members through the ENROLLMENT row (C9)", async () => {
     // student1 has NO GroupStudent row — only SeasonEnrollment.groupId links
     // them to the leader's group. A scope that reads GroupStudent returns [].
-    const res = await request(app)
-      .get(`/api/v1/students?q=${PFX}`)
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get(`/api/v1/students?q=${PFX}`).set("authorization", `Bearer ${leaderToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.students.map((s: { id: number }) => s.id)).toEqual([student1Id]);
@@ -95,9 +103,7 @@ describe("GET /api/v1/students (active)", () => {
   });
 
   it("refuses a STUDENT caller — no student roster for students (C8)", async () => {
-    const res = await request(app)
-      .get("/api/v1/students")
-      .set("authorization", `Bearer ${student1Token}`);
+    const res = await request(app).get("/api/v1/students").set("authorization", `Bearer ${student1Token}`);
     expect(res.status).toBe(403);
   });
 
@@ -149,9 +155,7 @@ describe("GET /api/v1/students?status=alumni", () => {
   });
 
   it("refuses LEADER — v1 gave them no alumni surface (spec 06 §4.1)", async () => {
-    const res = await request(app)
-      .get("/api/v1/students?status=alumni")
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get("/api/v1/students?status=alumni").set("authorization", `Bearer ${leaderToken}`);
     expect(res.status).toBe(403);
   });
 });
@@ -190,18 +194,14 @@ describe("GET /api/v1/students?status=dropped", () => {
   });
 
   it("refuses MENTOR — as an endpoint this hands every drop reason to read-all (spec 06 §4.3/§7)", async () => {
-    const res = await request(app)
-      .get("/api/v1/students?status=dropped")
-      .set("authorization", `Bearer ${mentorToken}`);
+    const res = await request(app).get("/api/v1/students?status=dropped").set("authorization", `Bearer ${mentorToken}`);
     expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/v1/students/:id", () => {
   it("returns the internal shape to SUPER — notes and phone included", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students/${student1Id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get(`/api/v1/students/${student1Id}`).set("authorization", `Bearer ${superToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toMatchObject({
@@ -214,32 +214,24 @@ describe("GET /api/v1/students/:id", () => {
     // Both enrollments, newest first (R72); the historic group comes from the
     // ENROLLMENT row (C9/R5), not GroupStudent — none exists for student1.
     expect(res.body.data.enrollments).toHaveLength(2);
-    const inA = res.body.data.enrollments.find(
-      (e: { seasonId: number }) => e.seasonId === seasonAId,
-    );
+    const inA = res.body.data.enrollments.find((e: { seasonId: number }) => e.seasonId === seasonAId);
     expect(inA).toMatchObject({ status: "ACTIVE", groupName: "Group A" });
     expect(res.body.data.currentGroup).toBeNull(); // advisory pointer genuinely unset
   });
 
   it("returns the internal shape to a season ADMIN of the student", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students/${student1Id}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/v1/students/${student1Id}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.profile.notes).toBe("Internal staff note");
   });
 
   it("refuses an ADMIN outside the student's seasons", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students/${student2Id}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/v1/students/${student2Id}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(403);
   });
 
   it("withholds DOB and notes from MENTOR — absence, not null (D3); the phone is shown", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students/${student1Id}`)
-      .set("authorization", `Bearer ${mentorToken}`);
+    const res = await request(app).get(`/api/v1/students/${student1Id}`).set("authorization", `Bearer ${mentorToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toHaveProperty("university", "Test University");
@@ -252,9 +244,7 @@ describe("GET /api/v1/students/:id", () => {
   });
 
   it("admits a LEADER to their own student with the public shape and only their rows", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students/${student1Id}`)
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get(`/api/v1/students/${student1Id}`).set("authorization", `Bearer ${leaderToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toHaveProperty("phone");
@@ -268,9 +258,7 @@ describe("GET /api/v1/students/:id", () => {
   });
 
   it("refuses a LEADER outside their groups (C8 — the row gate, not just the route)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/students/${student2Id}`)
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get(`/api/v1/students/${student2Id}`).set("authorization", `Bearer ${leaderToken}`);
     expect(res.status).toBe(403);
   });
 

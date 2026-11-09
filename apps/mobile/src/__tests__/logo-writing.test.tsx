@@ -12,7 +12,9 @@ afterEach(() => {
 
 describe("logo strokes", () => {
   it("writes J+P, then C, then the dots, ending at 2.5 s", () => {
-    const order = Object.entries(LOGO_TIMELINE).sort((a, b) => a[1][0] - b[1][0]).map(([k]) => k);
+    const order = Object.entries(LOGO_TIMELINE)
+      .sort((a, b) => a[1][0] - b[1][0])
+      .map(([k]) => k);
     expect(order).toEqual(["jp", "c", "dot-top", "dot-bottom"]);
     expect(LOGO_WRITING_MS).toBe(2500);
     expect(Math.max(...Object.values(LOGO_TIMELINE).map(([, end]) => end))).toBe(LOGO_WRITING_MS);

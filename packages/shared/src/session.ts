@@ -113,10 +113,7 @@ const sessionWriteBase = z.object({
   description: z.string().max(2000).nullish(),
 });
 
-function exactlyOneStart(
-  v: { startsAt?: string; startDay?: string; startTime?: string },
-  ctx: z.RefinementCtx,
-): void {
+function exactlyOneStart(v: { startsAt?: string; startDay?: string; startTime?: string }, ctx: z.RefinementCtx): void {
   const hasWallClock = v.startDay !== undefined || v.startTime !== undefined;
   if (hasWallClock && (v.startDay === undefined || v.startTime === undefined)) {
     ctx.addIssue({

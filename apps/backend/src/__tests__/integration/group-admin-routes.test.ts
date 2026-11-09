@@ -47,11 +47,22 @@ beforeAll(async () => {
     })
   ).id;
   await db.assignment.create({
-    data: { seasonId, title: "Shared", isAllGroups: false, targets: { create: [{ groupId }, { groupId: otherGroupId }] } },
+    data: {
+      seasonId,
+      title: "Shared",
+      isAllGroups: false,
+      targets: { create: [{ groupId }, { groupId: otherGroupId }] },
+    },
   });
   await db.assignment.create({ data: { seasonId, title: "Everyone", isAllGroups: true } });
   await db.assignment.create({
-    data: { seasonId, title: "Deleted sole", isAllGroups: false, deletedAt: new Date(), targets: { create: { groupId } } },
+    data: {
+      seasonId,
+      title: "Deleted sole",
+      isAllGroups: false,
+      deletedAt: new Date(),
+      targets: { create: { groupId } },
+    },
   });
 
   adminToken = await login(app, admin.email);
@@ -91,8 +102,12 @@ describe("group delete (D-16.13)", () => {
   });
 
   it("refuses a leader — even of this group", async () => {
-    expect((await request(app).get(`/api/v1/groups/${groupId}/impact`).set("authorization", `Bearer ${leaderToken}`)).status).toBe(403);
-    expect((await request(app).delete(`/api/v1/groups/${groupId}`).set("authorization", `Bearer ${leaderToken}`)).status).toBe(403);
+    expect(
+      (await request(app).get(`/api/v1/groups/${groupId}/impact`).set("authorization", `Bearer ${leaderToken}`)).status,
+    ).toBe(403);
+    expect(
+      (await request(app).delete(`/api/v1/groups/${groupId}`).set("authorization", `Bearer ${leaderToken}`)).status,
+    ).toBe(403);
   });
 
   it("deletes once retargeted: unassigns every enrolment, drops memberships and targets, keeps the others", async () => {
@@ -114,11 +129,16 @@ describe("group delete (D-16.13)", () => {
       { groupId: null, status: "ACTIVE" },
     ]);
     // The shared assignment keeps its other target.
-    const shared = await db.assignment.findFirstOrThrow({ where: { seasonId, title: "Shared" }, select: { targets: { select: { groupId: true } } } });
+    const shared = await db.assignment.findFirstOrThrow({
+      where: { seasonId, title: "Shared" },
+      select: { targets: { select: { groupId: true } } },
+    });
     expect(shared.targets).toEqual([{ groupId: otherGroupId }]);
   });
 
   it("is 404 the second time", async () => {
-    expect((await request(app).delete(`/api/v1/groups/${groupId}`).set("authorization", `Bearer ${adminToken}`)).status).toBe(404);
+    expect(
+      (await request(app).delete(`/api/v1/groups/${groupId}`).set("authorization", `Bearer ${adminToken}`)).status,
+    ).toBe(404);
   });
 });

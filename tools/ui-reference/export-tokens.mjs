@@ -9,11 +9,32 @@ import { themeColorVars } from "./lib/theme-vars.mjs";
 const THEME_VARS = themeColorVars(readFileSync(path.join(APP_DIR, "src/app/globals.css"), "utf8"));
 
 const SEMANTIC = [
-  "background", "foreground", "card", "card-foreground", "popover", "popover-foreground",
-  "primary", "primary-foreground", "secondary", "secondary-foreground", "muted",
-  "muted-foreground", "accent", "accent-foreground", "destructive", "border", "input", "ring",
-  "sidebar", "sidebar-foreground", "sidebar-primary", "sidebar-primary-foreground",
-  "sidebar-accent", "sidebar-accent-foreground", "sidebar-border", "sidebar-ring",
+  "background",
+  "foreground",
+  "card",
+  "card-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "secondary",
+  "secondary-foreground",
+  "muted",
+  "muted-foreground",
+  "accent",
+  "accent-foreground",
+  "destructive",
+  "border",
+  "input",
+  "ring",
+  "sidebar",
+  "sidebar-foreground",
+  "sidebar-primary",
+  "sidebar-primary-foreground",
+  "sidebar-accent",
+  "sidebar-accent-foreground",
+  "sidebar-border",
+  "sidebar-ring",
 ];
 const RAMPS = ["brand-navy", "brand-teal", "neutral", "success", "warning", "error", "info", "purple"];
 const STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
@@ -33,7 +54,13 @@ function toHex(rgb) {
   const [r, g, b] = m.slice(1, 4).map((v) => Math.round(Number(v)));
   const a = m[4] === undefined ? 1 : Number(m[4]);
   if (a < 1) return `rgba(${r}, ${g}, ${b}, ${a})`;
-  return "#" + [r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+  return (
+    "#" +
+    [r, g, b]
+      .map((v) => v.toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase()
+  );
 }
 
 async function resolve(page) {
@@ -70,7 +97,9 @@ for (const theme of ["light", "dark"]) {
   await page.goto(V1_BASE_URL + "/login", { waitUntil: "domcontentloaded", timeout: 60000 });
   await page.evaluate(() => document.fonts.ready);
   await page.addStyleTag({
-    content: `:root { ${Object.entries(THEME_VARS).map(([k, v]) => `${k}: ${v};`).join(" ")} }`,
+    content: `:root { ${Object.entries(THEME_VARS)
+      .map(([k, v]) => `${k}: ${v};`)
+      .join(" ")} }`,
   });
   const raw = await resolve(page);
   tokens[theme] = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k.replace(/^color-/, ""), toHex(v)]));

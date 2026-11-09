@@ -19,7 +19,10 @@ export function pollErrors(issues: { path: PropertyKey[]; message: string }[]): 
     if (issue.path[0] !== "poll" || issue.path[1] !== "options") continue;
     const index = issue.path[2];
     if (typeof index === "number") {
-      out[index] ??= issue.message === "Each option must be different" ? "Two options say the same thing." : `Enter this option (up to ${POLL_OPTION_MAX} characters).`;
+      out[index] ??=
+        issue.message === "Each option must be different"
+          ? "Two options say the same thing."
+          : `Enter this option (up to ${POLL_OPTION_MAX} characters).`;
     } else out.options ??= "Add at least two options.";
   }
   return out;
@@ -76,7 +79,9 @@ export function PollEditor({
           {errors.options}
         </Text>
       ) : null}
-      {options.length < POLL_OPTIONS_MAX ? <PillButton label="Add option" onPress={add} className="self-start" /> : null}
+      {options.length < POLL_OPTIONS_MAX ? (
+        <PillButton label="Add option" onPress={add} className="self-start" />
+      ) : null}
       <View className="flex-row items-center justify-between gap-3">
         <Text variant="body" className="min-w-0 flex-1 text-foreground">
           Let people pick more than one

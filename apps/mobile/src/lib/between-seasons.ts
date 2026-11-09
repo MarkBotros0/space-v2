@@ -1,9 +1,7 @@
 import type { SeasonHistoryRow } from "@space/shared";
 
 type BetweenSeasonsState =
-  | { kind: "first" }
-  | { kind: "finished"; row: SeasonHistoryRow }
-  | { kind: "dropped"; row: SeasonHistoryRow };
+  { kind: "first" } | { kind: "finished"; row: SeasonHistoryRow } | { kind: "dropped"; row: SeasonHistoryRow };
 
 /**
  * What a student with no current season sees on Today, from their newest past enrolment

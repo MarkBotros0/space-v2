@@ -42,9 +42,20 @@ export const peopleSchemas = {
       code: { type: "string" },
       title: { type: "string" },
       program: { type: "string" },
-      requiredProgram: { type: ["string", "null"], description: "The program someone must have finished to join. Sent to SUPER and this season's admins and leaders; left out for everyone else." },
-      graduatesOnPass: { type: "boolean", description: "Passing this season makes an alumnus. Sent as `requiredProgram` is; left out for everyone else." },
-      isCommunityWide: { type: "boolean", description: "Anyone may take part as a student, alumni too; the season has no required program and graduates nobody." },
+      requiredProgram: {
+        type: ["string", "null"],
+        description:
+          "The program someone must have finished to join. Sent to SUPER and this season's admins and leaders; left out for everyone else.",
+      },
+      graduatesOnPass: {
+        type: "boolean",
+        description: "Passing this season makes an alumnus. Sent as `requiredProgram` is; left out for everyone else.",
+      },
+      isCommunityWide: {
+        type: "boolean",
+        description:
+          "Anyone may take part as a student, alumni too; the season has no required program and graduates nobody.",
+      },
       year: { type: "integer" },
       description: { type: ["string", "null"] },
       status: { $ref: "#/components/schemas/SeasonStatus" },
@@ -107,8 +118,7 @@ export const peopleSchemas = {
       description: { type: ["string", "null"] },
       studentCount: {
         type: "integer",
-        description:
-          "ACTIVE season enrolments naming this group (SeasonEnrollment is the authority, ruling C9).",
+        description: "ACTIVE season enrolments naming this group (SeasonEnrollment is the authority, ruling C9).",
       },
       leaderNames: { type: "array", items: { type: "string" } },
       seasonId: { type: "integer" },
@@ -120,7 +130,11 @@ export const peopleSchemas = {
     type: "object",
     required: ["program", "year", "startDate", "endDate", "status"],
     properties: {
-      code: { type: "string", description: "Slugified server-side (v1 rules); defaults to '<program> <year>'. The slug must be 2–40 chars of a-z, 0-9 and inner dashes." },
+      code: {
+        type: "string",
+        description:
+          "Slugified server-side (v1 rules); defaults to '<program> <year>'. The slug must be 2–40 chars of a-z, 0-9 and inner dashes.",
+      },
       program: { type: "string", minLength: 1, maxLength: 60 },
       requiredProgram: {
         type: ["string", "null"],
@@ -159,7 +173,8 @@ export const peopleSchemas = {
         type: "array",
         maxItems: 20,
         items: { type: "integer" },
-        description: "Replaces the current set on POST and, when sent, on PATCH. Everyone being added must be a live alumnus with no other active role and no other group in this season (409 `not_alumnus`, `already_in_role`, `leader_has_group`, ...; 404 `not_found` for no such user); a leader who stays is not re-checked. Whoever is added or removed refreshes into the new role, still signed in.",
+        description:
+          "Replaces the current set on POST and, when sent, on PATCH. Everyone being added must be a live alumnus with no other active role and no other group in this season (409 `not_alumnus`, `already_in_role`, `leader_has_group`, ...; 404 `not_found` for no such user); a leader who stays is not re-checked. Whoever is added or removed refreshes into the new role, still signed in.",
       },
       studentIds: {
         type: "array",
@@ -225,7 +240,8 @@ export const peopleSchemas = {
       status: {
         type: "string",
         enum: ["active", "invited", "pending", "inactive"],
-        description: "Derived server-side: inactive (soft-deleted) > active (has a password or has logged in) > invited (live unaccepted invite) > pending.",
+        description:
+          "Derived server-side: inactive (soft-deleted) > active (has a password or has logged in) > invited (live unaccepted invite) > pending.",
       },
     },
   },
@@ -255,7 +271,19 @@ export const peopleSchemas = {
 
   StudentListItem: {
     type: "object",
-    required: ["id", "name", "email", "avatarPath", "university", "faculty", "universityGraduationYear", "graduationYear", "activeSeasonTitle", "currentGroupName", "droppedEnrollment"],
+    required: [
+      "id",
+      "name",
+      "email",
+      "avatarPath",
+      "university",
+      "faculty",
+      "universityGraduationYear",
+      "graduationYear",
+      "activeSeasonTitle",
+      "currentGroupName",
+      "droppedEnrollment",
+    ],
     properties: {
       id: { type: "integer" },
       name: { type: "string" },
@@ -263,13 +291,26 @@ export const peopleSchemas = {
       avatarPath: { type: ["string", "null"] },
       university: { type: ["string", "null"] },
       faculty: { type: ["string", "null"] },
-      universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
+      universityGraduationYear: {
+        type: ["integer", "null"],
+        minimum: 1950,
+        maximum: 2100,
+        description: "University graduation year; may be in the future. Not the JPCS graduationYear.",
+      },
       graduationYear: { type: ["integer", "null"] },
       activeSeasonTitle: { type: ["string", "null"] },
-      lastSeasonTitle: { type: ["string", "null"], description: "With no active season, the latest finished season they completed (the active and alumni lists only)." },
-      currentGroupName: { type: ["string", "null"], description: "Advisory: the most recent GroupStudent membership, any season (C9)." },
+      lastSeasonTitle: {
+        type: ["string", "null"],
+        description:
+          "With no active season, the latest finished season they completed (the active and alumni lists only).",
+      },
+      currentGroupName: {
+        type: ["string", "null"],
+        description: "Advisory: the most recent GroupStudent membership, any season (C9).",
+      },
       droppedEnrollment: {
-        description: "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",
+        description:
+          "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",
         oneOf: [
           {
             type: "object",
@@ -297,12 +338,18 @@ export const peopleSchemas = {
       seasonStatus: { $ref: "#/components/schemas/SeasonStatus" },
       startDate: { type: "string", format: "date-time" },
       endDate: { type: "string", format: "date-time" },
-      groupName: { type: ["string", "null"], description: "The historic group for that season, from SeasonEnrollment.groupId (C9)." },
+      groupName: {
+        type: ["string", "null"],
+        description: "The historic group for that season, from SeasonEnrollment.groupId (C9).",
+      },
       status: { type: "string", enum: ["ACTIVE", "COMPLETED", "WITHDRAWN"] },
       enrolledAt: { type: "string", format: "date-time" },
       completedAt: { type: ["string", "null"], format: "date-time" },
       droppedAt: { type: ["string", "null"], format: "date-time" },
-      dropReason: { type: ["string", "null"], description: "Null unless the row is WITHDRAWN. Always null for MENTOR and LEADER." },
+      dropReason: {
+        type: ["string", "null"],
+        description: "Null unless the row is WITHDRAWN. Always null for MENTOR and LEADER.",
+      },
       attendancePct: {
         type: ["integer", "null"],
         description:
@@ -347,34 +394,58 @@ export const peopleSchemas = {
       graduationYear: { type: ["integer", "null"] },
       graduatedByException: {
         type: ["object", "null"],
-        description: "SUPER's view only (null when none, absent for everyone else): the person was graduated without passing a graduating season. `at` is the time, `byName` the super who did it, `reason` their reason.",
-        properties: { at: { type: "string", format: "date-time" }, byName: { type: ["string", "null"] }, reason: { type: ["string", "null"] } },
+        description:
+          "SUPER's view only (null when none, absent for everyone else): the person was graduated without passing a graduating season. `at` is the time, `byName` the super who did it, `reason` their reason.",
+        properties: {
+          at: { type: "string", format: "date-time" },
+          byName: { type: ["string", "null"] },
+          reason: { type: ["string", "null"] },
+        },
       },
       invite: {
         type: ["object", "null"],
-        description: "The internal view only (absent for everyone else): null once the account is set up; else `status` `invited` while the newest invite still works (until `expiresAt`), `pending` when none does. Resend with `POST /students/{id}/invite`.",
-        properties: { status: { type: "string", enum: ["invited", "pending"] }, expiresAt: { type: ["string", "null"], format: "date-time" } },
+        description:
+          "The internal view only (absent for everyone else): null once the account is set up; else `status` `invited` while the newest invite still works (until `expiresAt`), `pending` when none does. Resend with `POST /students/{id}/invite`.",
+        properties: {
+          status: { type: "string", enum: ["invited", "pending"] },
+          expiresAt: { type: ["string", "null"], format: "date-time" },
+        },
       },
       currentGroup: {
         description: "Advisory current group: the most recent GroupStudent membership, any season.",
-        oneOf: [{ type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } }, { type: "null" }],
+        oneOf: [
+          { type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } },
+          { type: "null" },
+        ],
       },
-      enrollments: { type: "array", items: { $ref: "#/components/schemas/EnrollmentHistoryItem" }, description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups." },
+      enrollments: {
+        type: "array",
+        items: { $ref: "#/components/schemas/EnrollmentHistoryItem" },
+        description: "`enrolledAt` descending. For a LEADER only the rows naming one of their groups.",
+      },
       profile: {
         type: "object",
         properties: {
           university: { type: ["string", "null"] },
           faculty: { type: ["string", "null"] },
-          universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
+          universityGraduationYear: {
+            type: ["integer", "null"],
+            minimum: 1950,
+            maximum: 2100,
+            description: "University graduation year; may be in the future. Not the JPCS graduationYear.",
+          },
           activeSeasonId: { type: ["integer", "null"] },
           activeSeasonTitle: { type: ["string", "null"] },
           activeSeasonCode: { type: ["string", "null"] },
           phone: { type: ["string", "null"], description: "private and internal shapes only." },
-          dateOfBirth: { type: ["string", "null"], format: "date-time", description: "private and internal shapes only." },
+          dateOfBirth: {
+            type: ["string", "null"],
+            format: "date-time",
+            description: "private and internal shapes only.",
+          },
           notes: { type: ["string", "null"], description: "internal shape only (SUPER, ADMIN)." },
         },
       },
     },
   },
-
 } as const;

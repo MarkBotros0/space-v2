@@ -21,13 +21,7 @@ import { renderWithProviders } from "./helpers/render";
 
 import ReportsScreen from "../../app/(app)/reports";
 
-import {
-  emptyScopes,
-  mockEndpoints,
-  organisation,
-  sessionFor,
-  summary,
-} from "./helpers/reports-fixtures";
+import { emptyScopes, mockEndpoints, organisation, sessionFor, summary } from "./helpers/reports-fixtures";
 
 const get = apiClient.get as jest.Mock;
 

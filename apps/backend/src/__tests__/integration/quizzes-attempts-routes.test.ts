@@ -19,14 +19,7 @@ let leaderToken: string;
 let studentToken: string;
 
 beforeAll(async () => {
-  ({
-    seasonId,
-    sessionId,
-    ownStudentId,
-    adminToken,
-    leaderToken,
-    studentToken,
-  } = await seedQuizFixtures(app));
+  ({ seasonId, sessionId, ownStudentId, adminToken, leaderToken, studentToken } = await seedQuizFixtures(app));
 });
 
 afterAll(async () => {
@@ -67,8 +60,18 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     // the assertion is on the marker, not on the word.
     expect(res.body.data.questions[0]).not.toHaveProperty("correctIndex");
     expect(Object.keys(res.body.data.questions[0]).sort()).toEqual(
-      ["id", "isCorrect", "options", "order", "pointsAwarded", "points", "prompt",
-        "selectedIndex", "text", "type"].sort(),
+      [
+        "id",
+        "isCorrect",
+        "options",
+        "order",
+        "pointsAwarded",
+        "points",
+        "prompt",
+        "selectedIndex",
+        "text",
+        "type",
+      ].sort(),
     );
 
     // ...and the same guarantee on the two other student-facing responses.
@@ -84,9 +87,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("serves staff the authoring shape from the same path", async () => {
-    const res = await request(app)
-      .get(`/api/v1/quizzes/${onlineQuizId}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/v1/quizzes/${onlineQuizId}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.questions[0].correctIndex).toBe(1);
     expect(res.body.data.canEditStructure).toBe(true);
@@ -94,9 +95,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("gives a leader the authoring shape but no manage rights", async () => {
-    const res = await request(app)
-      .get(`/api/v1/quizzes/${onlineQuizId}`)
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get(`/api/v1/quizzes/${onlineQuizId}`).set("authorization", `Bearer ${leaderToken}`);
     // A leader grades, and grading needs the key (R103) — same audience v1's
     // essay grader served it to.
     expect(res.status).toBe(200);
@@ -114,9 +113,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
       .set("authorization", `Bearer ${studentToken}`);
     expect(asStudent.status).toBe(404);
 
-    const asAdmin = await request(app)
-      .get(`/api/v1/quizzes/${draft.id}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const asAdmin = await request(app).get(`/api/v1/quizzes/${draft.id}`).set("authorization", `Bearer ${adminToken}`);
     expect(asAdmin.status).toBe(200);
   });
 
@@ -142,17 +139,13 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("does not write an attempt on a GET (ruling C6)", async () => {
-    await request(app)
-      .get(`/api/v1/quizzes/${onlineQuizId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).get(`/api/v1/quizzes/${onlineQuizId}`).set("authorization", `Bearer ${studentToken}`);
     const rows = await db.quizAttempt.count({ where: { quizId: onlineQuizId } });
     expect(rows).toBe(0);
   });
 
   it("saves a batch of answers and refuses a closed attempt", async () => {
-    await request(app)
-      .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
 
     const save = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
@@ -182,9 +175,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("bounds selectedIndex against THIS question's options, not a constant (R51)", async () => {
-    await request(app)
-      .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     const res = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
@@ -196,9 +187,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("refuses a value of the wrong shape for the question type (R52)", async () => {
-    await request(app)
-      .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     const res = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
@@ -208,9 +197,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("refuses a question from another quiz (R50)", async () => {
-    await request(app)
-      .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     const other = await buildPublishedQuiz({ withEssay: false });
     const res = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
@@ -221,9 +208,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   });
 
   it("refuses a submit with any question unanswered (R59)", async () => {
-    await request(app)
-      .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
@@ -235,5 +220,4 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("attempt_incomplete");
   });
-
 });

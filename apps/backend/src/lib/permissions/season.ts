@@ -43,9 +43,7 @@ export async function canAccessSeason(user: SessionUser, seasonId: number): Prom
  *
  * Null (from the functions below) when the caller may not mark this session at all.
  */
-export type AttendanceScope =
-  | { kind: "season" }
-  | { kind: "groups"; seasonId: number; groupIds: number[] };
+export type AttendanceScope = { kind: "season" } | { kind: "groups"; seasonId: number; groupIds: number[] };
 
 /**
  * The same question at season granularity: may this caller act on staff-only
@@ -56,10 +54,7 @@ export type AttendanceScope =
  * Two hand-written copies of this would drift, and the first one already
  * shipped a leak by being written once and then not applied.
  */
-export async function staffScopeForSeason(
-  user: SessionUser,
-  seasonId: number,
-): Promise<AttendanceScope | null> {
+export async function staffScopeForSeason(user: SessionUser, seasonId: number): Promise<AttendanceScope | null> {
   if (isSuper(user)) return { kind: "season" };
   if (isAdminOfSeason(user, seasonId)) return { kind: "season" };
   if (user.role !== "LEADER") return null;
@@ -81,10 +76,7 @@ async function sessionSeasonId(sessionId: number): Promise<number | null> {
   return session?.seasonId ?? null;
 }
 
-export async function attendanceScopeFor(
-  user: SessionUser,
-  sessionId: number,
-): Promise<AttendanceScope | null> {
+export async function attendanceScopeFor(user: SessionUser, sessionId: number): Promise<AttendanceScope | null> {
   if (isSuper(user)) return { kind: "season" };
   const seasonId = await sessionSeasonId(sessionId);
   if (seasonId === null) return null;
@@ -108,10 +100,7 @@ export function canManageAssignment(user: SessionUser, seasonId: number): boolea
  * what v1 lacked was any gate on the *reads*, one of which carries the answer
  * key for every question (spec 13 R68/R73).
  */
-export async function canManageSessionVideo(
-  user: SessionUser,
-  sessionId: number,
-): Promise<boolean> {
+export async function canManageSessionVideo(user: SessionUser, sessionId: number): Promise<boolean> {
   if (isSuper(user)) return true;
   const seasonId = await sessionSeasonId(sessionId);
   if (seasonId === null) return false;
@@ -140,9 +129,7 @@ export async function hasActiveEnrollment(user: SessionUser, seasonId: number): 
     select: { status: true, season: { select: { status: true, deletedAt: true } } },
   });
   return (
-    enrollment?.status === "ACTIVE" &&
-    enrollment.season.status === "ACTIVE" &&
-    enrollment.season.deletedAt === null
+    enrollment?.status === "ACTIVE" && enrollment.season.status === "ACTIVE" && enrollment.season.deletedAt === null
   );
 }
 

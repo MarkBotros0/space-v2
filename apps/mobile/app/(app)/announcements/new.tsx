@@ -13,9 +13,18 @@ export default function NewAnnouncementScreen() {
   const targets = useAnnouncementTargets(true);
   const create = useCreateAnnouncement();
 
-  if (targets.isPending) return <Screen title="New announcement"><RouteSkeleton /></Screen>;
+  if (targets.isPending)
+    return (
+      <Screen title="New announcement">
+        <RouteSkeleton />
+      </Screen>
+    );
   if (targets.isError) {
-    return <Screen title="New announcement"><RouteError onRetry={() => void targets.refetch()} /></Screen>;
+    return (
+      <Screen title="New announcement">
+        <RouteError onRetry={() => void targets.refetch()} />
+      </Screen>
+    );
   }
   if (!targets.data.community && targets.data.seasons.length === 0) {
     return (

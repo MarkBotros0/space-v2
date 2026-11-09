@@ -20,11 +20,7 @@ import { queryKeys } from "../lib/query-keys";
  * season detail (its `canAdminister` and the seasons an ADMIN sees), the user
  * detail's `adminSeasons` (and its demotion warning), and the dashboards.
  */
-const SEASON_ADMIN_WRITE_KEYS = [
-  queryKeys.seasons.all,
-  queryKeys.users.all,
-  queryKeys.dashboard.all,
-] as const;
+const SEASON_ADMIN_WRITE_KEYS = [queryKeys.seasons.all, queryKeys.users.all, queryKeys.dashboard.all] as const;
 
 /** GET /seasons/:id/admins — SUPER-only, so the caller passes `enabled`. */
 export function useSeasonAdmins(

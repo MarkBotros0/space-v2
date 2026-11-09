@@ -16,10 +16,7 @@ interface QuizParticipation {
  * not how they did, and it is staff-only. Not part of the score or the
  * at-risk rule.
  */
-export async function quizParticipation(
-  seasonId: number,
-  studentUserId: number,
-): Promise<QuizParticipation> {
+export async function quizParticipation(seasonId: number, studentUserId: number): Promise<QuizParticipation> {
   const quizzes = await db.quiz.findMany({
     where: {
       seasonId,

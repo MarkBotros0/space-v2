@@ -50,15 +50,29 @@ describe("role tabs", () => {
     ["LEADER", navByRole.LEADER, ["Home", "My group", "Calendar", "Submissions", "More"]],
     ["MENTOR", navByRole.MENTOR, ["Home", "Community", "Notes", "Follow-ups", "More"]],
     ["STUDENT", navByRole.STUDENT, ["Home", "Calendar", "My work", "More"]],
-    ["ALUMNI", navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null }), ["Home", "Events", "History", "Profile", "More"]],
+    [
+      "ALUMNI",
+      navFor({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null }),
+      ["Home", "Events", "History", "Profile", "More"],
+    ],
   ])("the pill draws %s's tabs Today first, none featured (R22)", (_role, nav, labels) => {
     const state = { index: 0, routes: nav.tabs.map((t) => ({ key: t.href, name: routeNameForHref(t.href) })) };
+    /* eslint-disable @typescript-eslint/no-explicit-any -- the navigator's state/emitter/descriptors are stubbed */
     renderWithProviders(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      <PillTabBar items={nav.tabs} state={state as any} navigateToTab={() => {}} emitter={{} as any} descriptors={{} as any} insets={{ top: 0, left: 0, right: 0, bottom: 34 }} />,
+      <PillTabBar
+        items={nav.tabs}
+        state={state as any}
+        navigateToTab={() => {}}
+        emitter={{} as any}
+        descriptors={{} as any}
+        insets={{ top: 0, left: 0, right: 0, bottom: 34 }}
+      />,
     );
+    /* eslint-enable @typescript-eslint/no-explicit-any */
     expect(screen.getAllByRole("tab").map((t) => t.props.accessibilityLabel)).toEqual(labels);
-    expect(screen.UNSAFE_getAllByType(NavLink).map((link) => "featured" in link.props)).toEqual(labels.map(() => false));
+    expect(screen.UNSAFE_getAllByType(NavLink).map((link) => "featured" in link.props)).toEqual(
+      labels.map(() => false),
+    );
   });
 
   it("every nav href has a route file: a tab for some role in (tabs)/, any other on the stack", () => {
@@ -72,7 +86,8 @@ describe("role tabs", () => {
     const path = require("node:path") as typeof NodePath;
 
     const missing = ALL_NAV_HREFS.filter(
-      (href) => !fs.existsSync(path.join(dirForHref(href), `${href.slice(1)}.tsx`)) &&
+      (href) =>
+        !fs.existsSync(path.join(dirForHref(href), `${href.slice(1)}.tsx`)) &&
         !fs.existsSync(path.join(dirForHref(href), href.slice(1), "index.tsx")),
     );
     expect(missing).toEqual([]);
@@ -115,8 +130,7 @@ describe("route file layout (P13)", () => {
       const base = href.slice(1);
       const dir = dirForHref(href);
       const bothExist =
-        fs.existsSync(path.join(dir, `${base}.tsx`)) &&
-        fs.existsSync(path.join(dir, base, "index.tsx"));
+        fs.existsSync(path.join(dir, `${base}.tsx`)) && fs.existsSync(path.join(dir, base, "index.tsx"));
       expect(bothExist).toBe(false);
     }
   });

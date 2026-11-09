@@ -30,11 +30,6 @@ submissionsRouter.post("/:publicId/review", reviewSubmission);
 // requireUploadsEnabled MUST stay in front of upload.single("file"): multer
 // buffers the whole body (up to MAX_UPLOAD_BYTES) before the handler runs, so
 // a guard behind it would pay that memory cost for a request it always refuses.
-submissionsRouter.post(
-  "/:publicId/files",
-  requireUploadsEnabled,
-  upload.single("file"),
-  uploadSubmissionFile,
-);
+submissionsRouter.post("/:publicId/files", requireUploadsEnabled, upload.single("file"), uploadSubmissionFile);
 submissionsRouter.delete("/:publicId/files", deleteSubmissionFile);
 submissionsRouter.get("/:publicId/files/:fileId", downloadSubmissionFile);

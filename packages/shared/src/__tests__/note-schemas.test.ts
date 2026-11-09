@@ -29,9 +29,7 @@ describe("createNoteRequestSchema", () => {
 
   it("refuses a body outside 2..20000", () => {
     expect(createNoteRequestSchema.safeParse({ body: "x", visibility: "LEADERS" }).success).toBe(false);
-    expect(
-      createNoteRequestSchema.safeParse({ body: "x".repeat(20001), visibility: "LEADERS" }).success,
-    ).toBe(false);
+    expect(createNoteRequestSchema.safeParse({ body: "x".repeat(20001), visibility: "LEADERS" }).success).toBe(false);
   });
 
   it("has no studentUserId field — the subject is a path parameter, never a body field", () => {
@@ -70,9 +68,7 @@ describe("isAtRisk — the ONE definition (D7)", () => {
   it("flags a student weak in ONE component, which the composite would hide", () => {
     // 55% attendance, 95% submissions: composite 75 ("Medium" on v1's reports),
     // but this student has stopped turning up. Component-wise catches it.
-    expect(
-      isAtRisk({ ...base, attendancePct: 55, submissionPct: 95, score: 75 }),
-    ).toBe(true);
+    expect(isAtRisk({ ...base, attendancePct: 55, submissionPct: 95, score: 75 })).toBe(true);
   });
 
   it("does not flag a student above the threshold on both components", () => {
@@ -82,9 +78,7 @@ describe("isAtRisk — the ONE definition (D7)", () => {
   it("never flags on a component with a zero denominator (R56)", () => {
     // A season with no past sessions scored every student 0% attendance in v1
     // and therefore flagged the whole cohort at risk on day one.
-    expect(
-      isAtRisk({ ...base, attendancePct: 0, attendanceTotal: 0, attendancePresent: 0 }),
-    ).toBe(false);
+    expect(isAtRisk({ ...base, attendancePct: 0, attendanceTotal: 0, attendancePresent: 0 })).toBe(false);
   });
 
   it("keeps the threshold in one named constant", () => {

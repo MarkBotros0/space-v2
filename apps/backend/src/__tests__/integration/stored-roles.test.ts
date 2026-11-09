@@ -20,7 +20,10 @@ const alumnus = async (role: "STUDENT" | "ADMIN" | "LEADER" = "STUDENT") => {
   return user;
 };
 const patch = (id: number, body: object) =>
-  request(app).patch(`/api/v1/users/${id}`).set(as(superToken)).send({ name: "Mina", graduationYear: 2020, ...body });
+  request(app)
+    .patch(`/api/v1/users/${id}`)
+    .set(as(superToken))
+    .send({ name: "Mina", graduationYear: 2020, ...body });
 const seatAdmin = (userId: number, seasonId: number) => db.seasonAdmin.create({ data: { userId, seasonId } });
 const seatLeader = async (userId: number, seasonId: number) => {
   const group = await db.group.create({ data: { seasonId, name: `G${++n}` }, select: { id: true } });
@@ -102,7 +105,9 @@ describe("PATCH /users/:id", () => {
     const after = await stored(person.id);
     expect(after).toEqual({ role: "ADMIN", sessionsValidFrom: null, name: "Mina Renamed" });
     expect(audited).not.toContain("user.role_change");
-    const refreshed = await request(app).post("/api/v1/auth/refresh").send({ refreshToken: session.body.data.refreshToken });
+    const refreshed = await request(app)
+      .post("/api/v1/auth/refresh")
+      .send({ refreshToken: session.body.data.refreshToken });
     expect(refreshed.status).toBe(200);
   });
 
@@ -145,26 +150,29 @@ describe("PATCH /users/:id", () => {
     expect(res.body.error.message).toBe("Required for this role.");
   });
 
-  it.each(["DRAFT", "ACTIVE"] as const)("refuses SUPER or MENTOR for someone holding a row in a %s season", async (status) => {
-    const season = await createTestSeason({ status });
-    await db.season.update({ where: { id: season.id }, data: { title: "GBV 2026" } });
-    const admin = await alumnus();
-    await seatAdmin(admin.id, season.id);
-    const leader = await alumnus();
-    await seatLeader(leader.id, season.id);
+  it.each(["DRAFT", "ACTIVE"] as const)(
+    "refuses SUPER or MENTOR for someone holding a row in a %s season",
+    async (status) => {
+      const season = await createTestSeason({ status });
+      await db.season.update({ where: { id: season.id }, data: { title: "GBV 2026" } });
+      const admin = await alumnus();
+      await seatAdmin(admin.id, season.id);
+      const leader = await alumnus();
+      await seatLeader(leader.id, season.id);
 
-    for (const person of [admin, leader]) {
-      for (const body of [{ role: "MENTOR" }, { role: "SUPER", confirmSuper: true }]) {
-        const res = await patch(person.id, body);
-        expect(res.status).toBe(409);
-        expect(res.body.error.code).toBe("has_season_role");
-        expect(res.body.error.message).toContain("GBV 2026");
+      for (const person of [admin, leader]) {
+        for (const body of [{ role: "MENTOR" }, { role: "SUPER", confirmSuper: true }]) {
+          const res = await patch(person.id, body);
+          expect(res.status).toBe(409);
+          expect(res.body.error.code).toBe("has_season_role");
+          expect(res.body.error.message).toContain("GBV 2026");
+        }
+        expect((await stored(person.id)).role).toBe("STUDENT");
       }
-      expect((await stored(person.id)).role).toBe("STUDENT");
-    }
-    expect(await db.seasonAdmin.count({ where: { userId: admin.id } })).toBe(1);
-    expect(await db.groupLeader.count({ where: { userId: leader.id } })).toBe(1);
-  });
+      expect(await db.seasonAdmin.count({ where: { userId: admin.id } })).toBe(1);
+      expect(await db.groupLeader.count({ where: { userId: leader.id } })).toBe(1);
+    },
+  );
 
   it("refuses MENTOR for a student enrolled in a live season", async () => {
     const person = await alumnus();

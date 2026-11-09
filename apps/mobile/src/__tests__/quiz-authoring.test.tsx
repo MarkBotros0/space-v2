@@ -27,42 +27,99 @@ const adminSession = {
   scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
 };
 const leaderSession = {
-  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 5,
+    name: "Test leader",
+    email: "l@jpc.test",
+    role: "LEADER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
 };
 
 const seasonsList = {
-  data: { data: { seasons: [{
-    id: 7, code: "s26", title: "Spring 2026", program: "TEST", year: 2026, status: "ACTIVE",
-    startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z",
-  }] } },
+  data: {
+    data: {
+      seasons: [
+        {
+          id: 7,
+          code: "s26",
+          title: "Spring 2026",
+          program: "TEST",
+          year: 2026,
+          status: "ACTIVE",
+          startDate: "2026-01-01T00:00:00.000Z",
+          endDate: "2026-12-31T00:00:00.000Z",
+        },
+      ],
+    },
+  },
 };
 const sessionsList = {
-  data: { data: { sessions: [{
-    id: 12, title: "Week 1", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01",
-    startTime: "20:00", // required since Plan 6 (org wall-clock start, X13)
-    durationMinutes: 60, location: null, recurrenceGroupId: null, attendanceMarked: false,
-    seasonId: 7, seasonCode: "s26", seasonTitle: "Spring 2026",
-    checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
-  }] } },
+  data: {
+    data: {
+      sessions: [
+        {
+          id: 12,
+          title: "Week 1",
+          startsAt: "2099-03-01T18:00:00.000Z",
+          dayKey: "2099-03-01",
+          startTime: "20:00", // required since Plan 6 (org wall-clock start, X13)
+          durationMinutes: 60,
+          location: null,
+          recurrenceGroupId: null,
+          attendanceMarked: false,
+          seasonId: 7,
+          seasonCode: "s26",
+          seasonTitle: "Spring 2026",
+          checkInToken: null,
+          checkInOpenAt: null,
+          checkInClosedAt: null,
+        },
+      ],
+    },
+  },
 };
 
 const mcq = {
-  id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of France?", points: 2,
-  options: ["London", "Paris"], correctIndex: 1,
+  id: 100,
+  order: 0,
+  type: "MCQ" as const,
+  prompt: "Capital of France?",
+  points: 2,
+  options: ["London", "Paris"],
+  correctIndex: 1,
 };
 const essay = {
-  id: 101, order: 1, type: "ESSAY" as const, prompt: "Discuss.", points: 5,
-  options: [] as string[], correctIndex: null,
+  id: 101,
+  order: 1,
+  type: "ESSAY" as const,
+  prompt: "Discuss.",
+  points: 5,
+  options: [] as string[],
+  correctIndex: null,
 };
 
 function authoring(over: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26",
-    sessionId: 12, sessionTitle: "Week 1", publishedAt: null, maxScore: 7,
-    attemptCount: 0, gradeCount: 0, canEditStructure: true, canManage: true,
-    resultsReleasedAt: null, canReleaseResults: true,
-    questions: [mcq, essay], ...over,
+    id: 41,
+    title: "Week 1 quiz",
+    kind: "ONLINE",
+    seasonId: 7,
+    seasonCode: "s26",
+    sessionId: 12,
+    sessionTitle: "Week 1",
+    publishedAt: null,
+    maxScore: 7,
+    attemptCount: 0,
+    gradeCount: 0,
+    canEditStructure: true,
+    canManage: true,
+    resultsReleasedAt: null,
+    canReleaseResults: true,
+    questions: [mcq, essay],
+    ...over,
   };
 }
 
@@ -101,7 +158,10 @@ describe("NewQuizScreen", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes", {
-        seasonId: 7, sessionId: 12, title: "Week 3 quiz", kind: "ONLINE",
+        seasonId: 7,
+        sessionId: 12,
+        title: "Week 3 quiz",
+        kind: "ONLINE",
       }),
     );
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/quiz/[id]/edit", params: { id: "77" } });
@@ -116,7 +176,11 @@ describe("NewQuizScreen", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes", {
-        seasonId: 7, sessionId: null, title: "Paper quiz", kind: "PAPER", maxScore: 100,
+        seasonId: 7,
+        sessionId: null,
+        title: "Paper quiz",
+        kind: "PAPER",
+        maxScore: 100,
       }),
     );
     expect(mockReplace).toHaveBeenCalledWith({ pathname: "/quiz/[id]/grade", params: { id: "78" } });
@@ -161,7 +225,9 @@ describe("QuizEditScreen (the builder)", () => {
   it("adds an MCQ through the editor and sends exactly the form's question", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     post.mockResolvedValue({
-      data: { data: { id: 102, order: 2, type: "MCQ", prompt: "2 + 2?", points: 2, options: ["3", "4"], correctIndex: 1 } },
+      data: {
+        data: { id: 102, order: 2, type: "MCQ", prompt: "2 + 2?", points: 2, options: ["3", "4"], correctIndex: 1 },
+      },
     });
     renderWithProviders(<QuizEditScreen />);
 
@@ -175,7 +241,11 @@ describe("QuizEditScreen (the builder)", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/questions", {
-        type: "MCQ", prompt: "2 + 2?", points: 2, options: ["3", "4"], correctIndex: 1,
+        type: "MCQ",
+        prompt: "2 + 2?",
+        points: 2,
+        options: ["3", "4"],
+        correctIndex: 1,
       }),
     );
   });
@@ -205,14 +275,27 @@ describe("QuizEditScreen (the builder)", () => {
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/100", {
-        type: "MCQ", prompt: "Capital of Italy?", points: 2, options: ["London", "Paris"], correctIndex: 1,
+        type: "MCQ",
+        prompt: "Capital of Italy?",
+        points: 2,
+        options: ["London", "Paris"],
+        correctIndex: 1,
       }),
     );
   });
 
   it("reorders by sending the full permutation", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
-    put.mockResolvedValue({ data: { data: { questions: [{ ...essay, order: 0 }, { ...mcq, order: 1 }] } } });
+    put.mockResolvedValue({
+      data: {
+        data: {
+          questions: [
+            { ...essay, order: 0 },
+            { ...mcq, order: 1 },
+          ],
+        },
+      },
+    });
     renderWithProviders(<QuizEditScreen />);
 
     fireEvent.press(await screen.findByLabelText("Move question 2 up"));
@@ -250,7 +333,9 @@ describe("QuizEditScreen (the builder)", () => {
     });
     renderWithProviders(<QuizEditScreen />);
 
-    expect(await screen.findByText("Students have started this quiz, so its questions can no longer change.")).toBeTruthy();
+    expect(
+      await screen.findByText("Students have started this quiz, so its questions can no longer change."),
+    ).toBeTruthy();
     expect(screen.queryByText("Add question")).toBeNull();
     expect(screen.queryByLabelText("Edit question 1")).toBeNull();
     expect(screen.queryByLabelText("Move question 2 up")).toBeNull();

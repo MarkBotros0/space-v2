@@ -157,20 +157,14 @@ export async function computeEngagementForSeasons(
     const attendanceTotal = eligibleSessions.length;
     const present = presentBy.get(e.studentUserId) ?? new Set<number>();
     const attendancePresent = eligibleSessions.filter((s) => present.has(s.id)).length;
-    const attendancePct =
-      attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : 0;
+    const attendancePct = attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : 0;
 
     const expectedAssignments = (assignmentsBySeason.get(e.seasonId) ?? []).filter(
-      (a) =>
-        a.isAllGroups ||
-        (e.groupId !== null && a.targets.some((t) => t.groupId === e.groupId)),
+      (a) => a.isAllGroups || (e.groupId !== null && a.targets.some((t) => t.groupId === e.groupId)),
     );
     const submissionsExpected = expectedAssignments.length;
-    const submissionsCompleted = expectedAssignments.filter((a) =>
-      completed.has(`${e.studentUserId}:${a.id}`),
-    ).length;
-    const submissionPct =
-      submissionsExpected > 0 ? Math.round((submissionsCompleted / submissionsExpected) * 100) : 0;
+    const submissionsCompleted = expectedAssignments.filter((a) => completed.has(`${e.studentUserId}:${a.id}`)).length;
+    const submissionPct = submissionsExpected > 0 ? Math.round((submissionsCompleted / submissionsExpected) * 100) : 0;
 
     const score = Math.round(attendancePct * 0.5 + submissionPct * 0.5);
     const base = {

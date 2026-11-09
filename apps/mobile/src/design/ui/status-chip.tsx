@@ -52,17 +52,8 @@ export { chipVariants, chipTextVariants };
 
 export function StatusChip({ tone, label, className }: ChipSpec & { className?: string }) {
   return (
-    <View
-      accessible
-      accessibilityLabel={label}
-      className={cn(chipVariants({ tone }), className)}
-    >
-      <Text
-        variant="caption"
-        numberOfLines={1}
-        maxFontSizeMultiplier={1.3}
-        className={chipTextVariants({ tone })}
-      >
+    <View accessible accessibilityLabel={label} className={cn(chipVariants({ tone }), className)}>
+      <Text variant="caption" numberOfLines={1} maxFontSizeMultiplier={1.3} className={chipTextVariants({ tone })}>
         {label}
       </Text>
     </View>

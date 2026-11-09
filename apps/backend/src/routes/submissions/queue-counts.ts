@@ -30,9 +30,7 @@ export async function countQueue(reachable: Prisma.SubmissionWhereInput) {
     a.dueAt ? [{ assignmentId: a.id, submittedAt: { gt: a.dueAt } }] : [],
   );
   const late =
-    lateClauses.length === 0
-      ? 0
-      : await db.submission.count({ where: { AND: [reachable, { OR: lateClauses }] } });
+    lateClauses.length === 0 ? 0 : await db.submission.count({ where: { AND: [reachable, { OR: lateClauses }] } });
 
   return { pending, total, late };
 }

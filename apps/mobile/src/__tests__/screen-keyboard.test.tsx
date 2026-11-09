@@ -1,13 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
-import {
-  Dimensions,
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text as RNText,
-  TextInput,
-} from "react-native";
+import { Dimensions, Keyboard, Platform, ScrollView, StyleSheet, Text as RNText, TextInput } from "react-native";
 
 import { keyboardTopInWindow } from "../design/lib/keyboard-offset";
 import { Screen } from "../design/layout/screen";
@@ -28,10 +20,7 @@ const body = <RNText>body</RNText>;
 function withKeyboard(run: (show: (e: ShowEvent) => void) => void) {
   jest.useFakeTimers();
   const listeners: Record<string, (e: ShowEvent) => void> = {};
-  const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((
-    event: string,
-    cb: never,
-  ) => {
+  const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {
     listeners[event] = cb;
     return { remove: jest.fn() };
   }) as unknown as typeof Keyboard.addListener);
@@ -75,8 +64,7 @@ describe("keyboardTopInWindow", () => {
 describe("Screen: keyboard", () => {
   it("scrolls a focused field above the keyboard from the current scroll offset", () => {
     const focused = jest.spyOn(TextInput.State, "currentlyFocusedInput").mockReturnValue({
-      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) =>
-        cb(0, 600, 300, 40),
+      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => cb(0, 600, 300, 40),
     } as never);
     try {
       withKeyboard((show) => {
@@ -119,8 +107,7 @@ describe("Screen: keyboard", () => {
     // Field bottom at reportedTop - 106: 10dp clear of the 96 gap by screenY,
     // 24dp inside it by the real top (34 higher).
     const focused = jest.spyOn(TextInput.State, "currentlyFocusedInput").mockReturnValue({
-      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) =>
-        cb(0, reportedTop - 146, 300, 40),
+      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => cb(0, reportedTop - 146, 300, 40),
     } as never);
     try {
       withOS("android", () =>

@@ -44,7 +44,14 @@ export function SeasonPartsSection() {
           onInviteNew={noop}
           suggestion={{ title: "GBV 2025", count: 12, onAdd: noop }}
         />
-        <StudentsLevel seasonTitle="GBV 2026" count={3} ungrouped={1} groups={1} onSelectFromCommunity={noop} onInviteNew={noop} />
+        <StudentsLevel
+          seasonTitle="GBV 2026"
+          count={3}
+          ungrouped={1}
+          groups={1}
+          onSelectFromCommunity={noop}
+          onInviteNew={noop}
+        />
         <StudentsLevel seasonTitle="GBV 2025" count={14} ungrouped={0} groups={2} />
       </View>
       <View className="gap-6">

@@ -47,9 +47,6 @@ export function isStudentCheckInWindow(startsAt: Date, now: Date = new Date()): 
 }
 
 /** What a student is told: open only while check-in is open and the session's hour has come. */
-export function isCheckInOpenForStudent(
-  session: CheckInTimes & { startsAt: Date },
-  now: Date = new Date(),
-): boolean {
+export function isCheckInOpenForStudent(session: CheckInTimes & { startsAt: Date }, now: Date = new Date()): boolean {
   return isCheckInOpen(session, now) && isStudentCheckInWindow(session.startsAt, now);
 }

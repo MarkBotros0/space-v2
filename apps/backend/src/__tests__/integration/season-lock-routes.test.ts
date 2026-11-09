@@ -50,21 +50,48 @@ let activeAssignmentSubmission: string;
 
 /** Forum + quiz + video + check-in fixtures for one season, with a group-mate who has posted. */
 async function buildKit(o: {
-  seasonId: number; assignmentId: number; sessionId: number; groupId: number;
-  student: number; mate: number; adminId: number; token: string;
+  seasonId: number;
+  assignmentId: number;
+  sessionId: number;
+  groupId: number;
+  student: number;
+  mate: number;
+  adminId: number;
+  token: string;
 }): Promise<Kit> {
   const draft = newPublicId();
   await db.submission.create({
-    data: { publicId: draft, assignmentId: o.assignmentId, studentUserId: o.student, text: "my draft", status: "DRAFT" },
+    data: {
+      publicId: draft,
+      assignmentId: o.assignmentId,
+      studentUserId: o.student,
+      text: "my draft",
+      status: "DRAFT",
+    },
   });
   const forum = await db.assignment.create({
-    data: { seasonId: o.seasonId, title: "MW Forum", type: "FORUM", forumAllowComments: true, isAllGroups: true, createdById: o.adminId },
+    data: {
+      seasonId: o.seasonId,
+      title: "MW Forum",
+      type: "FORUM",
+      forumAllowComments: true,
+      isAllGroups: true,
+      createdById: o.adminId,
+    },
     select: { id: true },
   });
   const matePost = newPublicId();
   const post = (publicId: string, studentUserId: number) =>
     db.submission.create({
-      data: { publicId, assignmentId: forum.id, studentUserId, text: "<p>post</p>", status: "REVIEWED", submittedAt: new Date(), reviewedAt: new Date() },
+      data: {
+        publicId,
+        assignmentId: forum.id,
+        studentUserId,
+        text: "<p>post</p>",
+        status: "REVIEWED",
+        submittedAt: new Date(),
+        reviewedAt: new Date(),
+      },
       select: { id: true },
     });
   const mateRow = await post(matePost, o.mate);
@@ -75,7 +102,12 @@ async function buildKit(o: {
   });
   const quiz = await db.quiz.create({
     data: {
-      seasonId: o.seasonId, sessionId: o.sessionId, title: "MW Online", kind: "ONLINE", maxScore: 2, publishedAt: new Date(),
+      seasonId: o.seasonId,
+      sessionId: o.sessionId,
+      title: "MW Online",
+      kind: "ONLINE",
+      maxScore: 2,
+      publishedAt: new Date(),
       questions: { create: [{ order: 1, type: "MCQ", prompt: "Q?", points: 2, options: ["a", "b"], correctIndex: 0 }] },
       // An attempt in progress, so submit is refused by the lock and not by "no attempt".
       attempts: { create: [{ studentUserId: o.student, attemptNumber: 1, status: "IN_PROGRESS" }] },
@@ -90,12 +122,20 @@ async function buildKit(o: {
     where: { id: o.sessionId },
     data: {
       youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      checkInToken: o.token, checkInOpenAt: new Date(Date.now() - 60_000),
+      checkInToken: o.token,
+      checkInOpenAt: new Date(Date.now() - 60_000),
     },
   });
   return {
-    assignmentId: o.assignmentId, draft, quizId: quiz.id, forumId: forum.id, matePost,
-    ownCommentId: comment.id, sessionId: o.sessionId, questionId: q.id, token: o.token,
+    assignmentId: o.assignmentId,
+    draft,
+    quizId: quiz.id,
+    forumId: forum.id,
+    matePost,
+    ownCommentId: comment.id,
+    sessionId: o.sessionId,
+    questionId: q.id,
+    token: o.token,
   };
 }
 
@@ -104,22 +144,38 @@ beforeAll(async () => {
   const { seasonId, otherSeasonId } = w;
 
   // The ended season: studentB's submission reviewed so End is not blocked; a group-mate for studentA.
-  await db.submission.update({ where: { publicId: w.submissionBPublicId }, data: { status: "REVIEWED", reviewedAt: new Date() } });
+  await db.submission.update({
+    where: { publicId: w.submissionBPublicId },
+    data: { status: "REVIEWED", reviewedAt: new Date() },
+  });
   reviewedPublicId = w.submissionBPublicId;
   const mate = await createTestUser("mw-mate", "STUDENT");
   await db.studentProfile.create({ data: { userId: mate.id } });
-  await db.seasonEnrollment.create({ data: { seasonId, studentUserId: mate.id, groupId: w.groupAId, status: "ACTIVE" } });
+  await db.seasonEnrollment.create({
+    data: { seasonId, studentUserId: mate.id, groupId: w.groupAId, status: "ACTIVE" },
+  });
   kit.former = await buildKit({
-    seasonId, assignmentId: w.assignmentId, sessionId: w.sessionId, groupId: w.groupAId,
-    student: w.ids.studentA, mate: mate.id, adminId: w.ids.admin, token: "mwlocktoken",
+    seasonId,
+    assignmentId: w.assignmentId,
+    sessionId: w.sessionId,
+    groupId: w.groupAId,
+    student: w.ids.studentA,
+    mate: mate.id,
+    adminId: w.ids.admin,
+    token: "mwlocktoken",
   });
 
   // The still-running other season: a group with a dropped student, an active student and an active mate.
-  const otherGroup = await db.group.create({ data: { seasonId: otherSeasonId, name: "Other group" }, select: { id: true } });
+  const otherGroup = await db.group.create({
+    data: { seasonId: otherSeasonId, name: "Other group" },
+    select: { id: true },
+  });
   const mkStudent = async (label: string, status: "WITHDRAWN" | "ACTIVE") => {
     const u = await createTestUser(label, "STUDENT");
     await db.studentProfile.create({ data: { userId: u.id } });
-    await db.seasonEnrollment.create({ data: { seasonId: otherSeasonId, studentUserId: u.id, groupId: otherGroup.id, status } });
+    await db.seasonEnrollment.create({
+      data: { seasonId: otherSeasonId, studentUserId: u.id, groupId: otherGroup.id, status },
+    });
     return u.id;
   };
   const droppedId = await mkStudent("mw-dropped", "WITHDRAWN");
@@ -127,20 +183,42 @@ beforeAll(async () => {
   const activeId = await mkStudent("mw-active", "ACTIVE");
   const otherMate = await mkStudent("mw-other-mate", "ACTIVE");
   kit.dropped = await buildKit({
-    seasonId: otherSeasonId, assignmentId: w.otherAssignmentId, sessionId: w.otherSessionId, groupId: otherGroup.id,
-    student: droppedId, mate: otherMate, adminId: w.ids.otherAdmin, token: "mwdroppedtoken",
+    seasonId: otherSeasonId,
+    assignmentId: w.otherAssignmentId,
+    sessionId: w.otherSessionId,
+    groupId: otherGroup.id,
+    student: droppedId,
+    mate: otherMate,
+    adminId: w.ids.otherAdmin,
+    token: "mwdroppedtoken",
   });
   droppedQuizId = kit.dropped.quizId;
   alumnusSubmission = newPublicId();
   await db.submission.create({
-    data: { publicId: alumnusSubmission, assignmentId: w.otherAssignmentId, studentUserId: w.ids.alumnus, text: "alumnus work", status: "REVIEWED", submittedAt: new Date() },
+    data: {
+      publicId: alumnusSubmission,
+      assignmentId: w.otherAssignmentId,
+      studentUserId: w.ids.alumnus,
+      text: "alumnus work",
+      status: "REVIEWED",
+      submittedAt: new Date(),
+    },
   });
   activeAssignmentSubmission = newPublicId();
   await db.submission.create({
-    data: { publicId: activeAssignmentSubmission, assignmentId: w.otherAssignmentId, studentUserId: activeId, text: "active work", status: "DRAFT" },
+    data: {
+      publicId: activeAssignmentSubmission,
+      assignmentId: w.otherAssignmentId,
+      studentUserId: activeId,
+      text: "active work",
+      status: "DRAFT",
+    },
   });
 
-  const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, { notPassed: [], reviewed: await reviewedOf(seasonId) });
+  const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, {
+    notPassed: [],
+    reviewed: await reviewedOf(seasonId),
+  });
   expect(ended.status).toBe(200);
 
   for (const role of ["super", "admin", "leaderA", "mentor", "studentA", "studentB", "alumnus"] as const) {
@@ -160,17 +238,37 @@ describe("a finished season is locked to its former staff", () => {
     ["patch", `/seasons/${w.seasonId}`, { description: "x" }],
     ["post", `/seasons/${w.seasonId}/groups`, { name: "Late group" }],
     ["post", `/seasons/${w.seasonId}/assignments`, { title: "Late", isAllGroups: true, type: "TEXT" }],
-    ["put", `/seasons/${w.seasonId}/group-assignments`, { assignments: [{ studentUserId: w.ids.studentA, groupId: w.groupBId }] }],
-    ["post", `/seasons/${w.seasonId}/imports/groups/commit`, { assignments: [{ studentUserId: w.ids.studentA, groupId: w.groupBId }] }],
+    [
+      "put",
+      `/seasons/${w.seasonId}/group-assignments`,
+      { assignments: [{ studentUserId: w.ids.studentA, groupId: w.groupBId }] },
+    ],
+    [
+      "post",
+      `/seasons/${w.seasonId}/imports/groups/commit`,
+      { assignments: [{ studentUserId: w.ids.studentA, groupId: w.groupBId }] },
+    ],
     ["patch", `/groups/${w.groupAId}`, { name: "Renamed" }],
-    ["post", `/sessions`, { seasonId: w.seasonId, title: "Late", startDay: "2099-07-03", startTime: "19:30", durationMinutes: 60 }],
-    ["post", `/sessions/${w.sessionId}/attendance`, { entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }] }],
+    [
+      "post",
+      `/sessions`,
+      { seasonId: w.seasonId, title: "Late", startDay: "2099-07-03", startTime: "19:30", durationMinutes: 60 },
+    ],
+    [
+      "post",
+      `/sessions/${w.sessionId}/attendance`,
+      { entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }] },
+    ],
     ["post", `/sessions/${w.sessionId}/check-in-open`],
     ["patch", `/assignments/${w.assignmentId}`, { title: "Renamed", isAllGroups: true }],
     ["post", `/submissions/${reviewedPublicId}/review`, { feedback: "late" }],
     ["post", `/quizzes`, { seasonId: w.seasonId, title: "Late quiz", kind: "PAPER", maxScore: 5 }],
     ["post", `/quizzes/${w.quizId}/grades`, { entries: [{ studentUserId: w.ids.studentA, score: 5 }] }],
-    ["post", `/sessions/${w.sessionId}/video-questions`, { atSeconds: 9, prompt: "x", options: ["a", "b"], correctIndex: 0, points: 1 }],
+    [
+      "post",
+      `/sessions/${w.sessionId}/video-questions`,
+      { atSeconds: 9, prompt: "x", options: ["a", "b"], correctIndex: 0, points: 1 },
+    ],
     ["post", `/students/${w.ids.studentA}/notes`, { body: "late note", visibility: "LEADERS" }],
   ];
   const reads = (): string[] => [
@@ -200,9 +298,16 @@ describe("a finished season is locked to its former staff", () => {
   }
 
   it("still lets the super admin write, and a mentor read, in the finished season", async () => {
-    expect((await call("patch", `/assignments/${w.assignmentId}`, t.super, { title: "Super edit", isAllGroups: true })).status).toBe(200);
     expect(
-      (await call("post", `/sessions/${w.sessionId}/attendance`, t.super, { entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }] })).status,
+      (await call("patch", `/assignments/${w.assignmentId}`, t.super, { title: "Super edit", isAllGroups: true }))
+        .status,
+    ).toBe(200);
+    expect(
+      (
+        await call("post", `/sessions/${w.sessionId}/attendance`, t.super, {
+          entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }],
+        })
+      ).status,
     ).toBe(200);
     expect((await call("get", `/seasons/${w.seasonId}`, t.mentor)).status).toBe(200);
     expect((await call("get", `/groups/${w.groupAId}`, t.mentor)).status).toBe(200);
@@ -219,9 +324,23 @@ function studentWrites(k: Kit): Row[] {
     ["start attempt", "put", `/quizzes/${k.quizId}/attempt`, undefined, 403, "forbidden"],
     ["submit attempt", "post", `/quizzes/${k.quizId}/attempt/submit`, {}, 403, "forbidden"],
     ["forum response", "put", `/assignments/${k.forumId}/forum/response`, { text: "late post" }, 403, "forbidden"],
-    ["forum comment", "post", `/assignments/${k.forumId}/forum/posts/${k.matePost}/comments`, { body: "late comment" }, 403, "forbidden"],
+    [
+      "forum comment",
+      "post",
+      `/assignments/${k.forumId}/forum/posts/${k.matePost}/comments`,
+      { body: "late comment" },
+      403,
+      "forbidden",
+    ],
     ["delete own comment", "delete", `/forum/comments/${k.ownCommentId}`, undefined, 403, "forbidden"],
-    ["video answer", "post", `/sessions/${k.sessionId}/video-quiz/answers`, { questionId: k.questionId, selectedIndex: 0 }, 403, "forbidden"],
+    [
+      "video answer",
+      "post",
+      `/sessions/${k.sessionId}/video-quiz/answers`,
+      { questionId: k.questionId, selectedIndex: 0 },
+      403,
+      "forbidden",
+    ],
     ["check in", "post", `/sessions/check-in`, { token: k.token }, 403, "not_enrolled"],
   ];
 }
@@ -237,10 +356,16 @@ async function expectRefused(who: "studentA" | "dropped", k: Kit) {
   expect(bad).toEqual([]);
   const sid = who === "studentA" ? w.ids.studentA : droppedUserId;
   expect((await db.submission.findUniqueOrThrow({ where: { publicId: k.draft } })).text).toBe("my draft");
-  expect(await db.forumComment.count({ where: { submission: { assignmentId: k.forumId }, authorUserId: sid } })).toBe(1); // the seeded one only
+  expect(await db.forumComment.count({ where: { submission: { assignmentId: k.forumId }, authorUserId: sid } })).toBe(
+    1,
+  ); // the seeded one only
   expect(await db.forumComment.findUnique({ where: { id: k.ownCommentId } })).not.toBeNull();
-  expect(await db.quizAttempt.count({ where: { quizId: k.quizId, studentUserId: sid, status: { not: "IN_PROGRESS" } } })).toBe(0);
-  expect(await db.attendance.count({ where: { sessionId: k.sessionId, studentUserId: sid, checkedInAt: { not: null } } })).toBe(0);
+  expect(
+    await db.quizAttempt.count({ where: { quizId: k.quizId, studentUserId: sid, status: { not: "IN_PROGRESS" } } }),
+  ).toBe(0);
+  expect(
+    await db.attendance.count({ where: { sessionId: k.sessionId, studentUserId: sid, checkedInAt: { not: null } } }),
+  ).toBe(0);
   expect(await db.sessionVideoQuestionResponse.count({ where: { questionId: k.questionId } })).toBe(0);
   expect(await db.submission.count({ where: { assignmentId: k.forumId, studentUserId: sid } })).toBe(1);
 }
@@ -324,9 +449,16 @@ describe("a student with an active place", () => {
 
   it("can comment on a group-mate's post and delete its own comment", async () => {
     // Post-first: the active student needs their own post; the forum response creates it.
-    const posted = await call("put", `/assignments/${kit.dropped.forumId}/forum/response`, t.active, { text: "my take" });
+    const posted = await call("put", `/assignments/${kit.dropped.forumId}/forum/response`, t.active, {
+      text: "my take",
+    });
     expect(posted.status).toBe(200);
-    const c = await call("post", `/assignments/${kit.dropped.forumId}/forum/posts/${kit.dropped.matePost}/comments`, t.active, { body: "hi" });
+    const c = await call(
+      "post",
+      `/assignments/${kit.dropped.forumId}/forum/posts/${kit.dropped.matePost}/comments`,
+      t.active,
+      { body: "hi" },
+    );
     expect(c.status).toBe(201);
     expect((await call("delete", `/forum/comments/${c.body.data.comment.id}`, t.active)).status).toBe(200);
   });

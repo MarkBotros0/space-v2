@@ -25,31 +25,20 @@ export default function SeasonRosterScreen() {
         trailing={
           <Button
             variant="secondary"
-            onPress={() =>
-              router.push({ pathname: "/seasons/[code]/roster/import", params: { code } })
-            }
+            onPress={() => router.push({ pathname: "/seasons/[code]/roster/import", params: { code } })}
           >
             Import assignments
           </Button>
         }
-        onNewGroup={() =>
-          router.push({ pathname: "/group/new", params: { seasonId: String(season.data.id) } })
-        }
+        onNewGroup={() => router.push({ pathname: "/group/new", params: { seasonId: String(season.data.id) } })}
       />
     );
   }
 
   let body: ReactNode;
-  if (code === null)
-    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  if (code === null) body = <EmptyState title="Not found" description="That season link isn't valid." />;
   else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
   else if (season.isPending) body = <RouteSkeleton />;
-  else
-    body = (
-      <EmptyState
-        title="Not available"
-        description="Only this season's admins can manage its roster."
-      />
-    );
+  else body = <EmptyState title="Not available" description="Only this season's admins can manage its roster." />;
   return <Screen title="Students and groups">{body}</Screen>;
 }

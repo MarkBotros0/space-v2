@@ -119,11 +119,7 @@ export function useUserDetail(id: number | null): UseQueryResult<UserDetail> {
 }
 
 /** Full replace of the three editable fields (Decision 9). */
-export function useUpdateUser(): UseMutationResult<
-  UserDetail,
-  Error,
-  { userId: number; body: UpdateUserBody }
-> {
+export function useUpdateUser(): UseMutationResult<UserDetail, Error, { userId: number; body: UpdateUserBody }> {
   const invalidate = useInvalidateAfterAccountWrite();
   return useMutation({
     mutationFn: async ({ userId, body }) => {
@@ -149,7 +145,6 @@ export function useSetActivation(): UseMutationResult<
     onSuccess: invalidate,
   });
 }
-
 
 /** POST /users — invite-first; the response carries no credential (Plan 9). */
 export function useCreateUser(): UseMutationResult<CreateUserResponse, Error, CreateUserBody> {

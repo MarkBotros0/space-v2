@@ -30,9 +30,7 @@ const optionsField = z
     });
   });
 
-export const pollInputSchema = z
-  .object({ allowsMultiple: z.boolean(), options: optionsField })
-  .strict();
+export const pollInputSchema = z.object({ allowsMultiple: z.boolean(), options: optionsField }).strict();
 export type PollInput = z.infer<typeof pollInputSchema>;
 
 /** A new post has no options to keep, so an `id` is refused. */

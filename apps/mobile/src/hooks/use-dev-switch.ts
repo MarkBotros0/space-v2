@@ -1,11 +1,6 @@
 import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
 import axios from "axios";
-import {
-  devUsersResponseSchema,
-  loginResponseSchema,
-  meResponseSchema,
-  type DevSwitchUser,
-} from "@space/shared";
+import { devUsersResponseSchema, loginResponseSchema, meResponseSchema, type DevSwitchUser } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { syncPushRegistration } from "../lib/push";

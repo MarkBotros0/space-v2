@@ -56,26 +56,27 @@ describe("createUserRequestSchema", () => {
 
   it("takes a class year ahead of this year (a future-year season's graduate), up to 2100", () => {
     const nextYear = new Date().getFullYear() + 1;
-    expect(
-      createUserRequestSchema.safeParse({ ...valid, graduationYear: nextYear }).success,
-    ).toBe(true);
+    expect(createUserRequestSchema.safeParse({ ...valid, graduationYear: nextYear }).success).toBe(true);
     expect(createUserRequestSchema.safeParse({ ...valid, graduationYear: 2101 }).success).toBe(false);
-    expect(
-      createUserRequestSchema.safeParse({ ...valid, graduationYear: new Date().getFullYear() }).success,
-    ).toBe(true);
+    expect(createUserRequestSchema.safeParse({ ...valid, graduationYear: new Date().getFullYear() }).success).toBe(
+      true,
+    );
   });
 });
 
 describe("updateUserRequestSchema", () => {
   it("is a full replace of the three editable fields; email is not among them (R48)", () => {
-    expect(
-      updateUserRequestSchema.safeParse({ name: "A B", role: "STUDENT", graduationYear: null }).success,
-    ).toBe(true);
+    expect(updateUserRequestSchema.safeParse({ name: "A B", role: "STUDENT", graduationYear: null }).success).toBe(
+      true,
+    );
     // Unknown keys are refused, not stripped: a client sending `email` must
     // hear "no", not have it silently dropped.
     expect(
       updateUserRequestSchema.safeParse({
-        name: "A B", role: "STUDENT", graduationYear: null, email: "x@jpc.test",
+        name: "A B",
+        role: "STUDENT",
+        graduationYear: null,
+        email: "x@jpc.test",
       }).success,
     ).toBe(false);
   });
@@ -123,19 +124,24 @@ describe("self-scoped settings schemas", () => {
   it("meUserSchema parses a payload with or without the contact fields", () => {
     const base = { id: 1, name: "A B", email: "a@jpc.test", role: "LEADER", avatarPath: null };
     expect(meUserSchema.parse(base).phone).toBeUndefined();
-    expect(
-      meUserSchema.parse({ ...base, phone: "+20 1", dateOfBirth: "1999-12-31", address: null }),
-    ).toMatchObject({ phone: "+20 1", dateOfBirth: "1999-12-31", address: null });
+    expect(meUserSchema.parse({ ...base, phone: "+20 1", dateOfBirth: "1999-12-31", address: null })).toMatchObject({
+      phone: "+20 1",
+      dateOfBirth: "1999-12-31",
+      address: null,
+    });
   });
 
   it("changePasswordRequestSchema carries no `confirm` (client-side rule, spec 18 §7)", () => {
     const ok = changePasswordRequestSchema.safeParse({
-      currentPassword: "x", newPassword: "longenough",
+      currentPassword: "x",
+      newPassword: "longenough",
     });
     expect(ok.success).toBe(true);
     expect(
       changePasswordRequestSchema.safeParse({
-        currentPassword: "x", newPassword: "longenough", confirm: "longenough",
+        currentPassword: "x",
+        newPassword: "longenough",
+        confirm: "longenough",
       }).success,
     ).toBe(false);
   });
@@ -143,9 +149,7 @@ describe("self-scoped settings schemas", () => {
 
 describe("inviteStateSchema", () => {
   it("has no token field, ever (R23, R75)", () => {
-    expect(Object.keys(inviteStateSchema.shape).sort()).toEqual([
-      "expiresAt", "invitedByName", "issuedAt", "usedAt",
-    ]);
+    expect(Object.keys(inviteStateSchema.shape).sort()).toEqual(["expiresAt", "invitedByName", "issuedAt", "usedAt"]);
   });
 });
 
@@ -172,7 +176,11 @@ describe("activationResponseSchema", () => {
 describe("meUserSchema.hasPassword", () => {
   it("defaults true so a response from a backend that predates the field still parses", () => {
     const parsed = meUserSchema.parse({
-      id: 1, name: "N", email: "n@jpc.test", role: "STUDENT", avatarPath: null,
+      id: 1,
+      name: "N",
+      email: "n@jpc.test",
+      role: "STUDENT",
+      avatarPath: null,
     });
     expect(parsed.hasPassword).toBe(true);
   });
@@ -189,12 +197,8 @@ describe("createUserRequestSchema.confirmSuper (Plan 10 Decision 13)", () => {
 
 describe("bulk invite contracts (Plan 10 Decision 12)", () => {
   it("carries four counters, all non-negative", () => {
-    expect(
-      bulkInviteResponseSchema.safeParse({ sent: 3, skipped: 1, failed: 0, remaining: 12 }).success,
-    ).toBe(true);
-    expect(
-      bulkInviteResponseSchema.safeParse({ sent: -1, skipped: 0, failed: 0, remaining: 0 }).success,
-    ).toBe(false);
+    expect(bulkInviteResponseSchema.safeParse({ sent: 3, skipped: 1, failed: 0, remaining: 12 }).success).toBe(true);
+    expect(bulkInviteResponseSchema.safeParse({ sent: -1, skipped: 0, failed: 0, remaining: 0 }).success).toBe(false);
   });
 
   it("states the per-request ceiling once, for the API and the confirm dialog alike", () => {
@@ -211,8 +215,15 @@ describe("bulk invite contracts (Plan 10 Decision 12)", () => {
 
 describe("user detail carries the seasons a demotion would remove", () => {
   const detail = {
-    id: 7, name: "Pat", email: "p@jpc.test", role: "ADMIN", graduationYear: 2015,
-    lastLoginAt: null, deletedAt: null, status: "active", invite: null,
+    id: 7,
+    name: "Pat",
+    email: "p@jpc.test",
+    role: "ADMIN",
+    graduationYear: 2015,
+    lastLoginAt: null,
+    deletedAt: null,
+    status: "active",
+    invite: null,
   };
 
   it("requires adminSeasons", () => {

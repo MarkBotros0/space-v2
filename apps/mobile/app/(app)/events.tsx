@@ -41,9 +41,7 @@ export default function EventsScreen() {
         icon={NAV_ICONS.events}
         title={isSuper ? "No JPC events yet" : "No upcoming events"}
         description={
-          isSuper
-            ? "Create an event to share with all members or alumni."
-            : "Nothing is scheduled in the next year."
+          isSuper ? "Create an event to share with all members or alumni." : "Nothing is scheduled in the next year."
         }
       />
     );

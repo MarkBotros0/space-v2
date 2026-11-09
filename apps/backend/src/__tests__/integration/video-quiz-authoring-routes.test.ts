@@ -204,9 +204,7 @@ describe("GET /api/v1/sessions/:id/video-quiz/results", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.questionCount).toBe(3);
     expect(res.body.data.totalPoints).toBe(6);
-    const row = res.body.data.rows.find(
-      (r: { studentUserId: number }) => r.studentUserId === studentId,
-    );
+    const row = res.body.data.rows.find((r: { studentUserId: number }) => r.studentUserId === studentId);
     // Every ACTIVE student appears, including those who have answered nothing.
     expect(row).toMatchObject({ answeredCount: 1, earnedPoints: 2, completedAt: null });
   });
@@ -237,9 +235,7 @@ describe("GET /api/v1/sessions/:id/video-quiz/results", () => {
     const asAdmin = await request(app)
       .get(`/api/v1/sessions/${sessionId}/video-quiz/results`)
       .set("authorization", `Bearer ${adminToken}`);
-    expect(asAdmin.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId)).toContain(
-      outsider.id,
-    );
+    expect(asAdmin.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId)).toContain(outsider.id);
   });
 
   it("refuses a student outright", async () => {

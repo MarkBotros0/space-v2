@@ -4,7 +4,13 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: jest.fn(), back: jest.fn(), push: jest.fn(), dismissTo: jest.fn(), dismissAll: jest.fn() }),
+  useRouter: () => ({
+    replace: jest.fn(),
+    back: jest.fn(),
+    push: jest.fn(),
+    dismissTo: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
 }));
 
 import { SeasonsList } from "../design/seasons/seasons-list";
@@ -29,7 +35,14 @@ const valid: SeasonFormValues = {
 
 const form = (over: Partial<SeasonFormValues> = {}, mode: "create" | "edit" = "edit", onSubmit = jest.fn()) => {
   renderWithProviders(
-    <SeasonForm mode={mode} title="Season" initial={{ ...valid, ...over }} submitting={false} message={null} onSubmit={onSubmit} />,
+    <SeasonForm
+      mode={mode}
+      title="Season"
+      initial={{ ...valid, ...over }}
+      submitting={false}
+      message={null}
+      onSubmit={onSubmit}
+    />,
   );
   return onSubmit;
 };
@@ -86,8 +99,15 @@ describe("SeasonForm community-wide switch", () => {
 describe("Community-wide chip", () => {
   it("shows on a list row in words, and not on a regular one", () => {
     const row = (id: number, isCommunityWide?: boolean) => ({
-      id, code: `c-${id}`, title: `S${id}`, program: "P", year: 2026, status: "DRAFT" as const,
-      startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z", isCommunityWide,
+      id,
+      code: `c-${id}`,
+      title: `S${id}`,
+      program: "P",
+      year: 2026,
+      status: "DRAFT" as const,
+      startDate: "2026-01-01T00:00:00.000Z",
+      endDate: "2026-12-31T00:00:00.000Z",
+      isCommunityWide,
     });
     renderWithProviders(<SeasonsList rows={[row(1, true), row(2)]} onOpen={jest.fn()} />);
     expect(screen.getAllByText("Community-wide")).toHaveLength(1);

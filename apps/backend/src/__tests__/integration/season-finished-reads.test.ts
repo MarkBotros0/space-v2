@@ -21,8 +21,7 @@ async function mint(userId: number) {
   const scopes = await loadScopes(userId);
   return (await signAccessToken({ userId, ...scopes })).token;
 }
-const get = (path: string, t: string) =>
-  request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${t}`);
+const get = (path: string, t: string) => request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${t}`);
 const post = (path: string, t: string, body: object) =>
   request(app).post(`/api/v1${path}`).set("authorization", `Bearer ${t}`).send(body);
 
@@ -96,13 +95,22 @@ beforeAll(async () => {
   ).id;
   await db.submission.create({
     data: {
-      publicId: newPublicId(), assignmentId: forumId, studentUserId: peter, text: "<p>post</p>",
-      status: "REVIEWED", submittedAt: new Date(), reviewedAt: new Date(),
+      publicId: newPublicId(),
+      assignmentId: forumId,
+      studentUserId: peter,
+      text: "<p>post</p>",
+      status: "REVIEWED",
+      submittedAt: new Date(),
+      reviewedAt: new Date(),
     },
   });
   const online = await db.quiz.create({
     data: {
-      seasonId, title: "Online", kind: "ONLINE", maxScore: 5, publishedAt: new Date(),
+      seasonId,
+      title: "Online",
+      kind: "ONLINE",
+      maxScore: 5,
+      publishedAt: new Date(),
       questions: { create: [{ order: 1, type: "ESSAY", prompt: "Why?", points: 5 }] },
     },
     select: { id: true, questions: { select: { id: true } } },
@@ -111,7 +119,14 @@ beforeAll(async () => {
   essayId = online.questions[0]!.id;
   attemptId = (
     await db.quizAttempt.create({
-      data: { quizId: onlineQuizId, studentUserId: peter, attemptNumber: 1, status: "GRADED", autoScore: 0, totalScore: 1 },
+      data: {
+        quizId: onlineQuizId,
+        studentUserId: peter,
+        attemptNumber: 1,
+        status: "GRADED",
+        autoScore: 0,
+        totalScore: 1,
+      },
       select: { id: true },
     })
   ).id;
@@ -124,7 +139,10 @@ beforeAll(async () => {
   });
 
   const adminT = await mint(admin.id);
-  const ended = await post(`/seasons/${seasonId}/end`, adminT, { notPassed: [{ userId: sara, reason: "Absent" }], reviewed: await reviewedOf(seasonId) });
+  const ended = await post(`/seasons/${seasonId}/end`, adminT, {
+    notPassed: [{ userId: sara, reason: "Absent" }],
+    reviewed: await reviewedOf(seasonId),
+  });
   expect(ended.status).toBe(200);
   // Tokens from post-End scopes, the way a real refresh gets them.
   superT = await mint(sup.id);
@@ -239,8 +257,9 @@ describe("Super, after End", () => {
       .send({ name: "Finished G", description: null, leaderIds: [], studentIds: [peter, sara] });
     expect(res.status).toBe(200);
     const detail = await get(`/groups/${groupId}`, superT);
-    expect(detail.body.data.students.map((x: { id: number }) => x.id).sort((a: number, b: number) => a - b))
-      .toEqual([peter, sara].sort((a, b) => a - b));
+    expect(detail.body.data.students.map((x: { id: number }) => x.id).sort((a: number, b: number) => a - b)).toEqual(
+      [peter, sara].sort((a, b) => a - b),
+    );
   });
 
   it("takes a finished student out when the form's list leaves them off", async () => {
@@ -271,9 +290,7 @@ describe("Mentor, after End", () => {
 
     const assignments = await get(`/seasons/${seasonId}/assignments`, mentorT);
     expect(assignments.status).toBe(200);
-    expect(
-      assignments.body.data.assignments.find((a: { id: number }) => a.id === assignmentId).expectedCount,
-    ).toBe(2);
+    expect(assignments.body.data.assignments.find((a: { id: number }) => a.id === assignmentId).expectedCount).toBe(2);
 
     const forum = await get(`/assignments/${forumId}/forum`, mentorT);
     expect(forum.status).toBe(200);
@@ -317,11 +334,14 @@ describe("who counts, by season status", () => {
     expect(w.ids).toEqual([w.active]);
   });
 
-  it.each(["COMPLETED", "ARCHIVED"] as const)("a %s season lists ACTIVE and COMPLETED, not WITHDRAWN", async (status) => {
-    const w = await seasonOf(status);
-    expect(w.ids.sort((a, b) => a - b)).toEqual([w.active, w.completed].sort((a, b) => a - b));
-    expect(w.ids).not.toContain(w.gone);
-  });
+  it.each(["COMPLETED", "ARCHIVED"] as const)(
+    "a %s season lists ACTIVE and COMPLETED, not WITHDRAWN",
+    async (status) => {
+      const w = await seasonOf(status);
+      expect(w.ids.sort((a, b) => a - b)).toEqual([w.active, w.completed].sort((a, b) => a - b));
+      expect(w.ids).not.toContain(w.gone);
+    },
+  );
 });
 
 describe("Former staff, after End", () => {

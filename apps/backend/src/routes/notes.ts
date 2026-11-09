@@ -271,10 +271,5 @@ notesRouter.patch("/:id", requireAuth, async (req, res) => {
  * "this system cannot delete notes yet" and say the right thing.
  */
 notesRouter.delete("/:id", requireAuth, (_req, res) =>
-  apiError(
-    res,
-    "delete_unavailable",
-    "Notes cannot be deleted yet. Correct a note by editing it.",
-    501,
-  ),
+  apiError(res, "delete_unavailable", "Notes cannot be deleted yet. Correct a note by editing it.", 501),
 );

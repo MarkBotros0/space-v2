@@ -30,11 +30,7 @@ export default function AnnouncementsScreen() {
       <EmptyState
         icon={NAV_ICONS.announcements}
         title="No announcements yet"
-        description={
-          canPost
-            ? `Post something for ${targets.data?.community ? "everyone" : "your season"}`
-            : undefined
-        }
+        description={canPost ? `Post something for ${targets.data?.community ? "everyone" : "your season"}` : undefined}
         action={canPost ? { label: "New announcement", onPress: () => router.push("/announcements/new") } : undefined}
       />
     );
@@ -45,9 +41,7 @@ export default function AnnouncementsScreen() {
           <PostCard
             key={post.id}
             post={post}
-            onPress={() =>
-              router.push({ pathname: "/announcements/[id]", params: { id: String(post.id) } })
-            }
+            onPress={() => router.push({ pathname: "/announcements/[id]", params: { id: String(post.id) } })}
           />
         ))}
         {feed.hasNextPage ? (

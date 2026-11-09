@@ -87,9 +87,7 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     renderWithProviders(<ReportsScreen />);
 
-    expect(
-      await screen.findByLabelText("Attendance trend, 2 sessions, from 80% to 50%"),
-    ).toBeTruthy();
+    expect(await screen.findByLabelText("Attendance trend, 2 sessions, from 80% to 50%")).toBeTruthy();
   });
 
   it("draws one line per season instead of one interleaved line (REG-117)", async () => {
@@ -117,8 +115,7 @@ describe("ReportsScreen — the numbers it renders", () => {
           data: { data: { scope: summary.scope, rows: [row], nextCursor: null, total: 34 } },
         });
       }
-      if (url.startsWith("/api/v1/reports/engagement"))
-        return Promise.resolve({ data: { data: interleaved } });
+      if (url.startsWith("/api/v1/reports/engagement")) return Promise.resolve({ data: { data: interleaved } });
       return Promise.reject(new Error(`unexpected ${url}`));
     });
 
@@ -141,9 +138,7 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     // The notes are folded away until asked for.
     fireEvent.press(await screen.findByText("How are these calculated?"));
-    expect(
-      screen.getByText(/Submission % counts only assignments assigned to that student/),
-    ).toBeTruthy();
+    expect(screen.getByText(/Submission % counts only assignments assigned to that student/)).toBeTruthy();
   });
 
   it("warns when the requested scope was narrowed", async () => {
@@ -154,9 +149,7 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     renderWithProviders(<ReportsScreen />);
 
-    expect(
-      await screen.findByText("Some seasons you asked for aren't in your scope."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Some seasons you asked for aren't in your scope.")).toBeTruthy();
   });
 
   it("maps an error to ErrorState with a working retry", async () => {
@@ -250,7 +243,13 @@ describe("ReportsScreen — the season header and History", () => {
       ],
     };
     get.mockImplementation((url: string) =>
-      Promise.resolve({ data: { data: url.includes("engagement/students") ? { scope, rows: [], nextCursor: null, total: 0 } : { ...summary, scope } } }),
+      Promise.resolve({
+        data: {
+          data: url.includes("engagement/students")
+            ? { scope, rows: [], nextCursor: null, total: 0 }
+            : { ...summary, scope },
+        },
+      }),
     );
 
     renderWithProviders(<ReportsScreen />);
@@ -288,8 +287,6 @@ describe("ReportsScreen — the season header and History", () => {
     fireEvent.press(await screen.findByLabelText("Choose another season"));
     fireEvent.press(await screen.findByText("All seasons"));
 
-    expect(
-      await within(screen.getByTestId("report-season")).findByText("Every season together (2)"),
-    ).toBeTruthy();
+    expect(await within(screen.getByTestId("report-season")).findByText("Every season together (2)")).toBeTruthy();
   });
 });

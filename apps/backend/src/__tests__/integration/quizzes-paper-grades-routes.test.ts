@@ -21,16 +21,8 @@ let leaderToken: string;
 let studentToken: string;
 
 beforeAll(async () => {
-  ({
-    seasonId,
-    sessionId,
-    ownStudentId,
-    otherGroupStudentId,
-    adminToken,
-    otherAdminToken,
-    leaderToken,
-    studentToken,
-  } = await seedQuizFixtures(app));
+  ({ seasonId, sessionId, ownStudentId, otherGroupStudentId, adminToken, otherAdminToken, leaderToken, studentToken } =
+    await seedQuizFixtures(app));
 });
 
 afterAll(async () => {
@@ -80,9 +72,7 @@ describe("PAPER grades", () => {
       .send({ entries: [{ studentUserId: ownStudentId, score: 18, notes: "Strong." }] });
 
     expect(res.status).toBe(200);
-    const row = res.body.data.rows.find(
-      (r: { studentUserId: number }) => r.studentUserId === ownStudentId,
-    );
+    const row = res.body.data.rows.find((r: { studentUserId: number }) => r.studentUserId === ownStudentId);
     expect(row).toMatchObject({ score: 18, notes: "Strong." });
     expect(row.gradedByName).toBe("Test leader");
     expect((await quizGradedCount()) - before).toBe(1);
@@ -172,8 +162,7 @@ describe("PAPER grades", () => {
 
   it("refuses a PAPER grade against an ONLINE quiz (R94, D10)", async () => {
     const online = await db.quiz.create({
-      data: { seasonId, sessionId, title: "Online", kind: "ONLINE", maxScore: 5,
-        publishedAt: new Date() },
+      data: { seasonId, sessionId, title: "Online", kind: "ONLINE", maxScore: 5, publishedAt: new Date() },
       select: { id: true },
     });
     const res = await request(app)

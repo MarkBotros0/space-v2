@@ -149,9 +149,7 @@ describe("student video quiz", () => {
 
     renderWithProviders(<SessionDetailScreen />);
 
-    expect(
-      await screen.findByText("Couldn't load the video quiz.", {}, { timeout: 5000 }),
-    ).toBeTruthy();
+    expect(await screen.findByText("Couldn't load the video quiz.", {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.queryByText("0/2")).toBeNull();
   });
 
@@ -172,9 +170,7 @@ describe("student video quiz", () => {
       },
     });
 
-    renderWithProviders(
-      <VideoQuizPlayer sessionId={12} quiz={quiz} readCurrentTime={async () => 31} />,
-    );
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quiz} readCurrentTime={async () => 31} />);
 
     // The modal opens by itself; the test only waits for the prompt.
     expect(await screen.findByText("Question 1", {}, { timeout: 3000 })).toBeTruthy();

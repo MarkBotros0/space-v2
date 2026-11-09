@@ -75,7 +75,11 @@ export const forumEventsPaths = {
       },
       responses: {
         201: ok(
-          { type: "object", required: ["comment"], properties: { comment: { $ref: "#/components/schemas/ForumComment" } } },
+          {
+            type: "object",
+            required: ["comment"],
+            properties: { comment: { $ref: "#/components/schemas/ForumComment" } },
+          },
           "The new comment.",
         ),
         400: errRef("BadRequest"),
@@ -114,7 +118,12 @@ export const forumEventsPaths = {
         { name: "from", in: "query", schema: { type: "string", format: "date-time" } },
         { name: "to", in: "query", schema: { type: "string", format: "date-time" } },
         { name: "upcoming", in: "query", schema: { type: "boolean" } },
-        { name: "limit", in: "query", description: "Unpaged only.", schema: { type: "integer", minimum: 1, maximum: 20 } },
+        {
+          name: "limit",
+          in: "query",
+          description: "Unpaged only.",
+          schema: { type: "integer", minimum: 1, maximum: 20 },
+        },
         { name: "paged", in: "query", schema: { type: "boolean" } },
         {
           name: "pageSize",

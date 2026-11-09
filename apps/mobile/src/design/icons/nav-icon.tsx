@@ -75,15 +75,7 @@ for (const Icon of Object.values(NAV_ICONS)) {
   cssInterop(Icon, { className: { target: "style", nativeStyleToProp: { color: true } } });
 }
 
-export function NavIcon({
-  name,
-  size = 20,
-  className,
-}: {
-  name: NavIconName;
-  size?: number;
-  className?: string;
-}) {
+export function NavIcon({ name, size = 20, className }: { name: NavIconName; size?: number; className?: string }) {
   const Icon = NAV_ICONS[name];
   return <Icon size={size} className={className} strokeWidth={2} />;
 }

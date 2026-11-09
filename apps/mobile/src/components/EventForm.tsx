@@ -1,11 +1,7 @@
 import { format, isValid, parse } from "date-fns";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import {
-  createJpcEventRequestSchema,
-  type CreateJpcEventBody,
-  type JpcVisibility,
-} from "@space/shared";
+import { createJpcEventRequestSchema, type CreateJpcEventBody, type JpcVisibility } from "@space/shared";
 
 import { FormErrorBox } from "../design/forms/form-parts";
 import {
@@ -150,9 +146,7 @@ export function EventForm({
           label={submitLabel}
           loading={submitting}
           onPress={submit}
-          hint={
-            message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
-          }
+          hint={message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)}
         />
       }
     >
@@ -199,12 +193,7 @@ export function EventForm({
           />
           {values.endDay !== "" ? (
             // V2-only: v1's native date input could be cleared; the picker cannot.
-            <Button
-              variant="ghost"
-              size="sm"
-              className="self-start"
-              onPress={() => set("endDay")("")}
-            >
+            <Button variant="ghost" size="sm" className="self-start" onPress={() => set("endDay")("")}>
               Remove end date
             </Button>
           ) : null}

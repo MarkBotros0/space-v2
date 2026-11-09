@@ -33,27 +33,17 @@ const MAX_OPTIONS = 6; // quizQuestionRequestSchema: options .max(6)
  * ("Add at least 2 options.", "Mark the correct answer.") are the server's own
  * refinements, not a hand-copied second set.
  */
-export function QuestionEditor({
-  initial,
-  submitting,
-  serverError,
-  onSubmit,
-  onCancel,
-}: QuestionEditorProps) {
+export function QuestionEditor({ initial, submitting, serverError, onSubmit, onCancel }: QuestionEditorProps) {
   const [type, setType] = useState<QuizQuestionType>(initial?.type ?? "MCQ");
   const [prompt, setPrompt] = useState(initial?.prompt ?? "");
   const [points, setPoints] = useState(initial ? String(initial.points) : "1");
-  const [options, setOptions] = useState<string[]>(
-    initial && initial.type === "MCQ" ? initial.options : ["", ""],
-  );
+  const [options, setOptions] = useState<string[]>(initial && initial.type === "MCQ" ? initial.options : ["", ""]);
   const [correctIndex, setCorrectIndex] = useState<number | null>(initial?.correctIndex ?? null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const removeOption = (index: number) => {
     setOptions((prev) => prev.filter((_, i) => i !== index));
-    setCorrectIndex((prev) =>
-      prev === null || prev === index ? null : prev > index ? prev - 1 : prev,
-    );
+    setCorrectIndex((prev) => (prev === null || prev === index ? null : prev > index ? prev - 1 : prev));
   };
 
   const submit = () => {
@@ -85,17 +75,10 @@ export function QuestionEditor({
             onPress={() => setType(t)}
             className={cn(
               "rounded-full border px-3 py-1.5",
-              type === t
-                ? "border-ring bg-accent"
-                : "border-control-border active:border-ring",
+              type === t ? "border-ring bg-accent" : "border-control-border active:border-ring",
             )}
           >
-            <Text
-              className={cn(
-                "text-xs font-bold",
-                type === t ? "text-accent-foreground" : "text-muted-foreground",
-              )}
-            >
+            <Text className={cn("text-xs font-bold", type === t ? "text-accent-foreground" : "text-muted-foreground")}>
               {t === "MCQ" ? "Multiple choice" : "Essay"}
             </Text>
           </Pressable>
@@ -140,17 +123,12 @@ export function QuestionEditor({
                   correctIndex === index ? "border-ring bg-ring" : "border-control-border",
                 )}
               >
-                <Check
-                  size={16}
-                  className={correctIndex === index ? "text-primary-foreground" : "text-transparent"}
-                />
+                <Check size={16} className={correctIndex === index ? "text-primary-foreground" : "text-transparent"} />
               </Pressable>
               <Input
                 accessibilityLabel={`Option ${index + 1}`}
                 value={option}
-                onChangeText={(value) =>
-                  setOptions((prev) => prev.map((o, i) => (i === index ? value : o)))
-                }
+                onChangeText={(value) => setOptions((prev) => prev.map((o, i) => (i === index ? value : o)))}
                 placeholder={`Option ${index + 1}`}
                 className="flex-1"
               />

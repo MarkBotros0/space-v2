@@ -51,9 +51,7 @@ describe("AcceptInviteScreen", () => {
     fireEvent.changeText(screen.getByLabelText("Confirm password"), "brand-new-password");
     fireEvent.press(screen.getByText("Activate account"));
 
-    expect(
-      await screen.findByText("That invite is invalid or has expired. Ask for a new one."),
-    ).toBeTruthy();
+    expect(await screen.findByText("That invite is invalid or has expired. Ask for a new one.")).toBeTruthy();
   });
 
   it("says it can't reach the server when the request never got an answer", async () => {
@@ -65,9 +63,7 @@ describe("AcceptInviteScreen", () => {
     fireEvent.changeText(screen.getByLabelText("Confirm password"), "brand-new-password");
     fireEvent.press(screen.getByText("Activate account"));
 
-    expect(
-      await screen.findByText("Can't reach JPC Space. Check your connection and try again."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Can't reach JPC Space. Check your connection and try again.")).toBeTruthy();
   });
 
   it("enforces the shared password policy and the confirm match locally", async () => {
@@ -79,9 +75,7 @@ describe("AcceptInviteScreen", () => {
     fireEvent.press(screen.getByText("Activate account"));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Choose a password").props.accessibilityHint).toBe(
-        "At least 8 characters.",
-      ),
+      expect(screen.getByLabelText("Choose a password").props.accessibilityHint).toBe("At least 8 characters."),
     );
     expect(post).not.toHaveBeenCalled();
   });

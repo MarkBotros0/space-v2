@@ -23,12 +23,7 @@ import {
   subMonths,
   subYears,
 } from "date-fns";
-import {
-  Calendar as CalendarIcon,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react-native";
+import { Calendar as CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Pressable, View } from "react-native";
 
@@ -43,8 +38,7 @@ iconWithClassName(CalendarIcon, ChevronDown, ChevronLeft, ChevronRight);
 type View3 = "day" | "month" | "year";
 const YEARS_PER_PAGE = 12;
 /** First year of the 12-year page holding `year`. */
-const pageStart = (year: number) =>
-  year - (((year % YEARS_PER_PAGE) + YEARS_PER_PAGE) % YEARS_PER_PAGE);
+const pageStart = (year: number) => year - (((year % YEARS_PER_PAGE) + YEARS_PER_PAGE) % YEARS_PER_PAGE);
 const MONTHS = Array.from({ length: 12 }, (_, i) => i);
 const rowsOf = <T,>(items: T[], n: number): T[][] =>
   Array.from({ length: Math.ceil(items.length / n) }, (_, i) => items.slice(i * n, i * n + n));
@@ -91,10 +85,7 @@ function DatePicker({
   }
   const anchor = useAnchor();
   const days = useMemo(() => getMonthGrid(viewMonth), [viewMonth]);
-  const weeks = useMemo(
-    () => Array.from({ length: days.length / 7 }, (_, i) => days.slice(i * 7, i * 7 + 7)),
-    [days],
-  );
+  const weeks = useMemo(() => Array.from({ length: days.length / 7 }, (_, i) => days.slice(i * 7, i * 7 + 7)), [days]);
   const today = new Date();
 
   return (
@@ -129,19 +120,11 @@ function DatePicker({
               variant="ghost"
               onPress={() =>
                 setViewMonth((m) =>
-                  mode === "day"
-                    ? subMonths(m, 1)
-                    : mode === "month"
-                      ? subYears(m, 1)
-                      : subYears(m, YEARS_PER_PAGE),
+                  mode === "day" ? subMonths(m, 1) : mode === "month" ? subYears(m, 1) : subYears(m, YEARS_PER_PAGE),
                 )
               }
               accessibilityLabel={
-                mode === "day"
-                  ? "Previous month"
-                  : mode === "month"
-                    ? "Previous year"
-                    : "Earlier years"
+                mode === "day" ? "Previous month" : mode === "month" ? "Previous year" : "Earlier years"
               }
             >
               <ChevronLeft size={16} className="text-foreground" />
@@ -155,9 +138,7 @@ function DatePicker({
                     ? `${format(viewMonth, "yyyy")}, choose year`
                     : "Back to days"
               }
-              onPress={() =>
-                setMode((m) => (m === "day" ? "year" : m === "month" ? "year" : "day"))
-              }
+              onPress={() => setMode((m) => (m === "day" ? "year" : m === "month" ? "year" : "day"))}
               className="min-h-[44px] flex-row items-center gap-1 rounded-md px-2 active:bg-muted"
             >
               <Text className="text-sm font-medium text-popover-foreground">
@@ -174,16 +155,10 @@ function DatePicker({
               variant="ghost"
               onPress={() =>
                 setViewMonth((m) =>
-                  mode === "day"
-                    ? addMonths(m, 1)
-                    : mode === "month"
-                      ? addYears(m, 1)
-                      : addYears(m, YEARS_PER_PAGE),
+                  mode === "day" ? addMonths(m, 1) : mode === "month" ? addYears(m, 1) : addYears(m, YEARS_PER_PAGE),
                 )
               }
-              accessibilityLabel={
-                mode === "day" ? "Next month" : mode === "month" ? "Next year" : "Later years"
-              }
+              accessibilityLabel={mode === "day" ? "Next month" : mode === "month" ? "Next year" : "Later years"}
             >
               <ChevronRight size={16} className="text-foreground" />
             </Button>
@@ -191,10 +166,7 @@ function DatePicker({
           {mode === "year" ? (
             <View testID="date-picker-years" className="gap-1" style={{ width: 7 * 36 + 6 * 2 }}>
               {rowsOf(
-                Array.from(
-                  { length: YEARS_PER_PAGE },
-                  (_, i) => pageStart(viewMonth.getFullYear()) + i,
-                ),
+                Array.from({ length: YEARS_PER_PAGE }, (_, i) => pageStart(viewMonth.getFullYear()) + i),
                 3,
               ).map((row) => (
                 <View key={row[0]} className="flex-row gap-1">
@@ -215,12 +187,7 @@ function DatePicker({
                           selected ? "bg-primary" : "active:bg-muted",
                         )}
                       >
-                        <Text
-                          className={cn(
-                            "text-sm text-popover-foreground",
-                            selected && "text-primary-foreground",
-                          )}
-                        >
+                        <Text className={cn("text-sm text-popover-foreground", selected && "text-primary-foreground")}>
                           {year}
                         </Text>
                       </Pressable>
@@ -251,12 +218,7 @@ function DatePicker({
                           selected ? "bg-primary" : "active:bg-muted",
                         )}
                       >
-                        <Text
-                          className={cn(
-                            "text-sm text-popover-foreground",
-                            selected && "text-primary-foreground",
-                          )}
-                        >
+                        <Text className={cn("text-sm text-popover-foreground", selected && "text-primary-foreground")}>
                           {format(date, "MMM")}
                         </Text>
                       </Pressable>

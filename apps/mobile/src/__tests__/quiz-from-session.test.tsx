@@ -32,19 +32,48 @@ const adminSession = {
 };
 
 const seasonsList = {
-  data: { data: { seasons: [{
-    id: 7, code: "s26", title: "Spring 2026", program: "TEST", year: 2026, status: "ACTIVE",
-    startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z",
-  }] } },
+  data: {
+    data: {
+      seasons: [
+        {
+          id: 7,
+          code: "s26",
+          title: "Spring 2026",
+          program: "TEST",
+          year: 2026,
+          status: "ACTIVE",
+          startDate: "2026-01-01T00:00:00.000Z",
+          endDate: "2026-12-31T00:00:00.000Z",
+        },
+      ],
+    },
+  },
 };
 /** A session in season 8 — NOT the current season (7). */
 const pastSeasonSessions = {
-  data: { data: { sessions: [{
-    id: 13, title: "Old week", startsAt: "2025-03-01T18:00:00.000Z", dayKey: "2025-03-01",
-    startTime: "20:00", durationMinutes: 60, location: null, recurrenceGroupId: null,
-    attendanceMarked: false, seasonId: 8, seasonCode: "f25", seasonTitle: "Fall 2025",
-    checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
-  }] } },
+  data: {
+    data: {
+      sessions: [
+        {
+          id: 13,
+          title: "Old week",
+          startsAt: "2025-03-01T18:00:00.000Z",
+          dayKey: "2025-03-01",
+          startTime: "20:00",
+          durationMinutes: 60,
+          location: null,
+          recurrenceGroupId: null,
+          attendanceMarked: false,
+          seasonId: 8,
+          seasonCode: "f25",
+          seasonTitle: "Fall 2025",
+          checkInToken: null,
+          checkInOpenAt: null,
+          checkInClosedAt: null,
+        },
+      ],
+    },
+  },
 };
 
 beforeEach(() => {
@@ -85,7 +114,11 @@ describe("+ Add quiz from a session", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes", {
-        seasonId: 8, sessionId: 13, title: "Old week quiz", kind: "PAPER", maxScore: 100,
+        seasonId: 8,
+        sessionId: 13,
+        title: "Old week quiz",
+        kind: "PAPER",
+        maxScore: 100,
       }),
     );
   });

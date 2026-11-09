@@ -32,7 +32,11 @@ function walkDirs(dir: string): string[] {
 }
 
 function toRouteName(file: string, base = APP_GROUP_DIR): string {
-  return path.relative(base, file).replace(/\.tsx$/, "").split(path.sep).join("/");
+  return path
+    .relative(base, file)
+    .replace(/\.tsx$/, "")
+    .split(path.sep)
+    .join("/");
 }
 
 function screenFiles(dir: string): string[] {

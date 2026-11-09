@@ -3,19 +3,37 @@ import { budgetFrom, costMinutesFor, streakFrom } from "../lib/attendance-budget
 describe("budgetFrom (spec 04 R88–R90, spec 19 D14)", () => {
   it("charges the absence weight per ABSENT and the actual minutes per LATE", () => {
     expect(
-      budgetFrom({ absentCount: 1, lateCount: 1, lateMinutesSum: 15, absenceWeightMinutes: 90, absenceBudgetMinutes: 180 }),
+      budgetFrom({
+        absentCount: 1,
+        lateCount: 1,
+        lateMinutesSum: 15,
+        absenceWeightMinutes: 90,
+        absenceBudgetMinutes: 180,
+      }),
     ).toEqual({ minutesUsed: 105, budgetMinutes: 180, budgetPct: 58, remainingPct: 42, absentCount: 1, lateCount: 1 });
   });
 
   it("caps budgetPct at 100, so remainingPct bottoms out at 0 — minutesUsed is never capped", () => {
     expect(
-      budgetFrom({ absentCount: 3, lateCount: 0, lateMinutesSum: 0, absenceWeightMinutes: 90, absenceBudgetMinutes: 180 }),
+      budgetFrom({
+        absentCount: 3,
+        lateCount: 0,
+        lateMinutesSum: 0,
+        absenceWeightMinutes: 90,
+        absenceBudgetMinutes: 180,
+      }),
     ).toMatchObject({ minutesUsed: 270, budgetPct: 100, remainingPct: 0 });
   });
 
   it("is 0% used / 100% left for a clean record", () => {
     expect(
-      budgetFrom({ absentCount: 0, lateCount: 0, lateMinutesSum: 0, absenceWeightMinutes: 90, absenceBudgetMinutes: 180 }),
+      budgetFrom({
+        absentCount: 0,
+        lateCount: 0,
+        lateMinutesSum: 0,
+        absenceWeightMinutes: 90,
+        absenceBudgetMinutes: 180,
+      }),
     ).toMatchObject({ minutesUsed: 0, budgetPct: 0, remainingPct: 100 });
   });
 

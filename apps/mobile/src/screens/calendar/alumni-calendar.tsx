@@ -6,13 +6,7 @@ import type { JpcEventListItem, SessionListItem } from "@space/shared";
 import { CalendarGrid } from "../../components/calendar/CalendarGrid";
 import { Legend, type CalendarContext } from "../../components/calendar/CalendarEntries";
 import { useEvents } from "../../hooks/use-events";
-import {
-  deviceTodayKey,
-  initialAnchor,
-  rangeLabel,
-  stepAnchor,
-  type CalendarView,
-} from "../../lib/calendar-grid";
+import { deviceTodayKey, initialAnchor, rangeLabel, stepAnchor, type CalendarView } from "../../lib/calendar-grid";
 import { groupCalendarByDay } from "../../lib/day-groups";
 import { iconWithClassName } from "../../design/lib/icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";

@@ -42,9 +42,7 @@ describe("/users/new (spec 11 §9)", () => {
         graduationYear: null,
       }),
     );
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/user/[id]", params: { id: "40" } }),
-    );
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/user/[id]", params: { id: "40" } }));
     expect(toast.success).toHaveBeenCalledWith("Member added. Their invite is on its way.");
   });
 
@@ -57,9 +55,7 @@ describe("/users/new (spec 11 §9)", () => {
     fireEvent.changeText(screen.getByLabelText("Email"), "u@jpc.test");
     fireEvent.press(screen.getByText("Create and send invite"));
 
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/user/[id]", params: { id: "42" } }),
-    );
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/user/[id]", params: { id: "42" } }));
     expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/invite email couldn't be sent/));
     expect(toast.success).not.toHaveBeenCalled();
   });
@@ -85,9 +81,7 @@ describe("/users/new (spec 11 §9)", () => {
     fireEvent.press(screen.getByText("Create and send invite"));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Graduation year").props.accessibilityHint).toBe(
-        "Required for this role.",
-      ),
+      expect(screen.getByLabelText("Graduation year").props.accessibilityHint).toBe("Required for this role."),
     );
     expect(post).not.toHaveBeenCalled();
   });
@@ -106,11 +100,7 @@ describe("/users/new (spec 11 §9)", () => {
     fireEvent.press(await screen.findByText("Super"));
     fireEvent.press(screen.getByText("Create and send invite"));
 
-    expect(alert).toHaveBeenCalledWith(
-      "Create a SUPER account?",
-      expect.any(String),
-      expect.any(Array),
-    );
+    expect(alert).toHaveBeenCalledWith("Create a SUPER account?", expect.any(String), expect.any(Array));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
         "/api/v1/users",

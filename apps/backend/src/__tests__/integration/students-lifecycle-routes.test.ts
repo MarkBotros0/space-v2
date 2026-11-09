@@ -112,13 +112,10 @@ async function makeGraduand(
 
 describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
   it("records the year, completes EVERY active enrollment — one transaction", async () => {
-    const sid = await makeGraduand(
-      "graduand",
-      [
-        { seasonId: seasonAId, status: "ACTIVE" },
-        { seasonId: seasonBId, status: "ACTIVE" },
-      ],
-    );
+    const sid = await makeGraduand("graduand", [
+      { seasonId: seasonAId, status: "ACTIVE" },
+      { seasonId: seasonBId, status: "ACTIVE" },
+    ]);
 
     const res = await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
@@ -144,13 +141,10 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
   });
 
   it("leaves terminal enrollments exactly as they were", async () => {
-    const sid = await makeGraduand(
-      "graduand-terminal",
-      [
-        { seasonId: seasonAId, status: "WITHDRAWN", dropReason: "Kept reason" },
-        { seasonId: seasonBId, status: "ACTIVE" },
-      ],
-    );
+    const sid = await makeGraduand("graduand-terminal", [
+      { seasonId: seasonAId, status: "WITHDRAWN", dropReason: "Kept reason" },
+      { seasonId: seasonBId, status: "ACTIVE" },
+    ]);
 
     const res = await request(app)
       .post(`/api/v1/students/${sid}/graduate`)
@@ -222,7 +216,9 @@ describe("POST /api/v1/students/:id/graduate (Plan 10 Decision 2)", () => {
       .set("authorization", `Bearer ${superToken}`)
       .send({ graduationYear: 2018, override: true, overrideReason: "Test exception, see ticket" });
     const lines = info.mock.calls.map((c) => String(c[0]));
-    expect(lines.some((l) => new RegExp(`^\\[audit\\] student\\.graduate actor=\\d+ subject=${sid} override=true$`).test(l))).toBe(true);
+    expect(
+      lines.some((l) => new RegExp(`^\\[audit\\] student\\.graduate actor=\\d+ subject=${sid} override=true$`).test(l)),
+    ).toBe(true);
     expect(lines.join("\n")).not.toContain("2018");
     info.mockRestore();
   });
@@ -237,9 +233,7 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
     });
     await login(app, s.email); // creates a live RefreshToken row
 
-    const res = await request(app)
-      .delete(`/api/v1/students/${s.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).delete(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${superToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.id).toBe(s.id);
@@ -264,9 +258,7 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
     expect(row?.refreshTokens.length).toBeGreaterThan(0);
     expect(row?.refreshTokens.every((t) => t.revokedAt !== null)).toBe(true);
 
-    const detail = await request(app)
-      .get(`/api/v1/students/${s.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const detail = await request(app).get(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${superToken}`);
     expect(detail.status).toBe(404);
   });
 
@@ -276,9 +268,7 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
     await db.seasonEnrollment.create({
       data: { studentUserId: s.id, seasonId: seasonAId, status: "ACTIVE" },
     });
-    const res = await request(app)
-      .delete(`/api/v1/students/${s.id}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).delete(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(403);
     const row = await db.user.findUnique({ where: { id: s.id }, select: { deletedAt: true } });
     expect(row?.deletedAt).toBeNull();
@@ -320,7 +310,9 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
     const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
     await request(app).delete(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${superToken}`);
     expect(info.mock.calls.map((c) => String(c[0]))).toEqual(
-      expect.arrayContaining([expect.stringMatching(new RegExp(`^\\[audit\\] student\\.delete actor=\\d+ subject=${s.id}$`))]),
+      expect.arrayContaining([
+        expect.stringMatching(new RegExp(`^\\[audit\\] student\\.delete actor=\\d+ subject=${s.id}$`)),
+      ]),
     );
     info.mockRestore();
   });

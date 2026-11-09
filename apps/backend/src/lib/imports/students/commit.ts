@@ -9,16 +9,9 @@ import type {
 import { db } from "../../../db/client";
 import { createStudentRows, type NewStudentInput } from "../../queries/students";
 import { newPersonRefusal, readSeatSeason, seatStudents } from "../../roles";
-import {
-  findExistingByEmail,
-  normaliseEmail,
-  validateImportRow,
-  type ExistingUser,
-} from "./validation";
+import { findExistingByEmail, normaliseEmail, validateImportRow, type ExistingUser } from "./validation";
 
-export type StudentImportTarget =
-  | { kind: "season"; seasonId: number }
-  | { kind: "alumni"; graduationYear: number };
+export type StudentImportTarget = { kind: "season"; seasonId: number } | { kind: "alumni"; graduationYear: number };
 
 export interface StudentImportCommitRow {
   rowNumber: number;
@@ -121,7 +114,10 @@ export async function commitStudentImport(
       const season = target.kind === "season" ? await readSeatSeason(tx, target.seasonId) : null;
       if (target.kind === "season" && !season) throw new ImportSeasonGoneError();
 
-      const existing = await findExistingByEmail(tx, unique.map((u) => u.row.email));
+      const existing = await findExistingByEmail(
+        tx,
+        unique.map((u) => u.row.email),
+      );
 
       const toCreate: typeof unique = [];
       const toEnroll: { rowNumber: number; userId: number }[] = [];
@@ -192,7 +188,12 @@ export async function commitStudentImport(
         //  - nothing else on the profile is written.
         // One person refused doesn't stop the others: their row says why.
         const rowOf = new Map(toEnroll.map((e) => [e.userId, e.rowNumber]));
-        const { refused } = await seatStudents(tx, season, toEnroll.map((e) => e.userId), { partial: true });
+        const { refused } = await seatStudents(
+          tx,
+          season,
+          toEnroll.map((e) => e.userId),
+          { partial: true },
+        );
         for (const { userId, refusal } of refused) {
           const rowNumber = rowOf.get(userId)!;
           const prior = outcomes.get(rowNumber);

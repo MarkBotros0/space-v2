@@ -21,8 +21,7 @@ afterAll(async () => {
 });
 
 const URL = "/api/v1/me/visible-notes";
-const get = (token: string, qs = "") =>
-  request(app).get(`${URL}${qs}`).set("authorization", `Bearer ${token}`);
+const get = (token: string, qs = "") => request(app).get(`${URL}${qs}`).set("authorization", `Bearer ${token}`);
 
 describe("GET /api/v1/me/visible-notes", () => {
   it("gives a MENTOR the mentors-visible note and not the admins or leaders ones", async () => {
@@ -41,9 +40,7 @@ describe("GET /api/v1/me/visible-notes", () => {
     try {
       const res = await get(f.mentorToken);
       expect(res.status).toBe(200);
-      const lines = info.mock.calls
-        .map((c) => String(c[0]))
-        .filter((l) => l.includes("note_feed_read"));
+      const lines = info.mock.calls.map((c) => String(c[0])).filter((l) => l.includes("note_feed_read"));
       expect(lines).toHaveLength(1);
       const line = lines[0] as string;
       const entry = JSON.parse(line) as Record<string, unknown>;

@@ -11,22 +11,52 @@ import { renderWithProviders } from "./helpers/render";
 const ctx = { today: "2099-03-10", slots: null, isStaff: false };
 
 const session = (id: number, title: string, dayKey: string, startsAt: string): SessionListItem => ({
-  id, title, startsAt, dayKey, durationMinutes: 60, location: null, recurrenceGroupId: null,
-  attendanceMarked: false, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
-  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null, startTime: "20:00",
+  id,
+  title,
+  startsAt,
+  dayKey,
+  durationMinutes: 60,
+  location: null,
+  recurrenceGroupId: null,
+  attendanceMarked: false,
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
+  checkInToken: null,
+  checkInOpenAt: null,
+  checkInClosedAt: null,
+  startTime: "20:00",
 });
 
-const event = (id: number, title: string, dayKey: string, over: Partial<JpcEventListItem> = {}): JpcEventListItem => ({
-  id, title, date: `${dayKey}T10:00:00.000Z`, endDate: null, dayKey, endDayKey: null, isPast: false,
-  time: "12:00", allDay: false, visibility: "ALL", seasonId: null, seasonCode: null, ...over,
-} as JpcEventListItem);
+const event = (id: number, title: string, dayKey: string, over: Partial<JpcEventListItem> = {}): JpcEventListItem =>
+  ({
+    id,
+    title,
+    date: `${dayKey}T10:00:00.000Z`,
+    endDate: null,
+    dayKey,
+    endDayKey: null,
+    isPast: false,
+    time: "12:00",
+    allDay: false,
+    visibility: "ALL",
+    seasonId: null,
+    seasonCode: null,
+    ...over,
+  }) as JpcEventListItem;
 
 beforeEach(() => jest.clearAllMocks());
 
 describe("CalendarGrid week view", () => {
   it("lists all seven days and says so when a day is empty", () => {
     renderWithProviders(
-      <CalendarGrid view="week" anchor="2099-03-10" sessions={[session(1, "Kickoff", "2099-03-10", "2099-03-10T18:00:00.000Z")]} events={[]} ctx={ctx} />,
+      <CalendarGrid
+        view="week"
+        anchor="2099-03-10"
+        sessions={[session(1, "Kickoff", "2099-03-10", "2099-03-10T18:00:00.000Z")]}
+        events={[]}
+        ctx={ctx}
+      />,
     );
     expect(screen.getByText("Kickoff")).toBeTruthy();
     expect(screen.getAllByText("Nothing scheduled")).toHaveLength(6);
@@ -57,7 +87,13 @@ describe("CalendarGrid month view", () => {
 
   it("falls back to the 1st when today isn't in the anchor month", () => {
     renderWithProviders(
-      <CalendarGrid view="month" anchor="2099-04-15" sessions={[session(3, "April kickoff", "2099-04-01", "2099-04-01T18:00:00.000Z")]} events={[]} ctx={ctx} />,
+      <CalendarGrid
+        view="month"
+        anchor="2099-04-15"
+        sessions={[session(3, "April kickoff", "2099-04-01", "2099-04-01T18:00:00.000Z")]}
+        events={[]}
+        ctx={ctx}
+      />,
     );
     expect(screen.getByText("April kickoff")).toBeTruthy();
   });
@@ -94,7 +130,9 @@ describe("DayEntries", () => {
   it("labels all-day, alumni-only and season-tagged events, and the season on multi-season sessions", () => {
     const entries = entriesFor({
       sessions: [session(1, "Kickoff", "2099-03-10", "2099-03-10T18:00:00.000Z")],
-      events: [event(2, "Reunion", "2099-03-10", { time: null, allDay: true, visibility: "ALUMNI_ONLY", seasonCode: "S25" })],
+      events: [
+        event(2, "Reunion", "2099-03-10", { time: null, allDay: true, visibility: "ALUMNI_ONLY", seasonCode: "S25" }),
+      ],
     });
     renderWithProviders(<DayEntries entries={entries} ctx={{ ...ctx, slots: { S26: 0, S25: 1 }, isStaff: true }} />);
     expect(screen.getByText("JPC event · All day")).toBeTruthy();

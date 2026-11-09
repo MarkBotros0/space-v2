@@ -1,9 +1,6 @@
 import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { z } from "zod";
-import {
-  sessionListItemSchema,
-  type SessionListItem,
-} from "@space/shared";
+import { sessionListItemSchema, type SessionListItem } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";

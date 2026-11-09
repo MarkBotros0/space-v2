@@ -22,7 +22,8 @@ let studentUserId: number;
 let checkInToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, sessionId, superToken, adminToken, studentToken, outsiderToken, studentUserId, checkInToken } = await seedSessionFixtures(app));
+  ({ seasonId, sessionId, superToken, adminToken, studentToken, outsiderToken, studentUserId, checkInToken } =
+    await seedSessionFixtures(app));
 });
 
 afterAll(async () => {
@@ -80,9 +81,7 @@ describe("GET /api/v1/seasons/:id/sessions", () => {
 
 describe("GET /api/v1/sessions/:id", () => {
   it("returns detail with canMarkAttendance true for a season admin", async () => {
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${adminToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
@@ -105,9 +104,7 @@ describe("GET /api/v1/sessions/:id", () => {
       data: { sessionId, studentUserId, status: "PRESENT", markedById: studentUserId },
     });
 
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${studentToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.canMarkAttendance).toBe(false);
@@ -119,9 +116,7 @@ describe("GET /api/v1/sessions/:id", () => {
   });
 
   it("returns 404 for a student with no enrolment (REG-77, v1 behaviour)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${outsiderToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${outsiderToken}`);
     expect(res.status).toBe(404);
   });
 
@@ -131,9 +126,7 @@ describe("GET /api/v1/sessions/:id", () => {
       data: { seasonId, studentUserId: dropped.id, status: "WITHDRAWN" },
     });
     const droppedToken = await login(app, dropped.email);
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${droppedToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${droppedToken}`);
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("not_found");
   });
@@ -143,21 +136,15 @@ describe("GET /api/v1/sessions/:id", () => {
     const elsewhere = await createTestSeason();
     await db.seasonAdmin.create({ data: { seasonId: elsewhere.id, userId: stranger.id } });
     const strangerToken = await login(app, stranger.email);
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${strangerToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${strangerToken}`);
     expect(res.status).toBe(403);
   });
 
   it("returns 400 for a non-numeric id and 404 for a missing one", async () => {
-    const bad = await request(app)
-      .get("/api/v1/sessions/abc")
-      .set("authorization", `Bearer ${superToken}`);
+    const bad = await request(app).get("/api/v1/sessions/abc").set("authorization", `Bearer ${superToken}`);
     expect(bad.status).toBe(400);
 
-    const missing = await request(app)
-      .get("/api/v1/sessions/2147483000")
-      .set("authorization", `Bearer ${superToken}`);
+    const missing = await request(app).get("/api/v1/sessions/2147483000").set("authorization", `Bearer ${superToken}`);
     expect(missing.status).toBe(404);
   });
 });
@@ -176,17 +163,13 @@ describe("canManageCheckIn on GET /api/v1/sessions/:id (Plan 4)", () => {
   });
 
   it("is true for a season admin — the same gate check-in-open enforces", async () => {
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ canMarkAttendance: true, canManageCheckIn: true });
   });
 
   it("is false for a group leader, who can still mark attendance", async () => {
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${leaderToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ canMarkAttendance: true, canManageCheckIn: false });
   });
@@ -199,9 +182,7 @@ describe("canManageCheckIn on GET /api/v1/sessions/:id (Plan 4)", () => {
   });
 
   it("is false for a student", async () => {
-    const res = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+    const res = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.canManageCheckIn).toBe(false);
   });

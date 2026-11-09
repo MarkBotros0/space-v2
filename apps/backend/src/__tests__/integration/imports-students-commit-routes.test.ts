@@ -81,9 +81,7 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     // D-16.11: UTC midnight, not local midnight, not a transposed month.
     expect(row.dateOfBirth?.toISOString()).toBe("2003-02-28T00:00:00.000Z");
     // The enrolment is what places the student in the season.
-    expect(row.seasonEnrollments).toEqual([
-      expect.objectContaining({ seasonId, status: "ACTIVE", groupId: null }),
-    ]);
+    expect(row.seasonEnrollments).toEqual([expect.objectContaining({ seasonId, status: "ACTIVE", groupId: null })]);
   });
 
   /**
@@ -97,8 +95,32 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     const a = testEmail("rerun-a");
     const b = testEmail("rerun-b");
     const rows = [
-      { rowNumber: 2, values: { name: "Rerun A", email: a, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } },
-      { rowNumber: 3, values: { name: "Rerun B", email: b, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } },
+      {
+        rowNumber: 2,
+        values: {
+          name: "Rerun A",
+          email: a,
+          university: null,
+          faculty: null,
+          universityGraduationYear: null,
+          phone: null,
+          dateOfBirth: null,
+          notes: null,
+        },
+      },
+      {
+        rowNumber: 3,
+        values: {
+          name: "Rerun B",
+          email: b,
+          university: null,
+          faculty: null,
+          universityGraduationYear: null,
+          phone: null,
+          dateOfBirth: null,
+          notes: null,
+        },
+      },
     ];
     const body = { mode: "season" as const, seasonId, onExisting: "skip" as const, rows };
 
@@ -137,7 +159,21 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
         mode: "season",
         seasonId,
         onExisting: "skip",
-        rows: [{ rowNumber: 2, values: { name: "Shouted Case", email: existing.email.toUpperCase(), university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }],
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "Shouted Case",
+              email: existing.email.toUpperCase(),
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
       });
 
     expect(res.status).toBe(200);
@@ -155,8 +191,32 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
         seasonId,
         onExisting: "skip",
         rows: [
-          { rowNumber: 2, values: { name: "First Casing", email, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } },
-          { rowNumber: 3, values: { name: "Second Casing", email: email.toUpperCase(), university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } },
+          {
+            rowNumber: 2,
+            values: {
+              name: "First Casing",
+              email,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+          {
+            rowNumber: 3,
+            values: {
+              name: "Second Casing",
+              email: email.toUpperCase(),
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
         ],
       });
 
@@ -176,10 +236,46 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
         seasonId,
         onExisting: "skip",
         rows: [
-          { rowNumber: 2, values: { name: "Good One", email: good, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } },
+          {
+            rowNumber: 2,
+            values: {
+              name: "Good One",
+              email: good,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
           // A client that filtered its own preview badly, or lied.
-          { rowNumber: 3, values: { name: "x".repeat(300), email: testEmail("allornothing-bad"), university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } },
-          { rowNumber: 4, values: { name: "Also Good", email: alsoGood, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } },
+          {
+            rowNumber: 3,
+            values: {
+              name: "x".repeat(300),
+              email: testEmail("allornothing-bad"),
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+          {
+            rowNumber: 4,
+            values: {
+              name: "Also Good",
+              email: alsoGood,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
         ],
       });
 
@@ -200,7 +296,22 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
         mode: "season",
         seasonId,
         onExisting: "skip",
-        rows: [{ rowNumber: 2, status: "new", values: { name: "N", email: "definitely-not-an-email", university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }],
+        rows: [
+          {
+            rowNumber: 2,
+            status: "new",
+            values: {
+              name: "N",
+              email: "definitely-not-an-email",
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
       });
     expect(res.status).toBe(422);
   });
@@ -213,7 +324,26 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "season", seasonId: doomed.id, onExisting: "skip", rows: [{ rowNumber: 2, values: { name: "Orphan Row", email, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }] });
+      .send({
+        mode: "season",
+        seasonId: doomed.id,
+        onExisting: "skip",
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "Orphan Row",
+              email,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
+      });
 
     expect(res.status).toBe(404);
     expect(await db.user.count({ where: { email } })).toBe(0);
@@ -224,7 +354,26 @@ describe("POST /api/v1/imports/students/commit — season mode", () => {
       const res = await request(app)
         .post("/api/v1/imports/students/commit")
         .set("authorization", `Bearer ${token}`)
-        .send({ mode: "season", seasonId, onExisting: "skip", rows: [{ rowNumber: 2, values: { name: "Nope", email: testEmail("nope"), university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }] });
+        .send({
+          mode: "season",
+          seasonId,
+          onExisting: "skip",
+          rows: [
+            {
+              rowNumber: 2,
+              values: {
+                name: "Nope",
+                email: testEmail("nope"),
+                university: null,
+                faculty: null,
+                universityGraduationYear: null,
+                phone: null,
+                dateOfBirth: null,
+                notes: null,
+              },
+            },
+          ],
+        });
       expect(res.status).toBe(403);
     }
   });
@@ -236,7 +385,9 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     await db.studentProfile.create({
       data: { userId: returning.id, notes: "A year of pastoral notes", university: "Old University" },
     });
-    await db.seasonEnrollment.create({ data: { studentUserId: returning.id, seasonId: otherSeasonId, status: "COMPLETED", completedAt: new Date() } });
+    await db.seasonEnrollment.create({
+      data: { studentUserId: returning.id, seasonId: otherSeasonId, status: "COMPLETED", completedAt: new Date() },
+    });
 
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
@@ -245,7 +396,21 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
         mode: "season",
         seasonId,
         onExisting: "enroll",
-        rows: [{ rowNumber: 2, values: { name: "A COMPLETELY DIFFERENT NAME", email: returning.email, university: "Stale Export University", faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: "stale export note" } }],
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "A COMPLETELY DIFFERENT NAME",
+              email: returning.email,
+              university: "Stale Export University",
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: "stale export note",
+            },
+          },
+        ],
       });
 
     expect(res.status).toBe(200);
@@ -264,13 +429,38 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     const withdrawn = await createTestUser("withdrawn", "STUDENT");
     await db.studentProfile.create({ data: { userId: withdrawn.id } });
     await db.seasonEnrollment.create({
-      data: { studentUserId: withdrawn.id, seasonId, status: "WITHDRAWN", droppedAt: new Date("2099-01-01T00:00:00.000Z"), dropReason: "Moved away" },
+      data: {
+        studentUserId: withdrawn.id,
+        seasonId,
+        status: "WITHDRAWN",
+        droppedAt: new Date("2099-01-01T00:00:00.000Z"),
+        dropReason: "Moved away",
+      },
     });
 
     await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "season", seasonId, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "Withdrawn Person", email: withdrawn.email, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }] });
+      .send({
+        mode: "season",
+        seasonId,
+        onExisting: "enroll",
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "Withdrawn Person",
+              email: withdrawn.email,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
+      });
 
     const enrolment = await db.seasonEnrollment.findUnique({
       where: { studentUserId_seasonId: { studentUserId: withdrawn.id, seasonId } },
@@ -290,7 +480,14 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     const fresh = await createTestUser("pointer-unset", "STUDENT");
     await db.studentProfile.create({ data: { userId: fresh.id } });
 
-    const blank = { university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null };
+    const blank = {
+      university: null,
+      faculty: null,
+      universityGraduationYear: null,
+      phone: null,
+      dateOfBirth: null,
+      notes: null,
+    };
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
@@ -305,7 +502,10 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
       });
 
     expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 1 });
-    expect(res.body.data.rows[0]).toMatchObject({ outcome: "skipped", message: expect.stringMatching(/already enrolled/i) });
+    expect(res.body.data.rows[0]).toMatchObject({
+      outcome: "skipped",
+      message: expect.stringMatching(/already enrolled/i),
+    });
     const freshRow = await oneUserByEmail(fresh.email);
     expect(freshRow.seasonEnrollments).toEqual([expect.objectContaining({ seasonId, status: "ACTIVE" })]);
   });
@@ -317,7 +517,26 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "season", seasonId, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "Removed Person", email: removed.email, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }] });
+      .send({
+        mode: "season",
+        seasonId,
+        onExisting: "enroll",
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "Removed Person",
+              email: removed.email,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
+      });
 
     expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 0 });
     expect(res.body.data.rows[0].message).toMatch(/restore/i);
@@ -329,7 +548,26 @@ describe("POST /api/v1/imports/students/commit — onExisting", () => {
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "season", seasonId, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "A Leader", email: leader.email, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }] });
+      .send({
+        mode: "season",
+        seasonId,
+        onExisting: "enroll",
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "A Leader",
+              email: leader.email,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
+      });
 
     expect(res.body.data).toMatchObject({ created: 0, skipped: 1, enrolled: 0 });
     expect(await db.seasonEnrollment.count({ where: { studentUserId: leader.id } })).toBe(0);
@@ -342,7 +580,26 @@ describe("POST /api/v1/imports/students/commit — alumni mode", () => {
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "alumni", graduationYear: 2020, onExisting: "skip", rows: [{ rowNumber: 2, values: { name: "An Alumnus", email, university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }] });
+      .send({
+        mode: "alumni",
+        graduationYear: 2020,
+        onExisting: "skip",
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "An Alumnus",
+              email,
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
+      });
 
     expect(res.status).toBe(200);
     const row = await oneUserByEmail(email);
@@ -354,7 +611,26 @@ describe("POST /api/v1/imports/students/commit — alumni mode", () => {
     const res = await request(app)
       .post("/api/v1/imports/students/commit")
       .set("authorization", `Bearer ${superToken}`)
-      .send({ mode: "alumni", graduationYear: 2020, onExisting: "enroll", rows: [{ rowNumber: 2, values: { name: "A", email: testEmail("alumni-enroll"), university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }] });
+      .send({
+        mode: "alumni",
+        graduationYear: 2020,
+        onExisting: "enroll",
+        rows: [
+          {
+            rowNumber: 2,
+            values: {
+              name: "A",
+              email: testEmail("alumni-enroll"),
+              university: null,
+              faculty: null,
+              universityGraduationYear: null,
+              phone: null,
+              dateOfBirth: null,
+              notes: null,
+            },
+          },
+        ],
+      });
     expect(res.status).toBe(400);
   });
 });

@@ -37,11 +37,7 @@ export interface IssuedInvite {
  * commits, so a transport failure can't roll back a minted row and a rolled
  * back row can't have been mailed.
  */
-export async function issueInvite(
-  client: InviteWriter,
-  userId: number,
-  invitedById: number,
-): Promise<IssuedInvite> {
+export async function issueInvite(client: InviteWriter, userId: number, invitedById: number): Promise<IssuedInvite> {
   const now = new Date();
   await client.inviteToken.updateMany({
     where: { userId, usedAt: null, expiresAt: { gt: now } },
@@ -89,11 +85,7 @@ type InviteDelivery = "sent" | "email_not_configured" | "send_failed";
  * the rule the bulk sender already follows). Logs carry the user id only,
  * never the address or the code (Plan 9 Decision 2).
  */
-export async function deliverInvite(
-  userId: number,
-  email: string,
-  invite: IssuedInvite,
-): Promise<InviteDelivery> {
+export async function deliverInvite(userId: number, email: string, invite: IssuedInvite): Promise<InviteDelivery> {
   if (!isEmailConfigured()) {
     await expireUndelivered(invite.raw);
     return "email_not_configured";
@@ -119,11 +111,7 @@ export async function deliverInvite(
  * hold. "Older" is by id, so two concurrent resends that both succeed leave
  * the newer one live instead of each expiring the other.
  */
-export async function resendInvite(
-  userId: number,
-  invitedById: number,
-  email: string,
-): Promise<InviteDelivery> {
+export async function resendInvite(userId: number, invitedById: number, email: string): Promise<InviteDelivery> {
   if (!isEmailConfigured()) return "email_not_configured";
   const minted = await mintInvite(db, userId, invitedById);
   const outcome = await deliverInvite(userId, email, minted);

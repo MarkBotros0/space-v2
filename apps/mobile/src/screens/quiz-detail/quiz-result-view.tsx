@@ -16,16 +16,13 @@ function questionChip(q: QuizQuestionStudent, released: boolean): ChipSpec | nul
     if (q.isCorrect === null) return { tone: "neutral", label: "Not graded yet" };
     return q.isCorrect ? { tone: "ok", label: "Correct" } : { tone: "bad", label: "Incorrect" };
   }
-  return q.pointsAwarded !== null
-    ? { tone: "ok", label: "Graded" }
-    : { tone: "warn", label: "Awaiting grading" };
+  return q.pointsAwarded !== null ? { tone: "ok", label: "Graded" } : { tone: "warn", label: "Awaiting grading" };
 }
 
 /** What the card under the title says, from handed in to graded. */
 function resultLine(detail: StudentQuizDetail, graded: boolean): string {
   if (graded) return "Your quiz has been graded.";
-  if (!detail.resultsReleased)
-    return "Handed in. Your score will show here once your admin releases the results.";
+  if (!detail.resultsReleased) return "Handed in. Your score will show here once your admin releases the results.";
   return "Awaiting grading for the written answers.";
 }
 
@@ -39,10 +36,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
           <View className="flex-row flex-wrap items-center gap-1.5">
             <StatusChip {...statusChip("quizAttempt", graded ? "GRADED" : "SUBMITTED")} />
             {graded ? null : (
-              <StatusChip
-                tone="warn"
-                label={detail.resultsReleased ? "Pending" : "Results not out yet"}
-              />
+              <StatusChip tone="warn" label={detail.resultsReleased ? "Pending" : "Results not out yet"} />
             )}
           </View>
           <Text variant="subhead" className="text-muted-foreground">
@@ -50,11 +44,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
           </Text>
           {graded ? (
             <View className="flex-row">
-              <StatTile
-                value={detail.totalScore ?? 0}
-                suffix={`/${detail.maxScore}`}
-                label="Score"
-              />
+              <StatTile value={detail.totalScore ?? 0} suffix={`/${detail.maxScore}`} label="Score" />
             </View>
           ) : null}
         </View>
@@ -63,15 +53,10 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
           return (
             <View key={q.id} className={QCARD}>
               <View className="flex-row flex-wrap items-center justify-between gap-2">
-                <Text
-                  variant="caption"
-                  className="font-bold text-muted-foreground"
-                >{`Q${index + 1}`}</Text>
+                <Text variant="caption" className="font-bold text-muted-foreground">{`Q${index + 1}`}</Text>
                 <View className="flex-row flex-wrap items-center gap-2">
                   <Text variant="caption" tabular className="text-muted-foreground">
-                    {q.pointsAwarded !== null
-                      ? `${q.pointsAwarded}/${q.points} pts`
-                      : `${q.points} pts`}
+                    {q.pointsAwarded !== null ? `${q.pointsAwarded}/${q.points} pts` : `${q.points} pts`}
                   </Text>
                   {chip ? <StatusChip {...chip} /> : null}
                 </View>
@@ -84,10 +69,7 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
                   {`Your answer: ${q.selectedIndex !== null ? (q.options[q.selectedIndex] ?? "—") : "—"}`}
                 </Text>
               ) : (
-                <Text
-                  variant="subhead"
-                  className="mt-1 rounded-control bg-muted/40 px-3 py-2 text-foreground"
-                >
+                <Text variant="subhead" className="mt-1 rounded-control bg-muted/40 px-3 py-2 text-foreground">
                   {q.text || "—"}
                 </Text>
               )}

@@ -26,7 +26,19 @@ let leaderToken: string;
 let adminToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, assignmentId, publicId, studentUserId, leaderUserId, groupAId, mentorToken, ownerToken, peerToken, leaderToken, adminToken } = await seedSubmissionFixtures(app));
+  ({
+    seasonId,
+    assignmentId,
+    publicId,
+    studentUserId,
+    leaderUserId,
+    groupAId,
+    mentorToken,
+    ownerToken,
+    peerToken,
+    leaderToken,
+    adminToken,
+  } = await seedSubmissionFixtures(app));
 });
 
 afterAll(async () => {
@@ -41,9 +53,7 @@ function seedSubmission(status: "SUBMITTED" | "DRAFT", title: string): Promise<s
 
 describe("GET /api/v1/submissions/:publicId", () => {
   it("returns the flattened detail to its owner", async () => {
-    const res = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
-      .set("authorization", `Bearer ${ownerToken}`);
+    const res = await request(app).get(`/api/v1/submissions/${publicId}`).set("authorization", `Bearer ${ownerToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
@@ -62,23 +72,17 @@ describe("GET /api/v1/submissions/:publicId", () => {
 
   it("allows the student's group leader and the season admin", async () => {
     const pid = await seedSubmission("SUBMITTED", "Staff read");
-    const asLeader = await request(app)
-      .get(`/api/v1/submissions/${pid}`)
-      .set("authorization", `Bearer ${leaderToken}`);
+    const asLeader = await request(app).get(`/api/v1/submissions/${pid}`).set("authorization", `Bearer ${leaderToken}`);
     expect(asLeader.status).toBe(200);
 
-    const asAdmin = await request(app)
-      .get(`/api/v1/submissions/${pid}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const asAdmin = await request(app).get(`/api/v1/submissions/${pid}`).set("authorization", `Bearer ${adminToken}`);
     expect(asAdmin.status).toBe(200);
   });
 
   it("hides a DRAFT from everyone but its author, as if it did not exist", async () => {
     // publicId is the owner's DRAFT. A 403 would confirm it exists.
     for (const token of [leaderToken, adminToken, mentorToken, peerToken]) {
-      const res = await request(app)
-        .get(`/api/v1/submissions/${publicId}`)
-        .set("authorization", `Bearer ${token}`);
+      const res = await request(app).get(`/api/v1/submissions/${publicId}`).set("authorization", `Bearer ${token}`);
       expect(res.status).toBe(404);
       expect(res.body.error.code).toBe("not_found");
     }
@@ -86,17 +90,13 @@ describe("GET /api/v1/submissions/:publicId", () => {
 
   it("refuses a peer student in the same season", async () => {
     const pid = await seedSubmission("SUBMITTED", "Peer read");
-    const res = await request(app)
-      .get(`/api/v1/submissions/${pid}`)
-      .set("authorization", `Bearer ${peerToken}`);
+    const res = await request(app).get(`/api/v1/submissions/${pid}`).set("authorization", `Bearer ${peerToken}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("forbidden");
   });
 
   it("returns 404 for an unknown publicId", async () => {
-    const res = await request(app)
-      .get("/api/v1/submissions/doesnotexi")
-      .set("authorization", `Bearer ${ownerToken}`);
+    const res = await request(app).get("/api/v1/submissions/doesnotexi").set("authorization", `Bearer ${ownerToken}`);
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("not_found");
   });
@@ -255,9 +255,7 @@ describe("POST /api/v1/submissions/:publicId/review", () => {
     // A MENTOR reads every submission in the system, so the read gate would
     // have let them through — canReviewSubmission is deliberately narrower
     // rather than derived from canViewSubmission.
-    const read = await request(app)
-      .get(`/api/v1/submissions/${pid}`)
-      .set("authorization", `Bearer ${mentorToken}`);
+    const read = await request(app).get(`/api/v1/submissions/${pid}`).set("authorization", `Bearer ${mentorToken}`);
     expect(read.status).toBe(200);
     expect(read.body.data.canReview).toBe(false);
   });
@@ -286,9 +284,7 @@ describe("GET /api/v1/submissions", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.items.length).toBeGreaterThan(0);
     // peer is enrolled in the season but in no group this leader leads.
-    expect(
-      res.body.data.items.every((i: { studentUserId: number }) => i.studentUserId === studentUserId),
-    ).toBe(true);
+    expect(res.body.data.items.every((i: { studentUserId: number }) => i.studentUserId === studentUserId)).toBe(true);
     expect(res.body.data.items[0]).toHaveProperty("groupName", "Group A");
   });
 
@@ -322,9 +318,7 @@ describe("GET /api/v1/submissions", () => {
   });
 
   it("refuses a student outright", async () => {
-    const res = await request(app)
-      .get("/api/v1/submissions")
-      .set("authorization", `Bearer ${ownerToken}`);
+    const res = await request(app).get("/api/v1/submissions").set("authorization", `Bearer ${ownerToken}`);
     expect(res.status).toBe(403);
   });
 });
@@ -335,13 +329,11 @@ describe("submission detail read (REG-90, REG-89)", () => {
     await db.submission.update({
       where: { publicId: pid },
       data: {
-        text: '<p>Hello &amp; <b>world</b></p><script>alert(1)</script><p>Line two</p>',
+        text: "<p>Hello &amp; <b>world</b></p><script>alert(1)</script><p>Line two</p>",
         feedback: "<p>Nice &lt;work&gt;</p>",
       },
     });
-    const res = await request(app)
-      .get(`/api/v1/submissions/${pid}`)
-      .set("authorization", `Bearer ${ownerToken}`);
+    const res = await request(app).get(`/api/v1/submissions/${pid}`).set("authorization", `Bearer ${ownerToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.text).not.toMatch(/<\/?(p|b|script)/i);
     expect(res.body.data.text).toContain("Hello & world");
@@ -350,9 +342,7 @@ describe("submission detail read (REG-90, REG-89)", () => {
   });
 
   it("names the student's group in that assignment's season (C9)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/submissions/${publicId}`)
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get(`/api/v1/submissions/${publicId}`).set("authorization", `Bearer ${leaderToken}`);
     expect(res.body.data).toMatchObject({ groupId: groupAId, groupName: "Group A" });
 
     const mine = await seedSubmission("SUBMITTED", "Ungrouped peer");

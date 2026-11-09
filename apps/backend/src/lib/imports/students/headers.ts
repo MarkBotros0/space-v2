@@ -64,9 +64,7 @@ export function mapStudentHeaders(header: string[]): StudentHeaderMap {
   });
 
   if (nameCol === -1 || emailCol === -1) {
-    throw new ImportParseError(
-      'The first line must be a header row with "name" and "email" columns.',
-    );
+    throw new ImportParseError('The first line must be a header row with "name" and "email" columns.');
   }
 
   return {

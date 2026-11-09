@@ -44,7 +44,8 @@ const forumAssignment = {
   allowedMimeCategories: [],
   groupIds: null,
   mySubmission: null,
-  canManage: false, readOnly: false,
+  canManage: false,
+  readOnly: false,
 };
 
 const lockedView = {
@@ -165,10 +166,7 @@ describe("forum branch of the assignment screen", () => {
     put.mockResolvedValue({ data: { data: unlockedView.own } });
 
     renderWithProviders(<AssignmentDetailScreen />);
-    fireEvent.changeText(
-      await screen.findByLabelText("Your response"),
-      "space-v2-test my response one two three",
-    );
+    fireEvent.changeText(await screen.findByLabelText("Your response"), "space-v2-test my response one two three");
     fireEvent.press(screen.getByText("Post response"));
 
     await waitFor(() =>
@@ -228,10 +226,7 @@ describe("forum branch of the assignment screen", () => {
     post.mockResolvedValue({ data: { data: { comment: { id: 6 } } } });
 
     renderWithProviders(<AssignmentDetailScreen />);
-    fireEvent.changeText(
-      await screen.findByLabelText("Write a comment…"),
-      "space-v2-test another comment",
-    );
+    fireEvent.changeText(await screen.findByLabelText("Write a comment…"), "space-v2-test another comment");
     fireEvent.press(screen.getByLabelText("Post comment"));
 
     await waitFor(() =>
@@ -289,9 +284,7 @@ describe("forum branch of the assignment screen", () => {
               data: {
                 ...unlockedView,
                 allowComments: false,
-                posts: [
-                  { ...unlockedView.posts[0], comments: [], commentCount: 0, canComment: false },
-                ],
+                posts: [{ ...unlockedView.posts[0], comments: [], commentCount: 0, canComment: false }],
               },
             },
           }),
@@ -320,9 +313,7 @@ describe("forum branch of the assignment screen", () => {
         ? Promise.resolve({ data: { data: forumAssignment } })
         : Promise.resolve({ data: { data: lockedView } }),
     );
-    put.mockRejectedValue(
-      Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined }),
-    );
+    put.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined }));
     renderWithProviders(<AssignmentDetailScreen />);
     fireEvent.changeText(await screen.findByLabelText("Your response"), "one two three four five six");
     act(() => onlineManager.setOnline(false));

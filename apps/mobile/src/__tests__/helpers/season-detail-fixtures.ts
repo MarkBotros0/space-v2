@@ -37,21 +37,29 @@ export const sessionRow = {
   checkInClosedAt: null,
 };
 
-const pat = { userId: 30, name: "Pat Admin", email: "pat@jpc.test", assignedAt: "2099-01-02T00:00:00.000Z", assignedByName: "Su" };
+const pat = {
+  userId: 30,
+  name: "Pat Admin",
+  email: "pat@jpc.test",
+  assignedAt: "2099-01-02T00:00:00.000Z",
+  assignedByName: "Su",
+};
 export const student = (userId: number, name: string, groupId: number | null) => ({
-  userId, name, email: `${userId}@jpc.test`, groupId, groupName: null,
+  userId,
+  name,
+  email: `${userId}@jpc.test`,
+  groupId,
+  groupName: null,
 });
 const roster = [student(21, "Sara Student", 3), student(22, "Omar Odeh", 3), student(23, "Nadia Nour", null)];
 
 export function routeGets(d: ReturnType<typeof detail>) {
   (apiClient.get as jest.Mock).mockImplementation((url: string) => {
     if (url === "/api/v1/seasons/by-code/s7") return Promise.resolve({ data: { data: d } });
-    if (url === "/api/v1/seasons/7/sessions")
-      return Promise.resolve({ data: { data: { sessions: [sessionRow] } } });
+    if (url === "/api/v1/seasons/7/sessions") return Promise.resolve({ data: { data: { sessions: [sessionRow] } } });
     if (url === "/api/v1/seasons/7/admins") return Promise.resolve({ data: { data: { admins: [pat] } } });
     if (url === "/api/v1/seasons/7/roster") return Promise.resolve({ data: { data: { roster } } });
     if (url.startsWith("/api/v1/me/dashboard")) return Promise.reject(new Error("not needed"));
     return Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
-

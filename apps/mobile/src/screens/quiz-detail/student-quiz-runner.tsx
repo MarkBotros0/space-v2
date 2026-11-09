@@ -17,11 +17,7 @@ export function StudentRunner({ id }: { id: number }) {
   const [startError, setStartError] = useState<string | null>(null);
 
   if (isPending || isError) {
-    return (
-      <Screen>
-        {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
-      </Screen>
-    );
+    return <Screen>{isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}</Screen>;
   }
 
   if (data.readOnly && data.status !== "GRADED" && data.status !== "SUBMITTED") {
@@ -58,7 +54,11 @@ export function StudentRunner({ id }: { id: number }) {
           >
             {start.isPending ? "Starting…" : "Start quiz"}
           </Button>
-          {startError ? <Text variant="caption" className="text-bad">{startError}</Text> : null}
+          {startError ? (
+            <Text variant="caption" className="text-bad">
+              {startError}
+            </Text>
+          ) : null}
         </View>
       </View>
     </Screen>

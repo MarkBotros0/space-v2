@@ -28,7 +28,7 @@ describe("studentImportRowSchema", () => {
     expect(studentImportRowSchema.safeParse({ ...valid, email: "not-an-email" }).success).toBe(false);
   });
 
-  it("coerces an empty optional cell to null, never \"\"", () => {
+  it('coerces an empty optional cell to null, never ""', () => {
     expect(studentImportRowSchema.parse({ ...valid, phone: "" }).phone).toBeNull();
   });
 });
@@ -36,8 +36,14 @@ describe("studentImportRowSchema", () => {
 describe("importCellValuesSchema", () => {
   it("carries the eight flat cells the preview echoes back for resubmission", () => {
     const parsed = importCellValuesSchema.parse({
-      name: "A Student", email: "a@jpc.test", university: null, faculty: null,
-      universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null,
+      name: "A Student",
+      email: "a@jpc.test",
+      university: null,
+      faculty: null,
+      universityGraduationYear: null,
+      phone: null,
+      dateOfBirth: null,
+      notes: null,
     });
     expect(parsed.name).toBe("A Student");
     // v1's nested `profile` object does not port (D-16.10).
@@ -46,7 +52,21 @@ describe("importCellValuesSchema", () => {
 });
 
 describe("studentImportCommitInputSchema", () => {
-  const rows = [{ rowNumber: 2, values: { name: "A", email: "a@jpc.test", university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null } }];
+  const rows = [
+    {
+      rowNumber: 2,
+      values: {
+        name: "A",
+        email: "a@jpc.test",
+        university: null,
+        faculty: null,
+        universityGraduationYear: null,
+        phone: null,
+        dateOfBirth: null,
+        notes: null,
+      },
+    },
+  ];
 
   it("requires onExisting — no default may be inherited by accident (D-16.7)", () => {
     const missing = studentImportCommitInputSchema.safeParse({ mode: "season", seasonId: 1, rows });
@@ -56,7 +76,10 @@ describe("studentImportCommitInputSchema", () => {
   it("refuses onExisting=enroll in alumni mode — there is no season to enrol into", () => {
     expect(
       studentImportCommitInputSchema.safeParse({
-        mode: "alumni", graduationYear: 2020, onExisting: "enroll", rows,
+        mode: "alumni",
+        graduationYear: 2020,
+        onExisting: "enroll",
+        rows,
       }).success,
     ).toBe(false);
   });
@@ -66,8 +89,18 @@ describe("studentImportCommitInputSchema", () => {
     // (student-import-actions.ts:49) and the client (:54), so a long-lived
     // process caps the year at whenever it booted.
     const thisYear = new Date().getUTCFullYear();
-    const ok = studentImportCommitInputSchema.safeParse({ mode: "alumni", graduationYear: thisYear, onExisting: "skip", rows });
-    const future = studentImportCommitInputSchema.safeParse({ mode: "alumni", graduationYear: thisYear + 1, onExisting: "skip", rows });
+    const ok = studentImportCommitInputSchema.safeParse({
+      mode: "alumni",
+      graduationYear: thisYear,
+      onExisting: "skip",
+      rows,
+    });
+    const future = studentImportCommitInputSchema.safeParse({
+      mode: "alumni",
+      graduationYear: thisYear + 1,
+      onExisting: "skip",
+      rows,
+    });
     expect(ok.success).toBe(true);
     expect(future.success).toBe(false);
   });
@@ -81,7 +114,9 @@ describe("studentImportCommitInputSchema", () => {
 
   it("never accepts a client-computed status — the server re-derives it (D-16.4)", () => {
     const parsed = studentImportCommitInputSchema.parse({
-      mode: "season", seasonId: 1, onExisting: "skip",
+      mode: "season",
+      seasonId: 1,
+      onExisting: "skip",
       rows: [{ ...rows[0], status: "new" }],
     });
     expect("status" in (parsed.rows[0] ?? {})).toBe(false);
@@ -96,7 +131,7 @@ describe("pastedSheetInputSchema", () => {
 });
 
 describe("the header vocabulary", () => {
-  it("accepts \"student\" as a name header so a season export round-trips (spec D14)", () => {
+  it('accepts "student" as a name header so a season export round-trips (spec D14)', () => {
     // Every export sheet's first column is headed "Student"
     // (jpc-space/src/lib/season-export.ts:106,130,158); v1 rejected such a
     // file outright with the "needs a header row" message.

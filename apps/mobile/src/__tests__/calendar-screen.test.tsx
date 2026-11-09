@@ -91,14 +91,11 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
         return Promise.resolve({
           data: {
             data: {
-              sessions: [
-                session(2, "Draft season session", "2099-03-01T18:00:00.000Z", "2099-03-01"),
-              ],
+              sessions: [session(2, "Draft season session", "2099-03-01T18:00:00.000Z", "2099-03-01")],
             },
           },
         });
-      if (url.startsWith("/api/v1/events"))
-        return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+      if (url.startsWith("/api/v1/events")) return Promise.resolve({ data: { data: { events: [], total: 0 } } });
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });
 
@@ -125,11 +122,7 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
         return Promise.resolve({
           data: {
             data: {
-              seasons: [
-                seasonRow(7, 2026, "ACTIVE"),
-                seasonRow(9, 2026, "ACTIVE"),
-                seasonRow(8, 2027, "DRAFT"),
-              ],
+              seasons: [seasonRow(7, 2026, "ACTIVE"), seasonRow(9, 2026, "ACTIVE"), seasonRow(8, 2027, "DRAFT")],
             },
           },
         });
@@ -155,8 +148,7 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
             },
           },
         });
-      if (url.startsWith("/api/v1/events"))
-        return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+      if (url.startsWith("/api/v1/events")) return Promise.resolve({ data: { data: { events: [], total: 0 } } });
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });
 
@@ -210,8 +202,7 @@ describe("calendar — staff branches (G17, D-16.7)", () => {
             },
           },
         });
-      if (url.startsWith("/api/v1/events"))
-        return Promise.resolve({ data: { data: { events: [], total: 0 } } });
+      if (url.startsWith("/api/v1/events")) return Promise.resolve({ data: { data: { events: [], total: 0 } } });
       return Promise.reject(new Error(url));
     });
   }

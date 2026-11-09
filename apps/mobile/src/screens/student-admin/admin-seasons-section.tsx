@@ -79,11 +79,7 @@ export function AdminSeasonsSection({
 }) {
   if (enrollments.length === 0) {
     return (
-      <EmptyState
-        icon={Calendar}
-        title="No seasons"
-        description="This student isn't enrolled in any season yet."
-      />
+      <EmptyState icon={Calendar} title="No seasons" description="This student isn't enrolled in any season yet." />
     );
   }
   return (
@@ -95,9 +91,19 @@ export function AdminSeasonsSection({
         const action: Action | null = drop
           ? { label: "Drop", accessibilityLabel: `Drop from ${e.seasonTitle}`, onPress: drop, destructive: true }
           : remove
-            ? { label: "Remove", accessibilityLabel: `Remove from ${e.seasonTitle}`, onPress: remove, destructive: true }
+            ? {
+                label: "Remove",
+                accessibilityLabel: `Remove from ${e.seasonTitle}`,
+                onPress: remove,
+                destructive: true,
+              }
             : restore
-              ? { label: "Bring back", accessibilityLabel: `Bring back into ${e.seasonTitle}`, onPress: restore, destructive: false }
+              ? {
+                  label: "Bring back",
+                  accessibilityLabel: `Bring back into ${e.seasonTitle}`,
+                  onPress: restore,
+                  destructive: false,
+                }
               : null;
         return (
           <Fragment key={e.enrollmentId}>

@@ -125,10 +125,7 @@ describe("GroupImportScreen", () => {
     post.mockResolvedValue({ data: { data: preview } });
     renderWithProviders(<GroupImportScreen />);
 
-    fireEvent.changeText(
-      await screen.findByLabelText("Paste your spreadsheet"),
-      "email\tgroup\nann@jpc.test\tGroup A",
-    );
+    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "email\tgroup\nann@jpc.test\tGroup A");
     fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
 
     await waitFor(() =>
@@ -138,9 +135,7 @@ describe("GroupImportScreen", () => {
       }),
     );
     expect(
-      await screen.findByText(
-        "3 rows · 1 to assign · 1 unchanged · 0 no match · 1 no group · 0 invalid",
-      ),
+      await screen.findByText("3 rows · 1 to assign · 1 unchanged · 0 no match · 1 no group · 0 invalid"),
     ).toBeTruthy();
     expect(screen.getByText("Assign")).toBeTruthy();
     expect(screen.getByText("No group")).toBeTruthy();
@@ -164,17 +159,12 @@ describe("GroupImportScreen", () => {
 
   it("commits only the assign rows, as resolved id pairs, and reports what was APPLIED", async () => {
     useSessionStore.setState(adminOf7);
-    post
-      .mockResolvedValueOnce({ data: { data: preview } })
-      .mockResolvedValueOnce({
-        data: { data: { assigned: 0, skipped: 1, skippedStudentIds: [11] } },
-      });
+    post.mockResolvedValueOnce({ data: { data: preview } }).mockResolvedValueOnce({
+      data: { data: { assigned: 0, skipped: 1, skippedStudentIds: [11] } },
+    });
     renderWithProviders(<GroupImportScreen />);
 
-    fireEvent.changeText(
-      await screen.findByLabelText("Paste your spreadsheet"),
-      "email\tgroup\nann@jpc.test\tGroup A",
-    );
+    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "email\tgroup\nann@jpc.test\tGroup A");
     fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Preview"));
     fireEvent.press(await within(screen.getByTestId("save-bar")).findByText("Apply 1 assignment"));
 

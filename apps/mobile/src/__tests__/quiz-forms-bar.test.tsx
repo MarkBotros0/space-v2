@@ -7,7 +7,13 @@ jest.mock("../lib/api-client", () => ({
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41" }),
-  useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn(), dismissTo: jest.fn(), dismissAll: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: mockReplace,
+    back: jest.fn(),
+    dismissTo: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
 }));
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
@@ -21,16 +27,46 @@ const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 
 const seasons = {
-  seasons: [{
-    id: 7, code: "s26", title: "Spring 2026", program: "TEST", year: 2026, status: "ACTIVE",
-    startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z",
-  }],
+  seasons: [
+    {
+      id: 7,
+      code: "s26",
+      title: "Spring 2026",
+      program: "TEST",
+      year: 2026,
+      status: "ACTIVE",
+      startDate: "2026-01-01T00:00:00.000Z",
+      endDate: "2026-12-31T00:00:00.000Z",
+    },
+  ],
 };
-const mcq = { id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of France?", points: 2, options: ["London", "Paris"], correctIndex: 1 };
+const mcq = {
+  id: 100,
+  order: 0,
+  type: "MCQ" as const,
+  prompt: "Capital of France?",
+  points: 2,
+  options: ["London", "Paris"],
+  correctIndex: 1,
+};
 const authoring = (over: Record<string, unknown> = {}) => ({
-  id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26", sessionId: null, sessionTitle: null,
-  publishedAt: null, maxScore: 2, attemptCount: 0, gradeCount: 0, canEditStructure: true, canManage: true,
-  resultsReleasedAt: null, canReleaseResults: true, questions: [mcq], ...over,
+  id: 41,
+  title: "Week 1 quiz",
+  kind: "ONLINE",
+  seasonId: 7,
+  seasonCode: "s26",
+  sessionId: null,
+  sessionTitle: null,
+  publishedAt: null,
+  maxScore: 2,
+  attemptCount: 0,
+  gradeCount: 0,
+  canEditStructure: true,
+  canManage: true,
+  resultsReleasedAt: null,
+  canReleaseResults: true,
+  questions: [mcq],
+  ...over,
 });
 const bar = () => within(screen.getByTestId("save-bar"));
 const sheetBar = () => within(screen.getByTestId("sheet-save-bar"));
@@ -73,9 +109,7 @@ describe("new quiz on the fixed save bar", () => {
 
     expect(await screen.findByText("Enter a title.")).toBeTruthy();
     expect(screen.getByLabelText("Title").props.accessibilityHint).toBe("Enter a title.");
-    expect(screen.getByLabelText("Max score").props.accessibilityHint).toBe(
-      "Max score is required for paper quizzes.",
-    );
+    expect(screen.getByLabelText("Max score").props.accessibilityHint).toBe("Max score is required for paper quizzes.");
     expect(bar().getByText("Fix the fields marked above.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
 
@@ -142,7 +176,14 @@ describe("quiz builder: Publish in the footer, details in a sheet (owner, 2026-1
   });
 
   it("closing one of two open question forms keeps Publish blocked by the other (final review I2)", async () => {
-    const mcq2 = { ...mcq, id: 101, order: 1, prompt: "Capital of Spain?", options: ["Madrid", "Paris"], correctIndex: 0 };
+    const mcq2 = {
+      ...mcq,
+      id: 101,
+      order: 1,
+      prompt: "Capital of Spain?",
+      options: ["Madrid", "Paris"],
+      correctIndex: 0,
+    };
     get.mockResolvedValue({ data: { data: authoring({ questions: [mcq, mcq2] }) } });
     renderStacked(<QuizEditScreen />);
     await screen.findByText("Capital of Spain?");
@@ -155,7 +196,9 @@ describe("quiz builder: Publish in the footer, details in a sheet (owner, 2026-1
   });
 
   it("the details sheet saves only what changed, and says nothing to send when untouched", async () => {
-    get.mockResolvedValue({ data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], canEditStructure: false }) } });
+    get.mockResolvedValue({
+      data: { data: authoring({ kind: "PAPER", maxScore: 20, questions: [], canEditStructure: false }) },
+    });
     patch.mockResolvedValue({ data: { data: { updated: true } } });
     renderStacked(<QuizEditScreen />);
     await openDetails();

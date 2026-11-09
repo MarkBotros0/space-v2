@@ -7,11 +7,7 @@
  */
 import { useEffect, useRef } from "react";
 import { AccessibilityInfo, View } from "react-native";
-import Animated, {
-  useAnimatedProps,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from "react-native-reanimated";
 import Svg, { Path } from "react-native-svg";
 
 import { DURATION, EASE_OUT, haptic, useReducedMotion } from "../../design/motion";
@@ -48,9 +44,7 @@ export function CheckInSuccess({
     fired.current = true;
     haptic("success");
     // iOS has no live regions, and the disc holds nothing to speak (app/login.tsx).
-    AccessibilityInfo.announceForAccessibility(
-      copy.message ? `${copy.title} ${copy.message}` : copy.title,
-    );
+    AccessibilityInfo.announceForAccessibility(copy.message ? `${copy.title} ${copy.message}` : copy.title);
     if (reduced) return;
     draw.value = withTiming(1, { duration: DURATION.slow, easing: EASE_OUT });
     // eslint-disable-next-line react-hooks/exhaustive-deps

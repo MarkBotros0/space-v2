@@ -100,10 +100,7 @@ importsRouter.use(requireAuth);
  * own roster, the row-scoped check goes in THE SAME change as the widened
  * role gate, never after it (ruling C8).
  */
-function requireSuper(
-  req: Parameters<typeof requireUser>[0],
-  res: Parameters<typeof apiError>[0],
-): boolean {
+function requireSuper(req: Parameters<typeof requireUser>[0], res: Parameters<typeof apiError>[0]): boolean {
   const user = requireUser(req);
   if (isSuper(user)) return true;
   apiError(res, "forbidden", "Only a super user can import students.", 403);
@@ -291,10 +288,9 @@ seasonImportsRouter.post(
       // group must belong to this season, every student must hold an enrolment
       // in it — which is why posting resolved ids is safe here in a way it is
       // not for the student importer (spec §4).
-      const result = await db.$transaction(
-        (tx) => assignStudentsToGroups(tx, seasonId, parsed.data.assignments),
-        { timeout: 30_000 },
-      );
+      const result = await db.$transaction((tx) => assignStudentsToGroups(tx, seasonId, parsed.data.assignments), {
+        timeout: 30_000,
+      });
       return apiOk(res, {
         assigned: result.assigned,
         skipped: result.skippedStudentIds.length,

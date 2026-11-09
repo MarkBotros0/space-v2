@@ -29,9 +29,7 @@ const STUDENTS_SHOWN = 6;
 
 type Group = SeasonDetail["groups"][number];
 
-export type PeopleCardAdmins =
-  | { state: "loading" | "error" }
-  | { state: "ready"; names: string[] };
+export type PeopleCardAdmins = { state: "loading" | "error" } | { state: "ready"; names: string[] };
 
 function Muted({ children }: { children: string }) {
   return (
@@ -140,14 +138,12 @@ export function PeopleCard({
   onNewGroup?: () => void;
   onMoveStudents?: () => void;
 }) {
-  const byGroup = (id: number) =>
-    roster ? roster.filter((r) => r.groupId === id).map(named) : null;
+  const byGroup = (id: number) => (roster ? roster.filter((r) => r.groupId === id).map(named) : null);
   const ungrouped = roster
     ? roster.filter((r) => r.groupId === null || !groups.some((g) => g.id === r.groupId)).map(named)
     : null;
   const ungroupedCount =
-    ungrouped?.length ??
-    Math.max(0, studentCount - groups.reduce((sum, g) => sum + g.studentCount, 0));
+    ungrouped?.length ?? Math.max(0, studentCount - groups.reduce((sum, g) => sum + g.studentCount, 0));
 
   let adminBody: ReactNode = null;
   if (admins?.state === "loading") adminBody = <Muted>Loading…</Muted>;
@@ -174,11 +170,7 @@ export function PeopleCard({
               title="Admins"
               action={
                 onManageAdmins ? (
-                  <PillButton
-                    label="Manage"
-                    accessibilityLabel="Manage admins"
-                    onPress={onManageAdmins}
-                  />
+                  <PillButton label="Manage" accessibilityLabel="Manage admins" onPress={onManageAdmins} />
                 ) : undefined
               }
             />
@@ -224,11 +216,7 @@ export function PeopleCard({
           <View className="flex-col gap-2">
             <LevelHeader icon={Users} title={`Not in a group (${ungroupedCount})`} />
             <View className="ml-12">
-              {ungrouped ? (
-                <StudentPills students={ungrouped} />
-              ) : (
-                <Muted>{studentsLine(ungroupedCount)}</Muted>
-              )}
+              {ungrouped ? <StudentPills students={ungrouped} /> : <Muted>{studentsLine(ungroupedCount)}</Muted>}
             </View>
           </View>
         </>

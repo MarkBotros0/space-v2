@@ -98,12 +98,7 @@ describe("GET /api/v1/seasons/:id/exports/workbook", () => {
 
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(asLoadable(body));
-    expect(workbook.worksheets.map((w) => w.name)).toEqual([
-      "Attendance",
-      "Grades",
-      "Assignments",
-      "Key",
-    ]);
+    expect(workbook.worksheets.map((w) => w.name)).toEqual(["Attendance", "Grades", "Assignments", "Key"]);
   });
 
   it("REFUSES a MENTOR — v1 allowed any mentor any season's workbook (R85, D6 #3)", async () => {
@@ -256,9 +251,7 @@ describe("GET /api/v1/reports/engagement/export", () => {
 
   it("refuses LEADER and STUDENT", async () => {
     for (const token of [leaderToken, studentToken]) {
-      const res = await request(app)
-        .get("/api/v1/reports/engagement/export")
-        .set("authorization", `Bearer ${token}`);
+      const res = await request(app).get("/api/v1/reports/engagement/export").set("authorization", `Bearer ${token}`);
       expect(res.status).toBe(403);
     }
   });
@@ -273,9 +266,7 @@ describe("GET /api/v1/reports/engagement/export", () => {
         r.on("data", (c: Buffer) => chunks.push(c));
         r.on("end", () => cb(null, Buffer.concat(chunks)));
       });
-    expect(res.headers["content-disposition"]).toMatch(
-      /filename="engagement-[a-z0-9-]+-\d{4}-\d{2}-\d{2}\.xlsx"/,
-    );
+    expect(res.headers["content-disposition"]).toMatch(/filename="engagement-[a-z0-9-]+-\d{4}-\d{2}-\d{2}\.xlsx"/);
   });
 
   it("logs an audit line carrying no personal data (D15)", async () => {

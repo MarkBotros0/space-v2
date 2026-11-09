@@ -73,6 +73,9 @@ async function sendBatch(tokens: string[], payload: PushPayload): Promise<void> 
   const failed = tickets.filter((t) => t.status === "error" && t.details?.error !== "DeviceNotRegistered");
   if (failed.length > 0) {
     // The reason, never the token.
-    console.warn(`[push] ${failed.length} of ${tokens.length} messages refused:`, failed[0]?.details?.error ?? failed[0]?.message);
+    console.warn(
+      `[push] ${failed.length} of ${tokens.length} messages refused:`,
+      failed[0]?.details?.error ?? failed[0]?.message,
+    );
   }
 }

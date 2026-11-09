@@ -29,7 +29,13 @@ type OffsetInput = {
  *   3-button nav, only its top edge showing with gesture nav).
  * - A window the OS did resize already ends at the keyboard: no lift.
  */
-export function keyboardBottomOffset({ os, keyboard, insetBottom, closed, windowResized = false }: OffsetInput): number {
+export function keyboardBottomOffset({
+  os,
+  keyboard,
+  insetBottom,
+  closed,
+  windowResized = false,
+}: OffsetInput): number {
   if (keyboard <= 0) return closed ?? insetBottom;
   if (os === "android") return windowResized ? 0 : keyboard + insetBottom;
   return keyboard;

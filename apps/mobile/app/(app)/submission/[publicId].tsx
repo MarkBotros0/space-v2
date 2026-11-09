@@ -61,7 +61,9 @@ function SubmissionReview({
         {data.canReview && data.status === "RETURNED" ? (
           <ReturnedSection feedback={data.feedback} />
         ) : canGive ? (
-          data.feedback ? <FeedbackSection header="Current feedback" feedback={data.feedback} /> : null
+          data.feedback ? (
+            <FeedbackSection header="Current feedback" feedback={data.feedback} />
+          ) : null
         ) : data.feedback ? (
           <FeedbackSection header="Feedback" feedback={data.feedback} />
         ) : null}
@@ -102,11 +104,6 @@ export default function SubmissionReviewScreen() {
     );
   }
   return (
-    <SubmissionReview
-      key={data.publicId}
-      data={data}
-      refreshing={isRefetching}
-      onRefresh={() => void refetch()}
-    />
+    <SubmissionReview key={data.publicId} data={data} refreshing={isRefetching} onRefresh={() => void refetch()} />
   );
 }

@@ -22,10 +22,9 @@ describe("videoQuestionInputSchema", () => {
     expect(videoQuestionInputSchema.safeParse({ ...valid, atSeconds: 86_401 }).success).toBe(false);
     expect(videoQuestionInputSchema.safeParse({ ...valid, prompt: "x" }).success).toBe(false);
     expect(videoQuestionInputSchema.safeParse({ ...valid, options: ["a"] }).success).toBe(false);
-    expect(
-      videoQuestionInputSchema.safeParse({ ...valid, options: ["a", "b", "c", "d", "e", "f", "g"] })
-        .success,
-    ).toBe(false);
+    expect(videoQuestionInputSchema.safeParse({ ...valid, options: ["a", "b", "c", "d", "e", "f", "g"] }).success).toBe(
+      false,
+    );
   });
 
   it("refuses a correct index outside the options (v1 R4)", () => {
@@ -80,9 +79,7 @@ describe("submitForumResponseRequestSchema", () => {
   });
 
   it("caps the body at 20,000 characters — v1 had no cap at all", () => {
-    expect(submitForumResponseRequestSchema.safeParse({ text: "x".repeat(20_001) }).success).toBe(
-      false,
-    );
+    expect(submitForumResponseRequestSchema.safeParse({ text: "x".repeat(20_001) }).success).toBe(false);
   });
 });
 
@@ -107,22 +104,13 @@ describe("createJpcEventRequestSchema", () => {
   };
 
   it("refuses an end day before the start day (v1 R11)", () => {
-    expect(createJpcEventRequestSchema.safeParse({ ...valid, endDay: "2099-05-01" }).success).toBe(
-      false,
-    );
-    expect(createJpcEventRequestSchema.safeParse({ ...valid, endDay: "2099-06-01" }).success).toBe(
-      true,
-    );
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, endDay: "2099-05-01" }).success).toBe(false);
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, endDay: "2099-06-01" }).success).toBe(true);
   });
 
   it("requires a season for a SEASON event (v1 R12)", () => {
-    expect(createJpcEventRequestSchema.safeParse({ ...valid, visibility: "SEASON" }).success).toBe(
-      false,
-    );
-    expect(
-      createJpcEventRequestSchema.safeParse({ ...valid, visibility: "SEASON", seasonId: 3 })
-        .success,
-    ).toBe(true);
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, visibility: "SEASON" }).success).toBe(false);
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, visibility: "SEASON", seasonId: 3 }).success).toBe(true);
   });
 
   it("takes org wall-clock fields, never a device-composed instant (ruling X13)", () => {
@@ -130,9 +118,7 @@ describe("createJpcEventRequestSchema", () => {
     // zone (R15/R20). v2 keeps the wall-clock shape but names the zone: the
     // server composes the instant in config.orgTimezone. An ISO instant is
     // refused, because accepting one is how a device's zone leaks back in.
-    expect(
-      createJpcEventRequestSchema.safeParse({ ...valid, day: "2099-06-01T00:00:00.000Z" }).success,
-    ).toBe(false);
+    expect(createJpcEventRequestSchema.safeParse({ ...valid, day: "2099-06-01T00:00:00.000Z" }).success).toBe(false);
     expect(createJpcEventRequestSchema.safeParse({ ...valid, time: "18:30" }).success).toBe(true);
     expect(createJpcEventRequestSchema.safeParse({ ...valid, time: "24:00" }).success).toBe(false);
     expect(createJpcEventRequestSchema.safeParse({ ...valid, time: "6pm" }).success).toBe(false);

@@ -36,7 +36,10 @@ describe("syncPushRegistration", () => {
     mockGetPermissions.mockResolvedValue({ status: "granted" });
     await syncPushRegistration();
     expect(mockRequestPermissions).not.toHaveBeenCalled();
-    expect(mockPost).toHaveBeenCalledWith("/api/v1/me/devices", expect.objectContaining({ token: "ExponentPushToken[x]" }));
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/me/devices",
+      expect.objectContaining({ token: "ExponentPushToken[x]" }),
+    );
     expect(useSessionStore.getState().pushToken).toBe("ExponentPushToken[x]");
   });
 

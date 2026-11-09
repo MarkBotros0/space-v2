@@ -36,7 +36,11 @@ describe("Text variants", () => {
   });
 
   it("an explicit variant with leading-* sets no inline line height", () => {
-    const { getByText } = render(<Text variant="title" className="leading-tight">t</Text>);
+    const { getByText } = render(
+      <Text variant="title" className="leading-tight">
+        t
+      </Text>,
+    );
     expect(styleOf(getByText("t"))).toMatchObject({ fontSize: 22 });
     expect(styleOf(getByText("t")).lineHeight).toBeUndefined();
   });
@@ -58,7 +62,9 @@ describe("Text variants", () => {
 
   it("a caller size or weight class replaces the variant's, with no stale inline size", () => {
     const { getByText } = render(
-      <Text variant="largeTitle" className="text-sm font-bold text-muted-foreground">x</Text>,
+      <Text variant="largeTitle" className="text-sm font-bold text-muted-foreground">
+        x
+      </Text>,
     );
     const node = getByText("x");
     expect(node.props.className).toContain("text-sm");

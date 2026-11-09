@@ -108,13 +108,9 @@ function redactKeys(value: unknown): unknown {
   return value;
 }
 
-function scrubHeaders(
-  headers: Record<string, string> | undefined,
-): Record<string, string> | undefined {
+function scrubHeaders(headers: Record<string, string> | undefined): Record<string, string> | undefined {
   if (!headers) return headers;
-  return Object.fromEntries(
-    Object.entries(headers).filter(([name]) => !SECRET_HEADERS.has(name.toLowerCase())),
-  );
+  return Object.fromEntries(Object.entries(headers).filter(([name]) => !SECRET_HEADERS.has(name.toLowerCase())));
 }
 
 /** `beforeSend`: strip credentials and auth-route bodies from an event. */

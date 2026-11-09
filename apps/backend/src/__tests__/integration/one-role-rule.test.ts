@@ -52,8 +52,7 @@ const makeSeason = async (status: SeasonStatus = "ACTIVE", title = "GBV 2026") =
   await db.season.update({ where: { id }, data: { title } });
   return { id, code, status, title };
 };
-const makeAdmin = (userId: number, seasonId: number) =>
-  db.seasonAdmin.create({ data: { userId, seasonId } });
+const makeAdmin = (userId: number, seasonId: number) => db.seasonAdmin.create({ data: { userId, seasonId } });
 const makeLeader = async (userId: number, seasonId: number, name = "Group A") => {
   const group = await db.group.create({ data: { seasonId, name } });
   await db.groupLeader.create({ data: { userId, groupId: group.id } });
@@ -180,18 +179,15 @@ describe("seatRefusal", () => {
     });
   });
 
-  it.each(["ACTIVE", "DRAFT"] as const)(
-    "refuses a second group in one %s season",
-    async (status) => {
-      const season = await makeSeason(status);
-      const person = await makePerson(`orr-second-group-${status}`);
-      await makeLeader(person.id, season.id);
-      expect(await refusalFor(person, seatIn("leader", season))).toEqual({
-        code: "leader_has_group",
-        message: "Mina already leads a group in this season.",
-      });
-    },
-  );
+  it.each(["ACTIVE", "DRAFT"] as const)("refuses a second group in one %s season", async (status) => {
+    const season = await makeSeason(status);
+    const person = await makePerson(`orr-second-group-${status}`);
+    await makeLeader(person.id, season.id);
+    expect(await refusalFor(person, seatIn("leader", season))).toEqual({
+      code: "leader_has_group",
+      message: "Mina already leads a group in this season.",
+    });
+  });
 
   it("takes the first matching row of the table", async () => {
     const finished = await makeSeason("COMPLETED");
@@ -380,9 +376,7 @@ describe("two concurrent seats", () => {
     const outcomes = await within(45_000, "both seats settled", Promise.all([attempt(first), attempt(second)]));
 
     const refusals = outcomes.filter((o) => o !== null);
-    expect(refusals).toEqual([
-      { code: "already_in_role", message: "Mina is already an admin of GBV 2026" },
-    ]);
+    expect(refusals).toEqual([{ code: "already_in_role", message: "Mina is already an admin of GBV 2026" }]);
     expect(
       await db.seasonAdmin.count({
         where: { userId: person.id, seasonId: { in: [first.id, second.id] } },

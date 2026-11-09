@@ -48,7 +48,10 @@ export function WorkSection({ text, files }: { text: string | null; files: Submi
                     {f.originalName}
                   </Text>
                 </View>
-                <Text variant="caption" className="shrink-0 text-muted-foreground">{`${(f.sizeBytes / 1024).toFixed(1)} KB`}</Text>
+                <Text
+                  variant="caption"
+                  className="shrink-0 text-muted-foreground"
+                >{`${(f.sizeBytes / 1024).toFixed(1)} KB`}</Text>
               </View>
             ))}
             <Text variant="caption" className="italic text-muted-foreground">

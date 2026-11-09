@@ -28,7 +28,9 @@ describe("verifyCredentials", () => {
   it("returns the public user fields and stamps lastLoginAt on success", async () => {
     mockFindUnique.mockResolvedValue(row);
     await expect(verifyCredentials("a@jpc.test", "correct horse")).resolves.toEqual({
-      id: 9, email: "a@jpc.test", name: "Ann",
+      id: 9,
+      email: "a@jpc.test",
+      name: "Ann",
     });
     expect(mockUpdate).toHaveBeenCalledWith({
       where: { id: 9 },

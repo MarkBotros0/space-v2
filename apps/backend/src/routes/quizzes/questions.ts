@@ -81,12 +81,7 @@ async function loadAuthorableQuiz(
     return null;
   }
   if (!opts.allowWithAttempts && (await hasAttempts(quizId))) {
-    apiError(
-      res,
-      "quiz_has_attempts",
-      "Students have started this quiz, so its questions can no longer change.",
-      409,
-    );
+    apiError(res, "quiz_has_attempts", "Students have started this quiz, so its questions can no longer change.", 409);
     return null;
   }
   return quiz;
@@ -257,9 +252,7 @@ export async function publishQuiz(req: Request, res: Response) {
       (q) => q.type === "MCQ" && (q.correctIndex === null || q.correctIndex >= q.options.length),
     );
     if (badMcq) {
-      return apiError(
-        res, "mcq_without_answer", "Every multiple-choice question needs a correct answer.", 409,
-      );
+      return apiError(res, "mcq_without_answer", "Every multiple-choice question needs a correct answer.", 409);
     }
   } else {
     // Spec D4. v1 wrote publishedAt: null unconditionally and both student
@@ -282,8 +275,7 @@ export async function publishQuiz(req: Request, res: Response) {
   // and the loser of two racing publishes stay silent.
   const firstPublish =
     parsed.data.publish &&
-    (await db.quiz.updateMany({ where: { id, publishedAt: null }, data: { publishedAt: new Date() } }))
-      .count === 1;
+    (await db.quiz.updateMany({ where: { id, publishedAt: null }, data: { publishedAt: new Date() } })).count === 1;
 
   const select = { publishedAt: true, seasonId: true, title: true } as const;
   const updated = firstPublish

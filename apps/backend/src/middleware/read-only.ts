@@ -27,10 +27,5 @@ export const readOnlyGuard: RequestHandler = (req, res, next) => {
   if (!config.readOnly || SAFE_METHODS.has(req.method)) return next();
   if (READ_ONLY_ALLOWED_WRITES.has(`${req.method} ${req.path}`)) return next();
   res.set("Retry-After", "600");
-  apiError(
-    res,
-    "read_only",
-    "JPC Space is in read-only maintenance. Please try again shortly.",
-    503,
-  );
+  apiError(res, "read_only", "JPC Space is in read-only maintenance. Please try again shortly.", 503);
 };

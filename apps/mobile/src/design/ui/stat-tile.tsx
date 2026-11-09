@@ -17,13 +17,30 @@ import { Text } from "./text";
  * plain view. The figure shows at once, never counting up (owner, 2026-11-07).
  */
 function StatTile({
-  value, suffix, label, className, onPress,
-}: { value: number | string; suffix?: string; label: string; className?: string; onPress?: () => void }) {
+  value,
+  suffix,
+  label,
+  className,
+  onPress,
+}: {
+  value: number | string;
+  suffix?: string;
+  label: string;
+  className?: string;
+  onPress?: () => void;
+}) {
   const press = usePressDim();
   const a11yLabel = `${label}: ${value}${suffix ?? ""}`;
   const body = (
     <>
-      <Text variant="largeTitle" tabular numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.4} maxFontSizeMultiplier={1.3}>
+      <Text
+        variant="largeTitle"
+        tabular
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.4}
+        maxFontSizeMultiplier={1.3}
+      >
         {`${value}${suffix ?? ""}`}
       </Text>
       <Text

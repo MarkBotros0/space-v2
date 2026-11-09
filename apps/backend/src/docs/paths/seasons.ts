@@ -27,13 +27,18 @@ export const seasonPaths = {
       summary: "Create a season",
       description:
         "SUPER only (spec 02 D3). Title is derived as '<program> <year>'. Unlike v1, the absence budget fields are persisted on create (D1). A soft-deleted season still reserves its code. `status` must be `DRAFT` (400 otherwise): no season skips Start.",
-      requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
+      requestBody: {
+        required: true,
+        content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } },
+      },
       responses: {
         201: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Created."),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
-        409: conflict("`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here)."),
+        409: conflict(
+          "`code_taken` — the slugified code is in use (also returned for the unique-index race, D15; D15's generic `conflict` is deliberately more specific here).",
+        ),
       },
     },
   },
@@ -56,14 +61,21 @@ export const seasonPaths = {
       description:
         "Asymmetric by role (spec 02 D3). SUPER sends the full SeasonWriteRequest (v1's whole-body update; title re-derived). A season ADMIN sends a partial body containing only `description`, `absenceBudgetMinutes`, `absenceWeightMinutes`; any other key is refused with 403 `forbidden_field` rather than stripped. Status moves (SUPER): only an unchanged status and COMPLETED to or from ARCHIVED are allowed. DRAFT to ACTIVE is 409 `use_start_season` (see `POST /seasons/{id}/start`); anything else from DRAFT is 409 `invalid_status_change`; anything else from ACTIVE is 409 `use_end_season`; COMPLETED or ARCHIVED back to ACTIVE or DRAFT is 409 `season_finished`; a status that changed while the request ran (a Start landing first) is 409 `season_changed`, and nothing is written.",
       parameters: [idParam],
-      requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } } },
+      requestBody: {
+        required: true,
+        content: { "application/json": { schema: { $ref: "#/components/schemas/SeasonWriteRequest" } } },
+      },
       responses: {
         200: ok({ type: "object", properties: { id: { type: "integer" }, code: { type: "string" } } }, "Updated."),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
-        403: conflict("`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field)."),
+        403: conflict(
+          "`forbidden` (not SUPER, not this season's ADMIN) or `forbidden_field` (ADMIN sent an identity field).",
+        ),
         404: errRef("NotFound"),
-        409: conflict("`code_taken`, `use_start_season`, `use_end_season`, `invalid_status_change`, `season_finished` or `season_changed`."),
+        409: conflict(
+          "`code_taken`, `use_start_season`, `use_end_season`, `invalid_status_change`, `season_finished` or `season_changed`.",
+        ),
       },
     },
     delete: {
@@ -148,12 +160,56 @@ export const seasonPaths = {
               blockers: {
                 type: "object",
                 properties: {
-                  submissions: { type: "array", items: { type: "object", properties: { publicId: { type: "string" }, assignmentTitle: { type: "string" }, studentName: { type: "string" } } } },
-                  quizAttempts: { type: "array", items: { type: "object", properties: { quizId: { type: "integer" }, attemptId: { type: "integer" }, quizTitle: { type: "string" }, studentName: { type: "string" } } } },
-                  attendance: { type: "array", items: { type: "object", properties: { sessionId: { type: "integer" }, title: { type: "string" }, startsAt: { type: "string", format: "date-time" }, missing: { type: "integer" } } } },
+                  submissions: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        publicId: { type: "string" },
+                        assignmentTitle: { type: "string" },
+                        studentName: { type: "string" },
+                      },
+                    },
+                  },
+                  quizAttempts: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        quizId: { type: "integer" },
+                        attemptId: { type: "integer" },
+                        quizTitle: { type: "string" },
+                        studentName: { type: "string" },
+                      },
+                    },
+                  },
+                  attendance: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        sessionId: { type: "integer" },
+                        title: { type: "string" },
+                        startsAt: { type: "string", format: "date-time" },
+                        missing: { type: "integer" },
+                      },
+                    },
+                  },
                 },
               },
-              students: { type: "array", items: { type: "object", properties: { userId: { type: "integer" }, name: { type: "string" }, groupName: { type: "string", nullable: true }, attendancePct: { type: "integer" }, graduationYear: { type: "integer", nullable: true } } } },
+              students: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    userId: { type: "integer" },
+                    name: { type: "string" },
+                    groupName: { type: "string", nullable: true },
+                    attendancePct: { type: "integer" },
+                    graduationYear: { type: "integer", nullable: true },
+                  },
+                },
+              },
             },
           },
           "The end check.",
@@ -175,7 +231,10 @@ export const seasonPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", properties: { roster: { type: "array", items: { $ref: "#/components/schemas/SeasonRosterRow" } } } },
+          {
+            type: "object",
+            properties: { roster: { type: "array", items: { $ref: "#/components/schemas/SeasonRosterRow" } } },
+          },
           "The roster.",
         ),
         400: errRef("BadRequest"),
@@ -192,7 +251,10 @@ export const seasonPaths = {
       description:
         "Season-admin only; at most 500 rows, each student once. Eligibility is a live student among the season's participants (ACTIVE; in a finished season also COMPLETED; never WITHDRAWN) in THIS season (v1 gated on activeSeasonId and upserted enrolments, resurrecting withdrawn students). Non-eligible rows are skipped and returned in skippedStudentIds; counts are what was WRITTEN (v1 reported the requested length). A null groupId removes only this season's membership. Any groupId outside the season refuses the whole batch (400 group_outside_season). One transaction. Plan 17's group importer writes through the same function.",
       parameters: [idParam],
-      requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } } },
+      requestBody: {
+        required: true,
+        content: { "application/json": { schema: { $ref: "#/components/schemas/GroupAssignmentsRequest" } } },
+      },
       responses: {
         200: ok(
           {
@@ -251,7 +313,10 @@ export const seasonPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", properties: { groups: { type: "array", items: { $ref: "#/components/schemas/GroupListItem" } } } },
+          {
+            type: "object",
+            properties: { groups: { type: "array", items: { $ref: "#/components/schemas/GroupListItem" } } },
+          },
           "Groups.",
         ),
         400: errRef("BadRequest"),
@@ -268,7 +333,10 @@ export const seasonPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", properties: { sessions: { type: "array", items: { $ref: "#/components/schemas/SessionListItem" } } } },
+          {
+            type: "object",
+            properties: { sessions: { type: "array", items: { $ref: "#/components/schemas/SessionListItem" } } },
+          },
           "Sessions, earliest first.",
         ),
         400: errRef("BadRequest"),
@@ -318,13 +386,17 @@ export const seasonPaths = {
         content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
       },
       responses: {
-        201: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "Created — the same shape GET /assignments/{id} returns."),
-        400: conflict("`bad_request` (body; message names the first failing field), `invalid_group`, or `invalid_session`."),
+        201: ok(
+          { $ref: "#/components/schemas/AssignmentDetail" },
+          "Created — the same shape GET /assignments/{id} returns.",
+        ),
+        400: conflict(
+          "`bad_request` (body; message names the first failing field), `invalid_group`, or `invalid_session`.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
       },
     },
   },
-
 } as const;

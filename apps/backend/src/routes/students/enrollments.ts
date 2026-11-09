@@ -71,11 +71,7 @@ function alreadyEnrolled(res: Response) {
  * is history, not an obstacle); entry always ACTIVE; the student's sessions go
  * stale so the derived current season is re-read. Who may join is `seatStudents`.
  */
-async function enrollOne(
-  tx: Prisma.TransactionClient,
-  id: number,
-  seasonId: number,
-): Promise<SeatRefusal | null> {
+async function enrollOne(tx: Prisma.TransactionClient, id: number, seasonId: number): Promise<SeatRefusal | null> {
   const season = await readSeatSeason(tx, seasonId);
   if (!season) return { code: "not_found", message: "Season not found." };
   if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
@@ -114,7 +110,12 @@ export async function updateEnrollment(req: Request, res: Response) {
   const parsed = updateEnrollmentRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid enrollment body.", 400);
   if (parsed.data.status === "COMPLETED") {
-    return apiError(res, "use_end_season", "Students finish a season when it ends. End the season to set results.", 409);
+    return apiError(
+      res,
+      "use_end_season",
+      "Students finish a season when it ends. End the season to set results.",
+      409,
+    );
   }
 
   // R64's gate, moved BEFORE the lookup: v1 fetched the enrollment first and

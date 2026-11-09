@@ -92,7 +92,9 @@ describe("firstName (spec 19 D21 — one formatter for STUDENT and ALUMNI)", () 
 
 describe("formatEventWhen (spec 19 R11, X13 — server day keys and wall time only)", () => {
   it("shows the day and the org wall time", () => {
-    expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5, 2099 · 6:30\u00A0PM");
+    expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe(
+      "Mar 5, 2099 · 6:30\u00A0PM",
+    );
   });
   it("omits the time for an all-day event and collapses a same-day range", () => {
     expect(formatEventWhen({ dayKey: "2099-03-05", endDayKey: "2099-03-05", time: null })).toBe("Mar 5, 2099");

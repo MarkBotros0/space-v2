@@ -31,9 +31,7 @@ describe("the fixture guard itself", () => {
     expect(() => sheet("name\temail", "A Real Person\treal.person@gmail.com")).toThrow(/cannot delete/);
     expect(() => sheet("name\temail", `A Test\t${testEmail("ok")}`)).not.toThrow();
     // An uppercase fixture address is still a fixture address.
-    expect(() =>
-      sheet("name\temail", `A Test\t${testEmail("shout").toUpperCase()}`),
-    ).not.toThrow();
+    expect(() => sheet("name\temail", `A Test\t${testEmail("shout").toUpperCase()}`)).not.toThrow();
   });
 });
 
@@ -116,7 +114,7 @@ describe("POST /api/v1/imports/students/preview", () => {
     expect(res.body.data.rows[0].message).toMatch(/restore/i);
   });
 
-  it("accepts a season export's \"Student\" header (spec D14)", async () => {
+  it('accepts a season export\'s "Student" header (spec D14)', async () => {
     const res = await request(app)
       .post("/api/v1/imports/students/preview")
       .set("authorization", `Bearer ${superToken}`)

@@ -46,9 +46,7 @@ export function PostView({ post }: { post: AnnouncementDetail }) {
             <Button
               variant="secondary"
               accessibilityLabel="Edit announcement"
-              onPress={() =>
-                router.push({ pathname: "/announcements/[id]/edit", params: { id: String(id) } })
-              }
+              onPress={() => router.push({ pathname: "/announcements/[id]/edit", params: { id: String(id) } })}
             >
               <Pencil size={14} className="text-foreground" />
               Edit

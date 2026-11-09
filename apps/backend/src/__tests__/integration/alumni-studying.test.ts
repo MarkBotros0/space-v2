@@ -6,7 +6,17 @@ import request from "supertest";
 import { db } from "../../db/client";
 import { verifyAccessToken } from "../../lib/auth/tokens";
 import { buildPublishedQuizIn } from "./quizzes-setup";
-import { add, adminTokenOf, app, as, ctx, person, season, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  add,
+  adminTokenOf,
+  app,
+  as,
+  ctx,
+  person,
+  season,
+  seedEnrollmentFixtures,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 import { createTestUser, login, PASSWORD, reviewedOf, testEventTitle } from "./fixtures";
 
 jest.setTimeout(120000);
@@ -48,18 +58,38 @@ beforeAll(async () => {
       { seasonId: regularId, studentUserId: graduate.id, status: "COMPLETED", result: "PASSED" },
     ],
   });
-  sessionId = (await db.session.create({
-    data: { seasonId: wideId, title: "Wide session", startsAt: new Date(Date.now() + 30 * 60_000), durationMinutes: 90 },
-    select: { id: true },
-  })).id;
-  assignmentId = (await db.assignment.create({
-    data: { seasonId: wideId, title: "Wide essay", description: "Write it", isAllGroups: true, dueAt: new Date("2099-04-01T00:00:00.000Z") },
-    select: { id: true },
-  })).id;
+  sessionId = (
+    await db.session.create({
+      data: {
+        seasonId: wideId,
+        title: "Wide session",
+        startsAt: new Date(Date.now() + 30 * 60_000),
+        durationMinutes: 90,
+      },
+      select: { id: true },
+    })
+  ).id;
+  assignmentId = (
+    await db.assignment.create({
+      data: {
+        seasonId: wideId,
+        title: "Wide essay",
+        description: "Write it",
+        isAllGroups: true,
+        dueAt: new Date("2099-04-01T00:00:00.000Z"),
+      },
+      select: { id: true },
+    })
+  ).id;
 
   alumniEventTitle = testEventTitle("alumni-only");
   await db.jpcEvent.create({
-    data: { title: alumniEventTitle, visibility: "ALUMNI_ONLY", date: new Date("2099-05-01T18:00:00.000Z"), createdById: ctx.superId },
+    data: {
+      title: alumniEventTitle,
+      visibility: "ALUMNI_ONLY",
+      date: new Date("2099-05-01T18:00:00.000Z"),
+      createdById: ctx.superId,
+    },
   });
 
   studying = await login(app, alumnus.email);
@@ -116,7 +146,9 @@ describe("their work", () => {
     const quiz = await buildPublishedQuizIn(wideId, sessionId, { withEssay: false });
     const path = `/api/v1/quizzes/${quiz.quizId}/attempt`;
     expect((await request(app).put(path).set(as(studying))).status).toBe(200);
-    const save = await request(app).patch(path).set(as(studying))
+    const save = await request(app)
+      .patch(path)
+      .set(as(studying))
       .send({ answers: [{ questionId: quiz.mcqId, selectedIndex: 1, text: null }] });
     expect(save.status).toBe(200);
     const submit = await request(app).post(`${path}/submit`).set(as(studying));
@@ -133,7 +165,14 @@ describe("their work", () => {
       .set(as(studying))
       .send({ text: "real work", submit: true });
     expect(submit.status).toBe(200);
-    expect((await db.submission.findUniqueOrThrow({ where: { publicId: start.body.data.publicId }, select: { status: true } })).status).toBe("SUBMITTED");
+    expect(
+      (
+        await db.submission.findUniqueOrThrow({
+          where: { publicId: start.body.data.publicId },
+          select: { status: true },
+        })
+      ).status,
+    ).toBe("SUBMITTED");
     const refused = await request(app).put(`/api/v1/submissions/by-assignment/${assignmentId}`).set(as(notStudying));
     expect(refused.status).toBe(403);
   });
@@ -199,10 +238,17 @@ describe("what staff read for the season", () => {
 
   it("a Mentor's feed shows their marks in this season, not an alumnus's marks from before", async () => {
     const old = await db.session.create({
-      data: { seasonId: regularId, title: "Old regular session", startsAt: new Date("2020-03-01T18:00:00.000Z"), durationMinutes: 90 },
+      data: {
+        seasonId: regularId,
+        title: "Old regular session",
+        startsAt: new Date("2020-03-01T18:00:00.000Z"),
+        durationMinutes: 90,
+      },
       select: { id: true },
     });
-    await db.attendance.create({ data: { sessionId: old.id, studentUserId: studyingId, status: "PRESENT", markedAt: new Date() } });
+    await db.attendance.create({
+      data: { sessionId: old.id, studentUserId: studyingId, status: "PRESENT", markedAt: new Date() },
+    });
     const res = await get("/me/dashboard", mentor);
     expect(res.status).toBe(200);
     expect(lists(res.body, "Wide session")).toBe(true);
@@ -225,14 +271,19 @@ describe("a token crossing the season's start and end", () => {
     const draft = await season("DRAFT", "Crossing Season");
     await db.season.update({
       where: { id: draft },
-      data: { isCommunityWide: true, startDate: new Date("2099-01-01T00:00:00.000Z"), endDate: new Date("2099-06-01T00:00:00.000Z") },
+      data: {
+        isCommunityWide: true,
+        startDate: new Date("2099-01-01T00:00:00.000Z"),
+        endDate: new Date("2099-06-01T00:00:00.000Z"),
+      },
     });
     const alumnus = await person("Crossing Alumnus", 2017);
     const email = alumnus.email;
     const first = await request(app).post("/api/v1/auth/login").send({ email, password: PASSWORD });
     const refreshOf = (res: request.Response) => res.body.data.refreshToken as string;
     const refresh = async (token: string) => request(app).post("/api/v1/auth/refresh").send({ refreshToken: token });
-    const claim = async (res: request.Response) => (await verifyAccessToken(res.body.data.accessToken))?.activeSeasonId ?? null;
+    const claim = async (res: request.Response) =>
+      (await verifyAccessToken(res.body.data.accessToken))?.activeSeasonId ?? null;
 
     expect((await add(draft, { userIds: [alumnus.id] })).status).toBe(201);
     const started = await request(app).post(`/api/v1/seasons/${draft}/start`).set(as(ctx.superToken));
@@ -241,19 +292,39 @@ describe("a token crossing the season's start and end", () => {
     expect(during.status).toBe(200);
     expect(await claim(during)).toBe(draft);
 
-    const quiz = await buildPublishedQuizIn(draft, (await db.session.create({
-      data: { seasonId: draft, title: "Crossing session", startsAt: new Date("2099-03-01T18:00:00.000Z"), durationMinutes: 60 },
-      select: { id: true },
-    })).id, { withEssay: false });
+    const quiz = await buildPublishedQuizIn(
+      draft,
+      (
+        await db.session.create({
+          data: {
+            seasonId: draft,
+            title: "Crossing session",
+            startsAt: new Date("2099-03-01T18:00:00.000Z"),
+            durationMinutes: 60,
+          },
+          select: { id: true },
+        })
+      ).id,
+      { withEssay: false },
+    );
     const path = `/api/v1/quizzes/${quiz.quizId}/attempt`;
     const oldToken = during.body.data.accessToken as string;
     expect((await request(app).put(path).set(as(oldToken))).status).toBe(200);
 
-    const end = await request(app).post(`/api/v1/seasons/${draft}/end`).set(as(ctx.superToken)).send({ notPassed: [], reviewed: await reviewedOf(draft) });
+    const end = await request(app)
+      .post(`/api/v1/seasons/${draft}/end`)
+      .set(as(ctx.superToken))
+      .send({ notPassed: [], reviewed: await reviewedOf(draft) });
     expect(end.status).toBe(200);
     const after = await refresh(refreshOf(during));
     expect(after.status).toBe(200);
     expect(await claim(after)).toBeNull();
-    expect((await request(app).put(path).set(as(after.body.data.accessToken as string))).status).toBe(403);
+    expect(
+      (
+        await request(app)
+          .put(path)
+          .set(as(after.body.data.accessToken as string))
+      ).status,
+    ).toBe(403);
   });
 });

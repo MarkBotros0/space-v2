@@ -35,11 +35,7 @@ export function ProfileView() {
   if (kind !== "staff" && (profile.isPending || profile.isError)) {
     return (
       <Screen title="Profile">
-        {profile.isPending ? (
-          <RouteSkeleton />
-        ) : (
-          <RouteError onRetry={() => void profile.refetch()} />
-        )}
+        {profile.isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void profile.refetch()} />}
       </Screen>
     );
   }
@@ -64,19 +60,12 @@ function ProfileBody({ user, profile }: { user: MeUser; profile: MyProfile | nul
         name={user.name}
         email={user.email}
         action={
-          <PillButton
-            label="Edit"
-            accessibilityLabel="Edit profile"
-            onPress={() => router.push("/edit-profile")}
-          />
+          <PillButton label="Edit" accessibilityLabel="Edit profile" onPress={() => router.push("/edit-profile")} />
         }
       />
       <GroupedList header="Your details">
         <Detail label="Phone" value={user.phone} />
-        <Detail
-          label="Date of birth"
-          value={user.dateOfBirth ? formatDayKey(user.dateOfBirth) : null}
-        />
+        <Detail label="Date of birth" value={user.dateOfBirth ? formatDayKey(user.dateOfBirth) : null} />
         <Detail label="Address" value={user.address} />
       </GroupedList>
       {profile ? (

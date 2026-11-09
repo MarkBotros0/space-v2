@@ -29,10 +29,7 @@ import { queryKeys } from "../lib/query-keys";
  * the caller's role (staff get 403 from these endpoints).
  */
 
-export function useSeasonHistory(
-  activeSeasonId: number | null,
-  enabled: boolean,
-): UseQueryResult<SeasonHistoryRow[]> {
+export function useSeasonHistory(activeSeasonId: number | null, enabled: boolean): UseQueryResult<SeasonHistoryRow[]> {
   return useQuery({
     queryKey: queryKeys.me.seasonHistory(activeSeasonId),
     queryFn: async () => {

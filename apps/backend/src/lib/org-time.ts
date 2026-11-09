@@ -11,15 +11,22 @@ import { config } from "./config";
  */
 const displayFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: config.orgTimezone,
-  year: "numeric", month: "short", day: "numeric",
-  hour: "numeric", minute: "2-digit",
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
 });
 
 const partsFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: config.orgTimezone,
   hourCycle: "h23",
-  year: "numeric", month: "numeric", day: "numeric",
-  hour: "numeric", minute: "numeric", second: "numeric",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  hour: "numeric",
+  minute: "numeric",
+  second: "numeric",
 });
 
 interface OrgWallClock {
@@ -70,7 +77,13 @@ function offsetAt(instantMs: number): number {
  */
 export function fromOrgWallClock(parts: OrgWallClock): Date {
   const naive = Date.UTC(
-    parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second, parts.millisecond,
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+    parts.millisecond,
   );
   const guess = naive - offsetAt(naive);
   return new Date(naive - offsetAt(guess));

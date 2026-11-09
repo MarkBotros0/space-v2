@@ -11,12 +11,5 @@ import { NeedsActionList } from "../staff-today/needs-action-list";
 export function SeasonNeeds({ seasonId }: { seasonId: number }) {
   const { needs, isPending, refetch } = useSeasonNeeds(seasonId);
   if (isPending) return <RouteSkeleton />;
-  return (
-    <NeedsActionList
-      title="Needs attention"
-      needs={needs}
-      scopeSeasonId={seasonId}
-      onRetry={refetch}
-    />
-  );
+  return <NeedsActionList title="Needs attention" needs={needs} scopeSeasonId={seasonId} onRetry={refetch} />;
 }

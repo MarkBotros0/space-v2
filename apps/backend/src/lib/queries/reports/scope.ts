@@ -20,10 +20,7 @@ import type { ReportScope } from "../../permissions";
  * fixes R46, under which v1 answered an unknown id with a header-only CSV and
  * HTTP 200 — indistinguishable from "this season has no students".
  */
-export async function resolveReportScope(
-  scope: ReportScope,
-  requestedIds: number[],
-): Promise<ResolvedScope> {
+export async function resolveReportScope(scope: ReportScope, requestedIds: number[]): Promise<ResolvedScope> {
   const permitted = await db.season.findMany({
     where: {
       deletedAt: null,

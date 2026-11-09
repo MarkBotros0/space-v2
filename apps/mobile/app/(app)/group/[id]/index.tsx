@@ -76,8 +76,7 @@ export default function GroupDetailScreen() {
   const openStudent =
     role === "STUDENT"
       ? undefined
-      : (m: GroupMember) =>
-          router.push({ pathname: "/student/[id]", params: { id: String(m.id) } });
+      : (m: GroupMember) => router.push({ pathname: "/student/[id]", params: { id: String(m.id) } });
 
   return (
     <Screen
@@ -89,9 +88,7 @@ export default function GroupDetailScreen() {
         data.canManage ? (
           <Button
             variant="outline"
-            onPress={() =>
-              router.push({ pathname: "/group/[id]/edit", params: { id: String(data.id) } })
-            }
+            onPress={() => router.push({ pathname: "/group/[id]/edit", params: { id: String(data.id) } })}
           >
             Edit group
           </Button>

@@ -19,11 +19,7 @@ import { invalidateSessions } from "../lib/auth/session-validity";
 import { hashToken, revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { staffScopeForSeason } from "../lib/permissions";
-import {
-  loadMentorDashboard,
-  loadSeasonStaffDashboard,
-  loadStudentDashboard,
-} from "../lib/queries/dashboard";
+import { loadMentorDashboard, loadSeasonStaffDashboard, loadStudentDashboard } from "../lib/queries/dashboard";
 import { loadMyProfile } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
 import { makeLimiter } from "../lib/rate-limit";
@@ -47,16 +43,27 @@ meRouter.use(meDevicesRouter);
 meRouter.use(meSeasonReadsRouter);
 
 const ME_SELECT = {
-  id: true, name: true, email: true, avatarPath: true,
-  phone: true, dateOfBirth: true, address: true,
-  passwordHash: true, deletedAt: true,
+  id: true,
+  name: true,
+  email: true,
+  avatarPath: true,
+  phone: true,
+  dateOfBirth: true,
+  address: true,
+  passwordHash: true,
+  deletedAt: true,
 } as const;
 
 type MeRow = {
-  id: number; name: string; email: string;
+  id: number;
+  name: string;
+  email: string;
   avatarPath: string | null;
-  phone: string | null; dateOfBirth: Date | null; address: string | null;
-  passwordHash: string | null; deletedAt: Date | null;
+  phone: string | null;
+  dateOfBirth: Date | null;
+  address: string | null;
+  passwordHash: string | null;
+  deletedAt: Date | null;
 };
 
 /** A calendar day stored at UTC midnight (Plan 11 Decision 11) → "YYYY-MM-DD". */
@@ -249,7 +256,12 @@ meRouter.patch("/profile", requireAuth, async (req, res) => {
   const user = requireUser(req);
   if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
   if (isAlumnus(user) && !isStudyingAlumnus(user)) {
-    return apiError(res, "forbidden", "Alumni records are read-only — contact the JPC team to update your details.", 403);
+    return apiError(
+      res,
+      "forbidden",
+      "Alumni records are read-only — contact the JPC team to update your details.",
+      403,
+    );
   }
   if (typeof req.body !== "object" || req.body === null || Array.isArray(req.body)) {
     return apiError(res, "bad_request", "Invalid profile body.", 400);

@@ -35,7 +35,12 @@ export const person = async (name: string, graduationYear: number | null = null)
   await db.user.update({ where: { id: user.id }, data: { name, graduationYear } });
   return user;
 };
-export const season = async (status: Status, title = "Target", requiredProgram: string | null = null, program = "TEST") => {
+export const season = async (
+  status: Status,
+  title = "Target",
+  requiredProgram: string | null = null,
+  program = "TEST",
+) => {
   const row = await createTestSeason({ status });
   await db.season.update({ where: { id: row.id }, data: { title, program, requiredProgram } });
   return row.id;

@@ -31,10 +31,7 @@ export function AssignSheet({
   /** Only a draft season's roster offers it; the caller asks to confirm. */
   onRemove?: () => void;
 }) {
-  const options: { id: number | null; name: string }[] = [
-    { id: null, name: ROSTER_UNASSIGNED_LABEL },
-    ...groups,
-  ];
+  const options: { id: number | null; name: string }[] = [{ id: null, name: ROSTER_UNASSIGNED_LABEL }, ...groups];
   return (
     <Sheet
       open={student !== null}

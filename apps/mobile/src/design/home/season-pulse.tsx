@@ -24,12 +24,7 @@ function Figure({ value, label }: { value: string; label: string }) {
       <Text variant="title" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
         {value}
       </Text>
-      <Text
-        variant="caption"
-        numberOfLines={2}
-        maxFontSizeMultiplier={1.3}
-        className="text-muted-foreground"
-      >
+      <Text variant="caption" numberOfLines={2} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
         {label}
       </Text>
     </View>
@@ -98,11 +93,17 @@ export function SeasonPulse({
               <RingCaption className="normal-case tracking-normal">through</RingCaption>
             </ProgressRing>
             <View className="min-w-0 flex-1 gap-1">
-              <View accessible accessibilityLabel={`Sessions held: ${sessionsHeld} of ${sessionsTotal}`} className="gap-0.5">
+              <View
+                accessible
+                accessibilityLabel={`Sessions held: ${sessionsHeld} of ${sessionsTotal}`}
+                className="gap-0.5"
+              >
                 {toGo > 0 ? (
                   <Text variant="largeTitle" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
                     {`${toGo}`}
-                    <Text variant="title" className="text-muted-foreground">{" to go"}</Text>
+                    <Text variant="title" className="text-muted-foreground">
+                      {" to go"}
+                    </Text>
                   </Text>
                 ) : (
                   <Text variant="title" numberOfLines={2} maxFontSizeMultiplier={1.3}>
@@ -110,7 +111,12 @@ export function SeasonPulse({
                   </Text>
                 )}
                 {sessionsTotal > 0 ? (
-                  <Text variant="subhead" numberOfLines={2} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
+                  <Text
+                    variant="subhead"
+                    numberOfLines={2}
+                    maxFontSizeMultiplier={1.3}
+                    className="text-muted-foreground"
+                  >
                     {`${sessionsHeld} of ${sessionsTotal} sessions held`}
                   </Text>
                 ) : null}

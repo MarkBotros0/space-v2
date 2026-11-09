@@ -23,10 +23,7 @@ import type { Request, Response } from "express";
 
 import type { SessionUser } from "../lib/auth/tokens";
 import { parseNotificationLink } from "../lib/notification-target";
-import {
-  prepareSessionCancelledNotice,
-  sendSessionCancelledNotice,
-} from "../lib/session-notifications";
+import { prepareSessionCancelledNotice, sendSessionCancelledNotice } from "../lib/session-notifications";
 import { deleteSession } from "../routes/sessions/schedule";
 
 const now = new Date("2099-02-20T00:00:00.000Z");
@@ -115,8 +112,12 @@ describe("sendSessionCancelledNotice", () => {
 
 describe("DELETE /sessions/:id", () => {
   const admin: SessionUser = {
-    userId: 1, role: "ADMIN", seasonAdminIds: [7], groupLeaderIds: [],
-    activeSeasonId: 7, graduationYear: null,
+    userId: 1,
+    role: "ADMIN",
+    seasonAdminIds: [7],
+    groupLeaderIds: [],
+    activeSeasonId: 7,
+    graduationYear: null,
   };
   const fakeRes = () => {
     const res = { status: jest.fn(), json: jest.fn() };
@@ -124,14 +125,16 @@ describe("DELETE /sessions/:id", () => {
     res.json.mockReturnValue(res);
     return res;
   };
-  const deleteReq = (body: unknown) =>
-    ({ user: admin, params: { id: "5" }, query: {}, body }) as unknown as Request;
+  const deleteReq = (body: unknown) => ({ user: admin, params: { id: "5" }, query: {}, body }) as unknown as Request;
   const order: string[] = [];
 
   beforeEach(() => {
     order.length = 0;
     mockDb.session.findUnique.mockResolvedValue({
-      id: 5, seasonId: 7, recurrenceGroupId: null, startsAt: new Date(Date.now() + 86_400_000),
+      id: 5,
+      seasonId: 7,
+      recurrenceGroupId: null,
+      startsAt: new Date(Date.now() + 86_400_000),
     });
     mockDb.attendance.count.mockResolvedValue(0);
     mockDb.sessionVideoProgress.count.mockResolvedValue(0);

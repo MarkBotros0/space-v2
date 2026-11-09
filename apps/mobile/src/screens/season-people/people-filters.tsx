@@ -54,7 +54,11 @@ export function PeopleFilterBar({
       />
       <View className="flex-row flex-wrap items-center gap-2">
         <View className="min-w-[200px] shrink">
-          <Select items={items} value={filters.lastSeason} onValueChange={(lastSeason) => onChange({ ...filters, lastSeason })}>
+          <Select
+            items={items}
+            value={filters.lastSeason}
+            onValueChange={(lastSeason) => onChange({ ...filters, lastSeason })}
+          >
             <SelectTrigger accessibilityLabel="Last season">
               <SelectValue />
             </SelectTrigger>

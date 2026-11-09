@@ -51,7 +51,14 @@ interface RichTextEditorProps {
   className?: string;
 }
 
-export function RichTextEditor({ value, onChange, placeholder = "Write something…", disabled, invalid, className }: RichTextEditorProps) {
+export function RichTextEditor({
+  value,
+  onChange,
+  placeholder = "Write something…",
+  disabled,
+  invalid,
+  className,
+}: RichTextEditorProps) {
   const colors = useThemeColors();
   const lastHtml = useRef(value);
   const editor = useEditorBridge({
@@ -104,7 +111,11 @@ export function RichTextEditor({ value, onChange, placeholder = "Write something
         <ToolbarButton active={state.isBulletListActive} onPress={() => editor.toggleBulletList()} label="Bullet list">
           <List size={16} className="text-foreground" />
         </ToolbarButton>
-        <ToolbarButton active={state.isOrderedListActive} onPress={() => editor.toggleOrderedList()} label="Numbered list">
+        <ToolbarButton
+          active={state.isOrderedListActive}
+          onPress={() => editor.toggleOrderedList()}
+          label="Numbered list"
+        >
           <ListOrdered size={16} className="text-foreground" />
         </ToolbarButton>
         <ToolbarButton
@@ -134,7 +145,13 @@ export function RichTextEditor({ value, onChange, placeholder = "Write something
           <ModalHeader>
             <ModalTitle>URL</ModalTitle>
           </ModalHeader>
-          <Input accessibilityLabel="URL" value={linkUrl} onChangeText={setLinkUrl} autoCapitalize="none" keyboardType="url" />
+          <Input
+            accessibilityLabel="URL"
+            value={linkUrl}
+            onChangeText={setLinkUrl}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
           <ModalFooter>
             <Button variant="outline" onPress={() => setLinkOpen(false)}>
               Cancel

@@ -17,10 +17,7 @@ const POLL_SELECT = {
  * come from the vote rows as they are, so someone who has since lost access
  * keeps their vote in the tally.
  */
-export async function loadPollView(
-  user: SessionUser,
-  row: AnnouncementRow,
-): Promise<AnnouncementPoll | null> {
+export async function loadPollView(user: SessionUser, row: AnnouncementRow): Promise<AnnouncementPoll | null> {
   if (!row.poll) return null;
   const poll = await db.announcementPoll.findUnique({
     where: { announcementId: row.id },

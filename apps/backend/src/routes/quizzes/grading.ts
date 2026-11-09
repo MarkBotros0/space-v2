@@ -41,7 +41,12 @@ export async function listAttempts(req: Request, res: Response) {
     where: { quizId: id },
     orderBy: { order: "asc" },
     select: {
-      id: true, type: true, prompt: true, points: true, options: true, correctIndex: true,
+      id: true,
+      type: true,
+      prompt: true,
+      points: true,
+      options: true,
+      correctIndex: true,
     },
   });
 
@@ -66,8 +71,11 @@ export async function listAttempts(req: Request, res: Response) {
       gradedBy: { select: { name: true } },
       answers: {
         select: {
-          questionId: true, selectedIndex: true, text: true,
-          isCorrect: true, pointsAwarded: true,
+          questionId: true,
+          selectedIndex: true,
+          text: true,
+          isCorrect: true,
+          pointsAwarded: true,
         },
       },
     },
@@ -158,8 +166,12 @@ export async function gradeAttempt(req: Request, res: Response) {
   const attempt = await db.quizAttempt.findUnique({
     where: { id: attemptId },
     select: {
-      id: true, quizId: true, studentUserId: true, status: true,
-      autoScore: true, totalScore: true,
+      id: true,
+      quizId: true,
+      studentUserId: true,
+      status: true,
+      autoScore: true,
+      totalScore: true,
     },
   });
   // Addressed through its quiz: a bare attempt id can never reach another quiz.
@@ -191,8 +203,7 @@ export async function gradeAttempt(req: Request, res: Response) {
   // Every essay, exactly once. v1 recomputed manualScore from only the awards
   // present, so an omitted essay contributed 0 and silently lowered the total.
   const sent = new Set(parsed.data.awards.map((a) => a.questionId));
-  if (sent.size !== parsed.data.awards.length || sent.size !== essays.length ||
-      !essays.every((q) => sent.has(q.id))) {
+  if (sent.size !== parsed.data.awards.length || sent.size !== essays.length || !essays.every((q) => sent.has(q.id))) {
     return apiError(res, "awards_incomplete", "Send a mark for every essay question.", 400);
   }
   for (const award of parsed.data.awards) {
@@ -234,18 +245,20 @@ export async function gradeAttempt(req: Request, res: Response) {
     // D8's single rule for both grading paths: notify on a first grade and on
     // any score change, silent on a no-op re-save. v1's two paths disagreed —
     // ONLINE notified on every call (R75), PAPER never re-notified (R92).
-    await notifyQuizGraded(
-      [attempt.studentUserId],
-      `Quiz graded: ${quiz.title}`,
-      "Your quiz has been graded.",
-    );
+    await notifyQuizGraded([attempt.studentUserId], `Quiz graded: ${quiz.title}`, "Your quiz has been graded.");
   }
 
   const page = await db.quizAttempt.findUnique({
     where: { id: attemptId },
     select: {
-      id: true, studentUserId: true, attemptNumber: true, status: true,
-      autoScore: true, manualScore: true, totalScore: true, submittedAt: true,
+      id: true,
+      studentUserId: true,
+      attemptNumber: true,
+      status: true,
+      autoScore: true,
+      manualScore: true,
+      totalScore: true,
+      submittedAt: true,
       studentUser: { select: { name: true } },
       gradedBy: { select: { name: true } },
     },

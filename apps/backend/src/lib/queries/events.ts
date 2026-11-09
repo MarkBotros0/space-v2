@@ -48,9 +48,7 @@ export async function viewerSeasonIds(user: SessionUser): Promise<number[] | "al
  * also hides an R54 orphan, since a null relation cannot satisfy a relation
  * filter.
  */
-export async function eventVisibilityFilter(
-  user: SessionUser,
-): Promise<Prisma.JpcEventWhereInput> {
+export async function eventVisibilityFilter(user: SessionUser): Promise<Prisma.JpcEventWhereInput> {
   if (isSuper(user)) return {};
 
   const branches: Prisma.JpcEventWhereInput[] = [{ visibility: "ALL" }];
@@ -91,10 +89,7 @@ export function eventWindowFilter(from: Date | null, to: Date | null): Prisma.Jp
 }
 
 /** The paged list's order: newest first, id as the tie-break. */
-export const EVENT_PAGE_ORDER: Prisma.JpcEventOrderByWithRelationInput[] = [
-  { date: "desc" },
-  { id: "desc" },
-];
+export const EVENT_PAGE_ORDER: Prisma.JpcEventOrderByWithRelationInput[] = [{ date: "desc" }, { id: "desc" }];
 
 /** `<date epoch ms>_<id>` — see `eventCursorSchema` in packages/shared. */
 export function encodeEventCursor(row: { date: Date; id: number }): string {

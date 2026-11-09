@@ -24,10 +24,7 @@ import {
   HeroStatsSections,
   ListSection,
 } from "../../src/screens/design-catalogue/list-cards-sections";
-import {
-  CatalogueSaveBar,
-  SaveBarSection,
-} from "../../src/screens/design-catalogue/save-bar-section";
+import { CatalogueSaveBar, SaveBarSection } from "../../src/screens/design-catalogue/save-bar-section";
 import {
   CheckInSuccessSection,
   SheetSection,
@@ -49,7 +46,11 @@ export default function DesignCatalogue() {
     <Screen
       title="Design catalogue"
       subtitle="Every component in every state."
-      footer={saveBar !== "off" ? <CatalogueSaveBar disabled={saveBar === "disabled"} onDone={() => setSaveBar("off")} /> : undefined}
+      footer={
+        saveBar !== "off" ? (
+          <CatalogueSaveBar disabled={saveBar === "disabled"} onDone={() => setSaveBar("off")} />
+        ) : undefined
+      }
     >
       <LogoSection />
       <TypeSection />

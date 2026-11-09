@@ -131,10 +131,7 @@ describe("POST /api/v1/sessions/check-in", () => {
 
   it("rejects a second check-in", async () => {
     const token = await openCheckIn();
-    await request(app)
-      .post("/api/v1/sessions/check-in")
-      .set("authorization", `Bearer ${studentToken}`)
-      .send({ token });
+    await request(app).post("/api/v1/sessions/check-in").set("authorization", `Bearer ${studentToken}`).send({ token });
 
     const again = await request(app)
       .post("/api/v1/sessions/check-in")
@@ -190,9 +187,7 @@ describe("POST /api/v1/sessions/check-in", () => {
   it("reports the same open state on the read as the write enforces", async () => {
     await openCheckIn();
 
-    const live = await request(app)
-      .get(`/api/v1/sessions/${sessionId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+    const live = await request(app).get(`/api/v1/sessions/${sessionId}`).set("authorization", `Bearer ${studentToken}`);
     expect(live.status).toBe(200);
     expect(live.body.data.checkInOpen).toBe(true);
 
@@ -227,9 +222,7 @@ describe("POST /api/v1/sessions/check-in", () => {
       .set("authorization", `Bearer ${studentToken}`);
     expect(asStudent.body.data.checkInOpen).toBe(false);
     // Staff still see the real state: the admin opened it.
-    const asAdmin = await request(app)
-      .get(`/api/v1/sessions/${early.id}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const asAdmin = await request(app).get(`/api/v1/sessions/${early.id}`).set("authorization", `Bearer ${adminToken}`);
     expect(asAdmin.body.data.checkInOpen).toBe(true);
 
     const scan = await request(app)

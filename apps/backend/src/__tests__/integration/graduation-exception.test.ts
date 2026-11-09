@@ -5,7 +5,15 @@ import request from "supertest";
 import { db } from "../../db/client";
 import { createTestUser } from "./fixtures";
 import { auditLines, enrol, finished, graduate, mint, seasonOf } from "./graduating-seasons-setup";
-import { adminTokenOf, app, as, ctx, person, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  adminTokenOf,
+  app,
+  as,
+  ctx,
+  person,
+  seedEnrollmentFixtures,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 
 jest.setTimeout(180000);
 
@@ -16,7 +24,12 @@ const REASON = "Completed the program abroad";
 const columns = (id: number) =>
   db.user.findUniqueOrThrow({
     where: { id },
-    select: { graduationYear: true, graduationOverrideAt: true, graduationOverrideById: true, graduationOverrideReason: true },
+    select: {
+      graduationYear: true,
+      graduationOverrideAt: true,
+      graduationOverrideById: true,
+      graduationOverrideReason: true,
+    },
   });
 const detailOf = (id: number, token: string) => request(app).get(`/api/v1/students/${id}`).set(as(token));
 
@@ -40,14 +53,20 @@ describe("The reason for an exception", () => {
     const res = await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: `  ${REASON}  ` });
     expect(res.status).toBe(200);
     const row = await columns(student.id);
-    expect(row).toMatchObject({ graduationYear: 2025, graduationOverrideById: ctx.superId, graduationOverrideReason: REASON });
+    expect(row).toMatchObject({
+      graduationYear: 2025,
+      graduationOverrideById: ctx.superId,
+      graduationOverrideReason: REASON,
+    });
     expect(row.graduationOverrideAt).toBeInstanceOf(Date);
   });
 
   it("is audited as an override without its text", async () => {
     const student = await person("Quiet");
     const lines = await auditLines(async () => {
-      expect((await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: REASON })).status).toBe(200);
+      expect(
+        (await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: REASON })).status,
+      ).toBe(200);
     });
     expect(lines).toContain(`[audit] student.graduate actor=${ctx.superId} subject=${student.id} override=true`);
     expect(lines.join("\n")).not.toContain(REASON);
@@ -119,7 +138,10 @@ describe("A pass decides the class", () => {
     await finished(season, student.id, "PASSED");
     const res = await graduate(student.id, { graduationYear: 2025 });
     expect(res.status).toBe(409);
-    expect(res.body.error).toEqual({ code: "wrong_class", message: "Typed passed the 2024 season, so they're School of 2024." });
+    expect(res.body.error).toEqual({
+      code: "wrong_class",
+      message: "Typed passed the 2024 season, so they're School of 2024.",
+    });
     expect((await columns(student.id)).graduationYear).toBeNull();
   });
 

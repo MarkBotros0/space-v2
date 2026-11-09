@@ -22,12 +22,28 @@ const scope = { seasonIds: [], seasons: [], truncated: false, label: "x" };
 
 function riskRow(id: number, name: string, over: Record<string, unknown> = {}) {
   return {
-    score: 40, attendancePct: 50, submissionPct: 33, attendanceTotal: 4, attendancePresent: 2,
-    submissionsExpected: 3, submissionsCompleted: 1, studentUserId: id, name,
-    email: `${name}@x.test`, seasonId: 7, seasonTitle: "Season 7", band: "AT_RISK", ...over,
+    score: 40,
+    attendancePct: 50,
+    submissionPct: 33,
+    attendanceTotal: 4,
+    attendancePresent: 2,
+    submissionsExpected: 3,
+    submissionsCompleted: 1,
+    studentUserId: id,
+    name,
+    email: `${name}@x.test`,
+    seasonId: 7,
+    seasonTitle: "Season 7",
+    band: "AT_RISK",
+    ...over,
   };
 }
-const riskPage = (rows: unknown[], total: number, nextCursor: string | null = null) => ({ scope, rows, nextCursor, total });
+const riskPage = (rows: unknown[], total: number, nextCursor: string | null = null) => ({
+  scope,
+  rows,
+  nextCursor,
+  total,
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -81,7 +97,9 @@ describe("Sessions with no attendance", () => {
   });
 
   it("shows an empty state, and a retry when a read failed", async () => {
-    serveStaff(get, { table: staffRoutes({ "/api/v1/seasons/7/sessions": { sessions: [sessionRow(2, 7, 700, true)] } }) });
+    serveStaff(get, {
+      table: staffRoutes({ "/api/v1/seasons/7/sessions": { sessions: [sessionRow(2, 7, 700, true)] } }),
+    });
     const first = renderWithProviders(<AttentionSessionsScreen />);
     expect(await screen.findByText("Nothing to mark")).toBeTruthy();
     first.unmount();

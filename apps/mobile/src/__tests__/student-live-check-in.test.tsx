@@ -6,8 +6,7 @@ jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), post: jest.
 jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn() }),
-  useFocusEffect: (effect: () => void | (() => void)) =>
-    require("./helpers/focus-effect").useMockFocusEffect(effect),
+  useFocusEffect: (effect: () => void | (() => void)) => require("./helpers/focus-effect").useMockFocusEffect(effect),
 }));
 jest.mock("../design/layout/home-actions", () => {
   const { Text } = jest.requireActual("react-native");
@@ -48,9 +47,11 @@ const routes = (detail: unknown = closed, dashboard: unknown = studentDashboard)
 });
 
 const reads = (url: string) => requested().filter((u) => u === url).length;
-const tick = (ms: number) => act(async () => { await jest.advanceTimersByTimeAsync(ms); });
-const checkInDisabled = () =>
-  screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled;
+const tick = (ms: number) =>
+  act(async () => {
+    await jest.advanceTimersByTimeAsync(ms);
+  });
+const checkInDisabled = () => screen.getByRole("button", { name: "Check In" }).props.accessibilityState?.disabled;
 /** The next session's detail has answered: while check-in is closed there is no button to wait for. */
 const detailLoaded = async () => {
   await waitFor(() => expect(reads(NEXT_SESSION_DETAIL)).toBeGreaterThan(0));
@@ -219,7 +220,10 @@ describe("Today refreshes what has gone stale when it comes back", () => {
 
 describe("the pull's spinner belongs to the pull", () => {
   const control = () => screen.UNSAFE_getByType(ScrollView).props.refreshControl.props;
-  const pull = () => act(async () => { control().onRefresh(); });
+  const pull = () =>
+    act(async () => {
+      control().onRefresh();
+    });
 
   /** Serves the routes, except that one URL waits until told. */
   function hold(held: string) {
@@ -232,7 +236,9 @@ describe("the pull's spinner belongs to the pull", () => {
           ? Promise.resolve({ data: { data: routed[url] } })
           : Promise.reject(new Error(`not served: ${url}`)),
     );
-    return () => { for (const r of release.splice(0)) r(undefined); };
+    return () => {
+      for (const r of release.splice(0)) r(undefined);
+    };
   }
 
   it("a poll in flight doesn't raise it", async () => {
@@ -246,7 +252,10 @@ describe("the pull's spinner belongs to the pull", () => {
     // The read is out and still unanswered: let its state reach the screen.
     await tick(50);
     expect(control().refreshing).toBe(false);
-    await act(async () => { release(); await jest.advanceTimersByTimeAsync(0); });
+    await act(async () => {
+      release();
+      await jest.advanceTimersByTimeAsync(0);
+    });
   });
 
   it("a background read on resume doesn't raise it", async () => {
@@ -262,7 +271,10 @@ describe("the pull's spinner belongs to the pull", () => {
     await tick(50);
     expect(reads(EVENTS)).toBe(before + 1);
     expect(control().refreshing).toBe(false);
-    await act(async () => { release(); await jest.advanceTimersByTimeAsync(0); });
+    await act(async () => {
+      release();
+      await jest.advanceTimersByTimeAsync(0);
+    });
   });
 
   it("a pull raises it until every read has answered", async () => {
@@ -272,7 +284,10 @@ describe("the pull's spinner belongs to the pull", () => {
     const release = hold(NEXT_SESSION_DETAIL);
     await pull();
     expect(control().refreshing).toBe(true);
-    await act(async () => { release(); await jest.advanceTimersByTimeAsync(PULL_MIN_MS); });
+    await act(async () => {
+      release();
+      await jest.advanceTimersByTimeAsync(PULL_MIN_MS);
+    });
     expect(control().refreshing).toBe(false);
   });
 

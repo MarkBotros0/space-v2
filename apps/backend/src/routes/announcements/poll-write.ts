@@ -19,12 +19,7 @@ export async function createPollFor(tx: Tx, announcementId: number, input: PollI
 }
 
 /** Applies a plan from `planPollEdit`. Call it inside the transaction that read `current` under the lock. */
-async function applyPollEdit(
-  tx: Tx,
-  announcementId: number,
-  pollId: number | null,
-  plan: PollEdit,
-): Promise<void> {
+async function applyPollEdit(tx: Tx, announcementId: number, pollId: number | null, plan: PollEdit): Promise<void> {
   switch (plan.kind) {
     case "none":
     case "invalid":
@@ -71,9 +66,7 @@ async function applyUpdate(tx: Tx, pollId: number, plan: PollEditPlan): Promise<
 }
 
 export type PollEditOutcome =
-  | { kind: "ok"; pollChanged: boolean }
-  | { kind: "bad_options" }
-  | { kind: "votes_lost"; votes: number };
+  { kind: "ok"; pollChanged: boolean } | { kind: "bad_options" } | { kind: "votes_lost"; votes: number };
 
 /**
  * PATCH's poll part, inside the caller's transaction. Locks the post (so two

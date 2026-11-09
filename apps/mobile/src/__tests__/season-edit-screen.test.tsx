@@ -107,9 +107,7 @@ describe("SeasonEditScreen (/seasons/[code]/edit) — SUPER only", () => {
   it("refuses a non-SUPER without fetching", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     renderWithProviders(<SeasonEditScreen />);
-    expect(
-      await screen.findByText("Only a super admin can edit a season's identity."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Only a super admin can edit a season's identity.")).toBeTruthy();
     expect(get).not.toHaveBeenCalled();
   });
 });

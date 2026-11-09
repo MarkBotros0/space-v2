@@ -95,4 +95,3 @@ export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistor
     };
   });
 }
-

@@ -93,7 +93,11 @@ export async function loadSeasonStartCheck(
         continue;
       }
       const role = active.get(person.id);
-      const inRole = inRoleRefusal(person, { kind: seat, season: { id: season.id, status: AS_STARTED, isCommunityWide: season.isCommunityWide } }, role);
+      const inRole = inRoleRefusal(
+        person,
+        { kind: seat, season: { id: season.id, status: AS_STARTED, isCommunityWide: season.isCommunityWide } },
+        role,
+      );
       if (inRole) issue(inRole.code, inRole.message, role!.seasonCode);
 
       const led = groupsLed.get(person.id) ?? 0;

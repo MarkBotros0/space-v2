@@ -1,6 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CELLS, contactSheetHtml, flowTitle, flowsOfModule, parseArgs, parseNavOverlay, parseNightMode, parseWm, pick, redact, sheetName } from "../lib/sweep.mjs";
+import {
+  CELLS,
+  contactSheetHtml,
+  flowTitle,
+  flowsOfModule,
+  parseArgs,
+  parseNavOverlay,
+  parseNightMode,
+  parseWm,
+  pick,
+  redact,
+  sheetName,
+} from "../lib/sweep.mjs";
 
 test("the matrix is screen × font × nav × theme, 16 cells", () => {
   assert.equal(CELLS.length, 16);
@@ -17,12 +29,20 @@ test("pick takes prefixes, keeps matrix order, drops repeats", () => {
     "small-1.3-gesture-dark",
     "iphone-1.0-gesture-dark",
   ]);
-  assert.equal(pick(CELLS, null, (c) => c.id, "cell"), CELLS);
+  assert.equal(
+    pick(CELLS, null, (c) => c.id, "cell"),
+    CELLS,
+  );
   assert.throws(() => pick(CELLS, ["tablet"], (c) => c.id, "cell"), /No cell matches "tablet"/);
 });
 
 test("parseArgs rejects unknown flags", () => {
-  assert.deepEqual(parseArgs(["--cells=small", "--flows=s01,s02"]), { cells: ["small"], flows: ["s01", "s02"], into: null, module: null });
+  assert.deepEqual(parseArgs(["--cells=small", "--flows=s01,s02"]), {
+    cells: ["small"],
+    flows: ["s01", "s02"],
+    into: null,
+    module: null,
+  });
   assert.equal(parseArgs(["--module=leader"]).module, "leader");
   assert.throws(() => parseArgs(["--ai"]), /Unknown argument/);
 });
@@ -32,7 +52,9 @@ test("device-state parsers read adb output", () => {
   assert.equal(parseWm("Physical density: 480"), "480");
   assert.equal(parseNightMode("Night mode: yes"), "yes");
   assert.equal(
-    parseNavOverlay("com.android.internal.systemui.navbar.gestural\n    [ ] com.android.internal.systemui.navbar.threebutton\n    [x] com.android.internal.systemui.navbar.gestural"),
+    parseNavOverlay(
+      "com.android.internal.systemui.navbar.gestural\n    [ ] com.android.internal.systemui.navbar.threebutton\n    [x] com.android.internal.systemui.navbar.gestural",
+    ),
     "com.android.internal.systemui.navbar.gestural",
   );
 });
@@ -85,7 +107,10 @@ test("the contact sheet groups screens under their flow's title", () => {
   assert.match(html, /<tr class="flow" id="s02"><th colspan="2"><span>s02<\/span> Settings as a student/);
   assert.match(html, /<code>s01-01<\/code>sign in/);
   assert.match(html, /src="data:small-1.0-3btn-light\/s02-01-settings"/);
-  assert.equal(flowTitle("# UI sweep s04 — Season and calendar as a student. Read-only: nothing"), "Season and calendar as a student");
+  assert.equal(
+    flowTitle("# UI sweep s04 — Season and calendar as a student. Read-only: nothing"),
+    "Season and calendar as a student",
+  );
   assert.equal(flowTitle("# UI sweep 01 — the signed-out screens: sign in, forgot"), "The signed-out screens");
 });
 
@@ -101,7 +126,9 @@ test("flowsOfModule gives the student the flows beside the scenario folders, oth
   assert.deepEqual(flowsOfModule(FLOWS, "student"), FLOWS.slice(0, 3));
   assert.deepEqual(flowsOfModule(FLOWS, "leader"), ["leader-scenarios/s03-dashboard.yaml"]);
   assert.deepEqual(flowsOfModule(FLOWS, null), FLOWS);
-  assert.deepEqual(flowsOfModule(["leader-scenarios\\s03-dashboard.yaml"], "leader"), ["leader-scenarios\\s03-dashboard.yaml"]);
+  assert.deepEqual(flowsOfModule(["leader-scenarios\\s03-dashboard.yaml"], "leader"), [
+    "leader-scenarios\\s03-dashboard.yaml",
+  ]);
   assert.throws(() => flowsOfModule(FLOWS, "super"), /No sweep flows for module "super"/);
 });
 

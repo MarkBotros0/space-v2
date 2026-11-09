@@ -9,13 +9,7 @@
  */
 import { useEffect } from "react";
 import { StyleSheet, View, type DimensionValue } from "react-native";
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 
 import { cn } from "../lib/cn";
 import { useReducedMotion } from "../motion";

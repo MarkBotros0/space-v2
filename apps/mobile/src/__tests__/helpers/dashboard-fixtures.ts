@@ -10,9 +10,7 @@ export const EVENTS = "/api/v1/events?upcoming=true&limit=4";
 /** Answer exactly these URLs; anything else rejects, so a stray request shows up as a failure. */
 export function serve(routes: Record<string, unknown>) {
   get.mockImplementation((url: string) =>
-    url in routes
-      ? Promise.resolve({ data: { data: routes[url] } })
-      : Promise.reject(new Error(`not served: ${url}`)),
+    url in routes ? Promise.resolve({ data: { data: routes[url] } }) : Promise.reject(new Error(`not served: ${url}`)),
   );
 }
 export const requested = () => get.mock.calls.map(([url]) => url as string);

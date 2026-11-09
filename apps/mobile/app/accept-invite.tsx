@@ -63,10 +63,7 @@ export default function AcceptInviteScreen() {
 
   if (done) {
     return (
-      <AuthCard
-        title="Your account is ready"
-        description="Sign in with your email and the password you just chose."
-      >
+      <AuthCard title="Your account is ready" description="Sign in with your email and the password you just chose.">
         <Button size="lg" className="w-full" onPress={() => router.replace("/login")}>
           Go to sign in
         </Button>
@@ -75,10 +72,7 @@ export default function AcceptInviteScreen() {
   }
 
   return (
-    <AuthCard
-      title="Activate your account"
-      description="Enter the invite code from your email and choose a password."
-    >
+    <AuthCard title="Activate your account" description="Enter the invite code from your email and choose a password.">
       <View className="flex-col gap-4">
         {failure ? <AuthNotice tone="error">{failure}</AuthNotice> : null}
         <AuthField label="Invite code">
@@ -92,20 +86,10 @@ export default function AcceptInviteScreen() {
           />
         </AuthField>
         <AuthField label="Choose a password" error={passwordError ?? undefined}>
-          <PasswordInput
-            size="lg"
-            accessibilityLabel="Choose a password"
-            value={password}
-            onChangeText={setPassword}
-          />
+          <PasswordInput size="lg" accessibilityLabel="Choose a password" value={password} onChangeText={setPassword} />
         </AuthField>
         <AuthField label="Confirm password" error={confirmError ?? undefined}>
-          <PasswordInput
-            size="lg"
-            accessibilityLabel="Confirm password"
-            value={confirm}
-            onChangeText={setConfirm}
-          />
+          <PasswordInput size="lg" accessibilityLabel="Confirm password" value={confirm} onChangeText={setConfirm} />
         </AuthField>
         <Button
           size="lg"

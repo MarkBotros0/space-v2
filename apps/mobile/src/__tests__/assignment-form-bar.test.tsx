@@ -7,7 +7,13 @@ jest.mock("../lib/api-client", () => ({
 const mockBack = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: mockBack, dismissTo: jest.fn(), dismissAll: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: mockBack,
+    dismissTo: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
   useLocalSearchParams: () => mockParams,
 }));
 import { apiClient } from "../lib/api-client";
@@ -23,18 +29,49 @@ const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 
 const season = {
-  id: 7, code: "s7", title: "Spring 2099", program: "TEST", year: 2099, status: "ACTIVE" as const,
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+  id: 7,
+  code: "s7",
+  title: "Spring 2099",
+  program: "TEST",
+  year: 2099,
+  status: "ACTIVE" as const,
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
 };
 const group = (id: number, name: string) => ({
-  id, name, description: null, studentCount: 2, leaderNames: [], seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
+  id,
+  name,
+  description: null,
+  studentCount: 2,
+  leaderNames: [],
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
 });
 const detail = {
-  id: 55, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099", sessionId: null, sessionTitle: null,
-  title: "Essay one", description: "Write about the thing.", dueAt: "2099-04-01T21:59:00.000Z",
-  dueOrgDay: "2099-04-01", dueOrgTime: "23:59", isOverdue: false, isAllGroups: false, type: "STANDARD" as const,
-  forumMinWords: null, forumAllowComments: false, forumPostToRead: true, maxFileSizeMb: 10, allowedMimeCategories: ["pdf" as const],
-  groupIds: [3], mySubmission: null, canManage: true, readOnly: false,
+  id: 55,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
+  sessionId: null,
+  sessionTitle: null,
+  title: "Essay one",
+  description: "Write about the thing.",
+  dueAt: "2099-04-01T21:59:00.000Z",
+  dueOrgDay: "2099-04-01",
+  dueOrgTime: "23:59",
+  isOverdue: false,
+  isAllGroups: false,
+  type: "STANDARD" as const,
+  forumMinWords: null,
+  forumAllowComments: false,
+  forumPostToRead: true,
+  maxFileSizeMb: 10,
+  allowedMimeCategories: ["pdf" as const],
+  groupIds: [3],
+  mySubmission: null,
+  canManage: true,
+  readOnly: false,
 };
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
 function serve(extra: Record<string, unknown> = {}) {
@@ -42,7 +79,14 @@ function serve(extra: Record<string, unknown> = {}) {
     "/api/v1/seasons": { seasons: [season] },
     "/api/v1/seasons/7/groups": { groups: [group(3, "Group A"), group(4, "Group B")] },
     "/api/v1/seasons/7/sessions": { sessions: [] },
-    "/api/v1/assignments/55/tracker": { assignmentId: 55, dueAt: null, isOverdue: false, submittedCount: 0, expectedCount: 0, rows: [] },
+    "/api/v1/assignments/55/tracker": {
+      assignmentId: 55,
+      dueAt: null,
+      isOverdue: false,
+      submittedCount: 0,
+      expectedCount: 0,
+      rows: [],
+    },
     ...extra,
   };
   get.mockImplementation((url: string) =>

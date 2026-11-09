@@ -26,11 +26,23 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const detail: SessionDetail = {
-  id: 12, title: "Week 3", description: null,
-  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00", // required since Plan 6
-  durationMinutes: 90, location: "Hall B",
-  youtubeUrl: null, recurrenceGroupId: null, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
-  checkInOpen: true, myAttendance: null, canMarkAttendance: false, canManageCheckIn: false,
+  id: 12,
+  title: "Week 3",
+  description: null,
+  startsAt: "2099-03-15T18:00:00.000Z",
+  dayKey: "2099-03-15",
+  startTime: "20:00", // required since Plan 6
+  durationMinutes: 90,
+  location: "Hall B",
+  youtubeUrl: null,
+  recurrenceGroupId: null,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring",
+  checkInOpen: true,
+  myAttendance: null,
+  canMarkAttendance: false,
+  canManageCheckIn: false,
 };
 
 const refusal = (status: number, code: string) =>
@@ -263,11 +275,30 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
   });
 
   it("shows the season tally on the success moment", async () => {
-    const attended = { sessionId: 1, title: "A", startsAt: "2099-01-01T10:00:00.000Z", dayKey: "2099-01-01", startTime: "10:00", status: "PRESENT", checkedInAt: null, lateMinutes: null, costMinutes: null };
+    const attended = {
+      sessionId: 1,
+      title: "A",
+      startsAt: "2099-01-01T10:00:00.000Z",
+      dayKey: "2099-01-01",
+      startTime: "10:00",
+      status: "PRESENT",
+      checkedInAt: null,
+      lateMinutes: null,
+      costMinutes: null,
+    };
     get.mockImplementation((url: string) => {
       if (url === "/api/v1/sessions/12") return Promise.resolve({ data: { data: detail } });
       if (url === "/api/v1/me/attendance")
-        return Promise.resolve({ data: { data: { season: null, budget: null, streak: 1, sessions: [attended, { ...attended, sessionId: 2, status: "ABSENT" }] } } });
+        return Promise.resolve({
+          data: {
+            data: {
+              season: null,
+              budget: null,
+              streak: 1,
+              sessions: [attended, { ...attended, sessionId: 2, status: "ABSENT" }],
+            },
+          },
+        });
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });
     post.mockResolvedValue({ data: { data: { status: "PRESENT", minutesLate: 0 } } });
@@ -284,10 +315,19 @@ describe("Student check-in on session detail (spec 04 §9 rows 3, 7)", () => {
         return Promise.resolve({ data: { data: { ...detail, canMarkAttendance: true, canManageCheckIn: true } } });
       // Plan 6's staff cards: the console reads check-in state, the quiz card its quizzes.
       if (url === "/api/v1/sessions/12/check-in")
-        return Promise.resolve({ data: { data: {
-          state: "not_open", isOpen: false, checkInToken: null, checkInOpenAt: null,
-          checkInClosedAt: null, expiresAt: null, expiresAtTime: null,
-        } } });
+        return Promise.resolve({
+          data: {
+            data: {
+              state: "not_open",
+              isOpen: false,
+              checkInToken: null,
+              checkInOpenAt: null,
+              checkInClosedAt: null,
+              expiresAt: null,
+              expiresAtTime: null,
+            },
+          },
+        });
       if (url === "/api/v1/sessions/12/quizzes") return Promise.resolve({ data: { data: { quizzes: [] } } });
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });

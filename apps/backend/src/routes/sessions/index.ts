@@ -2,13 +2,7 @@ import { Router } from "express";
 
 import { requireAuth } from "../../middleware/require-auth";
 import { getAttendance, saveAttendance } from "./attendance";
-import {
-  closeCheckIn,
-  getCheckIn,
-  openCheckIn,
-  regenerateCheckIn,
-  studentCheckIn,
-} from "./check-in";
+import { closeCheckIn, getCheckIn, openCheckIn, regenerateCheckIn, studentCheckIn } from "./check-in";
 import { getSession, listSessionQuizzes, listSessions } from "./reads";
 import { createSession, deleteSession, previewSeries, updateSession } from "./schedule";
 

@@ -60,7 +60,10 @@ const ELEVATION_PROPS = new Set(["elevation", "boxShadow"]);
 
 /** Class names in a string, without variant prefixes (`dark:`, `active:`). */
 function classesOf(text: string): string[] {
-  return text.split(/[\s"'`]+/).map((c) => c.slice(c.lastIndexOf(":") + 1)).filter(Boolean);
+  return text
+    .split(/[\s"'`]+/)
+    .map((c) => c.slice(c.lastIndexOf(":") + 1))
+    .filter(Boolean);
 }
 
 function classRules(text: string): string[] {
@@ -141,7 +144,7 @@ describe("design consistency", () => {
       'const e = "rounded-full rounded-group rounded-t-control dark:rounded-none";',
       'const f = "rounded-2xl active:rounded-[16px] rounded";',
       'const g = "text-[9px] leading-[18px] text-caption text-sm";',
-      "const h = <View style={shadowStyle(\"soft\")} />;",
+      'const h = <View style={shadowStyle("soft")} />;',
       "const i = { elevation: 4, boxShadow: x };",
       'const j = "text-brand-teal-600 active:text-brand-teal-500 dark:text-brand-teal-400 text-brand-teal-700";',
     ].join("\n");

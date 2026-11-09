@@ -25,11 +25,7 @@ export default function QuizDetailScreen() {
   if (role === "LEADER" || role === "ADMIN" || role === "SUPER") return <StaffPreview id={id} />;
   return (
     <Screen>
-      <EmptyState
-        icon={NAV_ICONS.quizzes}
-        title="Quizzes"
-        description="This screen isn't available for your role."
-      />
+      <EmptyState icon={NAV_ICONS.quizzes} title="Quizzes" description="This screen isn't available for your role." />
     </Screen>
   );
 }

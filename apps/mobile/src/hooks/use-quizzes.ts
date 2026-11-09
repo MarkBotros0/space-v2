@@ -51,9 +51,7 @@ export function useQuizList(seasonId: number | null): UseQueryResult<QuizListPag
       let cursor: number | null = null;
       for (let i = 0; i < QUIZ_LIST_MAX_PAGES; i++) {
         const after: string = cursor === null ? "" : `&cursor=${cursor}`;
-        const res = await apiClient.get(
-          `/api/v1/quizzes?seasonId=${seasonId}&limit=${QUIZ_LIST_PAGE}${after}`,
-        );
+        const res = await apiClient.get(`/api/v1/quizzes?seasonId=${seasonId}&limit=${QUIZ_LIST_PAGE}${after}`);
         const page = quizListPageSchema.parse(res.data.data);
         items.push(...page.items);
         cursor = page.nextCursor;
@@ -73,9 +71,7 @@ export function useQuizList(seasonId: number | null): UseQueryResult<QuizListPag
  * shape and hide a role-routing bug. Same reasoning as Plan 1's
  * useStudentAssignments.
  */
-export function useStudentQuizList(
-  seasonId: number | null,
-): UseQueryResult<StudentQuizResult[]> {
+export function useStudentQuizList(seasonId: number | null): UseQueryResult<StudentQuizResult[]> {
   return useQuery({
     queryKey: [...queryKeys.quizzes.bySeason(seasonId), "student"] as const,
     queryFn: async () => {
@@ -86,9 +82,7 @@ export function useStudentQuizList(
   });
 }
 
-export function useStudentQuizDetail(
-  id: number | null,
-): UseQueryResult<StudentQuizDetail> {
+export function useStudentQuizDetail(id: number | null): UseQueryResult<StudentQuizDetail> {
   return useQuery({
     queryKey: [...queryKeys.quizzes.detail(id), "student"] as const,
     queryFn: async () => {
@@ -106,10 +100,7 @@ export function useStudentQuizDetail(
  * because the schemas are different types and the role decides which one the
  * server sends. Never call both from one screen.
  */
-export function useQuizAuthoringDetail(
-  id: number | null,
-  enabled: boolean,
-): UseQueryResult<QuizAuthoringDetail> {
+export function useQuizAuthoringDetail(id: number | null, enabled: boolean): UseQueryResult<QuizAuthoringDetail> {
   return useQuery({
     queryKey: [...queryKeys.quizzes.detail(id), "staff"] as const,
     queryFn: async () => {
@@ -171,9 +162,8 @@ export function useSaveAnswers(id: number) {
     // leaves and re-opens the quiz inside staleTime sees their saved answers
     // as blank. Hook-level, so it still runs for a flush fired on unmount.
     onSuccess: (_result, answers) => {
-      queryClient.setQueryData<StudentQuizDetail>(
-        [...queryKeys.quizzes.detail(id), "student"],
-        (old) => mergeSavedAnswers(old, answers),
+      queryClient.setQueryData<StudentQuizDetail>([...queryKeys.quizzes.detail(id), "student"], (old) =>
+        mergeSavedAnswers(old, answers),
       );
     },
   });
@@ -198,10 +188,7 @@ export function useSubmitAttempt(id: number) {
   });
 }
 
-export function useQuizGradeSheet(
-  id: number | null,
-  enabled: boolean,
-): UseQueryResult<QuizGradeSheet> {
+export function useQuizGradeSheet(id: number | null, enabled: boolean): UseQueryResult<QuizGradeSheet> {
   return useQuery({
     queryKey: queryKeys.quizzes.grades(id),
     queryFn: async () => {
@@ -271,10 +258,7 @@ export function flattenGradingPages(pages: QuizGradingPage[]): {
   const waiting = pages.flatMap((p) => p.waiting);
   return {
     items: pages.flatMap((p) => p.items),
-    waiting: [
-      ...waiting.filter((w) => w.startedAt !== null),
-      ...waiting.filter((w) => w.startedAt === null),
-    ],
+    waiting: [...waiting.filter((w) => w.startedAt !== null), ...waiting.filter((w) => w.startedAt === null)],
   };
 }
 
@@ -283,14 +267,10 @@ export function useGradeEssays(id: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (input: {
-      attemptId: number;
-      awards: { questionId: number; points: number }[];
-    }) => {
-      const res = await apiClient.post(
-        `/api/v1/quizzes/${id}/attempts/${input.attemptId}/grade`,
-        { awards: input.awards },
-      );
+    mutationFn: async (input: { attemptId: number; awards: { questionId: number; points: number }[] }) => {
+      const res = await apiClient.post(`/api/v1/quizzes/${id}/attempts/${input.attemptId}/grade`, {
+        awards: input.awards,
+      });
       return quizGradingAttemptSchema.parse(res.data.data);
     },
     onSuccess: () => {

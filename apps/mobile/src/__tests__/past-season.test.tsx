@@ -80,11 +80,17 @@ describe("past season page", () => {
   it("opens each list", async () => {
     renderStacked(<PastSeasonScreen />);
     fireEvent.press(await screen.findByText("Assignments (2)"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/past-season/[seasonId]/assignments", params: { seasonId: "5" } });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/past-season/[seasonId]/assignments",
+      params: { seasonId: "5" },
+    });
     fireEvent.press(screen.getByText("Quizzes (2)"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/past-season/[seasonId]/quizzes", params: { seasonId: "5" } });
     fireEvent.press(screen.getByText("Attendance (2 sessions)"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/past-season/[seasonId]/attendance", params: { seasonId: "5" } });
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/past-season/[seasonId]/attendance",
+      params: { seasonId: "5" },
+    });
   });
 
   it("offers retry on error", async () => {

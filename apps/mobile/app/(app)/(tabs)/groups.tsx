@@ -6,15 +6,8 @@ import { SEASON_GROUPS_ROLES } from "../../../src/hooks/use-group-admin";
 import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../src/design/layout/shell-frame";
-import {
-  Card,
-  EmptyState,
-  Text,
-} from "../../../src/design/ui";
-import {
-  MY_GROUPS_ROLES,
-  useMyGroups,
-} from "../../../src/hooks/use-groups";
+import { Card, EmptyState, Text } from "../../../src/design/ui";
+import { MY_GROUPS_ROLES, useMyGroups } from "../../../src/hooks/use-groups";
 import { AdminGroups } from "../../../src/screens/groups-admin";
 import { LeaderGroups } from "../../../src/screens/leader-groups";
 import { useSessionStore } from "../../../src/store/session";
@@ -22,10 +15,7 @@ import { useSessionStore } from "../../../src/store/session";
 function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string }) {
   const router = useRouter();
   return (
-    <Card
-      className="p-4"
-      onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(group.id) } })}
-    >
+    <Card className="p-4" onPress={() => router.push({ pathname: "/group/[id]", params: { id: String(group.id) } })}>
       <Text className="text-lg font-semibold">{group.name}</Text>
       <Text className="text-sm font-medium text-muted-foreground">{subtitle}</Text>
     </Card>
@@ -42,19 +32,11 @@ function MyGroups() {
       ) : isError ? (
         <RouteError onRetry={() => void refetch()} />
       ) : data.length === 0 ? (
-        <EmptyState
-          icon={NAV_ICONS.groups}
-          title="No groups"
-          description="You aren't in any groups yet."
-        />
+        <EmptyState icon={NAV_ICONS.groups} title="No groups" description="You aren't in any groups yet." />
       ) : (
         <View className="flex-col gap-2">
           {data.map((group) => (
-            <GroupRow
-              key={group.id}
-              group={group}
-              subtitle={`${group.seasonTitle} · ${group.studentCount} students`}
-            />
+            <GroupRow key={group.id} group={group} subtitle={`${group.seasonTitle} · ${group.studentCount} students`} />
           ))}
         </View>
       )}
@@ -70,11 +52,7 @@ export default function GroupsScreen() {
   // MENTOR: no /groups in its nav, reachable by deep link (spec 05 §9).
   return (
     <ShellFrame>
-      <EmptyState
-        icon={NAV_ICONS.groups}
-        title="Groups"
-        description="Groups aren't available for your role."
-      />
+      <EmptyState icon={NAV_ICONS.groups} title="Groups" description="Groups aren't available for your role." />
     </ShellFrame>
   );
 }

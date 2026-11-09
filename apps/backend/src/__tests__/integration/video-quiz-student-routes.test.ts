@@ -21,7 +21,8 @@ let adminToken: string;
 let leaderToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, sessionId, q1, q2, q3, studentId, studentToken, droppedToken, adminToken, leaderToken } = await seedVideoQuizFixtures(app));
+  ({ seasonId, sessionId, q1, q2, q3, studentId, studentToken, droppedToken, adminToken, leaderToken } =
+    await seedVideoQuizFixtures(app));
 });
 
 beforeEach(() => resetAnswers(sessionId));

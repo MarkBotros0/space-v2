@@ -26,7 +26,10 @@ describe("dashboard invalidation (spec 19 §7, D24)", () => {
     const key = queryKeys.dashboard.me(7);
     client.setQueryData(key, { stub: true });
 
-    await client.getMutationCache().build(client, { mutationFn: async () => "ok" }).execute(undefined);
+    await client
+      .getMutationCache()
+      .build(client, { mutationFn: async () => "ok" })
+      .execute(undefined);
     expect(client.getQueryState(key)?.isInvalidated).toBe(false);
 
     await client

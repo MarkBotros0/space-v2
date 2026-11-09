@@ -51,14 +51,23 @@ const detail = (enrollments: ReturnType<typeof enrollment>[]) => ({
   currentGroup: null,
   enrollments,
   profile: {
-    university: null, faculty: null, universityGraduationYear: null,
-    activeSeasonId: 7, activeSeasonTitle: "Spring 2099", activeSeasonCode: "S7",
-    phone: null, dateOfBirth: null, notes: null,
+    university: null,
+    faculty: null,
+    universityGraduationYear: null,
+    activeSeasonId: 7,
+    activeSeasonTitle: "Spring 2099",
+    activeSeasonCode: "S7",
+    phone: null,
+    dateOfBirth: null,
+    notes: null,
   },
 });
 
 const refusal = (code: string, message: string) =>
-  Object.assign(new Error(message), { isAxiosError: true, response: { status: 409, data: { error: { code, message } } } });
+  Object.assign(new Error(message), {
+    isAxiosError: true,
+    response: { status: 409, data: { error: { code, message } } },
+  });
 
 async function openSeasons() {
   fireEvent.press(await screen.findByText("Seasons"));
@@ -84,7 +93,6 @@ describe("Bring back", () => {
     renderWithProviders(<StudentDetailScreen />);
     await openSeasons();
     expect(screen.getAllByText("Bring back")).toHaveLength(1);
-
   });
 
   it("is absent for an admin", async () => {
@@ -105,9 +113,7 @@ describe("Bring back", () => {
     const reads = get.mock.calls.length;
     fireEvent.press(screen.getAllByText("Bring back")[1]!);
 
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/students/21/enrollments/7/restore", {}),
-    );
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/students/21/enrollments/7/restore", {}));
     await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(reads));
     expect(toast.success).toHaveBeenCalled();
   });
@@ -146,7 +152,9 @@ describe("Bring back", () => {
   it("Cancel in the not-eligible state clears it, so the next row starts fresh", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     get.mockResolvedValue({
-      data: { data: detail([enrollment(7, "Spring 2099", "WITHDRAWN"), enrollment(10, "Winter 2099", "WITHDRAWN", "DRAFT")]) },
+      data: {
+        data: detail([enrollment(7, "Spring 2099", "WITHDRAWN"), enrollment(10, "Winter 2099", "WITHDRAWN", "DRAFT")]),
+      },
     });
     post.mockRejectedValueOnce(refusal("not_eligible", "Sara hasn't passed GBV"));
     renderWithProviders(<StudentDetailScreen />);

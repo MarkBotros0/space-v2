@@ -12,7 +12,11 @@ const app = createApp();
 
 const auth = (t: string) => ({ authorization: `Bearer ${t}` });
 const mint = async (userId: number) => (await signAccessToken({ userId, ...(await loadScopes(userId)) })).token;
-const post = (path: string, t: string, body: unknown) => request(app).post(`/api/v1${path}`).set(auth(t)).send(body as object);
+const post = (path: string, t: string, body: unknown) =>
+  request(app)
+    .post(`/api/v1${path}`)
+    .set(auth(t))
+    .send(body as object);
 const get = (path: string, t: string) => request(app).get(`/api/v1${path}`).set(auth(t));
 
 let seasonId: number;
@@ -46,7 +50,12 @@ describe("ending a community-wide season", () => {
   it("shows each student's class on the end-check", async () => {
     const res = await get(`/seasons/${seasonId}/end-check`, superToken);
     expect(res.status).toBe(200);
-    const byId = new Map(res.body.data.students.map((s: { userId: number; graduationYear: number | null }) => [s.userId, s.graduationYear]));
+    const byId = new Map(
+      res.body.data.students.map((s: { userId: number; graduationYear: number | null }) => [
+        s.userId,
+        s.graduationYear,
+      ]),
+    );
     expect(byId.get(alumnus.id)).toBe(2025);
     expect(byId.get(plain.id)).toBeNull();
   });
@@ -59,7 +68,10 @@ describe("ending a community-wide season", () => {
     });
     expect(res.status).toBe(200);
     expect(res.body.data.graduated).toBe(0);
-    const users = await db.user.findMany({ where: { id: { in: [alumnus.id, failed.id, plain.id] } }, select: { id: true, graduationYear: true, role: true, sessionsValidFrom: true } });
+    const users = await db.user.findMany({
+      where: { id: { in: [alumnus.id, failed.id, plain.id] } },
+      select: { id: true, graduationYear: true, role: true, sessionsValidFrom: true },
+    });
     const of = (id: number) => users.find((u) => u.id === id)!;
     expect(of(alumnus.id).graduationYear).toBe(2025);
     expect(of(failed.id).graduationYear).toBe(2024);
@@ -84,6 +96,8 @@ describe("ending a community-wide season", () => {
       .send({ result: "PASSED", reason: null });
     expect(back.status).toBe(200);
     expect(back.body.data.graduated).toBe(false);
-    expect((await db.user.findUniqueOrThrow({ where: { id: plain.id }, select: { graduationYear: true } })).graduationYear).toBeNull();
+    expect(
+      (await db.user.findUniqueOrThrow({ where: { id: plain.id }, select: { graduationYear: true } })).graduationYear,
+    ).toBeNull();
   });
 });

@@ -38,11 +38,7 @@ export function activeTabRoute(current: string | undefined, tabRoutes: string[])
  * navigation object, so a tab's route name is looked up in the navigator
  * state for its key.
  */
-export function PillTabBar({
-  items,
-  state,
-  navigateToTab,
-}: BottomTabBarProps & { items: NavItem[] }) {
+export function PillTabBar({ items, state, navigateToTab }: BottomTabBarProps & { items: NavItem[] }) {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   // A screen reader keeps the pill up (M7): VoiceOver could otherwise focus a
@@ -106,9 +102,7 @@ export function PillTabBar({
     shownValue.value = withTiming(visible ? 1 : 0, { duration: DURATION.base });
   }, [visible, shownValue]);
   const slide = useAnimatedStyle(() =>
-    reduced
-      ? { opacity: shownValue.value }
-      : { transform: [{ translateY: (1 - shownValue.value) * hideBy }] },
+    reduced ? { opacity: shownValue.value } : { transform: [{ translateY: (1 - shownValue.value) * hideBy }] },
   );
 
   return (
@@ -145,9 +139,7 @@ export function PillTabBar({
                 onLayout={(e) => {
                   const { x, width } = e.nativeEvent.layout;
                   setLayouts((prev) =>
-                    prev[name]?.x === x && prev[name]?.width === width
-                      ? prev
-                      : { ...prev, [name]: { x, width } },
+                    prev[name]?.x === x && prev[name]?.width === width ? prev : { ...prev, [name]: { x, width } },
                   );
                 }}
                 onPress={() => {

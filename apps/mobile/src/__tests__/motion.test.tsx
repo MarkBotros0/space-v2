@@ -1,6 +1,13 @@
 import { renderHook, act } from "@testing-library/react-native";
 import * as Haptics from "expo-haptics";
-import { DURATION, PRESS_OPACITY, haptic, setReducedMotionForTests, useReducedMotion, usePressDim } from "../design/motion";
+import {
+  DURATION,
+  PRESS_OPACITY,
+  haptic,
+  setReducedMotionForTests,
+  useReducedMotion,
+  usePressDim,
+} from "../design/motion";
 
 const mockWithTiming = jest.fn((to: number) => to);
 

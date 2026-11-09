@@ -12,7 +12,9 @@ describe("announcement contracts", () => {
 
   it("accepts valid community and season posts and trims", () => {
     expect(createAnnouncementRequestSchema.parse({ ...ok, body: "  Hi  " }).body).toBe("Hi");
-    expect(createAnnouncementRequestSchema.safeParse({ audience: "SEASON", seasonId: 3, body: "b" }).success).toBe(true);
+    expect(createAnnouncementRequestSchema.safeParse({ audience: "SEASON", seasonId: 3, body: "b" }).success).toBe(
+      true,
+    );
   });
 
   it("has no title: a post sending one is refused", () => {

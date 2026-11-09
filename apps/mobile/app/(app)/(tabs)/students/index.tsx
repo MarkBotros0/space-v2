@@ -27,9 +27,7 @@ export default function StudentsScreen() {
       allowedRoles={["SUPER", "ADMIN", "MENTOR", "LEADER"]}
       title={isMentor ? "Community" : "Students"}
       // Creation is SUPER-only (Plan 7's POST /students).
-      headerAction={
-        isSuper ? <Button onPress={() => router.push("/students/new")}>New student</Button> : null
-      }
+      headerAction={isSuper ? <Button onPress={() => router.push("/students/new")}>New student</Button> : null}
     />
   );
 }

@@ -18,9 +18,19 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
   it("a long note body has no line cap", () => {
     mockNotes.current = [
       {
-        id: 1, body: LONG, visibility: "MENTORS", followUpFlagged: false,
-        createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", edited: false,
-        authorId: 2, authorName: "Mina", authorRole: "MENTOR", seasonId: null, seasonTitle: null, canEdit: false,
+        id: 1,
+        body: LONG,
+        visibility: "MENTORS",
+        followUpFlagged: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        edited: false,
+        authorId: 2,
+        authorName: "Mina",
+        authorRole: "MENTOR",
+        seasonId: null,
+        seasonTitle: null,
+        canEdit: false,
       },
     ];
     render(<GroupedNotesTab studentId={1} canWriteNote={false} onWrite={() => {}} />);
@@ -30,9 +40,19 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
   it("a note's byline names the author's role in words, not the enum", () => {
     mockNotes.current = [
       {
-        id: 1, body: "Body", visibility: "MENTORS", followUpFlagged: false,
-        createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z", edited: false,
-        authorId: 2, authorName: "Mina", authorRole: "MENTOR", seasonId: null, seasonTitle: null, canEdit: false,
+        id: 1,
+        body: "Body",
+        visibility: "MENTORS",
+        followUpFlagged: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        edited: false,
+        authorId: 2,
+        authorName: "Mina",
+        authorRole: "MENTOR",
+        seasonId: null,
+        seasonTitle: null,
+        canEdit: false,
       },
     ];
     render(<GroupedNotesTab studentId={1} canWriteNote={false} onWrite={() => {}} />);
@@ -40,11 +60,7 @@ describe("grouped tabs read free text in full (I1, M2)", () => {
   });
 
   it("a long profile value has no line cap", () => {
-    render(
-      <StudentDetails
-        profile={{ university: "AUC", faculty: LONG, universityGraduationYear: null } as never}
-      />,
-    );
+    render(<StudentDetails profile={{ university: "AUC", faculty: LONG, universityGraduationYear: null } as never} />);
     expect(screen.getByText(LONG).props.numberOfLines).toBeUndefined();
   });
 });
@@ -62,11 +78,7 @@ describe("Academic rows", () => {
   });
 
   it("no longer renders the dropped gifts or spiritual background rows", () => {
-    render(
-      <StudentDetails
-        profile={{ university: "AUC", faculty: null, universityGraduationYear: null } as never}
-      />,
-    );
+    render(<StudentDetails profile={{ university: "AUC", faculty: null, universityGraduationYear: null } as never} />);
     expect(screen.queryByText("Gifts / interests")).toBeNull();
     expect(screen.queryByText("Spiritual background")).toBeNull();
   });
@@ -79,8 +91,14 @@ describe("Seasons row (M1)", () => {
       <GroupedSeasonsTab
         enrollments={[
           {
-            enrollmentId: 1, seasonTitle: "Season", startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-06-01T00:00:00.000Z",
-            groupName: "G", dropReason: LONG, status: "WITHDRAWN", attendancePct: null,
+            enrollmentId: 1,
+            seasonTitle: "Season",
+            startDate: "2026-01-01T00:00:00.000Z",
+            endDate: "2026-06-01T00:00:00.000Z",
+            groupName: "G",
+            dropReason: LONG,
+            status: "WITHDRAWN",
+            attendancePct: null,
           } as never,
         ]}
       />,
@@ -95,8 +113,14 @@ describe("Seasons row (M1)", () => {
       <GroupedSeasonsTab
         enrollments={[
           {
-            enrollmentId: 1, seasonTitle: "Season", startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-06-01T00:00:00.000Z",
-            groupName: "Group A", dropReason: null, status: "ACTIVE", attendancePct: null,
+            enrollmentId: 1,
+            seasonTitle: "Season",
+            startDate: "2026-01-01T00:00:00.000Z",
+            endDate: "2026-06-01T00:00:00.000Z",
+            groupName: "Group A",
+            dropReason: null,
+            status: "ACTIVE",
+            attendancePct: null,
           } as never,
         ]}
       />,

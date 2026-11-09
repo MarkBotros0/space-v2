@@ -48,7 +48,15 @@ export function FormScreen({
       back={back}
       onRefresh={onRefresh}
       refreshing={refreshing}
-      footer={<SaveBar label={saveLabel} onPress={onSave} loading={saving} disabled={saveDisabled || disabled} hint={saveHint} />}
+      footer={
+        <SaveBar
+          label={saveLabel}
+          onPress={onSave}
+          loading={saving}
+          disabled={saveDisabled || disabled}
+          hint={saveHint}
+        />
+      }
     >
       {children}
     </Screen>

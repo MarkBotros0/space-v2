@@ -30,7 +30,12 @@ const app = createApp();
 const tokenFor = async (role: "STUDENT" | "SUPER") =>
   (
     await signAccessToken({
-      userId: 7, role, seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null,
+      userId: 7,
+      role,
+      seasonAdminIds: [],
+      groupLeaderIds: [],
+      activeSeasonId: null,
+      graduationYear: null,
     })
   ).token;
 
@@ -41,11 +46,16 @@ beforeEach(() => {
 
 describe("DELETE /api/v1/me", () => {
   it("soft-deletes the caller, drops their devices and ends every session", async () => {
-    const res = await request(app).delete("/api/v1/me").set({ authorization: `Bearer ${await tokenFor("STUDENT")}` });
+    const res = await request(app)
+      .delete("/api/v1/me")
+      .set({ authorization: `Bearer ${await tokenFor("STUDENT")}` });
     expect(res.status).toBe(200);
     expect(res.body.data.deletedAt).toEqual(expect.any(String));
     expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 7 }, data: { deletedAt: expect.any(Date) } });
-    expect(tx.studentProfile.updateMany).toHaveBeenCalledWith({ where: { userId: 7 }, data: { deletedAt: expect.any(Date) } });
+    expect(tx.studentProfile.updateMany).toHaveBeenCalledWith({
+      where: { userId: 7 },
+      data: { deletedAt: expect.any(Date) },
+    });
     expect(tx.deviceToken.deleteMany).toHaveBeenCalledWith({ where: { userId: 7 } });
     expect(revokeAllRefreshTokensForUser).toHaveBeenCalledWith(tx, 7);
     expect(invalidateSessions).toHaveBeenCalledWith(tx, 7);
@@ -55,7 +65,9 @@ describe("DELETE /api/v1/me", () => {
     tx.user.findUnique.mockResolvedValue({ role: "SUPER", deletedAt: null });
     (lockActiveSuperIds as jest.Mock).mockResolvedValue([7]);
     (isLastActiveSuper as jest.Mock).mockReturnValue(true);
-    const res = await request(app).delete("/api/v1/me").set({ authorization: `Bearer ${await tokenFor("SUPER")}` });
+    const res = await request(app)
+      .delete("/api/v1/me")
+      .set({ authorization: `Bearer ${await tokenFor("SUPER")}` });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("last_super");
     expect(tx.user.update).not.toHaveBeenCalled();

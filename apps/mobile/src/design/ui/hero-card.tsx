@@ -19,7 +19,13 @@ type HeroTone = "surface" | "brand";
  * `onTitlePress` makes the title a link to the thing it names, with a chevron; the action stays its own control.
  */
 function HeroCard({
-  eyebrow, title, meta, action, className, tone = "surface", onTitlePress,
+  eyebrow,
+  title,
+  meta,
+  action,
+  className,
+  tone = "surface",
+  onTitlePress,
 }: {
   eyebrow: string;
   title: string;
@@ -31,7 +37,11 @@ function HeroCard({
 }) {
   const brand = tone === "brand";
   const titleText = (
-    <Text variant="title" numberOfLines={brand ? undefined : 2} className={cn(onTitlePress && "min-w-0 flex-1", brand && "text-hero-foreground")}>
+    <Text
+      variant="title"
+      numberOfLines={brand ? undefined : 2}
+      className={cn(onTitlePress && "min-w-0 flex-1", brand && "text-hero-foreground")}
+    >
       {title}
     </Text>
   );
@@ -51,7 +61,10 @@ function HeroCard({
           className="min-h-[44px] flex-row items-center gap-1"
         >
           {titleText}
-          <ChevronRight size={20} className={cn("shrink-0", brand ? "text-hero-foreground" : "text-muted-foreground")} />
+          <ChevronRight
+            size={20}
+            className={cn("shrink-0", brand ? "text-hero-foreground" : "text-muted-foreground")}
+          />
         </Pressable>
       ) : (
         titleText

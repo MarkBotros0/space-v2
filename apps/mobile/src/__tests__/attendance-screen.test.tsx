@@ -27,17 +27,44 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const sessionDetail = {
-  id: 12, title: "Week three", description: null, startsAt: "2099-03-01T18:00:00.000Z",
-  dayKey: "2099-03-01", startTime: "20:00", durationMinutes: 90, location: null, youtubeUrl: null,
-  recurrenceGroupId: null, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
-  checkInOpen: false, myAttendance: null, canMarkAttendance: true, canManageCheckIn: false,
+  id: 12,
+  title: "Week three",
+  description: null,
+  startsAt: "2099-03-01T18:00:00.000Z",
+  dayKey: "2099-03-01",
+  startTime: "20:00",
+  durationMinutes: 90,
+  location: null,
+  youtubeUrl: null,
+  recurrenceGroupId: null,
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
+  checkInOpen: false,
+  myAttendance: null,
+  canMarkAttendance: true,
+  canManageCheckIn: false,
 };
 
 const roster = [
-  { studentUserId: 9, name: "Test student", email: "s@jpc.test", groupName: "Group A",
-    status: null, notes: null, lateMinutes: null },
-  { studentUserId: 10, name: "Second student", email: "s2@jpc.test", groupName: "Group A",
-    status: "PRESENT", notes: "Checked in at the gate", lateMinutes: null },
+  {
+    studentUserId: 9,
+    name: "Test student",
+    email: "s@jpc.test",
+    groupName: "Group A",
+    status: null,
+    notes: null,
+    lateMinutes: null,
+  },
+  {
+    studentUserId: 10,
+    name: "Second student",
+    email: "s2@jpc.test",
+    groupName: "Group A",
+    status: "PRESENT",
+    notes: "Checked in at the gate",
+    lateMinutes: null,
+  },
 ];
 
 beforeEach(() => {
@@ -100,7 +127,10 @@ it("on success buzzes, toasts and goes back", async () => {
 
 it("on a failed save shows the message, stays, and does not buzz", async () => {
   post.mockRejectedValue(
-    Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } } }),
+    Object.assign(new Error("400"), {
+      isAxiosError: true,
+      response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } },
+    }),
   );
   renderStacked(<AttendanceScreen />);
   fireEvent.press(await screen.findByLabelText("Mark Test student PRESENT"));

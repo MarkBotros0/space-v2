@@ -29,26 +29,14 @@ function AuthoredNotesScreen({ role }: { role: UserRole | null }) {
   const isTab = useSessionStore((s) => s.nav()?.tabs.some((t) => t.href === "/notes") ?? false);
   const back = isTab ? undefined : BACK_TO_PREVIOUS;
   const canAuthor = role !== null && role !== "STUDENT";
-  const {
-    data,
-    isPending,
-    isError,
-    refetch,
-    isRefetching,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useAuthoredNotes(canAuthor);
+  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useAuthoredNotes(canAuthor);
   const notes = flattenNotePages(data?.pages);
 
   if (!canAuthor) {
     return (
       <Screen back={back}>
-        <EmptyState
-          icon={Flag}
-          title="Notes"
-          description="This screen is for staff who write pastoral notes."
-        />
+        <EmptyState icon={Flag} title="Notes" description="This screen is for staff who write pastoral notes." />
       </Screen>
     );
   }

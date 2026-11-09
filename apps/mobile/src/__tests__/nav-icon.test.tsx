@@ -81,7 +81,14 @@ it("the More page draws its rows from the same icon map as the tab bar", () => {
     ],
   };
   renderWithProviders(
-    <MoreMenu role="ADMIN" userName="A B" nav={nav} onNavigate={jest.fn()} onSignOut={jest.fn()} onOpenProfile={jest.fn()} />,
+    <MoreMenu
+      role="ADMIN"
+      userName="A B"
+      nav={nav}
+      onNavigate={jest.fn()}
+      onSignOut={jest.fn()}
+      onOpenProfile={jest.fn()}
+    />,
   );
   expect(screen.UNSAFE_queryAllByType(History)).toHaveLength(1);
   expect(screen.UNSAFE_queryAllByType(UsersRound)).toHaveLength(1);

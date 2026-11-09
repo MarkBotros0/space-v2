@@ -1,9 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  assignmentDeletedResponseSchema,
-  assignmentDetailSchema,
-  type AssignmentWriteRequest,
-} from "@space/shared";
+import { assignmentDeletedResponseSchema, assignmentDetailSchema, type AssignmentWriteRequest } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";

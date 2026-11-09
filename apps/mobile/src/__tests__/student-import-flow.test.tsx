@@ -16,13 +16,7 @@ import { renderWithProviders } from "./helpers/render";
 
 import ImportScreen from "../../app/(app)/users/import";
 
-import {
-  chooseSeason,
-  previewBody,
-  seasons,
-  superSession,
-  template,
-} from "./helpers/student-import-fixtures";
+import { chooseSeason, previewBody, seasons, superSession, template } from "./helpers/student-import-fixtures";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -41,10 +35,7 @@ describe("ImportScreen — step 2, preview", () => {
     post.mockResolvedValue(body);
     renderWithProviders(<ImportScreen />);
     await chooseSeason();
-    fireEvent.changeText(
-      screen.getByLabelText("Paste your spreadsheet"),
-      "name\temail\nA\ta@jpc.test",
-    );
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/\d+ new · /);
   }
@@ -219,10 +210,7 @@ describe("ImportScreen — step 3, result", () => {
 
     renderWithProviders(<ImportScreen />);
     await chooseSeason();
-    fireEvent.changeText(
-      screen.getByLabelText("Paste your spreadsheet"),
-      "name\temail\nA\ta@jpc.test",
-    );
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/1 new · /);
     fireEvent.press(screen.getByText("Import 1 student"));
@@ -245,10 +233,7 @@ describe("ImportScreen — step 3, result", () => {
 
     renderWithProviders(<ImportScreen />);
     await chooseSeason();
-    fireEvent.changeText(
-      screen.getByLabelText("Paste your spreadsheet"),
-      "name\temail\nA\ta@jpc.test",
-    );
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/1 new · /);
     fireEvent.press(screen.getByText("Import 1 student"));
@@ -268,10 +253,7 @@ describe("ImportScreen — alumni mode and the way out", () => {
     fireEvent.press(await screen.findByText("Alumni"));
     expect(screen.queryByLabelText("Season")).toBeNull();
     fireEvent.changeText(screen.getByLabelText("Graduation year"), "2020");
-    fireEvent.changeText(
-      screen.getByLabelText("Paste your spreadsheet"),
-      "name\temail\nA\ta@jpc.test",
-    );
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/1 new · /);
     fireEvent.press(screen.getByText("Import 1 student"));

@@ -6,13 +6,7 @@ import { createQuiz, updateQuiz } from "./authoring";
 import { getQuiz } from "./detail";
 import { listQuizzes } from "./list";
 import { getGradeSheet, saveGrades } from "./paper-grades";
-import {
-  addQuestion,
-  deleteQuestion,
-  publishQuiz,
-  reorderQuestions,
-  updateQuestion,
-} from "./questions";
+import { addQuestion, deleteQuestion, publishQuiz, reorderQuestions, updateQuestion } from "./questions";
 import { saveAttemptAnswers, startAttempt, submitAttempt } from "./attempts";
 import { releaseQuizResults } from "./release";
 

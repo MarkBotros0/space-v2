@@ -21,8 +21,7 @@ let draftSeasonId: number;
 let draftAdminToken: string;
 
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
-const post = (token: string, body: object) =>
-  request(app).post("/api/v1/announcements").set(as(token)).send(body);
+const post = (token: string, body: object) => request(app).post("/api/v1/announcements").set(as(token)).send(body);
 const seasonBody = (seasonId: number, extra: object = {}) => ({
   audience: "SEASON",
   seasonId,
@@ -141,7 +140,10 @@ describe("PATCH and DELETE /announcements/:id", () => {
     expect(e.status).toBe(403);
     const d = await request(app).delete(`/api/v1/announcements/${id}`).set(as(f.tokens.student));
     expect(d.status).toBe(403);
-    const hidden = await request(app).patch(`/api/v1/announcements/${id}`).set(as(f.tokens.otherStudent)).send({ body: "x" });
+    const hidden = await request(app)
+      .patch(`/api/v1/announcements/${id}`)
+      .set(as(f.tokens.otherStudent))
+      .send({ body: "x" });
     expect(hidden.status).toBe(404);
   });
 
@@ -172,7 +174,9 @@ describe("PATCH and DELETE /announcements/:id", () => {
   it("super deletes a finished season's post, its author cannot", async () => {
     const author = await createTestUser("announcefinauthor", "STUDENT");
     await db.studentProfile.create({ data: { userId: author.id } });
-    await db.seasonEnrollment.create({ data: { seasonId: f.finishedSeasonId, studentUserId: author.id, status: "COMPLETED" } });
+    await db.seasonEnrollment.create({
+      data: { seasonId: f.finishedSeasonId, studentUserId: author.id, status: "COMPLETED" },
+    });
     const authored = await insertPost({ audience: "SEASON", seasonId: f.finishedSeasonId, authorId: author.id });
     const t = await login(app, author.email);
     const denied = await request(app).delete(`/api/v1/announcements/${authored}`).set(as(t));

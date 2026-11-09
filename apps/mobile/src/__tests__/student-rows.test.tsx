@@ -53,9 +53,7 @@ describe("ActiveStudentRow", () => {
         />
       </GroupedList>,
     );
-    fireEvent.press(
-      screen.getByLabelText("Sara Student, Spring 2099 · Group A · Cairo University"),
-    );
+    fireEvent.press(screen.getByLabelText("Sara Student, Spring 2099 · Group A · Cairo University"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
   });
 });

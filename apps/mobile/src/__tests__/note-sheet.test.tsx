@@ -20,9 +20,19 @@ import { renderWithProviders } from "./helpers/render";
 import { Text } from "react-native";
 
 const savedNote = {
-  id: 1, body: "x", visibility: "MENTORS", followUpFlagged: false, createdAt: "2099-01-01T00:00:00.000Z",
-  updatedAt: "2099-01-01T00:00:00.000Z", edited: false, authorId: 5, authorName: "L", authorRole: "LEADER",
-  seasonId: null, seasonTitle: null, canEdit: true,
+  id: 1,
+  body: "x",
+  visibility: "MENTORS",
+  followUpFlagged: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
+  updatedAt: "2099-01-01T00:00:00.000Z",
+  edited: false,
+  authorId: 5,
+  authorName: "L",
+  authorRole: "LEADER",
+  seasonId: null,
+  seasonTitle: null,
+  canEdit: true,
 };
 const post = (apiClient as unknown as { post: jest.Mock }).post;
 

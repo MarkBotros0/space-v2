@@ -81,8 +81,7 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
     const fallback = which === "close" ? POLL_COPY.closeFailed : POLL_COPY.reopenFailed;
     mutation.mutate(undefined, {
       onSuccess: () => setMode("results"),
-      onError: (err) =>
-        setFailure({ message: apiErrorMessage(err, fallback), action: which }),
+      onError: (err) => setFailure({ message: apiErrorMessage(err, fallback), action: which }),
     });
   }
 
@@ -117,15 +116,9 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
       {canOpenChoices || poll.canSeeNames || poll.canManage ? (
         <View className="flex-row flex-wrap gap-2">
           {canOpenChoices ? (
-            <PillButton
-              label={voted ? POLL_COPY.changeVote : POLL_COPY.vote}
-              disabled={busy}
-              onPress={startChoosing}
-            />
+            <PillButton label={voted ? POLL_COPY.changeVote : POLL_COPY.vote} disabled={busy} onPress={startChoosing} />
           ) : null}
-          {poll.canSeeNames ? (
-            <PillButton label={POLL_COPY.seeWhoVoted} onPress={() => setVotersOpen(true)} />
-          ) : null}
+          {poll.canSeeNames ? <PillButton label={POLL_COPY.seeWhoVoted} onPress={() => setVotersOpen(true)} /> : null}
           {poll.canManage ? (
             <PillButton
               label={poll.closed ? POLL_COPY.reopenPoll : POLL_COPY.closePoll}
@@ -137,9 +130,7 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
       ) : null}
 
       {/* Names: managers, and a Super once the season has finished (who can't close or reopen). */}
-      {poll.canSeeNames ? (
-        <VotersSheet postId={postId} open={votersOpen} onClose={() => setVotersOpen(false)} />
-      ) : null}
+      {poll.canSeeNames ? <VotersSheet postId={postId} open={votersOpen} onClose={() => setVotersOpen(false)} /> : null}
     </View>
   );
 }

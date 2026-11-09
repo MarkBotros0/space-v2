@@ -200,9 +200,7 @@ describe("/group/new", () => {
     saveBar("Create group");
     expect(screen.getByLabelText("Name").props.accessibilityHint).toMatch(/at least 2/);
     expect(post).not.toHaveBeenCalled();
-    expect(
-      within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
-    ).toBeTruthy();
+    expect(within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above.")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Name"), "Alpha");
     expect(within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above.")).toBeNull();
   });
@@ -255,10 +253,7 @@ describe("/group/[id]/edit", () => {
     fireEvent.press(screen.getByText("Karim"));
     saveBar("Save changes");
     await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith(
-        "/api/v1/groups/3",
-        expect.objectContaining({ leaderIds: [6] }),
-      ),
+      expect(patch).toHaveBeenCalledWith("/api/v1/groups/3", expect.objectContaining({ leaderIds: [6] })),
     );
   });
 
@@ -277,7 +272,13 @@ describe("/group/[id]/edit", () => {
     routeGets({
       "/api/v1/seasons/7/admins": {
         admins: [
-          { userId: 41, name: "Bo Admin", email: "bo@jpc.test", assignedAt: "2099-01-02T00:00:00.000Z", assignedByName: null },
+          {
+            userId: 41,
+            name: "Bo Admin",
+            email: "bo@jpc.test",
+            assignedAt: "2099-01-02T00:00:00.000Z",
+            assignedByName: null,
+          },
         ],
       },
     });
@@ -328,18 +329,14 @@ describe("/group/[id]/edit", () => {
     );
     renderWithProviders(<EditGroupScreen />);
 
-    expect(
-      await screen.findByText("Deleting unassigns 1 student and removes 1 leader."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Deleting unassigns 1 student and removes 1 leader.")).toBeTruthy();
     expect(screen.getByText("Only A")).toBeTruthy();
     fireEvent.press(screen.getByText("Delete group"));
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Really delete?"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/groups/3"));
     expect(
-      await screen.findByText(
-        "1 assignment(s) target only this group. Retarget them before deleting it.",
-      ),
+      await screen.findByText("1 assignment(s) target only this group. Retarget them before deleting it."),
     ).toBeTruthy();
   });
 

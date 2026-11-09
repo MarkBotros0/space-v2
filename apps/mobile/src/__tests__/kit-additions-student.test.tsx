@@ -62,7 +62,11 @@ describe("Button onHero", () => {
 
   it("renders and presses", () => {
     const onPress = jest.fn();
-    render(<Button variant="onHero" onPress={onPress}>Check in</Button>);
+    render(
+      <Button variant="onHero" onPress={onPress}>
+        Check in
+      </Button>,
+    );
     fireEvent.press(screen.getByRole("button", { name: "Check in" }));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
@@ -111,7 +115,11 @@ describe("GroupedList headerAction", () => {
   });
 
   it("has no action by default", () => {
-    render(<GroupedList header="Open work"><ListRow title="x" /></GroupedList>);
+    render(
+      <GroupedList header="Open work">
+        <ListRow title="x" />
+      </GroupedList>,
+    );
     expect(screen.queryByRole("button")).toBeNull();
   });
 });
@@ -136,13 +144,19 @@ describe("Screen compactTitle", () => {
 
   it("overrides the collapsed title", () => {
     renderWithProviders(
-      <Screen title="Work" compactTitle="Open work"><RNText>b</RNText></Screen>,
+      <Screen title="Work" compactTitle="Open work">
+        <RNText>b</RNText>
+      </Screen>,
     );
     expect(within(compact()).getByText("Open work", { includeHiddenElements: true })).toBeTruthy();
   });
 
   it("Home still says Today when unset", () => {
-    renderWithProviders(<Screen home><RNText>b</RNText></Screen>);
+    renderWithProviders(
+      <Screen home>
+        <RNText>b</RNText>
+      </Screen>,
+    );
     expect(within(compact()).getByText("Home", { includeHiddenElements: true })).toBeTruthy();
   });
 });
@@ -187,7 +201,11 @@ describe("SaveBar secondary and disabled", () => {
   it("a disabled secondary does not fire", () => {
     const secondary = jest.fn();
     renderWithProviders(
-      <SaveBar label="Submit" onPress={() => {}} secondary={{ label: "Save draft", onPress: secondary, disabled: true }} />,
+      <SaveBar
+        label="Submit"
+        onPress={() => {}}
+        secondary={{ label: "Save draft", onPress: secondary, disabled: true }}
+      />,
     );
     fireEvent.press(screen.getByRole("button", { name: "Save draft" }));
     expect(secondary).not.toHaveBeenCalled();

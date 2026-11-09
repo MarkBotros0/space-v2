@@ -24,10 +24,7 @@ import { addKeySheet, columnWidths, freezeFirstRowAndColumns, styleHeader } from
  * `Band` is a column because the enum is the contract; a reader can filter on
  * "AT_RISK" without knowing the threshold.
  */
-export function buildEngagementWorkbook(
-  rows: EngagementReportRow[],
-  scopeLabel: string,
-): ExcelJS.Workbook {
+export function buildEngagementWorkbook(rows: EngagementReportRow[], scopeLabel: string): ExcelJS.Workbook {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "JPC Space";
   workbook.created = new Date();

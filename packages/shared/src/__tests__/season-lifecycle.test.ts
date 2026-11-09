@@ -12,9 +12,7 @@ describe("season lifecycle contracts", () => {
 
   it("rejects an unknown key on the end-season request", () => {
     expect(endSeasonRequestSchema.safeParse({ notPassed: [], reviewed, extra: 1 }).success).toBe(false);
-    expect(
-      endSeasonRequestSchema.safeParse({ notPassed: [{ userId: 3, reason: null }], reviewed }).success,
-    ).toBe(true);
+    expect(endSeasonRequestSchema.safeParse({ notPassed: [{ userId: 3, reason: null }], reviewed }).success).toBe(true);
   });
 
   it("requires what the staff member reviewed", () => {
@@ -32,7 +30,13 @@ describe("season lifecycle contracts", () => {
   });
 
   it("rejects a student listed twice", () => {
-    const twice = { notPassed: [{ userId: 3, reason: "a" }, { userId: 3, reason: null }], reviewed };
+    const twice = {
+      notPassed: [
+        { userId: 3, reason: "a" },
+        { userId: 3, reason: null },
+      ],
+      reviewed,
+    };
     expect(endSeasonRequestSchema.safeParse(twice).success).toBe(false);
   });
 });

@@ -91,8 +91,7 @@ export function RosterList({
     );
   }
 
-  const choice = (r: SeasonRosterRow) =>
-    r.userId in draft ? (draft[r.userId] ?? null) : r.groupId;
+  const choice = (r: SeasonRosterRow) => (r.userId in draft ? (draft[r.userId] ?? null) : r.groupId);
   const pick = (r: SeasonRosterRow, groupId: number | null) => {
     setDraft((d) => {
       const next = { ...d };
@@ -107,9 +106,7 @@ export function RosterList({
     .filter((r) => r.userId in draft)
     .map((r) => ({ studentUserId: r.userId, groupId: draft[r.userId] ?? null }));
   const groupName = (id: number | null) =>
-    id === null
-      ? ROSTER_UNASSIGNED_LABEL
-      : (groups.data.find((g) => g.id === id)?.name ?? ROSTER_UNASSIGNED_LABEL);
+    id === null ? ROSTER_UNASSIGNED_LABEL : (groups.data.find((g) => g.id === id)?.name ?? ROSTER_UNASSIGNED_LABEL);
 
   const onSave = () => {
     if (changes.length === 0) return;
@@ -131,8 +128,7 @@ export function RosterList({
 
   const q = query.trim().toLowerCase();
   const rows = roster.data.filter(
-    (r) =>
-      q === "" || (r.name ?? "").toLowerCase().includes(q) || r.email.toLowerCase().includes(q),
+    (r) => q === "" || (r.name ?? "").toLowerCase().includes(q) || r.email.toLowerCase().includes(q),
   );
 
   return frame(
@@ -152,9 +148,7 @@ export function RosterList({
                   <AvatarFallback>{initialsOf(r.name, "?")}</AvatarFallback>
                 </Avatar>
               }
-              trailing={
-                r.userId in draft ? <StatusChip tone="warn" label="Not saved" /> : undefined
-              }
+              trailing={r.userId in draft ? <StatusChip tone="warn" label="Not saved" /> : undefined}
               chevron
               onPress={() => setEditing(r)}
             />
@@ -216,9 +210,7 @@ export function RosterList({
     subtitle,
     <SaveBar
       label={
-        changes.length === 0
-          ? "No changes to save"
-          : `Save ${changes.length} change${changes.length === 1 ? "" : "s"}`
+        changes.length === 0 ? "No changes to save" : `Save ${changes.length} change${changes.length === 1 ? "" : "s"}`
       }
       loading={save.isPending}
       disabled={changes.length === 0}

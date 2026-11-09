@@ -23,15 +23,9 @@ export function RecentNotesGroup({ notes }: { notes: AuthoredNote[] }) {
             key={n.id}
             title={n.student.name}
             titleLines={2}
-            subtitle={joinMeta([
-              formatDate(n.createdAt),
-              n.authorId === myId ? null : n.authorName,
-              n.body,
-            ])}
+            subtitle={joinMeta([formatDate(n.createdAt), n.authorId === myId ? null : n.authorName, n.body])}
             trailing={n.followUpFlagged ? <StatusChip tone="warn" label="Follow-up" /> : undefined}
-            onPress={() =>
-              router.push({ pathname: "/student/[id]", params: { id: String(n.student.id) } })
-            }
+            onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(n.student.id) } })}
           />
         ))
       )}

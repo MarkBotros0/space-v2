@@ -31,28 +31,57 @@ const post = apiClient.post as jest.Mock;
 const SUBMIT_FAILED = "Couldn't submit the quiz. Check your connection and try again.";
 
 const mcq = {
-  id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of France?", points: 2,
-  options: ["London", "Paris"], selectedIndex: null, text: null,
-  isCorrect: null, pointsAwarded: null,
+  id: 100,
+  order: 0,
+  type: "MCQ" as const,
+  prompt: "Capital of France?",
+  points: 2,
+  options: ["London", "Paris"],
+  selectedIndex: null,
+  text: null,
+  isCorrect: null,
+  pointsAwarded: null,
 };
 const essay = {
-  id: 101, order: 1, type: "ESSAY" as const, prompt: "Discuss.", points: 5,
-  options: [], selectedIndex: null, text: null, isCorrect: null, pointsAwarded: null,
+  id: 101,
+  order: 1,
+  type: "ESSAY" as const,
+  prompt: "Discuss.",
+  points: 5,
+  options: [],
+  selectedIndex: null,
+  text: null,
+  isCorrect: null,
+  pointsAwarded: null,
 };
 
 function detail(over: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, maxScore: 7,
-    sessionTitle: "Week 1", attemptId: null, attemptNumber: 0, readOnly: false, status: null,
-    totalScore: null, submittedAt: null, gradedAt: null, resultsReleased: true,
-    questions: [mcq, essay], ...over,
+    id: 41,
+    title: "Week 1 quiz",
+    kind: "ONLINE",
+    seasonId: 7,
+    maxScore: 7,
+    sessionTitle: "Week 1",
+    attemptId: null,
+    attemptNumber: 0,
+    readOnly: false,
+    status: null,
+    totalScore: null,
+    submittedAt: null,
+    gradedAt: null,
+    resultsReleased: true,
+    questions: [mcq, essay],
+    ...over,
   };
 }
 const inProgress = () => detail({ attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS" });
 
 function deferred<T>() {
   let resolve!: (v: T) => void;
-  const promise = new Promise<T>((r) => { resolve = r; });
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
   return { promise, resolve };
 }
 
@@ -80,13 +109,19 @@ describe("quiz runner saves", () => {
 
     renderWithProviders(<QuizDetailScreen />);
     fireEvent.changeText(await screen.findByLabelText("Answer 2"), "First draft");
-    act(() => { jest.advanceTimersByTime(1000); });
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
 
     // Edited while the first PATCH is still out.
     fireEvent.changeText(screen.getByLabelText("Answer 2"), "Second draft");
-    await act(async () => { first.resolve({ data: { data: { saved: 1 } } }); });
-    act(() => { jest.advanceTimersByTime(1000); });
+    await act(async () => {
+      first.resolve({ data: { data: { saved: 1 } } });
+    });
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
 
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
     expect(patch).toHaveBeenLastCalledWith("/api/v1/quizzes/41/attempt", {
@@ -129,7 +164,9 @@ describe("quiz runner saves", () => {
       await Promise.resolve();
     });
     for (let i = 0; i < 5 && patch.mock.calls.length === 0; i++) {
-      await act(async () => { await Promise.resolve(); });
+      await act(async () => {
+        await Promise.resolve();
+      });
     }
     expect(patch).toHaveBeenCalledTimes(1);
   });
@@ -158,7 +195,9 @@ describe("quiz runner saves", () => {
     const view = render(wrap(<QuizDetailScreen />));
     fireEvent.press(await screen.findByText("Start quiz"));
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
-    act(() => { jest.advanceTimersByTime(1000); });
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
     expect(await screen.findByText(/Saved/)).toBeTruthy();
 
     view.rerender(wrap(null));
@@ -176,8 +215,13 @@ describe("quiz runner saves", () => {
     });
     const answered = () =>
       detail({
-        attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
-        questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "An answer." }],
+        attemptId: 900,
+        attemptNumber: 1,
+        status: "IN_PROGRESS",
+        questions: [
+          { ...mcq, selectedIndex: 1 },
+          { ...essay, text: "An answer." },
+        ],
       });
 
     it("a failed submit is an error toast, with the form still there to try again", async () => {
@@ -242,9 +286,7 @@ describe("quiz runner saves", () => {
       fireEvent.press(await screen.findByText("Submit"));
 
       await waitFor(() =>
-        expect(toast.error).toHaveBeenCalledWith(
-          "Couldn't save your answers, so the quiz wasn't submitted.",
-        ),
+        expect(toast.error).toHaveBeenCalledWith("Couldn't save your answers, so the quiz wasn't submitted."),
       );
       expect(post).not.toHaveBeenCalled();
     });
@@ -266,7 +308,9 @@ describe("quiz runner saves", () => {
       patch.mockResolvedValue({ data: { data: { saved: 1 } } });
       renderWithProviders(<QuizDetailScreen />);
       fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
-      act(() => { jest.advanceTimersByTime(1000); });
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
       expect(await screen.findByText(/Not saved/)).toBeTruthy();
 
       fireEvent.press(screen.getByText("Retry save"));
@@ -282,18 +326,25 @@ describe("quiz runner saves", () => {
   describe("offline", () => {
     const answered = () =>
       detail({
-        attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
-        questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "An answer." }],
+        attemptId: 900,
+        attemptNumber: 1,
+        status: "IN_PROGRESS",
+        questions: [
+          { ...mcq, selectedIndex: 1 },
+          { ...essay, text: "An answer." },
+        ],
       });
     const OFFLINE = SUBMIT_FAILED;
-    const noNetwork = () =>
-      Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined });
+    const noNetwork = () => Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined });
     const setOnline = (online: boolean) => act(() => onlineManager.setOnline(online));
     const submitQuiz = async () => {
       fireEvent.press(screen.getByText("Submit quiz"));
       fireEvent.press(await screen.findByText("Submit"));
     };
-    const tick = (ms = 0) => act(async () => { await jest.advanceTimersByTimeAsync(ms); });
+    const tick = (ms = 0) =>
+      act(async () => {
+        await jest.advanceTimersByTimeAsync(ms);
+      });
 
     afterEach(() => setOnline(true));
 

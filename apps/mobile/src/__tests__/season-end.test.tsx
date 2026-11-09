@@ -29,9 +29,7 @@ const patch = apiClient.patch as jest.Mock;
 
 function serve(routes: Record<string, unknown>) {
   get.mockImplementation((url: string) =>
-    url in routes
-      ? Promise.resolve({ data: { data: routes[url] } })
-      : Promise.reject(new Error(`not served: ${url}`)),
+    url in routes ? Promise.resolve({ data: { data: routes[url] } }) : Promise.reject(new Error(`not served: ${url}`)),
   );
 }
 /** The dialog's confirm button: the first "End season" button in the tree (the dialog renders before the pinned bar). */
@@ -108,7 +106,9 @@ describe("End season screen", () => {
 
   it("reviews every student as Passed, stages a did-not-pass and posts only notPassed", async () => {
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 84) });
-    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 0 } } });
+    post.mockResolvedValue({
+      data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 0 } },
+    });
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     expect(screen.getAllByText("Passed")).toHaveLength(84);
@@ -148,11 +148,17 @@ describe("End season screen", () => {
   it("sends an administering admin to Today after ending, since they lose the season", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1) });
-    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 0 } } });
+    post.mockResolvedValue({
+      data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 0 } },
+    });
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    expect(await screen.findByText("This finishes GBV 2026. Their leaders and admins lose access. This ends the season for 1 person.")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "This finishes GBV 2026. Their leaders and admins lose access. This ends the season for 1 person.",
+      ),
+    ).toBeTruthy();
     confirmEnd();
     await waitFor(() => expect(mockDismissAll).toHaveBeenCalled());
     expect(mockBack).not.toHaveBeenCalled();
@@ -227,7 +233,15 @@ describe("Results screen", () => {
       [BY_CODE]: detail({ status: "COMPLETED" }),
       "/api/v1/seasons/7/results": {
         results: [
-          { userId: 1, name: "Mina", isAlumnus: false, groupName: "Group A", attendancePct: 90, result: "PASSED", reason: null },
+          {
+            userId: 1,
+            name: "Mina",
+            isAlumnus: false,
+            groupName: "Group A",
+            attendancePct: 90,
+            result: "PASSED",
+            reason: null,
+          },
           { userId: 2, name: "Nour", isAlumnus: false, groupName: null, attendancePct: 40, result: null, reason: null },
         ],
       },

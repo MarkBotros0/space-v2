@@ -21,22 +21,48 @@ import { unbreakable } from "../lib/format";
 const get = apiClient.get as jest.Mock;
 
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 9,
+    name: "Test student",
+    email: "s@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 // activeSeasonId is null for every staff role on a real device (it is the
 // student profile pointer) — the fixture says so, and the staff season comes
 // from GET /api/v1/seasons via useCurrentSeasonId (ruling X8).
 const leaderSession = {
-  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 5,
+    name: "Test leader",
+    email: "l@jpc.test",
+    role: "LEADER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
 };
 
 const seasonsList = {
-  data: { data: { seasons: [{
-    id: 7, code: "s26", title: "Spring 2026", program: "TEST", year: 2026, status: "ACTIVE",
-    startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z",
-  }] } },
+  data: {
+    data: {
+      seasons: [
+        {
+          id: 7,
+          code: "s26",
+          title: "Spring 2026",
+          program: "TEST",
+          year: 2026,
+          status: "ACTIVE",
+          startDate: "2026-01-01T00:00:00.000Z",
+          endDate: "2026-12-31T00:00:00.000Z",
+        },
+      ],
+    },
+  },
 };
 
 /** Staff screens make two GETs: the seasons list, then the season's quizzes. */
@@ -48,18 +74,27 @@ function staffGets(quizPage: unknown, ...more: { cursor: number; page: unknown }
     if (url === "/api/v1/seasons") return Promise.resolve(seasonsList);
     if (url === STAFF_QUIZZES) return Promise.resolve({ data: { data: quizPage } });
     const next = more.find((m) => url === `${STAFF_QUIZZES}&cursor=${m.cursor}`);
-    return next
-      ? Promise.resolve({ data: { data: next.page } })
-      : Promise.reject(new Error(`unexpected GET ${url}`));
+    return next ? Promise.resolve({ data: { data: next.page } }) : Promise.reject(new Error(`unexpected GET ${url}`));
   });
 }
 
 function staffRow(over: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 41, title: "Week 1 quiz", kind: "PAPER", publishedAt: null, questionCount: 0,
-    maxScore: 20, sessionId: 12, sessionTitle: "Week 1",
-    sessionDate: "2099-03-01T18:00:00.000Z", seasonId: 7, seasonCode: "s26",
-    gradedCount: 3, studentCount: 8, resultsReleasedAt: null, ...over,
+    id: 41,
+    title: "Week 1 quiz",
+    kind: "PAPER",
+    publishedAt: null,
+    questionCount: 0,
+    maxScore: 20,
+    sessionId: 12,
+    sessionTitle: "Week 1",
+    sessionDate: "2099-03-01T18:00:00.000Z",
+    seasonId: 7,
+    seasonCode: "s26",
+    gradedCount: 3,
+    studentCount: 8,
+    resultsReleasedAt: null,
+    ...over,
   };
 }
 
@@ -97,7 +132,11 @@ describe("QuizzesScreen — staff", () => {
     expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
     // One number from the server (ruling C4). v1 computed "graded" three
     // different ways and got three different answers.
-    expect(screen.getByText(`Week 1 · ${unbreakable("Mar 1, 2099")} · ${unbreakable("Max 20 pts")} · ${unbreakable("3/8 graded")}`)).toBeTruthy();
+    expect(
+      screen.getByText(
+        `Week 1 · ${unbreakable("Mar 1, 2099")} · ${unbreakable("Max 20 pts")} · ${unbreakable("3/8 graded")}`,
+      ),
+    ).toBeTruthy();
     expect(screen.getByText("Partial")).toBeTruthy();
     expect(screen.getByText("Quizzes")).toBeTruthy();
     expect(screen.getByText("Grade paper quizzes for your group")).toBeTruthy();
@@ -112,15 +151,28 @@ describe("QuizzesScreen — staff", () => {
   it("shows an online draft as v1 does: graded count and Pending (B3-10)", async () => {
     useSessionStore.setState(leaderSession);
     staffGets({
-      items: [staffRow({ id: 51, title: "Online quiz", kind: "ONLINE",
-        publishedAt: null, questionCount: 4, maxScore: 7, gradedCount: 0 })],
+      items: [
+        staffRow({
+          id: 51,
+          title: "Online quiz",
+          kind: "ONLINE",
+          publishedAt: null,
+          questionCount: 4,
+          maxScore: 7,
+          gradedCount: 0,
+        }),
+      ],
       nextCursor: null,
     });
 
     renderWithProviders(<QuizzesScreen />);
 
     expect(await screen.findByText("Online quiz")).toBeTruthy();
-    expect(screen.getByText(`Week 1 · ${unbreakable("Mar 1, 2099")} · ${unbreakable("Max 7 pts")} · ${unbreakable("0/8 graded")}`)).toBeTruthy();
+    expect(
+      screen.getByText(
+        `Week 1 · ${unbreakable("Mar 1, 2099")} · ${unbreakable("Max 7 pts")} · ${unbreakable("0/8 graded")}`,
+      ),
+    ).toBeTruthy();
     expect(screen.getByText("Pending")).toBeTruthy();
   });
 
@@ -130,15 +182,22 @@ describe("QuizzesScreen — staff", () => {
       items: [
         staffRow({ id: 41, title: "Older quiz", sessionDate: "2099-03-01T18:00:00.000Z" }),
         staffRow({ id: 42, title: "Newer quiz", sessionDate: "2099-03-08T18:00:00.000Z", gradedCount: 8 }),
-        staffRow({ id: 43, title: "Loose quiz", sessionId: null, sessionTitle: null, sessionDate: null, gradedCount: 0 }),
+        staffRow({
+          id: 43,
+          title: "Loose quiz",
+          sessionId: null,
+          sessionTitle: null,
+          sessionDate: null,
+          gradedCount: 0,
+        }),
       ],
       nextCursor: null,
     });
     renderWithProviders(<QuizzesScreen />);
     expect(await screen.findByText("Newer quiz")).toBeTruthy();
-    const order = screen.UNSAFE_root
-      .findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string")
-      .map((n: { props: { children?: unknown } }) => n.props.children as string);
+    const order = screen.UNSAFE_root.findAll(
+      (n: { props: { children?: unknown } }) => typeof n.props.children === "string",
+    ).map((n: { props: { children?: unknown } }) => n.props.children as string);
     expect(order.indexOf("Newer quiz")).toBeLessThan(order.indexOf("Older quiz"));
     expect(order.indexOf("Older quiz")).toBeLessThan(order.indexOf("Loose quiz"));
     expect(screen.getByText("Done")).toBeTruthy();
@@ -172,7 +231,14 @@ describe("QuizzesScreen — staff", () => {
 });
 describe("QuizzesScreen — authoring entry points (Task 11)", () => {
   const adminSession = {
-    user: { id: 2, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
+    user: {
+      id: 2,
+      name: "Test admin",
+      email: "a@jpc.test",
+      role: "ADMIN" as const,
+      avatarPath: null,
+      hasPassword: true,
+    },
     scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
   };
 

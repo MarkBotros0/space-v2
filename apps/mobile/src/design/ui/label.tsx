@@ -7,9 +7,22 @@ import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-function Label({ className, disabled, children, nativeID }: { className?: string; disabled?: boolean; children?: ReactNode; nativeID?: string }) {
+function Label({
+  className,
+  disabled,
+  children,
+  nativeID,
+}: {
+  className?: string;
+  disabled?: boolean;
+  children?: ReactNode;
+  nativeID?: string;
+}) {
   return (
-    <Text nativeID={nativeID} className={cn("text-sm font-medium leading-5 text-foreground", disabled && "opacity-50", className)}>
+    <Text
+      nativeID={nativeID}
+      className={cn("text-sm font-medium leading-5 text-foreground", disabled && "opacity-50", className)}
+    >
       {children}
     </Text>
   );

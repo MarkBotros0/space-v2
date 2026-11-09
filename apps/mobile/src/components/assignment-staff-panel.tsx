@@ -12,15 +12,7 @@ import { useSessionStore } from "../store/session";
 import { FormErrorBox } from "../design/forms/form-parts";
 import { Eyebrow } from "../design/layout/page-title";
 import { RouteError } from "../design/layout/route-states";
-import {
-  Badge,
-  Button,
-  DataTable,
-  Skeleton,
-  SubmissionStatusBadge,
-  Text,
-  type DataTableColumn,
-} from "../design/ui";
+import { Badge, Button, DataTable, Skeleton, SubmissionStatusBadge, Text, type DataTableColumn } from "../design/ui";
 import { formatShortDateTime } from "../lib/format";
 
 /**
@@ -63,17 +55,11 @@ function ManageActions({ detail }: { detail: AssignmentDetail }) {
       <View className="flex-row flex-wrap gap-2">
         <Button
           variant="outline"
-          onPress={() =>
-            router.push({ pathname: "/assignment/[id]/edit", params: { id: String(detail.id) } })
-          }
+          onPress={() => router.push({ pathname: "/assignment/[id]/edit", params: { id: String(detail.id) } })}
         >
           Edit
         </Button>
-        <Button
-          variant="destructive"
-          disabled={remove.isPending}
-          onPress={onDelete}
-        >
+        <Button variant="destructive" disabled={remove.isPending} onPress={onDelete}>
           {armed ? "Really delete?" : "Delete assignment"}
         </Button>
       </View>
@@ -83,9 +69,7 @@ function ManageActions({ detail }: { detail: AssignmentDetail }) {
 }
 
 /** v1 submission-tracker.tsx columns: Student, Status (+ Late), Submitted, Open. */
-function trackerColumns(
-  onOpen: (publicId: string) => void,
-): DataTableColumn<AssignmentTrackerRow>[] {
+function trackerColumns(onOpen: (publicId: string) => void): DataTableColumn<AssignmentTrackerRow>[] {
   return [
     {
       key: "student",
@@ -122,11 +106,7 @@ function trackerColumns(
       header: "",
       cell: (row) =>
         row.submissionPublicId !== null ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={() => onOpen(row.submissionPublicId as string)}
-          >
+          <Button variant="outline" size="sm" onPress={() => onOpen(row.submissionPublicId as string)}>
             Open
           </Button>
         ) : null,
@@ -184,9 +164,7 @@ export function AssignmentStaffPanel({ detail }: { detail: AssignmentDetail }) {
           {targetLabel(detail.isAllGroups, detail.groupIds ?? [], groups.data)}
         </Badge>
         <Badge variant="outline">{configLabel(detail)}</Badge>
-        {detail.sessionTitle ? (
-          <Badge variant="outline">{`Session: ${detail.sessionTitle}`}</Badge>
-        ) : null}
+        {detail.sessionTitle ? <Badge variant="outline">{`Session: ${detail.sessionTitle}`}</Badge> : null}
       </View>
       {detail.canManage ? <ManageActions detail={detail} /> : null}
       {role !== null && TRACKER_ROLES.has(role) ? <TrackerBlock assignmentId={detail.id} /> : null}

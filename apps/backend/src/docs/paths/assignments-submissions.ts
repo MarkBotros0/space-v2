@@ -111,9 +111,7 @@ export const assignmentsSubmissionsPaths = {
       summary: "Start (or fetch) this student's submission for an assignment",
       description:
         "Idempotent: the first call creates a DRAFT, later calls return the same row untouched. Never overwrites saved work.\n\nThis exists because v1 created the row as a side effect of *rendering* the assignment page. A read that writes is wrong on its own terms, and React Query would make it far worse — it refetches on mount, on focus and on reconnect, so the write would fire every time the app is tabbed back to.\n\nSTUDENT only, with an ACTIVE enrolment in the assignment's season, and only for an assignment actually targeted at them.",
-      parameters: [
-        { name: "assignmentId", in: "path", required: true, schema: { type: "integer" } },
-      ],
+      parameters: [{ name: "assignmentId", in: "path", required: true, schema: { type: "integer" } }],
       responses: {
         200: ok(
           {
@@ -129,7 +127,9 @@ export const assignmentsSubmissionsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`use_forum_endpoint` —A FORUM assignment is written only through `PUT /assignments/{id}/forum/response`."),
+        409: conflict(
+          "`use_forum_endpoint` —A FORUM assignment is written only through `PUT /assignments/{id}/forum/response`.",
+        ),
       },
     },
   },
@@ -139,7 +139,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Submissions"],
       summary: "Record a verdict",
       description:
-        "Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort (title `Feedback ready on \"<assignment>\"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.",
+        'Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort (title `Feedback ready on "<assignment>"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.',
       parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
       requestBody: {
         required: true,
@@ -327,7 +327,10 @@ export const assignmentsSubmissionsPaths = {
         200: {
           description: "The file.",
           headers: {
-            "Content-Disposition": { schema: { type: "string" }, description: "`attachment`, with RFC 5987 `filename*`." },
+            "Content-Disposition": {
+              schema: { type: "string" },
+              description: "`attachment`, with RFC 5987 `filename*`.",
+            },
             "Cache-Control": { schema: { type: "string", example: "private, max-age=3600" } },
           },
           content: { "application/octet-stream": { schema: { type: "string", format: "binary" } } },
@@ -343,5 +346,4 @@ export const assignmentsSubmissionsPaths = {
       },
     },
   },
-
 } as const;

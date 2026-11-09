@@ -4,11 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import type { JpcEventDetail } from "@space/shared";
 
-import {
-  EventForm,
-  VISIBILITY_LABELS,
-  type EventFormValues,
-} from "../../../src/components/EventForm";
+import { EventForm, VISIBILITY_LABELS, type EventFormValues } from "../../../src/components/EventForm";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../src/design/lib/icon";
@@ -129,9 +125,7 @@ export default function EventDetailScreen() {
     title = e.title;
     subtitle = formatEventWhen(e);
     const visibility =
-      e.visibility === "SEASON"
-        ? (e.seasonTitle ?? VISIBILITY_LABELS.SEASON)
-        : VISIBILITY_LABELS[e.visibility];
+      e.visibility === "SEASON" ? (e.seasonTitle ?? VISIBILITY_LABELS.SEASON) : VISIBILITY_LABELS[e.visibility];
     body = (
       <View className="flex-col gap-4">
         <View className="flex-row flex-wrap gap-2">
@@ -144,12 +138,7 @@ export default function EventDetailScreen() {
         {e.description ? <Text variant="body">{e.description}</Text> : null}
         {e.url ? (
           <GroupedList>
-            <ListRow
-              title="Open link"
-              subtitle={e.url}
-              chevron
-              onPress={() => void Linking.openURL(e.url ?? "")}
-            />
+            <ListRow title="Open link" subtitle={e.url} chevron onPress={() => void Linking.openURL(e.url ?? "")} />
           </GroupedList>
         ) : null}
         {e.canManage ? <ManageEvent key={e.id} event={e} /> : null}

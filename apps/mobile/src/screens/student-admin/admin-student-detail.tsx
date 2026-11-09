@@ -20,11 +20,7 @@ import { GraduateStudentSheet } from "../../components/GraduateStudentSheet";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Screen } from "../../design/layout/screen";
-import {
-  GroupedAttendanceTab,
-  GroupedNotesTab,
-  GroupedSubmissionsTab,
-} from "../../design/students/grouped-tabs";
+import { GroupedAttendanceTab, GroupedNotesTab, GroupedSubmissionsTab } from "../../design/students/grouped-tabs";
 import { EngagementSummary } from "../../design/students/engagement-summary";
 import { NoteSheet } from "../../design/students/note-sheet";
 import { studentSubtitle } from "../../design/students/student-detail-grouped";
@@ -49,10 +45,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
   const queryClient = useQueryClient();
   const user = useSessionStore((s) => s.user);
   const scopes = useSessionStore((s) => s.scopes);
-  const { data, isPending, isError, refetch, isRefetching } = useStudentDetail(
-    id,
-    user?.role ?? null,
-  );
+  const { data, isPending, isError, refetch, isRefetching } = useStudentDetail(id, user?.role ?? null);
   const deleteStudent = useDeleteStudent();
   const [noteOpen, setNoteOpen] = useState(false);
   const [graduateOpen, setGraduateOpen] = useState(false);
@@ -87,8 +80,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
               {
                 // dismissTo, not replace: pops this deleted student's detail off the stack.
                 onSuccess: () => router.dismissTo("/students"),
-                onError: (err) =>
-                  Alert.alert("Couldn't delete", apiErrorMessage(err, "Try again.")),
+                onError: (err) => Alert.alert("Couldn't delete", apiErrorMessage(err, "Try again.")),
               },
             ),
         },
@@ -138,9 +130,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
             variant="secondary"
             size="icon"
             accessibilityLabel="Edit profile"
-            onPress={() =>
-              router.push({ pathname: "/student/[id]/edit", params: { id: String(data.id) } })
-            }
+            onPress={() => router.push({ pathname: "/student/[id]/edit", params: { id: String(data.id) } })}
           >
             <Pencil size={18} className="text-foreground" />
           </Button>
@@ -204,11 +194,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
         enrollment={removeTarget}
         onClose={() => setRemoveTarget(null)}
       />
-      <DropEnrollmentSheet
-        studentId={data.id}
-        enrollment={dropTarget}
-        onClose={() => setDropTarget(null)}
-      />
+      <DropEnrollmentSheet studentId={data.id} enrollment={dropTarget} onClose={() => setDropTarget(null)} />
     </Screen>
   );
 }

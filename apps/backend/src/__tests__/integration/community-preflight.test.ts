@@ -97,9 +97,7 @@ describe("findRoleRuleViolations", () => {
     await administer(s1.id, adminRow.id);
     await enrol(s2.id, adminRow.id);
     const v = await findRoleRuleViolations();
-    expect(users(v.staffWithActiveEnrollment)).toEqual(
-      expect.arrayContaining([byRole.id, serving.id, adminRow.id]),
-    );
+    expect(users(v.staffWithActiveEnrollment)).toEqual(expect.arrayContaining([byRole.id, serving.id, adminRow.id]));
   });
 
   it("ignores DRAFT, finished and soft-deleted seasons, deleted users and a plain student", async () => {

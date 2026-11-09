@@ -49,7 +49,12 @@ async function publish(token: string, body: object): Promise<number> {
 beforeAll(async () => {
   f = await seedAnnouncementFixtures(app);
   const idFor = async (label: string) =>
-    (await db.user.findFirstOrThrow({ where: { email: { startsWith: `space-v2-test-${label}-` } }, select: { id: true } })).id;
+    (
+      await db.user.findFirstOrThrow({
+        where: { email: { startsWith: `space-v2-test-${label}-` } },
+        select: { id: true },
+      })
+    ).id;
   mentorId = await idFor("announcementor");
   leaderId = await idFor("announceleader");
   droppedId = await idFor("announcedropped");
@@ -74,7 +79,9 @@ describe("announcement notifications", () => {
     for (const uid of [author.id, f.userIds.superUser, mentorId, droppedId, finishedStudentId]) {
       expect(await rowsFor(uid, id)).toBe(0);
     }
-    const row = await db.notification.findFirstOrThrow({ where: { userId: studentIds[0], link: `/announcements/${id}` } });
+    const row = await db.notification.findFirstOrThrow({
+      where: { userId: studentIds[0], link: `/announcements/${id}` },
+    });
     expect(row).toMatchObject({ type: "ANNOUNCEMENT", title: "New announcement", body: "Bring a pen." });
   });
 
@@ -115,7 +122,10 @@ describe("announcement notifications", () => {
     await waitForRows(studentIds[0]!, id, 1);
     await settle();
     const before = await db.notification.count({ where: { link: `/announcements/${id}` } });
-    const res = await request(app).patch(`/api/v1/announcements/${id}`).set(as(f.tokens.superUser)).send({ body: "Twice." });
+    const res = await request(app)
+      .patch(`/api/v1/announcements/${id}`)
+      .set(as(f.tokens.superUser))
+      .send({ body: "Twice." });
     expect(res.status).toBe(200);
     await settle();
     expect(await db.notification.count({ where: { link: `/announcements/${id}` } })).toBe(before);

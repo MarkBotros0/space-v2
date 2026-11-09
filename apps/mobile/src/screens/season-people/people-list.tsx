@@ -77,7 +77,7 @@ export function PeopleList({
   const source = sources.find((x) => x.id === sourceId) ?? null;
   const items = useMemo(() => buildItems(visible, source), [visible, source]);
   const titles = useMemo(() => (people ? lastSeasonTitles(people) : []), [people]);
-  const targets = useMemo(() => people ? selectAllTargets(people, filters) : [], [people, filters]);
+  const targets = useMemo(() => (people ? selectAllTargets(people, filters) : []), [people, filters]);
   const allTicked = targets.length > 0 && targets.every((id) => selected.has(id));
 
   const filtersOn = filters.query.trim() !== "" || filters.lastSeason !== ANY_SEASON || filters.availableOnly;
@@ -223,17 +223,17 @@ export function PeopleList({
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           <>
-          <SourcePicker sources={sources} value={source} ticked={autoTicked.length} onChange={chooseSource} />
-          <PeopleFilterBar
-            filters={filters}
-            onChange={setFilters}
-            titles={titles}
-            allTicked={allTicked}
-            targetCount={targets.length}
-            pool={wide ? pool : null}
-            onPool={switchPool}
-            onSelectAll={selectAll}
-          />
+            <SourcePicker sources={sources} value={source} ticked={autoTicked.length} onChange={chooseSource} />
+            <PeopleFilterBar
+              filters={filters}
+              onChange={setFilters}
+              titles={titles}
+              allTicked={allTicked}
+              targetCount={targets.length}
+              pool={wide ? pool : null}
+              onPool={switchPool}
+              onSelectAll={selectAll}
+            />
           </>
         }
         ListEmptyComponent={

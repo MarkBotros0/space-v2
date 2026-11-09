@@ -41,14 +41,12 @@ export function AdminGroups() {
   const season = selection.season;
   const rows = groups.data ?? [];
 
-  const newGroup = () =>
-    season && router.push({ pathname: "/group/new", params: { seasonId: String(season.id) } });
+  const newGroup = () => season && router.push({ pathname: "/group/new", params: { seasonId: String(season.id) } });
 
   let body: ReactNode;
   if (selection.isPending || (season !== null && groups.isPending)) body = <RouteSkeleton />;
   else if (selection.isError) body = <RouteError onRetry={selection.refetch} />;
-  else if (season === null)
-    body = <EmptyState title="No season" description="You aren't assigned to a season yet." />;
+  else if (season === null) body = <EmptyState title="No season" description="You aren't assigned to a season yet." />;
   else if (groups.isError) body = <RouteError onRetry={() => void groups.refetch()} />;
   else if (rows.length === 0)
     body = (
@@ -77,9 +75,7 @@ export function AdminGroups() {
   return (
     <Screen
       title="Groups"
-      subtitle={
-        season && groups.data ? `${countOf(rows.length, "group")} in ${season.title}` : undefined
-      }
+      subtitle={season && groups.data ? `${countOf(rows.length, "group")} in ${season.title}` : undefined}
       refreshing={groups.isRefetching}
       onRefresh={() => {
         if (selection.seasonId !== null) void groups.refetch();
@@ -96,12 +92,7 @@ export function AdminGroups() {
           onChange={(v) => setView(v as "groups" | "students")}
         />
         {view === "students" ? (
-          <StudentList
-            status="active"
-            allowedRoles={["SUPER", "ADMIN"]}
-            title="Students"
-            embedded
-          />
+          <StudentList status="active" allowedRoles={["SUPER", "ADMIN"]} title="Students" embedded />
         ) : (
           <>
             {season ? (

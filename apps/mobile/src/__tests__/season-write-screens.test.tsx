@@ -114,14 +114,10 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     renderWithProviders(<NewSeasonScreen />);
     fireEvent.press(within(screen.getByTestId("save-bar")).getByText("Create season"));
     expect(screen.getByLabelText("Program").props.accessibilityHint).toBeTruthy();
-    expect(
-      within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
-    ).toBeTruthy();
+    expect(within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
     fireEvent.changeText(screen.getByLabelText("Program"), "GBV");
-    expect(
-      within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above."),
-    ).toBeNull();
+    expect(within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above.")).toBeNull();
   });
 
   it("submits from the fixed save bar, and the pinned back link leaves", () => {
@@ -163,7 +159,15 @@ describe("SeasonForm's Graduating season", () => {
     <SeasonForm
       mode="edit"
       title="Edit"
-      initial={{ ...NEW_SEASON_VALUES, status, graduatesOnPass: true, program: "GBV", code: "gbv-2026", startDay: "2026-01-01", endDay: "2026-06-30" }}
+      initial={{
+        ...NEW_SEASON_VALUES,
+        status,
+        graduatesOnPass: true,
+        program: "GBV",
+        code: "gbv-2026",
+        startDay: "2026-01-01",
+        endDay: "2026-06-30",
+      }}
       submitting={false}
       message={null}
       onSubmit={onSubmit}

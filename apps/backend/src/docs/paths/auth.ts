@@ -8,7 +8,10 @@ export const authPaths = {
       summary: "Liveness plus a database round-trip",
       security: [],
       responses: {
-        200: ok({ type: "object", properties: { status: { type: "string", example: "ok" } } }, "Service and database are reachable."),
+        200: ok(
+          { type: "object", properties: { status: { type: "string", example: "ok" } } },
+          "Service and database are reachable.",
+        ),
         503: { description: "Database unreachable.", content: { "application/json": { schema: errorResponse } } },
       },
     },
@@ -46,7 +49,8 @@ export const authPaths = {
         ),
         400: errRef("BadRequest"),
         401: {
-          description: "`invalid_credentials` — deliberately identical whether the email is unknown or the password is wrong.",
+          description:
+            "`invalid_credentials` — deliberately identical whether the email is unknown or the password is wrong.",
           content: { "application/json": { schema: errorResponse } },
         },
         429: errRef("TooManyRequests"),
@@ -171,7 +175,12 @@ export const authPaths = {
               type: "object",
               required: ["token", "password"],
               properties: {
-                token: { type: "string", minLength: 16, maxLength: 128, description: "The code from the invite email." },
+                token: {
+                  type: "string",
+                  minLength: 16,
+                  maxLength: 128,
+                  description: "The code from the invite email.",
+                },
                 password: { type: "string", minLength: 8, description: "At most 72 bytes (bcrypt)." },
               },
             },
@@ -179,7 +188,10 @@ export const authPaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Activated; sign in with the new password."),
+        200: ok(
+          { type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } },
+          "Activated; sign in with the new password.",
+        ),
         400: conflict("`bad_request` (malformed body) or `invalid_invite` (any invite failure)."),
         429: errRef("TooManyRequests"),
       },
@@ -202,7 +214,10 @@ export const authPaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Acknowledged."),
+        200: ok(
+          { type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } },
+          "Acknowledged.",
+        ),
         400: errRef("BadRequest"),
         429: errRef("TooManyRequests"),
       },
@@ -232,7 +247,10 @@ export const authPaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } }, "Password set; sign in."),
+        200: ok(
+          { type: "object", required: ["ok"], properties: { ok: { type: "boolean", example: true } } },
+          "Password set; sign in.",
+        ),
         400: conflict("`bad_request` (malformed body) or `invalid_reset_token`."),
         429: errRef("TooManyRequests"),
       },
@@ -246,10 +264,12 @@ export const authPaths = {
       description:
         "Authenticated (Bearer). Revokes all of the caller's live refresh tokens, including the current device's: the lost-phone lever. Access tokens already issued live out their 15-minute TTL.",
       responses: {
-        200: ok({ type: "object", required: ["revoked"], properties: { revoked: { type: "integer", minimum: 0 } } }, "Number of sessions revoked."),
+        200: ok(
+          { type: "object", required: ["revoked"], properties: { revoked: { type: "integer", minimum: 0 } } },
+          "Number of sessions revoked.",
+        ),
         401: errRef("Unauthorized"),
       },
     },
   },
-
 } as const;

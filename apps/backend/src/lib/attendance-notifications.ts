@@ -10,9 +10,7 @@ export async function flagLowAttendance(
   sessionId: number,
   entries: { studentUserId: number; status: AttendanceStatus }[],
 ): Promise<void> {
-  const absentStudents = entries
-    .filter((e) => e.status === AttendanceStatus.ABSENT)
-    .map((e) => e.studentUserId);
+  const absentStudents = entries.filter((e) => e.status === AttendanceStatus.ABSENT).map((e) => e.studentUserId);
   if (absentStudents.length === 0) return;
 
   const session = await db.session.findUnique({
@@ -53,9 +51,7 @@ export async function flagLowAttendance(
       select: { userId: true },
     });
     const adminIds = admins.map((a) => a.userId);
-    const leaderOnlyIds = leaders
-      .map((l) => l.userId)
-      .filter((id) => !adminIds.includes(id));
+    const leaderOnlyIds = leaders.map((l) => l.userId).filter((id) => !adminIds.includes(id));
     const student = await db.user.findUnique({
       where: { id: studentUserId },
       select: { name: true },

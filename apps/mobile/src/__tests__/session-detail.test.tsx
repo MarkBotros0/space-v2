@@ -25,16 +25,34 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const baseDetail: SessionDetail = {
-  id: 12, title: "Week 3", description: "Bring your notebook.",
-  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00",
-  durationMinutes: 90, location: "Hall B", youtubeUrl: null, recurrenceGroupId: null,
-  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
-  checkInOpen: false, myAttendance: null, canMarkAttendance: false, canManageCheckIn: false,
+  id: 12,
+  title: "Week 3",
+  description: "Bring your notebook.",
+  startsAt: "2099-03-15T18:00:00.000Z",
+  dayKey: "2099-03-15",
+  startTime: "20:00",
+  durationMinutes: 90,
+  location: "Hall B",
+  youtubeUrl: null,
+  recurrenceGroupId: null,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring",
+  checkInOpen: false,
+  myAttendance: null,
+  canMarkAttendance: false,
+  canManageCheckIn: false,
 };
 
 const checkInState = (over: Record<string, unknown> = {}) => ({
-  state: "not_open", isOpen: false, checkInToken: null, checkInOpenAt: null,
-  checkInClosedAt: null, expiresAt: null, expiresAtTime: null, ...over,
+  state: "not_open",
+  isOpen: false,
+  checkInToken: null,
+  checkInOpenAt: null,
+  checkInClosedAt: null,
+  expiresAt: null,
+  expiresAtTime: null,
+  ...over,
 });
 
 interface RouteState {
@@ -96,9 +114,9 @@ describe("student session detail on the kit (Task 10)", () => {
     routeGets({ detail: { ...baseDetail, checkInOpen: true } });
     renderStacked(<SessionDetailScreen />);
     await screen.findByText("Check In");
-    const texts = screen.UNSAFE_getAllByType(require("react-native").Text).map((n) =>
-      [n.props.children].flat().join(""),
-    );
+    const texts = screen
+      .UNSAFE_getAllByType(require("react-native").Text)
+      .map((n) => [n.props.children].flat().join(""));
     expect(texts.indexOf("Check In")).toBeGreaterThan(-1);
     expect(texts.indexOf("Check In")).toBeLessThan(texts.indexOf("DETAILS"));
   });
@@ -201,8 +219,24 @@ it("gives a leader a read-only live roster — no open/close/regenerate/edit (sp
   routeGets({
     detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: false },
     roster: [
-      { studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A", status: "PRESENT", notes: null, lateMinutes: null },
-      { studentUserId: 22, name: "Omar Student", email: "omar@jpc.test", groupName: "Group A", status: null, notes: null, lateMinutes: null },
+      {
+        studentUserId: 21,
+        name: "Sara Student",
+        email: "sara@jpc.test",
+        groupName: "Group A",
+        status: "PRESENT",
+        notes: null,
+        lateMinutes: null,
+      },
+      {
+        studentUserId: 22,
+        name: "Omar Student",
+        email: "omar@jpc.test",
+        groupName: "Group A",
+        status: null,
+        notes: null,
+        lateMinutes: null,
+      },
     ],
   });
 
@@ -232,7 +266,10 @@ it("refreshes the leader's roster every 10 seconds while check-in is open", asyn
   jest.useFakeTimers();
   try {
     useSessionStore.setState(leader());
-    routeGets({ detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: false }, roster: [] });
+    routeGets({
+      detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: false },
+      roster: [],
+    });
     const rosterCalls = () => get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
 
     renderStacked(<SessionDetailScreen />);
@@ -256,8 +293,24 @@ it("lists who has checked in on the admin console and refreshes it while open (R
       detail: { ...baseDetail, checkInOpen: true, canMarkAttendance: true, canManageCheckIn: true },
       checkIn: checkInState({ state: "open", isOpen: true, checkInToken: "tokABC" }),
       roster: [
-        { studentUserId: 1, name: "Ada", email: "a@x.org", groupName: "G1", status: "PRESENT", notes: null, lateMinutes: null },
-        { studentUserId: 2, name: "Bo", email: "b@x.org", groupName: "G1", status: null, notes: null, lateMinutes: null },
+        {
+          studentUserId: 1,
+          name: "Ada",
+          email: "a@x.org",
+          groupName: "G1",
+          status: "PRESENT",
+          notes: null,
+          lateMinutes: null,
+        },
+        {
+          studentUserId: 2,
+          name: "Bo",
+          email: "b@x.org",
+          groupName: "G1",
+          status: null,
+          notes: null,
+          lateMinutes: null,
+        },
       ],
     });
     const rosterCalls = () => get.mock.calls.filter(([url]) => url === "/api/v1/sessions/12/attendance").length;
@@ -337,7 +390,15 @@ it("lets a leader override one student's attendance, keeping stored notes (v1 mo
   routeGets({
     detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
     roster: [
-      { studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A", status: "LATE", notes: "Bus strike", lateMinutes: 15 },
+      {
+        studentUserId: 21,
+        name: "Sara Student",
+        email: "sara@jpc.test",
+        groupName: "Group A",
+        status: "LATE",
+        notes: "Bus strike",
+        lateMinutes: 15,
+      },
     ],
   });
   post.mockResolvedValue({ data: { data: { saved: 1 } } });
@@ -367,7 +428,19 @@ it("shows a leader the video quiz results, and nothing for a video with no quest
   const results = (questionCount: number) => ({
     questionCount,
     totalPoints: questionCount,
-    rows: [{ studentUserId: 21, studentName: "Sara Student", groupId: 3, groupName: "Group A", answeredCount: 1, questionCount, earnedPoints: 1, totalPoints: questionCount, completedAt: null }],
+    rows: [
+      {
+        studentUserId: 21,
+        studentName: "Sara Student",
+        groupId: 3,
+        groupName: "Group A",
+        answeredCount: 1,
+        questionCount,
+        earnedPoints: 1,
+        totalPoints: questionCount,
+        completedAt: null,
+      },
+    ],
   });
   let questions = 2;
   get.mockImplementation((url: string) => {
@@ -395,10 +468,23 @@ it("shows a failed override inside the sheet, where the leader is looking", asyn
   useSessionStore.setState(leader());
   routeGets({
     detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
-    roster: [{ studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A", status: null, notes: null, lateMinutes: null }],
+    roster: [
+      {
+        studentUserId: 21,
+        name: "Sara Student",
+        email: "sara@jpc.test",
+        groupName: "Group A",
+        status: null,
+        notes: null,
+        lateMinutes: null,
+      },
+    ],
   });
   post.mockRejectedValue(
-    Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } } }),
+    Object.assign(new Error("400"), {
+      isAxiosError: true,
+      response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } },
+    }),
   );
   renderStacked(<SessionDetailScreen />);
   fireEvent.press(await screen.findByText("Sara Student"));
@@ -412,12 +498,31 @@ it("starts the next student's override sheet without the last failure, after a d
   routeGets({
     detail: { ...baseDetail, canMarkAttendance: true, canManageCheckIn: false },
     roster: [
-      { studentUserId: 21, name: "Sara Student", email: "sara@jpc.test", groupName: "Group A", status: null, notes: null, lateMinutes: null },
-      { studentUserId: 22, name: "Omar Student", email: "omar@jpc.test", groupName: "Group A", status: null, notes: null, lateMinutes: null },
+      {
+        studentUserId: 21,
+        name: "Sara Student",
+        email: "sara@jpc.test",
+        groupName: "Group A",
+        status: null,
+        notes: null,
+        lateMinutes: null,
+      },
+      {
+        studentUserId: 22,
+        name: "Omar Student",
+        email: "omar@jpc.test",
+        groupName: "Group A",
+        status: null,
+        notes: null,
+        lateMinutes: null,
+      },
     ],
   });
   post.mockRejectedValue(
-    Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } } }),
+    Object.assign(new Error("400"), {
+      isAxiosError: true,
+      response: { status: 400, data: { error: { code: "bad_request", message: "Invalid attendance entries." } } },
+    }),
   );
   renderStacked(<SessionDetailScreen />);
   fireEvent.press(await screen.findByText("Sara Student"));

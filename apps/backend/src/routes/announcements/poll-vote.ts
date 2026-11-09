@@ -13,8 +13,7 @@ import { loadPollView } from "./poll-serialize";
 import { unreadIdsAmong } from "./read";
 import { ANNOUNCEMENT_SELECT, toDetail } from "./serialize";
 
-type VoteOutcome =
-  "ok" | "not_found" | "season_finished" | "poll_closed" | "poll_changed" | "bad_options";
+type VoteOutcome = "ok" | "not_found" | "season_finished" | "poll_closed" | "poll_changed" | "bad_options";
 
 /**
  * PUT /announcements/:id/poll/vote: replace the caller's whole vote. Answers
@@ -86,24 +85,14 @@ export async function castVote(req: Request, res: Response) {
     case "poll_closed":
       return apiError(res, "poll_closed", "This poll is closed.", 409);
     case "poll_changed":
-      return apiError(
-        res,
-        "poll_changed",
-        "This poll has changed. Check the options and vote again.",
-        409,
-      );
+      return apiError(res, "poll_changed", "This poll has changed. Check the options and vote again.", 409);
     case "bad_options":
       return apiError(res, "bad_request", "Invalid vote.", 400);
     case "ok": {
       const unread = await unreadIdsAmong(user, [row.id]);
       return apiOk(
         res,
-        toDetail(
-          row,
-          !unread.has(row.id),
-          announcementFlags(user, row),
-          await loadPollView(user, row),
-        ),
+        toDetail(row, !unread.has(row.id), announcementFlags(user, row), await loadPollView(user, row)),
       );
     }
   }

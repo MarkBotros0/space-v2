@@ -129,9 +129,7 @@ describe("Edit screen with votes in", () => {
     open();
     fireEvent.changeText(await screen.findByLabelText("Option 1"), "Sat");
     fireEvent.press(screen.getByText("Save"));
-    expect(
-      await screen.findByText("Votes stay with the new wording: ‘Saturday’ → ‘Sat’ (3 votes)"),
-    ).toBeTruthy();
+    expect(await screen.findByText("Votes stay with the new wording: ‘Saturday’ → ‘Sat’ (3 votes)")).toBeTruthy();
     expect(patch).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() => expect(patch).toHaveBeenCalled());
@@ -174,9 +172,7 @@ describe("Edit screen with votes in", () => {
     patch.mockRejectedValueOnce(lost(9));
     patch.mockResolvedValueOnce(ok(detailItem(7)));
     await removeSunday();
-    expect(
-      await screen.findByText("New votes came in: this change now deletes 9 votes."),
-    ).toBeTruthy();
+    expect(await screen.findByText("New votes came in: this change now deletes 9 votes.")).toBeTruthy();
     expect(patch).toHaveBeenCalledTimes(1);
     fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));

@@ -72,16 +72,9 @@ describe("My work: what to do", () => {
     );
     renderWithProviders(<WorkScreen />);
     expect(await screen.findByText("OVERDUE")).toBeTruthy();
-    const headers = [
-      "OVERDUE",
-      "RETURNED — NEEDS CHANGES",
-      "DUE THIS WEEK",
-      "LATER",
-      "QUIZZES TO TAKE",
-    ];
+    const headers = ["OVERDUE", "RETURNED — NEEDS CHANGES", "DUE THIS WEEK", "LATER", "QUIZZES TO TAKE"];
     for (const h of headers) expect(screen.getByText(h)).toBeTruthy();
-    for (const t of ["Essay 1", "Essay 2", "Essay 3", "Essay 4", "Quiz 6"])
-      expect(screen.getByText(t)).toBeTruthy();
+    for (const t of ["Essay 1", "Essay 2", "Essay 3", "Essay 4", "Quiz 6"]) expect(screen.getByText(t)).toBeTruthy();
     // Handed in or graded: in the history below, not among the to-do groups.
     const texts: string[] = [];
     const walk = (n: unknown): void => {
@@ -157,11 +150,7 @@ describe("My work: what to do", () => {
   });
 
   it("a long title takes two lines, so its chip stays whole", async () => {
-    serve(
-      routes([
-        assignment(1, { title: "A long assignment title that will not fit on a single line" }),
-      ]),
-    );
+    serve(routes([assignment(1, { title: "A long assignment title that will not fit on a single line" })]));
     renderWithProviders(<WorkScreen />);
     const title = await screen.findByText(/A long assignment title/);
     expect(title.props.numberOfLines).toBe(2);
@@ -209,11 +198,7 @@ describe("My work: what was handed in", () => {
     serve(
       routes(
         [],
-        [
-          quiz(4, { score: 7, maxScore: 10 }),
-          quiz(5, { attemptStatus: "SUBMITTED" }),
-          quiz(6, { kind: "PAPER" }),
-        ],
+        [quiz(4, { score: 7, maxScore: 10 }), quiz(5, { attemptStatus: "SUBMITTED" }), quiz(6, { kind: "PAPER" })],
       ),
     );
     renderWithProviders(<WorkScreen />);

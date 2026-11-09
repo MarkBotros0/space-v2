@@ -17,11 +17,7 @@ const QUIZ_GRADED_LINK = "/student/quizzes";
  * paper grades, retake). Best-effort and called after the write has committed
  * (spec D6): a mail or notification failure must not report the grade as failed.
  */
-export async function notifyQuizGraded(
-  studentUserIds: number[],
-  title: string,
-  body: string,
-): Promise<void> {
+export async function notifyQuizGraded(studentUserIds: number[], title: string, body: string): Promise<void> {
   await bestEffort("notify:QUIZ_GRADED", () =>
     createNotificationsBulk(studentUserIds, {
       type: "QUIZ_GRADED",

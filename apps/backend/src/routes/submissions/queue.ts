@@ -72,11 +72,7 @@ export async function listSubmissionQueue(req: Request, res: Response) {
   // One extra row tells us whether another page exists without a second count.
   const rows = await db.submission.findMany({
     where,
-    orderBy: [
-      { status: "asc" },
-      { submittedAt: { sort: "desc", nulls: "last" } },
-      { id: "desc" },
-    ],
+    orderBy: [{ status: "asc" }, { submittedAt: { sort: "desc", nulls: "last" } }, { id: "desc" }],
     take: limit + 1,
     ...(cursor ? { cursor: { publicId: cursor }, skip: 1 } : {}),
     select: {
@@ -110,9 +106,7 @@ export async function listSubmissionQueue(req: Request, res: Response) {
       group: { select: { name: true } },
     },
   });
-  const groupBy = new Map(
-    enrollments.map((e) => [`${e.studentUserId}:${e.seasonId}`, e] as const),
-  );
+  const groupBy = new Map(enrollments.map((e) => [`${e.studentUserId}:${e.seasonId}`, e] as const));
 
   return apiOk(res, {
     items: page.map((r) => {

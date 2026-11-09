@@ -190,7 +190,6 @@ describe("/groups — ADMIN/SUPER season branch (G6, D-16.16)", () => {
   });
 });
 
-
 describe("/seasons/[code]/roster (G7)", () => {
   it("sends only the rows that changed and reports what was WRITTEN", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
@@ -201,9 +200,7 @@ describe("/seasons/[code]/roster (G7)", () => {
     });
     renderWithProviders(<SeasonRosterScreen />);
 
-    expect(
-      await screen.findByText("2 students in Season 7. Tap a student to set their group."),
-    ).toBeTruthy();
+    expect(await screen.findByText("2 students in Season 7. Tap a student to set their group.")).toBeTruthy();
     expect(screen.getByText("sara@jpc.test · Group A")).toBeTruthy();
     expect(screen.getByText("omar@jpc.test · Unassigned")).toBeTruthy();
     // K8: nothing staged, so the bar is disabled and still says how to stage a change.
@@ -257,9 +254,7 @@ describe("/seasons/[code]/roster (G7)", () => {
     mockParams = { code: "s7" };
     routeGets({ "/api/v1/seasons/by-code/s7": { ...seasonDetail, canAdminister: false } });
     renderWithProviders(<SeasonRosterScreen />);
-    expect(
-      await screen.findByText("Only this season's admins can manage its roster."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Only this season's admins can manage its roster.")).toBeTruthy();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/roster");
   });
 });

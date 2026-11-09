@@ -28,22 +28,13 @@ import { useSessionStore } from "../../src/store/session";
 
 /** v1's three-way badge over the server's counts (C4, D10). */
 function GradedBadge({ row }: { row: QuizSummary }) {
-  if (row.studentCount > 0 && row.gradedCount >= row.studentCount)
-    return <Badge variant="success">Done</Badge>;
+  if (row.studentCount > 0 && row.gradedCount >= row.studentCount) return <Badge variant="success">Done</Badge>;
   if (row.gradedCount > 0) return <Badge variant="warning">Partial</Badge>;
   return <Badge variant="outline">Pending</Badge>;
 }
 
 /** v1's quiz card (leader and admin lists share it): title, session · date · Max, graded count and badge. */
-function QuizSummaryRow({
-  row,
-  onPress,
-  badge,
-}: {
-  row: QuizSummary;
-  onPress: () => void;
-  badge?: ReactNode;
-}) {
+function QuizSummaryRow({ row, onPress, badge }: { row: QuizSummary; onPress: () => void; badge?: ReactNode }) {
   return (
     <Pressable
       accessibilityRole="link"
@@ -51,9 +42,7 @@ function QuizSummaryRow({
       className="flex-row items-center justify-between gap-4 rounded-group bg-surface dark:border dark:border-separator px-4 py-4"
     >
       <View className="min-w-0 flex-1">
-        <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">
-          {row.title}
-        </Text>
+        <Text className="text-sm font-bold text-brand-navy-900 dark:text-foreground">{row.title}</Text>
         <Text className="mt-0.5 text-xs text-muted-foreground">
           {`${row.sessionTitle !== null ? `${row.sessionTitle} · ${formatDate(row.sessionDate)}` : "No session"} · Max ${row.maxScore} pts`}
         </Text>
@@ -133,11 +122,7 @@ function StaffQuizzes() {
         <PageTitle
           title="Quizzes"
           subtitle={
-            season.data
-              ? `All quizzes for ${season.data.title}`
-              : seasonId === null
-                ? "No season found"
-                : undefined
+            season.data ? `All quizzes for ${season.data.title}` : seasonId === null ? "No season found" : undefined
           }
         />
         {seasonId !== null ? (
@@ -166,11 +151,7 @@ export default function QuizzesScreen() {
   // nav (spec D11). Confirmed as deliberate rather than widened here.
   return (
     <ShellFrame>
-      <EmptyState
-        icon={NAV_ICONS.quizzes}
-        title="Quizzes"
-        description="This screen isn't available for your role."
-      />
+      <EmptyState icon={NAV_ICONS.quizzes} title="Quizzes" description="This screen isn't available for your role." />
     </ShellFrame>
   );
 }

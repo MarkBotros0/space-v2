@@ -3,12 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { announcementDetailSchema } from "../../../../../packages/shared/src/index";
-import {
-  insertPoll,
-  insertPost,
-  seedAnnouncementFixtures,
-  type AnnouncementFixtures,
-} from "./announcements-setup";
+import { insertPoll, insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 import { cleanupTestData } from "./fixtures";
 
 jest.setTimeout(60000);
@@ -58,22 +53,16 @@ describe("PUT /announcements/:id/poll/vote", () => {
     expect(d.poll!.myOptionIds).toEqual([p.optionIds[1]]);
     expect(d.poll!.voterCount).toBe(1);
     expect(d.poll!.options.map((o) => o.votes)).toEqual([0, 1, 0]);
-    expect(await votesOf(p.pollId, f.userIds.student)).toEqual([
-      { optionId: p.optionIds[1], pollId: p.pollId },
-    ]);
+    expect(await votesOf(p.pollId, f.userIds.student)).toEqual([{ optionId: p.optionIds[1], pollId: p.pollId }]);
   });
 
   it("replaces the vote when it changes, leaving one row", async () => {
     const p = await seasonPoll(false);
-    expect(
-      (await vote(p.postId, f.tokens.student, { version: 1, optionIds: [p.optionIds[0]] })).status,
-    ).toBe(200);
+    expect((await vote(p.postId, f.tokens.student, { version: 1, optionIds: [p.optionIds[0]] })).status).toBe(200);
     const res = await vote(p.postId, f.tokens.student, { version: 1, optionIds: [p.optionIds[2]] });
     expect(res.status).toBe(200);
     expect(res.body.data.poll.myOptionIds).toEqual([p.optionIds[2]]);
-    expect(await votesOf(p.pollId, f.userIds.student)).toEqual([
-      { optionId: p.optionIds[2], pollId: p.pollId },
-    ]);
+    expect(await votesOf(p.pollId, f.userIds.student)).toEqual([{ optionId: p.optionIds[2], pollId: p.pollId }]);
   });
 
   it("stores every id on a several-answer poll", async () => {
@@ -83,9 +72,7 @@ describe("PUT /announcements/:id/poll/vote", () => {
       optionIds: [p.optionIds[0], p.optionIds[2]],
     });
     expect(res.status).toBe(200);
-    expect([...res.body.data.poll.myOptionIds].sort()).toEqual(
-      [p.optionIds[0], p.optionIds[2]].sort(),
-    );
+    expect([...res.body.data.poll.myOptionIds].sort()).toEqual([p.optionIds[0], p.optionIds[2]].sort());
     expect((await votesOf(p.pollId, f.userIds.student)).map((v) => v.optionId)).toEqual(
       [p.optionIds[0]!, p.optionIds[2]!].sort((a, b) => a - b),
     );
@@ -105,18 +92,14 @@ describe("PUT /announcements/:id/poll/vote", () => {
   it("refuses an option id from another poll, keeping the earlier vote", async () => {
     const p = await seasonPoll(true);
     const other = await seasonPoll(true);
-    expect(
-      (await vote(p.postId, f.tokens.student, { version: 1, optionIds: [p.optionIds[0]] })).status,
-    ).toBe(200);
+    expect((await vote(p.postId, f.tokens.student, { version: 1, optionIds: [p.optionIds[0]] })).status).toBe(200);
     const res = await vote(p.postId, f.tokens.student, {
       version: 1,
       optionIds: [p.optionIds[1], other.optionIds[0]],
     });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
-    expect((await votesOf(p.pollId, f.userIds.student)).map((v) => v.optionId)).toEqual([
-      p.optionIds[0],
-    ]);
+    expect((await votesOf(p.pollId, f.userIds.student)).map((v) => v.optionId)).toEqual([p.optionIds[0]]);
     expect(await votesOf(other.pollId, f.userIds.student)).toEqual([]);
   });
 

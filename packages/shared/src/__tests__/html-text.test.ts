@@ -10,9 +10,7 @@ describe("escapeHtml — the one escaper (ruling X2)", () => {
 
 describe("plainTextToHtml — the write half", () => {
   it("escapes markup so nothing a caller sends can execute in v1's raw render", () => {
-    expect(plainTextToHtml("<script>alert(1)</script>")).toBe(
-      "<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>",
-    );
+    expect(plainTextToHtml("<script>alert(1)</script>")).toBe("<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>");
   });
 
   it("wraps each line in a paragraph so v1's reader still renders it as prose", () => {
@@ -31,9 +29,7 @@ describe("htmlToPlainText — the read half", () => {
   });
 
   it("renders v1's TipTap rows as readable text with the tags gone", () => {
-    expect(htmlToPlainText("<p>Legacy &amp; <b>bold</b></p><p>second line</p>")).toBe(
-      "Legacy & bold\nsecond line",
-    );
+    expect(htmlToPlainText("<p>Legacy &amp; <b>bold</b></p><p>second line</p>")).toBe("Legacy & bold\nsecond line");
   });
 
   it("turns <br> into a line break rather than joining words", () => {

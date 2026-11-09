@@ -93,7 +93,8 @@ function fail(message) {
   process.exit(1);
 }
 
-const sh = (...command) => spawnSync(ADB, ["-s", DEVICE, "shell", ...command], { encoding: "utf8" }).stdout?.trim() ?? "";
+const sh = (...command) =>
+  spawnSync(ADB, ["-s", DEVICE, "shell", ...command], { encoding: "utf8" }).stdout?.trim() ?? "";
 
 async function reachable(url, expect) {
   try {
@@ -126,7 +127,9 @@ function restoreDevice(before) {
   sh("cmd", "uimode", "night", before.night);
   const now = readDeviceState();
   if (now.size !== before.size || now.density !== before.density) {
-    console.log(`[sweep] ⚠ could not restore the device (adb gone?). When it is back: node ${path.relative(process.cwd(), path.join(here, "ui-sweep.mjs"))} --restore`);
+    console.log(
+      `[sweep] ⚠ could not restore the device (adb gone?). When it is back: node ${path.relative(process.cwd(), path.join(here, "ui-sweep.mjs"))} --restore`,
+    );
     return false;
   }
   rmSync(DEVICE_STATE_FILE, { force: true });
@@ -172,7 +175,8 @@ function collectShots(scratchDir, cellDir, prefix) {
   }
   for (const entry of entries) {
     const name = path.basename(entry);
-    if (name.endsWith(".png") && name.startsWith(prefix)) renameSync(path.join(scratchDir, entry), path.join(cellDir, name));
+    if (name.endsWith(".png") && name.startsWith(prefix))
+      renameSync(path.join(scratchDir, entry), path.join(cellDir, name));
   }
   rmSync(scratchDir, { recursive: true, force: true });
 }
@@ -254,22 +258,21 @@ async function main() {
   let flows;
   try {
     cells = pick(CELLS, args.cells, (cell) => cell.id, "cell");
-    flows = pick(
-      sweepFlows(module),
-      args.flows,
-      (rel) => path.basename(rel),
-      "sweep flow",
-    );
+    flows = pick(sweepFlows(module), args.flows, (rel) => path.basename(rel), "sweep flow");
   } catch (err) {
     fail(err.message);
   }
 
   // An earlier run that never restored the device: reading its state now
   // would "restore" to that run's last cell.
-  if (existsSync(DEVICE_STATE_FILE)) fail("An earlier sweep left a matrix cell applied. Run `node ui-sweep.mjs --restore` first.");
-  if (!sh("pm", "list", "packages", APP_ID).includes(APP_ID)) fail(`${APP_ID} is not installed on ${DEVICE} (README.md: debug APK).`);
+  if (existsSync(DEVICE_STATE_FILE))
+    fail("An earlier sweep left a matrix cell applied. Run `node ui-sweep.mjs --restore` first.");
+  if (!sh("pm", "list", "packages", APP_ID).includes(APP_ID))
+    fail(`${APP_ID} is not installed on ${DEVICE} (README.md: debug APK).`);
   if (NEEDS_METRO && !(await reachable(`http://localhost:${METRO_PORT}/status`, "packager-status:running"))) {
-    fail(`Metro is not running on ${METRO_PORT}. Start it as README.md says (port 8095, EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:4100).`);
+    fail(
+      `Metro is not running on ${METRO_PORT}. Start it as README.md says (port 8095, EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:4100).`,
+    );
   }
   const { env: roleEnv, secrets, signsIn } = signInEnv(flows);
   if (!(await reachable(`${BACKEND}/health`, '"up"'))) {
@@ -301,7 +304,9 @@ async function main() {
   console.log(`[sweep] writing to ${runDir}`);
 
   const results =
-    args.into && existsSync(path.join(runDir, "results.json")) ? JSON.parse(readFileSync(path.join(runDir, "results.json"), "utf8")) : [];
+    args.into && existsSync(path.join(runDir, "results.json"))
+      ? JSON.parse(readFileSync(path.join(runDir, "results.json"), "utf8"))
+      : [];
   const sheetCells = CELLS.filter((cell) => cells.includes(cell) || results.some((r) => r.cell === cell.id));
   try {
     for (const cell of cells) {
@@ -312,9 +317,15 @@ async function main() {
         console.log(`\n[sweep] ── ${cell.id} / ${flow} ──`);
         const started = Date.now();
         const prefix = `${path.basename(flow).split("-")[0]}-`;
-        for (const old of readdirSync(cellDir).filter((name) => name.startsWith(prefix))) rmSync(path.join(cellDir, old));
+        for (const old of readdirSync(cellDir).filter((name) => name.startsWith(prefix)))
+          rmSync(path.join(cellDir, old));
         const scratchDir = path.join(runDir, ".maestro");
-        const passed = await runMaestro(path.join(SWEEP_DIR, flow), { ...roleEnv, THEME: cell.theme }, scratchDir, secrets);
+        const passed = await runMaestro(
+          path.join(SWEEP_DIR, flow),
+          { ...roleEnv, THEME: cell.theme },
+          scratchDir,
+          secrets,
+        );
         collectShots(scratchDir, cellDir, prefix);
         if (!passed) captureFailure(path.join(cellDir, `${prefix}zz-FAILED.png`));
         const previous = results.findIndex((r) => r.cell === cell.id && r.flow === flow);

@@ -13,9 +13,7 @@ import { queryKeys } from "../lib/query-keys";
 
 const rosterSchema = z.array(attendanceRosterRowSchema);
 
-export function useAttendanceRoster(
-  sessionId: number | null,
-): UseQueryResult<AttendanceRosterRow[]> {
+export function useAttendanceRoster(sessionId: number | null): UseQueryResult<AttendanceRosterRow[]> {
   return useQuery({
     queryKey: queryKeys.attendance.roster(sessionId),
     queryFn: async () => {

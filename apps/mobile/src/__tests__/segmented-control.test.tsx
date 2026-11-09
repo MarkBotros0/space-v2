@@ -7,7 +7,12 @@ const mockWithTiming = jest.fn((to: number, _config?: unknown) => to);
 
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
-  return { ...actual, __esModule: true, default: actual.default, withTiming: (...args: [number, unknown?]) => mockWithTiming(...args) };
+  return {
+    ...actual,
+    __esModule: true,
+    default: actual.default,
+    withTiming: (...args: [number, unknown?]) => mockWithTiming(...args),
+  };
 });
 
 beforeEach(() => mockWithTiming.mockClear());
@@ -29,7 +34,10 @@ describe("SegmentedControl", () => {
   it("shows the short label but speaks the option's accessibilityLabel", () => {
     render(
       <SegmentedControl
-        options={[{ value: "a", label: "Admins", accessibilityLabel: "Admins only" }, { value: "b", label: "Past" }]}
+        options={[
+          { value: "a", label: "Admins", accessibilityLabel: "Admins only" },
+          { value: "b", label: "Past" },
+        ]}
         value="a"
         onChange={() => {}}
       />,
@@ -52,14 +60,18 @@ describe("SegmentedControl", () => {
 
   it("the thumb's radius is concentric with the track's (control-inner inside control)", () => {
     render(<SegmentedControl options={OPTIONS} value="a" onChange={() => {}} />);
-    fireEvent(screen.getByTestId("segmented-control"), "layout", { nativeEvent: { layout: { width: 204, height: 48 } } });
+    fireEvent(screen.getByTestId("segmented-control"), "layout", {
+      nativeEvent: { layout: { width: 204, height: 48 } },
+    });
     expect(screen.getByTestId("segmented-control").props.className).toContain("rounded-control");
     expect(screen.getByTestId("segmented-thumb").props.className).toContain("rounded-control-inner");
   });
 
   it("the thumb is a raised surface, lighter than the track in dark mode too", () => {
     render(<SegmentedControl options={OPTIONS} value="a" onChange={() => {}} />);
-    fireEvent(screen.getByTestId("segmented-control"), "layout", { nativeEvent: { layout: { width: 204, height: 48 } } });
+    fireEvent(screen.getByTestId("segmented-control"), "layout", {
+      nativeEvent: { layout: { width: 204, height: 48 } },
+    });
     expect(screen.getByTestId("segmented-thumb").props.className).toContain("bg-surface-raised");
   });
 

@@ -105,7 +105,9 @@ describe("people-candidates: source seasons", () => {
     expect(outcomeIn(res, graduate.id, last.id)).toBeUndefined();
     // A running season is never a source, even with a later end date.
     await place(running.id, absent.id, "COMPLETED", "PASSED");
-    expect(((await candidates(next.id)).body.data.season.sources as { id: number }[]).some((s) => s.id === running.id)).toBe(false);
+    expect(
+      ((await candidates(next.id)).body.data.season.sources as { id: number }[]).some((s) => s.id === running.id),
+    ).toBe(false);
   });
 
   it("follows the required program over the season's own", async () => {

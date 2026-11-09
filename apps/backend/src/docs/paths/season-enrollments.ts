@@ -53,15 +53,14 @@ export const seasonEnrollmentPaths = {
         "A draft's row is a plan, not history: this hard-deletes the enrolment and its group membership, so the season never shows in the person's history and they can be added again. Marks their sessions stale.",
       parameters: [idParam, userIdParam],
       responses: {
-        200: ok(
-          { type: "object", required: ["removed"], properties: { removed: { type: "boolean" } } },
-          "Removed.",
-        ),
+        200: ok({ type: "object", required: ["removed"], properties: { removed: { type: "boolean" } } }, "Removed."),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: conflict("`not_found` — no such season, or the person has no row in it."),
-        409: conflict("`not_draft`; `has_work` if they have any submission, quiz attempt, attendance row or quiz grade in this season; `not_active` for a dropped or completed row."),
+        409: conflict(
+          "`not_draft`; `has_work` if they have any submission, quiz attempt, attendance row or quiz grade in this season; `not_active` for a dropped or completed row.",
+        ),
       },
     },
   },

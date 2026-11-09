@@ -1,9 +1,4 @@
-import {
-  MIME_CATEGORY_LABELS,
-  configLabel,
-  groupTrackerRows,
-  targetLabel,
-} from "../lib/assignment-labels";
+import { MIME_CATEGORY_LABELS, configLabel, groupTrackerRows, targetLabel } from "../lib/assignment-labels";
 
 const groups = [
   { id: 3, name: "Group A" },
@@ -25,8 +20,12 @@ describe("targetLabel", () => {
 
 describe("configLabel", () => {
   const standard = {
-    type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false, forumPostToRead: true,
-    maxFileSizeMb: null, allowedMimeCategories: [] as ("pdf" | "image")[],
+    type: "STANDARD" as const,
+    forumMinWords: null,
+    forumAllowComments: false,
+    forumPostToRead: true,
+    maxFileSizeMb: null,
+    allowedMimeCategories: [] as ("pdf" | "image")[],
   };
 
   it("describes a standard assignment's file settings (null size = no files, R10)", () => {
@@ -50,12 +49,31 @@ describe("configLabel", () => {
 
 describe("groupTrackerRows", () => {
   const row = (id: number, groupId: number | null, groupName: string | null) =>
-    ({ studentUserId: id, name: null, email: `${id}@x`, groupId, groupName, status: "PENDING", isLate: false,
-       submittedAt: null, reviewedAt: null, submissionPublicId: null }) as const;
+    ({
+      studentUserId: id,
+      name: null,
+      email: `${id}@x`,
+      groupId,
+      groupName,
+      status: "PENDING",
+      isLate: false,
+      submittedAt: null,
+      reviewedAt: null,
+      submissionPublicId: null,
+    }) as const;
 
   it("makes one section per consecutive group, with No group for unplaced students", () => {
-    const out = groupTrackerRows([row(1, 3, "Group A"), row(2, 3, "Group A"), row(3, 4, "Group B"), row(4, null, null)]);
-    expect(out.map((g) => [g.groupName, g.rows.length])).toEqual([["Group A", 2], ["Group B", 1], ["No group", 1]]);
+    const out = groupTrackerRows([
+      row(1, 3, "Group A"),
+      row(2, 3, "Group A"),
+      row(3, 4, "Group B"),
+      row(4, null, null),
+    ]);
+    expect(out.map((g) => [g.groupName, g.rows.length])).toEqual([
+      ["Group A", 2],
+      ["Group B", 1],
+      ["No group", 1],
+    ]);
   });
   it("is empty for no rows", () => expect(groupTrackerRows([])).toEqual([]));
 });

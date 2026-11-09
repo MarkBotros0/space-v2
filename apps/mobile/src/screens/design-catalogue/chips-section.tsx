@@ -46,25 +46,39 @@ export function ChipsSection() {
   return (
     <CatalogueSection id="chips" title="Status chips">
       <Row label="Season">
-        {SEASON.map((v) => <StatusChip key={v} {...statusChip("season", v)} />)}
+        {SEASON.map((v) => (
+          <StatusChip key={v} {...statusChip("season", v)} />
+        ))}
       </Row>
       <Row label="Enrollment">
-        {ENROLLMENT.map((v) => <StatusChip key={v} {...statusChip("enrollment", v)} />)}
+        {ENROLLMENT.map((v) => (
+          <StatusChip key={v} {...statusChip("enrollment", v)} />
+        ))}
       </Row>
       <Row label="Attendance">
-        {ATTENDANCE.map((v) => <StatusChip key={v} {...statusChip("attendance", v)} />)}
+        {ATTENDANCE.map((v) => (
+          <StatusChip key={v} {...statusChip("attendance", v)} />
+        ))}
       </Row>
       <Row label="Submission">
-        {SUBMISSION.map((v) => <StatusChip key={v} {...statusChip("submission", v)} />)}
+        {SUBMISSION.map((v) => (
+          <StatusChip key={v} {...statusChip("submission", v)} />
+        ))}
       </Row>
       <Row label="Quiz attempt">
-        {QUIZ_ATTEMPT.map((v) => <StatusChip key={v} {...statusChip("quizAttempt", v)} />)}
+        {QUIZ_ATTEMPT.map((v) => (
+          <StatusChip key={v} {...statusChip("quizAttempt", v)} />
+        ))}
       </Row>
       <Row label="User">
-        {USER.map((v) => <StatusChip key={v} {...statusChip("user", v)} />)}
+        {USER.map((v) => (
+          <StatusChip key={v} {...statusChip("user", v)} />
+        ))}
       </Row>
       <Row label="Due (dueChip)">
-        {DUE.map((d) => <StatusChip key={`${d.dueOrgDay}-${d.isOverdue}`} {...dueChip({ ...d, todayOrgDay: TODAY })} />)}
+        {DUE.map((d) => (
+          <StatusChip key={`${d.dueOrgDay}-${d.isOverdue}`} {...dueChip({ ...d, todayOrgDay: TODAY })} />
+        ))}
       </Row>
     </CatalogueSection>
   );

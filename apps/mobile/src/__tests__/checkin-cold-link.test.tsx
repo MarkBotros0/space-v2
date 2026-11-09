@@ -9,7 +9,9 @@ import { makeScopes, makeUser } from "./helpers/session";
 
 muteTabsAnchorWarning();
 
-jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn().mockRejectedValue(new Error("x")), post: jest.fn() } }));
+jest.mock("../lib/api-client", () => ({
+  apiClient: { get: jest.fn().mockRejectedValue(new Error("x")), post: jest.fn() },
+}));
 jest.mock("../hooks/use-notifications", () => ({
   useUnreadCount: () => ({ data: 0 }),
   useNotifications: () => ({ data: { pages: [{ items: [] }] } }),

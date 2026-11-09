@@ -86,10 +86,7 @@ export const userWriteRoleSchema = z.enum(["SUPER", "MENTOR", "STUDENT"]);
 
 const MAX_CLASS_YEAR = 2100;
 
-function checkUserFields(
-  v: { role?: UserRole; graduationYear: number | null },
-  ctx: z.RefinementCtx,
-): void {
+function checkUserFields(v: { role?: UserRole; graduationYear: number | null }, ctx: z.RefinementCtx): void {
   if (v.graduationYear !== null) {
     // No "this year" ceiling: the class is the season's own year, which can be ahead
     // (a 2027 season ending in 2026), and its graduate must still be able to save.
@@ -173,12 +170,7 @@ export type ActivationResponse = z.infer<typeof activationResponseSchema>;
  */
 export const updateProfileRequestSchema = z
   .object({
-    name: z
-      .string()
-      .trim()
-      .min(2, "At least 2 characters.")
-      .max(120, "At most 120 characters.")
-      .optional(),
+    name: z.string().trim().min(2, "At least 2 characters.").max(120, "At most 120 characters.").optional(),
     phone: phoneFieldSchema,
     dateOfBirth: dateOfBirthFieldSchema,
     address: addressFieldSchema,

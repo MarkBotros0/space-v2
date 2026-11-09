@@ -43,7 +43,5 @@ export async function resolveSeriesTargets(
     select: { id: true, startsAt: true },
     orderBy: { startsAt: "asc" },
   });
-  return scope === "future"
-    ? series.filter((s) => s.startsAt.getTime() >= anchor.startsAt.getTime())
-    : series;
+  return scope === "future" ? series.filter((s) => s.startsAt.getTime() >= anchor.startsAt.getTime()) : series;
 }

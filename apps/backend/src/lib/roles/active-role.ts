@@ -102,11 +102,7 @@ export type SeasonLockMode = "update" | "share";
  *
  * The order is always the season, then the people.
  */
-export async function lockSeason(
-  tx: Prisma.TransactionClient,
-  seasonId: number,
-  mode: SeasonLockMode,
-): Promise<void> {
+export async function lockSeason(tx: Prisma.TransactionClient, seasonId: number, mode: SeasonLockMode): Promise<void> {
   if (mode === "update") await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR NO KEY UPDATE`;
   else await tx.$queryRaw`SELECT id FROM "Season" WHERE id = ${seasonId} FOR SHARE`;
 }

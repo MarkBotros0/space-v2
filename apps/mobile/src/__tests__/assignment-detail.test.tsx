@@ -46,17 +46,32 @@ const detail = {
   allowedMimeCategories: ["pdf" as const],
   groupIds: null,
   mySubmission: null,
-  canManage: false, readOnly: false,
+  canManage: false,
+  readOnly: false,
 };
 
 const submissionFor = (status: "REVIEWED" | "SUBMITTED", isLate: boolean, feedback: string | null) => ({
-  id: 900, publicId: "abc123defg", status, text: "the work", feedback,
+  id: 900,
+  publicId: "abc123defg",
+  status,
+  text: "the work",
+  feedback,
   submittedAt: "2099-03-30T10:00:00.000Z",
   reviewedAt: status === "REVIEWED" ? "2099-03-31T10:00:00.000Z" : null,
-  isLate, assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
-  assignmentDescription: null, seasonCode: "S26", studentUserId: 9,
-  studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
-  files: [], canUploadFiles: false, canReview: false,
+  isLate,
+  assignmentId: 41,
+  assignmentTitle: "Essay one",
+  assignmentDueAt: null,
+  assignmentDescription: null,
+  seasonCode: "S26",
+  studentUserId: 9,
+  studentName: "Test student",
+  studentEmail: "s@jpc.test",
+  groupId: null,
+  groupName: null,
+  files: [],
+  canUploadFiles: false,
+  canReview: false,
 });
 
 beforeEach(() => {
@@ -84,7 +99,9 @@ describe("AssignmentDetailScreen", () => {
 
   it("shows a v2 plain-text brief verbatim, angle brackets and all", async () => {
     // v2's form stores plain text; the column also holds v1's TipTap HTML.
-    get.mockResolvedValue({ data: { data: { ...detail, description: "Read pages <intro> & <summary>.\nThen reflect." } } });
+    get.mockResolvedValue({
+      data: { data: { ...detail, description: "Read pages <intro> & <summary>.\nThen reflect." } },
+    });
     renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText("Read pages <intro> & <summary>.")).toBeTruthy();
     expect(screen.getByText("Then reflect.")).toBeTruthy();
@@ -101,9 +118,12 @@ describe("AssignmentDetailScreen", () => {
     const assignment = {
       ...detail,
       mySubmission: {
-        publicId: "abc123defg", status: "REVIEWED" as const,
-        submittedAt: "2099-03-30T10:00:00.000Z", reviewedAt: "2099-03-31T10:00:00.000Z",
-        feedback: "Solid work.", isLate: false,
+        publicId: "abc123defg",
+        status: "REVIEWED" as const,
+        submittedAt: "2099-03-30T10:00:00.000Z",
+        reviewedAt: "2099-03-31T10:00:00.000Z",
+        feedback: "Solid work.",
+        isLate: false,
       },
     };
     get.mockImplementation((url: string) =>
@@ -123,8 +143,12 @@ describe("AssignmentDetailScreen", () => {
     const assignment = {
       ...detail,
       mySubmission: {
-        publicId: "abc123defg", status: "SUBMITTED" as const,
-        submittedAt: "2099-04-02T10:00:00.000Z", reviewedAt: null, feedback: null, isLate: true,
+        publicId: "abc123defg",
+        status: "SUBMITTED" as const,
+        submittedAt: "2099-04-02T10:00:00.000Z",
+        reviewedAt: null,
+        feedback: null,
+        isLate: true,
       },
     };
     get.mockImplementation((url: string) =>
@@ -150,17 +174,19 @@ describe("AssignmentDetailScreen", () => {
         isOverdue: true,
         ...over,
         mySubmission: {
-          publicId: "abc123defg", status, submittedAt: "2099-03-30T10:00:00.000Z",
-          reviewedAt: null, feedback: null, isLate: false,
+          publicId: "abc123defg",
+          status,
+          submittedAt: "2099-03-30T10:00:00.000Z",
+          reviewedAt: null,
+          feedback: null,
+          isLate: false,
         },
       };
       get.mockImplementation((url: string) =>
         Promise.resolve({
           data: {
             data:
-              url === "/api/v1/assignments/41"
-                ? assignment
-                : { ...submissionFor("SUBMITTED", false, null), status },
+              url === "/api/v1/assignments/41" ? assignment : { ...submissionFor("SUBMITTED", false, null), status },
           },
         }),
       );
@@ -226,10 +252,7 @@ describe("AssignmentDetailScreen", () => {
       get.mockImplementation((url: string) =>
         Promise.resolve({
           data: {
-            data:
-              url === "/api/v1/me/dashboard"
-                ? { ...studentDashboard, todayOrgDay: "2099-03-30" }
-                : detail,
+            data: url === "/api/v1/me/dashboard" ? { ...studentDashboard, todayOrgDay: "2099-03-30" } : detail,
           },
         }),
       );
@@ -253,10 +276,16 @@ describe("AssignmentDetailScreen", () => {
           return Promise.resolve({
             data: {
               data: {
-                ...detail, type: "FORUM", isOverdue: true,
+                ...detail,
+                type: "FORUM",
+                isOverdue: true,
                 mySubmission: {
-                  publicId: "abc123defg", status: "SUBMITTED", submittedAt: "2099-03-30T10:00:00.000Z",
-                  reviewedAt: null, feedback: null, isLate: false,
+                  publicId: "abc123defg",
+                  status: "SUBMITTED",
+                  submittedAt: "2099-03-30T10:00:00.000Z",
+                  reviewedAt: null,
+                  feedback: null,
+                  isLate: false,
                 },
               },
             },
@@ -278,8 +307,12 @@ describe("AssignmentDetailScreen", () => {
         screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
       });
     const summary = (status: "SUBMITTED" | "REVIEWED") => ({
-      publicId: "abc123defg", status, submittedAt: "2099-03-30T10:00:00.000Z",
-      reviewedAt: null, feedback: null, isLate: false,
+      publicId: "abc123defg",
+      status,
+      submittedAt: "2099-03-30T10:00:00.000Z",
+      reviewedAt: null,
+      feedback: null,
+      isLate: false,
     });
     const reads = (url: string) => get.mock.calls.filter(([u]) => u === url).length;
 
@@ -317,7 +350,9 @@ describe("AssignmentDetailScreen", () => {
         if (!isAssignment && hold) await slow;
         return {
           data: {
-            data: isAssignment ? { ...detail, mySubmission: summary("SUBMITTED") } : submissionFor("SUBMITTED", false, null),
+            data: isAssignment
+              ? { ...detail, mySubmission: summary("SUBMITTED") }
+              : submissionFor("SUBMITTED", false, null),
           },
         };
       });
@@ -370,4 +405,3 @@ describe("AssignmentDetailScreen", () => {
     });
   });
 });
-

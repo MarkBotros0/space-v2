@@ -7,15 +7,8 @@ import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { Screen } from "../design/layout/screen";
 import { Button, EmptyState, FilterButton, GroupedList, SearchField } from "../design/ui";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
-import {
-  StudentFilterSheet,
-  activeFilterCount,
-} from "../screens/students-list/student-filter-sheet";
-import {
-  ActiveStudentRow,
-  AlumnusRow,
-  DroppedStudentRow,
-} from "../screens/students-list/student-rows";
+import { StudentFilterSheet, activeFilterCount } from "../screens/students-list/student-filter-sheet";
+import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "../screens/students-list/student-rows";
 import { useDebouncedSearch } from "../screens/students-list/use-debounced-search";
 import { useSessionStore } from "../store/session";
 
@@ -100,16 +93,8 @@ export function StudentList({
   // A list the role may not read is never asked for: the endpoint would refuse it.
   const shown = showOptions.includes(picked) ? picked : "active";
   const [filtering, setFiltering] = useState(false);
-  const {
-    data,
-    isPending,
-    isError,
-    refetch,
-    isRefetching,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useStudentList(shown, q, allowed, view);
+  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useStudentList(shown, q, allowed, view);
 
   if (!allowed) {
     return (
@@ -139,12 +124,12 @@ export function StudentList({
             : view.absentLately
               ? "Nobody has missed their last two sessions."
               : view.groupId !== null
-              ? "No students are in that group."
-              : view.seasonId !== null
-                ? "No students are in that season."
-                : mentor && shown === "active"
-                  ? "Members will appear here once they join a season."
-                  : copy.emptyDescription
+                ? "No students are in that group."
+                : view.seasonId !== null
+                  ? "No students are in that season."
+                  : mentor && shown === "active"
+                    ? "Members will appear here once they join a season."
+                    : copy.emptyDescription
         }
       />
     );
@@ -163,11 +148,7 @@ export function StudentList({
           ))}
         </GroupedList>
         {hasNextPage ? (
-          <Button
-            variant="outline"
-            disabled={isFetchingNextPage}
-            onPress={() => void fetchNextPage()}
-          >
+          <Button variant="outline" disabled={isFetchingNextPage} onPress={() => void fetchNextPage()}>
             {isFetchingNextPage ? "Loading…" : "Load more"}
           </Button>
         ) : null}

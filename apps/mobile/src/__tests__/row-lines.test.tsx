@@ -24,8 +24,14 @@ describe("row line caps", () => {
 
   it("lets a season row's code and dates take three lines", () => {
     const row: SeasonListItem = {
-      id: 1, code: "gbv-2026", title: "GBV 2026", program: "GBV", year: 2026,
-      status: "ACTIVE", startDate: "2026-09-01", endDate: "2026-12-20",
+      id: 1,
+      code: "gbv-2026",
+      title: "GBV 2026",
+      program: "GBV",
+      year: 2026,
+      status: "ACTIVE",
+      startDate: "2026-09-01",
+      endDate: "2026-12-20",
     } as SeasonListItem;
     renderWithProviders(<SeasonsList rows={[row]} onOpen={() => undefined} />);
     expect(screen.getByText(/^gbv-2026 · /).props.numberOfLines).toBe(3);
@@ -33,9 +39,19 @@ describe("row line caps", () => {
 
   it("lets an event title take three lines", () => {
     const event = {
-      id: 3, title: "Alumni reunion dinner", date: "2099-06-30T21:00:00.000Z", endDate: null,
-      dayKey: "2099-07-01", endDayKey: null, isPast: false, time: null, allDay: true, url: null,
-      visibility: "ALUMNI_ONLY", seasonId: null, seasonCode: null,
+      id: 3,
+      title: "Alumni reunion dinner",
+      date: "2099-06-30T21:00:00.000Z",
+      endDate: null,
+      dayKey: "2099-07-01",
+      endDayKey: null,
+      isPast: false,
+      time: null,
+      allDay: true,
+      url: null,
+      visibility: "ALUMNI_ONLY",
+      seasonId: null,
+      seasonCode: null,
     } as unknown as JpcEventListItem;
     renderWithProviders(
       <GroupedList>

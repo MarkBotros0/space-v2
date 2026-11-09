@@ -32,19 +32,8 @@ jest.mock("../../lib/invites", () => {
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { hashToken } from "../../lib/auth/tokens";
-import {
-  inviteIfStillPending,
-  isV2InviteDigest,
-  issueInvite,
-  sendPendingInviteBatch,
-} from "../../lib/invites";
-import {
-  cleanupTestData,
-  createTestUser,
-  createUnactivatedTestUser,
-  login,
-  testEmail,
-} from "./fixtures";
+import { inviteIfStillPending, isV2InviteDigest, issueInvite, sendPendingInviteBatch } from "../../lib/invites";
+import { cleanupTestData, createTestUser, createUnactivatedTestUser, login, testEmail } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -99,9 +88,7 @@ async function seedPool() {
 describe("GET /api/v1/users/invites/pending", () => {
   it("counts never-activated, undeleted accounts without a live v2 invite — a v1 plaintext invite does not count", async () => {
     await seedPool();
-    const res = await request(app)
-      .get("/api/v1/users/invites/pending")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/users/invites/pending").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ pending: 4 });
   });
@@ -123,9 +110,7 @@ describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
       select: { token: true },
     });
 
-    const res = await request(app)
-      .post("/api/v1/users/invites/pending")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).post("/api/v1/users/invites/pending").set("authorization", `Bearer ${superToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ sent: 4, skipped: 0, failed: 0, remaining: 0 });
@@ -153,9 +138,7 @@ describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
     const { pending } = await seedPool();
     mockIsEmailConfigured.mockReturnValue(false);
 
-    const res = await request(app)
-      .post("/api/v1/users/invites/pending")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).post("/api/v1/users/invites/pending").set("authorization", `Bearer ${superToken}`);
 
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe("email_not_configured");

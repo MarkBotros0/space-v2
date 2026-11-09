@@ -21,10 +21,16 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
 
-const adminTargets = { community: false, communityReach: 0, seasons: [{ id: 3, code: "SP26", title: "Test Season", reach: 5 }] };
+const adminTargets = {
+  community: false,
+  communityReach: 0,
+  seasons: [{ id: 3, code: "SP26", title: "Test Season", reach: 5 }],
+};
 
 async function openNew() {
-  get.mockImplementation((url: string) => (url.endsWith("/targets") ? ok(adminTargets) : Promise.reject(new Error(url))));
+  get.mockImplementation((url: string) =>
+    url.endsWith("/targets") ? ok(adminTargets) : Promise.reject(new Error(url)),
+  );
   renderWithProviders(<NewAnnouncementScreen />);
   fireEvent.changeText(await screen.findByLabelText("Message"), "Vote please");
 }
@@ -105,7 +111,13 @@ describe("Poll editor on edit", () => {
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(patch).toHaveBeenCalledWith("/api/v1/announcements/7", {
       body: "Full body https://example.com/x.",
-      poll: { allowsMultiple: true, options: [{ id: 1, label: "Saturday" }, { id: 2, label: "Monday" }] },
+      poll: {
+        allowsMultiple: true,
+        options: [
+          { id: 1, label: "Saturday" },
+          { id: 2, label: "Monday" },
+        ],
+      },
     });
   });
 
@@ -117,6 +129,9 @@ describe("Poll editor on edit", () => {
     fireEvent.press(screen.getByLabelText("Remove poll"));
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalled());
-    expect(patch).toHaveBeenCalledWith("/api/v1/announcements/7", { body: "Full body https://example.com/x.", poll: null });
+    expect(patch).toHaveBeenCalledWith("/api/v1/announcements/7", {
+      body: "Full body https://example.com/x.",
+      poll: null,
+    });
   });
 });

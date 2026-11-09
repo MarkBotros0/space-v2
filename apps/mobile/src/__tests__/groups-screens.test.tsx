@@ -23,8 +23,14 @@ const leaderSession = makeSession(
 );
 
 const groupRow = {
-  id: 3, name: "Group A", description: null, studentCount: 8,
-  leaderNames: ["Test leader"], seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
+  id: 3,
+  name: "Group A",
+  description: null,
+  studentCount: 8,
+  leaderNames: ["Test leader"],
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
 };
 
 beforeEach(() => {
@@ -34,23 +40,63 @@ beforeEach(() => {
 });
 
 const season = (id: number, title: string, status: string) => ({
-  id, code: `s${id}`, title, program: "TEST", year: 2099, status,
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+  id,
+  code: `s${id}`,
+  title,
+  program: "TEST",
+  year: 2099,
+  status,
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
 });
-const detail = (id: number, name: string, seasonId: number, students: { id: number; name: string | null; email?: string }[]) => ({
-  id, name, description: null, seasonId, seasonCode: `s${seasonId}`, seasonTitle: seasonId === 7 ? "Spring 2026" : "Fall 2025",
-  leaders: [], students, canManage: false,
+const detail = (
+  id: number,
+  name: string,
+  seasonId: number,
+  students: { id: number; name: string | null; email?: string }[],
+) => ({
+  id,
+  name,
+  description: null,
+  seasonId,
+  seasonCode: `s${seasonId}`,
+  seasonTitle: seasonId === 7 ? "Spring 2026" : "Fall 2025",
+  leaders: [],
+  students,
+  canManage: false,
 });
 
 function serveLeaderGroups() {
   get.mockImplementation((url: string) => {
     const body: Record<string, unknown> = {
-      "/api/v1/seasons": { seasons: [season(7, "Spring 2026", "ACTIVE"), season(3, "Fall 2025", "ARCHIVED"), season(9, "Fall 2026", "DRAFT")] },
+      "/api/v1/seasons": {
+        seasons: [
+          season(7, "Spring 2026", "ACTIVE"),
+          season(3, "Fall 2025", "ARCHIVED"),
+          season(9, "Fall 2026", "DRAFT"),
+        ],
+      },
       "/api/v1/groups": {
         groups: [
-          { ...groupRow, id: 2, name: "Older group", seasonId: 3, seasonCode: "s3", seasonTitle: "Fall 2025", studentCount: 0 },
+          {
+            ...groupRow,
+            id: 2,
+            name: "Older group",
+            seasonId: 3,
+            seasonCode: "s3",
+            seasonTitle: "Fall 2025",
+            studentCount: 0,
+          },
           groupRow,
-          { ...groupRow, id: 4, name: "Next group", seasonId: 9, seasonCode: "s9", seasonTitle: "Fall 2026", studentCount: 0 },
+          {
+            ...groupRow,
+            id: 4,
+            name: "Next group",
+            seasonId: 9,
+            seasonCode: "s9",
+            seasonTitle: "Fall 2026",
+            studentCount: 0,
+          },
         ],
       },
       "/api/v1/groups/4": detail(4, "Next group", 9, []),
@@ -65,7 +111,9 @@ function serveLeaderGroups() {
 }
 
 it("lists my groups as grouped rows: members, past seasons apart, group and student links", async () => {
-  useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3, 2] }, { id: 5, name: "Test leader", email: "l@jpc.test" }));
+  useSessionStore.setState(
+    makeSession("LEADER", { groupLeaderIds: [3, 2] }, { id: 5, name: "Test leader", email: "l@jpc.test" }),
+  );
   serveLeaderGroups();
 
   renderWithProviders(<GroupsScreen />);
@@ -77,7 +125,9 @@ it("lists my groups as grouped rows: members, past seasons apart, group and stud
   expect(screen.getByText("noname@jpc.test")).toBeTruthy();
   expect((await screen.findAllByText("No students in this group yet.")).length).toBe(1);
   // Past groups render after the current ones, under their own header (spec 05 §9).
-  const order = screen.UNSAFE_root.findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string").map((n: { props: { children?: unknown } }) => n.props.children as string);
+  const order = screen.UNSAFE_root.findAll(
+    (n: { props: { children?: unknown } }) => typeof n.props.children === "string",
+  ).map((n: { props: { children?: unknown } }) => n.props.children as string);
   expect(order.indexOf("Group A")).toBeLessThan(order.indexOf("PAST GROUPS"));
   expect(order.indexOf("PAST GROUPS")).toBeLessThan(order.indexOf("Older group"));
   // A season being set up (DRAFT) is upcoming, not past.
@@ -112,13 +162,16 @@ it("a leader who leads nothing gets v1's empty page and no request (R87)", () =>
   expect(get).not.toHaveBeenCalled();
 });
 
-
 it("shows the leaders' emails but no student emails for a staff caller", async () => {
   get.mockResolvedValue({
     data: {
       data: {
-        id: 3, name: "Group A", description: null, seasonId: 7,
-        seasonCode: "S26", seasonTitle: "Spring 2026",
+        id: 3,
+        name: "Group A",
+        description: null,
+        seasonId: 7,
+        seasonCode: "S26",
+        seasonTitle: "Spring 2026",
         leaders: [{ id: 5, name: "Test leader", email: "l@jpc.test" }],
         students: [{ id: 9, name: "Test student", email: "s@jpc.test" }],
         canManage: false,
@@ -141,8 +194,12 @@ it("renders a student's member list without emails (the contract omits them)", a
   get.mockResolvedValue({
     data: {
       data: {
-        id: 3, name: "Group A", description: null, seasonId: 7,
-        seasonCode: "S26", seasonTitle: "Spring 2026",
+        id: 3,
+        name: "Group A",
+        description: null,
+        seasonId: 7,
+        seasonCode: "S26",
+        seasonTitle: "Spring 2026",
         leaders: [{ id: 5, name: "Test leader" }],
         students: [{ id: 9, name: null }],
         canManage: false,
@@ -164,8 +221,12 @@ it("a leader pressing a student row in a group opens the student", async () => {
   get.mockResolvedValue({
     data: {
       data: {
-        id: 3, name: "Group A", description: null, seasonId: 7,
-        seasonCode: "S26", seasonTitle: "Spring 2026",
+        id: 3,
+        name: "Group A",
+        description: null,
+        seasonId: 7,
+        seasonCode: "S26",
+        seasonTitle: "Spring 2026",
         leaders: [{ id: 5, name: "Test leader", email: "l@jpc.test" }],
         students: [{ id: 9, name: "Test student", email: "s@jpc.test" }],
         canManage: false,

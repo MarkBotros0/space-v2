@@ -86,7 +86,8 @@ const detail = {
   allowedMimeCategories: ["pdf" as const],
   groupIds: [3],
   mySubmission: null,
-  canManage: true, readOnly: false,
+  canManage: true,
+  readOnly: false,
 };
 const tracker = {
   assignmentId: 55,
@@ -271,9 +272,7 @@ describe("NewAssignmentScreen", () => {
     fireEvent.changeText(await screen.findByLabelText("Title"), "Week 4 reflection");
     fireEvent.press(screen.getByText("Create assignment"));
 
-    expect(
-      await screen.findByText("Every group must belong to this assignment's season."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Every group must belong to this assignment's season.")).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 

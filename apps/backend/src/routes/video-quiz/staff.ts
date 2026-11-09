@@ -139,8 +139,7 @@ export async function updateVideoQuestion(req: Request, res: Response) {
       });
       for (const r of responses) {
         // An index the shrunken options no longer contain can never be right.
-        const nowCorrect =
-          r.selectedIndex < body.options.length && r.selectedIndex === body.correctIndex;
+        const nowCorrect = r.selectedIndex < body.options.length && r.selectedIndex === body.correctIndex;
         if (nowCorrect !== r.isCorrect) {
           await tx.sessionVideoQuestionResponse.update({
             where: { id: r.id },
@@ -203,10 +202,7 @@ export async function getVideoQuizResults(req: Request, res: Response) {
   const scope = await staffScopeForSeason(user, session.seasonId);
   if (scope === null) return forbidden(res);
 
-  const data = await loadVideoQuizResults(
-    sessionId,
-    scope.kind === "groups" ? scope.groupIds : undefined,
-  );
+  const data = await loadVideoQuizResults(sessionId, scope.kind === "groups" ? scope.groupIds : undefined);
   if (data === null) return apiError(res, "not_found", "Session not found.", 404);
   return apiOk(res, data);
 }

@@ -64,9 +64,7 @@ export function UsersList({
                 subtitleLines={3}
                 leading={
                   <Avatar size="sm">
-                    <AvatarFallback>
-                      {initialsOf(row.name, row.email[0]?.toUpperCase() ?? "?")}
-                    </AvatarFallback>
+                    <AvatarFallback>{initialsOf(row.name, row.email[0]?.toUpperCase() ?? "?")}</AvatarFallback>
                   </Avatar>
                 }
                 footer={<StatusChip {...chip} />}

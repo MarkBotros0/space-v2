@@ -27,8 +27,11 @@ describe("isValidSeasonCode", () => {
 
 describe("seasonWriteRequestSchema", () => {
   const valid = {
-    code: "Test 2099", program: "TEST", year: 2099,
-    startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+    code: "Test 2099",
+    program: "TEST",
+    year: 2099,
+    startDate: "2099-01-01T00:00:00.000Z",
+    endDate: "2099-12-31T00:00:00.000Z",
     status: "DRAFT",
   };
 
@@ -53,9 +56,7 @@ describe("seasonWriteRequestSchema", () => {
   });
 
   it("refuses an end date before the start date", () => {
-    expect(
-      seasonWriteRequestSchema.safeParse({ ...valid, endDate: "2098-01-01T00:00:00.000Z" }).success,
-    ).toBe(false);
+    expect(seasonWriteRequestSchema.safeParse({ ...valid, endDate: "2098-01-01T00:00:00.000Z" }).success).toBe(false);
   });
 });
 
@@ -68,21 +69,19 @@ describe("seasonAdminPatchSchema", () => {
 
 describe("session write schemas", () => {
   const valid = {
-    title: "Session one", startsAt: "2099-03-01T18:00:00.000Z", durationMinutes: 90,
+    title: "Session one",
+    startsAt: "2099-03-01T18:00:00.000Z",
+    durationMinutes: 90,
   };
 
   it("bounds title at the server truth (2–120), not the client's old limit", () => {
     // Spec 03 §10 item 7: v1's client and server disagreed; the server wins.
     expect(createSessionRequestSchema.safeParse({ ...valid, seasonId: 1, title: "x" }).success).toBe(false);
-    expect(
-      createSessionRequestSchema.safeParse({ ...valid, seasonId: 1, title: "ab" }).success,
-    ).toBe(true);
+    expect(createSessionRequestSchema.safeParse({ ...valid, seasonId: 1, title: "ab" }).success).toBe(true);
   });
 
   it("refuses repeatWeeks outside 1..26 (v1 clamped silently)", () => {
-    expect(
-      createSessionRequestSchema.safeParse({ ...valid, seasonId: 1, repeatWeeks: 27 }).success,
-    ).toBe(false);
+    expect(createSessionRequestSchema.safeParse({ ...valid, seasonId: 1, repeatWeeks: 27 }).success).toBe(false);
   });
 
   it("requires a scope on update", () => {
@@ -99,7 +98,9 @@ describe("duplicateSeasonRequestSchema", () => {
   it("refuses endDate before startDate", () => {
     expect(
       duplicateSeasonRequestSchema.safeParse({
-        year: 2100, startDate: "2100-06-01T00:00:00.000Z", endDate: "2100-01-01T00:00:00.000Z",
+        year: 2100,
+        startDate: "2100-06-01T00:00:00.000Z",
+        endDate: "2100-01-01T00:00:00.000Z",
       }).success,
     ).toBe(false);
   });

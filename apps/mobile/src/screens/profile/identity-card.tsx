@@ -8,15 +8,7 @@ import { initialsOf } from "../../lib/initials";
  * The profile hero: initials, name and email, with an optional action (Edit) under
  * them. No role badge (owner, 2026-11-07).
  */
-export function IdentityCard({
-  name,
-  email,
-  action,
-}: {
-  name: string;
-  email: string;
-  action?: ReactNode;
-}) {
+export function IdentityCard({ name, email, action }: { name: string; email: string; action?: ReactNode }) {
   return (
     <View className="rounded-group bg-surface dark:border dark:border-separator p-5">
       <View className="flex-row items-center gap-4">

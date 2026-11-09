@@ -30,11 +30,7 @@ export function ReleaseResultsCard({ quiz }: { quiz: Props }) {
         <Text variant="headline" className="min-w-0 flex-1">
           Results
         </Text>
-        <StatusChip
-          className="shrink-0"
-          tone={released ? "ok" : "warn"}
-          label={released ? "Released" : "Held"}
-        />
+        <StatusChip className="shrink-0" tone={released ? "ok" : "warn"} label={released ? "Released" : "Held"} />
       </View>
       <Text variant="subhead" className="text-muted-foreground">
         {released

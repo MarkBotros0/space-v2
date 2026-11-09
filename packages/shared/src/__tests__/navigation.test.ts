@@ -1,4 +1,12 @@
-import { ALL_NAV_HREFS, ALL_TAB_HREFS, STUDENT_BETWEEN, isAlumnus, isStudyingAlumnus, navByRole, navFor } from "../navigation";
+import {
+  ALL_NAV_HREFS,
+  ALL_TAB_HREFS,
+  STUDENT_BETWEEN,
+  isAlumnus,
+  isStudyingAlumnus,
+  navByRole,
+  navFor,
+} from "../navigation";
 import type { RoleNav } from "../navigation";
 
 const base = { role: "STUDENT" as const, graduationYear: null as number | null, activeSeasonId: 1 as number | null };
@@ -25,10 +33,7 @@ describe("navFor", () => {
 
   it("puts Today first for every role, at most five tabs (redesign plan 01 Task 12)", () => {
     for (const [role, nav] of Object.entries(ALL_NAVS)) {
-      expect([role, nav.tabs[0]]).toEqual([
-        role,
-        { href: "/dashboard", label: "Home", icon: "home" },
-      ]);
+      expect([role, nav.tabs[0]]).toEqual([role, { href: "/dashboard", label: "Home", icon: "home" }]);
       expect(nav.tabs.length).toBeLessThanOrEqual(5);
       expect(nav.sidebar.length).toBeGreaterThan(0);
     }
@@ -87,15 +92,7 @@ describe("navFor", () => {
         "/quizzes",
         "/submissions",
       ],
-      MENTOR: [
-        "/announcements",
-        "/dashboard",
-        "/follow-ups",
-        "/more",
-        "/notes",
-        "/notifications",
-        "/students",
-      ],
+      MENTOR: ["/announcements", "/dashboard", "/follow-ups", "/more", "/notes", "/notifications", "/students"],
       STUDENT: [
         "/announcements",
         "/attendance",
@@ -107,15 +104,7 @@ describe("navFor", () => {
         "/season",
         "/work",
       ],
-      ALUMNI: [
-        "/announcements",
-        "/calendar",
-        "/dashboard",
-        "/history",
-        "/more",
-        "/notifications",
-        "/profile",
-      ],
+      ALUMNI: ["/announcements", "/calendar", "/dashboard", "/history", "/more", "/notifications", "/profile"],
     };
     for (const [role, nav] of Object.entries(ALL_NAVS)) {
       const union = [...new Set([...nav.tabs, ...nav.sidebar].map((i) => i.href))].sort();
@@ -288,9 +277,7 @@ describe("Announcements and More (owner, 2026-11-07)", () => {
   });
 
   it("mentor tabs are Home, Community, Notes, Follow-ups, More", () => {
-    expect(navByRole.MENTOR.tabs.map((t) => t.label)).toEqual([
-      "Home", "Community", "Notes", "Follow-ups", "More",
-    ]);
+    expect(navByRole.MENTOR.tabs.map((t) => t.label)).toEqual(["Home", "Community", "Notes", "Follow-ups", "More"]);
     expect(navByRole.MENTOR.tabs[4]).toEqual({ href: "/more", label: "More", icon: "more" });
   });
 
@@ -306,18 +293,32 @@ describe("navFor between seasons", () => {
   const hrefs = (a: Parameters<typeof navFor>[0]) => navFor(a).tabs.map((t) => t.href);
   it("follows whether the student is in a season", () => {
     expect(hrefs({ role: "STUDENT", graduationYear: null, activeSeasonId: 1 })).toEqual([
-      "/dashboard", "/calendar", "/work", "/more",
+      "/dashboard",
+      "/calendar",
+      "/work",
+      "/more",
     ]);
     expect(hrefs({ role: "STUDENT", graduationYear: null, activeSeasonId: null })).toEqual([
-      "/dashboard", "/calendar", "/history", "/more",
+      "/dashboard",
+      "/calendar",
+      "/history",
+      "/more",
     ]);
     expect(hrefs({ role: "STUDENT", graduationYear: 2024, activeSeasonId: null })).toEqual([
-      "/dashboard", "/calendar", "/history", "/profile", "/more",
+      "/dashboard",
+      "/calendar",
+      "/history",
+      "/profile",
+      "/more",
     ]);
   });
   it("STUDENT_BETWEEN sidebar has no season, work or attendance", () => {
     expect(STUDENT_BETWEEN.sidebar.map((i) => i.label)).toEqual([
-      "Dashboard", "Announcements", "Calendar", "History", "Notifications",
+      "Dashboard",
+      "Announcements",
+      "Calendar",
+      "History",
+      "Notifications",
     ]);
   });
 });
@@ -347,7 +348,11 @@ describe("isStudyingAlumnus (community-wide seasons)", () => {
 
   it("gets the alumni nav back once the season is over", () => {
     expect(navFor({ ...studying, activeSeasonId: null }).tabs.map((t) => t.label)).toEqual([
-      "Home", "Events", "History", "Profile", "More",
+      "Home",
+      "Events",
+      "History",
+      "Profile",
+      "More",
     ]);
   });
 });

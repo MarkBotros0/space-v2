@@ -34,11 +34,7 @@ function DetailRow({ label, value, trailing }: Row) {
   );
 }
 
-function detailRows(
-  p: StudentDetail["profile"],
-  exception?: GraduatedByException | null,
-  canCall = true,
-): Row[] {
+function detailRows(p: StudentDetail["profile"], exception?: GraduatedByException | null, canCall = true): Row[] {
   const rows: Row[] = [];
   if ("phone" in p && p.phone) {
     const phone = p.phone;

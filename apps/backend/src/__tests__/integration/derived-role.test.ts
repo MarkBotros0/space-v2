@@ -27,8 +27,7 @@ const alumnus = async (label: string, role: "STUDENT" | "ADMIN" | "LEADER" = "ST
   await db.user.update({ where: { id: person.id }, data: { graduationYear: 2020 } });
   return person;
 };
-const makeAdmin = (userId: number, seasonId: number) =>
-  db.seasonAdmin.create({ data: { userId, seasonId } });
+const makeAdmin = (userId: number, seasonId: number) => db.seasonAdmin.create({ data: { userId, seasonId } });
 const makeLeader = async (userId: number, seasonId: number, name = "G") => {
   const group = await db.group.create({ data: { seasonId, name } });
   await db.groupLeader.create({ data: { userId, groupId: group.id } });
@@ -201,9 +200,7 @@ describe("a role in an ACTIVE season hides DRAFT grants", () => {
       .send({ notPassed: [], reviewed: await reviewedOf(seasonA.id) });
     expect(ended.status).toBe(200);
 
-    const refreshed = await request(app)
-      .post("/api/v1/auth/refresh")
-      .send({ refreshToken: session.refreshToken });
+    const refreshed = await request(app).post("/api/v1/auth/refresh").send({ refreshToken: session.refreshToken });
     expect(refreshed.status).toBe(200);
     expect(await verifyAccessToken(refreshed.body.data.accessToken)).toMatchObject({
       role: "ADMIN",
@@ -222,17 +219,13 @@ describe("what the API reports", () => {
 
     const session = await signIn(person.email);
     expect(session.user.role).toBe("ADMIN");
-    const me = await request(app)
-      .get("/api/v1/me")
-      .set("authorization", `Bearer ${session.accessToken}`);
+    const me = await request(app).get("/api/v1/me").set("authorization", `Bearer ${session.accessToken}`);
     expect(me.body.data.user.role).toBe("ADMIN");
     expect(me.body.data.scopes.seasonAdminIds).toEqual([season.id]);
 
     const old = await signIn(stale.email);
     expect(old.user.role).toBe("STUDENT");
-    const oldMe = await request(app)
-      .get("/api/v1/me")
-      .set("authorization", `Bearer ${old.accessToken}`);
+    const oldMe = await request(app).get("/api/v1/me").set("authorization", `Bearer ${old.accessToken}`);
     expect(oldMe.body.data.user.role).toBe("STUDENT");
   });
 
@@ -261,9 +254,7 @@ describe("what the API reports", () => {
         .query({ role, q: "dr-users-", limit: 100 })
         .set("authorization", `Bearer ${token}`);
       expect(res.status).toBe(200);
-      return Object.fromEntries(
-        (res.body.data.users as { id: number; role: string }[]).map((u) => [u.id, u.role]),
-      );
+      return Object.fromEntries((res.body.data.users as { id: number; role: string }[]).map((u) => [u.id, u.role]));
     };
 
     expect(await list("ADMIN")).toEqual({ [serving.id]: "ADMIN", [drafted.id]: "ADMIN" });
@@ -271,9 +262,7 @@ describe("what the API reports", () => {
     expect(await list("MENTOR")).toEqual({ [mentor.id]: "MENTOR" });
     expect(await list("STUDENT")).toEqual({ [former.id]: "STUDENT" });
 
-    const detail = await request(app)
-      .get(`/api/v1/users/${serving.id}`)
-      .set("authorization", `Bearer ${token}`);
+    const detail = await request(app).get(`/api/v1/users/${serving.id}`).set("authorization", `Bearer ${token}`);
     expect(detail.body.data.role).toBe("ADMIN");
   });
 

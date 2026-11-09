@@ -8,7 +8,7 @@ export const groupPaths = {
       tags: ["Groups"],
       summary: "The groups this caller is personally in",
       description:
-        "What the `/groups` tab needs — `navigation.ts` gives LEADER this as their first tab, and until now nothing served it: v1 answered the question with a query written inside the page, one of five group reads that never reached its REST layer.\n\nA LEADER gets the groups they lead; a STUDENT gets their own, across every season they were enrolled in. Staff above leader are not *in* groups, so they get an empty list and browse by season instead — returning everything they could administer would make \"my groups\" mean something different per role.",
+        'What the `/groups` tab needs — `navigation.ts` gives LEADER this as their first tab, and until now nothing served it: v1 answered the question with a query written inside the page, one of five group reads that never reached its REST layer.\n\nA LEADER gets the groups they lead; a STUDENT gets their own, across every season they were enrolled in. Staff above leader are not *in* groups, so they get an empty list and browse by season instead — returning everything they could administer would make "my groups" mean something different per role.',
       responses: {
         200: ok(
           {
@@ -67,7 +67,10 @@ export const groupPaths = {
         200: ok(
           {
             type: "object",
-            properties: { deleted: { type: "boolean" }, orphanedStudentIds: { type: "array", items: { type: "integer" } } },
+            properties: {
+              deleted: { type: "boolean" },
+              orphanedStudentIds: { type: "array", items: { type: "integer" } },
+            },
           },
           "Deleted.",
         ),
@@ -99,7 +102,8 @@ export const groupPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: {
-          description: "`name_taken`, `not_enrolled`, or why a newly added leader can't serve: `not_alumnus`, `permanent_role`, `user_inactive`, `season_finished`, `already_in_role` or `leader_has_group`.",
+          description:
+            "`name_taken`, `not_enrolled`, or why a newly added leader can't serve: `not_alumnus`, `permanent_role`, `user_inactive`, `season_finished`, `already_in_role` or `leader_has_group`.",
           content: { "application/json": { schema: errorResponse } },
         },
       },
@@ -117,5 +121,4 @@ export const groupPaths = {
       },
     },
   },
-
 } as const;

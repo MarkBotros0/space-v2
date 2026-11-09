@@ -7,13 +7,7 @@ import { PageTitle } from "../../design/layout/page-title";
 import { Screen } from "../../design/layout/screen";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { iconWithClassName } from "../../design/lib/icon";
-import {
-  Badge,
-  Button as ButtonV1,
-  Card as CardV1,
-  CardContent,
-  Text as TextV1,
-} from "../../design/ui";
+import { Badge, Button as ButtonV1, Card as CardV1, CardContent, Text as TextV1 } from "../../design/ui";
 import { Button } from "../../design/ui/button";
 import { formatDayKey, formatWallTime, formatWeekdayDay, formatMinutes } from "../../lib/format";
 import { attendanceLine } from "./attendance-line";
@@ -45,9 +39,7 @@ export function LeaderSessionBody({ data, refetch, isRefetching }: BodyProps) {
         {data.canMarkAttendance ? (
           <Button
             className="self-start"
-            onPress={() =>
-              router.push({ pathname: "/session/[id]/attendance", params: { id: String(data.id) } })
-            }
+            onPress={() => router.push({ pathname: "/session/[id]/attendance", params: { id: String(data.id) } })}
           >
             Mark attendance
           </Button>
@@ -66,12 +58,7 @@ export function LeaderSessionBody({ data, refetch, isRefetching }: BodyProps) {
  * questions, Check-in. A MENTOR reads the info card only (no attendance,
  * no edit: the server's flags).
  */
-export function AdminSessionBody({
-  data,
-  showConsole,
-  refetch,
-  isRefetching,
-}: BodyProps & { showConsole: boolean }) {
+export function AdminSessionBody({ data, showConsole, refetch, isRefetching }: BodyProps & { showConsole: boolean }) {
   const router = useRouter();
   return (
     <ShellFrame refreshing={isRefetching} onRefresh={refetch}>
@@ -86,9 +73,7 @@ export function AdminSessionBody({
             {data.canManageCheckIn ? (
               <ButtonV1
                 variant="outline"
-                onPress={() =>
-                  router.push({ pathname: "/session/[id]/edit", params: { id: String(data.id) } })
-                }
+                onPress={() => router.push({ pathname: "/session/[id]/edit", params: { id: String(data.id) } })}
               >
                 Edit
               </ButtonV1>
@@ -122,13 +107,9 @@ export function AdminSessionBody({
                   <TextV1 className="text-sm">{data.location}</TextV1>
                 </View>
               ) : null}
-              {data.description ? (
-                <TextV1 className="text-sm text-foreground">{data.description}</TextV1>
-              ) : null}
+              {data.description ? <TextV1 className="text-sm text-foreground">{data.description}</TextV1> : null}
               {data.myAttendance ? (
-                <TextV1 className="text-sm text-muted-foreground">
-                  {attendanceLine(data.myAttendance)}
-                </TextV1>
+                <TextV1 className="text-sm text-muted-foreground">{attendanceLine(data.myAttendance)}</TextV1>
               ) : null}
             </CardContent>
           </CardV1>

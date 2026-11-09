@@ -62,10 +62,7 @@ export async function studentCheckIn(req: Request, res: Response) {
   // there is no `Season.lateThresholdMinutes` (C3 over spec 04 D1's
   // 15-minute grace). Rows v1 wrote still mean "minutes since opening";
   // C3 accepts that divergence (the workbook withholds those minutes).
-  const minutesLate = Math.max(
-    0,
-    Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000),
-  );
+  const minutesLate = Math.max(0, Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000));
   const status: "PRESENT" | "LATE" = minutesLate > 0 ? "LATE" : "PRESENT";
 
   await db.attendance.upsert({
@@ -88,7 +85,6 @@ export async function studentCheckIn(req: Request, res: Response) {
 
   return apiOk(res, { status, minutesLate });
 }
-
 
 export async function openCheckIn(req: Request, res: Response) {
   const user = requireUser(req);
@@ -154,9 +150,7 @@ export async function getCheckIn(req: Request, res: Response) {
 
   const state = checkInState(session);
   const expiresAt =
-    state === "open" && session.checkInOpenAt
-      ? new Date(session.checkInOpenAt.getTime() + CHECK_IN_WINDOW_MS)
-      : null;
+    state === "open" && session.checkInOpenAt ? new Date(session.checkInOpenAt.getTime() + CHECK_IN_WINDOW_MS) : null;
   return apiOk(res, {
     state,
     isOpen: state === "open",

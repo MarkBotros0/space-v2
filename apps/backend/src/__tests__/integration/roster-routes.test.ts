@@ -58,7 +58,9 @@ beforeAll(async () => {
   await db.groupStudent.create({ data: { groupId: groupOneId, seasonId, studentUserId: a.id } });
   // B: unassigned here, but in ANOTHER season's group (spec 05 R82).
   await db.seasonEnrollment.create({ data: { seasonId, studentUserId: b.id, status: "ACTIVE" } });
-  await db.seasonEnrollment.create({ data: { seasonId: other.id, studentUserId: b.id, groupId: foreignGroupId, status: "ACTIVE" } });
+  await db.seasonEnrollment.create({
+    data: { seasonId: other.id, studentUserId: b.id, groupId: foreignGroupId, status: "ACTIVE" },
+  });
   await db.groupStudent.create({ data: { groupId: foreignGroupId, seasonId: other.id, studentUserId: b.id } });
   // Withdrawn and soft-deleted students are not on the roster (C9 + live users only).
   await db.seasonEnrollment.create({ data: { seasonId, studentUserId: withdrawn.id, status: "WITHDRAWN" } });
@@ -222,7 +224,12 @@ describe("PUT /api/v1/seasons/:id/group-assignments (D-16.12)", () => {
     const dup = await request(app)
       .put(`/api/v1/seasons/${seasonId}/group-assignments`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ assignments: [{ studentUserId: studentAId, groupId: null }, { studentUserId: studentAId, groupId: groupOneId }] });
+      .send({
+        assignments: [
+          { studentUserId: studentAId, groupId: null },
+          { studentUserId: studentAId, groupId: groupOneId },
+        ],
+      });
     expect(dup.status).toBe(400);
 
     const junk = await request(app)

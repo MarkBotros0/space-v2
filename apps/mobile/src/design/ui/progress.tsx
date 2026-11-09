@@ -8,7 +8,17 @@ import { View } from "react-native";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-function Progress({ className, value, label, showValue }: { className?: string; value: number | null; label?: string; showValue?: boolean }) {
+function Progress({
+  className,
+  value,
+  label,
+  showValue,
+}: {
+  className?: string;
+  value: number | null;
+  label?: string;
+  showValue?: boolean;
+}) {
   const now = Math.max(0, Math.min(100, value ?? 0));
   return (
     <View
@@ -21,7 +31,9 @@ function Progress({ className, value, label, showValue }: { className?: string; 
       {label || showValue ? (
         <View className="flex-row items-center justify-between">
           {label ? <Text className="text-sm font-medium text-foreground">{label}</Text> : <View />}
-          {showValue ? <Text className="text-sm text-muted-foreground tabular-nums">{`${Math.round(value ?? 0)}%`}</Text> : null}
+          {showValue ? (
+            <Text className="text-sm text-muted-foreground tabular-nums">{`${Math.round(value ?? 0)}%`}</Text>
+          ) : null}
         </View>
       ) : null}
       <View className="h-2 w-full overflow-hidden rounded-full bg-separator">

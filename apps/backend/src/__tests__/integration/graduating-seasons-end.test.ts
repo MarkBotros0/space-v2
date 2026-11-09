@@ -4,7 +4,17 @@ import request from "supertest";
 import { db } from "../../db/client";
 import { PASSWORD, createTestUser, reviewedOf } from "./fixtures";
 import { THIS_YEAR, auditLines, end, enrol, nextSecond, seasonOf, yearOf } from "./graduating-seasons-setup";
-import { adminTokenOf, app, as, ctx, person, rowOf, seedEnrollmentFixtures, stamp, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  adminTokenOf,
+  app,
+  as,
+  ctx,
+  person,
+  rowOf,
+  seedEnrollmentFixtures,
+  stamp,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 
 jest.setTimeout(180000);
 
@@ -86,7 +96,11 @@ describe("End of a graduating season", () => {
       expect(res.body.data.graduated).toBe(1);
     });
     expect(await yearOf(student.id)).toBe(THIS_YEAR);
-    expect(lines.some((l) => l.startsWith("[audit] student.graduate") && l.includes(`subject=${student.id} season=${seasonId}`))).toBe(true);
+    expect(
+      lines.some(
+        (l) => l.startsWith("[audit] student.graduate") && l.includes(`subject=${student.id} season=${seasonId}`),
+      ),
+    ).toBe(true);
   });
 
   it("an ordinary season graduates nobody", async () => {

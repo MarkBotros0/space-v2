@@ -15,14 +15,7 @@ import { db } from "../../db/client";
 import { hashToken } from "../../lib/auth/tokens";
 import { issuePasswordReset, requestPasswordReset } from "../../lib/auth/password-reset";
 import { issueInvite } from "../../lib/invites";
-import {
-  PASSWORD,
-  cleanupTestData,
-  createTestUser,
-  createUnactivatedTestUser,
-  login,
-  testEmail,
-} from "./fixtures";
+import { PASSWORD, cleanupTestData, createTestUser, createUnactivatedTestUser, login, testEmail } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -77,7 +70,9 @@ describe("POST /api/v1/auth/forgot-password", () => {
     const known = await createTestUser("forgot-known", "STUDENT");
 
     const a = await request(app).post("/api/v1/auth/forgot-password").send({ email: known.email });
-    const b = await request(app).post("/api/v1/auth/forgot-password").send({ email: testEmail("nobody") });
+    const b = await request(app)
+      .post("/api/v1/auth/forgot-password")
+      .send({ email: testEmail("nobody") });
     expect(a.status).toBe(200);
     expect(b.status).toBe(200);
     expect(a.body).toEqual({ data: { ok: true } });
@@ -187,9 +182,9 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(used?.usedAt).not.toBeNull();
     const otherRow = await db.passwordResetToken.findUnique({ where: { id: other.id }, select: { expiresAt: true } });
     expect(otherRow!.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
-    expect(
-      await db.inviteToken.count({ where: { userId: u.id, usedAt: null, expiresAt: { gt: new Date() } } }),
-    ).toBe(0);
+    expect(await db.inviteToken.count({ where: { userId: u.id, usedAt: null, expiresAt: { gt: new Date() } } })).toBe(
+      0,
+    );
 
     // The old session is dead: rotation of the pre-reset refresh token 401s.
     const rotate = await request(app).post("/api/v1/auth/refresh").send({ refreshToken: oldRefresh });
@@ -199,7 +194,9 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(
       (await request(app).post("/api/v1/auth/login").send({ email: u.email, password: "brand-new-password" })).status,
     ).toBe(200);
-    expect((await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD })).status).toBe(401);
+    expect((await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD })).status).toBe(
+      401,
+    );
   });
 
   it("is single-use", async () => {
@@ -226,7 +223,9 @@ describe("POST /api/v1/auth/reset-password", () => {
 
     const bodies = [];
     for (const token of [expired, randomBytes(32).toString("hex"), gone]) {
-      const res = await request(app).post("/api/v1/auth/reset-password").send({ token, password: "brand-new-password" });
+      const res = await request(app)
+        .post("/api/v1/auth/reset-password")
+        .send({ token, password: "brand-new-password" });
       expect(res.status).toBe(400);
       bodies.push(res.body);
     }
@@ -257,10 +256,13 @@ describe("POST /api/v1/auth/reset-password", () => {
     await issueInvite(db, fresh.id, superUser.id);
     const raw = await mintReset(fresh.id);
 
-    const res = await request(app).post("/api/v1/auth/reset-password").send({ token: raw, password: "brand-new-password" });
+    const res = await request(app)
+      .post("/api/v1/auth/reset-password")
+      .send({ token: raw, password: "brand-new-password" });
     expect(res.status).toBe(200);
     expect(
-      (await request(app).post("/api/v1/auth/login").send({ email: fresh.email, password: "brand-new-password" })).status,
+      (await request(app).post("/api/v1/auth/login").send({ email: fresh.email, password: "brand-new-password" }))
+        .status,
     ).toBe(200);
     expect(
       await db.inviteToken.count({ where: { userId: fresh.id, usedAt: null, expiresAt: { gt: new Date() } } }),
@@ -288,7 +290,9 @@ describe("POST /api/v1/me/password consumes outstanding reset tokens (spec 18 R2
       .send({ currentPassword: PASSWORD, newPassword: "changed-password-1" });
     expect(change.status).toBe(200);
 
-    const res = await request(app).post("/api/v1/auth/reset-password").send({ token: raw, password: "brand-new-password" });
+    const res = await request(app)
+      .post("/api/v1/auth/reset-password")
+      .send({ token: raw, password: "brand-new-password" });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("invalid_reset_token");
   });

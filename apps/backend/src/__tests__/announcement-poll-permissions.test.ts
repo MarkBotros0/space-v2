@@ -27,12 +27,9 @@ describe("canVotePoll", () => {
     expect(canVotePoll(student, seasonRow("ACTIVE"), false)).toBe(true);
   });
 
-  it.each(["DRAFT", "COMPLETED", "ARCHIVED", "SOMETHING_NEW"])(
-    "refuses a season that is %s",
-    (status) => {
-      expect(canVotePoll(student, seasonRow(status), false)).toBe(false);
-    },
-  );
+  it.each(["DRAFT", "COMPLETED", "ARCHIVED", "SOMETHING_NEW"])("refuses a season that is %s", (status) => {
+    expect(canVotePoll(student, seasonRow(status), false)).toBe(false);
+  });
 
   it("refuses a season post whose season is missing", () => {
     expect(canVotePoll(student, { ...seasonRow("ACTIVE"), season: null }, false)).toBe(false);

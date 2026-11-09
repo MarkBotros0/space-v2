@@ -57,8 +57,7 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   // not tell a too-large file from a server fault.
   if (err instanceof MulterError) {
     const code = err.code === "LIMIT_FILE_SIZE" ? "file_too_large" : "bad_request";
-    const message =
-      err.code === "LIMIT_FILE_SIZE" ? "File exceeds the upload limit." : "Invalid upload.";
+    const message = err.code === "LIMIT_FILE_SIZE" ? "File exceeds the upload limit." : "Invalid upload.";
     apiError(res, code, message, 400);
     return;
   }

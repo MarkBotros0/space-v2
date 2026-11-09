@@ -1,16 +1,23 @@
 // Imports (Plan 17). Hand-authored like every response in this document.
 const importCellValuesDoc = {
   type: "object",
-  description:
-    "The raw trimmed cell text of one row. Flat (no nested profile). Resubmitted verbatim on commit.",
+  description: "The raw trimmed cell text of one row. Flat (no nested profile). Resubmitted verbatim on commit.",
   properties: {
     name: { type: "string" },
     email: { type: "string" },
     university: { type: "string", nullable: true },
     faculty: { type: "string", nullable: true },
-    universityGraduationYear: { type: "string", nullable: true, description: "Raw text as typed; a whole year 1950-2100 is the only accepted form." },
+    universityGraduationYear: {
+      type: "string",
+      nullable: true,
+      description: "Raw text as typed; a whole year 1950-2100 is the only accepted form.",
+    },
     phone: { type: "string", nullable: true },
-    dateOfBirth: { type: "string", nullable: true, description: "Raw text as typed; YYYY-MM-DD is the only accepted form." },
+    dateOfBirth: {
+      type: "string",
+      nullable: true,
+      description: "Raw text as typed; YYYY-MM-DD is the only accepted form.",
+    },
     notes: { type: "string", nullable: true },
   },
 } as const;
@@ -23,7 +30,11 @@ export const studentImportPreviewDoc = {
       items: {
         type: "object",
         properties: {
-          rowNumber: { type: "integer", description: "The operator's own line number; the header is line 1. Not contiguous: blank lines keep their number." },
+          rowNumber: {
+            type: "integer",
+            description:
+              "The operator's own line number; the header is line 1. Not contiguous: blank lines keep their number.",
+          },
           name: { type: "string" },
           email: { type: "string" },
           status: { type: "string", enum: ["new", "exists", "duplicate", "invalid", "previously_removed"] },
@@ -33,7 +44,11 @@ export const studentImportPreviewDoc = {
       },
     },
     detectedColumns: { type: "array", items: { type: "string" } },
-    unrecognisedColumns: { type: "array", items: { type: "string" }, description: "Header cells that matched no alias, echoed as typed (trimmed)." },
+    unrecognisedColumns: {
+      type: "array",
+      items: { type: "string" },
+      description: "Header cells that matched no alias, echoed as typed (trimmed).",
+    },
     delimiter: { type: "string", enum: ["comma", "tab"] },
     counts: {
       type: "object",
@@ -71,7 +86,10 @@ export const importTemplateDoc = {
     maxPasteChars: { type: "integer" },
     capabilities: {
       type: "object",
-      properties: { pasteText: { type: "boolean" }, fileUpload: { type: "boolean", description: "Hard false until file intake lands with the CMS." } },
+      properties: {
+        pasteText: { type: "boolean" },
+        fileUpload: { type: "boolean", description: "Hard false until file intake lands with the CMS." },
+      },
     },
   },
 } as const;
@@ -91,8 +109,16 @@ export const studentImportCommitBodyDoc = {
   properties: {
     mode: { type: "string", enum: ["season", "alumni"] },
     seasonId: { type: "integer", description: "Required when mode is `season`." },
-    graduationYear: { type: "integer", minimum: 1990, description: "Required when mode is `alumni`; not in the future (evaluated per request)." },
-    onExisting: { type: "string", enum: ["skip", "enroll"], description: "Required, no default. `enroll` is valid in season mode only." },
+    graduationYear: {
+      type: "integer",
+      minimum: 1990,
+      description: "Required when mode is `alumni`; not in the future (evaluated per request).",
+    },
+    onExisting: {
+      type: "string",
+      enum: ["skip", "enroll"],
+      description: "Required, no default. `enroll` is valid in season mode only.",
+    },
     rows: {
       type: "array",
       minItems: 1,

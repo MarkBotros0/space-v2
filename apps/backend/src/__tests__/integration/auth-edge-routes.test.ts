@@ -96,8 +96,13 @@ describe("refresh", () => {
     const { refreshToken } = await session(u.email);
     const season = await db.season.create({
       data: {
-        code: `space-v2-test-${Date.now().toString(16)}`, title: "Test Season", program: "TEST", year: 2099,
-        status: "ACTIVE", startDate: new Date("2099-01-01"), endDate: new Date("2099-12-31"),
+        code: `space-v2-test-${Date.now().toString(16)}`,
+        title: "Test Season",
+        program: "TEST",
+        year: 2099,
+        status: "ACTIVE",
+        startDate: new Date("2099-01-01"),
+        endDate: new Date("2099-12-31"),
       },
       select: { id: true },
     });
@@ -154,7 +159,9 @@ describe("logout-all", () => {
 
 describe("accept-invite and reset-password bodies", () => {
   it("accept-invite 400s a short password before looking at the token", async () => {
-    const res = await request(app).post("/api/v1/auth/accept-invite").send({ token: "x".repeat(64), password: "short" });
+    const res = await request(app)
+      .post("/api/v1/auth/accept-invite")
+      .send({ token: "x".repeat(64), password: "short" });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
   });
@@ -198,11 +205,17 @@ describe("bearer header handling", () => {
   it("401s an expired access token and one for the wrong audience", async () => {
     const key = new TextEncoder().encode(config.authSecret);
     const expired = await new SignJWT({ role: "STUDENT" })
-      .setProtectedHeader({ alg: "HS256" }).setSubject("1").setAudience("jpc-mobile")
-      .setIssuedAt(Math.floor(Date.now() / 1000) - 3600).setExpirationTime(Math.floor(Date.now() / 1000) - 60)
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("1")
+      .setAudience("jpc-mobile")
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 60)
       .sign(key);
     const wrongAud = await new SignJWT({ role: "STUDENT" })
-      .setProtectedHeader({ alg: "HS256" }).setSubject("1").setAudience("someone-else").setExpirationTime("900s")
+      .setProtectedHeader({ alg: "HS256" })
+      .setSubject("1")
+      .setAudience("someone-else")
+      .setExpirationTime("900s")
       .sign(key);
     for (const t of [expired, wrongAud]) {
       expect((await me().set("authorization", `Bearer ${t}`)).status).toBe(401);

@@ -123,9 +123,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.assignments).toHaveLength(2);
-    const all = res.body.data.assignments.find(
-      (a: { id: number }) => a.id === allGroupsAssignmentId,
-    );
+    const all = res.body.data.assignments.find((a: { id: number }) => a.id === allGroupsAssignmentId);
     expect(all).toEqual({
       id: allGroupsAssignmentId,
       title: "Open To All",
@@ -142,9 +140,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
       seasonCode: expect.any(String),
     });
 
-    const targeted = res.body.data.assignments.find(
-      (a: { id: number }) => a.id === targetedAssignmentId,
-    );
+    const targeted = res.body.data.assignments.find((a: { id: number }) => a.id === targetedAssignmentId);
     // Group B's two enrolments: the other student, and the moved student whose
     // GroupStudent row points elsewhere. Counting GroupStudent would find one.
     expect(targeted.expectedCount).toBe(2);
@@ -295,9 +291,7 @@ describe("GET /api/v1/assignments/:id", () => {
   });
 
   it("returns 400 for a non-numeric id and 404 for a missing one", async () => {
-    const bad = await request(app)
-      .get("/api/v1/assignments/abc")
-      .set("authorization", `Bearer ${superToken}`);
+    const bad = await request(app).get("/api/v1/assignments/abc").set("authorization", `Bearer ${superToken}`);
     expect(bad.status).toBe(400);
 
     const missing = await request(app)

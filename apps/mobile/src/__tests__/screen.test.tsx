@@ -170,9 +170,7 @@ describe("Screen: pinned back link (ruling R16)", () => {
     expect(mockPush).toHaveBeenCalledWith("/students");
     // Only the title fades in beside the link; the bar itself never hides.
     const compact = screen.getByTestId("compact-header", { includeHiddenElements: true });
-    expect(
-      within(screen.getByTestId("back-bar")).getByText("Sara", { includeHiddenElements: true }),
-    ).toBeTruthy();
+    expect(within(screen.getByTestId("back-bar")).getByText("Sara", { includeHiddenElements: true })).toBeTruthy();
     expect(compact.props.pointerEvents).toBe("none");
   });
 
@@ -219,9 +217,7 @@ describe("Screen: insets", () => {
 
   it("pads the content's bottom by useShellBottomPadding (tab bar present by default)", () => {
     renderWithProviders(<Screen title="Calendar">{body}</Screen>);
-    const style = StyleSheet.flatten(
-      screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
-    );
+    const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
     expect(style.paddingBottom).toBe(114);
   });
 
@@ -231,9 +227,7 @@ describe("Screen: insets", () => {
         <Screen title="Sara">{body}</Screen>
       </TabBarPresenceContext.Provider>,
     );
-    const style = StyleSheet.flatten(
-      screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
-    );
+    const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
     expect(style.paddingBottom).toBe(50);
   });
 });

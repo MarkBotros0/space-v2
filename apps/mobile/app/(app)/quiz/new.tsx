@@ -101,9 +101,7 @@ function NewQuizForm() {
   };
 
   const saveHint =
-    serverError ??
-    errors.form ??
-    (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined);
+    serverError ?? errors.form ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined);
 
   return (
     <FormScreen
@@ -124,12 +122,7 @@ function NewQuizForm() {
           onChange={setKind}
         />
         <FormField label="Title" required error={errors.title}>
-          <Input
-            accessibilityLabel="Title"
-            value={title}
-            onChangeText={setTitle}
-            placeholder="e.g. Week 3 Quiz"
-          />
+          <Input accessibilityLabel="Title" value={title} onChangeText={setTitle} placeholder="e.g. Week 3 Quiz" />
         </FormField>
         {kind === "PAPER" ? (
           <FormField label="Max score" error={errors.maxScore}>

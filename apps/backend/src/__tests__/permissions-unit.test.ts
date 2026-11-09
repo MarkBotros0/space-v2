@@ -20,8 +20,13 @@ import {
 
 function user(over: Partial<SessionUser>): SessionUser {
   return {
-    userId: 10, role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: null, graduationYear: null, ...over,
+    userId: 10,
+    role: "STUDENT",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: null,
+    graduationYear: null,
+    ...over,
   };
 }
 
@@ -110,7 +115,9 @@ describe("staffScopeForSeason / attendanceScopeFor / canMarkAttendance", () => {
   it("scopes a LEADER to just their groups in that season", async () => {
     mockDb.group.findMany.mockResolvedValue([{ id: 5 }]);
     expect(await staffScopeForSeason(user({ role: "LEADER", groupLeaderIds: [5, 6] }), 1)).toEqual({
-      kind: "groups", seasonId: 1, groupIds: [5],
+      kind: "groups",
+      seasonId: 1,
+      groupIds: [5],
     });
   });
 

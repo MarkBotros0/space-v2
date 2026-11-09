@@ -73,8 +73,14 @@ describe("enrolling into a finished season", () => {
   const importRow = (email: string) => ({
     rowNumber: 2,
     values: {
-      name: "Late Import", email, university: null, faculty: null, universityGraduationYear: null,
-      phone: null, dateOfBirth: null, notes: null,
+      name: "Late Import",
+      email,
+      university: null,
+      faculty: null,
+      universityGraduationYear: null,
+      phone: null,
+      dateOfBirth: null,
+      notes: null,
     },
   });
   const commit = (seasonId: number, email: string) =>

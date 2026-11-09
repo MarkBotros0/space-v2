@@ -18,14 +18,31 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 const season = (id: number, status: string, startDate: string) => ({
-  id, code: `s${id}`, title: `Season ${id}`, program: "TEST", year: 2026, status,
-  startDate, endDate: "2026-12-31T00:00:00.000Z",
+  id,
+  code: `s${id}`,
+  title: `Season ${id}`,
+  program: "TEST",
+  year: 2026,
+  status,
+  startDate,
+  endDate: "2026-12-31T00:00:00.000Z",
 });
 const session = (id: number, seasonId: number, startsAt: string, marked = false) => ({
-  id, title: `S${id}`, startsAt, dayKey: startsAt.slice(0, 10), startTime: "10:00",
-  durationMinutes: 60, location: null, recurrenceGroupId: null, attendanceMarked: marked,
-  seasonId, seasonCode: `s${seasonId}`, seasonTitle: `Season ${seasonId}`,
-  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
+  id,
+  title: `S${id}`,
+  startsAt,
+  dayKey: startsAt.slice(0, 10),
+  startTime: "10:00",
+  durationMinutes: 60,
+  location: null,
+  recurrenceGroupId: null,
+  attendanceMarked: marked,
+  seasonId,
+  seasonCode: `s${seasonId}`,
+  seasonTitle: `Season ${seasonId}`,
+  checkInToken: null,
+  checkInOpenAt: null,
+  checkInClosedAt: null,
 });
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
 const scope = { seasonIds: [], seasons: [], truncated: false, label: "x" };
@@ -73,14 +90,15 @@ describe("useStaffToday", () => {
     await waitFor(() => expect(result.current.isPending).toBe(false));
     expect(result.current.seasonIds.sort()).toEqual([1, 3]);
     expect(result.current.scopeSeasonId).toBeNull();
-    expect(urls()).toEqual(expect.arrayContaining([
-      "/api/v1/seasons/1/sessions", "/api/v1/seasons/3/sessions",
-    ]));
+    expect(urls()).toEqual(expect.arrayContaining(["/api/v1/seasons/1/sessions", "/api/v1/seasons/3/sessions"]));
     expect(urls()).not.toContain("/api/v1/seasons/2/sessions");
     expect(urls().find((u) => u.startsWith("/api/v1/submissions?"))).not.toContain("seasonId");
     expect(urls().find((u) => u.startsWith("/api/v1/reports/engagement"))).not.toContain("seasonId");
     expect(result.current.needs).toEqual({
-      pendingReview: 4, unmarkedSessions: 2, atRisk: 2, pendingInvites: 5,
+      pendingReview: 4,
+      unmarkedSessions: 2,
+      atRisk: 2,
+      pendingInvites: 5,
     });
   });
 
@@ -107,9 +125,8 @@ describe("useStaffToday", () => {
 
   it("SUPER with no active seasons has no sessions and zero unmarked", async () => {
     get.mockImplementation((url: string) =>
-      url === "/api/v1/seasons"
-        ? ok({ seasons: [season(2, "ARCHIVED", "2025-01-01T00:00:00.000Z")] })
-        : route(url));
+      url === "/api/v1/seasons" ? ok({ seasons: [season(2, "ARCHIVED", "2025-01-01T00:00:00.000Z")] }) : route(url),
+    );
     useSessionStore.setState(makeSession("SUPER"));
     const { result } = renderHook(() => useStaffToday("SUPER"), { wrapper });
     await waitFor(() => expect(result.current.isPending).toBe(false));
@@ -126,7 +143,8 @@ describe("useStaffToday", () => {
           ? todayOrgDay instanceof Error
             ? Promise.reject(todayOrgDay)
             : ok({ ...staffDashboard("season"), todayOrgDay })
-          : route(url));
+          : route(url),
+      );
     }
 
     it("a server day before the sessions' day: nothing is over yet, whatever the device says", async () => {

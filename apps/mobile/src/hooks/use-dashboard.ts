@@ -60,4 +60,3 @@ export function useStaffOrgToday(seasonId: number | null): { today: string | und
   // A disabled query reports pending forever.
   return { today: dash.data?.todayOrgDay, isPending: seasonId !== null && dash.isPending };
 }
-

@@ -13,13 +13,7 @@ import { addMinutesToWallTime, formatLongDayYear, formatWallTime, formatMinutes 
 import { attendanceLine } from "./attendance-line";
 
 /** v1 app/student/sessions/[id]/page.tsx + the v2 extras kept by B2-14. */
-export function StudentSessionBody({
-  data,
-  refetch,
-}: {
-  data: SessionDetail;
-  refetch: () => Promise<unknown>;
-}) {
+export function StudentSessionBody({ data, refetch }: { data: SessionDetail; refetch: () => Promise<unknown> }) {
   // The check-in card polls this query, so `isRefetching` isn't the student's pull.
   const pull = usePullRefresh(refetch);
   const hasVideo = data.youtubeUrl !== null;
@@ -31,15 +25,10 @@ export function StudentSessionBody({
   if (hasVideo) {
     if (quiz.isPending) video = <RouteSkeleton />;
     else if (quiz.isError)
-      video = (
-        <InlineError message="Couldn't load the video quiz." onRetry={() => void quiz.refetch()} />
-      );
+      video = <InlineError message="Couldn't load the video quiz." onRetry={() => void quiz.refetch()} />;
     else if (quiz.data.questions.length === 0 && data.youtubeUrl !== null)
       video = <WatchRecordingButton youtubeUrl={data.youtubeUrl} />;
-    else
-      video = (
-        <VideoQuizPlayer sessionId={data.id} quiz={quiz.data} onRetry={() => void quiz.refetch()} />
-      );
+    else video = <VideoQuizPlayer sessionId={data.id} quiz={quiz.data} onRetry={() => void quiz.refetch()} />;
   }
 
   const att = data.myAttendance;
@@ -64,9 +53,7 @@ export function StudentSessionBody({
             subtitle={`${formatWallTime(data.startTime)} – ${formatWallTime(end)} · ${formatMinutes(data.durationMinutes)}`}
             subtitleLines={3}
           />
-          {data.location ? (
-            <ListRow title="Location" subtitle={data.location} subtitleLines={4} />
-          ) : null}
+          {data.location ? <ListRow title="Location" subtitle={data.location} subtitleLines={4} /> : null}
           {att ? (
             <ListRow
               title="Attendance"

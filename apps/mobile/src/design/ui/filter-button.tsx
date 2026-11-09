@@ -39,11 +39,7 @@ export function FilterButton({ active, onPress }: { active: number; onPress: () 
           <SlidersHorizontal size={18} className={on ? "text-info" : "text-foreground"} />
           {on ? (
             <View className="absolute -right-1.5 -top-1.5 min-w-[20px] items-center rounded-full bg-primary px-1">
-              <Text
-                variant="caption"
-                maxFontSizeMultiplier={1.15}
-                className="font-bold text-primary-foreground"
-              >
+              <Text variant="caption" maxFontSizeMultiplier={1.15} className="font-bold text-primary-foreground">
                 {String(active)}
               </Text>
             </View>

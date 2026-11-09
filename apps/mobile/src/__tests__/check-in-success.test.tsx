@@ -28,8 +28,15 @@ beforeEach(() => {
 afterAll(() => setReducedMotionForTests(null));
 
 const row = (status: MyAttendanceSession["status"]): MyAttendanceSession => ({
-  sessionId: 1, title: "S", startsAt: "2099-01-01T10:00:00.000Z", dayKey: "2099-01-01", startTime: "10:00",
-  status, checkedInAt: null, lateMinutes: null, costMinutes: null,
+  sessionId: 1,
+  title: "S",
+  startsAt: "2099-01-01T10:00:00.000Z",
+  dayKey: "2099-01-01",
+  startTime: "10:00",
+  status,
+  checkedInAt: null,
+  lateMinutes: null,
+  costMinutes: null,
 });
 
 describe("attendanceTally", () => {
@@ -132,10 +139,23 @@ describe("CheckInSuccess", () => {
 describe("StudentCheckInCard on the hero", () => {
   it("uses the onHero button, and draws nothing while check-in is closed", () => {
     const detail = {
-      id: 1, title: "W", description: null, startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15",
-      startTime: "20:00", durationMinutes: 90, location: null, youtubeUrl: null, recurrenceGroupId: null,
-      seasonId: 7, seasonCode: "s7", seasonTitle: "S", checkInOpen: false, myAttendance: null,
-      canMarkAttendance: false, canManageCheckIn: false,
+      id: 1,
+      title: "W",
+      description: null,
+      startsAt: "2099-03-15T18:00:00.000Z",
+      dayKey: "2099-03-15",
+      startTime: "20:00",
+      durationMinutes: 90,
+      location: null,
+      youtubeUrl: null,
+      recurrenceGroupId: null,
+      seasonId: 7,
+      seasonCode: "s7",
+      seasonTitle: "S",
+      checkInOpen: false,
+      myAttendance: null,
+      canMarkAttendance: false,
+      canManageCheckIn: false,
     };
     const closed = renderWithProviders(<StudentCheckInCard detail={detail} onHero />);
     expect(screen.queryByText("Check In")).toBeNull();

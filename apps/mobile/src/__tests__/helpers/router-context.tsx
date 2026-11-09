@@ -46,7 +46,11 @@ export function appContext(): MemoryContext {
     login: () => <Text>screen:/login</Text>,
   };
   for (const file of routeFiles(path.join(APP_DIR, "(app)"))) {
-    const name = path.relative(APP_DIR, file).replace(/\.tsx$/, "").split(path.sep).join("/");
+    const name = path
+      .relative(APP_DIR, file)
+      .replace(/\.tsx$/, "")
+      .split(path.sep)
+      .join("/");
     if (path.basename(file) === "_layout.tsx") {
       context[name] = require(file) as MemoryContext[string];
     } else {
@@ -82,7 +86,11 @@ export function muteTabsAnchorWarning() {
   beforeAll(() => {
     spy = jest.spyOn(console, "warn").mockImplementation((...args: unknown[]) => {
       const [message] = args;
-      if (typeof message === "string" && message.includes('sets the anchor "dashboard", but its `backBehavior` is "history"')) return;
+      if (
+        typeof message === "string" &&
+        message.includes('sets the anchor "dashboard", but its `backBehavior` is "history"')
+      )
+        return;
       warn(...args);
     });
   });

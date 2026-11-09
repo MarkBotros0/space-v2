@@ -20,36 +20,83 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const leaderSession = {
-  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 5,
+    name: "Test leader",
+    email: "l@jpc.test",
+    role: "LEADER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
 };
 
 function authoring(over: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 41, title: "Week 1 quiz", kind: "PAPER", seasonId: 7, seasonCode: "s26",
-    sessionId: 12, sessionTitle: "Week 1", publishedAt: null, maxScore: 20,
-    attemptCount: 0, gradeCount: 0, canEditStructure: false, canManage: false,
-    resultsReleasedAt: null, canReleaseResults: false,
-    questions: [], ...over,
+    id: 41,
+    title: "Week 1 quiz",
+    kind: "PAPER",
+    seasonId: 7,
+    seasonCode: "s26",
+    sessionId: 12,
+    sessionTitle: "Week 1",
+    publishedAt: null,
+    maxScore: 20,
+    attemptCount: 0,
+    gradeCount: 0,
+    canEditStructure: false,
+    canManage: false,
+    resultsReleasedAt: null,
+    canReleaseResults: false,
+    questions: [],
+    ...over,
   };
 }
 
-
 const attemptsPage = {
-  id: 41, title: "Online quiz", kind: "ONLINE", maxScore: 7, hasEssays: true,
+  id: 41,
+  title: "Online quiz",
+  kind: "ONLINE",
+  maxScore: 7,
+  hasEssays: true,
   studentCount: 2,
   items: [
     {
-      attemptId: 900, studentUserId: 9, studentName: "Test student", attemptNumber: 1,
-      status: "SUBMITTED", autoScore: 2, manualScore: null, totalScore: null,
-      submittedAt: "2099-03-02T10:00:00.000Z", gradedByName: null,
+      attemptId: 900,
+      studentUserId: 9,
+      studentName: "Test student",
+      attemptNumber: 1,
+      status: "SUBMITTED",
+      autoScore: 2,
+      manualScore: null,
+      totalScore: null,
+      submittedAt: "2099-03-02T10:00:00.000Z",
+      gradedByName: null,
       answers: [
-        { questionId: 100, type: "MCQ", prompt: "Capital of France?", points: 2,
-          options: ["London", "Paris"], correctIndex: 1, selectedIndex: 1,
-          isCorrect: true, text: null, pointsAwarded: 2 },
-        { questionId: 101, type: "ESSAY", prompt: "Discuss.", points: 5,
-          options: [], correctIndex: null, selectedIndex: null, isCorrect: null,
-          text: "Because of the river.", pointsAwarded: null },
+        {
+          questionId: 100,
+          type: "MCQ",
+          prompt: "Capital of France?",
+          points: 2,
+          options: ["London", "Paris"],
+          correctIndex: 1,
+          selectedIndex: 1,
+          isCorrect: true,
+          text: null,
+          pointsAwarded: 2,
+        },
+        {
+          questionId: 101,
+          type: "ESSAY",
+          prompt: "Discuss.",
+          points: 5,
+          options: [],
+          correctIndex: null,
+          selectedIndex: null,
+          isCorrect: null,
+          text: "Because of the river.",
+          pointsAwarded: null,
+        },
       ],
     },
   ],
@@ -70,8 +117,14 @@ describe("grading screen — ONLINE", () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"
         ? Promise.resolve({
-            data: { data: authoring({ kind: "ONLINE", maxScore: 7,
-              publishedAt: "2099-02-01T00:00:00.000Z", attemptCount: 1 }) },
+            data: {
+              data: authoring({
+                kind: "ONLINE",
+                maxScore: 7,
+                publishedAt: "2099-02-01T00:00:00.000Z",
+                attemptCount: 1,
+              }),
+            },
           })
         : Promise.resolve({ data: { data: attemptsPage } }),
     );
@@ -121,11 +174,18 @@ describe("grading screen — ONLINE", () => {
   it("offers no Reopen for a student whose attempt is still open (server: 409 attempt_open)", async () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"
-        ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7,
-            publishedAt: "2099-02-01T00:00:00.000Z" }) } })
-        : Promise.resolve({ data: { data: { ...attemptsPage, items: [],
-            waiting: [{ studentUserId: 10, studentName: "Second student",
-              startedAt: "2099-03-02T10:00:00.000Z" }] } } }),
+        ? Promise.resolve({
+            data: { data: authoring({ kind: "ONLINE", maxScore: 7, publishedAt: "2099-02-01T00:00:00.000Z" }) },
+          })
+        : Promise.resolve({
+            data: {
+              data: {
+                ...attemptsPage,
+                items: [],
+                waiting: [{ studentUserId: 10, studentName: "Second student", startedAt: "2099-03-02T10:00:00.000Z" }],
+              },
+            },
+          }),
     );
     renderStacked(<QuizGradeScreen />);
 
@@ -142,8 +202,9 @@ describe("grading screen — ONLINE", () => {
     };
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"
-        ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7,
-            publishedAt: "2099-02-01T00:00:00.000Z" }) } })
+        ? Promise.resolve({
+            data: { data: authoring({ kind: "ONLINE", maxScore: 7, publishedAt: "2099-02-01T00:00:00.000Z" }) },
+          })
         : url === "/api/v1/quizzes/41/attempts"
           ? Promise.resolve({ data: { data: { ...attemptsPage, nextCursor: 20 } } })
           : url === "/api/v1/quizzes/41/attempts?cursor=20"
@@ -159,9 +220,9 @@ describe("grading screen — ONLINE", () => {
     expect(await screen.findByText("Page two student")).toBeTruthy();
     expect(screen.getByText("Test student")).toBeTruthy();
     // Waiting rows from both pages, the in-progress one ahead of never-started.
-    const order = screen.UNSAFE_root
-      .findAll((n: { props: { children?: unknown } }) => typeof n.props.children === "string")
-      .map((n: { props: { children?: unknown } }) => n.props.children as string);
+    const order = screen.UNSAFE_root.findAll(
+      (n: { props: { children?: unknown } }) => typeof n.props.children === "string",
+    ).map((n: { props: { children?: unknown } }) => n.props.children as string);
     expect(order.indexOf("Late student")).toBeLessThan(order.indexOf("Second student"));
     await waitFor(() => expect(screen.queryByText("Load more")).toBeNull());
   });
@@ -170,15 +231,28 @@ describe("grading screen — ONLINE", () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"
         ? Promise.resolve({
-            data: { data: authoring({ kind: "ONLINE", maxScore: 7,
-              publishedAt: "2099-02-01T00:00:00.000Z", attemptCount: 1 }) },
+            data: {
+              data: authoring({
+                kind: "ONLINE",
+                maxScore: 7,
+                publishedAt: "2099-02-01T00:00:00.000Z",
+                attemptCount: 1,
+              }),
+            },
           })
         : Promise.resolve({
             data: {
               data: {
                 ...attemptsPage,
-                items: [{ ...attemptsPage.items[0], status: "GRADED",
-                  manualScore: 4, totalScore: 6, gradedByName: "Test leader" }],
+                items: [
+                  {
+                    ...attemptsPage.items[0],
+                    status: "GRADED",
+                    manualScore: 4,
+                    totalScore: 6,
+                    gradedByName: "Test leader",
+                  },
+                ],
               },
             },
           }),
@@ -202,11 +276,18 @@ describe("grading screen — ONLINE", () => {
   it("names the right option when the student missed it (v1)", async () => {
     const wrong = {
       ...attemptsPage,
-      items: [{ ...attemptsPage.items[0]!, answers: [{ ...attemptsPage.items[0]!.answers[0]!, selectedIndex: 0, isCorrect: false, pointsAwarded: 0 }] }],
+      items: [
+        {
+          ...attemptsPage.items[0]!,
+          answers: [{ ...attemptsPage.items[0]!.answers[0]!, selectedIndex: 0, isCorrect: false, pointsAwarded: 0 }],
+        },
+      ],
     };
     get.mockImplementation((url: string) =>
       url === "/api/v1/quizzes/41"
-        ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7, publishedAt: "2099-02-01T00:00:00.000Z" }) } })
+        ? Promise.resolve({
+            data: { data: authoring({ kind: "ONLINE", maxScore: 7, publishedAt: "2099-02-01T00:00:00.000Z" }) },
+          })
         : Promise.resolve({ data: { data: wrong } }),
     );
     renderStacked(<QuizGradeScreen />);
@@ -262,15 +343,18 @@ describe("grading screen — ONLINE", () => {
       // A co-grader's 4 lands before this save's refetch.
       const coGraded = {
         ...attemptsPage,
-        items: [{ ...attemptsPage.items[0]!, answers: [
-          attemptsPage.items[0]!.answers[0]!,
-          { ...attemptsPage.items[0]!.answers[1]!, pointsAwarded: 4 },
-        ] }],
+        items: [
+          {
+            ...attemptsPage.items[0]!,
+            answers: [attemptsPage.items[0]!.answers[0]!, { ...attemptsPage.items[0]!.answers[1]!, pointsAwarded: 4 }],
+          },
+        ],
       };
       get.mockImplementation((url: string) =>
         url === "/api/v1/quizzes/41"
-          ? Promise.resolve({ data: { data: authoring({ kind: "ONLINE", maxScore: 7,
-              publishedAt: "2099-02-01T00:00:00.000Z" }) } })
+          ? Promise.resolve({
+              data: { data: authoring({ kind: "ONLINE", maxScore: 7, publishedAt: "2099-02-01T00:00:00.000Z" }) },
+            })
           : Promise.resolve({ data: { data: coGraded } }),
       );
       fireEvent.press(screen.getByText("Save marks"));

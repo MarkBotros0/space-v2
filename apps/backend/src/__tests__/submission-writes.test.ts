@@ -25,8 +25,12 @@ import { deleteSubmissionFile } from "../routes/submissions/files";
 import { startSubmission, updateSubmission } from "../routes/submissions/writes";
 
 const student: SessionUser = {
-  userId: 10, role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [],
-  activeSeasonId: 7, graduationYear: null,
+  userId: 10,
+  role: "STUDENT",
+  seasonAdminIds: [],
+  groupLeaderIds: [],
+  activeSeasonId: 7,
+  graduationYear: null,
 };
 
 function fakeRes() {
@@ -55,7 +59,10 @@ function ownSubmission(status: string) {
 
 beforeEach(() => {
   jest.resetAllMocks();
-  mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE", season: { status: "ACTIVE", deletedAt: null } });
+  mockDb.seasonEnrollment.findUnique.mockResolvedValue({
+    status: "ACTIVE",
+    season: { status: "ACTIVE", deletedAt: null },
+  });
   mockDb.submission.update.mockResolvedValue({});
   mockDb.submission.updateMany.mockResolvedValue({ count: 1 });
 });
@@ -151,7 +158,10 @@ describe("PATCH /submissions/:publicId — the status lock", () => {
 describe("PUT /submissions/by-assignment/:assignmentId — the enrolment gate", () => {
   beforeEach(() => {
     mockDb.assignment.findFirst.mockResolvedValue({
-      seasonId: 7, isAllGroups: true, type: "STANDARD", targets: [],
+      seasonId: 7,
+      isAllGroups: true,
+      type: "STANDARD",
+      targets: [],
     });
     mockStudentCanSee.mockResolvedValue(true);
     mockDb.submission.upsert.mockResolvedValue({ publicId: "p", status: "DRAFT" });
@@ -178,14 +188,14 @@ describe("DELETE /submissions/:publicId/files — the same lock", () => {
     mockDb.submissionFile.findUnique.mockResolvedValue({
       storagePath: "x",
       submission: {
-        publicId: "p", studentUserId: 10, status: "SUBMITTED", assignment: { seasonId: 7 },
+        publicId: "p",
+        studentUserId: 10,
+        status: "SUBMITTED",
+        assignment: { seasonId: 7 },
       },
     });
     const res = fakeRes();
-    await deleteSubmissionFile(
-      req({ params: { publicId: "p" }, query: { fileId: "4" } }),
-      res as unknown as Response,
-    );
+    await deleteSubmissionFile(req({ params: { publicId: "p" }, query: { fileId: "4" } }), res as unknown as Response);
     expect(res.status).toHaveBeenCalledWith(409);
     expect(mockDb.submissionFile.delete).not.toHaveBeenCalled();
   });

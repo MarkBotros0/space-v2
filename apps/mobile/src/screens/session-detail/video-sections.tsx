@@ -3,15 +3,7 @@ import type { SessionDetail } from "@space/shared";
 
 import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../components/VideoQuestionsEditor";
 import { InlineError } from "../../design/layout/route-states";
-import {
-  Badge,
-  Card as CardV1,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  DataTable,
-  Text as TextV1,
-} from "../../design/ui";
+import { Badge, Card as CardV1, CardContent, CardHeader, CardTitle, DataTable, Text as TextV1 } from "../../design/ui";
 import { useVideoQuizResults } from "../../hooks/use-video-quiz";
 import { useSessionStore } from "../../store/session";
 
@@ -29,8 +21,7 @@ export function VideoSection({ detail }: { detail: SessionDetail }) {
   // author questions. The server enforces the gate regardless; this only decides
   // whether the editor (and its answer-key read) is ever mounted.
   const canAuthorVideo =
-    user?.role === "SUPER" ||
-    (user?.role === "ADMIN" && (scopes?.seasonAdminIds ?? []).includes(detail.seasonId));
+    user?.role === "SUPER" || (user?.role === "ADMIN" && (scopes?.seasonAdminIds ?? []).includes(detail.seasonId));
   // Results: authors, plus a LEADER (the server narrows a leader to their groups).
   const canSeeResults = canAuthorVideo || user?.role === "LEADER";
 
@@ -61,10 +52,7 @@ export function LeaderVideoResults({ sessionId }: { sessionId: number }) {
         {results.isPending ? (
           <TextV1 className="text-sm text-muted-foreground">Loading…</TextV1>
         ) : results.isError ? (
-          <InlineError
-            message="Couldn't load the results."
-            onRetry={() => void results.refetch()}
-          />
+          <InlineError message="Couldn't load the results." onRetry={() => void results.refetch()} />
         ) : results.data.rows.length === 0 ? (
           <TextV1 className="text-sm italic text-muted-foreground">No students to show yet.</TextV1>
         ) : (
@@ -91,11 +79,7 @@ export function LeaderVideoResults({ sessionId }: { sessionId: number }) {
                 key: "done",
                 header: "",
                 cell: (r) =>
-                  r.completedAt ? (
-                    <Badge variant="success">Done</Badge>
-                  ) : (
-                    <Badge variant="outline">In progress</Badge>
-                  ),
+                  r.completedAt ? <Badge variant="success">Done</Badge> : <Badge variant="outline">In progress</Badge>,
               },
             ]}
           />

@@ -1,14 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Award,
-  CalendarDays,
-  ClipboardList,
-  Copy,
-  FileQuestion,
-  Flag,
-  Pencil,
-} from "lucide-react-native";
+import { Award, CalendarDays, ClipboardList, Copy, FileQuestion, Flag, Pencil } from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
 import { EditSeason } from "../../../../src/components/season/EditSeason";
@@ -192,21 +184,13 @@ export default function SeasonDetailScreen() {
         admins={adminState}
         roster={roster.data}
         onManageAdmins={
-          isSuper && !finished
-            ? () => router.push({ pathname: "/seasons/[code]/admins", params })
-            : undefined
+          isSuper && !finished ? () => router.push({ pathname: "/seasons/[code]/admins", params }) : undefined
         }
         onOpenGroup={(id) => router.push({ pathname: "/group/[id]", params: { id: String(id) } })}
         onNewGroup={
-          canAdminister
-            ? () => router.push({ pathname: "/group/new", params: { seasonId: String(s.id) } })
-            : undefined
+          canAdminister ? () => router.push({ pathname: "/group/new", params: { seasonId: String(s.id) } }) : undefined
         }
-        onMoveStudents={
-          canAdminister
-            ? () => router.push({ pathname: "/seasons/[code]/roster", params })
-            : undefined
-        }
+        onMoveStudents={canAdminister ? () => router.push({ pathname: "/seasons/[code]/roster", params }) : undefined}
       />
     );
 
@@ -227,9 +211,7 @@ export default function SeasonDetailScreen() {
             season={s}
             open={duplicating}
             onClose={() => setDuplicating(false)}
-            onDuplicated={(newCode) =>
-              router.push({ pathname: "/seasons/[code]", params: { code: newCode } })
-            }
+            onDuplicated={(newCode) => router.push({ pathname: "/seasons/[code]", params: { code: newCode } })}
           />
         ) : null}
       </>
@@ -248,9 +230,7 @@ export default function SeasonDetailScreen() {
               variant="secondary"
               size="icon"
               accessibilityLabel="Edit season"
-              onPress={() =>
-                router.push({ pathname: "/seasons/[code]/edit", params: { code: detail.data.code } })
-              }
+              onPress={() => router.push({ pathname: "/seasons/[code]/edit", params: { code: detail.data.code } })}
             >
               <Pencil size={18} className="text-foreground" />
             </Button>

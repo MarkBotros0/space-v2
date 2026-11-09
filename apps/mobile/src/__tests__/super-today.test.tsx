@@ -74,13 +74,18 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
         "/api/v1/seasons": {
           seasons: [seasonFixture(7), { ...seasonFixture(8), isCommunityWide: true }],
         },
-        "/api/v1/me/dashboard?seasonId=8": { ...staffDashboard("season"), season: { id: 8, code: "s8", title: "Season 8", status: "ACTIVE" } },
+        "/api/v1/me/dashboard?seasonId=8": {
+          ...staffDashboard("season"),
+          season: { id: 8, code: "s8", title: "Season 8", status: "ACTIVE" },
+        },
       }),
     });
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("SEASONS")).toBeTruthy();
-    expect(await screen.findByText(/^3 of 4 sessions held · 33% attendance · 3 students · Community-wide$/)).toBeTruthy();
+    expect(
+      await screen.findByText(/^3 of 4 sessions held · 33% attendance · 3 students · Community-wide$/),
+    ).toBeTruthy();
     expect(screen.getByText("3 of 4 sessions held · 33% attendance · 3 students")).toBeTruthy();
     expect(screen.queryByTestId("season-pulse")).toBeNull();
     expect(screen.getByLabelText("Season 7 progress 75%")).toBeTruthy();

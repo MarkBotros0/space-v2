@@ -33,19 +33,17 @@ function Harness() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  useSessionStore
-    .getState()
-    .setSession(
-      {
-        id: 5,
-        name: "P",
-        email: "p@jpc.test",
-        role: "STUDENT",
-        avatarPath: null,
-        hasPassword: true,
-      },
-      { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
-    );
+  useSessionStore.getState().setSession(
+    {
+      id: 5,
+      name: "P",
+      email: "p@jpc.test",
+      role: "STUDENT",
+      avatarPath: null,
+      hasPassword: true,
+    },
+    { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
+  );
 });
 
 describe("Delete account", () => {

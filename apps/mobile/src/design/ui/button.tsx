@@ -59,22 +59,19 @@ const SIZE_ALIAS: Record<SizeInput, Size> = {
 };
 const ICON_SIZES = new Set<string>(["icon", "icon-xs", "icon-sm", "icon-lg"]);
 
-const base = cva(
-  "shrink-0 flex-row items-center justify-center gap-2 rounded-control border border-transparent px-4",
-  {
-    variants: {
-      variant: {
-        primary: "bg-primary",
-        secondary: "border-control-border bg-surface",
-        destructive: "bg-bad-soft",
-        plain: "bg-transparent",
-        onHero: "bg-on-hero",
-      },
-      size: { md: "min-h-[46px]", sm: "min-h-[44px]" },
+const base = cva("shrink-0 flex-row items-center justify-center gap-2 rounded-control border border-transparent px-4", {
+  variants: {
+    variant: {
+      primary: "bg-primary",
+      secondary: "border-control-border bg-surface",
+      destructive: "bg-bad-soft",
+      plain: "bg-transparent",
+      onHero: "bg-on-hero",
     },
-    defaultVariants: { variant: "primary", size: "md" },
+    size: { md: "min-h-[46px]", sm: "min-h-[44px]" },
   },
-);
+  defaultVariants: { variant: "primary", size: "md" },
+});
 
 const baseText = cva("", {
   variants: {
@@ -123,11 +120,7 @@ const DISABLED_TEXT = "text-muted-foreground";
  */
 function muteIcons(children: ReactNode): ReactNode {
   return Children.map(children, (child) => {
-    if (
-      !isValidElement<{ className?: unknown }>(child) ||
-      typeof child.props.className !== "string"
-    )
-      return child;
+    if (!isValidElement<{ className?: unknown }>(child) || typeof child.props.className !== "string") return child;
     const el = child as ReactElement<{ className: string }>;
     return cloneElement(el, { className: cn(el.props.className, DISABLED_TEXT) });
   });
@@ -179,24 +172,15 @@ function Button({
       <Animated.View style={press.animatedStyle}>
         <View
           testID="button-look"
-          className={cn(
-            buttonVariants({ variant, size }),
-            dimmed && (resolved === "plain" ? null : DISABLED_FILL),
-          )}
+          className={cn(buttonVariants({ variant, size }), dimmed && (resolved === "plain" ? null : DISABLED_FILL))}
         >
-          {loading ? (
-            <ActivityIndicator testID="button-spinner" size="small" color={spinner} />
-          ) : null}
+          {loading ? <ActivityIndicator testID="button-spinner" size="small" color={spinner} /> : null}
           {withTextRuns(dimmed ? muteIcons(children) : children, (text, key) => (
             <Text
               key={key}
               variant="headline"
               numberOfLines={1}
-              className={cn(
-                buttonTextVariants({ variant }),
-                textClassName,
-                dimmed && DISABLED_TEXT,
-              )}
+              className={cn(buttonTextVariants({ variant }), textClassName, dimmed && DISABLED_TEXT)}
             >
               {text}
             </Text>

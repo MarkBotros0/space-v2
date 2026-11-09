@@ -37,7 +37,10 @@ function excerptOf(body: string): string {
   const chars = Array.from(body.trim());
   return chars.length <= ANNOUNCEMENT_EXCERPT_LENGTH
     ? chars.join("")
-    : `${chars.slice(0, ANNOUNCEMENT_EXCERPT_LENGTH - 1).join("").trimEnd()}…`;
+    : `${chars
+        .slice(0, ANNOUNCEMENT_EXCERPT_LENGTH - 1)
+        .join("")
+        .trimEnd()}…`;
 }
 
 function common(row: AnnouncementRow, isRead: boolean) {

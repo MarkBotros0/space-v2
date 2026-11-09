@@ -73,19 +73,39 @@ describe("what an edit sends", () => {
 
   it("changing an option label sends the poll", async () => {
     patch.mockResolvedValue(ok(detailItem(7)));
-    open(poll({ options: [{ id: 1, label: "Saturday", votes: 0 }, { id: 2, label: "Sunday", votes: 0 }] }));
+    open(
+      poll({
+        options: [
+          { id: 1, label: "Saturday", votes: 0 },
+          { id: 2, label: "Sunday", votes: 0 },
+        ],
+      }),
+    );
     fireEvent.changeText(await screen.findByLabelText("Option 1"), "Sat");
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
     expect(patch.mock.calls[0][1]).toEqual({
       body: "Old body",
-      poll: { allowsMultiple: false, options: [{ id: 1, label: "Sat" }, { id: 2, label: "Sunday" }] },
+      poll: {
+        allowsMultiple: false,
+        options: [
+          { id: 1, label: "Sat" },
+          { id: 2, label: "Sunday" },
+        ],
+      },
     });
   });
 
   it("removing the poll sends poll: null", async () => {
     patch.mockResolvedValue(ok(detailItem(7)));
-    open(poll({ options: [{ id: 1, label: "Saturday", votes: 0 }, { id: 2, label: "Sunday", votes: 0 }] }));
+    open(
+      poll({
+        options: [
+          { id: 1, label: "Saturday", votes: 0 },
+          { id: 2, label: "Sunday", votes: 0 },
+        ],
+      }),
+    );
     fireEvent.press(await screen.findByText("Remove poll"));
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
@@ -100,9 +120,7 @@ describe("several to one with multi-pickers", () => {
     open(poll({ allowsMultiple: true, multiPickVoters: 2, multiPickVotes: 5 }));
     fireEvent.press(await screen.findByLabelText("Let people pick more than one"));
     fireEvent.press(screen.getByText("Save"));
-    expect(
-      await screen.findByText("2 people who picked more than one answer will need to vote again"),
-    ).toBeTruthy();
+    expect(await screen.findByText("2 people who picked more than one answer will need to vote again")).toBeTruthy();
     fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
     expect(patch.mock.calls[0][1].confirmVoteLoss).toBeUndefined();
@@ -124,7 +142,13 @@ describe("a confirmed loss that failed for another reason", () => {
         error={props.error}
         initial={{
           body: "Old body",
-          poll: { allowsMultiple: false, options: [{ id: 1, label: "Saturday" }, { id: 2, label: "Sunday" }] },
+          poll: {
+            allowsMultiple: false,
+            options: [
+              { id: 1, label: "Saturday" },
+              { id: 2, label: "Sunday" },
+            ],
+          },
         }}
         currentPoll={props.currentPoll}
         serverLostVotes={props.lost}
@@ -143,7 +167,12 @@ describe("a confirmed loss that failed for another reason", () => {
     // It fails with a 500.
     rerender({ currentPoll: poll(), error: "Couldn't save. Try again.", lost: null });
     // Sunday's voter has moved on, so the app sees nothing to lose and saves straight away...
-    const moved = poll({ options: [{ id: 1, label: "Saturday", votes: 4 }, { id: 2, label: "Sunday", votes: 0 }] });
+    const moved = poll({
+      options: [
+        { id: 1, label: "Saturday", votes: 4 },
+        { id: 2, label: "Sunday", votes: 0 },
+      ],
+    });
     rerender({ currentPoll: moved, error: null, lost: null });
     fireEvent.press(screen.getByText("Save"));
     expect(onSubmit).toHaveBeenCalledTimes(2);
@@ -157,7 +186,10 @@ describe("a confirmed loss that failed for another reason", () => {
 describe("a refetch while the edit screen is open", () => {
   it("a message-only save sends no poll and opens no vote-loss sheet, though initial.poll changed", async () => {
     const onSubmit = jest.fn();
-    const form = (initialPoll: { allowsMultiple: boolean; options: { id: number; label: string }[] }, current: AnnouncementPoll) => (
+    const form = (
+      initialPoll: { allowsMultiple: boolean; options: { id: number; label: string }[] },
+      current: AnnouncementPoll,
+    ) => (
       <PostForm
         mode="edit"
         screenTitle="Edit announcement"
@@ -171,12 +203,34 @@ describe("a refetch while the edit screen is open", () => {
         onSubmit={onSubmit}
       />
     );
-    const opened = { allowsMultiple: false, options: [{ id: 1, label: "Saturday" }, { id: 2, label: "Sunday" }] };
+    const opened = {
+      allowsMultiple: false,
+      options: [
+        { id: 1, label: "Saturday" },
+        { id: 2, label: "Sunday" },
+      ],
+    };
     const view = render(wrap(form(opened, poll())));
     // Another manager renames Sunday and drops it to zero votes; a refetch lands.
-    const theirs = { allowsMultiple: false, options: [{ id: 1, label: "Saturday" }, { id: 2, label: "Sun" }] };
+    const theirs = {
+      allowsMultiple: false,
+      options: [
+        { id: 1, label: "Saturday" },
+        { id: 2, label: "Sun" },
+      ],
+    };
     view.rerender(
-      wrap(form(theirs, poll({ options: [{ id: 1, label: "Saturday", votes: 3 }, { id: 2, label: "Sun", votes: 0 }] }))),
+      wrap(
+        form(
+          theirs,
+          poll({
+            options: [
+              { id: 1, label: "Saturday", votes: 3 },
+              { id: 2, label: "Sun", votes: 0 },
+            ],
+          }),
+        ),
+      ),
     );
     fireEvent.changeText(screen.getByLabelText("Message"), "New body");
     fireEvent.press(screen.getByText("Save"));

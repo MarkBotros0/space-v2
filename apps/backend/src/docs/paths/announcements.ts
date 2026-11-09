@@ -11,7 +11,9 @@ export const announcementPaths = {
       summary: "The announcements feed",
       description:
         "Newest first, 20 per page, cursor paged. Everyone signed in sees COMMUNITY posts; a SEASON post is visible to that season's people and to SUPER. MENTOR sees community posts only. Each item carries `isRead` for the caller. An unknown or malformed `cursor` is 400.",
-      parameters: [{ name: "cursor", in: "query", schema: { type: "string" }, description: "`nextCursor` of the previous page." }],
+      parameters: [
+        { name: "cursor", in: "query", schema: { type: "string" }, description: "`nextCursor` of the previous page." },
+      ],
       responses: {
         200: ok({ $ref: "#/components/schemas/AnnouncementPage" }, "One page of posts."),
         400: errRef("BadRequest"),
@@ -22,7 +24,7 @@ export const announcementPaths = {
       tags: ["Announcements"],
       summary: "Publish a post",
       description:
-        "Optional `poll` (2 to 10 options, each 1 to 150 characters, unique ignoring case). Audience COMMUNITY (SUPER) or SEASON with a `seasonId` (that season's admin, or SUPER). The season must be ACTIVE: a draft is 409 `season_draft`, a finished one 409 `season_finished`; an unknown season is 404. Body 1 to 5000 characters after trimming (a post has no title), plain text only (never HTML); unknown fields are rejected with 400. Notifies the audience (type `ANNOUNCEMENT`, titled \"New announcement\", link `/announcements/<id>`), never the author.",
+        'Optional `poll` (2 to 10 options, each 1 to 150 characters, unique ignoring case). Audience COMMUNITY (SUPER) or SEASON with a `seasonId` (that season\'s admin, or SUPER). The season must be ACTIVE: a draft is 409 `season_draft`, a finished one 409 `season_finished`; an unknown season is 404. Body 1 to 5000 characters after trimming (a post has no title), plain text only (never HTML); unknown fields are rejected with 400. Notifies the audience (type `ANNOUNCEMENT`, titled "New announcement", link `/announcements/<id>`), never the author.',
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/CreateAnnouncementRequest" } } },
@@ -92,10 +94,13 @@ export const announcementPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: {
-          description: "`season_finished`, or `poll_votes_lost`: the poll edit would remove votes and `confirmVoteLoss` was not true.",
+          description:
+            "`season_finished`, or `poll_votes_lost`: the poll edit would remove votes and `confirmVoteLoss` was not true.",
           content: {
             "application/json": {
-              schema: { oneOf: [{ $ref: "#/components/schemas/Error" }, { $ref: "#/components/schemas/PollVotesLostError" }] },
+              schema: {
+                oneOf: [{ $ref: "#/components/schemas/Error" }, { $ref: "#/components/schemas/PollVotesLostError" }],
+              },
             },
           },
         },
@@ -104,7 +109,8 @@ export const announcementPaths = {
     delete: {
       tags: ["Announcements"],
       summary: "Delete a post",
-      description: "Same rule as edit (SUPER, or the author while they still administer the season), except that SUPER may also delete a finished season's post. `canDelete` on the detail is authoritative. Returns 204 with no body (not the envelope).",
+      description:
+        "Same rule as edit (SUPER, or the author while they still administer the season), except that SUPER may also delete a finished season's post. `canDelete` on the detail is authoritative. Returns 204 with no body (not the envelope).",
       parameters: [idParam],
       responses: {
         204: { description: "Deleted." },

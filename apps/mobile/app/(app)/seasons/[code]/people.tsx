@@ -42,7 +42,6 @@ export default function SeasonPeopleScreen() {
   if (code === null) body = <EmptyState title="Not found" description="That season link isn't valid." />;
   else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
   else if (season.isPending) body = <RouteSkeleton />;
-  else
-    body = <EmptyState title="Not available" description="Only this season's admins can add people to it." />;
+  else body = <EmptyState title="Not available" description="Only this season's admins can add people to it." />;
   return <Screen title="Select from community">{body}</Screen>;
 }

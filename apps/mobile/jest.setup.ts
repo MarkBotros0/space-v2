@@ -35,9 +35,7 @@ jest.mock("@10play/tentap-editor", () => {
 
 // createQueryClient wires React Query's onlineManager to NetInfo, which has no
 // native module under Jest; the library's own mock (always online).
-jest.mock("@react-native-community/netinfo", () =>
-  require("@react-native-community/netinfo/jest/netinfo-mock.js"),
-);
+jest.mock("@react-native-community/netinfo", () => require("@react-native-community/netinfo/jest/netinfo-mock.js"));
 
 // Google sign-in is a native module Jest can't load, and the package exports
 // no mock. These are the calls src/lib/google-sign-in.ts makes; its own test
@@ -77,8 +75,7 @@ jest.mock("@sentry/react-native", () => ({
 // that one line repeated in every suite whose tree reaches src/lib/push.ts. Only that exact
 // message is dropped: the module itself is not mocked, so nothing under test changes, and a
 // test that spies on console.warn still sees every other warning.
-const EXPO_GO_PUSH_WARNING =
-  "expo-notifications: Android Push notifications (remote notifications)";
+const EXPO_GO_PUSH_WARNING = "expo-notifications: Android Push notifications (remote notifications)";
 const forwardWarn = console.warn.bind(console);
 console.warn = (...args: unknown[]) => {
   if (typeof args[0] === "string" && args[0].startsWith(EXPO_GO_PUSH_WARNING)) return;

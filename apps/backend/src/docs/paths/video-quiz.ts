@@ -56,7 +56,10 @@ export const videoQuizPaths = {
           {
             type: "object",
             required: ["furthestSeconds", "completedAt"],
-            properties: { furthestSeconds: { type: "integer" }, completedAt: { type: ["string", "null"], format: "date-time" } },
+            properties: {
+              furthestSeconds: { type: "integer" },
+              completedAt: { type: ["string", "null"], format: "date-time" },
+            },
           },
           "The stored progress.",
         ),
@@ -101,7 +104,11 @@ export const videoQuizPaths = {
       },
       responses: {
         201: ok(
-          { type: "object", required: ["question"], properties: { question: { $ref: "#/components/schemas/VideoQuestionAdmin" } } },
+          {
+            type: "object",
+            required: ["question"],
+            properties: { question: { $ref: "#/components/schemas/VideoQuestionAdmin" } },
+          },
           "The created question.",
         ),
         400: errRef("BadRequest"),
@@ -152,7 +159,10 @@ export const videoQuizPaths = {
           {
             type: "object",
             required: ["deleted", "responsesRemoved"],
-            properties: { deleted: { type: "boolean", const: true }, responsesRemoved: { type: "integer", minimum: 0 } },
+            properties: {
+              deleted: { type: "boolean", const: true },
+              responsesRemoved: { type: "integer", minimum: 0 },
+            },
           },
           "Deleted.",
         ),

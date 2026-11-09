@@ -22,11 +22,22 @@ const PAD = 2;
  * tab, so screen readers say "tab, 1 of 2" (final review M10).
  */
 function SegmentedControl({
-  options, value, onChange, className,
-}: { options: Option[]; value: string; onChange: (value: string) => void; className?: string }) {
+  options,
+  value,
+  onChange,
+  className,
+}: {
+  options: Option[];
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+}) {
   const [width, setWidth] = useState(0);
   const segment = width > 0 ? (width - PAD * 2) / options.length : 0;
-  const index = Math.max(0, options.findIndex((o) => o.value === value));
+  const index = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
   const x = useSharedValue(index * segment);
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   const reduced = useReducedMotion();

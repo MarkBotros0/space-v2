@@ -115,8 +115,6 @@ describe("buildOrganisationReport", () => {
 
   it("counts active seasons from the already-fetched list (R59)", async () => {
     const report = await buildOrganisationReport();
-    expect(report.activeSeasonCount).toBe(
-      report.seasons.filter((s) => s.status === "ACTIVE").length,
-    );
+    expect(report.activeSeasonCount).toBe(report.seasons.filter((s) => s.status === "ACTIVE").length);
   });
 });

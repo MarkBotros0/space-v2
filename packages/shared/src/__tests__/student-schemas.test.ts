@@ -9,7 +9,7 @@ import {
 describe("createStudentRequestSchema", () => {
   const valid = { name: "Test Student", email: "space-v2-test-x@jpc.test" };
 
-  it("coerces empty strings to null (v1 rule R26: a cleared field is stored null, never \"\")", () => {
+  it('coerces empty strings to null (v1 rule R26: a cleared field is stored null, never "")', () => {
     const parsed = createStudentRequestSchema.parse({ ...valid, university: "" });
     expect(parsed.university).toBeNull();
   });
@@ -57,12 +57,21 @@ describe("updateStudentRequestSchema (PATCH semantics)", () => {
 
 describe("studentDetailPublicSchema", () => {
   const base = {
-    id: 1, name: "Test", email: "t@jpc.test", avatarPath: null, graduationYear: null,
-    currentGroup: null, enrollments: [],
+    id: 1,
+    name: "Test",
+    email: "t@jpc.test",
+    avatarPath: null,
+    graduationYear: null,
+    currentGroup: null,
+    enrollments: [],
   };
   const publicProfile = {
-    university: null, faculty: null, universityGraduationYear: null,
-    activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null,
+    university: null,
+    faculty: null,
+    universityGraduationYear: null,
+    activeSeasonId: null,
+    activeSeasonTitle: null,
+    activeSeasonCode: null,
     // Leaders and mentors see the phone (owner, 2026-11-07).
     phone: "01001234567",
   };
@@ -95,14 +104,10 @@ describe("updateEnrollmentRequestSchema", () => {
   });
 
   it("refuses a dropReason on a COMPLETED transition", () => {
-    expect(
-      updateEnrollmentRequestSchema.safeParse({ status: "COMPLETED", dropReason: "why" }).success,
-    ).toBe(false);
+    expect(updateEnrollmentRequestSchema.safeParse({ status: "COMPLETED", dropReason: "why" }).success).toBe(false);
   });
 
   it("stores an empty reason as null (R66)", () => {
-    expect(
-      updateEnrollmentRequestSchema.parse({ status: "WITHDRAWN", dropReason: "" }).dropReason,
-    ).toBeNull();
+    expect(updateEnrollmentRequestSchema.parse({ status: "WITHDRAWN", dropReason: "" }).dropReason).toBeNull();
   });
 });

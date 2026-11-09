@@ -61,11 +61,7 @@ export default function EditAnnouncementScreen() {
         update.reset();
       }}
       pending={update.isPending}
-      error={
-        update.isError && lost === null
-          ? apiErrorMessage(update.error, "Couldn't save. Try again.")
-          : null
-      }
+      error={update.isError && lost === null ? apiErrorMessage(update.error, "Couldn't save. Try again.") : null}
       onSubmit={(request) => update.mutate(request, { onSuccess: () => router.back() })}
     />
   );

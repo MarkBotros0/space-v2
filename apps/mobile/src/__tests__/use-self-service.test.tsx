@@ -5,12 +5,7 @@ import type { ReactNode } from "react";
 jest.mock("../lib/api-client", () => ({ apiClient: { get: jest.fn(), patch: jest.fn() } }));
 
 import { apiClient } from "../lib/api-client";
-import {
-  useMyAttendance,
-  useMySeason,
-  useSeasonHistory,
-  useUpdateStudentProfile,
-} from "../hooks/use-self-service";
+import { useMyAttendance, useMySeason, useSeasonHistory, useUpdateStudentProfile } from "../hooks/use-self-service";
 
 const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
@@ -31,9 +26,16 @@ const attendance = {
 };
 
 const profile = {
-  name: "Mina Adel", email: "mina@jpc.test", avatarPath: null, graduationYear: null,
-  activeSeasonTitle: "Spring", university: null, faculty: null,
-  universityGraduationYear: null, phone: "+20 122", dateOfBirth: null,
+  name: "Mina Adel",
+  email: "mina@jpc.test",
+  avatarPath: null,
+  graduationYear: null,
+  activeSeasonTitle: "Spring",
+  university: null,
+  faculty: null,
+  universityGraduationYear: null,
+  phone: "+20 122",
+  dateOfBirth: null,
 };
 
 beforeEach(() => jest.clearAllMocks());

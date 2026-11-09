@@ -85,8 +85,8 @@ export function StudentsLevel({
             ) : null}
           </View>
           <Text variant="caption" className="text-muted-foreground">
-            Community: people who already have an account. Invite new: someone who has never signed
-            in. They get an email.
+            Community: people who already have an account. Invite new: someone who has never signed in. They get an
+            email.
           </Text>
         </View>
       ) : null}

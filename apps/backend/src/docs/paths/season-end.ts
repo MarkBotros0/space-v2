@@ -78,9 +78,17 @@ export const seasonEndPaths = {
             properties: {
               season: {
                 type: "object",
-                properties: { id: { type: "integer" }, code: { type: "string" }, status: { type: "string", enum: ["COMPLETED"] } },
+                properties: {
+                  id: { type: "integer" },
+                  code: { type: "string" },
+                  status: { type: "string", enum: ["COMPLETED"] },
+                },
               },
-              graduated: { type: "integer", description: "How many became alumni just now, leaving out anyone who already was. 0 on an ordinary season." },
+              graduated: {
+                type: "integer",
+                description:
+                  "How many became alumni just now, leaving out anyone who already was. 0 on an ordinary season.",
+              },
             },
           },
           "The ended season.",
@@ -137,10 +145,7 @@ export const seasonEndPaths = {
       summary: "Correct one student's result",
       description:
         "SUPER only. Sets `result` and stamps `resultSetAt`; the reason is kept only for NOT_PASSED and cleared for PASSED. On a season with `graduatesOnPass`, PASSED graduates a student who isn't yet an alumnus, as `POST /students/{id}/graduate` does (year: the smaller of the season's end year and the current year); NOT_PASSED never removes alumni status. On an ordinary season it does neither. 409 `not_finished` unless the season is COMPLETED or ARCHIVED; 409 `no_result` for an enrolment that is not COMPLETED (e.g. WITHDRAWN); 404 without an enrolment.",
-      parameters: [
-        idParam,
-        { name: "studentUserId", in: "path", required: true, schema: { type: "integer" } },
-      ],
+      parameters: [idParam, { name: "studentUserId", in: "path", required: true, schema: { type: "integer" } }],
       requestBody: {
         required: true,
         content: {

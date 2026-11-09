@@ -7,10 +7,7 @@ import { hasActiveEnrollment } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { loadStudentVideoQuiz } from "../../lib/queries/video-quiz";
 import { requireUser } from "../../middleware/require-auth";
-import {
-  submitVideoAnswerRequestSchema,
-  videoProgressRequestSchema,
-} from "../../../../../packages/shared/src/index";
+import { submitVideoAnswerRequestSchema, videoProgressRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
 
 /**

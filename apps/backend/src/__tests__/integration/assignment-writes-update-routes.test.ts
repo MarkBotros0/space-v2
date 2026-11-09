@@ -30,7 +30,24 @@ let leaderToken: string;
 let studentToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, otherSeasonId, groupAId, groupBId, otherGroupId, sessionId, superId, adminId, studentAId, studentBId, withdrawnId, superToken, adminToken, otherAdminToken, leaderToken, studentToken } = await seedAssignmentWriteFixtures(app));
+  ({
+    seasonId,
+    otherSeasonId,
+    groupAId,
+    groupBId,
+    otherGroupId,
+    sessionId,
+    superId,
+    adminId,
+    studentAId,
+    studentBId,
+    withdrawnId,
+    superToken,
+    adminToken,
+    otherAdminToken,
+    leaderToken,
+    studentToken,
+  } = await seedAssignmentWriteFixtures(app));
 });
 
 afterAll(async () => {
@@ -47,10 +64,7 @@ function create(over: Record<string, unknown> = {}, token = adminToken, season =
 
 describe("PATCH /api/v1/assignments/:id", () => {
   function patch(id: number, over: Record<string, unknown> = {}, token = adminToken) {
-    return request(app)
-      .patch(`/api/v1/assignments/${id}`)
-      .set("authorization", `Bearer ${token}`)
-      .send(body(over));
+    return request(app).patch(`/api/v1/assignments/${id}`).set("authorization", `Bearer ${token}`).send(body(over));
   }
 
   it("replaces every field wholesale, keeps the season, stamps updatedById (R67, R68, R71)", async () => {
@@ -76,16 +90,34 @@ describe("PATCH /api/v1/assignments/:id", () => {
     const row = await db.assignment.findUnique({
       where: { id },
       select: {
-        seasonId: true, title: true, dueAt: true, type: true, forumMinWords: true,
-        forumAllowComments: true, maxFileSizeMb: true, allowedMimeCategories: true,
-        isAllGroups: true, sessionId: true, createdById: true, updatedById: true,
+        seasonId: true,
+        title: true,
+        dueAt: true,
+        type: true,
+        forumMinWords: true,
+        forumAllowComments: true,
+        maxFileSizeMb: true,
+        allowedMimeCategories: true,
+        isAllGroups: true,
+        sessionId: true,
+        createdById: true,
+        updatedById: true,
         targets: { select: { groupId: true } },
       },
     });
     expect(row).toEqual({
-      seasonId, title: "Renamed", dueAt: null, type: "FORUM", forumMinWords: 120,
-      forumAllowComments: true, maxFileSizeMb: null, allowedMimeCategories: [],
-      isAllGroups: true, sessionId, createdById: superId, updatedById: adminId,
+      seasonId,
+      title: "Renamed",
+      dueAt: null,
+      type: "FORUM",
+      forumMinWords: 120,
+      forumAllowComments: true,
+      maxFileSizeMb: null,
+      allowedMimeCategories: [],
+      isAllGroups: true,
+      sessionId,
+      createdById: superId,
+      updatedById: adminId,
       targets: [], // R69: targeting replaced, not merged
     });
   });

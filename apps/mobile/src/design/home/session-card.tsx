@@ -63,9 +63,7 @@ export function SessionHomeCard({
       eyebrow={sessionEyebrow(session, todayKey)}
       title={session.title}
       meta={sessionMeta(session, note)}
-      onTitlePress={() =>
-        router.push({ pathname: "/session/[id]", params: { id: String(session.id) } })
-      }
+      onTitlePress={() => router.push({ pathname: "/session/[id]", params: { id: String(session.id) } })}
       action={action?.(onBrand)}
     />
   );

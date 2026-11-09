@@ -12,27 +12,28 @@ import { TextInput, type TextInputInstance, type TextInputProps } from "react-na
 import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
 
-const Textarea = forwardRef<TextInputInstance, TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }>(
-  ({ className, disabled, "aria-invalid": invalid, numberOfLines: _rows, ...props }, ref) => {
-    const colors = useThemeColors();
-    return (
-      <TextInput
-        ref={ref}
-        multiline
-        textAlignVertical="top"
-        editable={!disabled}
-        placeholderTextColor={colors["muted-foreground"]}
-        className={cn(
-          "min-h-20 w-full rounded-control border border-control-border bg-surface px-3 py-2.5 text-base font-normal text-foreground focus:border-ring",
-          invalid && "border-destructive",
-          disabled && "opacity-50",
-          className,
-        )}
-        {...props}
-      />
-    );
-  },
-);
+const Textarea = forwardRef<
+  TextInputInstance,
+  TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }
+>(({ className, disabled, "aria-invalid": invalid, numberOfLines: _rows, ...props }, ref) => {
+  const colors = useThemeColors();
+  return (
+    <TextInput
+      ref={ref}
+      multiline
+      textAlignVertical="top"
+      editable={!disabled}
+      placeholderTextColor={colors["muted-foreground"]}
+      className={cn(
+        "min-h-20 w-full rounded-control border border-control-border bg-surface px-3 py-2.5 text-base font-normal text-foreground focus:border-ring",
+        invalid && "border-destructive",
+        disabled && "opacity-50",
+        className,
+      )}
+      {...props}
+    />
+  );
+});
 Textarea.displayName = "Textarea";
 
 export { Textarea };

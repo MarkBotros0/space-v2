@@ -5,7 +5,13 @@ import { setReducedMotionForTests } from "../design/motion";
 import { Badge, Modal, ModalContent, ModalTitle } from "../design/ui";
 import { StatusChip } from "../design/ui/status-chip";
 
-const TONE_BG = { ok: "bg-ok-soft", warn: "bg-warn-soft", bad: "bg-bad-soft", info: "bg-info-soft", neutral: "bg-neutral-soft" };
+const TONE_BG = {
+  ok: "bg-ok-soft",
+  warn: "bg-warn-soft",
+  bad: "bg-bad-soft",
+  info: "bg-info-soft",
+  neutral: "bg-neutral-soft",
+};
 
 describe("Badge draws as a StatusChip", () => {
   it.each([

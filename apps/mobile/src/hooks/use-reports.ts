@@ -29,10 +29,7 @@ function scopeQuery(seasonId: number | null): string {
  * here than elsewhere: every value on this screen is a number with no
  * independent source of truth on the device.
  */
-export function useEngagementReport(
-  seasonId: number | null,
-  enabled: boolean,
-): UseQueryResult<EngagementSummary> {
+export function useEngagementReport(seasonId: number | null, enabled: boolean): UseQueryResult<EngagementSummary> {
   return useQuery({
     queryKey: queryKeys.reports.engagement(seasonId),
     queryFn: async () => {
@@ -52,11 +49,7 @@ export function useEngagementReport(
  * have to download a spreadsheet to read ten more rows (spec §9), and a route
  * for it would widen this plan's screen scope.
  */
-export function useEngagementStudents(
-  seasonId: number | null,
-  band: EngagementBand | null,
-  enabled: boolean,
-) {
+export function useEngagementStudents(seasonId: number | null, band: EngagementBand | null, enabled: boolean) {
   return useInfiniteQuery({
     queryKey: queryKeys.reports.engagementStudents(seasonId, band),
     initialPageParam: null as string | null,

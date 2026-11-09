@@ -26,11 +26,7 @@ import { NavigationContext } from "expo-router/react-navigation";
 import { cssInterop } from "nativewind";
 import { type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { type LayoutChangeEvent, Platform, RefreshControl, View } from "react-native";
-import Animated, {
-  useAnimatedReaction,
-  useAnimatedScrollHandler,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { useAnimatedReaction, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import { scheduleOnRN } from "react-native-worklets";
 
@@ -41,13 +37,7 @@ import { useKeyboardInset } from "../lib/keyboard-inset";
 import { keyboardBottomOffset } from "../lib/keyboard-offset";
 import { useReducedMotion } from "../motion";
 import { HomeActions } from "./home-actions";
-import {
-  BACK_TO_PREVIOUS,
-  type BackTarget,
-  CompactHeader,
-  compactHeaderFade,
-  LargeTitle,
-} from "./large-title";
+import { BACK_TO_PREVIOUS, type BackTarget, CompactHeader, compactHeaderFade, LargeTitle } from "./large-title";
 import { OfflineBanner } from "./offline-banner";
 import { ScreenFooterContext, TabBarPresenceContext, useShellBottomPadding } from "./shell-context";
 import {
@@ -108,13 +98,7 @@ type ScreenProps = {
  * wraps the list in it so it gets the same top, and passes `back` for the
  * pinned back bar `Screen` would give it (ruling R16).
  */
-export function ScreenChrome({
-  children,
-  back,
-}: {
-  children: ReactNode;
-  back?: BackTarget | null;
-}) {
+export function ScreenChrome({ children, back }: { children: ReactNode; back?: BackTarget | null }) {
   const effective = useEffectiveBack(back);
   const top = useContext(SafeAreaInsetsContext)?.top ?? 0;
   return (
@@ -237,12 +221,7 @@ export function Screen({
       scrollY.value = e.contentOffset.y;
       if (!hasTabBar) return;
       const prev = step.value;
-      const next = scrollDirectionStep(
-        prev,
-        e.contentOffset.y,
-        e.layoutMeasurement.height,
-        e.contentSize.height,
-      );
+      const next = scrollDirectionStep(prev, e.contentOffset.y, e.layoutMeasurement.height, e.contentSize.height);
       step.value = next;
       // Only a change crosses to the JS thread, never every frame.
       if (next.dir !== null && (next.dir !== prev.dir || next.atEnd !== prev.atEnd)) {

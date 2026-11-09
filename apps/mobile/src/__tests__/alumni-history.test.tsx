@@ -96,8 +96,9 @@ describe("AlumniHistory", () => {
     expect(toggle.props.accessibilityState).toMatchObject({ expanded: false });
     expect(screen.queryByText("Opening night")).toBeNull();
     fireEvent.press(toggle);
-    expect(screen.getByRole("button", { name: "Curriculum (3 sessions)" }).props.accessibilityState)
-      .toMatchObject({ expanded: true });
+    expect(screen.getByRole("button", { name: "Curriculum (3 sessions)" }).props.accessibilityState).toMatchObject({
+      expanded: true,
+    });
     expect(screen.getByText("Opening night")).toBeTruthy();
     expect(screen.getByText("Finale")).toBeTruthy();
     expect(screen.getByText("Mar 2, 2025")).toBeTruthy();
@@ -106,9 +107,7 @@ describe("AlumniHistory", () => {
   });
 
   it("says sessions even for one", () => {
-    renderWithProviders(
-      <AlumniHistory query={query({ data: [{ ...row, curriculum: [row.curriculum[0]] }] })} />,
-    );
+    renderWithProviders(<AlumniHistory query={query({ data: [{ ...row, curriculum: [row.curriculum[0]] }] })} />);
     expect(screen.getByText("Curriculum (1 sessions)")).toBeTruthy();
   });
 

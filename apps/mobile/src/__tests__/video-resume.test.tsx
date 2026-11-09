@@ -55,27 +55,20 @@ beforeEach(() => jest.clearAllMocks());
 
 describe("VideoQuizPlayer resume (REG-92)", () => {
   it("seeks to the furthest position when it is before the barrier", async () => {
-    renderWithProviders(
-      <VideoQuizPlayer sessionId={12} quiz={quizWith({ furthestSeconds: 20 })} />,
-    );
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quizWith({ furthestSeconds: 20 })} />);
     await act(async () => {});
     expect(mockSeekTo).toHaveBeenCalledWith(20, true);
   });
 
   it("caps the resume at the barrier question", async () => {
-    renderWithProviders(
-      <VideoQuizPlayer sessionId={12} quiz={quizWith({ furthestSeconds: 75 })} />,
-    );
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quizWith({ furthestSeconds: 75 })} />);
     await act(async () => {});
     expect(mockSeekTo).toHaveBeenCalledWith(30, true);
   });
 
   it("resumes at the furthest point when every question is answered (no barrier)", async () => {
     renderWithProviders(
-      <VideoQuizPlayer
-        sessionId={12}
-        quiz={quizWith({ furthestSeconds: 75, nextQuestionId: null })}
-      />,
+      <VideoQuizPlayer sessionId={12} quiz={quizWith({ furthestSeconds: 75, nextQuestionId: null })} />,
     );
     await act(async () => {});
     expect(mockSeekTo).toHaveBeenCalledWith(75, true);

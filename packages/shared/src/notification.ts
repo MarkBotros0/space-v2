@@ -127,8 +127,7 @@ export const NOTIFICATION_PREFERENCE_KEY_BY_TYPE = {
   ANNOUNCEMENT: "announcement",
 } as const satisfies Record<NotificationType, string>;
 
-type NotificationPreferenceKey =
-  (typeof NOTIFICATION_PREFERENCE_KEY_BY_TYPE)[NotificationType];
+type NotificationPreferenceKey = (typeof NOTIFICATION_PREFERENCE_KEY_BY_TYPE)[NotificationType];
 
 /**
  * Every key, required. The `satisfies` below is the structural fix for

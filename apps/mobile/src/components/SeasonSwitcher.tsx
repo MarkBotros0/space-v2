@@ -37,9 +37,7 @@ export function SeasonSwitcher({ seasons, selectedId, onSelect }: SeasonSwitcher
             onPress={() => onSelect(s.id)}
             className={cn(
               "min-h-[44px] justify-center rounded-full border px-3",
-              selected
-                ? "border-ring bg-accent"
-                : "border-control-border bg-surface",
+              selected ? "border-ring bg-accent" : "border-control-border bg-surface",
             )}
           >
             <Text

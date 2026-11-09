@@ -19,9 +19,7 @@ export function HomePartsSection() {
           { label: "Students at risk", value: 2, icon: TriangleAlert, tone: "bad", onPress: noop },
         ]}
       />
-      <CountGrid
-        tiles={[{ label: "Submissions to review", value: 0, icon: FileText, tone: "info", onPress: noop }]}
-      />
+      <CountGrid tiles={[{ label: "Submissions to review", value: 0, icon: FileText, tone: "info", onPress: noop }]} />
       <FigureGrid
         tiles={[
           { label: "Students", value: "128", icon: Users, onPress: noop },

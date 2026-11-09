@@ -9,10 +9,7 @@ import { savePushToken } from "./token-storage";
 import { useSessionStore } from "../store/session";
 
 type PushTokenResult =
-  | { kind: "token"; token: string }
-  | { kind: "denied" }
-  | { kind: "not_configured" }
-  | { kind: "failed" };
+  { kind: "token"; token: string } | { kind: "denied" } | { kind: "not_configured" } | { kind: "failed" };
 
 export type PushStatus = "registered" | "unavailable" | "denied" | "not_configured" | "failed";
 

@@ -9,15 +9,7 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { iconWithClassName } from "../../design/lib/icon";
-import {
-  GroupedList,
-  ListRow,
-  PillButton,
-  Sheet,
-  StatusChip,
-  statusChip,
-  Text,
-} from "../../design/ui";
+import { GroupedList, ListRow, PillButton, Sheet, StatusChip, statusChip, Text } from "../../design/ui";
 import { formatSeasonDay } from "../../lib/format";
 import { isCurrentSeason, type ReportSeason } from "./default-season";
 
@@ -69,9 +61,7 @@ export function ReportSeasonHeader({
   const [open, setOpen] = useState(false);
   const season = seasons.find((s) => s.id === selected);
   const current = seasons.filter(isCurrentSeason);
-  const past = seasons
-    .filter((s) => !isCurrentSeason(s))
-    .sort((a, b) => b.endDate.localeCompare(a.endDate));
+  const past = seasons.filter((s) => !isCurrentSeason(s)).sort((a, b) => b.endDate.localeCompare(a.endDate));
   const hasChoice = allowAll || seasons.length > 1;
   const pick = (id: number | null) => {
     setOpen(false);
@@ -80,10 +70,7 @@ export function ReportSeasonHeader({
 
   return (
     <>
-      <View
-        testID="report-season"
-        className="flex-row items-center gap-3 rounded-group bg-surface p-4"
-      >
+      <View testID="report-season" className="flex-row items-center gap-3 rounded-group bg-surface p-4">
         <View className="min-w-0 flex-1 gap-1">
           <Text variant="headline">{season ? season.title : "All seasons"}</Text>
           {season ? (
@@ -100,11 +87,7 @@ export function ReportSeasonHeader({
           )}
         </View>
         {hasChoice ? (
-          <PillButton
-            label="History"
-            accessibilityLabel="Choose another season"
-            onPress={() => setOpen(true)}
-          />
+          <PillButton label="History" accessibilityLabel="Choose another season" onPress={() => setOpen(true)} />
         ) : null}
       </View>
       {/* Beside the card, not in it: the card stays put while a picked season loads. */}

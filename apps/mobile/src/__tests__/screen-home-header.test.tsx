@@ -54,12 +54,8 @@ describe("Screen home: compact header (R31)", () => {
       </Screen>,
     );
     expect(within(compact()).getByText("Home", { includeHiddenElements: true })).toBeTruthy();
-    expect(
-      within(compact()).getByLabelText("Profile", { includeHiddenElements: true }),
-    ).toBeTruthy();
-    expect(
-      within(compact()).getByLabelText("Notifications (3 unread)", { includeHiddenElements: true }),
-    ).toBeTruthy();
+    expect(within(compact()).getByLabelText("Profile", { includeHiddenElements: true })).toBeTruthy();
+    expect(within(compact()).getByLabelText("Notifications (3 unread)", { includeHiddenElements: true })).toBeTruthy();
   });
 
   it("compactTitle overrides the collapsed title while the large title stays", () => {

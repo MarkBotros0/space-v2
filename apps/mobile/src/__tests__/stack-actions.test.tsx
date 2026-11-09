@@ -3,12 +3,7 @@ import { router } from "expo-router";
 import { act, renderRouter, screen } from "expo-router/testing-library";
 
 import { useSessionStore } from "../store/session";
-import {
-  appContext,
-  appRouteNames,
-  muteTabsAnchorWarning,
-  type NavState,
-} from "./helpers/router-context";
+import { appContext, appRouteNames, muteTabsAnchorWarning, type NavState } from "./helpers/router-context";
 import { makeScopes, makeUser } from "./helpers/session";
 
 // The navigation actions screens dispatch after a save or a delete, walked

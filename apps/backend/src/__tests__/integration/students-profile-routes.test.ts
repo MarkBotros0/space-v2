@@ -30,7 +30,8 @@ let student2Id: number; // enrolled in B only
 let droppedId: number; // WITHDRAWN enrollment in A, no group
 
 beforeAll(async () => {
-  ({ seasonAId, seasonBId, superToken, adminToken, student1Id, student1Token, student2Id, droppedId } = await seedStudentFixtures(app));
+  ({ seasonAId, seasonBId, superToken, adminToken, student1Id, student1Token, student2Id, droppedId } =
+    await seedStudentFixtures(app));
 });
 
 afterAll(async () => {

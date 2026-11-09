@@ -6,10 +6,7 @@ import { Keyboard, type KeyboardEvent, Platform } from "react-native";
  * unsubscribe. iOS announces the keyboard before it moves (`Will`), Android
  * only once it is up (`Did`).
  */
-export function subscribeKeyboard(
-  onShow: (e: KeyboardEvent) => void,
-  onHide: () => void,
-): () => void {
+export function subscribeKeyboard(onShow: (e: KeyboardEvent) => void, onHide: () => void): () => void {
   const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
   const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
   const show = Keyboard.addListener(showEvent, onShow);

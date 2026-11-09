@@ -31,25 +31,21 @@ const users = [
 
 beforeEach(() => {
   jest.clearAllMocks();
-  useSessionStore
-    .getState()
-    .setSession(
-      {
-        id: 1,
-        name: "Sue Super",
-        email: "super@jpc.test",
-        role: "SUPER",
-        avatarPath: null,
-        hasPassword: true,
-      },
-      scopes,
-    );
+  useSessionStore.getState().setSession(
+    {
+      id: 1,
+      name: "Sue Super",
+      email: "super@jpc.test",
+      role: "SUPER",
+      avatarPath: null,
+      hasPassword: true,
+    },
+    scopes,
+  );
 });
 
 it("renders nothing when the backend has the switcher off (404)", async () => {
-  get.mockRejectedValue(
-    Object.assign(new Error("404"), { isAxiosError: true, response: { status: 404 } }),
-  );
+  get.mockRejectedValue(Object.assign(new Error("404"), { isAxiosError: true, response: { status: 404 } }));
   renderWithProviders(<DevUserSwitcher />);
   await waitFor(() => expect(get).toHaveBeenCalled());
   expect(screen.queryByLabelText("Switch user (dev)")).toBeNull();

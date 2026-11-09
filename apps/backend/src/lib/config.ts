@@ -39,7 +39,11 @@ const envSchema = z.object({
   // default: the invite is delivered to email and typed into a phone, and v1's
   // TTL never mattered because no invite was ever acceptable (spec 11 D1).
   INVITE_TOKEN_TTL_HOURS: z.coerce.number().int().positive().default(168),
-  MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
+  MAX_UPLOAD_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(25 * 1024 * 1024),
   // Accept file uploads on POST /api/v1/submissions/:publicId/files.
   //
   // Defaults OFF. Uploads currently land on the local filesystem, which costs
@@ -125,11 +129,14 @@ const envSchema = z.object({
   GOOGLE_CLIENT_IDS: z
     .string()
     .optional()
-    .transform((v) => (v ?? "").split(",").map((s) => s.trim()).filter((s) => s.length > 0))
+    .transform((v) =>
+      (v ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+    )
     .pipe(
-      z.array(
-        z.string().regex(/^[A-Za-z0-9-]+\.apps\.googleusercontent\.com$/, "must be Google OAuth client IDs"),
-      ),
+      z.array(z.string().regex(/^[A-Za-z0-9-]+\.apps\.googleusercontent\.com$/, "must be Google OAuth client IDs")),
     ),
   // Dev user switcher (v1 parity: jpc-space's DEV_USER_SWITCHER). "1" turns on
   // /api/v1/dev/*, which signs the caller in as ANY active user with no
@@ -152,9 +159,7 @@ const envSchema = z.object({
  * Stripping empties first means the error names only what a human must
  * actually go and fix.
  */
-const presentEnv = Object.fromEntries(
-  Object.entries(process.env).filter(([, value]) => value !== ""),
-);
+const presentEnv = Object.fromEntries(Object.entries(process.env).filter(([, value]) => value !== ""));
 
 const parsed = envSchema.safeParse(presentEnv);
 if (!parsed.success) {
@@ -186,8 +191,7 @@ export const config = {
   importBodyLimit: parsed.data.IMPORT_BODY_LIMIT,
   importPreviewRateLimit: parsed.data.IMPORT_PREVIEW_RATE_LIMIT,
   importCommitRateLimit: parsed.data.IMPORT_COMMIT_RATE_LIMIT,
-  rateLimitStore:
-    parsed.data.RATE_LIMIT_STORE ?? (parsed.data.NODE_ENV === "test" ? "memory" : "postgres"),
+  rateLimitStore: parsed.data.RATE_LIMIT_STORE ?? (parsed.data.NODE_ENV === "test" ? "memory" : "postgres"),
   enablePush: parsed.data.ENABLE_PUSH,
   expoAccessToken: parsed.data.EXPO_ACCESS_TOKEN,
   cronSecret: parsed.data.CRON_SECRET,

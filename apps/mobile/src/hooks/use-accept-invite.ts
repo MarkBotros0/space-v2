@@ -1,9 +1,5 @@
 import { useMutation, type UseMutationResult } from "@tanstack/react-query";
-import {
-  acceptInviteResponseSchema,
-  type AcceptInviteBody,
-  type AcceptInviteResponse,
-} from "@space/shared";
+import { acceptInviteResponseSchema, type AcceptInviteBody, type AcceptInviteResponse } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 

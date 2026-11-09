@@ -24,8 +24,7 @@ export default function FollowUpsScreen() {
   const list = useFollowUps(isMentor);
   const done = useMarkFollowUpDone();
 
-  const open = (f: FollowUp) =>
-    router.push({ pathname: "/student/[id]", params: { id: String(f.studentUserId) } });
+  const open = (f: FollowUp) => router.push({ pathname: "/student/[id]", params: { id: String(f.studentUserId) } });
   const markDone = (f: FollowUp) =>
     done.mutate(
       { id: f.id },
@@ -44,11 +43,7 @@ export default function FollowUpsScreen() {
       onPress={() => open(f)}
       trailing={
         f.doneAt === null ? (
-          <PillButton
-            label="Done"
-            accessibilityLabel={`Mark ${f.studentName} done`}
-            onPress={() => markDone(f)}
-          />
+          <PillButton label="Done" accessibilityLabel={`Mark ${f.studentName} done`} onPress={() => markDone(f)} />
         ) : undefined
       }
       trailingLabel={f.doneAt === null ? "Open" : "Done"}

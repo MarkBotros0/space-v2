@@ -35,8 +35,12 @@ import { studentEngagementRouter } from "../routes/engagement";
 const app = express().use("/students", studentEngagementRouter);
 
 const leader = {
-  userId: 1, role: "LEADER", seasonAdminIds: [], groupLeaderIds: [3],
-  activeSeasonId: null, graduationYear: null,
+  userId: 1,
+  role: "LEADER",
+  seasonAdminIds: [],
+  groupLeaderIds: [3],
+  activeSeasonId: null,
+  graduationYear: null,
 };
 
 beforeEach(() => {
@@ -54,9 +58,7 @@ it("answers no_season when no enrolment is in the caller's scope", async () => {
 });
 
 it("still refuses an explicitly named season outside the caller's scope", async () => {
-  const res = await request(app)
-    .get("/students/11/engagement?seasonId=8")
-    .set("authorization", "Bearer x");
+  const res = await request(app).get("/students/11/engagement?seasonId=8").set("authorization", "Bearer x");
   expect(res.status).toBe(403);
 });
 

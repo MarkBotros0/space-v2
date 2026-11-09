@@ -14,7 +14,12 @@ iconWithClassName(Search);
  * the wrapping View, so focus is tracked in state rather than with `focus:`.
  */
 function SearchField({
-  value, onChangeText, placeholder, className, onSubmitEditing, accessibilityLabel,
+  value,
+  onChangeText,
+  placeholder,
+  className,
+  onSubmitEditing,
+  accessibilityLabel,
 }: {
   value: string;
   onChangeText: (text: string) => void;
@@ -30,7 +35,11 @@ function SearchField({
   return (
     <View
       testID="search-field"
-      className={cn("min-h-[44px] flex-row items-center gap-2 rounded-control border border-control-border bg-neutral-soft px-3", focused && "border-ring", className)}
+      className={cn(
+        "min-h-[44px] flex-row items-center gap-2 rounded-control border border-control-border bg-neutral-soft px-3",
+        focused && "border-ring",
+        className,
+      )}
     >
       <Search size={16} className="text-muted-foreground" />
       <TextInput

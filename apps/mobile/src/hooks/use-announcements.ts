@@ -39,9 +39,7 @@ async function fetchPage(cursor: string | null): Promise<AnnouncementPageRespons
 }
 
 /** The feed: newest first, cursor-paged by the server. */
-export function useAnnouncementFeed(): UseInfiniteQueryResult<
-  InfiniteData<AnnouncementPageResponse>
-> {
+export function useAnnouncementFeed(): UseInfiniteQueryResult<InfiniteData<AnnouncementPageResponse>> {
   return useInfiniteQuery({
     queryKey: queryKeys.announcements.feed(),
     queryFn: ({ pageParam }) => fetchPage(pageParam),
@@ -65,9 +63,7 @@ export function useAnnouncementUnread(): UseQueryResult<AnnouncementUnreadRespon
  * One post. A 404 is not an error here: it is "This post was removed", so it is
  * mapped to `{ removed: true }` (and never retried, since no retry can change it).
  */
-export function useAnnouncement(
-  id: number | null,
-): UseQueryResult<AnnouncementDetail | AnnouncementRemoved> {
+export function useAnnouncement(id: number | null): UseQueryResult<AnnouncementDetail | AnnouncementRemoved> {
   return useQuery({
     queryKey: queryKeys.announcements.detail(id),
     queryFn: async (): Promise<AnnouncementDetail | AnnouncementRemoved> => {
@@ -84,9 +80,7 @@ export function useAnnouncement(
 }
 
 /** Who the signed-in author may post to, with reach counts. Fetched only when the composer opens. */
-export function useAnnouncementTargets(
-  enabled: boolean,
-): UseQueryResult<AnnouncementTargetsResponse> {
+export function useAnnouncementTargets(enabled: boolean): UseQueryResult<AnnouncementTargetsResponse> {
   return useQuery({
     queryKey: queryKeys.announcements.targets(),
     queryFn: async () => {
@@ -209,10 +203,7 @@ export function useReopenPoll(postId: number) {
 }
 
 /** Who voted for what; only a poll's managers may read it, so fetch only when the sheet opens. */
-export function usePollVoters(
-  postId: number,
-  enabled: boolean,
-): UseQueryResult<PollVotersResponse> {
+export function usePollVoters(postId: number, enabled: boolean): UseQueryResult<PollVotersResponse> {
   return useQuery({
     queryKey: queryKeys.announcements.voters(postId),
     queryFn: async () => {

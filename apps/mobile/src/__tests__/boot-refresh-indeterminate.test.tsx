@@ -24,7 +24,11 @@ import { useSessionStore } from "../store/session";
 
 const answer = (status: number, config: InternalAxiosRequestConfig, data: unknown = {}) =>
   new AxiosError(`status ${status}`, "ERR", config, null, {
-    status, data, statusText: "", headers: {}, config,
+    status,
+    data,
+    statusText: "",
+    headers: {},
+    config,
   } as AxiosResponse);
 
 let axiosPost: jest.SpyInstance;

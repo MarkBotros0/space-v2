@@ -30,8 +30,7 @@ let draftAdminToken: string;
 let voterIds: number[];
 
 const as = (token: string) => ({ authorization: `Bearer ${token}` });
-const create = (token: string, body: object) =>
-  request(app).post("/api/v1/announcements").set(as(token)).send(body);
+const create = (token: string, body: object) => request(app).post("/api/v1/announcements").set(as(token)).send(body);
 const patch = (id: number, body: object) =>
   request(app).patch(`/api/v1/announcements/${id}`).set(as(f.tokens.admin)).send(body);
 
@@ -228,7 +227,13 @@ describe("PATCH /announcements/:id with a poll", () => {
     const p = await seasonPoll(false, ["A", "B"]);
     const res = await patch(p.postId, {
       body: BODY,
-      poll: { allowsMultiple: false, options: [{ id: p.optionIds[0], label: "A" }, { id: p.optionIds[1], label: "B" }] },
+      poll: {
+        allowsMultiple: false,
+        options: [
+          { id: p.optionIds[0], label: "A" },
+          { id: p.optionIds[1], label: "B" },
+        ],
+      },
     });
     expect(res.status).toBe(200);
     expect((await pollState(p.pollId)).poll!.version).toBe(1);
@@ -252,7 +257,13 @@ describe("PATCH /announcements/:id with a poll", () => {
     const otherBefore = await pollState(other.pollId);
     const res = await patch(p.postId, {
       body: BODY,
-      poll: { allowsMultiple: false, options: [{ id: p.optionIds[0], label: "A" }, { id: other.optionIds[0], label: "B" }] },
+      poll: {
+        allowsMultiple: false,
+        options: [
+          { id: p.optionIds[0], label: "A" },
+          { id: other.optionIds[0], label: "B" },
+        ],
+      },
     });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");

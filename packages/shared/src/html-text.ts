@@ -63,9 +63,7 @@ const ENTITIES: [RegExp, string][] = [
  * cosmetic bug, not an injection.
  */
 export function htmlToPlainText(stored: string): string {
-  const withBreaks = stored
-    .replace(/<\/(p|div|li|h[1-6]|blockquote|tr)\s*>/gi, "\n")
-    .replace(/<br\s*\/?>/gi, "\n");
+  const withBreaks = stored.replace(/<\/(p|div|li|h[1-6]|blockquote|tr)\s*>/gi, "\n").replace(/<br\s*\/?>/gi, "\n");
   const stripped = withBreaks.replace(/<[^>]*>/g, "");
   const decoded = ENTITIES.reduce((acc, [pattern, char]) => acc.replace(pattern, char), stripped);
   return decoded.replace(/\n{3,}/g, "\n\n").trim();

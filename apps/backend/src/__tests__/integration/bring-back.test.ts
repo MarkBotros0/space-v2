@@ -111,7 +111,10 @@ describe("POST /students/:id/enrollments/:seasonId/restore", () => {
       const target = await season("ACTIVE");
       const student = await dropped(target);
       expect((await restore(target, student.id)).status).toBe(200);
-      await db.seasonEnrollment.update({ ...enrolment(target, student.id), data: { status: "COMPLETED", completedAt: new Date() } });
+      await db.seasonEnrollment.update({
+        ...enrolment(target, student.id),
+        data: { status: "COMPLETED", completedAt: new Date() },
+      });
       expect(await reasons(student.id, target, ctx.superToken)).toBeNull();
     });
 

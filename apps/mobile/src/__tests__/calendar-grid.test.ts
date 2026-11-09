@@ -1,13 +1,27 @@
 import {
-  addDays, bucketByDay, dayCue, monthGridKeys, rangeLabel,
-  sessionBadge, sessionTone, startOfWeek, stepAnchor, weekKeys,
+  addDays,
+  bucketByDay,
+  dayCue,
+  monthGridKeys,
+  rangeLabel,
+  sessionBadge,
+  sessionTone,
+  startOfWeek,
+  stepAnchor,
+  weekKeys,
 } from "../lib/calendar-grid";
 
 describe("calendar-grid", () => {
   it("starts weeks on Monday", () => {
     expect(startOfWeek("2099-03-01")).toBe("2099-02-23"); // a Sunday belongs to the week before
     expect(weekKeys("2099-03-04")).toEqual([
-      "2099-03-02", "2099-03-03", "2099-03-04", "2099-03-05", "2099-03-06", "2099-03-07", "2099-03-08",
+      "2099-03-02",
+      "2099-03-03",
+      "2099-03-04",
+      "2099-03-05",
+      "2099-03-06",
+      "2099-03-07",
+      "2099-03-08",
     ]);
   });
 

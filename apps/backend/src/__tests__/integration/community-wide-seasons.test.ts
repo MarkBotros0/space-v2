@@ -3,7 +3,15 @@ import request from "supertest";
 
 import { db } from "../../db/client";
 import { testSeasonCode } from "./fixtures";
-import { adminTokenOf, app, as, ctx, season, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  adminTokenOf,
+  app,
+  as,
+  ctx,
+  season,
+  seedEnrollmentFixtures,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 
 jest.setTimeout(120000);
 
@@ -84,14 +92,20 @@ describe("Season.isCommunityWide", () => {
     expect(await flag(id)).toBe(false);
   });
 
-  it.each(["ACTIVE", "COMPLETED", "ARCHIVED"] as const)("can't change on a %s season, though the same value saves", async (status) => {
-    const id = await season(status);
-    const refused = await patchSeason(id, await ownBody(id, { isCommunityWide: true }));
-    expect(refused.status).toBe(409);
-    expect(refused.body.error).toEqual({ code: "season_started", message: "This season has started, so this can't change." });
-    expect(await flag(id)).toBe(false);
-    expect((await patchSeason(id, await ownBody(id, { isCommunityWide: false }))).status).toBe(200);
-  });
+  it.each(["ACTIVE", "COMPLETED", "ARCHIVED"] as const)(
+    "can't change on a %s season, though the same value saves",
+    async (status) => {
+      const id = await season(status);
+      const refused = await patchSeason(id, await ownBody(id, { isCommunityWide: true }));
+      expect(refused.status).toBe(409);
+      expect(refused.body.error).toEqual({
+        code: "season_started",
+        message: "This season has started, so this can't change.",
+      });
+      expect(await flag(id)).toBe(false);
+      expect((await patchSeason(id, await ownBody(id, { isCommunityWide: false }))).status).toBe(200);
+    },
+  );
 
   it("a body without it leaves it as it is", async () => {
     const id = await season("DRAFT");
@@ -103,10 +117,12 @@ describe("Season.isCommunityWide", () => {
   it("duplicating a season copies it", async () => {
     const id = await season("COMPLETED");
     await db.season.update({ where: { id }, data: { isCommunityWide: true } });
-    const res = await request(app)
-      .post(`/api/v1/seasons/${id}/duplicate`)
-      .set(as(ctx.superToken))
-      .send({ year: 2098, code: testSeasonCode(), startDate: "2098-01-01T00:00:00.000Z", endDate: "2098-12-31T00:00:00.000Z" });
+    const res = await request(app).post(`/api/v1/seasons/${id}/duplicate`).set(as(ctx.superToken)).send({
+      year: 2098,
+      code: testSeasonCode(),
+      startDate: "2098-01-01T00:00:00.000Z",
+      endDate: "2098-12-31T00:00:00.000Z",
+    });
     expect(res.status).toBe(201);
     expect(await flag(res.body.data.id)).toBe(true);
   });

@@ -1,12 +1,6 @@
 import axios from "axios";
 import Constants from "expo-constants";
-import {
-  loginResponseSchema,
-  meResponseSchema,
-  sessionSchema,
-  type LoginResponse,
-  type Session,
-} from "@space/shared";
+import { loginResponseSchema, meResponseSchema, sessionSchema, type LoginResponse, type Session } from "@space/shared";
 
 import { markRefreshIndeterminate } from "./api-error";
 import { clearSession, loadAccessToken, loadPushToken, loadRefreshToken, saveSession } from "./token-storage";
@@ -43,9 +37,7 @@ function isAuthEndpoint(url: string | undefined): boolean {
  */
 export const ROTATE_INDETERMINATE = Symbol("rotate-indeterminate");
 
-type RotateFn = (
-  refreshToken: string,
-) => Promise<Session | null | typeof ROTATE_INDETERMINATE>;
+type RotateFn = (refreshToken: string) => Promise<Session | null | typeof ROTATE_INDETERMINATE>;
 
 let inFlight: Promise<string | null | typeof ROTATE_INDETERMINATE> | null = null;
 
@@ -54,9 +46,7 @@ export function __resetRefreshState(): void {
   inFlight = null;
 }
 
-async function rotateViaApi(
-  refreshToken: string,
-): Promise<Session | null | typeof ROTATE_INDETERMINATE> {
+async function rotateViaApi(refreshToken: string): Promise<Session | null | typeof ROTATE_INDETERMINATE> {
   try {
     const res = await axios.post(`${baseURL}/api/v1/auth/refresh`, { refreshToken });
     // Enforce the shared contract at the client boundary — if the backend's

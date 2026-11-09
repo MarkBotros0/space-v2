@@ -28,8 +28,12 @@ let token: string;
 
 beforeAll(async () => {
   ({ token } = await signAccessToken({
-    userId: 1, role: "SUPER", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: null, graduationYear: null,
+    userId: 1,
+    role: "SUPER",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: null,
+    graduationYear: null,
   }));
 });
 
@@ -82,8 +86,15 @@ describe("event writes refuse a soft-deleted season", () => {
 
   it("PATCH checks only a newly attached season, so an event on a since-deleted season stays editable", async () => {
     const stored = {
-      id: 9, title: "Retreat", date: new Date("2026-05-01T00:00:00Z"), endDate: null, url: null,
-      visibility: "SEASON", seasonId: 3, season: { code: "old", title: "Old" }, description: null,
+      id: 9,
+      title: "Retreat",
+      date: new Date("2026-05-01T00:00:00Z"),
+      endDate: null,
+      url: null,
+      visibility: "SEASON",
+      seasonId: 3,
+      season: { code: "old", title: "Old" },
+      description: null,
     };
     mockDb.jpcEvent.findUnique.mockResolvedValue(stored);
     mockDb.jpcEvent.update.mockResolvedValue(stored);
@@ -102,23 +113,62 @@ describe("event writes refuse a soft-deleted season", () => {
 describe("POST /seasons/:id/duplicate", () => {
   it("batches what needs no id mapping and runs under a 30 s transaction timeout", async () => {
     mockDb.season.findFirst.mockResolvedValue({
-      program: "GBV", description: null, startDate: new Date("2026-01-01T00:00:00Z"),
-      absenceBudgetMinutes: 180, absenceWeightMinutes: 90,
+      program: "GBV",
+      description: null,
+      startDate: new Date("2026-01-01T00:00:00Z"),
+      absenceBudgetMinutes: 180,
+      absenceWeightMinutes: 90,
       groups: [
         { id: 1, name: "A", description: null },
         { id: 2, name: "B", description: null },
         { id: 3, name: "C", description: null },
       ],
       sessions: [
-        { id: 10, title: "S1", startsAt: new Date("2026-01-05T18:00:00Z"), durationMinutes: 90, location: null, youtubeUrl: null, description: null, recurrenceGroupId: "r1" },
-        { id: 11, title: "S2", startsAt: new Date("2026-01-12T18:00:00Z"), durationMinutes: 90, location: null, youtubeUrl: null, description: null, recurrenceGroupId: "r1" },
-        { id: 12, title: "S3", startsAt: new Date("2026-01-19T18:00:00Z"), durationMinutes: 90, location: null, youtubeUrl: null, description: null, recurrenceGroupId: null },
+        {
+          id: 10,
+          title: "S1",
+          startsAt: new Date("2026-01-05T18:00:00Z"),
+          durationMinutes: 90,
+          location: null,
+          youtubeUrl: null,
+          description: null,
+          recurrenceGroupId: "r1",
+        },
+        {
+          id: 11,
+          title: "S2",
+          startsAt: new Date("2026-01-12T18:00:00Z"),
+          durationMinutes: 90,
+          location: null,
+          youtubeUrl: null,
+          description: null,
+          recurrenceGroupId: "r1",
+        },
+        {
+          id: 12,
+          title: "S3",
+          startsAt: new Date("2026-01-19T18:00:00Z"),
+          durationMinutes: 90,
+          location: null,
+          youtubeUrl: null,
+          description: null,
+          recurrenceGroupId: null,
+        },
       ],
       assignments: [
         {
-          title: "Essay", description: null, dueAt: null, isAllGroups: false, type: "FILE",
-          forumMinWords: null, forumAllowComments: true, forumPostToRead: true, maxFileSizeMb: 10, allowedMimeCategories: [],
-          sessionId: 11, targets: [{ groupId: 2 }, { groupId: 99 }],
+          title: "Essay",
+          description: null,
+          dueAt: null,
+          isAllGroups: false,
+          type: "FILE",
+          forumMinWords: null,
+          forumAllowComments: true,
+          forumPostToRead: true,
+          maxFileSizeMb: 10,
+          allowedMimeCategories: [],
+          sessionId: 11,
+          targets: [{ groupId: 2 }, { groupId: 99 }],
         },
       ],
     });
@@ -139,7 +189,10 @@ describe("POST /seasons/:id/duplicate", () => {
     expect(mockDb.group.createMany.mock.calls[0][0].data.map((g: { name: string }) => g.name)).toEqual(["A", "C"]);
     expect(mockDb.group.create).toHaveBeenCalledTimes(1);
     // Only S2 is linked from an assignment.
-    expect(mockDb.session.createMany.mock.calls[0][0].data.map((s: { title: string }) => s.title)).toEqual(["S1", "S3"]);
+    expect(mockDb.session.createMany.mock.calls[0][0].data.map((s: { title: string }) => s.title)).toEqual([
+      "S1",
+      "S3",
+    ]);
     expect(mockDb.session.create).toHaveBeenCalledTimes(1);
     // One series in, one FRESH series id out, shared by both its clones.
     const s1 = mockDb.session.createMany.mock.calls[0][0].data[0].recurrenceGroupId;

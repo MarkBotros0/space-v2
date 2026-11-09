@@ -55,10 +55,7 @@ export function CalendarGrid({
   for (let i = 0; i < keys.length; i += 7) weeks.push(keys.slice(i, i + 7));
   return (
     // v1: grid gap-px over bg-border draws the 1px lines.
-    <View
-      className="overflow-hidden rounded-group border border-separator bg-separator"
-      style={{ gap: 1 }}
-    >
+    <View className="overflow-hidden rounded-group border border-separator bg-separator" style={{ gap: 1 }}>
       <View className="flex-row" style={{ gap: 1 }}>
         {WEEKDAYS.map((d) => (
           <View key={d} className="flex-1 bg-card py-2">
@@ -106,11 +103,7 @@ export function CalendarGrid({
                     tabular
                     className={cn(
                       "text-xs font-medium",
-                      isToday
-                        ? "text-brand-navy-950"
-                        : outside
-                          ? "text-muted-foreground"
-                          : "text-foreground",
+                      isToday ? "text-brand-navy-950" : outside ? "text-muted-foreground" : "text-foreground",
                     )}
                   >
                     {String(Number(key.slice(8)))}
@@ -152,18 +145,14 @@ export function CalendarGrid({
                       onPress={dayPress ? undefined : () => handlers.onOpenEvent(e)}
                       className={cn(
                         "flex-row items-center gap-0.5 rounded px-0.5 py-0.5",
-                        alumni
-                          ? "bg-warning-100 dark:bg-warning-950"
-                          : "bg-brand-navy-100 dark:bg-brand-navy-900",
+                        alumni ? "bg-warning-100 dark:bg-warning-950" : "bg-brand-navy-100 dark:bg-brand-navy-900",
                       )}
                     >
                       {compact ? (
                         <View
                           className={cn(
                             "h-2 flex-1 rounded-sm",
-                            alumni
-                              ? "bg-warning-600 dark:bg-warning-400"
-                              : "bg-brand-navy-600 dark:bg-brand-navy-300",
+                            alumni ? "bg-warning-600 dark:bg-warning-400" : "bg-brand-navy-600 dark:bg-brand-navy-300",
                           )}
                         />
                       ) : (

@@ -32,9 +32,7 @@ export function useForumThread(
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const base = `/api/v1/assignments/${assignmentId}/forum`;
-      const res = await apiClient.get(
-        pageParam === null ? base : `${base}?cursor=${encodeURIComponent(pageParam)}`,
-      );
+      const res = await apiClient.get(pageParam === null ? base : `${base}?cursor=${encodeURIComponent(pageParam)}`);
       return forumViewSchema.parse(res.data.data);
     },
     getNextPageParam: (last) => last.nextCursor,

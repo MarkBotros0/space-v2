@@ -29,11 +29,23 @@ import { PULL_MIN_MS } from "../design/lib/pull-refresh";
 const get = apiClient.get as jest.Mock;
 
 const baseDetail: SessionDetail = {
-  id: 12, title: "Week 3", description: null,
-  startsAt: "2099-03-15T18:00:00.000Z", dayKey: "2099-03-15", startTime: "20:00",
-  durationMinutes: 90, location: null, youtubeUrl: null, recurrenceGroupId: null,
-  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring",
-  checkInOpen: false, myAttendance: null, canMarkAttendance: true, canManageCheckIn: false,
+  id: 12,
+  title: "Week 3",
+  description: null,
+  startsAt: "2099-03-15T18:00:00.000Z",
+  dayKey: "2099-03-15",
+  startTime: "20:00",
+  durationMinutes: 90,
+  location: null,
+  youtubeUrl: null,
+  recurrenceGroupId: null,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring",
+  checkInOpen: false,
+  myAttendance: null,
+  canMarkAttendance: true,
+  canManageCheckIn: false,
 };
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
@@ -101,9 +113,7 @@ it("a student's session stays on screen when a poll fails, and the poll runs on 
     get.mockImplementation((url: string) => {
       if (url === "/api/v1/me/dashboard") return ok(dashboard);
       if (url !== "/api/v1/sessions/12") return Promise.reject(new Error(`not served: ${url}`));
-      return fail
-        ? Promise.reject(new Error("blip"))
-        : ok({ ...baseDetail, canMarkAttendance: false });
+      return fail ? Promise.reject(new Error("blip")) : ok({ ...baseDetail, canMarkAttendance: false });
     });
 
     renderWithProviders(<SessionDetailScreen />);

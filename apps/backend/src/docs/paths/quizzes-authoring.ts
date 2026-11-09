@@ -29,7 +29,12 @@ export const quizAuthoringPaths = {
       parameters: [
         { name: "seasonId", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "sessionId", in: "query", schema: { type: "integer", minimum: 1 } },
-        { name: "cursor", in: "query", description: "Quiz id; returns rows with a smaller id.", schema: { type: "integer", minimum: 1 } },
+        {
+          name: "cursor",
+          in: "query",
+          description: "Quiz id; returns rows with a smaller id.",
+          schema: { type: "integer", minimum: 1 },
+        },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
       ],
       responses: {
@@ -92,7 +97,10 @@ export const quizAuthoringPaths = {
         content: { "application/json": { schema: { $ref: "#/components/schemas/UpdateQuizRequest" } } },
       },
       responses: {
-        200: ok({ type: "object", required: ["updated"], properties: { updated: { type: "boolean", const: true } } }, "Updated."),
+        200: ok(
+          { type: "object", required: ["updated"], properties: { updated: { type: "boolean", const: true } } },
+          "Updated.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -165,7 +173,10 @@ export const quizAuthoringPaths = {
       summary: "Replace a question's content",
       description:
         "Season-admin only. Takes the same body as create; `order` is not writable here (use the reorder endpoint). The question is addressed through its quiz: an id belonging to another quiz is 404 `question_not_in_quiz`. Recomputes `maxScore`. Frozen once attempts exist (409 `quiz_has_attempts`).",
-      parameters: [idParam, { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+      parameters: [
+        idParam,
+        { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+      ],
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/QuizQuestionRequest" } } },
@@ -184,9 +195,15 @@ export const quizAuthoringPaths = {
       summary: "Delete a question",
       description:
         "Season-admin only. In one transaction: deletes the question, renumbers the survivors to a gap-free `0..n-1`, and recomputes `maxScore`. Frozen once attempts exist (409 `quiz_has_attempts`); 404 `question_not_in_quiz` for another quiz's question.",
-      parameters: [idParam, { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
+      parameters: [
+        idParam,
+        { name: "questionId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
+      ],
       responses: {
-        200: ok({ type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", const: true } } }, "Deleted."),
+        200: ok(
+          { type: "object", required: ["deleted"], properties: { deleted: { type: "boolean", const: true } } },
+          "Deleted.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -212,7 +229,11 @@ export const quizAuthoringPaths = {
       },
       responses: {
         200: ok(
-          { type: "object", required: ["publishedAt"], properties: { publishedAt: { type: ["string", "null"], format: "date-time" } } },
+          {
+            type: "object",
+            required: ["publishedAt"],
+            properties: { publishedAt: { type: ["string", "null"], format: "date-time" } },
+          },
           "The new publish state.",
         ),
         400: errRef("BadRequest"),
@@ -233,7 +254,11 @@ export const quizAuthoringPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", required: ["resultsReleasedAt"], properties: { resultsReleasedAt: { type: "string", format: "date-time" } } },
+          {
+            type: "object",
+            required: ["resultsReleasedAt"],
+            properties: { resultsReleasedAt: { type: "string", format: "date-time" } },
+          },
           "When the results were released.",
         ),
         400: errRef("BadRequest"),
@@ -244,5 +269,4 @@ export const quizAuthoringPaths = {
       },
     },
   },
-
 } as const;

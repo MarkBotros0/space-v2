@@ -32,9 +32,7 @@ function NewAssignment() {
   } else if (current.isError) {
     body = <RouteError onRetry={current.refetch} />;
   } else if (seasonId === null) {
-    body = (
-      <EmptyState title="No season" description="There's no season to add an assignment to." />
-    );
+    body = <EmptyState title="No season" description="There's no season to add an assignment to." />;
   } else if (sessions.isPending) {
     body = <RouteSkeleton />;
   } else if (sessions.isError) {
@@ -59,8 +57,7 @@ function NewAssignment() {
                   pathname: "/assignment/[id]",
                   params: { id: String(created.id) },
                 }),
-              onError: (err) =>
-                setServerError(apiErrorMessage(err, "Couldn't create the assignment.")),
+              onError: (err) => setServerError(apiErrorMessage(err, "Couldn't create the assignment.")),
             },
           );
         }}
@@ -81,10 +78,7 @@ export default function NewAssignmentScreen() {
   if (role !== "ADMIN" && role !== "SUPER") {
     return (
       <Screen title="New assignment">
-        <EmptyState
-          title="Not available"
-          description="Only season admins can create assignments."
-        />
+        <EmptyState title="Not available" description="Only season admins can create assignments." />
       </Screen>
     );
   }

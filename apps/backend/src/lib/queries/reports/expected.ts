@@ -32,10 +32,7 @@ export function expectedStudentIds(
   const ids = new Set<number>();
   for (const e of enrollments) {
     if (e.status === "WITHDRAWN") continue;
-    if (
-      assignment.isAllGroups ||
-      (e.groupId !== null && assignment.targets.some((t) => t.groupId === e.groupId))
-    ) {
+    if (assignment.isAllGroups || (e.groupId !== null && assignment.targets.some((t) => t.groupId === e.groupId))) {
       ids.add(e.studentUserId);
     }
   }

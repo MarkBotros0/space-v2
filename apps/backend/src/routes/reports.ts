@@ -6,19 +6,12 @@ import { Router } from "express";
 // resolves back to the TypeScript source at
 // runtime and crashes the built server with ERR_MODULE_NOT_FOUND (CLAUDE.md).
 // Four levels up from src/routes/.
-import {
-  engagementStudentsQuerySchema,
-  reportScopeQuerySchema,
-} from "../../../../packages/shared/src/index";
+import { engagementStudentsQuerySchema, reportScopeQuerySchema } from "../../../../packages/shared/src/index";
 
 import { apiError, apiOk } from "../lib/api-response";
 import { reportScopeFor } from "../lib/permissions";
 import { buildOrganisationReport } from "../lib/queries/organisation-report";
-import {
-  buildEngagementSummary,
-  listEngagementRows,
-  resolveReportScope,
-} from "../lib/queries/reports";
+import { buildEngagementSummary, listEngagementRows, resolveReportScope } from "../lib/queries/reports";
 import { isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";

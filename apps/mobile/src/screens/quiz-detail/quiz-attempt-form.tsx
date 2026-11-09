@@ -35,9 +35,7 @@ function AttemptQuestion({
     <View className={QCARD}>
       <View className="flex-row items-center gap-2">
         <Text variant="caption" className="font-bold text-muted-foreground">{`Q${index + 1}`}</Text>
-        <Badge variant={q.type === "MCQ" ? "teal" : "outline"}>
-          {q.type === "MCQ" ? "Multiple choice" : "Essay"}
-        </Badge>
+        <Badge variant={q.type === "MCQ" ? "teal" : "outline"}>{q.type === "MCQ" ? "Multiple choice" : "Essay"}</Badge>
         <Text variant="caption" className="text-muted-foreground">{`${q.points} pt${q.points === 1 ? "" : "s"}`}</Text>
       </View>
       <Text variant="headline" className="mt-2">
@@ -69,10 +67,7 @@ function AttemptQuestion({
                 </View>
                 <Text
                   variant="subhead"
-                  className={cn(
-                    "min-w-0 flex-1 font-medium",
-                    selected ? "text-accent-foreground" : "text-foreground",
-                  )}
+                  className={cn("min-w-0 flex-1 font-medium", selected ? "text-accent-foreground" : "text-foreground")}
                 >
                   {option}
                 </Text>
@@ -94,8 +89,10 @@ function AttemptQuestion({
 }
 
 export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: number }) {
-  const { answers, setAnswer, flush, hasUnsentOffline, saveState, isComplete, savePending } =
-    useQuizAnswers(detail, id);
+  const { answers, setAnswer, flush, hasUnsentOffline, saveState, isComplete, savePending } = useQuizAnswers(
+    detail,
+    id,
+  );
   const submit = useSubmitAttempt(id);
   const online = useIsOnline();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -139,7 +136,15 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
     return q.type === "MCQ" ? a?.selectedIndex != null : (a?.text ?? "").trim().length > 0;
   }).length;
   const saveLabel =
-    saveState === "saving" ? (online ? "Saving…" : "Waiting for connection") : saveState === "saved" ? "Saved" : saveState === "error" ? "Not saved" : null;
+    saveState === "saving"
+      ? online
+        ? "Saving…"
+        : "Waiting for connection"
+      : saveState === "saved"
+        ? "Saved"
+        : saveState === "error"
+          ? "Not saved"
+          : null;
   const progress = `${answered} of ${detail.questions.length} answered`;
   const hint = [progress, saveLabel].filter(Boolean).join(" · ");
 
@@ -154,9 +159,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
           disabledReason={isComplete ? undefined : progress}
           loading={submit.isPending}
           onPress={() => setConfirmOpen(true)}
-          secondary={
-            saveState === "error" ? { label: "Retry save", onPress: () => void flush() } : undefined
-          }
+          secondary={saveState === "error" ? { label: "Retry save", onPress: () => void flush() } : undefined}
         />
       }
     >

@@ -34,8 +34,7 @@ export default function NewSeasonScreen() {
       onSubmit={(body) => {
         setMessage(null);
         create.mutate(body, {
-          onSuccess: (ref) =>
-            router.replace({ pathname: "/seasons/[code]", params: { code: ref.code } }),
+          onSuccess: (ref) => router.replace({ pathname: "/seasons/[code]", params: { code: ref.code } }),
           onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the season.")),
         });
       }}

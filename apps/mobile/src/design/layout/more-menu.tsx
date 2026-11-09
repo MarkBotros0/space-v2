@@ -25,9 +25,7 @@ iconWithClassName(LogOut, Trash2);
 /** v1: first letters of the first two name parts, else the role's initial. */
 function initialsFor(name: string | null, role: UserRole): string {
   const parts = name?.split(/\s+/) ?? [];
-  return name
-    ? ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase()
-    : role.charAt(0).toUpperCase();
+  return name ? ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() : role.charAt(0).toUpperCase();
 }
 
 export function MoreMenu({
@@ -82,9 +80,7 @@ export function MoreMenu({
                     <StatusChip tone="info" label={`${unread > 99 ? "99+" : unread} new`} />
                   ) : undefined
                 }
-                trailingLabel={
-                  item.href === "/announcements" && unread > 0 ? `${unread} unread` : undefined
-                }
+                trailingLabel={item.href === "/announcements" && unread > 0 ? `${unread} unread` : undefined}
                 chevron
                 onPress={() => onNavigate(item.href)}
               />

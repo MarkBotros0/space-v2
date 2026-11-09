@@ -1,10 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
-import type {
-  AssignmentWriteBody,
-  MimeCategory,
-  SessionListItem,
-} from "@space/shared";
+import type { AssignmentWriteBody, MimeCategory, SessionListItem } from "@space/shared";
 
 import { FormScreen } from "../design/layout/form-screen";
 import { cn } from "../design/lib/cn";
@@ -33,11 +29,7 @@ import { MIME_CATEGORY_LABELS } from "../lib/assignment-labels";
 import { firstErrorByField } from "../lib/form-errors";
 import { formatDayKey } from "../lib/format";
 
-export {
-  NEW_ASSIGNMENT_VALUES,
-  valuesFromDetail,
-  type AssignmentFormValues,
-} from "../lib/assignment-form-values";
+export { NEW_ASSIGNMENT_VALUES, valuesFromDetail, type AssignmentFormValues } from "../lib/assignment-form-values";
 
 /** v1's `<fieldset className="rounded-lg border border-border p-4">` with its `<legend>`. */
 function Fieldset({ legend, children }: { legend: string; children: ReactNode }) {
@@ -50,15 +42,7 @@ function Fieldset({ legend, children }: { legend: string; children: ReactNode })
 }
 
 /** v1's `<label><input type="radio" className="size-4"/> text</label>`. */
-function Radio({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
+function Radio({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="radio"
@@ -149,9 +133,7 @@ export function AssignmentForm({
   }));
 
   const saveHint =
-    serverError ??
-    errors.form ??
-    (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined);
+    serverError ?? errors.form ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined);
 
   return (
     <FormScreen
@@ -208,9 +190,7 @@ export function AssignmentForm({
               <View className="flex-row items-center justify-between gap-3">
                 <View className="min-w-0 flex-1 flex-col">
                   <Text className="text-sm font-medium">Allow peer comments</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    Let students comment on each other's responses.
-                  </Text>
+                  <Text className="text-sm text-muted-foreground">Let students comment on each other's responses.</Text>
                 </View>
                 <Switch
                   accessibilityLabel="Allow peer comments"
@@ -246,10 +226,7 @@ export function AssignmentForm({
             <PillButton label="Clear due date" className="self-start" onPress={() => set("dueDay", null)} />
           ) : null}
         </FormField>
-        <FormField
-          label="Due time"
-          description="Times are on the organisation's clock, the same for every student."
-        >
+        <FormField label="Due time" description="Times are on the organisation's clock, the same for every student.">
           <TimePicker
             minuteStep={15}
             value={timeToParts(v.dueTime)}

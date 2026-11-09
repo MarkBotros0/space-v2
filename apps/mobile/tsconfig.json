@@ -3,13 +3,5 @@
   "compilerOptions": {
     "types": ["jest", "node"]
   },
-  "include": [
-    "app/**/*",
-    "src/**/*",
-    "*.ts",
-    "*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts"
-  ]
+  "include": ["app/**/*", "src/**/*", "*.ts", "*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts"]
 }

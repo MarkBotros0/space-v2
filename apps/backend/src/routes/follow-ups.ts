@@ -50,8 +50,14 @@ followUpsRouter.post("/:id/done", requireAuth, async (req, res) => {
     where: { id },
     data: row.doneAt ? {} : { doneAt: new Date() },
     select: {
-      id: true, studentUserId: true, studentUser: { select: { name: true } }, reason: true,
-      createdAt: true, dueAt: true, remindedAt: true, doneAt: true,
+      id: true,
+      studentUserId: true,
+      studentUser: { select: { name: true } },
+      reason: true,
+      createdAt: true,
+      dueAt: true,
+      remindedAt: true,
+      doneAt: true,
     },
   });
   return apiOk(res, toFollowUp(updated));

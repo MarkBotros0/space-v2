@@ -240,10 +240,9 @@ describe("logout", () => {
 
     await logout();
 
-    expect(postSpy).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/auth/logout"),
-      { refreshToken: "old-refresh" },
-    );
+    expect(postSpy).toHaveBeenCalledWith(expect.stringContaining("/api/v1/auth/logout"), {
+      refreshToken: "old-refresh",
+    });
   });
 
   it("does nothing when there is no stored refresh token", async () => {

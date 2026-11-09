@@ -53,7 +53,10 @@ describe("the other ways into a season", () => {
     const active = await season("ACTIVE");
     const inRole = await enroll(mina.id, active);
     expect(inRole.status).toBe(409);
-    expect(inRole.body.error).toEqual({ code: "already_in_role", message: "Mina is already leading a group in GBV 2026" });
+    expect(inRole.body.error).toEqual({
+      code: "already_in_role",
+      message: "Mina is already leading a group in GBV 2026",
+    });
 
     const sara = await person("Sara");
     await finishedGbv(sara.id, "NOT_PASSED");

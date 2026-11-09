@@ -24,11 +24,25 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 1,
+    name: "Test super",
+    email: "sup@jpc.test",
+    role: "SUPER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 const mentorSession = {
-  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 2,
+    name: "Test mentor",
+    email: "men@jpc.test",
+    role: "MENTOR" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 
@@ -154,14 +168,30 @@ describe("StudentDetailScreen history (REG-83)", () => {
       if (url === "/api/v1/students/21/attendance")
         return ok({
           history: [
-            { sessionId: 1, sessionTitle: "Week 4", startsAt: "2099-04-01T16:00:00.000Z", seasonId: 7, seasonTitle: "Spring 2099", status: "LATE" },
+            {
+              sessionId: 1,
+              sessionTitle: "Week 4",
+              startsAt: "2099-04-01T16:00:00.000Z",
+              seasonId: 7,
+              seasonTitle: "Spring 2099",
+              status: "LATE",
+            },
           ],
         });
       if (url === "/api/v1/students/21/submissions")
         return ok({
           submissions: [
-            { publicId: "abc123defg", assignmentId: 41, assignmentTitle: "Essay one", status: "SUBMITTED", isLate: true,
-              submittedAt: "2099-04-02T10:00:00.000Z", reviewedAt: null, seasonId: 7, seasonTitle: "Spring 2099" },
+            {
+              publicId: "abc123defg",
+              assignmentId: 41,
+              assignmentTitle: "Essay one",
+              status: "SUBMITTED",
+              isLate: true,
+              submittedAt: "2099-04-02T10:00:00.000Z",
+              reviewedAt: null,
+              seasonId: 7,
+              seasonTitle: "Spring 2099",
+            },
           ],
         });
       if (url.includes("/engagement") || url.includes("/notes")) return Promise.reject(new Error("skip"));
@@ -186,7 +216,14 @@ describe("StudentDetailScreen history (REG-83)", () => {
 
   it("never asks a student's own record for the staff-only history", async () => {
     const studentSession = {
-      user: { id: 21, name: "Sara Student", email: "sara@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+      user: {
+        id: 21,
+        name: "Sara Student",
+        email: "sara@jpc.test",
+        role: "STUDENT" as const,
+        avatarPath: null,
+        hasPassword: true,
+      },
       scopes: { ...emptyScopes, activeSeasonId: 7 },
     };
     useSessionStore.setState(studentSession);
@@ -204,26 +241,76 @@ describe("StudentDetailScreen history (REG-83)", () => {
 
 describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () => {
   const leaderSession = {
-    user: { id: 5, name: "Test leader", email: "lead@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
+    user: {
+      id: 5,
+      name: "Test leader",
+      email: "lead@jpc.test",
+      role: "LEADER" as const,
+      avatarPath: null,
+      hasPassword: true,
+    },
     scopes: { ...emptyScopes, groupLeaderIds: [3] },
   };
   const post = (apiClient as unknown as { post: jest.Mock }).post;
   const engagement = {
-    score: 75, attendancePct: 50, submissionPct: 100, attendancePresent: 2, attendanceTotal: 4,
-    submissionsCompleted: 2, submissionsExpected: 2, studentUserId: 21, seasonId: 7, seasonTitle: "Spring 2099", atRisk: false,
-  quizzesGiven: 2, quizzesTaken: 1, quizPct: 50,
+    score: 75,
+    attendancePct: 50,
+    submissionPct: 100,
+    attendancePresent: 2,
+    attendanceTotal: 4,
+    submissionsCompleted: 2,
+    submissionsExpected: 2,
+    studentUserId: 21,
+    seasonId: 7,
+    seasonTitle: "Spring 2099",
+    atRisk: false,
+    quizzesGiven: 2,
+    quizzesTaken: 1,
+    quizPct: 50,
   };
   function serveLeader(over: { engagementError?: boolean } = {}) {
     get.mockImplementation((url: string) => {
       if (url === "/api/v1/students/21")
-        return Promise.resolve({ data: { data: { ...base, enrollments: [{ ...enrollment, status: "ACTIVE", dropReason: null, droppedAt: null, attendancePct: 83 }], profile: publicProfile } } });
+        return Promise.resolve({
+          data: {
+            data: {
+              ...base,
+              enrollments: [{ ...enrollment, status: "ACTIVE", dropReason: null, droppedAt: null, attendancePct: 83 }],
+              profile: publicProfile,
+            },
+          },
+        });
       if (url === "/api/v1/students/21/engagement")
         return over.engagementError
-          ? Promise.reject(Object.assign(new Error("404"), { isAxiosError: true, response: { status: 404, data: { error: { code: "no_season", message: "x" } } } }))
+          ? Promise.reject(
+              Object.assign(new Error("404"), {
+                isAxiosError: true,
+                response: { status: 404, data: { error: { code: "no_season", message: "x" } } },
+              }),
+            )
           : Promise.resolve({ data: { data: engagement } });
       if (url === "/api/v1/students/21/submissions")
-        return Promise.resolve({ data: { data: { submissions: [{ publicId: "abc123defg", assignmentId: 41, assignmentTitle: "Essay one", status: "SUBMITTED", isLate: false, submittedAt: "2099-03-02T10:00:00.000Z", reviewedAt: null, seasonId: 7, seasonTitle: "Spring 2099" }] } } });
-      if (url.startsWith("/api/v1/students/21/notes")) return Promise.resolve({ data: { data: { notes: [], nextCursor: null } } });
+        return Promise.resolve({
+          data: {
+            data: {
+              submissions: [
+                {
+                  publicId: "abc123defg",
+                  assignmentId: 41,
+                  assignmentTitle: "Essay one",
+                  status: "SUBMITTED",
+                  isLate: false,
+                  submittedAt: "2099-03-02T10:00:00.000Z",
+                  reviewedAt: null,
+                  seasonId: 7,
+                  seasonTitle: "Spring 2099",
+                },
+              ],
+            },
+          },
+        });
+      if (url.startsWith("/api/v1/students/21/notes"))
+        return Promise.resolve({ data: { data: { notes: [], nextCursor: null } } });
       if (url === "/api/v1/students/21/attendance") return Promise.resolve({ data: { data: { history: [] } } });
       return Promise.reject(new Error(`unexpected GET ${url}`));
     });

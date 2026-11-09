@@ -102,7 +102,14 @@ export function PeopleSection() {
           <CandidateRow key={p.id} {...row} person={p} selected={ticked.has(p.id)} onToggle={toggle} />
         ))}
         <ListSectionHeader className="px-4 pb-1.5 pt-5">Didn't finish GBV 2025</ListSectionHeader>
-        <CandidateRow {...row} person={STRAGGLER} source={SOURCE} selected={ticked.has(9)} chosen={ticked.has(9)} onToggle={toggle} />
+        <CandidateRow
+          {...row}
+          person={STRAGGLER}
+          source={SOURCE}
+          selected={ticked.has(9)}
+          chosen={ticked.has(9)}
+          onToggle={toggle}
+        />
         <ListSectionHeader className="px-4 pb-1.5 pt-5">Did not pass</ListSectionHeader>
         {BLOCKED.map((p) => (
           <CandidateRow key={p.id} {...row} person={p} selected={false} onToggle={noop} />
@@ -117,8 +124,23 @@ export function PeopleSection() {
           onOverride={noop}
         />
       </View>
-      <MembersField roster={ROSTER} groupId={1} seasonTitle="GBV 2026" value={members} onChange={setMembers} status="ready" />
-      <MembersField roster={[]} groupId={null} seasonTitle="GBV 2026" value={[]} onChange={noop} status="ready" onOpenSeason={noop} />
+      <MembersField
+        roster={ROSTER}
+        groupId={1}
+        seasonTitle="GBV 2026"
+        value={members}
+        onChange={setMembers}
+        status="ready"
+      />
+      <MembersField
+        roster={[]}
+        groupId={null}
+        seasonTitle="GBV 2026"
+        value={[]}
+        onChange={noop}
+        status="ready"
+        onOpenSeason={noop}
+      />
     </CatalogueSection>
   );
 }

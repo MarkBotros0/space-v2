@@ -41,19 +41,13 @@ describe("bandFor — the at-risk band IS the at-risk list (D-17.2)", () => {
     // 55% attendance, 95% submissions → composite 75. v1's reports screen
     // called this student "Medium" and listed them nowhere, while the mentor
     // dashboard called them at-risk from the same tab bar (spec D5, R33).
-    expect(bandFor({ ...perfect, attendancePct: 55, submissionPct: 95, score: 75 })).toBe(
-      "AT_RISK",
-    );
+    expect(bandFor({ ...perfect, attendancePct: 55, submissionPct: 95, score: 75 })).toBe("AT_RISK");
   });
 
   it("bands on the composite once the at-risk test has been passed", () => {
     expect(bandFor({ ...perfect, score: 100 })).toBe("HIGH");
-    expect(bandFor({ ...perfect, attendancePct: 70, submissionPct: 70, score: 70 })).toBe(
-      "MEDIUM",
-    );
-    expect(bandFor({ ...perfect, attendancePct: 60, submissionPct: 60, score: 60 })).toBe(
-      "MEDIUM",
-    );
+    expect(bandFor({ ...perfect, attendancePct: 70, submissionPct: 70, score: 70 })).toBe("MEDIUM");
+    expect(bandFor({ ...perfect, attendancePct: 60, submissionPct: 60, score: 60 })).toBe("MEDIUM");
   });
 
   it("does not flag a season that has not started yet (zero denominators)", () => {
@@ -123,9 +117,7 @@ describe("attendancePointSchema", () => {
     expect(attendancePointSchema.parse(point).startsAt).toBe("2099-03-01T18:00:00.000Z");
     // A session with no roster yet has no percentage. v1 returned 0 (R13),
     // which draws a cliff that never happened.
-    expect(
-      attendancePointSchema.parse({ ...point, presentCount: 0, expectedCount: 0, pct: null }).pct,
-    ).toBeNull();
+    expect(attendancePointSchema.parse({ ...point, presentCount: 0, expectedCount: 0, pct: null }).pct).toBeNull();
   });
 
   it("refuses a pct above 100 — the denominator is the fix, not a clamp (C5)", () => {
@@ -193,18 +185,14 @@ describe("exportFormatSchema and exportFilename", () => {
 
   it("builds a filename a human can read in a share sheet (R42)", () => {
     // v1: engagement-1756012800000.csv — no season, no scope, no readable date.
-    expect(exportFilename("engagement", "All seasons", "2026-08-24")).toBe(
-      "engagement-all-seasons-2026-08-24.xlsx",
-    );
+    expect(exportFilename("engagement", "All seasons", "2026-08-24")).toBe("engagement-all-seasons-2026-08-24.xlsx");
     expect(exportFilename("season-workbook", "gbv-2026", "2026-08-24")).toBe(
       "gbv-2026-attendance-grades-2026-08-24.xlsx",
     );
   });
 
   it("slugs anything a season code or title could contain", () => {
-    expect(exportFilename("engagement", 'Winter "24" / أ', "2026-08-24")).toBe(
-      "engagement-winter-24-2026-08-24.xlsx",
-    );
+    expect(exportFilename("engagement", 'Winter "24" / أ', "2026-08-24")).toBe("engagement-winter-24-2026-08-24.xlsx");
   });
 });
 

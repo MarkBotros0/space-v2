@@ -31,9 +31,7 @@ export function normaliseEmail(email: string): string {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-type RowValidation =
-  | { ok: true; row: StudentImportRow }
-  | { ok: false; message: string };
+type RowValidation = { ok: true; row: StudentImportRow } | { ok: false; message: string };
 
 const FIELD_MESSAGE: Record<string, string> = {
   name: "Name is missing or too short.",
@@ -77,8 +75,7 @@ export function validateImportRow(values: ImportCellValues): RowValidation {
     // A whole number or nothing; "2027.5" or "Class of 27" fails the row.
     universityGraduationYear:
       values.universityGraduationYear === null ? null : yearFromText(values.universityGraduationYear),
-    dateOfBirth:
-      values.dateOfBirth === null ? null : `${values.dateOfBirth}T00:00:00.000Z`,
+    dateOfBirth: values.dateOfBirth === null ? null : `${values.dateOfBirth}T00:00:00.000Z`,
   });
   if (parsed.success) return { ok: true, row: parsed.data };
 
@@ -110,10 +107,7 @@ type Queryable = Pick<typeof db, "$queryRaw">;
  * `lower(email)`. Acceptable here: the table is small, and both preview and
  * commit are rate-limited (D-16.21).
  */
-export async function findExistingByEmail(
-  client: Queryable,
-  emails: string[],
-): Promise<Map<string, ExistingUser>> {
+export async function findExistingByEmail(client: Queryable, emails: string[]): Promise<Map<string, ExistingUser>> {
   const keys = [...new Set(emails.map(normaliseEmail))];
   if (keys.length === 0) return new Map();
 

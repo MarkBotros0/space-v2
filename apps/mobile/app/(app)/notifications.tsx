@@ -9,11 +9,7 @@ import { EmptyState, PillButton } from "../../src/design/ui";
 import { iconWithClassName } from "../../src/design/lib/icon";
 import { Text } from "../../src/design/ui/text";
 import { GroupedList, ListRow } from "../../src/design/ui/grouped-list";
-import {
-  flattenNotifications,
-  useMarkRead,
-  useNotifications,
-} from "../../src/hooks/use-notifications";
+import { flattenNotifications, useMarkRead, useNotifications } from "../../src/hooks/use-notifications";
 import { formatStampAgo, notificationTypeLabel } from "../../src/lib/format";
 import { joinMeta } from "../../src/lib/join-meta";
 import { routeForTarget } from "../../src/lib/notification-route";
@@ -37,13 +33,7 @@ function UnreadDot({ unread }: { unread: boolean }) {
   return <View className={unread ? "size-2.5 rounded-full bg-info" : "size-2.5"} />;
 }
 
-function NotificationRow({
-  item,
-  onPress,
-}: {
-  item: NotificationItem;
-  onPress: (item: NotificationItem) => void;
-}) {
+function NotificationRow({ item, onPress }: { item: NotificationItem; onPress: (item: NotificationItem) => void }) {
   const isUnread = item.readAt === null;
   // The whole row is pressable because a tap also marks it read (spec D2). The
   // dot is colour only, so an unread row says "Unread" through trailingLabel.
@@ -52,11 +42,7 @@ function NotificationRow({
       <ListRow
         title={item.title}
         titleLines={2}
-        subtitle={joinMeta([
-          item.body,
-          notificationTypeLabel(item.type),
-          formatStampAgo(item.createdAt),
-        ])}
+        subtitle={joinMeta([item.body, notificationTypeLabel(item.type), formatStampAgo(item.createdAt)])}
         subtitleLines={4}
         leading={<UnreadDot unread={isUnread} />}
         trailingLabel={isUnread ? "Unread" : undefined}
@@ -68,8 +54,7 @@ function NotificationRow({
 
 export default function NotificationsScreen() {
   const router = useRouter();
-  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } =
-    useNotifications();
+  const { data, isPending, isError, refetch, isRefetching, fetchNextPage, hasNextPage } = useNotifications();
   const markRead = useMarkRead();
 
   const items = flattenNotifications(data?.pages);
@@ -104,9 +89,7 @@ export default function NotificationsScreen() {
           {`${unread} unread`}
         </Text>
         <View className="flex-row items-center gap-2">
-          {unread > 0 ? (
-            <PillButton label="Mark all read" onPress={() => markRead.mutate({ all: true })} />
-          ) : null}
+          {unread > 0 ? <PillButton label="Mark all read" onPress={() => markRead.mutate({ all: true })} /> : null}
           {/* Notification settings live here, not on More (owner, 2026-11-07). */}
           <Pressable
             accessibilityRole="button"

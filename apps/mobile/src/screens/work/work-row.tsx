@@ -17,13 +17,7 @@ function trailing(row: WorkRow) {
 }
 
 /** One row of work, on Today and the Work tab. A row with no `href` is not a button. */
-export function WorkListRow({
-  row,
-  subtitleLines,
-}: {
-  row: WorkRow;
-  subtitleLines?: number;
-}) {
+export function WorkListRow({ row, subtitleLines }: { row: WorkRow; subtitleLines?: number }) {
   const router = useRouter();
   const href = row.href;
   return (

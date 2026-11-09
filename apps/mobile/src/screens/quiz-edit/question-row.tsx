@@ -6,11 +6,7 @@ import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
 import { QuestionEditor } from "../../components/QuestionEditor";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, ConfirmDialog, StatusChip, Text } from "../../design/ui";
-import {
-  useDeleteQuestion,
-  useReorderQuestions,
-  useUpdateQuestion,
-} from "../../hooks/use-quiz-authoring";
+import { useDeleteQuestion, useReorderQuestions, useUpdateQuestion } from "../../hooks/use-quiz-authoring";
 import { apiErrorMessage } from "../../lib/api-error";
 
 iconWithClassName(ChevronDown, ChevronUp, Pencil, Trash2);
@@ -89,9 +85,7 @@ export function QuestionRow({
   }
 
   const correct =
-    question.type === "MCQ" && question.correctIndex !== null
-      ? question.options[question.correctIndex]
-      : undefined;
+    question.type === "MCQ" && question.correctIndex !== null ? question.options[question.correctIndex] : undefined;
 
   return (
     <View className="flex-row items-start justify-between gap-3 rounded-group bg-surface p-4">
@@ -138,12 +132,7 @@ export function QuestionRow({
           >
             <ChevronDown size={16} className="text-foreground" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            accessibilityLabel={`Edit question ${n}`}
-            onPress={() => setEditing(true)}
-          >
+          <Button variant="ghost" size="sm" accessibilityLabel={`Edit question ${n}`} onPress={() => setEditing(true)}>
             <Pencil size={16} className="text-foreground" />
           </Button>
           <Button

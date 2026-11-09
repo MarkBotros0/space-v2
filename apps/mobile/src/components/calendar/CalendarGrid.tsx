@@ -2,24 +2,12 @@ import { useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
-import {
-  WEEKDAYS,
-  bucketByDay,
-  isSameMonth,
-  visibleKeys,
-  type CalendarView,
-} from "../../lib/calendar-grid";
+import { WEEKDAYS, bucketByDay, isSameMonth, visibleKeys, type CalendarView } from "../../lib/calendar-grid";
 import { formatDayKey, formatWeekdayDay } from "../../lib/format";
 import { cn } from "../../design/lib/cn";
 import { Text } from "../../design/ui/text";
 import type { CalendarEntry } from "../../lib/day-groups";
-import {
-  DayEntries,
-  entriesFor,
-  eventTint,
-  sessionTint,
-  type CalendarContext,
-} from "./CalendarEntries";
+import { DayEntries, entriesFor, eventTint, sessionTint, type CalendarContext } from "./CalendarEntries";
 
 const MAX_DOTS = 3;
 
@@ -54,7 +42,17 @@ export function CalendarGrid({ view, anchor, sessions, events, ctx, renderEntrie
 type ByDay = ReturnType<typeof bucketByDay>;
 type Render = (entries: CalendarEntry[]) => ReactNode;
 
-function WeekRows({ keys, byDay, ctx, render }: { keys: string[]; byDay: ByDay; ctx: CalendarContext; render: Render }) {
+function WeekRows({
+  keys,
+  byDay,
+  ctx,
+  render,
+}: {
+  keys: string[];
+  byDay: ByDay;
+  ctx: CalendarContext;
+  render: Render;
+}) {
   return (
     <>
       {keys.map((key) => {
@@ -62,10 +60,7 @@ function WeekRows({ keys, byDay, ctx, render }: { keys: string[]; byDay: ByDay; 
         return (
           <View key={key} className="mb-4">
             <Text
-              className={cn(
-                "text-lg font-semibold",
-                key === ctx.today && "text-success-800 dark:text-success-200",
-              )}
+              className={cn("text-lg font-semibold", key === ctx.today && "text-success-800 dark:text-success-200")}
             >
               {formatWeekdayDay(key)}
             </Text>
@@ -96,8 +91,7 @@ function MonthGrid({
 }) {
   const [picked, setPicked] = useState<string | null>(null);
   const inGrid = (k: string | null): k is string => k !== null && keys.includes(k);
-  const fallback =
-    inGrid(ctx.today) && isSameMonth(ctx.today, anchor) ? ctx.today : `${anchor.slice(0, 7)}-01`;
+  const fallback = inGrid(ctx.today) && isSameMonth(ctx.today, anchor) ? ctx.today : `${anchor.slice(0, 7)}-01`;
   const selected = inGrid(picked) ? picked : fallback;
 
   const rows: string[][] = [];

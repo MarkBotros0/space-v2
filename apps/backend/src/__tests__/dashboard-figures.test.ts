@@ -50,7 +50,13 @@ const row = (over: Partial<StudentAssignmentStateRow>): StudentAssignmentStateRo
 describe("summarizeStudentAssignments (C5, D15, D16, R73)", () => {
   const rows = [
     row({ id: 1, status: "PENDING", dueAt: new Date("2099-04-01T10:00:00.000Z"), dueOrgDay: "2099-04-01" }),
-    row({ id: 2, status: "PENDING", isOverdue: true, dueAt: new Date("2020-01-05T10:00:00.000Z"), dueOrgDay: "2020-01-05" }),
+    row({
+      id: 2,
+      status: "PENDING",
+      isOverdue: true,
+      dueAt: new Date("2020-01-05T10:00:00.000Z"),
+      dueOrgDay: "2020-01-05",
+    }),
     row({ id: 3, status: "DRAFT" }),
     // RETURNED is completed under C5: its overdue flag must not count.
     row({ id: 4, status: "RETURNED", isOverdue: true, isLate: true, dueAt: new Date("2020-01-01T10:00:00.000Z") }),
@@ -103,7 +109,16 @@ describe("quizRollupFrom (D10)", () => {
     expect(quizzes.map(isQuizDraft)).toEqual([false, false, true]);
   });
   it("is pending while fewer graded than students; drafts are separate", () => {
-    expect(quizRollupFrom(quizzes, new Map([[1, 2], [2, 3]]), 3)).toEqual({
+    expect(
+      quizRollupFrom(
+        quizzes,
+        new Map([
+          [1, 2],
+          [2, 3],
+        ]),
+        3,
+      ),
+    ).toEqual({
       total: 2,
       pending: 1,
       fullyGraded: 1,

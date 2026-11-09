@@ -30,9 +30,7 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(config.authSecret);
 }
 
-export async function signAccessToken(
-  user: SessionUser,
-): Promise<{ token: string; expiresIn: number }> {
+export async function signAccessToken(user: SessionUser): Promise<{ token: string; expiresIn: number }> {
   const token = await new SignJWT({
     role: user.role,
     seasonAdminIds: user.seasonAdminIds,
@@ -115,10 +113,7 @@ export async function issueSession(
   };
 }
 
-export async function rotateRefreshToken(
-  rawToken: string,
-  userAgent?: string | null,
-): Promise<IssuedSession | null> {
+export async function rotateRefreshToken(rawToken: string, userAgent?: string | null): Promise<IssuedSession | null> {
   const record = await db.refreshToken.findUnique({ where: { tokenHash: hashToken(rawToken) } });
   if (!record || record.revokedAt || record.expiresAt < new Date()) return null;
 

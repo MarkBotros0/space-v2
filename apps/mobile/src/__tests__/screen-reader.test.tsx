@@ -18,10 +18,7 @@ describe("useScreenReaderEnabled", () => {
   it("follows screenReaderChanged", async () => {
     let listener: ((on: boolean) => void) | undefined;
     jest.spyOn(AccessibilityInfo, "isScreenReaderEnabled").mockResolvedValue(false);
-    jest.spyOn(AccessibilityInfo, "addEventListener").mockImplementation(((
-      _e: string,
-      cb: (on: boolean) => void,
-    ) => {
+    jest.spyOn(AccessibilityInfo, "addEventListener").mockImplementation(((_e: string, cb: (on: boolean) => void) => {
       listener = cb;
       return { remove: jest.fn() };
     }) as never);

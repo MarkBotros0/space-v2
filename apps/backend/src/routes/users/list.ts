@@ -46,11 +46,13 @@ export async function listUsers(req: Request, res: Response) {
       OR: [{ passwordHash: { not: null } }, { lastLoginAt: { not: null } }],
     },
     invited: {
-      deletedAt: null, ...unactivated,
+      deletedAt: null,
+      ...unactivated,
       invitesReceived: { some: liveInviteWhere(now) },
     },
     pending: {
-      deletedAt: null, ...unactivated,
+      deletedAt: null,
+      ...unactivated,
       invitesReceived: { none: liveInviteWhere(now) },
     },
   };

@@ -57,13 +57,9 @@ export default function GroupImportScreen() {
   const adminIds = useSessionStore((s) => s.scopes?.seasonAdminIds ?? []);
 
   const seasons = useSeasons(role === "SUPER" || role === "ADMIN");
-  const season = useMemo(
-    () => (seasons.data ?? []).find((s) => s.code === code) ?? null,
-    [seasons.data, code],
-  );
+  const season = useMemo(() => (seasons.data ?? []).find((s) => s.code === code) ?? null, [seasons.data, code]);
   const seasonId = season?.id ?? null;
-  const allowed =
-    role === "SUPER" || (role === "ADMIN" && seasonId !== null && adminIds.includes(seasonId));
+  const allowed = role === "SUPER" || (role === "ADMIN" && seasonId !== null && adminIds.includes(seasonId));
 
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -98,10 +94,7 @@ export default function GroupImportScreen() {
   if (!season || !allowed) {
     return (
       <Screen title={TITLE}>
-        <EmptyState
-          title="Import groups"
-          description="This screen isn't available for this season."
-        />
+        <EmptyState title="Import groups" description="This screen isn't available for this season." />
       </Screen>
     );
   }
@@ -109,8 +102,7 @@ export default function GroupImportScreen() {
   async function runPreview() {
     setError(null);
     if (text.trim() === "") return setError("Paste a header row and at least one data row first.");
-    if (text.length > IMPORT_MAX_PASTE_CHARS)
-      return setError("That paste is too long. Import it in smaller batches.");
+    if (text.length > IMPORT_MAX_PASTE_CHARS) return setError("That paste is too long. Import it in smaller batches.");
     try {
       setPreview(await previewMutation.mutateAsync({ text, delimiter: "auto" }));
     } catch (err) {
@@ -140,18 +132,14 @@ export default function GroupImportScreen() {
 
   if (result && preview) {
     const skipped = new Set(result.skippedStudentIds);
-    const skippedRows = preview.rows.filter(
-      (r) => r.studentUserId !== null && skipped.has(r.studentUserId),
-    );
+    const skippedRows = preview.rows.filter((r) => r.studentUserId !== null && skipped.has(r.studentUserId));
     return (
       <Screen title={TITLE} subtitle={subtitle}>
         <View className="flex-col gap-4">
           <View className="flex-row items-start gap-3 rounded-control bg-ok-soft px-4 py-3">
             <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-success-600" />
             <View className="min-w-0 flex-1">
-              <Text className="text-sm font-semibold text-success-800 dark:text-success-200">
-                Assignments applied
-              </Text>
+              <Text className="text-sm font-semibold text-success-800 dark:text-success-200">Assignments applied</Text>
               {/* The APPLIED count from the server (spec R80/D5), never the request. */}
               <Text className="text-sm text-success-700 dark:text-success-300">
                 {`${result.assigned} assigned · ${result.skipped} skipped`}
@@ -159,14 +147,9 @@ export default function GroupImportScreen() {
             </View>
           </View>
           {skippedRows.map((r) => (
-            <View
-              key={r.rowNumber}
-              className="rounded-group bg-surface p-3 dark:border dark:border-separator"
-            >
+            <View key={r.rowNumber} className="rounded-group bg-surface p-3 dark:border dark:border-separator">
               <Text className="text-sm font-medium">{`Row ${r.rowNumber} · ${r.email}`}</Text>
-              <Text className="text-xs text-muted-foreground">
-                Not placed — no active enrolment in this season.
-              </Text>
+              <Text className="text-xs text-muted-foreground">Not placed — no active enrolment in this season.</Text>
             </View>
           ))}
           <Button

@@ -2,12 +2,7 @@ import type { QuizGradingAttempt } from "@space/shared";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
-import {
-  initialAwards,
-  parseAwards,
-  QuizAttemptAnswers,
-  ReopenButton,
-} from "../../design/quizzes/quiz-essay-grader";
+import { initialAwards, parseAwards, QuizAttemptAnswers, ReopenButton } from "../../design/quizzes/quiz-essay-grader";
 import { haptic } from "../../design/motion";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Text } from "../../design/ui/text";
@@ -93,7 +88,11 @@ export function AttemptSheet({
       open={open}
       onClose={onClose}
       title={attempt.studentName ?? "Student"}
-      footer={hasEssayAnswers ? <SheetSaveBar label="Save marks" onPress={save} loading={gradeEssays.isPending} error={error} /> : undefined}
+      footer={
+        hasEssayAnswers ? (
+          <SheetSaveBar label="Save marks" onPress={save} loading={gradeEssays.isPending} error={error} />
+        ) : undefined
+      }
     >
       <View className="flex-col gap-4 pb-4">
         <Text variant="caption" className="text-muted-foreground">
@@ -104,10 +103,12 @@ export function AttemptSheet({
           awards={awards}
           onAward={(questionId, value) => setAwards((prev) => ({ ...prev, [questionId]: value }))}
         />
-        {error && !hasEssayAnswers ? <Text variant="subhead" className="text-bad">{error}</Text> : null}
-        {attempt.status !== "IN_PROGRESS" ? (
-          <ReopenButton onPress={onReopen} disabled={reopen.isPending} />
+        {error && !hasEssayAnswers ? (
+          <Text variant="subhead" className="text-bad">
+            {error}
+          </Text>
         ) : null}
+        {attempt.status !== "IN_PROGRESS" ? <ReopenButton onPress={onReopen} disabled={reopen.isPending} /> : null}
       </View>
     </Sheet>
   );

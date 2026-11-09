@@ -24,7 +24,13 @@ describe("ChoiceChips", () => {
 
   it("shows its error", () => {
     renderWithProviders(
-      <ChoiceChips label="Season" options={[{ value: 1, label: "A" }]} value={1} onChange={jest.fn()} error="Pick one" />,
+      <ChoiceChips
+        label="Season"
+        options={[{ value: 1, label: "A" }]}
+        value={1}
+        onChange={jest.fn()}
+        error="Pick one"
+      />,
     );
     expect(screen.getByText("Pick one")).toBeTruthy();
   });

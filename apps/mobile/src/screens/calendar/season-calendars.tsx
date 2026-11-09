@@ -7,11 +7,7 @@ import type { JpcEventListItem, SessionListItem } from "@space/shared";
 import { SeasonSwitcher } from "../../components/SeasonSwitcher";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import {
-  buildSeasonColors,
-  SeasonCalendar,
-  type SeasonColors,
-} from "../../design/sessions/season-calendar";
+import { buildSeasonColors, SeasonCalendar, type SeasonColors } from "../../design/sessions/season-calendar";
 import { Button, EmptyState } from "../../design/ui";
 import { useStaffOrgToday, useStudentDashboard } from "../../hooks/use-dashboard";
 import { useEvents } from "../../hooks/use-events";
@@ -90,13 +86,7 @@ export function StudentCalendar() {
   return <StudentSeasonCalendar seasonId={current.seasonId} onRetrySeason={current.refetch} />;
 }
 
-function StudentSeasonCalendar({
-  seasonId,
-  onRetrySeason,
-}: {
-  seasonId: number | null;
-  onRetrySeason: () => void;
-}) {
+function StudentSeasonCalendar({ seasonId, onRetrySeason }: { seasonId: number | null; onRetrySeason: () => void }) {
   const sessions = useSeasonSessions(seasonId);
   const events = useEvents();
   // The server's today, so this tab agrees with Today in any timezone: the Upcoming
@@ -109,14 +99,7 @@ function StudentSeasonCalendar({
   if (seasonId === null || sessions.isPending || dash.isPending) body = <RouteSkeleton />;
   else if (sessions.isError) body = <RouteError onRetry={() => void sessions.refetch()} />;
   else if (sessions.data.length === 0 && eventRows.length === 0) body = <NothingScheduled />;
-  else
-    body = (
-      <RoutedSeasonCalendar
-        sessions={sessions.data}
-        events={eventRows}
-        today={dash.data?.todayOrgDay}
-      />
-    );
+  else body = <RoutedSeasonCalendar sessions={sessions.data} events={eventRows} today={dash.data?.todayOrgDay} />;
 
   return (
     <Screen
@@ -197,8 +180,7 @@ export function SuperCalendar() {
   const eventRows = events.data ?? [];
 
   let body: ReactNode;
-  if (seasons.isPending || (activeIds.length > 0 && all.isPending) || orgToday.isPending)
-    body = <RouteSkeleton />;
+  if (seasons.isPending || (activeIds.length > 0 && all.isPending) || orgToday.isPending) body = <RouteSkeleton />;
   else if (seasons.isError || all.isError)
     body = (
       <RouteError
@@ -258,22 +240,13 @@ export function AdminCalendar() {
   else if (selection.isError) body = <RouteError onRetry={selection.refetch} />;
   else if (selection.seasonId === null)
     body = (
-      <EmptyState
-        icon={CalendarIcon}
-        title="No season to show"
-        description="You aren't assigned to a season yet."
-      />
+      <EmptyState icon={CalendarIcon} title="No season to show" description="You aren't assigned to a season yet." />
     );
   else if (sessions.isError) body = <RouteError onRetry={() => void sessions.refetch()} />;
   else
     body = (
       // key: switching season starts again from that season's anchor month.
-      <RoutedSeasonCalendar
-        key={selection.seasonId}
-        sessions={rows}
-        events={eventRows}
-        today={orgToday.today}
-      />
+      <RoutedSeasonCalendar key={selection.seasonId} sessions={rows} events={eventRows} today={orgToday.today} />
     );
 
   return (
@@ -285,9 +258,7 @@ export function AdminCalendar() {
         void events.refetch();
       }}
       refreshing={sessions.isRefetching}
-      subtitle={
-        sessions.isPending || selection.seasonId === null ? undefined : sessionCount(rows.length)
-      }
+      subtitle={sessions.isPending || selection.seasonId === null ? undefined : sessionCount(rows.length)}
       trailing={
         selection.seasonId !== null ? (
           <Button
@@ -304,11 +275,7 @@ export function AdminCalendar() {
       }
     >
       <View className="flex-col gap-4">
-        <SeasonSwitcher
-          seasons={selection.seasons}
-          selectedId={selection.seasonId}
-          onSelect={selection.setSeasonId}
-        />
+        <SeasonSwitcher seasons={selection.seasons} selectedId={selection.seasonId} onSelect={selection.setSeasonId} />
         {body}
       </View>
     </Screen>

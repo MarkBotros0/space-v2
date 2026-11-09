@@ -37,9 +37,7 @@ function SeasonSummary({ season, today }: { season: SeasonDetail; today: string 
         {season.graduatesOnPass ? <StatusChip tone="ok" label="Graduating season" /> : null}
         {season.isCommunityWide ? <StatusChip tone="info" label="Community-wide" /> : null}
       </View>
-      <Text variant="headline">
-        {`${formatSeasonDay(season.startDate)} – ${formatSeasonDay(season.endDate)}`}
-      </Text>
+      <Text variant="headline">{`${formatSeasonDay(season.startDate)} – ${formatSeasonDay(season.endDate)}`}</Text>
       <Text variant="subhead" className={`font-semibold ${TIMELINE_TEXT[timeline.tone]}`}>
         {timeline.label}
       </Text>
@@ -71,12 +69,7 @@ function Figures({ season }: { season: SeasonDetail }) {
             <Text variant="title" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
               {String(f.value)}
             </Text>
-            <Text
-              variant="caption"
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.3}
-              className="text-muted-foreground"
-            >
+            <Text variant="caption" numberOfLines={1} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
               {f.label}
             </Text>
           </View>

@@ -107,12 +107,8 @@ export function PostForm(props: Props) {
   const community = targets?.community ?? false;
   const seasons = targets?.seasons ?? [];
   const canChoose = community && seasons.length > 0;
-  const [audience, setAudience] = useState<"COMMUNITY" | "SEASON">(
-    community ? "COMMUNITY" : "SEASON",
-  );
-  const [seasonId, setSeasonId] = useState<number | null>(
-    seasons.length === 1 ? seasons[0]!.id : null,
-  );
+  const [audience, setAudience] = useState<"COMMUNITY" | "SEASON">(community ? "COMMUNITY" : "SEASON");
+  const [seasonId, setSeasonId] = useState<number | null>(seasons.length === 1 ? seasons[0]!.id : null);
   const toSeason = targets !== null && (canChoose ? audience === "SEASON" : !community);
   const chosen = toSeason ? (seasons.find((s) => s.id === seasonId) ?? null) : null;
   const pickSeason = toSeason && seasons.length > 1;
@@ -142,16 +138,13 @@ export function PostForm(props: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, serverLost]);
 
-  const toLabel =
-    props.mode === "edit" ? props.toLabel : toSeason ? (chosen?.title ?? "") : "Everyone";
+  const toLabel = props.mode === "edit" ? props.toLabel : toSeason ? (chosen?.title ?? "") : "Everyone";
   const reach = toSeason ? (chosen?.reach ?? 0) : (targets?.communityReach ?? 0);
 
   function buildRequest(): CreateAnnouncementRequest | null {
     const base = { body, ...(poll ? { poll } : {}) };
     const parsed = createAnnouncementRequestSchema.safeParse(
-      toSeason
-        ? { audience: "SEASON", seasonId: seasonId ?? 0, ...base }
-        : { audience: "COMMUNITY", ...base },
+      toSeason ? { audience: "SEASON", seasonId: seasonId ?? 0, ...base } : { audience: "COMMUNITY", ...base },
     );
     const errs = parsed.success ? {} : fieldErrors(parsed.error.issues);
     if (toSeason && chosen === null) errs.season = "Choose a season.";
@@ -176,8 +169,7 @@ export function PostForm(props: Props) {
 
   const pollChanged = !samePoll(openedPoll, poll);
   // Warn only about a poll change that will actually be sent.
-  const warnings =
-    props.mode === "edit" && pollChanged ? editWarnings(props.currentPoll ?? null, poll) : null;
+  const warnings = props.mode === "edit" && pollChanged ? editWarnings(props.currentPoll ?? null, poll) : null;
 
   function submit(): void {
     if (props.mode === "edit") {
@@ -193,14 +185,7 @@ export function PostForm(props: Props) {
   return (
     <Screen
       title={screenTitle}
-      footer={
-        <SaveBar
-          label={saveLabel}
-          onPress={submit}
-          loading={pending && !confirming}
-          disabled={pending}
-        />
-      }
+      footer={<SaveBar label={saveLabel} onPress={submit} loading={pending && !confirming} disabled={pending} />}
     >
       <View className="flex-col gap-4">
         {error ? (
@@ -262,18 +247,9 @@ export function PostForm(props: Props) {
         </FormField>
 
         {poll ? (
-          <PollEditor
-            value={poll}
-            onChange={setPoll}
-            errors={errors.poll ?? {}}
-            onRemove={() => setPoll(null)}
-          />
+          <PollEditor value={poll} onChange={setPoll} errors={errors.poll ?? {}} onRemove={() => setPoll(null)} />
         ) : (
-          <PillButton
-            label="Add a poll"
-            onPress={() => setPoll(EMPTY_POLL)}
-            className="self-start"
-          />
+          <PillButton label="Add a poll" onPress={() => setPoll(EMPTY_POLL)} className="self-start" />
         )}
       </View>
 

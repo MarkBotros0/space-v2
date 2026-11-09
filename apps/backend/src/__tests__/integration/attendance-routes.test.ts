@@ -152,9 +152,7 @@ describe("GET /api/v1/sessions/:id/attendance", () => {
   });
 
   it("returns 400 for a non-numeric session id", async () => {
-    const res = await request(app)
-      .get("/api/v1/sessions/abc/attendance")
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get("/api/v1/sessions/abc/attendance").set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(400);
   });
 });

@@ -11,7 +11,13 @@ export const userPaths = {
         "Cursor-paginated and filtered in the database. `status` is derived server-side (inactive, active, invited, pending); the password hash never leaves the server. `q` matches name or email, case-insensitive. `cursor` is the last row's id; `total` is the whole population under the current filters.",
       parameters: [
         { name: "q", in: "query", schema: { type: "string" } },
-        { name: "role", in: "query", description: "ADMIN: holds a SeasonAdmin row in a DRAFT or ACTIVE season. LEADER: likewise a GroupLeader row. STUDENT: neither. SUPER and MENTOR are stored. Someone who administers and leads matches both ADMIN and LEADER. Each row's `role` is the derived one.", schema: { $ref: "#/components/schemas/UserRole" } },
+        {
+          name: "role",
+          in: "query",
+          description:
+            "ADMIN: holds a SeasonAdmin row in a DRAFT or ACTIVE season. LEADER: likewise a GroupLeader row. STUDENT: neither. SUPER and MENTOR are stored. Someone who administers and leads matches both ADMIN and LEADER. Each row's `role` is the derived one.",
+          schema: { $ref: "#/components/schemas/UserRole" },
+        },
         { name: "status", in: "query", schema: { type: "string", enum: ["active", "invited", "pending", "inactive"] } },
         { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 50 } },
@@ -85,9 +91,12 @@ export const userPaths = {
       tags: ["Users"],
       summary: "Count accounts a bulk invite would reach (SUPER only)",
       description:
-        "\"Pending\" means: not deleted, no password, never signed in, and no live **v2** invite. A live v1 plaintext invite still counts as pending, because v2 can never accept it. The client hides the bulk button at zero.",
+        '"Pending" means: not deleted, no password, never signed in, and no live **v2** invite. A live v1 plaintext invite still counts as pending, because v2 can never accept it. The client hides the bulk button at zero.',
       responses: {
-        200: ok({ type: "object", required: ["pending"], properties: { pending: { type: "integer", minimum: 0 } } }, "The count."),
+        200: ok(
+          { type: "object", required: ["pending"], properties: { pending: { type: "integer", minimum: 0 } } },
+          "The count.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
       },
@@ -148,7 +157,11 @@ export const userPaths = {
               additionalProperties: false,
               properties: {
                 name: { type: "string", minLength: 2, maxLength: 120 },
-                role: { type: "string", enum: ["SUPER", "MENTOR", "STUDENT"], description: "Omit for someone whose role comes from seasons." },
+                role: {
+                  type: "string",
+                  enum: ["SUPER", "MENTOR", "STUDENT"],
+                  description: "Omit for someone whose role comes from seasons.",
+                },
                 graduationYear: { type: ["integer", "null"], minimum: 1990 },
                 confirmSuper: { type: "boolean", description: "Must be true for a role change to SUPER." },
               },
@@ -196,7 +209,11 @@ export const userPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", required: ["deletedAt"], properties: { deletedAt: { type: "string", format: "date-time" } } },
+          {
+            type: "object",
+            required: ["deletedAt"],
+            properties: { deletedAt: { type: "string", format: "date-time" } },
+          },
           "Deactivated.",
         ),
         400: errRef("BadRequest"),
@@ -226,5 +243,4 @@ export const userPaths = {
       },
     },
   },
-
 } as const;

@@ -126,11 +126,29 @@ describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
 
   it("refuses the file when two groups in the season share a name (D-16.19.1 / spec D17)", async () => {
     const clash = await createTestSeason();
-    await db.seasonAdmin.create({ data: { seasonId: clash.id, userId: (await db.user.findFirstOrThrow({ where: { email: { startsWith: `${TEST_PREFIX}admin-` } }, select: { id: true } })).id } });
+    await db.seasonAdmin.create({
+      data: {
+        seasonId: clash.id,
+        userId: (
+          await db.user.findFirstOrThrow({
+            where: { email: { startsWith: `${TEST_PREFIX}admin-` } },
+            select: { id: true },
+          })
+        ).id,
+      },
+    });
     await db.group.create({ data: { seasonId: clash.id, name: "Group A" } });
     await db.group.create({ data: { seasonId: clash.id, name: "group a" } });
 
-    const fresh = await login(app, (await db.user.findFirstOrThrow({ where: { email: { startsWith: `${TEST_PREFIX}admin-` } }, select: { email: true } })).email);
+    const fresh = await login(
+      app,
+      (
+        await db.user.findFirstOrThrow({
+          where: { email: { startsWith: `${TEST_PREFIX}admin-` } },
+          select: { email: true },
+        })
+      ).email,
+    );
     const res = await request(app)
       .post(`/api/v1/seasons/${clash.id}/imports/groups/preview`)
       .set("authorization", `Bearer ${fresh}`)
@@ -209,7 +227,10 @@ describe("POST /api/v1/seasons/:id/imports/groups/preview", () => {
     });
 
     it("refuses the WHOLE batch when any group is outside the season (spec R75)", async () => {
-      const foreign = await db.group.create({ data: { seasonId: otherSeasonId, name: "Foreign Group" }, select: { id: true } });
+      const foreign = await db.group.create({
+        data: { seasonId: otherSeasonId, name: "Foreign Group" },
+        select: { id: true },
+      });
 
       const res = await request(app)
         .post(`/api/v1/seasons/${seasonId}/imports/groups/commit`)

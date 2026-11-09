@@ -18,9 +18,19 @@ const get = apiClient.get as jest.Mock;
 
 function item(publicId: string, studentName: string | null, over: Record<string, unknown> = {}) {
   return {
-    publicId, status: "SUBMITTED" as const, submittedAt: "2099-03-30T10:00:00.000Z",
-    isLate: false, assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
-    seasonCode: "S26", studentUserId: 9, studentName, groupId: 3, groupName: "Group A", ...over,
+    publicId,
+    status: "SUBMITTED" as const,
+    submittedAt: "2099-03-30T10:00:00.000Z",
+    isLate: false,
+    assignmentId: 41,
+    assignmentTitle: "Essay one",
+    assignmentDueAt: null,
+    seasonCode: "S26",
+    studentUserId: 9,
+    studentName,
+    groupId: 3,
+    groupName: "Group A",
+    ...over,
   };
 }
 const page = (items: unknown[], pending: number, nextCursor: string | null = null, late = 0) => ({

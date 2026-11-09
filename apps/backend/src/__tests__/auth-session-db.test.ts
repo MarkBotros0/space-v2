@@ -55,7 +55,11 @@ describe("loadScopes", () => {
     stubScopes();
     mockDb.user.findUnique.mockResolvedValue({ role: "STUDENT", graduationYear: 2030 });
     await expect(loadScopes(5)).resolves.toEqual({
-      role: "ADMIN", seasonAdminIds: [3, 4], groupLeaderIds: [8], activeSeasonId: 3, graduationYear: 2030,
+      role: "ADMIN",
+      seasonAdminIds: [3, 4],
+      groupLeaderIds: [8],
+      activeSeasonId: 3,
+      graduationYear: 2030,
     });
   });
 
@@ -65,7 +69,11 @@ describe("loadScopes", () => {
     mockDb.seasonEnrollment.findMany.mockResolvedValue([]);
     mockDb.user.findUnique.mockResolvedValue(null);
     await expect(loadScopes(1)).resolves.toEqual({
-      role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null, graduationYear: null,
+      role: "STUDENT",
+      seasonAdminIds: [],
+      groupLeaderIds: [],
+      activeSeasonId: null,
+      graduationYear: null,
     });
   });
 
@@ -150,7 +158,8 @@ describe("rotateRefreshToken", () => {
     const session = await rotateRefreshToken("raw");
     expect(mockDb.refreshToken.findUnique).toHaveBeenCalledWith({ where: { tokenHash: hashToken("raw") } });
     expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith({
-      where: { id: 1, revokedAt: null }, data: { revokedAt: expect.any(Date) },
+      where: { id: 1, revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
     });
     expect(session?.refreshToken).toEqual(expect.any(String));
   });
@@ -177,7 +186,9 @@ describe("revoking", () => {
 
     await revokeAllRefreshTokensForUser(mockDb as never, 5, "keepme");
     expect(mockDb.refreshToken.updateMany.mock.calls[1][0].where).toEqual({
-      userId: 5, revokedAt: null, tokenHash: { not: "keepme" },
+      userId: 5,
+      revokedAt: null,
+      tokenHash: { not: "keepme" },
     });
   });
 });

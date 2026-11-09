@@ -58,7 +58,10 @@ export async function listFeed(req: Request, res: Response) {
   const page = rows.slice(0, ANNOUNCEMENT_PAGE_SIZE);
   const last = page[page.length - 1];
   const nextCursor = rows.length > ANNOUNCEMENT_PAGE_SIZE && last ? encodeAnnouncementCursor(last) : null;
-  const unread = await unreadIdsAmong(user, page.map((r) => r.id));
+  const unread = await unreadIdsAmong(
+    user,
+    page.map((r) => r.id),
+  );
   return apiOk(res, {
     items: page.map((r) => toListItem(r, !unread.has(r.id))),
     nextCursor,

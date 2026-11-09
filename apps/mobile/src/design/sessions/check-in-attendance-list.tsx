@@ -98,11 +98,7 @@ export function CheckInAttendanceList({
             </Button>
           ))}
           {error ? (
-            <Text
-              testID="override-error"
-              variant="subhead"
-              className="rounded-control bg-bad-soft px-3 py-2 text-bad"
-            >
+            <Text testID="override-error" variant="subhead" className="rounded-control bg-bad-soft px-3 py-2 text-bad">
               {error}
             </Text>
           ) : null}

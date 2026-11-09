@@ -244,9 +244,7 @@ it("cursor tie-break: posts sharing one createdAt page with no duplicate or gap"
 
   expect(pages).toBeGreaterThanOrEqual(2);
   expect(new Set(seen).size).toBe(seen.length);
-  expect([...seen].sort((a, b) => a - b)).toEqual(
-    [...ids, f.communityId, f.liveId].sort((a, b) => a - b),
-  );
+  expect([...seen].sort((a, b) => a - b)).toEqual([...ids, f.communityId, f.liveId].sort((a, b) => a - b));
   // Ties break on id descending.
   const tied = seen.filter((id) => ids.includes(id));
   expect(tied).toEqual([...ids].sort((a, b) => b - a));

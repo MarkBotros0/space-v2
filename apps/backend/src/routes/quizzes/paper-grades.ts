@@ -15,7 +15,11 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     select: {
-      id: true, title: true, kind: true, maxScore: true, seasonId: true,
+      id: true,
+      title: true,
+      kind: true,
+      maxScore: true,
+      seasonId: true,
       session: { select: { title: true } },
     },
   });
@@ -31,7 +35,10 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
     db.quizGrade.findMany({
       where: { quizId, studentUserId: { in: studentIds } },
       select: {
-        studentUserId: true, score: true, notes: true, gradedAt: true,
+        studentUserId: true,
+        score: true,
+        notes: true,
+        gradedAt: true,
         gradedBy: { select: { name: true } },
       },
     }),
@@ -138,9 +145,7 @@ export async function saveGrades(req: Request, res: Response) {
   // (c) Validate the WHOLE batch before writing any of it.
   for (const entry of parsed.data.entries) {
     if (!visible.has(entry.studentUserId)) {
-      return apiError(
-        res, "student_not_in_scope", `Student ${entry.studentUserId} is not in your groups.`, 403,
-      );
+      return apiError(res, "student_not_in_scope", `Student ${entry.studentUserId} is not in your groups.`, 403);
     }
     // R88/D7: the only bound in v1 was Math.min in the form, so an above-max
     // score stored fine and rendered as a >100% average in the student's own

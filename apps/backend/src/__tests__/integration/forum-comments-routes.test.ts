@@ -22,7 +22,18 @@ let adminToken: string;
 let mentorToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, assignmentId, studentAId, studentAToken, studentA2Token, studentBToken, leaderAToken, leaderBToken, adminToken, mentorToken } = await seedForumFixtures(app));
+  ({
+    seasonId,
+    assignmentId,
+    studentAId,
+    studentAToken,
+    studentA2Token,
+    studentBToken,
+    leaderAToken,
+    leaderBToken,
+    adminToken,
+    mentorToken,
+  } = await seedForumFixtures(app));
 });
 
 beforeEach(() => resetSubmissions(seasonId));
@@ -38,9 +49,7 @@ describe("the generic submission routes refuse a FORUM assignment", () => {
       .set("authorization", `Bearer ${studentAToken}`);
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("use_forum_endpoint");
-    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(
-      0,
-    );
+    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(0);
   });
 
   it("PATCH /submissions/:publicId → 409 for save and for submit, text untouched", async () => {

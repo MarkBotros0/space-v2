@@ -59,7 +59,9 @@ describe("UpcomingEventsCard (spec 19 R5–R11, D19)", () => {
   it("opens the event detail, or the external link when the event has one", async () => {
     const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(undefined);
     get.mockResolvedValue({
-      data: { data: { events: [event, { ...event, id: 4, title: "Gala", url: "https://jpc.example/gala" }], total: 2 } },
+      data: {
+        data: { events: [event, { ...event, id: 4, title: "Gala", url: "https://jpc.example/gala" }], total: 2 },
+      },
     });
     renderWithProviders(<Harness />);
 

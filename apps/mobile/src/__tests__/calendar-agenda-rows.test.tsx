@@ -21,9 +21,20 @@ beforeEach(() => {
   jest.useFakeTimers({
     now: new Date(2099, 2, 1, 8, 0),
     doNotFake: [
-      "nextTick", "setImmediate", "clearImmediate", "setInterval", "clearInterval",
-      "setTimeout", "clearTimeout", "queueMicrotask", "requestAnimationFrame",
-      "cancelAnimationFrame", "requestIdleCallback", "cancelIdleCallback", "performance", "hrtime",
+      "nextTick",
+      "setImmediate",
+      "clearImmediate",
+      "setInterval",
+      "clearInterval",
+      "setTimeout",
+      "clearTimeout",
+      "queueMicrotask",
+      "requestAnimationFrame",
+      "cancelAnimationFrame",
+      "requestIdleCallback",
+      "cancelIdleCallback",
+      "performance",
+      "hrtime",
     ],
   });
   useSessionStore.setState(useSessionStore.getInitialState(), true);
@@ -120,8 +131,14 @@ describe("the staff calendars count from the server's day, not the device's", ()
         return Promise.resolve({ data: { data: { seasons: [seasonRow(7, 2099, "ACTIVE")] } } });
       if (url === "/api/v1/groups") {
         const group = {
-          id: 3, name: "G", description: null, studentCount: 3, leaderNames: [],
-          seasonId: 7, seasonCode: "S7", seasonTitle: "Season 7",
+          id: 3,
+          name: "G",
+          description: null,
+          studentCount: 3,
+          leaderNames: [],
+          seasonId: 7,
+          seasonCode: "S7",
+          seasonTitle: "Season 7",
         };
         return Promise.resolve({ data: { data: { groups: [group] } } });
       }
@@ -203,7 +220,9 @@ describe("calendar chip (K5)", () => {
   it("keeps a long label on one line with an ellipsis and may shrink inside its row", () => {
     const { Chip } = require("../components/calendar/CalendarEntries");
     const { render } = require("@testing-library/react-native");
-    const utils = render(<Chip label="Opening night with the whole cohort" tint={{ box: "bg-muted", text: "text-foreground" }} />);
+    const utils = render(
+      <Chip label="Opening night with the whole cohort" tint={{ box: "bg-muted", text: "text-foreground" }} />,
+    );
     const text = utils.getByText("Opening night with the whole cohort");
     expect(text.props.numberOfLines).toBe(1);
     expect(text.props.ellipsizeMode).toBe("tail");

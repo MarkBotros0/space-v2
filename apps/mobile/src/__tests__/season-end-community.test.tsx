@@ -20,9 +20,7 @@ import SeasonResultsScreen from "../../app/(app)/seasons/[code]/results";
 const get = apiClient.get as jest.Mock;
 function serve(routes: Record<string, unknown>) {
   get.mockImplementation((url: string) =>
-    url in routes
-      ? Promise.resolve({ data: { data: routes[url] } })
-      : Promise.reject(new Error(`not served: ${url}`)),
+    url in routes ? Promise.resolve({ data: { data: routes[url] } }) : Promise.reject(new Error(`not served: ${url}`)),
   );
 }
 const BY_CODE = "/api/v1/seasons/by-code/gbv-2026";
@@ -51,7 +49,17 @@ describe("End of a community-wide season", () => {
     serve({
       [BY_CODE]: detail({ status: "COMPLETED", isCommunityWide: true, graduatesOnPass: false }),
       "/api/v1/seasons/7/results": {
-        results: [{ userId: 1, name: "Old Hand", isAlumnus: true, groupName: null, attendancePct: 80, result: "PASSED", reason: null }],
+        results: [
+          {
+            userId: 1,
+            name: "Old Hand",
+            isAlumnus: true,
+            groupName: null,
+            attendancePct: 80,
+            result: "PASSED",
+            reason: null,
+          },
+        ],
       },
     });
     renderStacked(<SeasonResultsScreen />);

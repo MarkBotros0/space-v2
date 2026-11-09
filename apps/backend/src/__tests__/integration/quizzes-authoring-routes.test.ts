@@ -40,16 +40,14 @@ describe("question authoring", () => {
     const first = await request(app)
       .post(`/api/v1/quizzes/${quizId}/questions`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "MCQ", prompt: "Capital of France?", points: 2,
-        options: ["London", "Paris"], correctIndex: 1 });
+      .send({ type: "MCQ", prompt: "Capital of France?", points: 2, options: ["London", "Paris"], correctIndex: 1 });
     expect(first.status).toBe(201);
     expect(first.body.data).toMatchObject({ order: 0, correctIndex: 1, points: 2 });
 
     const second = await request(app)
       .post(`/api/v1/quizzes/${quizId}/questions`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "ESSAY", prompt: "Discuss the reading.", points: 5,
-        options: [], correctIndex: null });
+      .send({ type: "ESSAY", prompt: "Discuss the reading.", points: 5, options: [], correctIndex: null });
     expect(second.status).toBe(201);
     expect(second.body.data).toMatchObject({ order: 1, options: [], correctIndex: null });
 
@@ -73,7 +71,9 @@ describe("question authoring", () => {
     expect(del.status).toBe(200);
 
     const rows = await db.quizQuestion.findMany({
-      where: { quizId }, orderBy: { order: "asc" }, select: { prompt: true, order: true },
+      where: { quizId },
+      orderBy: { order: "asc" },
+      select: { prompt: true, order: true },
     });
     // v1 left gaps (0, 2, ...) because nothing renumbered; harmless for display
     // but it made `order` a label rather than a position, which a reorder
@@ -99,9 +99,7 @@ describe("question authoring", () => {
       .set("authorization", `Bearer ${adminToken}`)
       .send({ questionIds: [ids[2], ids[0], ids[1]] });
     expect(ok.status).toBe(200);
-    expect(ok.body.data.questions.map((q: { prompt: string }) => q.prompt)).toEqual([
-      "Three", "One", "Two",
-    ]);
+    expect(ok.body.data.questions.map((q: { prompt: string }) => q.prompt)).toEqual(["Three", "One", "Two"]);
 
     const partial = await request(app)
       .put(`/api/v1/quizzes/${quizId}/questions/order`)
@@ -180,8 +178,15 @@ describe("question authoring", () => {
       select: { id: true },
     });
     const stray = await db.quizQuestion.create({
-      data: { quizId: other.id, order: 0, type: "ESSAY", prompt: "Elsewhere", points: 1,
-        options: [], correctIndex: null },
+      data: {
+        quizId: other.id,
+        order: 0,
+        type: "ESSAY",
+        prompt: "Elsewhere",
+        points: 1,
+        options: [],
+        correctIndex: null,
+      },
       select: { id: true },
     });
     const res = await request(app)
@@ -211,8 +216,15 @@ describe("publish / unpublish", () => {
     // positional key means an option edit can produce it later, which is
     // exactly why v1 re-checked at publish.
     await db.quizQuestion.create({
-      data: { quizId: quiz.id, order: 0, type: "MCQ", prompt: "Broken", points: 1,
-        options: ["a", "b"], correctIndex: 5 },
+      data: {
+        quizId: quiz.id,
+        order: 0,
+        type: "MCQ",
+        prompt: "Broken",
+        points: 1,
+        options: ["a", "b"],
+        correctIndex: 5,
+      },
     });
     const bad = await request(app)
       .post(`/api/v1/quizzes/${quiz.id}/publish`)
@@ -228,8 +240,7 @@ describe("publish / unpublish", () => {
       select: { id: true },
     });
     await db.quizQuestion.create({
-      data: { quizId: quiz.id, order: 0, type: "MCQ", prompt: "Pick", points: 1,
-        options: ["a", "b"], correctIndex: 0 },
+      data: { quizId: quiz.id, order: 0, type: "MCQ", prompt: "Pick", points: 1, options: ["a", "b"], correctIndex: 0 },
     });
 
     const on = await request(app)
@@ -249,18 +260,24 @@ describe("publish / unpublish", () => {
 
   it("refuses to unpublish once an attempt has been graded (spec D4)", async () => {
     const quiz = await db.quiz.create({
-      data: { seasonId, sessionId, title: "Live", kind: "ONLINE", maxScore: 1,
-        publishedAt: new Date() },
+      data: { seasonId, sessionId, title: "Live", kind: "ONLINE", maxScore: 1, publishedAt: new Date() },
       select: { id: true },
     });
     await db.quizQuestion.create({
-      data: { quizId: quiz.id, order: 0, type: "MCQ", prompt: "Pick", points: 1,
-        options: ["a", "b"], correctIndex: 0 },
+      data: { quizId: quiz.id, order: 0, type: "MCQ", prompt: "Pick", points: 1, options: ["a", "b"], correctIndex: 0 },
     });
     await db.quizAttempt.create({
-      data: { quizId: quiz.id, studentUserId: ownStudentId, attemptNumber: 1,
-        status: "GRADED", autoScore: 1, manualScore: 0, totalScore: 1,
-        submittedAt: new Date(), gradedAt: new Date() },
+      data: {
+        quizId: quiz.id,
+        studentUserId: ownStudentId,
+        attemptNumber: 1,
+        status: "GRADED",
+        autoScore: 1,
+        manualScore: 0,
+        totalScore: 1,
+        submittedAt: new Date(),
+        gradedAt: new Date(),
+      },
     });
 
     const res = await request(app)

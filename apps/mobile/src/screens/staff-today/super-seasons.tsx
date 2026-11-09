@@ -108,27 +108,27 @@ export function SuperSeasons({
         </GroupedList>
       ) : null}
       {drafts.length > 0 ? (
-          <GroupedList header="Coming up">
-            {drafts.map((s) => {
-              const count = enrolled.get(s.id);
-              return (
-                <ListRow
-                  key={s.id}
-                  title={s.title}
-                  subtitle={joinMeta([
-                    `Starts ${keepTogether(formatSeasonDay(s.startDate))}`,
-                    count === undefined ? null : countOf(count, "student"),
-                    s.isCommunityWide ? "Community-wide" : null,
-                  ])}
-                  subtitleLines={2}
-                  trailing={<StatusChip {...statusChip("season", s.status)} />}
-                  chevron
-                  onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: s.code } })}
-                />
-              );
-            })}
-          </GroupedList>
-        ) : null}
+        <GroupedList header="Coming up">
+          {drafts.map((s) => {
+            const count = enrolled.get(s.id);
+            return (
+              <ListRow
+                key={s.id}
+                title={s.title}
+                subtitle={joinMeta([
+                  `Starts ${keepTogether(formatSeasonDay(s.startDate))}`,
+                  count === undefined ? null : countOf(count, "student"),
+                  s.isCommunityWide ? "Community-wide" : null,
+                ])}
+                subtitleLines={2}
+                trailing={<StatusChip {...statusChip("season", s.status)} />}
+                chevron
+                onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: s.code } })}
+              />
+            );
+          })}
+        </GroupedList>
+      ) : null}
     </View>
   );
 }

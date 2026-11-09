@@ -25,26 +25,60 @@ const patch = apiClient.patch as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 9,
+    name: "Test student",
+    email: "s@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
 
 const mcq = {
-  id: 100, order: 0, type: "MCQ" as const, prompt: "Capital of France?", points: 2,
-  options: ["London", "Paris"], selectedIndex: null, text: null,
-  isCorrect: null, pointsAwarded: null,
+  id: 100,
+  order: 0,
+  type: "MCQ" as const,
+  prompt: "Capital of France?",
+  points: 2,
+  options: ["London", "Paris"],
+  selectedIndex: null,
+  text: null,
+  isCorrect: null,
+  pointsAwarded: null,
 };
 const essay = {
-  id: 101, order: 1, type: "ESSAY" as const, prompt: "Discuss.", points: 5,
-  options: [], selectedIndex: null, text: null, isCorrect: null, pointsAwarded: null,
+  id: 101,
+  order: 1,
+  type: "ESSAY" as const,
+  prompt: "Discuss.",
+  points: 5,
+  options: [],
+  selectedIndex: null,
+  text: null,
+  isCorrect: null,
+  pointsAwarded: null,
 };
 
 function detail(over: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, maxScore: 7,
-    sessionTitle: "Week 1", attemptId: null, attemptNumber: 0, readOnly: false, status: null,
-    totalScore: null, submittedAt: null, gradedAt: null, resultsReleased: true,
-    questions: [mcq, essay], ...over,
+    id: 41,
+    title: "Week 1 quiz",
+    kind: "ONLINE",
+    seasonId: 7,
+    maxScore: 7,
+    sessionTitle: "Week 1",
+    attemptId: null,
+    attemptNumber: 0,
+    readOnly: false,
+    status: null,
+    totalScore: null,
+    submittedAt: null,
+    gradedAt: null,
+    resultsReleased: true,
+    questions: [mcq, essay],
+    ...over,
   };
 }
 
@@ -129,7 +163,9 @@ describe("quiz runner", () => {
     post.mockResolvedValue({
       data: {
         data: detail({
-          attemptId: 900, attemptNumber: 1, status: "SUBMITTED",
+          attemptId: 900,
+          attemptNumber: 1,
+          status: "SUBMITTED",
           questions: [
             { ...mcq, selectedIndex: 1 },
             { ...essay, text: "Because." },
@@ -155,16 +191,17 @@ describe("quiz runner", () => {
     expect(screen.getByText("You can't change your answers after submitting.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Submit"));
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt/submit"),
-    );
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt/submit"));
   });
 
   it("shows the graded result per question without ever seeing an answer key", async () => {
     get.mockResolvedValue({
       data: {
         data: detail({
-          attemptId: 900, attemptNumber: 1, status: "GRADED", totalScore: 5,
+          attemptId: 900,
+          attemptNumber: 1,
+          status: "GRADED",
+          totalScore: 5,
           gradedAt: "2099-03-02T10:00:00.000Z",
           questions: [
             { ...mcq, selectedIndex: 0, isCorrect: false, pointsAwarded: 0 },
@@ -194,7 +231,9 @@ describe("quiz runner", () => {
     get.mockResolvedValue({
       data: {
         data: detail({
-          attemptId: 900, attemptNumber: 1, status: "SUBMITTED",
+          attemptId: 900,
+          attemptNumber: 1,
+          status: "SUBMITTED",
           questions: [
             { ...mcq, selectedIndex: 1, isCorrect: true, pointsAwarded: 2 },
             { ...essay, text: "Because." },
@@ -230,8 +269,13 @@ describe("quiz runner", () => {
     get.mockResolvedValue({
       data: {
         data: detail({
-          attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
-          questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "Half done." }],
+          attemptId: 900,
+          attemptNumber: 1,
+          status: "IN_PROGRESS",
+          questions: [
+            { ...mcq, selectedIndex: 1 },
+            { ...essay, text: "Half done." },
+          ],
         }),
       },
     });
@@ -239,9 +283,7 @@ describe("quiz runner", () => {
     renderWithProviders(<QuizDetailScreen />);
 
     expect(await screen.findByText(/^2 of 2 answered/)).toBeTruthy();
-    expect(
-      screen.getByLabelText("Answer 1 option 2: Paris").props.accessibilityState.selected,
-    ).toBe(true);
+    expect(screen.getByLabelText("Answer 1 option 2: Paris").props.accessibilityState.selected).toBe(true);
     expect(screen.getByLabelText("Answer 2").props.value).toBe("Half done.");
   });
 
@@ -249,8 +291,13 @@ describe("quiz runner", () => {
     get.mockResolvedValue({
       data: {
         data: detail({
-          attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS",
-          questions: [{ ...mcq, selectedIndex: 1 }, { ...essay, text: "Done." }],
+          attemptId: 900,
+          attemptNumber: 1,
+          status: "IN_PROGRESS",
+          questions: [
+            { ...mcq, selectedIndex: 1 },
+            { ...essay, text: "Done." },
+          ],
         }),
       },
     });
@@ -284,19 +331,45 @@ describe("quiz runner", () => {
 
   it("gives staff a read-only preview with a link to grading", async () => {
     useSessionStore.setState({
-      user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
+      user: {
+        id: 5,
+        name: "Test leader",
+        email: "l@jpc.test",
+        role: "LEADER" as const,
+        avatarPath: null,
+        hasPassword: true,
+      },
       scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
     });
     get.mockResolvedValue({
       data: {
         data: {
-          id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26",
-          sessionId: 12, sessionTitle: "Week 1", publishedAt: "2099-02-01T00:00:00.000Z",
-          maxScore: 7, attemptCount: 2, gradeCount: 0,
-          canEditStructure: false, canManage: false,
-          resultsReleasedAt: null, canReleaseResults: true,
-          questions: [{ id: 100, order: 0, type: "MCQ", prompt: "Capital of France?",
-            points: 2, options: ["London", "Paris"], correctIndex: 1 }],
+          id: 41,
+          title: "Week 1 quiz",
+          kind: "ONLINE",
+          seasonId: 7,
+          seasonCode: "s26",
+          sessionId: 12,
+          sessionTitle: "Week 1",
+          publishedAt: "2099-02-01T00:00:00.000Z",
+          maxScore: 7,
+          attemptCount: 2,
+          gradeCount: 0,
+          canEditStructure: false,
+          canManage: false,
+          resultsReleasedAt: null,
+          canReleaseResults: true,
+          questions: [
+            {
+              id: 100,
+              order: 0,
+              type: "MCQ",
+              prompt: "Capital of France?",
+              points: 2,
+              options: ["London", "Paris"],
+              correctIndex: 1,
+            },
+          ],
         },
       },
     });
@@ -314,7 +387,6 @@ describe("quiz runner", () => {
     });
   });
 });
-
 
 describe("quiz runner, read-only (a finished season)", () => {
   it("says You didn't take this quiz. with no Start on an untaken quiz", async () => {
@@ -346,18 +418,47 @@ describe("quiz runner, read-only (a finished season)", () => {
 
   it("lets staff release held results after a confirm, and tells the student what is held", async () => {
     useSessionStore.setState({
-      user: { id: 5, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
+      user: {
+        id: 5,
+        name: "Test admin",
+        email: "a@jpc.test",
+        role: "ADMIN" as const,
+        avatarPath: null,
+        hasPassword: true,
+      },
       scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
     });
     get.mockResolvedValue({
-      data: { data: {
-        id: 41, title: "Week 1 quiz", kind: "ONLINE", seasonId: 7, seasonCode: "s26",
-        sessionId: 12, sessionTitle: "Week 1", publishedAt: "2099-02-01T00:00:00.000Z",
-        maxScore: 7, attemptCount: 2, gradeCount: 0, canEditStructure: false, canManage: true,
-        resultsReleasedAt: null, canReleaseResults: true,
-        questions: [{ id: 100, order: 0, type: "MCQ", prompt: "Capital of France?",
-          points: 2, options: ["London", "Paris"], correctIndex: 1 }],
-      } },
+      data: {
+        data: {
+          id: 41,
+          title: "Week 1 quiz",
+          kind: "ONLINE",
+          seasonId: 7,
+          seasonCode: "s26",
+          sessionId: 12,
+          sessionTitle: "Week 1",
+          publishedAt: "2099-02-01T00:00:00.000Z",
+          maxScore: 7,
+          attemptCount: 2,
+          gradeCount: 0,
+          canEditStructure: false,
+          canManage: true,
+          resultsReleasedAt: null,
+          canReleaseResults: true,
+          questions: [
+            {
+              id: 100,
+              order: 0,
+              type: "MCQ",
+              prompt: "Capital of France?",
+              points: 2,
+              options: ["London", "Paris"],
+              correctIndex: 1,
+            },
+          ],
+        },
+      },
     });
     post.mockResolvedValue({ data: { data: { resultsReleasedAt: "2099-03-01T00:00:00.000Z" } } });
 
@@ -370,10 +471,16 @@ describe("quiz runner, read-only (a finished season)", () => {
 
   it("shows a student whose results are held no per-question verdicts", async () => {
     get.mockResolvedValue({
-      data: { data: detail({
-        attemptId: 900, attemptNumber: 1, status: "SUBMITTED", resultsReleased: false,
-        totalScore: null, submittedAt: "2099-01-01T00:00:00.000Z",
-      }) },
+      data: {
+        data: detail({
+          attemptId: 900,
+          attemptNumber: 1,
+          status: "SUBMITTED",
+          resultsReleased: false,
+          totalScore: null,
+          submittedAt: "2099-01-01T00:00:00.000Z",
+        }),
+      },
     });
     renderWithProviders(<QuizDetailScreen />);
     expect(

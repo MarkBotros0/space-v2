@@ -4,11 +4,7 @@
  * order. Import from this index.
  */
 export { resolveReportScope } from "./scope";
-export {
-  buildEngagementSummary,
-  type EngagementSummaryOptions,
-  type EngagementSummaryResult,
-} from "./summary";
+export { buildEngagementSummary, type EngagementSummaryOptions, type EngagementSummaryResult } from "./summary";
 export {
   byScoreThenId,
   listEngagementRows,

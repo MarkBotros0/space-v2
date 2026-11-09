@@ -61,7 +61,12 @@ function SaveBarBody({
         </Text>
       ) : null}
       {error ? (
-        <View accessible accessibilityRole="alert" accessibilityLiveRegion="polite" className="rounded-control bg-bad-soft px-3 py-2">
+        <View
+          accessible
+          accessibilityRole="alert"
+          accessibilityLiveRegion="polite"
+          className="rounded-control bg-bad-soft px-3 py-2"
+        >
           <Text variant="subhead" className="text-bad">
             {error}
           </Text>

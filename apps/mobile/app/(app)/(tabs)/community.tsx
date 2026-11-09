@@ -16,12 +16,7 @@ import {
   SearchField,
   toast,
 } from "../../../src/design/ui";
-import {
-  usePendingInviteCount,
-  useSendInvite,
-  useSendPendingInvites,
-  useUsers,
-} from "../../../src/hooks/use-users";
+import { usePendingInviteCount, useSendInvite, useSendPendingInvites, useUsers } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { useDebouncedSearch } from "../../../src/screens/students-list/use-debounced-search";
 import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
@@ -61,8 +56,7 @@ function usePendingInvitesRow(enabled: boolean) {
           onPress: () =>
             sendPending.mutate(undefined, {
               onSuccess: (result) => Alert.alert("Invites sent", bulkSummary(result)),
-              onError: (err) =>
-                Alert.alert("Couldn't send invites", apiErrorMessage(err, "Try again later.")),
+              onError: (err) => Alert.alert("Couldn't send invites", apiErrorMessage(err, "Try again later.")),
             }),
         },
       ],
@@ -120,7 +114,11 @@ export default function CommunityScreen() {
     <Screen
       title="Community"
       subtitle={total === undefined ? undefined : `${total} ${total === 1 ? "member" : "members"}`}
-      trailing={<Button size="sm" onPress={() => router.push("/users/new")}>New member</Button>}
+      trailing={
+        <Button size="sm" onPress={() => router.push("/users/new")}>
+          New member
+        </Button>
+      }
       refreshing={users$.isRefetching}
       onRefresh={() => void users$.refetch()}
     >
@@ -146,10 +144,7 @@ export default function CommunityScreen() {
             onSubmitEditing={commit}
             className="min-w-0 flex-1"
           />
-          <FilterButton
-            active={communityFilterCount(filters)}
-            onPress={() => setFiltering(true)}
-          />
+          <FilterButton active={communityFilterCount(filters)} onPress={() => setFiltering(true)} />
         </View>
         <CommunityFilterSheet
           open={filtering}
@@ -164,17 +159,13 @@ export default function CommunityScreen() {
         ) : users.length === 0 && (q !== "" || status !== undefined || roleFilter !== undefined) ? (
           <EmptyState
             title="No members"
-            description={
-              q !== "" ? "Nobody matches this search." : "Nobody matches these filters."
-            }
+            description={q !== "" ? "Nobody matches this search." : "Nobody matches these filters."}
           />
         ) : (
           <>
             <UsersList
               rows={users}
-              onOpen={(row) =>
-                router.push({ pathname: "/user/[id]", params: { id: String(row.id) } })
-              }
+              onOpen={(row) => router.push({ pathname: "/user/[id]", params: { id: String(row.id) } })}
               renderAction={(row) =>
                 // Row-level invite: only accounts that have never activated can be
                 // invited (R14) — the server enforces it; the pill only renders

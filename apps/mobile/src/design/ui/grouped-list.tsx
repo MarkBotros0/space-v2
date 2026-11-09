@@ -38,8 +38,16 @@ function ListSectionHeader({ children, className }: { children: string; classNam
 type HeaderAction = { label: string; onPress: () => void };
 
 function GroupedList({
-  children, header, headerAction, className,
-}: { children: ReactNode; header?: string; headerAction?: HeaderAction; className?: string }) {
+  children,
+  header,
+  headerAction,
+  className,
+}: {
+  children: ReactNode;
+  header?: string;
+  headerAction?: HeaderAction;
+  className?: string;
+}) {
   const rows = Children.toArray(children);
   return (
     <View className={className}>
@@ -108,14 +116,33 @@ function spokenTrailing(trailing: ReactNode, trailingLabel: string | undefined):
 }
 
 function ListRow({
-  title, subtitle, detail, leading, trailing, footer, trailingLabel, trailingPlacement = "side", chevron, destructive, onPress, onPressIn, titleLines = 1, subtitleLines = 2, className,
+  title,
+  subtitle,
+  detail,
+  leading,
+  trailing,
+  footer,
+  trailingLabel,
+  trailingPlacement = "side",
+  chevron,
+  destructive,
+  onPress,
+  onPressIn,
+  titleLines = 1,
+  subtitleLines = 2,
+  className,
 }: ListRowProps) {
   const press = usePressDim();
   const content = (
     <View className={cn("min-h-[52px] flex-row items-center gap-3 px-4 py-2", className)}>
       {leading ? <View className="shrink-0">{leading}</View> : null}
       <View className="min-w-0 flex-1">
-        <Text variant="body" numberOfLines={titleLines ?? undefined} ellipsizeMode="tail" className={destructive ? "text-bad" : undefined}>
+        <Text
+          variant="body"
+          numberOfLines={titleLines ?? undefined}
+          ellipsizeMode="tail"
+          className={destructive ? "text-bad" : undefined}
+        >
           {title}
         </Text>
         {detail ? (
@@ -143,7 +170,11 @@ function ListRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[title, [detail, subtitle].filter(Boolean).join("\n"), spokenTrailing(trailing, trailingLabel)]
+      accessibilityLabel={[
+        title,
+        [detail, subtitle].filter(Boolean).join("\n"),
+        spokenTrailing(trailing, trailingLabel),
+      ]
         .filter(Boolean)
         .join(", ")}
       onPress={onPress}

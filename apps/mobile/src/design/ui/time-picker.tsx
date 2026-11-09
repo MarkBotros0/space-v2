@@ -28,7 +28,11 @@ function TimePicker({
   const minutes = useMemo(() => Array.from({ length: 60 / minuteStep }, (_, i) => i * minuteStep), [minuteStep]);
   return (
     <View className={cn("flex-row items-center gap-2", className)}>
-      <Select value={pad(value.hour)} onValueChange={(v) => onChange({ ...value, hour: Number(v) })} disabled={disabled}>
+      <Select
+        value={pad(value.hour)}
+        onValueChange={(v) => onChange({ ...value, hour: Number(v) })}
+        disabled={disabled}
+      >
         <SelectTrigger className="w-[88px]" accessibilityLabel="Hour">
           <SelectValue />
         </SelectTrigger>
@@ -41,7 +45,11 @@ function TimePicker({
         </SelectContent>
       </Select>
       <Text className="text-muted-foreground">:</Text>
-      <Select value={pad(value.minute)} onValueChange={(v) => onChange({ ...value, minute: Number(v) })} disabled={disabled}>
+      <Select
+        value={pad(value.minute)}
+        onValueChange={(v) => onChange({ ...value, minute: Number(v) })}
+        disabled={disabled}
+      >
         <SelectTrigger className="w-[88px]" accessibilityLabel="Minute">
           <SelectValue />
         </SelectTrigger>

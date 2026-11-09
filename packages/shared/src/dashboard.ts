@@ -87,9 +87,7 @@ const staffCohortSummarySchema = z
 const reviewCountsSchema = z.object({ pendingReview: count, reviewed: count }).strict();
 
 /** D10: Plan 8's per-kind graded count; unpublished ONLINE quizzes are `drafts`, not pending. */
-const quizRollupSchema = z
-  .object({ total: count, pending: count, fullyGraded: count, drafts: count })
-  .strict();
+const quizRollupSchema = z.object({ total: count, pending: count, fullyGraded: count, drafts: count }).strict();
 
 /**
  * The leader's own groups checked in for the next session (read-only). `total`

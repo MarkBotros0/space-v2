@@ -25,9 +25,7 @@ async function fetchStudentAssignments(seasonId: number): Promise<StudentAssignm
 }
 
 /** Dependent query — same nullable-season contract as useSeasonSessions. */
-export function useStudentAssignments(
-  seasonId: number | null,
-): UseQueryResult<StudentAssignmentListItem[]> {
+export function useStudentAssignments(seasonId: number | null): UseQueryResult<StudentAssignmentListItem[]> {
   return useQuery({
     queryKey: queryKeys.assignments.bySeason(seasonId),
     queryFn: () => fetchStudentAssignments(seasonId as number),
@@ -56,9 +54,7 @@ const staffListSchema = z.array(staffAssignmentListItemSchema);
  * schema specifically — the same reasoning as fetchStudentAssignments: a union
  * parse would accept the wrong role's rows and hide a routing bug.
  */
-export function useStaffAssignments(
-  seasonId: number | null,
-): UseQueryResult<StaffAssignmentListItem[]> {
+export function useStaffAssignments(seasonId: number | null): UseQueryResult<StaffAssignmentListItem[]> {
   return useQuery({
     queryKey: queryKeys.assignments.staffBySeason(seasonId),
     queryFn: async () => {

@@ -137,9 +137,7 @@ function splitRecords(text: string, delimiter: string): string[][] {
   // A lenient scanner silently swallows everything after a stray quote into
   // one enormous field, and the operator sees "1 row" for a 400-row paste.
   if (inQuotes) {
-    throw new ImportParseError(
-      'There is an unclosed " in that paste. Remove or double it, then paste again.',
-    );
+    throw new ImportParseError('There is an unclosed " in that paste. Remove or double it, then paste again.');
   }
   // A trailing newline already closed the last record; only an unterminated
   // final line needs closing here.
@@ -148,11 +146,7 @@ function splitRecords(text: string, delimiter: string): string[][] {
   return records;
 }
 
-export function parseDelimited(
-  text: string,
-  requested: "comma" | "tab" | "auto",
-  maxRows: number,
-): ParsedSheet {
+export function parseDelimited(text: string, requested: "comma" | "tab" | "auto", maxRows: number): ParsedSheet {
   // A clipboard round-trip through Windows or Excel routinely prefixes a BOM,
   // which would otherwise become part of the first header cell and make
   // "name" fail to match "name".
@@ -178,9 +172,7 @@ export function parseDelimited(
     throw new ImportParseError("That paste has a header row but no data rows.");
   }
   if (rows.length > maxRows) {
-    throw new ImportParseError(
-      `That paste has ${rows.length} rows. Import at most ${maxRows} at a time.`,
-    );
+    throw new ImportParseError(`That paste has ${rows.length} rows. Import at most ${maxRows} at a time.`);
   }
 
   return {

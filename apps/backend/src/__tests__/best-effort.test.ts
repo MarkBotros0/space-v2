@@ -3,9 +3,7 @@ import { bestEffort } from "../lib/best-effort";
 describe("bestEffort", () => {
   it("never rejects into its caller", async () => {
     const spy = jest.spyOn(console, "error").mockImplementation(() => undefined);
-    await expect(
-      bestEffort("test-label", () => Promise.reject(new Error("transport down"))),
-    ).resolves.toBeUndefined();
+    await expect(bestEffort("test-label", () => Promise.reject(new Error("transport down")))).resolves.toBeUndefined();
     spy.mockRestore();
   });
 

@@ -1,4 +1,3 @@
-
 /**
  * Spec 06 D15: User, StudentProfile and SeasonEnrollment carry no
  * createdById/updatedById, so there is no record of who graduated, dropped or
@@ -66,11 +65,6 @@ export function formatAuditLine(
   return `[audit] ${operation} actor=${actorId} subject=${subjectId}${season}${override}`;
 }
 
-export function auditLog(
-  operation: AuditOperation,
-  actorId: number,
-  subjectId: number,
-  scope: AuditScope = {},
-): void {
+export function auditLog(operation: AuditOperation, actorId: number, subjectId: number, scope: AuditScope = {}): void {
   console.info(formatAuditLine(operation, actorId, subjectId, scope));
 }

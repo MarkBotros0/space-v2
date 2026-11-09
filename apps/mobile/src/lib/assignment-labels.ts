@@ -1,9 +1,5 @@
 // Assignment wording shared by the staff list, detail and tracker (Plan 5).
-import type {
-  AssignmentDetail,
-  AssignmentTrackerRow,
-  MimeCategory,
-} from "@space/shared";
+import type { AssignmentDetail, AssignmentTrackerRow, MimeCategory } from "@space/shared";
 
 /** v1's labels, verbatim (`assignment-form.tsx:24-31`). */
 export const MIME_CATEGORY_LABELS: Record<MimeCategory, string> = {
@@ -40,12 +36,7 @@ export function targetLabel(
 export function configLabel(
   d: Pick<
     AssignmentDetail,
-    | "type"
-    | "forumMinWords"
-    | "forumAllowComments"
-    | "forumPostToRead"
-    | "maxFileSizeMb"
-    | "allowedMimeCategories"
+    "type" | "forumMinWords" | "forumAllowComments" | "forumPostToRead" | "maxFileSizeMb" | "allowedMimeCategories"
   >,
 ): string {
   if (d.type === "FORUM") {

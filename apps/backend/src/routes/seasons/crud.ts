@@ -104,8 +104,7 @@ export async function getSeason(req: Request, res: Response) {
 
 const ADMIN_EDITABLE = new Set<string>(SEASON_ADMIN_EDITABLE_FIELDS);
 
-export const codeTaken = (res: Response) =>
-  apiError(res, "code_taken", "A season with that code already exists.", 409);
+export const codeTaken = (res: Response) => apiError(res, "code_taken", "A season with that code already exists.", 409);
 
 /** The columns a SUPER's full-body write sets; the title is always re-derived (R10). */
 function seasonColumns(body: SeasonWriteBody) {
@@ -205,11 +204,24 @@ export async function updateSeason(req: Request, res: Response) {
       return apiError(res, "bad_request", OWN_PROGRAM_MESSAGE, 400);
     }
     // Who may join is settled before the season starts.
-    if (body.requiredProgram !== undefined && body.requiredProgram !== existing.requiredProgram && existing.status !== "DRAFT") {
-      return apiError(res, "season_not_draft", "The required program can only change while the season is a draft.", 409);
+    if (
+      body.requiredProgram !== undefined &&
+      body.requiredProgram !== existing.requiredProgram &&
+      existing.status !== "DRAFT"
+    ) {
+      return apiError(
+        res,
+        "season_not_draft",
+        "The required program can only change while the season is a draft.",
+        409,
+      );
     }
     // Fixed at Start: who may study is settled before anyone is seated for real.
-    if (body.isCommunityWide !== undefined && body.isCommunityWide !== existing.isCommunityWide && existing.status !== "DRAFT") {
+    if (
+      body.isCommunityWide !== undefined &&
+      body.isCommunityWide !== existing.isCommunityWide &&
+      existing.status !== "DRAFT"
+    ) {
       return apiError(res, "season_started", "This season has started, so this can't change.", 409);
     }
     const wideAfter = body.isCommunityWide ?? existing.isCommunityWide;
@@ -221,7 +233,12 @@ export async function updateSeason(req: Request, res: Response) {
     // write below only lands while the status is still the one checked here.
     const finished = existing.status === "COMPLETED" || existing.status === "ARCHIVED";
     if (finished && body.graduatesOnPass !== undefined && body.graduatesOnPass !== existing.graduatesOnPass) {
-      return apiError(res, "season_finished", "Whether a season graduates people can't change once it has finished.", 409);
+      return apiError(
+        res,
+        "season_finished",
+        "Whether a season graduates people can't change once it has finished.",
+        409,
+      );
     }
     const blocked = statusChangeError(existing.status, body.status);
     if (blocked) return apiError(res, blocked.code, blocked.message, 409);
@@ -247,8 +264,7 @@ export async function updateSeason(req: Request, res: Response) {
   // Spec 02 D3: v1's canEditSeason let a season ADMIN rename, restatus and
   // delete. The allowlist is checked on the raw keys BEFORE parsing so an
   // identity field is a 403, not a silently-stripped 200.
-  const raw: Record<string, unknown> =
-    typeof req.body === "object" && req.body !== null ? req.body : {};
+  const raw: Record<string, unknown> = typeof req.body === "object" && req.body !== null ? req.body : {};
   if (Object.keys(raw).some((key) => !ADMIN_EDITABLE.has(key))) {
     return apiError(res, "forbidden_field", "Season identity fields are SUPER-only.", 403);
   }

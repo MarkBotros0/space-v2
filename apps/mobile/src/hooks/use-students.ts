@@ -122,10 +122,7 @@ function detailSchemaFor(role: UserRole, isSelf: boolean) {
 }
 
 /** `id`/`role` are null while the route param or session is unresolved. */
-export function useStudentDetail(
-  id: number | null,
-  role: UserRole | null,
-): UseQueryResult<StudentDetail> {
+export function useStudentDetail(id: number | null, role: UserRole | null): UseQueryResult<StudentDetail> {
   const myId = useSessionStore((s) => s.user?.id ?? null);
   return useQuery({
     queryKey: queryKeys.students.detail(id),
@@ -159,10 +156,7 @@ export function useStudentAttendanceHistory(
 }
 
 /** GET /students/:id/submissions — staff only (REG-83); never a DRAFT. */
-export function useStudentSubmissions(
-  id: number | null,
-  enabled: boolean,
-): UseQueryResult<StudentSubmissions> {
+export function useStudentSubmissions(id: number | null, enabled: boolean): UseQueryResult<StudentSubmissions> {
   return useQuery({
     queryKey: queryKeys.students.submissions(id),
     queryFn: async () => {

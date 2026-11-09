@@ -25,7 +25,11 @@ beforeEach(() => {
   }));
 });
 
-const payload = { title: "Quiz graded", body: "You scored 82.", data: { type: "QUIZ_GRADED", target: { entityType: "quiz" as const, entityId: null } } };
+const payload = {
+  title: "Quiz graded",
+  body: "You scored 82.",
+  data: { type: "QUIZ_GRADED", target: { entityType: "quiz" as const, entityId: null } },
+};
 
 describe("sendPushToUsers", () => {
   it("sends one message per registered device, in batches of 100", async () => {
@@ -34,13 +38,21 @@ describe("sendPushToUsers", () => {
     );
     await sendPushToUsers([1, 2], payload);
 
-    expect(mockDb.deviceToken.findMany).toHaveBeenCalledWith({ where: { userId: { in: [1, 2] } }, select: { token: true } });
+    expect(mockDb.deviceToken.findMany).toHaveBeenCalledWith({
+      where: { userId: { in: [1, 2] } },
+      select: { token: true },
+    });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe(EXPO_PUSH_URL);
     const first = JSON.parse(init.body);
     expect(first).toHaveLength(100);
-    expect(first[0]).toMatchObject({ to: "ExponentPushToken[0]", title: "Quiz graded", body: "You scored 82.", data: payload.data });
+    expect(first[0]).toMatchObject({
+      to: "ExponentPushToken[0]",
+      title: "Quiz graded",
+      body: "You scored 82.",
+      data: payload.data,
+    });
   });
 
   it("deletes tokens Expo reports as DeviceNotRegistered", async () => {
@@ -82,7 +94,10 @@ describe("createNotificationsBulk push fan-out", () => {
     mockDb.notificationPreference.findMany.mockResolvedValue([{ userId: 2, quizGraded: false }]);
     await createNotificationsBulk([1, 2], { type: "QUIZ_GRADED", title: "Quiz graded", link: "/student/quizzes" });
     await settle();
-    expect(mockDb.deviceToken.findMany).toHaveBeenCalledWith({ where: { userId: { in: [1] } }, select: { token: true } });
+    expect(mockDb.deviceToken.findMany).toHaveBeenCalledWith({
+      where: { userId: { in: [1] } },
+      select: { token: true },
+    });
     const sent = JSON.parse(fetchMock.mock.calls[0][1].body)[0];
     expect(sent.data).toEqual({ type: "QUIZ_GRADED", target: { entityType: "quiz", entityId: null } });
   });

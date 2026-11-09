@@ -23,9 +23,7 @@ export function isOnlineState(state: Pick<NetInfoState, "isConnected">): boolean
  * cleanup), so creating a second QueryClient doesn't stack subscriptions.
  */
 export function connectOnlineManager(): void {
-  onlineManager.setEventListener((setOnline) =>
-    NetInfo.addEventListener((state) => setOnline(isOnlineState(state))),
-  );
+  onlineManager.setEventListener((setOnline) => NetInfo.addEventListener((state) => setOnline(isOnlineState(state))));
 }
 
 /** The onlineManager's current verdict, re-rendering when it changes. */

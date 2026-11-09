@@ -5,11 +5,7 @@ import { View } from "react-native";
 import { FormScreen } from "../design/layout/form-screen";
 import { Combobox, DatePicker, Input, Text, Textarea, type ComboboxOption } from "../design/ui";
 import { FormField } from "../design/ui/form-field";
-import {
-  validateStudentForm,
-  type StudentFormErrors,
-  type StudentFormValues,
-} from "../lib/student-form";
+import { validateStudentForm, type StudentFormErrors, type StudentFormValues } from "../lib/student-form";
 
 interface StudentFormProps {
   title: string;
@@ -87,20 +83,14 @@ export function StudentForm({
       subtitle={subtitle}
       saveLabel={submitTitle}
       saving={submitting}
-      saveHint={
-        serverError ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
-      }
+      saveHint={serverError ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)}
       onSave={submit}
     >
       <View className="flex-col gap-6">
         {notice}
         <Section title="Personal">
           <FormField label="Full name" required error={errors.name}>
-            <Input
-              accessibilityLabel="Full name"
-              value={values.name}
-              onChangeText={(v) => setField("name", v)}
-            />
+            <Input accessibilityLabel="Full name" value={values.name} onChangeText={(v) => setField("name", v)} />
           </FormField>
           <FormField label="Date of birth" error={errors.dateOfBirth}>
             <DatePicker

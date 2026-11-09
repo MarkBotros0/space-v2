@@ -57,12 +57,8 @@ describe("assignmentWriteRequestSchema", () => {
   });
 
   it("defaults a picked day's time to 23:59 (R19) and drops the time when there is no day", () => {
-    expect(assignmentWriteRequestSchema.parse({ ...valid, dueDay: "2099-04-01" }).dueTime).toBe(
-      DEFAULT_DUE_TIME,
-    );
-    expect(
-      assignmentWriteRequestSchema.parse({ ...valid, dueDay: null, dueTime: "18:00" }).dueTime,
-    ).toBeNull();
+    expect(assignmentWriteRequestSchema.parse({ ...valid, dueDay: "2099-04-01" }).dueTime).toBe(DEFAULT_DUE_TIME);
+    expect(assignmentWriteRequestSchema.parse({ ...valid, dueDay: null, dueTime: "18:00" }).dueTime).toBeNull();
   });
 
   it("no longer accepts a device-composed instant: dueAt is not a field (C2)", () => {
@@ -73,9 +69,7 @@ describe("assignmentWriteRequestSchema", () => {
 
   it("bounds title at the server truth, 2–160 (R1, R18)", () => {
     expect(assignmentWriteRequestSchema.safeParse({ ...valid, title: "x" }).success).toBe(false);
-    expect(assignmentWriteRequestSchema.safeParse({ ...valid, title: "x".repeat(161) }).success).toBe(
-      false,
-    );
+    expect(assignmentWriteRequestSchema.safeParse({ ...valid, title: "x".repeat(161) }).success).toBe(false);
   });
 
   it("FORUM keeps forum config and drops file config (R14, R15)", () => {
@@ -128,21 +122,38 @@ describe("assignmentWriteRequestSchema", () => {
   });
 
   it("collapses duplicate group ids (closes R70) and drops them when targeting everyone (R24)", () => {
-    expect(
-      assignmentWriteRequestSchema.parse({ ...valid, isAllGroups: false, groupIds: [4, 4, 3] }).groupIds,
-    ).toEqual([4, 3]);
+    expect(assignmentWriteRequestSchema.parse({ ...valid, isAllGroups: false, groupIds: [4, 4, 3] }).groupIds).toEqual([
+      4, 3,
+    ]);
     expect(assignmentWriteRequestSchema.parse({ ...valid, groupIds: [4] }).groupIds).toEqual([]);
   });
 });
 
 describe("response additions", () => {
   const detail = {
-    id: 41, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
-    sessionId: null, sessionTitle: null, title: "Essay one", description: null,
-    dueAt: "2099-04-01T21:59:00.000Z", dueOrgDay: "2099-04-01", dueOrgTime: "23:59",
-    isOverdue: false, isAllGroups: true, type: "STANDARD", forumMinWords: null,
-    forumAllowComments: false, forumPostToRead: true, maxFileSizeMb: null, allowedMimeCategories: [],
-    groupIds: [], mySubmission: null, canManage: true, readOnly: false,
+    id: 41,
+    seasonId: 7,
+    seasonCode: "s7",
+    seasonTitle: "Spring 2099",
+    sessionId: null,
+    sessionTitle: null,
+    title: "Essay one",
+    description: null,
+    dueAt: "2099-04-01T21:59:00.000Z",
+    dueOrgDay: "2099-04-01",
+    dueOrgTime: "23:59",
+    isOverdue: false,
+    isAllGroups: true,
+    type: "STANDARD",
+    forumMinWords: null,
+    forumAllowComments: false,
+    forumPostToRead: true,
+    maxFileSizeMb: null,
+    allowedMimeCategories: [],
+    groupIds: [],
+    mySubmission: null,
+    canManage: true,
+    readOnly: false,
   };
 
   it("requires the server-derived org due fields on the detail (C4)", () => {

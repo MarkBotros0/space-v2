@@ -22,8 +22,7 @@ import { makeSession } from "./helpers/session";
 import NewSessionScreen from "../../app/(app)/session/new";
 import EditSessionScreen from "../../app/(app)/session/[id]/edit";
 
-const saveBar = (label: string) =>
-  fireEvent.press(within(screen.getByTestId("save-bar")).getByText(label));
+const saveBar = (label: string) => fireEvent.press(within(screen.getByTestId("save-bar")).getByText(label));
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
@@ -145,9 +144,7 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
     saveBar("Create session");
     expect(screen.getByLabelText("Title").props.accessibilityHint).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
-    expect(
-      within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above."),
-    ).toBeTruthy();
+    expect(within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above.")).toBeTruthy();
   });
 
   it("defaults the start to 18:00 and picks minutes on a 15-minute grid (REG-73)", () => {
@@ -214,11 +211,7 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
         const sessions =
           scope === "future"
             ? [seriesItem(12, "2099-03-15", 1, true), seriesItem(13, "2099-03-22", 0)]
-            : [
-                seriesItem(11, "2099-03-08", 0),
-                seriesItem(12, "2099-03-15", 1, true),
-                seriesItem(13, "2099-03-22", 0),
-              ];
+            : [seriesItem(11, "2099-03-08", 0), seriesItem(12, "2099-03-15", 1, true), seriesItem(13, "2099-03-22", 0)];
         return Promise.resolve({
           data: { data: { scope, sessions, attendanceCount: 1, videoProgressCount: 0 } },
         });
@@ -238,9 +231,7 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
 
     fireEvent.press(screen.getByLabelText("Apply to"));
     fireEvent.press(screen.getByText("This and future sessions"));
-    expect(
-      await screen.findByText("This affects 2 sessions, 1 with attendance recorded."),
-    ).toBeTruthy();
+    expect(await screen.findByText("This affects 2 sessions, 1 with attendance recorded.")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/sessions/12/series", { params: { scope: "future" } });
 
     fireEvent.press(screen.getByLabelText("Hour"));
@@ -270,9 +261,7 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
     expect(screen.getByLabelText("Title").props.accessibilityHint).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Title"), "Week 3");
     expect(screen.getByLabelText("Title").props.accessibilityHint).toBeFalsy();
-    expect(
-      within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above."),
-    ).toBeNull();
+    expect(within(screen.getByTestId("save-bar")).queryByText("Fix the fields marked above.")).toBeNull();
   });
 
   it("hides the scope selector for a one-off session (spec 03 R29)", async () => {
@@ -299,10 +288,7 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
     routeGets(detail({ recurrenceGroupId: null }));
     del
       .mockRejectedValueOnce(
-        conflict(
-          "has_student_records",
-          "Attendance or video progress has been recorded; pass force to delete it too.",
-        ),
+        conflict("has_student_records", "Attendance or video progress has been recorded; pass force to delete it too."),
       )
       .mockResolvedValueOnce({ data: { data: { deleted: 1 } } });
     renderWithProviders(<EditSessionScreen />);
@@ -334,8 +320,6 @@ describe("EditSessionScreen (/session/[id]/edit)", () => {
   it("refuses a caller who cannot manage the session", async () => {
     routeGets(detail({ canManageCheckIn: false }));
     renderWithProviders(<EditSessionScreen />);
-    expect(
-      await screen.findByText("Only this season's admins can edit its sessions."),
-    ).toBeTruthy();
+    expect(await screen.findByText("Only this season's admins can edit its sessions.")).toBeTruthy();
   });
 });

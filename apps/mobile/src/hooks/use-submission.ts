@@ -101,9 +101,7 @@ export function useReviewSubmission(publicId: string) {
     onSuccess: () => {
       // Read before invalidating: the detail names the student and assignment
       // whose other screens this verdict changes.
-      const detail = queryClient.getQueryData<SubmissionDetail>(
-        queryKeys.submissions.detail(publicId),
-      );
+      const detail = queryClient.getQueryData<SubmissionDetail>(queryKeys.submissions.detail(publicId));
       for (const queryKey of reviewInvalidations(publicId, detail)) {
         void queryClient.invalidateQueries({ queryKey });
       }
@@ -128,12 +126,7 @@ export function reviewInvalidations(
     detail ? queryKeys.engagement.student(detail.studentUserId) : queryKeys.engagement.all,
   ];
   if (!detail) {
-    return [
-      ...common,
-      queryKeys.students.details(),
-      queryKeys.assignments.details(),
-      queryKeys.assignments.trackers(),
-    ];
+    return [...common, queryKeys.students.details(), queryKeys.assignments.details(), queryKeys.assignments.trackers()];
   }
   return [
     ...common,

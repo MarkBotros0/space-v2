@@ -114,7 +114,9 @@ describe("reads a student is refused", () => {
 
   it("alumni-only events are invisible (404, not 403)", async () => {
     await expectStatuses(app, w.tokens.studentA, [["get", `/api/v1/events/${w.eventAlumniId}`, 404]]);
-    const list = await request(app).get("/api/v1/events?from=2099-01-01T00:00:00.000Z&to=2099-12-31T00:00:00.000Z").set(asA());
+    const list = await request(app)
+      .get("/api/v1/events?from=2099-01-01T00:00:00.000Z&to=2099-12-31T00:00:00.000Z")
+      .set(asA());
     const ids = (list.body.data.events as { id: number }[]).map((e) => e.id);
     expect(ids).toContain(w.eventAllId);
     expect(ids).not.toContain(w.eventAlumniId);
@@ -122,8 +124,12 @@ describe("reads a student is refused", () => {
 
   it("no response a student can reach leaks a staff note", async () => {
     for (const path of [
-      "/api/v1/me", "/api/v1/me/dashboard", "/api/v1/me/profile", "/api/v1/me/season",
-      `/api/v1/students/${w.ids.studentA}`, `/api/v1/students/${w.ids.studentA}/engagement`,
+      "/api/v1/me",
+      "/api/v1/me/dashboard",
+      "/api/v1/me/profile",
+      "/api/v1/me/season",
+      `/api/v1/students/${w.ids.studentA}`,
+      `/api/v1/students/${w.ids.studentA}/engagement`,
     ]) {
       const res = await request(app).get(path).set(asA());
       expect([path, JSON.stringify(res.body)]).not.toEqual([path, expect.stringContaining("Staff-only pastoral note")]);
@@ -136,7 +142,12 @@ describe("staff writes a student is refused", () => {
     await expectStatuses(app, w.tokens.studentA, [
       ["post", "/api/v1/seasons", 403, { code: "X", title: "X" }],
       ["patch", `/api/v1/seasons/${w.seasonId}`, 403, { title: "Hijacked" }],
-      ["post", "/api/v1/sessions", 403, { seasonId: w.seasonId, title: "Hijack", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60 }],
+      [
+        "post",
+        "/api/v1/sessions",
+        403,
+        { seasonId: w.seasonId, title: "Hijack", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60 },
+      ],
       ["patch", `/api/v1/sessions/${w.sessionId}`, 403, { title: "Hijacked" }],
       ["delete", `/api/v1/sessions/${w.sessionId}`, 403],
       ["post", `/api/v1/sessions/${w.sessionId}/attendance`, 403, { records: [] }],
@@ -160,7 +171,9 @@ describe("staff writes a student is refused", () => {
   it("left every target unchanged", async () => {
     expect((await db.session.findUnique({ where: { id: w.sessionId } }))?.title).toBe("MW Session");
     expect((await db.assignment.findUnique({ where: { id: w.assignmentId } }))?.title).toBe("MW Assignment");
-    expect((await db.engagementNote.findUnique({ where: { id: w.noteOnAId } }))?.body).toBe("Staff-only pastoral note about A");
+    expect((await db.engagementNote.findUnique({ where: { id: w.noteOnAId } }))?.body).toBe(
+      "Staff-only pastoral note about A",
+    );
     expect((await db.submission.findUnique({ where: { publicId: w.submissionBPublicId } }))?.status).toBe("SUBMITTED");
   });
 });
@@ -178,7 +191,9 @@ describe("the student's own submission journey", () => {
   it("starting again returns the same submission, not a second one", async () => {
     const res = await request(app).put(`/api/v1/submissions/by-assignment/${w.assignmentId}`).set(asA());
     expect(res.body.data.publicId).toBe(publicId);
-    expect(await db.submission.count({ where: { assignmentId: w.assignmentId, studentUserId: w.ids.studentA } })).toBe(1);
+    expect(await db.submission.count({ where: { assignmentId: w.assignmentId, studentUserId: w.ids.studentA } })).toBe(
+      1,
+    );
   });
 
   it("cannot start one for another season's assignment", async () => {
@@ -196,7 +211,10 @@ describe("the student's own submission journey", () => {
   });
 
   it("submits, which stamps submittedAt", async () => {
-    const res = await request(app).patch(`/api/v1/submissions/${publicId}`).set(asA()).send({ text: "final", submit: true });
+    const res = await request(app)
+      .patch(`/api/v1/submissions/${publicId}`)
+      .set(asA())
+      .send({ text: "final", submit: true });
     expect(res.body.data).toEqual({ saved: true, submitted: true });
     const row = await db.submission.findUnique({ where: { publicId }, select: { status: true, submittedAt: true } });
     expect(row?.status).toBe("SUBMITTED");
@@ -204,7 +222,10 @@ describe("the student's own submission journey", () => {
   });
 
   it("cannot review their own submission", async () => {
-    const res = await request(app).post(`/api/v1/submissions/${publicId}/review`).set(asA()).send({ feedback: "great" });
+    const res = await request(app)
+      .post(`/api/v1/submissions/${publicId}/review`)
+      .set(asA())
+      .send({ feedback: "great" });
     expect(res.status).toBe(403);
   });
 

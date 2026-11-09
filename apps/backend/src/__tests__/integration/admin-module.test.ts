@@ -97,18 +97,30 @@ describe("reads a season admin is refused", () => {
 describe("season-admin writes", () => {
   it("creates a session in their season and is refused in another", async () => {
     const body = { title: "Admin session", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60 };
-    const ok = await request(app).post("/api/v1/sessions").set(asAdmin()).send({ ...body, seasonId: w.seasonId });
+    const ok = await request(app)
+      .post("/api/v1/sessions")
+      .set(asAdmin())
+      .send({ ...body, seasonId: w.seasonId });
     expect(ok.status).toBe(201);
-    const other = await request(app).post("/api/v1/sessions").set(asAdmin()).send({ ...body, seasonId: w.otherSeasonId });
+    const other = await request(app)
+      .post("/api/v1/sessions")
+      .set(asAdmin())
+      .send({ ...body, seasonId: w.otherSeasonId });
     expect(other.status).toBe(403);
     expect(await db.session.count({ where: { seasonId: w.otherSeasonId, title: "Admin session" } })).toBe(0);
   });
 
   it("creates a quiz in their season and is refused in another", async () => {
     const body = { title: "Admin quiz", kind: "PAPER", maxScore: 20 };
-    const ok = await request(app).post("/api/v1/quizzes").set(asAdmin()).send({ ...body, seasonId: w.seasonId });
+    const ok = await request(app)
+      .post("/api/v1/quizzes")
+      .set(asAdmin())
+      .send({ ...body, seasonId: w.seasonId });
     expect(ok.status).toBe(201);
-    const other = await request(app).post("/api/v1/quizzes").set(asAdmin()).send({ ...body, seasonId: w.otherSeasonId });
+    const other = await request(app)
+      .post("/api/v1/quizzes")
+      .set(asAdmin())
+      .send({ ...body, seasonId: w.otherSeasonId });
     expect(other.status).toBe(403);
   });
 
@@ -143,14 +155,22 @@ describe("season-admin writes", () => {
   });
 
   it("renames a group in their season", async () => {
-    const res = await request(app).patch(`/api/v1/groups/${w.groupAId}`).set(asAdmin()).send({ name: "Group A renamed" });
+    const res = await request(app)
+      .patch(`/api/v1/groups/${w.groupAId}`)
+      .set(asAdmin())
+      .send({ name: "Group A renamed" });
     expect(res.status).toBe(200);
     expect((await db.group.findUnique({ where: { id: w.groupAId } }))?.name).toBe("Group A renamed");
   });
 
   it("an admin of another season can't write here", async () => {
     await expectStatuses(app, w.tokens.otherAdmin, [
-      ["post", "/api/v1/sessions", 403, { seasonId: w.seasonId, title: "Intruder", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60 }],
+      [
+        "post",
+        "/api/v1/sessions",
+        403,
+        { seasonId: w.seasonId, title: "Intruder", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60 },
+      ],
       ["post", `/api/v1/sessions/${w.sessionId}/check-in-open`, 403],
       ["patch", `/api/v1/groups/${w.groupBId}`, 403, { name: "Intruder" }],
       ["post", `/api/v1/submissions/${w.submissionBPublicId}/review`, 403, { feedback: "Intruder" }],

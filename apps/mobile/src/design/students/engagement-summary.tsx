@@ -23,10 +23,24 @@ function FigureColumn({ label, pct, detail }: Figure) {
       accessibilityLabel={`${label}: ${pct}%${detail ? `, ${detail}` : ""}`}
       className="min-w-0 flex-1 items-center gap-0.5 px-1"
     >
-      <Text variant="title" tabular numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} maxFontSizeMultiplier={1.3}>
+      <Text
+        variant="title"
+        tabular
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
+        maxFontSizeMultiplier={1.3}
+      >
         {`${pct}%`}
       </Text>
-      <Text variant="caption" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} maxFontSizeMultiplier={1.3} className="font-medium text-foreground">
+      <Text
+        variant="caption"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        maxFontSizeMultiplier={1.3}
+        className="font-medium text-foreground"
+      >
         {label}
       </Text>
       {detail ? (
@@ -42,8 +56,7 @@ export function EngagementSummary({ studentId }: { studentId: number }) {
   const q = useStudentEngagement(studentId, true);
   if (q.isPending || (q.isError && isNoSeasonError(q.error))) return null;
   // A failed background refresh keeps the figures it had.
-  if (!q.data)
-    return <InlineError message="Couldn't load engagement." onRetry={() => void q.refetch()} />;
+  if (!q.data) return <InlineError message="Couldn't load engagement." onRetry={() => void q.refetch()} />;
   const e = q.data;
   const figures: Figure[] = [
     { label: "Attendance", pct: e.attendancePct, detail: `${e.attendancePresent} of ${e.attendanceTotal}` },

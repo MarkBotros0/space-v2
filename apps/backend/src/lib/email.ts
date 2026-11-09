@@ -5,12 +5,7 @@ import { PASSWORD_RESET_TTL_MINUTES } from "../../../../packages/shared/src/inde
 
 import { config } from "./config";
 import { INLINE_IMAGES } from "./email-assets";
-import {
-  INVITE_SUBJECT,
-  buildInviteHtml,
-  buildPasswordResetHtml,
-  type StoreLinks,
-} from "./email-templates";
+import { INVITE_SUBJECT, buildInviteHtml, buildPasswordResetHtml, type StoreLinks } from "./email-templates";
 import { escapeHtml } from "./html";
 import { formatInOrgTime } from "./org-time";
 
@@ -130,11 +125,9 @@ export async function sendPasswordResetEmail(email: string, code: string, expire
   }
 
   const link = `${config.mobileAppScheme}://reset-password?token=${code}`;
-  await sendHtml(email, "JPC Space — Password Reset", buildPasswordResetHtml(
-      link,
-      code,
-      PASSWORD_RESET_TTL_MINUTES,
-      formatInOrgTime(expiresAt),
-      storeLinks(),
-    ));
+  await sendHtml(
+    email,
+    "JPC Space — Password Reset",
+    buildPasswordResetHtml(link, code, PASSWORD_RESET_TTL_MINUTES, formatInOrgTime(expiresAt), storeLinks()),
+  );
 }

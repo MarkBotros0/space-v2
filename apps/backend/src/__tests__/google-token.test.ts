@@ -4,14 +4,7 @@
  * minted for another app, by another issuer, or for an unverified address
  * from signing anyone in. No network, no database.
  */
-import {
-  createLocalJWKSet,
-  exportJWK,
-  generateKeyPair,
-  SignJWT,
-  type JWTVerifyGetKey,
-  type KeyLike,
-} from "jose";
+import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type JWTVerifyGetKey, type KeyLike } from "jose";
 
 import { verifyGoogleIdToken } from "../lib/auth/google";
 
@@ -73,9 +66,7 @@ describe("verifyGoogleIdToken", () => {
 
   it("accepts any of the configured audiences", async () => {
     const token = await sign({ aud: "ios.apps.googleusercontent.com" });
-    await expect(
-      verifyGoogleIdToken(token, [AUD, "ios.apps.googleusercontent.com"], keys),
-    ).resolves.not.toBeNull();
+    await expect(verifyGoogleIdToken(token, [AUD, "ios.apps.googleusercontent.com"], keys)).resolves.not.toBeNull();
   });
 
   it.each<[string, Claims]>([
@@ -89,9 +80,7 @@ describe("verifyGoogleIdToken", () => {
   });
 
   it("refuses a token signed by a key that isn't Google's", async () => {
-    await expect(
-      verifyGoogleIdToken(await sign({ key: otherKey }), [AUD], keys),
-    ).resolves.toBeNull();
+    await expect(verifyGoogleIdToken(await sign({ key: otherKey }), [AUD], keys)).resolves.toBeNull();
   });
 
   it("refuses garbage", async () => {

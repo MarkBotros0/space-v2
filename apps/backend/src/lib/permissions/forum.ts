@@ -26,10 +26,7 @@ import { leadsStudentInSeason } from "./submission";
  * target row, so a group-mate's unposted draft was a valid comment target for
  * anyone who could name its sequential id (spec 14 R43).
  */
-export async function canCommentOnForumSubmission(
-  user: SessionUser,
-  submissionId: number,
-): Promise<boolean> {
+export async function canCommentOnForumSubmission(user: SessionUser, submissionId: number): Promise<boolean> {
   const sub = await db.submission.findUnique({
     where: { id: submissionId },
     select: {
@@ -69,10 +66,7 @@ export async function canCommentOnForumSubmission(
  * above. The post's own author is NOT admitted for someone else's comment:
  * owning a thread is not moderating it.
  */
-export async function canDeleteForumComment(
-  user: SessionUser,
-  commentId: number,
-): Promise<boolean> {
+export async function canDeleteForumComment(user: SessionUser, commentId: number): Promise<boolean> {
   const comment = await db.forumComment.findUnique({
     where: { id: commentId },
     select: {
@@ -106,14 +100,9 @@ export async function canDeleteForumComment(
  * capability — v1 has no staff forum screen whatsoever, so nobody could see a
  * thread to moderate it (spec 14 §10 D2/D3).
  */
-export type ForumAudience =
-  | { kind: "student"; groupId: number | null }
-  | { kind: "staff"; groupIds: number[] | null };
+export type ForumAudience = { kind: "student"; groupId: number | null } | { kind: "staff"; groupIds: number[] | null };
 
-export async function forumAudienceFor(
-  user: SessionUser,
-  assignmentId: number,
-): Promise<ForumAudience | null> {
+export async function forumAudienceFor(user: SessionUser, assignmentId: number): Promise<ForumAudience | null> {
   const assignment = await db.assignment.findFirst({
     where: { id: assignmentId, deletedAt: null, type: "FORUM" },
     select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },

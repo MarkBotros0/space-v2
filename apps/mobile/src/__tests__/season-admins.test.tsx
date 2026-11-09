@@ -9,7 +9,13 @@ jest.mock("../design/ui/toaster", () => ({
 }));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ code: "s7" }),
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), dismissAll: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    dismissTo: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -40,7 +46,13 @@ const detail = {
   canAdminister: true,
   groups: [],
 };
-const pat = { userId: 21, name: "Pat Admin", email: "pat@jpc.test", assignedAt: "2099-01-02T00:00:00.000Z", assignedByName: "Su" };
+const pat = {
+  userId: 21,
+  name: "Pat Admin",
+  email: "pat@jpc.test",
+  assignedAt: "2099-01-02T00:00:00.000Z",
+  assignedByName: "Su",
+};
 const person = (id: number, name: string, lastSeason: string | null) => ({
   id,
   name,
@@ -67,7 +79,11 @@ beforeEach(() => {
       return Promise.resolve({
         data: {
           data: {
-            people: [person(21, "Pat Admin", "GBV 2025"), person(22, "Rana Admin", "GBV 2025"), person(23, "New Person", null)],
+            people: [
+              person(21, "Pat Admin", "GBV 2025"),
+              person(22, "Rana Admin", "GBV 2025"),
+              person(23, "New Person", null),
+            ],
           },
         },
       });
@@ -134,9 +150,7 @@ describe("Admins screen", () => {
     renderWithProviders(<SeasonDetailScreen />);
     fireEvent.press(await screen.findByLabelText("Remove Pat Admin"));
     expect(screen.getByText("Remove admin?")).toBeTruthy();
-    expect(
-      screen.getByText(`Pat Admin will no longer be able to administer TEST 2099.`),
-    ).toBeTruthy();
+    expect(screen.getByText(`Pat Admin will no longer be able to administer TEST 2099.`)).toBeTruthy();
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Remove"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7/admins/21"));

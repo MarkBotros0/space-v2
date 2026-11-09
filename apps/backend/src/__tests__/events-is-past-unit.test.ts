@@ -20,8 +20,12 @@ const app = createApp();
 const signToken = async () =>
   (
     await signAccessToken({
-      userId: 1, role: "SUPER", seasonAdminIds: [], groupLeaderIds: [],
-      activeSeasonId: null, graduationYear: null,
+      userId: 1,
+      role: "SUPER",
+      seasonAdminIds: [],
+      groupLeaderIds: [],
+      activeSeasonId: null,
+      graduationYear: null,
     })
   ).token;
 
@@ -46,7 +50,9 @@ async function isPastOf(r: ReturnType<typeof row>, now = NOW): Promise<boolean> 
   const token = await signToken();
   mockDb.jpcEvent.findMany.mockResolvedValue([r]);
   mockDb.jpcEvent.count.mockResolvedValue(1);
-  const res = await request(app).get("/api/v1/events").set({ authorization: `Bearer ${token}` });
+  const res = await request(app)
+    .get("/api/v1/events")
+    .set({ authorization: `Bearer ${token}` });
   expect(res.status).toBe(200);
   return res.body.data.events[0].isPast;
 }

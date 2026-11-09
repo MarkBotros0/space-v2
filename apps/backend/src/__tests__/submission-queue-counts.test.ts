@@ -15,8 +15,12 @@ import { countQueue } from "../routes/submissions/queue-counts";
 import { listSubmissionQueue } from "../routes/submissions/queue";
 
 const superUser: SessionUser = {
-  userId: 1, role: "SUPER", seasonAdminIds: [], groupLeaderIds: [],
-  activeSeasonId: null, graduationYear: null,
+  userId: 1,
+  role: "SUPER",
+  seasonAdminIds: [],
+  groupLeaderIds: [],
+  activeSeasonId: null,
+  graduationYear: null,
 };
 
 function fakeRes() {
@@ -27,10 +31,7 @@ function fakeRes() {
 }
 async function list(query: Record<string, string>) {
   const res = fakeRes();
-  await listSubmissionQueue(
-    { user: superUser, query } as unknown as Request,
-    res as unknown as Response,
-  );
+  await listSubmissionQueue({ user: superUser, query } as unknown as Request, res as unknown as Response);
   return (res.json.mock.calls[0]?.[0] as { data: { counts: unknown } }).data;
 }
 

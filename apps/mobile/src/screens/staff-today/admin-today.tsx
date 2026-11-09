@@ -53,9 +53,7 @@ function AtRiskPreview({ data }: { data: StaffSeasonDashboard }) {
       }))}
       total={cohort.atRiskTotal}
       onOpen={(id) => router.push({ pathname: "/student/[id]", params: { id: String(id) } })}
-      onSeeAll={() =>
-        router.push({ pathname: "/attention/at-risk", params: { seasonId: String(season.id) } })
-      }
+      onSeeAll={() => router.push({ pathname: "/attention/at-risk", params: { seasonId: String(season.id) } })}
     />
   );
 }
@@ -94,10 +92,7 @@ export function AdminToday() {
     );
   else {
     const next = dash.data?.nextSession;
-    const hero =
-      dash.data && next ? (
-        <LiveSessionHero session={next} todayKey={dash.data.todayOrgDay} />
-      ) : null;
+    const hero = dash.data && next ? <LiveSessionHero session={next} todayKey={dash.data.todayOrgDay} /> : null;
     body = (
       <>
         {/* Owner 2026-11-08: the season ring first; 2026-11-09: then an overdue
@@ -106,10 +101,7 @@ export function AdminToday() {
         {dash.isPending ? (
           <RouteSkeleton />
         ) : dash.isError || !dash.data ? (
-          <InlineError
-            message="Couldn't load the season figures."
-            onRetry={() => void dash.refetch()}
-          />
+          <InlineError message="Couldn't load the season figures." onRetry={() => void dash.refetch()} />
         ) : (
           <SeasonFigures data={dash.data} />
         )}
@@ -143,9 +135,7 @@ export function AdminToday() {
     >
       <View className="flex-col gap-4">
         {/* A season body places the card itself, under what is time-critical. */}
-        {current.isPending || current.isError || current.seasonId === null ? (
-          <AnnouncementsHomeCard />
-        ) : null}
+        {current.isPending || current.isError || current.seasonId === null ? <AnnouncementsHomeCard /> : null}
         {body}
       </View>
     </Screen>

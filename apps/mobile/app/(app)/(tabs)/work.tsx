@@ -16,11 +16,7 @@ export default function WorkTab() {
   if (role !== "STUDENT") {
     return (
       <Screen title="To do">
-        <EmptyState
-          icon={NAV_ICONS.todo}
-          title="To do"
-          description="This screen isn't available for your role."
-        />
+        <EmptyState icon={NAV_ICONS.todo} title="To do" description="This screen isn't available for your role." />
       </Screen>
     );
   }

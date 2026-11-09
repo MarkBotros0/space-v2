@@ -1,5 +1,11 @@
 // apps/mobile/src/hooks/use-import.ts
-import { useMutation, useQuery, useQueryClient, type UseMutationResult, type UseQueryResult } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseMutationResult,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 import {
   groupImportPreviewSchema,
   groupImportResultSchema,
@@ -53,11 +59,7 @@ export function useStudentImportPreview(): UseMutationResult<
   });
 }
 
-export function useStudentImportCommit(): UseMutationResult<
-  StudentImportResult,
-  unknown,
-  StudentImportCommitInput
-> {
+export function useStudentImportCommit(): UseMutationResult<StudentImportResult, unknown, StudentImportCommitInput> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input) => {

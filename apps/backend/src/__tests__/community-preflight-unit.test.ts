@@ -16,11 +16,7 @@ jest.mock("../db/client", () => ({
   },
 }));
 
-import {
-  applyRefusal,
-  findRoleRuleViolations,
-  readOnlyReport,
-} from "../../scripts/community-preflight";
+import { applyRefusal, findRoleRuleViolations, readOnlyReport } from "../../scripts/community-preflight";
 
 const missingColumn = Object.assign(new Error("The column `result` does not exist in the current database."), {
   code: "P2022",
@@ -63,7 +59,10 @@ describe("readOnlyReport community-wide check", () => {
     mockCount.mockResolvedValue(0);
     mockFindMany.mockImplementation(async (args: { select?: { isCommunityWide?: boolean } }) =>
       args?.select?.isCommunityWide
-        ? [{ id: 11, isCommunityWide: true }, { id: 12, isCommunityWide: false }]
+        ? [
+            { id: 11, isCommunityWide: true },
+            { id: 12, isCommunityWide: false },
+          ]
         : [],
     );
     const lines: string[] = [];

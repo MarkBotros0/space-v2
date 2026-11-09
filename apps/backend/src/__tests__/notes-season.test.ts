@@ -41,9 +41,16 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockDb.user.findFirst.mockResolvedValue({ id: 11 });
   mockDb.engagementNote.create.mockResolvedValue({
-    id: 1, body: "<p>A note</p>", visibility: "ADMINS", followUpFlagged: false,
-    seasonId: 7, createdAt: new Date(), updatedAt: new Date(), authorUserId: 1,
-    authorUser: { name: "Admin", role: "ADMIN" }, season: { title: "S7" },
+    id: 1,
+    body: "<p>A note</p>",
+    visibility: "ADMINS",
+    followUpFlagged: false,
+    seasonId: 7,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    authorUserId: 1,
+    authorUser: { name: "Admin", role: "ADMIN" },
+    season: { title: "S7" },
   });
 });
 

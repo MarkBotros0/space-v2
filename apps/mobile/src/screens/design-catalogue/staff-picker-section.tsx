@@ -30,11 +30,26 @@ export function StaffPickerSection() {
   return (
     <CatalogueSection id="staff-picker" title="Staff picker">
       <View className="flex-col gap-4">
-        {frame("People", <StaffPickerBody people={PEOPLE} state="ready" query="" onQuery={noop} error={null} onPick={noop} />)}
-        {frame("Nobody left", <StaffPickerBody people={[]} state="ready" query="" onQuery={noop} error={null} onPick={noop} />)}
-        {frame("No match", <StaffPickerBody people={[]} state="ready" query="zz" onQuery={noop} error={null} onPick={noop} />)}
-        {frame("Loading", <StaffPickerBody people={[]} state="loading" query="" onQuery={noop} error={null} onPick={noop} />)}
-        {frame("Load failed", <StaffPickerBody people={[]} state="error" query="" onQuery={noop} error={null} onPick={noop} />)}
+        {frame(
+          "People",
+          <StaffPickerBody people={PEOPLE} state="ready" query="" onQuery={noop} error={null} onPick={noop} />,
+        )}
+        {frame(
+          "Nobody left",
+          <StaffPickerBody people={[]} state="ready" query="" onQuery={noop} error={null} onPick={noop} />,
+        )}
+        {frame(
+          "No match",
+          <StaffPickerBody people={[]} state="ready" query="zz" onQuery={noop} error={null} onPick={noop} />,
+        )}
+        {frame(
+          "Loading",
+          <StaffPickerBody people={[]} state="loading" query="" onQuery={noop} error={null} onPick={noop} />,
+        )}
+        {frame(
+          "Load failed",
+          <StaffPickerBody people={[]} state="error" query="" onQuery={noop} error={null} onPick={noop} />,
+        )}
         {frame(
           "Refused",
           <StaffPickerBody

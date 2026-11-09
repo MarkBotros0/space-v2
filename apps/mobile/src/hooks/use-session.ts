@@ -64,12 +64,7 @@ export async function bootSession(): Promise<void> {
     // "anonymous" so the app is usable, but leave the stored tokens
     // alone so the next launch (once connectivity returns) can retry
     // instead of forcing a full re-login.
-    if (
-      axios.isAxiosError(err) &&
-      err.response &&
-      err.response.status >= 400 &&
-      err.response.status < 500
-    ) {
+    if (axios.isAxiosError(err) && err.response && err.response.status >= 400 && err.response.status < 500) {
       await forgetDevice();
       await clearSession();
     }

@@ -44,7 +44,10 @@ function EmptyState({
   return (
     <View className={cn("flex-col items-center justify-center gap-4 rounded-group bg-surface px-6 py-12", className)}>
       {Icon ? (
-        <View testID="empty-state-disc" className={cn("h-14 w-14 items-center justify-center rounded-full", TONES[tone].disc)}>
+        <View
+          testID="empty-state-disc"
+          className={cn("h-14 w-14 items-center justify-center rounded-full", TONES[tone].disc)}
+        >
           <Icon size={24} className={TONES[tone].icon} />
         </View>
       ) : null}
@@ -52,7 +55,11 @@ function EmptyState({
         <Text variant="headline" className="text-center text-foreground">
           {title}
         </Text>
-        {description ? <Text variant="subhead" className="text-center text-muted-foreground">{description}</Text> : null}
+        {description ? (
+          <Text variant="subhead" className="text-center text-muted-foreground">
+            {description}
+          </Text>
+        ) : null}
       </View>
       {action ? (
         <View className="mt-1">

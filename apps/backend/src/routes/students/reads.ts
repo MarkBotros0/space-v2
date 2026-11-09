@@ -69,10 +69,7 @@ export async function getStudent(req: Request, res: Response) {
  * gates (see canReadEnrollmentHistory). 403 before 404, as the detail does, so
  * an out-of-scope id and a missing one look the same to a scoped caller.
  */
-async function resolveHistoryTarget(
-  req: Request,
-  res: Response,
-): Promise<{ user: SessionUser; id: number } | null> {
+async function resolveHistoryTarget(req: Request, res: Response): Promise<{ user: SessionUser; id: number } | null> {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) {

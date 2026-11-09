@@ -74,7 +74,10 @@ export function EventDayList({ groups, today }: { groups: CalendarDayGroup[]; to
               {cue ? (
                 <Text
                   variant="caption"
-                  className={cn("shrink-0 pb-1.5 pr-4", group.dayKey === today ? "font-semibold text-foreground" : "text-muted-foreground")}
+                  className={cn(
+                    "shrink-0 pb-1.5 pr-4",
+                    group.dayKey === today ? "font-semibold text-foreground" : "text-muted-foreground",
+                  )}
                 >
                   {cue}
                 </Text>

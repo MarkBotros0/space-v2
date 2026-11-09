@@ -43,12 +43,7 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
   // A forum post has exactly one writer (plan 14 D-14.1). A save would replace
   // a posted body with unescaped text while the row stays SUBMITTED.
   if (sub.assignment.type === "FORUM") {
-    return apiError(
-      res,
-      "use_forum_endpoint",
-      "Post forum responses through the forum endpoint.",
-      409,
-    );
+    return apiError(res, "use_forum_endpoint", "Post forum responses through the forum endpoint.", 409);
   }
   // Only DRAFT and RETURNED are editable, and only by a student still actively
   // enrolled in the assignment's season (see ./editable.ts). Order: who may
@@ -67,12 +62,7 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
     if (htmlToPlainText(parsed.data.text) === "") {
       const attached = await db.submissionFile.count({ where: { submissionId: sub.id } });
       if (attached === 0) {
-        return apiError(
-          res,
-          "empty_submission",
-          "Write a response or attach a file before submitting.",
-          400,
-        );
+        return apiError(res, "empty_submission", "Write a response or attach a file before submitting.", 400);
       }
     }
     // The transition is conditional on the row still being editable, so two
@@ -147,12 +137,7 @@ export async function startSubmission(req: Request, res: Response) {
   // peer's work) and stores escaped HTML. Creating the row here would let a
   // client skip all three with a follow-up PATCH {submit:true} (plan 14 D-14.1).
   if (assignment.type === "FORUM") {
-    return apiError(
-      res,
-      "use_forum_endpoint",
-      "Post forum responses through the forum endpoint.",
-      409,
-    );
+    return apiError(res, "use_forum_endpoint", "Post forum responses through the forum endpoint.", 409);
   }
 
   // An ACTIVE enrolment, not canAccessSeason: that accepts any enrolment row,

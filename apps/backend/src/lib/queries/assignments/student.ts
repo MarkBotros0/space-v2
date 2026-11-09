@@ -61,10 +61,7 @@ export async function listAssignmentStatesForStudent(
     where: {
       seasonId,
       deletedAt: null,
-      OR: [
-        { isAllGroups: true },
-        ...(groupId !== null ? [{ targets: { some: { groupId } } }] : []),
-      ],
+      OR: [{ isAllGroups: true }, ...(groupId !== null ? [{ targets: { some: { groupId } } }] : [])],
     },
     orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
     select: {

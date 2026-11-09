@@ -20,8 +20,12 @@ let token: string;
 
 beforeAll(async () => {
   ({ token } = await signAccessToken({
-    userId: 1, role: "SUPER", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: null, graduationYear: null,
+    userId: 1,
+    role: "SUPER",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: null,
+    graduationYear: null,
   }));
 });
 
@@ -46,7 +50,9 @@ beforeEach(() => {
 });
 
 const get = (qs: string) =>
-  request(app).get(`/api/v1/events${qs}`).set({ authorization: `Bearer ${token}` });
+  request(app)
+    .get(`/api/v1/events${qs}`)
+    .set({ authorization: `Bearer ${token}` });
 
 describe("event cursor", () => {
   it("round-trips: the filter starts strictly after the encoded row", () => {

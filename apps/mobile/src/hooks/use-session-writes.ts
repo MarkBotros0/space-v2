@@ -67,11 +67,7 @@ export function useDeleteSession(id: number) {
 }
 
 /** The scope preview (D-16.8). Pass enabled=false for scope "one" — nothing to preview. */
-export function useSessionSeries(
-  id: number,
-  scope: RecurrenceScope,
-  enabled: boolean,
-): UseQueryResult<SessionSeries> {
+export function useSessionSeries(id: number, scope: RecurrenceScope, enabled: boolean): UseQueryResult<SessionSeries> {
   return useQuery({
     queryKey: queryKeys.sessions.series(id, scope),
     queryFn: async () => {

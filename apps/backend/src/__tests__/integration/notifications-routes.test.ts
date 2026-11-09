@@ -47,9 +47,7 @@ describe("GET /api/v1/notifications", () => {
   it("returns the caller's own rows with the parsed target and a real unread count", async () => {
     await seedFor(aliceId, 3);
 
-    const res = await request(app)
-      .get("/api/v1/notifications")
-      .set("authorization", `Bearer ${aliceToken}`);
+    const res = await request(app).get("/api/v1/notifications").set("authorization", `Bearer ${aliceToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(3);
@@ -63,9 +61,7 @@ describe("GET /api/v1/notifications", () => {
   it("NEVER returns another user's rows (ruling C8)", async () => {
     await seedFor(bobId, 2);
 
-    const res = await request(app)
-      .get("/api/v1/notifications")
-      .set("authorization", `Bearer ${aliceToken}`);
+    const res = await request(app).get("/api/v1/notifications").set("authorization", `Bearer ${aliceToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.items).toEqual([]);
@@ -78,9 +74,7 @@ describe("GET /api/v1/notifications", () => {
     // Twice, because React Query refetches on mount, on focus and on
     // reconnect — under v1's mark-on-render this is where the writes pile up.
     await request(app).get("/api/v1/notifications").set("authorization", `Bearer ${aliceToken}`);
-    const second = await request(app)
-      .get("/api/v1/notifications")
-      .set("authorization", `Bearer ${aliceToken}`);
+    const second = await request(app).get("/api/v1/notifications").set("authorization", `Bearer ${aliceToken}`);
 
     expect(second.body.data.unreadCount).toBe(2);
     const unread = await db.notification.count({ where: { userId: aliceId, readAt: null } });
@@ -90,9 +84,7 @@ describe("GET /api/v1/notifications", () => {
   it("pages by cursor, newest first", async () => {
     await seedFor(aliceId, 5);
 
-    const first = await request(app)
-      .get("/api/v1/notifications?limit=2")
-      .set("authorization", `Bearer ${aliceToken}`);
+    const first = await request(app).get("/api/v1/notifications?limit=2").set("authorization", `Bearer ${aliceToken}`);
     expect(first.body.data.items).toHaveLength(2);
     expect(first.body.data.nextCursor).toBe(first.body.data.items[1].id);
 
@@ -103,9 +95,7 @@ describe("GET /api/v1/notifications", () => {
     // Descending by id, and the cursor row itself is skipped.
     expect(second.body.data.items[0].id).toBeLessThan(first.body.data.items[1].id);
 
-    const ids = [...first.body.data.items, ...second.body.data.items].map(
-      (i: { id: number }) => i.id,
-    );
+    const ids = [...first.body.data.items, ...second.body.data.items].map((i: { id: number }) => i.id);
     expect(new Set(ids).size).toBe(4);
   });
 

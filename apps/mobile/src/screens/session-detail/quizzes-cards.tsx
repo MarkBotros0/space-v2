@@ -99,9 +99,7 @@ export function AdminQuizzesCard({
         ) : quizzes.isError ? (
           <InlineError message={QUIZZES_ERROR} onRetry={() => void quizzes.refetch()} />
         ) : quizzes.data.length === 0 ? (
-          <TextV1 className="text-sm text-muted-foreground">
-            No quizzes for this session yet.
-          </TextV1>
+          <TextV1 className="text-sm text-muted-foreground">No quizzes for this session yet.</TextV1>
         ) : (
           quizzes.data.map((q, i, all) => (
             <View key={q.id} className={rowClass(i, all.length)}>
@@ -133,9 +131,7 @@ export function AdminQuizzesCard({
                   <ButtonV1
                     variant="ghost"
                     size="sm"
-                    onPress={() =>
-                      router.push({ pathname: "/quiz/[id]/edit", params: { id: String(q.id) } })
-                    }
+                    onPress={() => router.push({ pathname: "/quiz/[id]/edit", params: { id: String(q.id) } })}
                   >
                     Edit
                   </ButtonV1>
@@ -143,9 +139,7 @@ export function AdminQuizzesCard({
                 <ButtonV1
                   variant="ghost"
                   size="sm"
-                  onPress={() =>
-                    router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })
-                  }
+                  onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })}
                 >
                   Grade
                 </ButtonV1>

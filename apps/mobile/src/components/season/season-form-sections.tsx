@@ -72,12 +72,7 @@ export function IdentitySection({
         </FieldCell>
       </FieldRow>
       {showCode ? (
-        <FormField
-          label="Code"
-          required
-          description="Used in the season's link."
-          error={errors.code}
-        >
+        <FormField label="Code" required description="Used in the season's link." error={errors.code}>
           <Input
             accessibilityLabel="Code"
             value={v.code}
@@ -96,26 +91,14 @@ export function IdentitySection({
               {v.code === "" ? "Filled in from program and year" : v.code}
             </Text>
           </View>
-          <PillButton
-            label="Change"
-            accessibilityLabel="Change code"
-            onPress={() => setEditingCode(true)}
-          />
+          <PillButton label="Change" accessibilityLabel="Change code" onPress={() => setEditingCode(true)} />
         </View>
       )}
     </FormSection>
   );
 }
 
-export function DatesSection({
-  v,
-  errors,
-  patch,
-}: {
-  v: SeasonFormValues;
-  errors: Errors;
-  patch: Patch;
-}) {
+export function DatesSection({ v, errors, patch }: { v: SeasonFormValues; errors: Errors; patch: Patch }) {
   return (
     <FormSection title="Dates">
       <FieldRow>
@@ -175,9 +158,7 @@ export function TakingPartSection({
           // A community-wide season has no required program and graduates nobody.
           onChange={(isCommunityWide) =>
             patch(
-              isCommunityWide
-                ? { isCommunityWide, graduatesOnPass: false, requiredProgram: "" }
-                : { isCommunityWide },
+              isCommunityWide ? { isCommunityWide, graduatesOnPass: false, requiredProgram: "" } : { isCommunityWide },
             )
           }
         />
@@ -248,20 +229,9 @@ export function TakingPartSection({
   );
 }
 
-export function AttendanceSection({
-  v,
-  errors,
-  patch,
-}: {
-  v: SeasonFormValues;
-  errors: Errors;
-  patch: Patch;
-}) {
+export function AttendanceSection({ v, errors, patch }: { v: SeasonFormValues; errors: Errors; patch: Patch }) {
   return (
-    <FormSection
-      title="Attendance rules"
-      note="Late arrivals use up their actual minutes late from the budget."
-    >
+    <FormSection title="Attendance rules" note="Late arrivals use up their actual minutes late from the budget.">
       <FieldRow>
         <FieldCell>
           <FormField

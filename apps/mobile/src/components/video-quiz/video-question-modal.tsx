@@ -72,12 +72,7 @@ export function VideoQuestionModal({
                     >
                       {option}
                     </Text>
-                    {correct ? (
-                      <Check
-                        size={16}
-                        className="shrink-0 text-success-700 dark:text-success-300"
-                      />
-                    ) : null}
+                    {correct ? <Check size={16} className="shrink-0 text-success-700 dark:text-success-300" /> : null}
                   </Pressable>
                 );
               })}
@@ -87,9 +82,7 @@ export function VideoQuestionModal({
                   {feedback.isCorrect ? (
                     <View className="flex-row items-center gap-2">
                       <Check size={16} className="text-success-700 dark:text-success-300" />
-                      <Text className="text-sm font-bold text-success-700 dark:text-success-300">
-                        Correct!
-                      </Text>
+                      <Text className="text-sm font-bold text-success-700 dark:text-success-300">Correct!</Text>
                     </View>
                   ) : (
                     <View className="flex-row items-center gap-2">

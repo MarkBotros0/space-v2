@@ -24,7 +24,17 @@ let outsideLeaderToken: string;
 let studentToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, studentUserId, adminUserId, leadersNoteId, superToken, adminToken, insideLeaderToken, outsideLeaderToken, studentToken } = await seedNotesFixtures(app));
+  ({
+    seasonId,
+    studentUserId,
+    adminUserId,
+    leadersNoteId,
+    superToken,
+    adminToken,
+    insideLeaderToken,
+    outsideLeaderToken,
+    studentToken,
+  } = await seedNotesFixtures(app));
 });
 
 afterAll(async () => {
@@ -199,8 +209,6 @@ describe("DELETE /api/v1/notes/:id", () => {
     expect(res.body.error.code).toBe("delete_unavailable");
 
     // And nothing was destroyed.
-    expect(
-      await db.engagementNote.findUnique({ where: { id: leadersNoteId }, select: { id: true } }),
-    ).not.toBeNull();
+    expect(await db.engagementNote.findUnique({ where: { id: leadersNoteId }, select: { id: true } })).not.toBeNull();
   });
 });

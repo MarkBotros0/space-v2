@@ -56,7 +56,9 @@ export function InlineError({
 }) {
   return (
     <View className={className ? `flex-col items-start gap-2 ${className}` : "flex-col items-start gap-2"}>
-      <Text variant="subhead" className="text-bad">{message}</Text>
+      <Text variant="subhead" className="text-bad">
+        {message}
+      </Text>
       <Button variant="secondary" size="sm" onPress={onRetry}>
         Try again
       </Button>

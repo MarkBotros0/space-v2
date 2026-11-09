@@ -14,9 +14,7 @@ export interface NewStudentInput {
 }
 
 export type StudentCreateTarget =
-  | { kind: "season"; seasonId: number }
-  | { kind: "alumni"; graduationYear: number }
-  | { kind: "none" };
+  { kind: "season"; seasonId: number } | { kind: "alumni"; graduationYear: number } | { kind: "none" };
 
 /**
  * The ONE write path that creates students. `POST /api/v1/students` and the
@@ -138,7 +136,10 @@ export async function enrollStudentsInSeason(
       overrideAt: r.override?.at ?? null,
     })),
   });
-  await markSessionsStale(tx, rows.map((r) => r.studentUserId));
+  await markSessionsStale(
+    tx,
+    rows.map((r) => r.studentUserId),
+  );
 }
 
 /** Anything recorded for this person in this season. Remove and graduation both keep the row then. */
@@ -176,7 +177,11 @@ export async function deleteDraftRow(
  */
 async function clearDraftRows(tx: Prisma.TransactionClient, studentUserIds: number[]): Promise<void> {
   const rows = await tx.seasonEnrollment.findMany({
-    where: { studentUserId: { in: studentUserIds }, status: "ACTIVE", season: { status: "DRAFT", isCommunityWide: false } },
+    where: {
+      studentUserId: { in: studentUserIds },
+      status: "ACTIVE",
+      season: { status: "DRAFT", isCommunityWide: false },
+    },
     select: { id: true, seasonId: true, studentUserId: true },
   });
   for (const row of rows) {

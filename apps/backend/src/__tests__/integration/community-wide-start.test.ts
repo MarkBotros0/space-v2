@@ -2,7 +2,15 @@
 import request from "supertest";
 
 import { db } from "../../db/client";
-import { app, as, ctx, person, season, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  app,
+  as,
+  ctx,
+  person,
+  season,
+  seedEnrollmentFixtures,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 
 jest.setTimeout(120000);
 
@@ -11,7 +19,10 @@ afterAll(teardownEnrollmentFixtures);
 // A season left ACTIVE would block the next test's Start: end the ones this test made.
 const made: number[] = [];
 afterEach(async () => {
-  await db.season.updateMany({ where: { id: { in: made.splice(0) }, status: "ACTIVE" }, data: { status: "COMPLETED" } });
+  await db.season.updateMany({
+    where: { id: { in: made.splice(0) }, status: "ACTIVE" },
+    data: { status: "COMPLETED" },
+  });
 });
 const mk = async (status: Parameters<typeof season>[0], title?: string) => {
   const id = await season(status, title);
@@ -41,7 +52,12 @@ describe("seasonsInTheWay", () => {
       ready: false,
       items: [],
       seasonsInTheWay: [
-        { id: running, code: await codeOf(running), title: "3G 2026", message: "3G 2026 is still running. End it first." },
+        {
+          id: running,
+          code: await codeOf(running),
+          title: "3G 2026",
+          message: "3G 2026 is still running. End it first.",
+        },
       ],
     });
     const started = await start(id);

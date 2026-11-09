@@ -52,19 +52,12 @@ function VideoFallback({ youtubeUrl }: { youtubeUrl: string | null }) {
   return (
     <View className="flex-col gap-2">
       {youtubeUrl ? <WatchRecordingButton youtubeUrl={youtubeUrl} /> : null}
-      <Text className="text-xs text-muted-foreground">
-        This session's video link can't be played in the app.
-      </Text>
+      <Text className="text-xs text-muted-foreground">This session's video link can't be played in the app.</Text>
     </View>
   );
 }
 
-export function VideoQuizPlayer({
-  sessionId,
-  quiz,
-  onRetry,
-  readCurrentTime,
-}: VideoQuizPlayerProps) {
+export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: VideoQuizPlayerProps) {
   const router = useRouter();
   const playerRef = useRef<YoutubeIframeRef>(null);
   const submit = useSubmitVideoAnswer(sessionId);
@@ -82,8 +75,7 @@ export function VideoQuizPlayer({
 
   // The barrier is the server's derivation, never recomputed from the answered
   // set (ruling C4): nextQuestionId is also the question the server will accept.
-  const barrier =
-    quiz.questions.find((q) => q.id === quiz.nextQuestionId)?.atSeconds ?? Number.POSITIVE_INFINITY;
+  const barrier = quiz.questions.find((q) => q.id === quiz.nextQuestionId)?.atSeconds ?? Number.POSITIVE_INFINITY;
   const barrierQuestion = quiz.questions.find((q) => q.id === quiz.nextQuestionId) ?? null;
 
   const furthestRef = useRef(quiz.furthestSeconds);
@@ -223,8 +215,7 @@ export function VideoQuizPlayer({
     return <VideoFallback youtubeUrl={quiz.youtubeUrl} />;
   }
 
-  const deadlockMessage =
-    "A question on this video is set past the end of the recording. Ask your leader to fix it.";
+  const deadlockMessage = "A question on this video is set past the end of the recording. Ask your leader to fix it.";
   const total = duration ?? 0;
 
   return (
@@ -236,9 +227,7 @@ export function VideoQuizPlayer({
           onRetry={() => onRetry?.()}
         />
       ) : (
-        <View
-          className="overflow-hidden rounded-group border border-border bg-black"
-        >
+        <View className="overflow-hidden rounded-group border border-border bg-black">
           <YoutubePlayer
             ref={playerRef}
             height={211}
@@ -278,11 +267,7 @@ export function VideoQuizPlayer({
                 accessibilityLabel={playing ? "Pause" : "Play"}
                 onPress={() => setPlaying((p) => !p)}
               >
-                {playing ? (
-                  <Pause size={16} className="text-white" />
-                ) : (
-                  <Play size={16} className="text-white" />
-                )}
+                {playing ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
                 {playing ? "Pause" : "Play"}
               </Button>
               <Button variant="ghost" size="sm" textClassName="text-white/70" onPress={handleLeave}>

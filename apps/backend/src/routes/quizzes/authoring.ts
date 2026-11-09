@@ -6,10 +6,7 @@ import { parseId } from "../../lib/parse-id";
 import { canManageQuiz } from "../../lib/permissions";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
-import {
-  createQuizRequestSchema,
-  updateQuizRequestSchema,
-} from "../../../../../packages/shared/src/index";
+import { createQuizRequestSchema, updateQuizRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
 
 /**
@@ -86,12 +83,7 @@ export async function updateQuiz(req: Request, res: Response) {
 
   if (body.maxScore !== undefined) {
     if (quiz.kind !== "PAPER") {
-      return apiError(
-        res,
-        "wrong_quiz_kind",
-        "An online quiz derives its max score from its questions.",
-        409,
-      );
+      return apiError(res, "wrong_quiz_kind", "An online quiz derives its max score from its questions.", 409);
     }
     const grades = await db.quizGrade.count({ where: { quizId: id } });
     if (grades > 0) {

@@ -67,8 +67,7 @@ export function DropEnrollmentSheet({ studentId, enrollment, onClose }: DropEnro
     >
       <View className="flex-col gap-4 pb-4">
         <Text variant="subhead" className="text-muted-foreground">
-          The student leaves this season without graduating and appears on the dropped list. The
-          record is kept.
+          The student leaves this season without graduating and appears on the dropped list. The record is kept.
         </Text>
         <FormField
           label="Reason"

@@ -88,7 +88,10 @@ describe("Admin Today", () => {
   });
 
   it("a session that has not started is a plain card: no Mark attendance, no stream", async () => {
-    const next = { ...staffDashboard("season"), nextSession: { ...staffDashboard("season").nextSession, isInProgress: false } };
+    const next = {
+      ...staffDashboard("season"),
+      nextSession: { ...staffDashboard("season").nextSession, isInProgress: false },
+    };
     serveStaff(get, { table: staffRoutes({ "/api/v1/me/dashboard?seasonId=7": next }) });
     renderWithProviders(<DashboardScreen />);
 

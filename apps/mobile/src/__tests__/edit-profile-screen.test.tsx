@@ -52,9 +52,7 @@ it("sends only what changed and folds the server's row into the session", async 
   renderWithProviders(<ProfileDetailsScreen />);
   fireEvent.changeText(screen.getByLabelText("Address"), "12 Nile St, Cairo");
   fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
-  await waitFor(() =>
-    expect(patch).toHaveBeenCalledWith("/api/v1/me", { address: "12 Nile St, Cairo" }),
-  );
+  await waitFor(() => expect(patch).toHaveBeenCalledWith("/api/v1/me", { address: "12 Nile St, Cairo" }));
   await waitFor(() => expect(useSessionStore.getState().user?.address).toBe("12 Nile St, Cairo"));
   // Saved: back to the read-only Profile.
   await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));

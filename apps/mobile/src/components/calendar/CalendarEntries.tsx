@@ -4,12 +4,7 @@ import { useRouter } from "expo-router";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { formatWallTime } from "../../lib/format";
-import {
-  sessionBadge,
-  sessionTone,
-  type DayContents,
-  type SessionTone,
-} from "../../lib/calendar-grid";
+import { sessionBadge, sessionTone, type DayContents, type SessionTone } from "../../lib/calendar-grid";
 import type { CalendarEntry } from "../../lib/day-groups";
 import { cn } from "../../design/lib/cn";
 import { Text } from "../../design/ui/text";
@@ -153,9 +148,7 @@ function SessionCard({ s, ctx }: { s: SessionListItem; ctx: CalendarContext }) {
     <EntryCard
       tint={tint}
       title={s.title}
-      subtitle={
-        s.location ? `${formatWallTime(s.startTime)} · ${s.location}` : formatWallTime(s.startTime)
-      }
+      subtitle={s.location ? `${formatWallTime(s.startTime)} · ${s.location}` : formatWallTime(s.startTime)}
       onPress={() => router.push({ pathname: "/session/[id]", params: { id: String(s.id) } })}
       chips={
         <>

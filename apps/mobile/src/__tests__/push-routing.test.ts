@@ -2,7 +2,9 @@ import { routeForPushData } from "../lib/push-routing";
 
 describe("routeForPushData", () => {
   it("opens the screen the inbox would for the same target", () => {
-    expect(routeForPushData({ type: "ASSIGNMENT_CREATED", target: { entityType: "assignment", entityId: 12 } })).toEqual({
+    expect(
+      routeForPushData({ type: "ASSIGNMENT_CREATED", target: { entityType: "assignment", entityId: 12 } }),
+    ).toEqual({
       pathname: "/assignment/[id]",
       params: { id: "12" },
     });
@@ -12,9 +14,11 @@ describe("routeForPushData", () => {
     expect(
       routeForPushData({ type: "SUBMISSION_RECEIVED", target: { entityType: "submission", entityId: "Ab3dE5gH9k" } }),
     ).toEqual({ pathname: "/submission/[publicId]", params: { publicId: "Ab3dE5gH9k" } });
-    expect(routeForPushData({ type: "SESSION_CANCELLED", target: { entityType: "calendar", entityId: null } })).toEqual({
-      pathname: "/calendar",
-    });
+    expect(routeForPushData({ type: "SESSION_CANCELLED", target: { entityType: "calendar", entityId: null } })).toEqual(
+      {
+        pathname: "/calendar",
+      },
+    );
   });
 
   it("opens the inbox for a missing or malformed target", () => {

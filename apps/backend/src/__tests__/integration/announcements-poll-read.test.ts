@@ -127,7 +127,9 @@ describe("poll flags on the feed", () => {
   it("marks poll posts with hasPoll and pollClosed", async () => {
     const res = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
     expect(res.status).toBe(200);
-    const byId = new Map((res.body.data.items as { id: number; hasPoll: boolean; pollClosed: boolean | null }[]).map((i) => [i.id, i]));
+    const byId = new Map(
+      (res.body.data.items as { id: number; hasPoll: boolean; pollClosed: boolean | null }[]).map((i) => [i.id, i]),
+    );
     expect(byId.get(adminPost)).toMatchObject({ hasPoll: true, pollClosed: false });
     expect(byId.get(closedPost)).toMatchObject({ hasPoll: true, pollClosed: true });
     expect(byId.get(f.liveId)).toMatchObject({ hasPoll: false, pollClosed: null });

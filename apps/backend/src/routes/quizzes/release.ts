@@ -9,10 +9,7 @@ import { forbidden } from "../respond";
 import { notifyQuizResultsReleased } from "./notify";
 
 /** The season's admin, or a super: the only people who release results (owner, 2026-11-07). */
-export function canReleaseQuizResults(
-  user: Parameters<typeof isSuper>[0],
-  seasonId: number,
-): boolean {
+export function canReleaseQuizResults(user: Parameters<typeof isSuper>[0], seasonId: number): boolean {
   return isSuper(user) || isAdminOfSeason(user, seasonId);
 }
 

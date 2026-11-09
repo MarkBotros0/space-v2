@@ -2,11 +2,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { Linking, View } from "react-native";
 import type { DashboardSession, SessionDetail } from "@space/shared";
 
-import {
-  CheckInWatcher,
-  StudentCheckInCard,
-  checkInVisible,
-} from "../../components/check-in/StudentCheckInCard";
+import { CheckInWatcher, StudentCheckInCard, checkInVisible } from "../../components/check-in/StudentCheckInCard";
 import { SessionHomeCard } from "../../design/home/session-card";
 import { Button } from "../../design/ui";
 
@@ -40,14 +36,9 @@ export function NextSessionHero({
           hasAction
             ? (onBrand) => (
                 <View className="w-full gap-2">
-                  {showCheckIn && detail.data ? (
-                    <StudentCheckInCard detail={detail.data} onHero={onBrand} />
-                  ) : null}
+                  {showCheckIn && detail.data ? <StudentCheckInCard detail={detail.data} onHero={onBrand} /> : null}
                   {stream ? (
-                    <Button
-                      variant={onBrand ? "onHero" : "primary"}
-                      onPress={() => void Linking.openURL(stream)}
-                    >
+                    <Button variant={onBrand ? "onHero" : "primary"} onPress={() => void Linking.openURL(stream)}>
                       Join stream
                     </Button>
                   ) : null}

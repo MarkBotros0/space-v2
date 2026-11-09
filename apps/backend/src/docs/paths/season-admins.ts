@@ -125,7 +125,7 @@ export const seasonAdminPaths = {
         403: errRef("Forbidden"),
         404: conflict("`not_found` — no such season (or it is deleted), or no such user."),
         409: conflict(
-          "`not_alumnus`, `permanent_role` (a SUPER or MENTOR), `user_inactive`, `season_finished`, or `already_in_role`, with the reason in words: \"Mina is already leading a group in GBV 2026\".",
+          '`not_alumnus`, `permanent_role` (a SUPER or MENTOR), `user_inactive`, `season_finished`, or `already_in_role`, with the reason in words: "Mina is already leading a group in GBV 2026".',
         ),
       },
     },

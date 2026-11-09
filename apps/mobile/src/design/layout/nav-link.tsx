@@ -38,16 +38,9 @@ export function NavLink({
       accessibilityRole="tab"
       accessibilityLabel={label}
       accessibilityState={{ selected: active }}
-      className={cn(
-        "relative min-w-[44px] flex-1 items-center justify-center self-stretch px-1",
-        active && "gap-0.5",
-      )}
+      className={cn("relative min-w-[44px] flex-1 items-center justify-center self-stretch px-1", active && "gap-0.5")}
     >
-      <NavIcon
-        name={icon}
-        size={20}
-        className={active ? "text-pill-active" : "text-pill-foreground"}
-      />
+      <NavIcon name={icon} size={20} className={active ? "text-pill-active" : "text-pill-foreground"} />
       {/* The label sits under the icon in a fifth of the pill: it stops growing at 1.15x
           the font scale, and on a 360dp phone a label that still does not fit shrinks
           (down to 0.8) instead of ellipsizing ("Assignme…"). */}

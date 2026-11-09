@@ -53,10 +53,7 @@ export function TodayFigures({
   return (
     <View className="gap-3">
       {attendance.isError ? (
-        <InlineError
-          message="Couldn't load your attendance."
-          onRetry={() => void attendance.refetch()}
-        />
+        <InlineError message="Couldn't load your attendance." onRetry={() => void attendance.refetch()} />
       ) : null}
       <SeasonPulse
         title={season.title}

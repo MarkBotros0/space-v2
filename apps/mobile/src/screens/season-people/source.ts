@@ -52,9 +52,7 @@ export function initialSourceId(
 }
 
 /** The suggestion on the season page: the usual previous season and how many of its passers can join. */
-export function seasonSuggestion(
-  data: PeopleCandidatesResponse,
-): { source: SourceSeason; count: number } | null {
+export function seasonSuggestion(data: PeopleCandidatesResponse): { source: SourceSeason; count: number } | null {
   const source = data.season.sources.find((s) => s.id === data.season.suggestedSourceId);
   if (!source) return null;
   const count = passersToTick(data.people, source.id).length;

@@ -22,19 +22,34 @@ let studentToken: string;
 
 beforeAll(async () => {
   ({ token: leaderToken } = await signAccessToken({
-    userId: 7, role: "LEADER", seasonAdminIds: [], groupLeaderIds: [4],
-    activeSeasonId: null, graduationYear: 2020,
+    userId: 7,
+    role: "LEADER",
+    seasonAdminIds: [],
+    groupLeaderIds: [4],
+    activeSeasonId: null,
+    graduationYear: 2020,
   }));
   ({ token: studentToken } = await signAccessToken({
-    userId: 9, role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: 3, graduationYear: null,
+    userId: 9,
+    role: "STUDENT",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: 3,
+    graduationYear: null,
   }));
 });
 
 const row = (over: Record<string, unknown> = {}) => ({
-  id: 7, name: "Lee Leader", email: "lee@jpc.test", role: "LEADER", avatarPath: null,
-  phone: "+20 100", dateOfBirth: new Date("1999-12-31T00:00:00.000Z"), address: "1 Nile St, Cairo",
-  passwordHash: "$2a$hash", deletedAt: null,
+  id: 7,
+  name: "Lee Leader",
+  email: "lee@jpc.test",
+  role: "LEADER",
+  avatarPath: null,
+  phone: "+20 100",
+  dateOfBirth: new Date("1999-12-31T00:00:00.000Z"),
+  address: "1 Nile St, Cairo",
+  passwordHash: "$2a$hash",
+  deletedAt: null,
   ...over,
 });
 
@@ -50,15 +65,25 @@ beforeEach(() => {
 });
 
 const patchMe = (body: unknown, token = leaderToken) =>
-  request(app).patch("/api/v1/me").set("authorization", `Bearer ${token}`).send(body as object);
+  request(app)
+    .patch("/api/v1/me")
+    .set("authorization", `Bearer ${token}`)
+    .send(body as object);
 
 describe("GET /api/v1/me", () => {
   it("returns the contact fields for a staff user, the birthday as a calendar day", async () => {
     const res = await request(app).get("/api/v1/me").set("authorization", `Bearer ${leaderToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.user).toEqual({
-      id: 7, name: "Lee Leader", email: "lee@jpc.test", role: "LEADER", avatarPath: null,
-      phone: "+20 100", dateOfBirth: "1999-12-31", address: "1 Nile St, Cairo", hasPassword: true,
+      id: 7,
+      name: "Lee Leader",
+      email: "lee@jpc.test",
+      role: "LEADER",
+      avatarPath: null,
+      phone: "+20 100",
+      dateOfBirth: "1999-12-31",
+      address: "1 Nile St, Cairo",
+      hasPassword: true,
     });
     expect(JSON.stringify(res.body)).not.toContain("$2a$hash");
   });
@@ -89,7 +114,10 @@ describe("PATCH /api/v1/me", () => {
     const res = await patchMe({ phone: "", address: null, dateOfBirth: "" });
     expect(res.status).toBe(200);
     expect(mockDb.user.update.mock.calls[0][0].data).toEqual({
-      name: undefined, phone: null, dateOfBirth: null, address: null,
+      name: undefined,
+      phone: null,
+      dateOfBirth: null,
+      address: null,
     });
   });
 
@@ -123,14 +151,23 @@ describe("PATCH /api/v1/me", () => {
 
 describe("PATCH /api/v1/me/profile", () => {
   const patchProfile = (body: unknown) =>
-    request(app).patch("/api/v1/me/profile").set("authorization", `Bearer ${studentToken}`).send(body as object);
+    request(app)
+      .patch("/api/v1/me/profile")
+      .set("authorization", `Bearer ${studentToken}`)
+      .send(body as object);
 
   beforeEach(() => {
     mockDb.user.findFirst.mockResolvedValue({
-      name: "Sam", email: "sam@jpc.test", avatarPath: null, graduationYear: null,
-      phone: "+20 1", dateOfBirth: new Date("2002-07-09T00:00:00.000Z"),
+      name: "Sam",
+      email: "sam@jpc.test",
+      avatarPath: null,
+      graduationYear: null,
+      phone: "+20 1",
+      dateOfBirth: new Date("2002-07-09T00:00:00.000Z"),
       studentProfile: {
-        university: "Cairo", faculty: "Engineering", universityGraduationYear: 2028,
+        university: "Cairo",
+        faculty: "Engineering",
+        universityGraduationYear: 2028,
       },
       seasonEnrollments: [],
     });
@@ -138,7 +175,10 @@ describe("PATCH /api/v1/me/profile", () => {
 
   it("writes phone/dateOfBirth to User and the academic fields to StudentProfile", async () => {
     const res = await patchProfile({
-      phone: "+201022222222", dateOfBirth: "2002-07-09", faculty: "Medicine", universityGraduationYear: 2031,
+      phone: "+201022222222",
+      dateOfBirth: "2002-07-09",
+      faculty: "Medicine",
+      universityGraduationYear: 2031,
     });
     expect(res.status).toBe(200);
     expect(mockDb.user.update).toHaveBeenCalledWith({
@@ -148,9 +188,16 @@ describe("PATCH /api/v1/me/profile", () => {
     const upsert = mockDb.studentProfile.upsert.mock.calls[0][0];
     expect(upsert.update).toEqual({ university: undefined, faculty: "Medicine", universityGraduationYear: 2031 });
     expect(res.body.data.profile).toEqual({
-      name: "Sam", email: "sam@jpc.test", avatarPath: null, graduationYear: null, activeSeasonTitle: null,
-      university: "Cairo", faculty: "Engineering", universityGraduationYear: 2028,
-      phone: "+20 1", dateOfBirth: "2002-07-09",
+      name: "Sam",
+      email: "sam@jpc.test",
+      avatarPath: null,
+      graduationYear: null,
+      activeSeasonTitle: null,
+      university: "Cairo",
+      faculty: "Engineering",
+      universityGraduationYear: 2028,
+      phone: "+20 1",
+      dateOfBirth: "2002-07-09",
     });
   });
 

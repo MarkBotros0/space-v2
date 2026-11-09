@@ -19,9 +19,7 @@ interface ExportMenuProps {
 }
 
 function kb(bytes: number): string {
-  return bytes >= 1024 * 1024
-    ? `${Math.round(bytes / (1024 * 1024))} MB`
-    : `${Math.round(bytes / 1024)} KB`;
+  return bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
 /**
@@ -34,13 +32,7 @@ function kb(bytes: number): string {
  * proves it; hiding the control just avoids offering a user something that can
  * only fail.
  */
-export function ExportMenu({
-  seasonId,
-  scopeLabel,
-  canExportWorkbook,
-  exportDay,
-  sheet = false,
-}: ExportMenuProps) {
+export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay, sheet = false }: ExportMenuProps) {
   const exportMutation = useReportExport();
   const manifest = useSeasonWorkbookManifest(seasonId, canExportWorkbook);
   const [open, setOpen] = useState(false);
@@ -71,15 +63,11 @@ export function ExportMenu({
       estimatedBytes: manifest.data!.estimatedBytes,
     });
 
-  const workbookTitle = manifest.data
-    ? `Export season workbook (~${kb(manifest.data.estimatedBytes)})`
-    : "";
+  const workbookTitle = manifest.data ? `Export season workbook (~${kb(manifest.data.estimatedBytes)})` : "";
 
   const status = (
     <>
-      {exportMutation.isPending ? (
-        <Text className="text-xs text-muted-foreground">Preparing your file…</Text>
-      ) : null}
+      {exportMutation.isPending ? <Text className="text-xs text-muted-foreground">Preparing your file…</Text> : null}
 
       {exportMutation.isError ? (
         <Text className="text-xs text-error-600">{errorText(exportMutation.error)}</Text>
@@ -99,9 +87,7 @@ export function ExportMenu({
           <View className="flex-col gap-3 pb-4">
             <GroupedList>
               <ListRow title="Export engagement" subtitle={scopeLabel} onPress={exportEngagement} />
-              {canExportWorkbook && manifest.data ? (
-                <ListRow title={workbookTitle} onPress={exportWorkbook} />
-              ) : null}
+              {canExportWorkbook && manifest.data ? <ListRow title={workbookTitle} onPress={exportWorkbook} /> : null}
             </GroupedList>
             {status}
           </View>

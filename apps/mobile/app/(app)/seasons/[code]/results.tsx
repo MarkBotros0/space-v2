@@ -41,9 +41,7 @@ export default function SeasonResultsScreen() {
         onError: (err) => {
           const c = apiErrorCode(err);
           setError(
-            c === "not_finished"
-              ? "This season hasn't ended yet."
-              : apiErrorMessage(err, "Couldn't save the result."),
+            c === "not_finished" ? "This season hasn't ended yet." : apiErrorMessage(err, "Couldn't save the result."),
           );
         },
       },
@@ -91,7 +89,9 @@ export default function SeasonResultsScreen() {
         student={editing}
         initial={{ result: editing?.result ?? "PASSED", reason: editing?.reason ?? "" }}
         graduation={
-          editing && season.data?.graduatesOnPass ? { isAlumnus: editing.isAlumnus, stored: editing.result, year: season.data.year } : undefined
+          editing && season.data?.graduatesOnPass
+            ? { isAlumnus: editing.isAlumnus, stored: editing.result, year: season.data.year }
+            : undefined
         }
         saveLabel="Save result"
         saving={update.isPending}

@@ -21,7 +21,17 @@ let adminToken: string;
 let mentorToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, assignmentId, untargetedAssignmentId, studentAId, studentAToken, studentBToken, leaderAToken, adminToken, mentorToken } = await seedForumFixtures(app));
+  ({
+    seasonId,
+    assignmentId,
+    untargetedAssignmentId,
+    studentAId,
+    studentAToken,
+    studentBToken,
+    leaderAToken,
+    adminToken,
+    mentorToken,
+  } = await seedForumFixtures(app));
 });
 
 beforeEach(() => resetSubmissions(seasonId));
@@ -35,9 +45,7 @@ describe("PUT /api/v1/assignments/:id/forum/response", () => {
     // The whole point. v1's forum writes are addressed by a submission id that
     // `ensureDraftSubmission` created while *rendering* the page; ruling C6
     // removed that read-time write, so this PUT is the creator.
-    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(
-      0,
-    );
+    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(0);
 
     const res = await request(app)
       .put(`/api/v1/assignments/${assignmentId}/forum/response`)
@@ -71,9 +79,7 @@ describe("PUT /api/v1/assignments/:id/forum/response", () => {
 
     expect(second.status).toBe(200);
     expect(second.body.data.submissionPublicId).toBe(first.body.data.submissionPublicId);
-    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(
-      1,
-    );
+    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(1);
   });
 
   it("enforces forumMinWords with the count the client shows", async () => {

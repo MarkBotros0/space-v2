@@ -18,13 +18,7 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { hashToken } from "../../lib/auth/tokens";
 import { issueInvite } from "../../lib/invites";
-import {
-  cleanupTestData,
-  createTestUser,
-  createUnactivatedTestUser,
-  login,
-  testEmail,
-} from "./fixtures";
+import { cleanupTestData, createTestUser, createUnactivatedTestUser, login, testEmail } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -88,9 +82,7 @@ describe("POST /api/v1/users — creation issues credentials to no one (D2)", ()
       .send({ name: "No Login", email, role: "STUDENT" });
 
     // v1 would have accepted ChangeMe123! here (R41/R44). Nothing works now.
-    const attempt = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email, password: "ChangeMe123!" });
+    const attempt = await request(app).post("/api/v1/auth/login").send({ email, password: "ChangeMe123!" });
     expect(attempt.status).toBe(401);
     expect(attempt.body.error.code).toBe("invalid_credentials");
   });
@@ -118,9 +110,7 @@ describe("POST /api/v1/users/:id/invite", () => {
       .post(`/api/v1/users/${target.id}/invite`)
       .set("authorization", `Bearer ${superToken}`);
     expect(first.status).toBe(200);
-    expect(Object.keys(first.body.data).sort()).toEqual([
-      "expiresAt", "invitedByName", "issuedAt", "usedAt",
-    ]);
+    expect(Object.keys(first.body.data).sort()).toEqual(["expiresAt", "invitedByName", "issuedAt", "usedAt"]);
 
     const second = await request(app)
       .post(`/api/v1/users/${target.id}/invite`)
@@ -171,9 +161,7 @@ describe("POST /api/v1/auth/accept-invite", () => {
   it("is single-use — the same token a second time is refused", async () => {
     const target = await createUnactivatedTestUser("once", "STUDENT");
     const { raw } = await issueInvite(db, target.id, superUser.id);
-    await request(app)
-      .post("/api/v1/auth/accept-invite")
-      .send({ token: raw, password: "brand-new-password" });
+    await request(app).post("/api/v1/auth/accept-invite").send({ token: raw, password: "brand-new-password" });
 
     const again = await request(app)
       .post("/api/v1/auth/accept-invite")
@@ -198,9 +186,7 @@ describe("POST /api/v1/auth/accept-invite", () => {
 
     const bodies = [];
     for (const token of [expired.raw, "definitely-not-a-real-token-aaaa", hijack.raw]) {
-      const res = await request(app)
-        .post("/api/v1/auth/accept-invite")
-        .send({ token, password: "brand-new-password" });
+      const res = await request(app).post("/api/v1/auth/accept-invite").send({ token, password: "brand-new-password" });
       expect(res.status).toBe(400);
       bodies.push(res.body);
     }

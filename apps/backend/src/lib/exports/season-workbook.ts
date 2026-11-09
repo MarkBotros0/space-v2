@@ -6,13 +6,7 @@ import { db } from "../../db/client";
 import { formatDayInOrgTime } from "../org-time";
 import { computeEngagementForSeasons } from "../queries/engagement";
 import { seasonParticipant } from "../queries/season-participants";
-import {
-  COLLATOR,
-  addKeySheet,
-  columnWidths,
-  freezeFirstRowAndColumns,
-  styleHeader,
-} from "./workbook-style";
+import { COLLATOR, addKeySheet, columnWidths, freezeFirstRowAndColumns, styleHeader } from "./workbook-style";
 
 const SUBMISSION_LABEL: Record<SubmissionStatus, string> = {
   // A draft is the student's private work in progress, hidden from staff
@@ -93,9 +87,7 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
   attendance.addRow(attHeader);
   attendance.columns = columnWidths(attHeader.length, 16);
 
-  const attendanceBySession = sessions.map(
-    (s) => new Map(s.attendance.map((a) => [a.studentUserId, a])),
-  );
+  const attendanceBySession = sessions.map((s) => new Map(s.attendance.map((a) => [a.studentUserId, a])));
 
   for (const student of students) {
     const cells = sessions.map((_, i) => {
@@ -123,13 +115,7 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
 
   // --- Grades ---------------------------------------------------------------
   const grades = workbook.addWorksheet("Grades");
-  const gradeHeader = [
-    "Student",
-    "Email",
-    "Group",
-    ...quizzes.map((q) => `${q.title} (/${q.maxScore})`),
-    "Average %",
-  ];
+  const gradeHeader = ["Student", "Email", "Group", ...quizzes.map((q) => `${q.title} (/${q.maxScore})`), "Average %"];
   grades.addRow(gradeHeader);
   grades.columns = columnWidths(gradeHeader.length, 18);
 
@@ -172,15 +158,12 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
   assignmentSheet.addRow(assignmentHeader);
   assignmentSheet.columns = columnWidths(assignmentHeader.length, 20);
 
-  const statusByAssignment = assignments.map(
-    (a) => new Map(a.submissions.map((s) => [s.studentUserId, s.status])),
-  );
+  const statusByAssignment = assignments.map((a) => new Map(a.submissions.map((s) => [s.studentUserId, s.status])));
 
   for (const student of students) {
     const cells = assignments.map((a, i) => {
       const assigned =
-        a.isAllGroups ||
-        (student.groupId !== null && a.targets.some((t) => t.groupId === student.groupId));
+        a.isAllGroups || (student.groupId !== null && a.targets.some((t) => t.groupId === student.groupId));
       // Ruling C9: the enrolment's group for THIS season, never GroupStudent.
       if (!assigned) return NOT_ASSIGNED;
       const status = statusByAssignment[i]!.get(student.studentUserId);
@@ -223,9 +206,7 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
  * students × 14 sessions, about 40 kB" before it commits to a download on a
  * cellular connection (spec §7).
  */
-export async function summariseSeasonWorkbook(
-  seasonId: number,
-): Promise<SeasonWorkbookSummary | null> {
+export async function summariseSeasonWorkbook(seasonId: number): Promise<SeasonWorkbookSummary | null> {
   const season = await db.season.findFirst({
     where: { id: seasonId, deletedAt: null },
     select: { code: true, title: true },

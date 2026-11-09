@@ -21,9 +21,7 @@ export function BetweenSeasons({ history }: { history: UseQueryResult<SeasonHist
   const router = useRouter();
   if (history.isPending) return <RouteSkeleton />;
   if (history.data === undefined) {
-    return (
-      <InlineError message="Couldn't load your seasons." onRetry={() => void history.refetch()} />
-    );
+    return <InlineError message="Couldn't load your seasons." onRetry={() => void history.refetch()} />;
   }
   const state = betweenSeasonsState(history.data);
 
@@ -38,19 +36,11 @@ export function BetweenSeasons({ history }: { history: UseQueryResult<SeasonHist
             description="You'll see your first season here when you're added."
           />
           <GroupedList header="While you wait">
-            <ListRow
-              title="Complete your profile"
-              chevron
-              onPress={() => router.push("/profile")}
-            />
+            <ListRow title="Complete your profile" chevron onPress={() => router.push("/profile")} />
           </GroupedList>
         </>
       ) : state.kind === "dropped" ? (
-        <EmptyState
-          icon={NAV_ICONS.season}
-          title="You're not in a season right now"
-          description={NEXT_SEASON}
-        />
+        <EmptyState icon={NAV_ICONS.season} title="You're not in a season right now" description={NEXT_SEASON} />
       ) : (
         <Text variant="subhead" className="text-center text-muted-foreground">
           {NEXT_SEASON}

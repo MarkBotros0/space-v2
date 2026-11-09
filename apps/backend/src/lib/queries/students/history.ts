@@ -16,10 +16,7 @@ import { isLate } from "../assignments";
  * too; the people picker is the one exception and reads on its own. A STUDENT has
  * no such surface here; the detail gives a person their own rows itself.
  */
-export function canReadEnrollmentHistory(
-  user: SessionUser,
-  e: { seasonId: number; groupId: number | null },
-): boolean {
+export function canReadEnrollmentHistory(user: SessionUser, e: { seasonId: number; groupId: number | null }): boolean {
   if (isSuper(user) || isMentor(user)) return true;
   if (user.role === "ADMIN") return isAdminOfSeason(user, e.seasonId);
   if (user.role === "LEADER") return e.groupId !== null && user.groupLeaderIds.includes(e.groupId);

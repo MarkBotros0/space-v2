@@ -16,13 +16,7 @@ import { renderWithProviders } from "./helpers/render";
 
 import ImportScreen from "../../app/(app)/users/import";
 
-import {
-  adminSession,
-  previewBody,
-  seasons,
-  superSession,
-  template,
-} from "./helpers/student-import-fixtures";
+import { adminSession, previewBody, seasons, superSession, template } from "./helpers/student-import-fixtures";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -93,10 +87,7 @@ describe("ImportScreen — step 1, paste", () => {
     post.mockResolvedValue(previewBody());
     renderWithProviders(<ImportScreen />);
 
-    fireEvent.changeText(
-      await screen.findByLabelText("Paste your spreadsheet"),
-      "name\temail\nA\ta@jpc.test",
-    );
+    fireEvent.changeText(await screen.findByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
 
     await waitFor(() =>
@@ -118,10 +109,7 @@ describe("ImportScreen — step 1, the season picker", () => {
     expect(await screen.findByLabelText("Season")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
 
-    fireEvent.changeText(
-      screen.getByLabelText("Paste your spreadsheet"),
-      "name\temail\nA\ta@jpc.test",
-    );
+    fireEvent.changeText(screen.getByLabelText("Paste your spreadsheet"), "name\temail\nA\ta@jpc.test");
     fireEvent.press(screen.getByText("Preview"));
     await screen.findByText(/1 new · /);
 

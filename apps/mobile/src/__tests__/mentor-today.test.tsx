@@ -95,7 +95,13 @@ describe("MentorDashboard (owner, 2026-11-07)", () => {
   });
 
   it("names a note's author only when it is someone else", async () => {
-    const mine = { ...note, id: 2, authorId: 1, authorName: "Me Myself", student: { ...note.student, id: 10, name: "Sue Student" } };
+    const mine = {
+      ...note,
+      id: 2,
+      authorId: 1,
+      authorName: "Me Myself",
+      student: { ...note.student, id: 10, name: "Sue Student" },
+    };
     serve(routes({ [NOTES]: { notes: [note, mine], nextCursor: null } }));
     renderWithProviders(<MentorDashboard />);
     expect(await screen.findByText(/Mina Mentor · Checked in about the essay/)).toBeTruthy();

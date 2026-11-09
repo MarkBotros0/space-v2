@@ -48,9 +48,7 @@ export function ChoiceChips<T extends string | number | null>({
               onPress={() => onChange(option.value)}
               className={cn(
                 "rounded-full border px-3 py-1.5",
-                selected
-                  ? "border-ring bg-accent"
-                  : "border-control-border bg-surface active:border-ring",
+                selected ? "border-ring bg-accent" : "border-control-border bg-surface active:border-ring",
               )}
             >
               <Text

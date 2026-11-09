@@ -143,8 +143,6 @@ describe("AnnouncementsScreen", () => {
     serve([listItem(1)], noTargets, "c1");
     renderWithProviders(<AnnouncementsScreen />);
     fireEvent.press(await screen.findByText("Load more"));
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/announcements?cursor=c1"),
-    );
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/announcements?cursor=c1"));
   });
 });

@@ -36,11 +36,7 @@ const caption = (...parts: (string | null | undefined | false)[]) => parts.filte
 export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHistoryItem[] }) {
   if (enrollments.length === 0) {
     return (
-      <EmptyState
-        icon={Calendar}
-        title="No seasons"
-        description="This student isn't enrolled in any season yet."
-      />
+      <EmptyState icon={Calendar} title="No seasons" description="This student isn't enrolled in any season yet." />
     );
   }
   return (
@@ -50,7 +46,11 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
           key={e.enrollmentId}
           title={e.seasonTitle}
           titleLines={2}
-          subtitle={caption(`${formatSeasonDay(e.startDate)} – ${formatSeasonDay(e.endDate)}`, e.groupName && unbreakable(e.groupName), e.dropReason)}
+          subtitle={caption(
+            `${formatSeasonDay(e.startDate)} – ${formatSeasonDay(e.endDate)}`,
+            e.groupName && unbreakable(e.groupName),
+            e.dropReason,
+          )}
           subtitleLines={null}
           trailing={
             <View className="items-end gap-1">
@@ -60,7 +60,10 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
               ) : null}
             </View>
           }
-          trailingLabel={caption(statusChip("enrollment", e.status).label, e.attendancePct !== null && `${e.attendancePct}% attendance`)}
+          trailingLabel={caption(
+            statusChip("enrollment", e.status).label,
+            e.attendancePct !== null && `${e.attendancePct}% attendance`,
+          )}
         />
       ))}
     </GroupedList>
@@ -74,8 +77,7 @@ export function GroupedSeasonsTab({ enrollments }: { enrollments: EnrollmentHist
 export function GroupedAttendanceTab({ studentId, bySeason = false }: { studentId: number; bySeason?: boolean }) {
   const q = useStudentAttendanceHistory(studentId, true);
   if (q.isPending) return <Loading />;
-  if (!q.data)
-    return <InlineError message="Couldn't load attendance." onRetry={() => void q.refetch()} />;
+  if (!q.data) return <InlineError message="Couldn't load attendance." onRetry={() => void q.refetch()} />;
   if (q.data.history.length === 0) {
     return (
       <EmptyState
@@ -118,8 +120,7 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
   const router = useRouter();
   const q = useStudentSubmissions(studentId, true);
   if (q.isPending) return <Loading />;
-  if (!q.data)
-    return <InlineError message="Couldn't load submissions." onRetry={() => void q.refetch()} />;
+  if (!q.data) return <InlineError message="Couldn't load submissions." onRetry={() => void q.refetch()} />;
   if (q.data.submissions.length === 0) {
     return (
       <EmptyState
@@ -141,9 +142,7 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
             subtitle={caption(s.seasonTitle, s.submittedAt && `submitted ${formatDate(s.submittedAt)}`)}
             subtitleLines={null}
             chevron
-            onPress={() =>
-              router.push({ pathname: "/submission/[publicId]", params: { publicId: s.publicId } })
-            }
+            onPress={() => router.push({ pathname: "/submission/[publicId]", params: { publicId: s.publicId } })}
             trailing={
               <View className="items-end gap-1">
                 {s.isLate ? <StatusChip tone="warn" label="Late" /> : null}

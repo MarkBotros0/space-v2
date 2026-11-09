@@ -55,7 +55,11 @@ export const followUpPaths = {
       parameters: [idParam],
       requestBody: {
         required: false,
-        content: { "application/json": { schema: { type: "object", properties: { reason: { type: ["string", "null"], maxLength: 500 } } } } },
+        content: {
+          "application/json": {
+            schema: { type: "object", properties: { reason: { type: ["string", "null"], maxLength: 500 } } },
+          },
+        },
       },
       responses: {
         201: ok(followUp, "Created."),

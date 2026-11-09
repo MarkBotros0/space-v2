@@ -132,7 +132,9 @@ describe("DELETE /seasons/:id/enrollments/:userId", () => {
     const { target, student } = await placed("DRAFT");
     const elsewhere = await season("COMPLETED");
     const assignment = await db.assignment.create({ data: { seasonId: elsewhere, title: "Essay" } });
-    await db.submission.create({ data: { publicId: randomUUID(), assignmentId: assignment.id, studentUserId: student.id } });
+    await db.submission.create({
+      data: { publicId: randomUUID(), assignmentId: assignment.id, studentUserId: student.id },
+    });
     const session = await db.session.create({
       data: { seasonId: elsewhere, title: "One", startsAt: new Date(Date.UTC(2099, 0, 2)) },
     });

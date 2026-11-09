@@ -6,12 +6,7 @@ import { ForumThread } from "../../../../src/components/ForumThread";
 import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
-import {
-  Card as CardV1,
-  EmptyState as EmptyStateV1,
-  CardContent,
-  RichTextView,
-} from "../../../../src/design/ui";
+import { Card as CardV1, EmptyState as EmptyStateV1, CardContent, RichTextView } from "../../../../src/design/ui";
 import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import { formatOrgDue } from "../../../../src/lib/format";
 import { storedTextToHtml } from "../../../../src/lib/stored-text";

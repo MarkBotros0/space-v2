@@ -31,13 +31,27 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const detail = {
-  id: 900, publicId: "aaa1111111", status: "SUBMITTED" as const,
-  text: "the student's work", feedback: null,
-  submittedAt: "2099-03-30T10:00:00.000Z", reviewedAt: null, isLate: true,
-  assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: "2099-03-29T00:00:00.000Z",
-  assignmentDescription: null, seasonCode: "S26",
-  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
-  files: [], canUploadFiles: false, canReview: true,
+  id: 900,
+  publicId: "aaa1111111",
+  status: "SUBMITTED" as const,
+  text: "the student's work",
+  feedback: null,
+  submittedAt: "2099-03-30T10:00:00.000Z",
+  reviewedAt: null,
+  isLate: true,
+  assignmentId: 41,
+  assignmentTitle: "Essay one",
+  assignmentDueAt: "2099-03-29T00:00:00.000Z",
+  assignmentDescription: null,
+  seasonCode: "S26",
+  studentUserId: 9,
+  studentName: "Test student",
+  studentEmail: "s@jpc.test",
+  groupId: null,
+  groupName: null,
+  files: [],
+  canUploadFiles: false,
+  canReview: true,
 };
 
 beforeEach(() => {
@@ -173,7 +187,9 @@ it("stays on the screen and says why when the server refuses (403 forbidden)", a
   fireEvent.press(await screen.findByText("Add feedback"));
   fireEvent.press(screen.getByText("Mark as reviewed"));
 
-  expect(await within(await screen.findByTestId("sheet-save-bar")).findByText(/Couldn't record the review/)).toBeTruthy();
+  expect(
+    await within(await screen.findByTestId("sheet-save-bar")).findByText(/Couldn't record the review/),
+  ).toBeTruthy();
   expect(screen.getByLabelText("Feedback")).toBeTruthy();
   expect(Haptics.impactAsync).not.toHaveBeenCalled();
   expect(mockBack).not.toHaveBeenCalled();

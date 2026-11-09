@@ -11,7 +11,17 @@ jest.mock("../design/theme/theme-mode", () => ({
 const mockBridge = { toggleBold: jest.fn(), toggleItalic: jest.fn(), undo: jest.fn() };
 jest.mock("@10play/tentap-editor", () => ({
   useEditorBridge: () => mockBridge,
-  useBridgeState: () => ({ isBoldActive: true, isItalicActive: false, isStrikeActive: false, isBulletListActive: false, isOrderedListActive: false, isLinkActive: false, canUndo: true, canRedo: false, isReady: true }),
+  useBridgeState: () => ({
+    isBoldActive: true,
+    isItalicActive: false,
+    isStrikeActive: false,
+    isBulletListActive: false,
+    isOrderedListActive: false,
+    isLinkActive: false,
+    canUndo: true,
+    canRedo: false,
+    isReady: true,
+  }),
   RichText: () => null,
   TenTapStartKit: [],
   CoreBridge: { configureCSS: () => ({}) },
@@ -57,7 +67,7 @@ describe("DataTable (v1 phone list)", () => {
 
 describe("RichTextView (v1 sanitiser + reset typography)", () => {
   it("keeps allowed formatting and drops scripts", () => {
-    render(<RichTextView html={'<p>Hello <strong>class</strong></p><script>alert(1)</script>'} />);
+    render(<RichTextView html={"<p>Hello <strong>class</strong></p><script>alert(1)</script>"} />);
     expect(screen.getByText(/Hello/)).toBeTruthy();
     expect(screen.getByText("class")).toBeTruthy();
     expect(screen.queryByText(/alert/)).toBeNull();

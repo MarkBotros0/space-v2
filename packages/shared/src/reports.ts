@@ -313,8 +313,7 @@ export const exportFormatSchema = z.enum(["xlsx"]);
 export const exportKindSchema = z.enum(["engagement", "season-workbook"]);
 export type ExportKind = z.infer<typeof exportKindSchema>;
 
-export const XLSX_MIME =
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+export const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 /** iOS needs a UTI as well as a MIME type or the share sheet offers the wrong apps (spec D10). */
 export const XLSX_UTI = "org.openxmlformats.spreadsheetml.sheet";
 

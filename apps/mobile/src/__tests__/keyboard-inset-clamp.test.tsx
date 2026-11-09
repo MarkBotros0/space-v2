@@ -14,7 +14,10 @@ function Harness({ clamp, cover }: { clamp?: boolean; cover?: number }) {
   return <ScrollView {...scrollProps} />;
 }
 
-function open(clamp?: boolean, { fieldTop = 300, cover, from = 0 }: { fieldTop?: number; cover?: number; from?: number } = {}) {
+function open(
+  clamp?: boolean,
+  { fieldTop = 300, cover, from = 0 }: { fieldTop?: number; cover?: number; from?: number } = {},
+) {
   jest.useFakeTimers();
   const listeners: Record<string, (e: unknown) => void> = {};
   jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {

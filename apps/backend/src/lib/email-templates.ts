@@ -207,5 +207,9 @@ export function buildPasswordResetHtml(
     ${paragraph("If you didn't ask for this, you can ignore this email. Your password stays the same.", true)}
     ${storeLinksHtml(stores)}
   `;
-  return renderShell("Reset your password", "We received a request to reset the password for your JPC Space account.", body);
+  return renderShell(
+    "Reset your password",
+    "We received a request to reset the password for your JPC Space account.",
+    body,
+  );
 }

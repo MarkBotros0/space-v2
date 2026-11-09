@@ -65,14 +65,7 @@ const peopleCandidateSchema = z.object({
       attendancePct: z.number().int().min(0).max(100).nullable(),
     })
     .nullable(),
-  availability: z.enum([
-    "available",
-    "already_passed",
-    "did_not_pass",
-    "never_finished",
-    "in_role",
-    "in_season",
-  ]),
+  availability: z.enum(["available", "already_passed", "did_not_pass", "never_finished", "in_role", "in_season"]),
   reason: z.string().nullable(),
   selectable: z.boolean(),
   overridable: z.boolean(),

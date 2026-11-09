@@ -61,15 +61,14 @@ describe("atRiskReason (R33): names only what is below the line", () => {
     expect(reason).not.toContain("100%");
   });
   it("both low", () => {
-    expect(
-      atRiskReason(row({ attendancePct: 40, submissionsCompleted: 1, submissionPct: 33 })),
-    ).toBe("Attendance 40% · 1 of 3 submitted");
+    expect(atRiskReason(row({ attendancePct: 40, submissionsCompleted: 1, submissionPct: 33 }))).toBe(
+      "Attendance 40% · 1 of 3 submitted",
+    );
   });
 });
 
 const today = deviceTodayKey();
-const missing = (n: number) =>
-  Array.from({ length: n }, (_, i) => ({ id: 100 + i, name: `Missing ${i + 1}` }));
+const missing = (n: number) => Array.from({ length: n }, (_, i) => ({ id: 100 + i, name: `Missing ${i + 1}` }));
 const dayOf = {
   ...liveSession,
   dayKey: today,
@@ -140,14 +139,21 @@ describe("LeaderToday", () => {
   });
 
   it("while in progress with a stream: Join stream", async () => {
-    serveDash(dash({ nextSession: { ...dayOf, isInProgress: true, youtubeUrl: "https://youtu.be/x" }, leaderSession: checkIn(1) }));
+    serveDash(
+      dash({
+        nextSession: { ...dayOf, isInProgress: true, youtubeUrl: "https://youtu.be/x" },
+        leaderSession: checkIn(1),
+      }),
+    );
     renderWithProviders(<LeaderToday />);
     expect(await screen.findByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Join stream")).toBeTruthy();
   });
 
   it("a week out: a plain card with the day cue, its title opens the session, no Not checked in", async () => {
-    serveDash(dash({ nextSession: { ...liveSession, isInProgress: false, dayKey: "2099-03-01" }, leaderSession: checkIn(3) }));
+    serveDash(
+      dash({ nextSession: { ...liveSession, isInProgress: false, dayKey: "2099-03-01" }, leaderSession: checkIn(3) }),
+    );
     renderWithProviders(<LeaderToday />);
     expect(await screen.findByText(/^Next session · in \d+ days$/)).toBeTruthy();
     expect(screen.getByTestId("hero-card").props.className).toContain("bg-surface");
@@ -262,8 +268,7 @@ describe("LeaderToday", () => {
 
   it("refused for the season: v1's leader error page", async () => {
     get.mockImplementation((url: string) => {
-      if (url === "/api/v1/seasons")
-        return Promise.resolve({ data: { data: { seasons: [seasonRow] } } });
+      if (url === "/api/v1/seasons") return Promise.resolve({ data: { data: { seasons: [seasonRow] } } });
       if (url === EVENTS) return Promise.resolve({ data: { data: events } });
       if (url === UNREAD) return Promise.resolve({ data: { data: { unreadCount: 0 } } });
       return Promise.reject(

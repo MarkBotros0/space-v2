@@ -24,24 +24,16 @@ const tokens: Record<string, string> = {};
 const token = (k: string) => tokens[k] as string;
 
 const dashboard = (season: number, token: string) =>
-  request(app)
-    .get(`/api/v1/me/dashboard?seasonId=${season}`)
-    .set("authorization", `Bearer ${token}`);
+  request(app).get(`/api/v1/me/dashboard?seasonId=${season}`).set("authorization", `Bearer ${token}`);
 
 beforeAll(async () => {
   await cleanupTestData();
   seasonId = (await createTestSeason()).id;
   emptySeasonId = (await createTestSeason()).id;
-  const groupA = (
-    await db.group.create({ data: { seasonId, name: "Group A" }, select: { id: true } })
-  ).id;
-  const groupB = (
-    await db.group.create({ data: { seasonId, name: "Group B" }, select: { id: true } })
-  ).id;
+  const groupA = (await db.group.create({ data: { seasonId, name: "Group A" }, select: { id: true } })).id;
+  const groupB = (await db.group.create({ data: { seasonId, name: "Group B" }, select: { id: true } })).id;
   // A second group the same leader leads, in the same season.
-  const groupC = (
-    await db.group.create({ data: { seasonId, name: "Group C" }, select: { id: true } })
-  ).id;
+  const groupC = (await db.group.create({ data: { seasonId, name: "Group C" }, select: { id: true } })).id;
   const emptyGroup = (
     await db.group.create({
       data: { seasonId: emptySeasonId, name: "Empty" },

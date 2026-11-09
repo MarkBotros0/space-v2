@@ -87,14 +87,9 @@ function SeasonWork({ seasonId }: { seasonId: number }) {
         ) : null}
         {groups.length === 0 && !quizzes.isPending ? <CaughtUp /> : null}
         {quizzes.isError ? (
-          <InlineError
-            message="Couldn't load your quizzes."
-            onRetry={() => void quizzes.refetch()}
-          />
+          <InlineError message="Couldn't load your quizzes." onRetry={() => void quizzes.refetch()} />
         ) : null}
-        {done.assignments.length > 0 ? (
-          <Group header="Assignments handed in" rows={done.assignments} />
-        ) : null}
+        {done.assignments.length > 0 ? <Group header="Assignments handed in" rows={done.assignments} /> : null}
         {done.quizzes.length > 0 ? <Group header="Quizzes taken" rows={done.quizzes} /> : null}
       </View>
     );

@@ -65,7 +65,10 @@ describe("a seat write while the season is being started", () => {
     const draft = await season("DRAFT");
     const q = await busyStudent("Queued Student");
     const res = await behind(await startingNow(draft), () =>
-      request(app).post(`/api/v1/seasons/${draft}/enrollments`).set(superCall()).send({ userIds: [q.id] }),
+      request(app)
+        .post(`/api/v1/seasons/${draft}/enrollments`)
+        .set(superCall())
+        .send({ userIds: [q.id] }),
     );
     expect([res.status, res.body.error?.code]).toEqual([409, "people_unavailable"]);
     expect(await activeRoleRows(q.id)).toBe(1);
@@ -86,7 +89,10 @@ describe("a seat write while the season is being started", () => {
     const group = await db.group.create({ data: { seasonId: draft, name: "Here" } });
     const q = await busyLeader("Queued Leader");
     const res = await behind(await startingNow(draft), () =>
-      request(app).patch(`/api/v1/groups/${group.id}`).set(superCall()).send({ name: "Here", leaderIds: [q.id] }),
+      request(app)
+        .patch(`/api/v1/groups/${group.id}`)
+        .set(superCall())
+        .send({ name: "Here", leaderIds: [q.id] }),
     );
     expect([res.status, res.body.error?.code]).toEqual([409, "already_in_role"]);
     expect(await activeRoleRows(q.id)).toBe(1);
@@ -120,8 +126,14 @@ describe("a seat write while the season is being started", () => {
             {
               rowNumber: 2,
               values: {
-                name: q.email, email: q.email, university: null, faculty: null,
-                universityGraduationYear: null, phone: null, dateOfBirth: null, notes: null,
+                name: q.email,
+                email: q.email,
+                university: null,
+                faculty: null,
+                universityGraduationYear: null,
+                phone: null,
+                dateOfBirth: null,
+                notes: null,
               },
             },
           ],
@@ -132,10 +144,16 @@ describe("a seat write while the season is being started", () => {
   });
 
   it.each([
-    ["a draft remove", (seasonId: number, userId: number) =>
-      request(app).delete(`/api/v1/seasons/${seasonId}/enrollments/${userId}`).set(superCall())],
-    ["an override", (seasonId: number, userId: number) =>
-      request(app).post(`/api/v1/seasons/${seasonId}/enrollments/${userId}/override`).set(superCall()).send({})],
+    [
+      "a draft remove",
+      (seasonId: number, userId: number) =>
+        request(app).delete(`/api/v1/seasons/${seasonId}/enrollments/${userId}`).set(superCall()),
+    ],
+    [
+      "an override",
+      (seasonId: number, userId: number) =>
+        request(app).post(`/api/v1/seasons/${seasonId}/enrollments/${userId}/override`).set(superCall()).send({}),
+    ],
   ])("%s reads ACTIVE after waiting, and is not_draft", async (_name, send) => {
     const draft = await season("DRAFT");
     const q = await person("Queued Row");
@@ -148,13 +166,14 @@ describe("a seat write while the season is being started", () => {
     const draft = await season("DRAFT");
     const { code } = await db.season.findUniqueOrThrow({ where: { id: draft }, select: { code: true } });
     const res = await behind(await startingNow(draft), () =>
-      request(app)
-        .patch(`/api/v1/seasons/${draft}`)
-        .set(superCall())
-        .send({
-          code, program: "TEST", year: 2099, status: "DRAFT",
-          startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
-        }),
+      request(app).patch(`/api/v1/seasons/${draft}`).set(superCall()).send({
+        code,
+        program: "TEST",
+        year: 2099,
+        status: "DRAFT",
+        startDate: "2099-01-01T00:00:00.000Z",
+        endDate: "2099-12-31T00:00:00.000Z",
+      }),
     );
     expect([res.status, res.body.error?.code]).toEqual([409, "season_changed"]);
     expect((await db.season.findUniqueOrThrow({ where: { id: draft } })).status).toBe("ACTIVE");
@@ -168,9 +187,7 @@ describe("a Start or End while a seat write is open", () => {
     const held = await hold(draft, "share", (tx) =>
       tx.seasonEnrollment.create({ data: { seasonId: draft, studentUserId: q.id, status: "ACTIVE" } }),
     );
-    const res = await behind(held, () =>
-      request(app).post(`/api/v1/seasons/${draft}/start`).set(superCall()).send({}),
-    );
+    const res = await behind(held, () => request(app).post(`/api/v1/seasons/${draft}/start`).set(superCall()).send({}));
     expect([res.status, res.body.error?.code]).toEqual([409, "start_blocked"]);
     expect((await db.season.findUniqueOrThrow({ where: { id: draft } })).status).toBe("DRAFT");
     expect(await activeRoleRows(q.id)).toBe(1);
@@ -199,7 +216,10 @@ describe("a Start or End while a seat write is open", () => {
       tx.season.update({ where: { id: live }, data: { status: "COMPLETED" } }),
     );
     const res = await behind(held, () =>
-      request(app).post(`/api/v1/seasons/${live}/enrollments`).set(superCall()).send({ userIds: [q.id] }),
+      request(app)
+        .post(`/api/v1/seasons/${live}/enrollments`)
+        .set(superCall())
+        .send({ userIds: [q.id] }),
     );
     expect([res.status, res.body.error?.code]).toEqual([409, "season_finished"]);
     expect(await activeRoleRows(q.id)).toBe(0);

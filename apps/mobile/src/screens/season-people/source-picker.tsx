@@ -24,10 +24,7 @@ export function SourcePicker({
   onChange: (id: number | null) => void;
 }) {
   if (sources.length === 0) return null;
-  const items = [
-    { value: NONE, label: "No season" },
-    ...sources.map((s) => ({ value: String(s.id), label: s.title })),
-  ];
+  const items = [{ value: NONE, label: "No season" }, ...sources.map((s) => ({ value: String(s.id), label: s.title }))];
   return (
     <View className="gap-2 rounded-control bg-info-soft p-3">
       <Text variant="subhead" className="font-semibold text-foreground">

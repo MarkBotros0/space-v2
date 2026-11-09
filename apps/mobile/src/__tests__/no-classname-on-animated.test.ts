@@ -67,8 +67,7 @@ function animatedNames(source: ts.SourceFile): { namespaces: Set<string>; compon
 function offenders(label: string, text: string): string[] {
   const source = ts.createSourceFile(label, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const { namespaces, components } = animatedNames(source);
-  const isAnimated = (tag: string) =>
-    components.has(tag) || [...namespaces].some((ns) => tag.startsWith(`${ns}.`));
+  const isAnimated = (tag: string) => components.has(tag) || [...namespaces].some((ns) => tag.startsWith(`${ns}.`));
   const found: string[] = [];
   const visit = (node: ts.Node) => {
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {

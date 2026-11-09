@@ -61,7 +61,12 @@ describe("a drop", () => {
     const res = await dropped;
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("season_finished");
-    expect(await rowOf(seasonId, x.id)).toMatchObject({ status: "COMPLETED", result: "PASSED", dropReason: null, droppedAt: null });
+    expect(await rowOf(seasonId, x.id)).toMatchObject({
+      status: "COMPLETED",
+      result: "PASSED",
+      dropReason: null,
+      droppedAt: null,
+    });
   });
 
   it("End queued behind a drop refuses its stale review and graduates nobody who left", async () => {
@@ -101,17 +106,20 @@ describe("a drop", () => {
     expect(await rowOf(seasonId, x.id)).toMatchObject({ status: "COMPLETED", droppedAt: null, dropReason: null });
   });
 
-  it.each(["COMPLETED", "ARCHIVED"] as const)("in a %s season is refused, even on a row a stale read saw ACTIVE", async (status) => {
-    const seasonId = await season(status);
-    const x = await person("Finished");
-    await db.seasonEnrollment.create({
-      data: { seasonId, studentUserId: x.id, status: "ACTIVE" },
-    });
-    const res = await drop(seasonId, x.id);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("season_finished");
-    expect((await rowOf(seasonId, x.id))?.status).toBe("ACTIVE");
-  });
+  it.each(["COMPLETED", "ARCHIVED"] as const)(
+    "in a %s season is refused, even on a row a stale read saw ACTIVE",
+    async (status) => {
+      const seasonId = await season(status);
+      const x = await person("Finished");
+      await db.seasonEnrollment.create({
+        data: { seasonId, studentUserId: x.id, status: "ACTIVE" },
+      });
+      const res = await drop(seasonId, x.id);
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("season_finished");
+      expect((await rowOf(seasonId, x.id))?.status).toBe("ACTIVE");
+    },
+  );
 
   it("in a draft is refused: Remove is the way off a draft", async () => {
     const seasonId = await season("DRAFT");

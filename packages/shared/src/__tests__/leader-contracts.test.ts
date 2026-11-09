@@ -1,14 +1,15 @@
-import {
-  attendanceRosterRowSchema,
-  reviewSubmissionResponseSchema,
-  saveAttendanceResponseSchema,
-} from "../index";
+import { attendanceRosterRowSchema, reviewSubmissionResponseSchema, saveAttendanceResponseSchema } from "../index";
 
 describe("attendanceRosterRowSchema", () => {
   it("parses a row exactly as the backend's AttendanceRosterEntry emits it", () => {
     const row = {
-      studentUserId: 9, name: null, email: "s@jpc.test", groupName: "Group A",
-      status: "LATE", notes: "Bus", lateMinutes: 12,
+      studentUserId: 9,
+      name: null,
+      email: "s@jpc.test",
+      groupName: "Group A",
+      status: "LATE",
+      notes: "Bus",
+      lateMinutes: 12,
     };
     expect(attendanceRosterRowSchema.parse(row)).toEqual(row);
   });
@@ -16,8 +17,13 @@ describe("attendanceRosterRowSchema", () => {
   it("accepts an unmarked row (status null)", () => {
     expect(
       attendanceRosterRowSchema.safeParse({
-        studentUserId: 9, name: "A", email: "a@jpc.test", groupName: null,
-        status: null, notes: null, lateMinutes: null,
+        studentUserId: 9,
+        name: "A",
+        email: "a@jpc.test",
+        groupName: null,
+        status: null,
+        notes: null,
+        lateMinutes: null,
       }).success,
     ).toBe(true);
   });
@@ -32,8 +38,9 @@ describe("saveAttendanceResponseSchema", () => {
 
 describe("reviewSubmissionResponseSchema", () => {
   it("parses the review route's payload", () => {
-    expect(
-      reviewSubmissionResponseSchema.parse({ reviewed: true, returnedForRevision: false }),
-    ).toEqual({ reviewed: true, returnedForRevision: false });
+    expect(reviewSubmissionResponseSchema.parse({ reviewed: true, returnedForRevision: false })).toEqual({
+      reviewed: true,
+      returnedForRevision: false,
+    });
   });
 });

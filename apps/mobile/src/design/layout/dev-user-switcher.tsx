@@ -78,9 +78,7 @@ function SwitcherBody({ onDone }: { onDone: () => void }) {
   const grouped = useMemo(() => {
     const map = new Map<UserRole, DevSwitchUser[]>(ROLE_ORDER.map((r) => [r, []]));
     for (const u of users.data ?? []) map.get(u.role)?.push(u);
-    return ROLE_ORDER.map((role) => [role, map.get(role) ?? []] as const).filter(
-      ([, list]) => list.length > 0,
-    );
+    return ROLE_ORDER.map((role) => [role, map.get(role) ?? []] as const).filter(([, list]) => list.length > 0);
   }, [users.data]);
 
   const pick = (u: DevSwitchUser) => {
@@ -105,7 +103,9 @@ function SwitcherBody({ onDone }: { onDone: () => void }) {
       <View className="flex-row items-center gap-2">
         <Badge variant="warning">DEV</Badge>
         <Text testID="dev-switch-status" variant="caption" className="flex-1 text-muted-foreground">
-          {picked ? `Signing in as ${picked.name || picked.email}…` : "Signs in as the user you pick, with no password."}
+          {picked
+            ? `Signing in as ${picked.name || picked.email}…`
+            : "Signs in as the user you pick, with no password."}
         </Text>
       </View>
       <SearchField

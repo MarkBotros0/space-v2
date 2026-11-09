@@ -56,8 +56,7 @@ export function QuizDetailsSheet({
       const next: Record<string, string> = {};
       if ("title" in byField) next.title = "Enter a title.";
       if ("maxScore" in byField) next.maxScore = MAX_SCORE_MESSAGE;
-      if (Object.keys(next).length === 0)
-        next.form = Object.values(byField)[0] ?? "Check the quiz.";
+      if (Object.keys(next).length === 0) next.form = Object.values(byField)[0] ?? "Check the quiz.";
       setErrors(next);
       return;
     }
@@ -74,14 +73,7 @@ export function QuizDetailsSheet({
       open={open}
       onClose={close}
       title="Quiz details"
-      footer={
-        <SheetSaveBar
-          label="Save"
-          onPress={save}
-          loading={update.isPending}
-          error={saveError ?? errors.form}
-        />
-      }
+      footer={<SheetSaveBar label="Save" onPress={save} loading={update.isPending} error={saveError ?? errors.form} />}
     >
       <QuizSettings
         kind={quiz.kind}

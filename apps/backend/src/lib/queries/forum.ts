@@ -35,9 +35,7 @@ interface ForumAssignmentRow {
  * `forumAudienceFor`, the answer is 404 for every caller, never a 403 that
  * depends on who is asking.
  */
-export async function loadForumAssignment(
-  assignmentId: number,
-): Promise<ForumAssignmentRow | null> {
+export async function loadForumAssignment(assignmentId: number): Promise<ForumAssignmentRow | null> {
   return db.assignment.findFirst({
     where: { id: assignmentId, deletedAt: null, type: "FORUM" },
     select: {
@@ -143,8 +141,7 @@ export async function loadForumView(
   };
 
   // Only a forum set to "post before reading others" holds a student back.
-  const locked =
-    audience.kind === "student" && assignment.forumPostToRead && !(own?.posted ?? false);
+  const locked = audience.kind === "student" && assignment.forumPostToRead && !(own?.posted ?? false);
   if (locked) return { ...base, locked: true, posts: [], nextCursor: null };
 
   // Peer scope — from SeasonEnrollment, not GroupStudent (ruling C9, D-14.3).
@@ -216,9 +213,7 @@ export async function loadForumView(
   const page = rows.slice(0, query.limit);
   const canComment =
     assignment.forumAllowComments &&
-    (audience.kind === "student"
-      ? !assignment.forumPostToRead || (own?.posted ?? false)
-      : user.role !== "MENTOR");
+    (audience.kind === "student" ? !assignment.forumPostToRead || (own?.posted ?? false) : user.role !== "MENTOR");
 
   const posts: ForumPostData[] = await Promise.all(
     page.map(async (p) => ({

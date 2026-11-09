@@ -25,14 +25,31 @@ const del = apiClient.delete as jest.Mock;
 const BY_CODE = "/api/v1/seasons/by-code/gbv-2027";
 const CHECK = "/api/v1/seasons/7/start-check";
 const detail = (over: Record<string, unknown> = {}) => ({
-  id: 7, code: "gbv-2027", title: "GBV 2027", program: "GBV", year: 2027, status: "DRAFT",
-  startDate: "2027-01-01T00:00:00.000Z", endDate: "2027-06-30T00:00:00.000Z", description: null,
-  sessionCount: 0, studentCount: 4, absenceBudgetMinutes: 180, absenceWeightMinutes: 90,
-  canAdminister: true, groups: [], ...over,
+  id: 7,
+  code: "gbv-2027",
+  title: "GBV 2027",
+  program: "GBV",
+  year: 2027,
+  status: "DRAFT",
+  startDate: "2027-01-01T00:00:00.000Z",
+  endDate: "2027-06-30T00:00:00.000Z",
+  description: null,
+  sessionCount: 0,
+  studentCount: 4,
+  absenceBudgetMinutes: 180,
+  absenceWeightMinutes: 90,
+  canAdminister: true,
+  groups: [],
+  ...over,
 });
 const issue = (over: Record<string, unknown> = {}) => ({
-  userId: 1, name: "Mina", seat: "student", reason: "already_in_role",
-  message: "Mina is already a student in GBV 2026", otherSeasonCode: "gbv-2026", ...over,
+  userId: 1,
+  name: "Mina",
+  seat: "student",
+  reason: "already_in_role",
+  message: "Mina is already a student in GBV 2026",
+  otherSeasonCode: "gbv-2026",
+  ...over,
 });
 const ready = { ready: true, items: [], seasonsInTheWay: [] };
 
@@ -77,9 +94,29 @@ describe("ready", () => {
 describe("not ready", () => {
   const items = [
     issue(),
-    issue({ userId: 2, name: "Sara", reason: "did_not_pass", message: "Sara did not pass GBV 2026", otherSeasonCode: null }),
-    issue({ userId: 3, name: "Dina", seat: "leader", reason: "leader_has_group", message: "Dina is already leading a group in GBV 2026", otherSeasonCode: null }),
-    issue({ userId: 4, name: "Hany", seat: "admin", reason: "is_alumnus", message: "Hany is an alumnus", otherSeasonCode: null }),
+    issue({
+      userId: 2,
+      name: "Sara",
+      reason: "did_not_pass",
+      message: "Sara did not pass GBV 2026",
+      otherSeasonCode: null,
+    }),
+    issue({
+      userId: 3,
+      name: "Dina",
+      seat: "leader",
+      reason: "leader_has_group",
+      message: "Dina is already leading a group in GBV 2026",
+      otherSeasonCode: null,
+    }),
+    issue({
+      userId: 4,
+      name: "Hany",
+      seat: "admin",
+      reason: "is_alumnus",
+      message: "Hany is an alumnus",
+      otherSeasonCode: null,
+    }),
   ];
 
   it("lists the seasons in the way first, each with its message and Open {title}", async () => {

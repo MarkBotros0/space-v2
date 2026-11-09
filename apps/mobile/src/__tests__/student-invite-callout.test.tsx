@@ -30,9 +30,15 @@ const detail = (invite: unknown) => ({
   enrollments: [],
   invite,
   profile: {
-    phone: null, university: null, faculty: null, universityGraduationYear: null,
-    activeSeasonId: null, activeSeasonTitle: null, activeSeasonCode: null,
-    dateOfBirth: null, notes: null,
+    phone: null,
+    university: null,
+    faculty: null,
+    universityGraduationYear: null,
+    activeSeasonId: null,
+    activeSeasonTitle: null,
+    activeSeasonCode: null,
+    dateOfBirth: null,
+    notes: null,
   },
 });
 

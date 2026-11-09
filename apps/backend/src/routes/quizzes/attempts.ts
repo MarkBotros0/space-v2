@@ -84,12 +84,7 @@ export async function startAttempt(req: Request, res: Response) {
 
   if (latest && latest.status !== "IN_PROGRESS") {
     // R45: one attempt per student per quiz; a retake needs staff (see Task 5).
-    return apiError(
-      res,
-      "attempt_closed",
-      "You've already submitted this quiz. Ask your leader to reopen it.",
-      409,
-    );
+    return apiError(res, "attempt_closed", "You've already submitted this quiz. Ask your leader to reopen it.", 409);
   }
 
   if (!latest) {
@@ -118,11 +113,7 @@ export async function startAttempt(req: Request, res: Response) {
 }
 
 /** Resolve the caller's live attempt, or answer and return null. */
-async function resolveOpenAttempt(
-  res: Response,
-  quizId: number,
-  studentUserId: number,
-) {
+async function resolveOpenAttempt(res: Response, quizId: number, studentUserId: number) {
   const attempt = await db.quizAttempt.findFirst({
     where: { quizId, studentUserId },
     orderBy: { attemptNumber: "desc" },
@@ -146,10 +137,7 @@ async function resolveOpenAttempt(
  * lock first, so a save can never land between submit's read of the answers and
  * its commit, and two submits cannot both score the same attempt.
  */
-async function lockAttemptStatus(
-  tx: Prisma.TransactionClient,
-  attemptId: number,
-): Promise<string | null> {
+async function lockAttemptStatus(tx: Prisma.TransactionClient, attemptId: number): Promise<string | null> {
   const rows = await tx.$queryRaw<{ status: string }[]>`
     SELECT "status"::text AS "status" FROM "QuizAttempt" WHERE "id" = ${attemptId} FOR UPDATE`;
   return rows[0]?.status ?? null;
@@ -221,9 +209,7 @@ export async function saveAttemptAnswers(req: Request, res: Response) {
   return apiOk(res, { saved: parsed.data.answers.length });
 }
 
-type SubmitOutcome =
-  | { fail: [code: string, message: string, status: 409] }
-  | { hasEssays: boolean };
+type SubmitOutcome = { fail: [code: string, message: string, status: 409] } | { hasEssays: boolean };
 
 export async function submitAttempt(req: Request, res: Response) {
   const user = requireUser(req);
@@ -268,9 +254,7 @@ export async function submitAttempt(req: Request, res: Response) {
           : Boolean(a?.text && a.text.trim().length > 0);
       if (!answered) {
         return {
-          fail: [
-            "attempt_incomplete", "Answer every question before submitting.", 409,
-          ],
+          fail: ["attempt_incomplete", "Answer every question before submitting.", 409],
         };
       }
     }
@@ -318,11 +302,7 @@ export async function submitAttempt(req: Request, res: Response) {
   if (!hasEssays && quiz.resultsReleasedAt !== null) {
     // Best-effort, outside the transaction (spec D6). A mail failure must not
     // report a submitted quiz as failed.
-    await notifyQuizGraded(
-      [user.userId],
-      `Quiz graded: ${quiz.title}`,
-      "Your quiz was graded automatically.",
-    );
+    await notifyQuizGraded([user.userId], `Quiz graded: ${quiz.title}`, "Your quiz was graded automatically.");
   }
 
   const detail = await loadStudentQuizDetail(id, user.userId, false);

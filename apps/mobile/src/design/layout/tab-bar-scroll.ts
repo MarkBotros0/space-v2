@@ -94,12 +94,7 @@ export const INITIAL_SCROLL_STEP: ScrollStep = { anchor: 0, dir: null, atEnd: fa
  * (bounce, pull-to-refresh) is always "up". A worklet: `Screen` runs it in
  * its UI-thread scroll handler.
  */
-export function scrollDirectionStep(
-  prev: ScrollStep,
-  y: number,
-  viewport: number,
-  content: number,
-): ScrollStep {
+export function scrollDirectionStep(prev: ScrollStep, y: number, viewport: number, content: number): ScrollStep {
   "worklet";
   const atEnd = y + viewport >= content - END_SLOP;
   if (y <= 0) return { anchor: Math.max(y, 0), dir: "up", atEnd };

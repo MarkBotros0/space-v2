@@ -124,9 +124,7 @@ export function GroupForm({
       saving={submitting}
       saveHint={
         message ??
-        (Object.keys(errors).length > 0 && failedValues === values
-          ? "Fix the fields marked above."
-          : undefined)
+        (Object.keys(errors).length > 0 && failedValues === values ? "Fix the fields marked above." : undefined)
       }
       onSave={submit}
     >

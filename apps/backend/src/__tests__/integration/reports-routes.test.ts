@@ -67,18 +67,14 @@ describe("GET /api/v1/reports/engagement — the gate", () => {
   });
 
   it("refuses a LEADER explicitly (R109, D6 #4)", async () => {
-    const res = await request(app)
-      .get("/api/v1/reports/engagement")
-      .set("authorization", `Bearer ${leaderToken}`);
+    const res = await request(app).get("/api/v1/reports/engagement").set("authorization", `Bearer ${leaderToken}`);
     // v1 excluded leaders by not having a leader route. The v2 tree is flat and
     // /reports exists as a file for every role, so the endpoint must say no.
     expect(res.status).toBe(403);
   });
 
   it("refuses a STUDENT explicitly (R110)", async () => {
-    const res = await request(app)
-      .get("/api/v1/reports/engagement")
-      .set("authorization", `Bearer ${studentToken}`);
+    const res = await request(app).get("/api/v1/reports/engagement").set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(403);
   });
 
@@ -111,26 +107,18 @@ describe("GET /api/v1/reports/engagement — the gate", () => {
   });
 
   it("refuses a stored ADMIN with no season rows: the role comes from the rows", async () => {
-    const res = await request(app)
-      .get("/api/v1/reports/engagement")
-      .set("authorization", `Bearer ${emptyAdminToken}`);
+    const res = await request(app).get("/api/v1/reports/engagement").set("authorization", `Bearer ${emptyAdminToken}`);
     expect(res.status).toBe(403);
   });
 
   it("gives MENTOR every season (R45)", async () => {
-    const res = await request(app)
-      .get("/api/v1/reports/engagement")
-      .set("authorization", `Bearer ${mentorToken}`);
+    const res = await request(app).get("/api/v1/reports/engagement").set("authorization", `Bearer ${mentorToken}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.scope.seasonIds).toEqual(
-      expect.arrayContaining([mySeasonId, otherSeasonId]),
-    );
+    expect(res.body.data.scope.seasonIds).toEqual(expect.arrayContaining([mySeasonId, otherSeasonId]));
   });
 
   it("gives SUPER the engagement view v1 denied them (spec D17 — deliberate divergence)", async () => {
-    const res = await request(app)
-      .get("/api/v1/reports/engagement")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/reports/engagement").set("authorization", `Bearer ${superToken}`);
     // v1 gates /mentor/reports to MENTOR only (R106) while its CSV route hands
     // SUPER exactly this data with no season parameter (R45). The restriction
     // was an artefact of the per-role page tree, not a policy.
@@ -147,9 +135,7 @@ describe("GET /api/v1/reports/engagement — the gate", () => {
   });
 
   it("never carries the cohort in the summary payload (R34)", async () => {
-    const res = await request(app)
-      .get("/api/v1/reports/engagement")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/reports/engagement").set("authorization", `Bearer ${superToken}`);
     expect(res.body.data.rawStudents).toBeUndefined();
     expect(res.body.data.atRisk.length).toBeLessThanOrEqual(10);
     expect(res.body.data.atRiskTotal).toBeDefined();
@@ -159,9 +145,7 @@ describe("GET /api/v1/reports/engagement — the gate", () => {
 describe("GET /api/v1/reports/engagement/students — separately gated", () => {
   it("applies the same refusals as the summary", async () => {
     for (const token of [leaderToken, studentToken]) {
-      const res = await request(app)
-        .get("/api/v1/reports/engagement/students")
-        .set("authorization", `Bearer ${token}`);
+      const res = await request(app).get("/api/v1/reports/engagement/students").set("authorization", `Bearer ${token}`);
       expect(res.status).toBe(403);
     }
   });
@@ -186,18 +170,14 @@ describe("GET /api/v1/reports/engagement/students — separately gated", () => {
 
 describe("GET /api/v1/reports/organisation — SUPER only", () => {
   it("admits SUPER", async () => {
-    const res = await request(app)
-      .get("/api/v1/reports/organisation")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/reports/organisation").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.totalStudentsNotGraduated).toBeGreaterThanOrEqual(0);
   });
 
   it("refuses MENTOR, ADMIN, LEADER and STUDENT alike (R50, R107)", async () => {
     for (const token of [mentorToken, adminToken, leaderToken, studentToken]) {
-      const res = await request(app)
-        .get("/api/v1/reports/organisation")
-        .set("authorization", `Bearer ${token}`);
+      const res = await request(app).get("/api/v1/reports/organisation").set("authorization", `Bearer ${token}`);
       // loadSuperReports takes no arguments and covers the whole database with
       // no gate; its only protection is requireRole(["SUPER"]) on the one page
       // that calls it. That gate moves into the endpoint here.

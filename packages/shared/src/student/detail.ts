@@ -1,11 +1,6 @@
 import { z } from "zod";
 
-import {
-  attendanceStatusSchema,
-  enrollmentStatusSchema,
-  seasonStatusSchema,
-  submissionStatusSchema,
-} from "../enums";
+import { attendanceStatusSchema, enrollmentStatusSchema, seasonStatusSchema, submissionStatusSchema } from "../enums";
 
 // ---------------------------------------------------------------------------
 // Detail — three role-shaped arms (spec 06 §4.2 is the contract)

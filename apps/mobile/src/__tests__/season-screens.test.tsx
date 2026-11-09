@@ -16,12 +16,7 @@ import SeasonsScreen from "../../app/(app)/(tabs)/seasons/index";
 
 const get = apiClient.get as jest.Mock;
 
-const seasonRow = (
-  id: number,
-  year: number,
-  status: "DRAFT" | "ACTIVE" | "ARCHIVED",
-  title: string,
-) => ({
+const seasonRow = (id: number, year: number, status: "DRAFT" | "ACTIVE" | "ARCHIVED", title: string) => ({
   id,
   code: `s${id}`,
   title,
@@ -47,10 +42,7 @@ describe("SeasonsScreen (SUPER)", () => {
     get.mockResolvedValue({
       data: {
         data: {
-          seasons: [
-            seasonRow(8, 2027, "DRAFT", "Spring 2027"),
-            seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
-          ],
+          seasons: [seasonRow(8, 2027, "DRAFT", "Spring 2027"), seasonRow(7, 2026, "ACTIVE", "Spring 2026")],
         },
       },
     });
@@ -139,10 +131,7 @@ describe("SeasonScreen (workspace)", () => {
     get.mockResolvedValue({
       data: {
         data: {
-          seasons: [
-            seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
-            seasonRow(6, 2025, "ARCHIVED", "Spring 2025"),
-          ],
+          seasons: [seasonRow(7, 2026, "ACTIVE", "Spring 2026"), seasonRow(6, 2025, "ARCHIVED", "Spring 2025")],
         },
       },
     });
@@ -165,9 +154,7 @@ describe("SeasonScreen (workspace)", () => {
     get.mockResolvedValue({ data: { data: { seasons: [] } } });
     renderWithProviders(<SeasonScreen />);
     expect(
-      await screen.findByText(
-        "You aren't assigned to a season yet. Contact a super-admin to be added.",
-      ),
+      await screen.findByText("You aren't assigned to a season yet. Contact a super-admin to be added."),
     ).toBeTruthy();
   });
 });
@@ -242,9 +229,36 @@ describe("SeasonsScreen — navigation and program filter (Plan 6, G20)", () => 
       data: {
         data: {
           seasons: [
-            { id: 1, code: "a", title: "Done one", program: "A", year: 2025, status: "COMPLETED", startDate: "2025-01-01T00:00:00.000Z", endDate: "2025-02-01T00:00:00.000Z" },
-            { id: 2, code: "b", title: "Done two", program: "A", year: 2024, status: "ARCHIVED", startDate: "2024-01-01T00:00:00.000Z", endDate: "2024-02-01T00:00:00.000Z" },
-            { id: 3, code: "c", title: "Running", program: "B", year: 2026, status: "ACTIVE", startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-02-01T00:00:00.000Z" },
+            {
+              id: 1,
+              code: "a",
+              title: "Done one",
+              program: "A",
+              year: 2025,
+              status: "COMPLETED",
+              startDate: "2025-01-01T00:00:00.000Z",
+              endDate: "2025-02-01T00:00:00.000Z",
+            },
+            {
+              id: 2,
+              code: "b",
+              title: "Done two",
+              program: "A",
+              year: 2024,
+              status: "ARCHIVED",
+              startDate: "2024-01-01T00:00:00.000Z",
+              endDate: "2024-02-01T00:00:00.000Z",
+            },
+            {
+              id: 3,
+              code: "c",
+              title: "Running",
+              program: "B",
+              year: 2026,
+              status: "ACTIVE",
+              startDate: "2026-01-01T00:00:00.000Z",
+              endDate: "2026-02-01T00:00:00.000Z",
+            },
           ],
         },
       },

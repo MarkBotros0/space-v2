@@ -47,14 +47,7 @@ describe("StatTile", () => {
 
 describe("HeroCard", () => {
   it("renders eyebrow, title, meta and action", () => {
-    render(
-      <HeroCard
-        eyebrow="Next session"
-        title="Intro"
-        meta="Tue 6pm"
-        action={<Button>Check in</Button>}
-      />,
-    );
+    render(<HeroCard eyebrow="Next session" title="Intro" meta="Tue 6pm" action={<Button>Check in</Button>} />);
     expect(screen.getByText("Next session")).toBeTruthy();
     expect(screen.getByText("Intro")).toBeTruthy();
     expect(screen.getByText("Tue 6pm")).toBeTruthy();

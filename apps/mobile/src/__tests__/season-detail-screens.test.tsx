@@ -101,7 +101,13 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(screen.queryByRole("button", { name: "Add people" })).toBeNull();
     expect(screen.getByText("Community")).toBeTruthy();
     // Each card names what it opens, without "Manage" (owner, 2026-11-07).
-    for (const gone of ["New session", "Students and groups", "Manage quizzes", "Manage assignments", "Manage sessions"])
+    for (const gone of [
+      "New session",
+      "Students and groups",
+      "Manage quizzes",
+      "Manage assignments",
+      "Manage sessions",
+    ])
       expect(screen.queryByText(gone)).toBeNull();
 
     fireEvent.press(screen.getByRole("button", { name: "Sessions" }));
@@ -143,7 +149,14 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(screen.getByText("4 students")).toBeTruthy();
     expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/roster");
     expect(screen.getByRole("button", { name: "Sessions" })).toBeTruthy();
-    for (const label of ["Assignments", "Quizzes", "New group", "Move students between groups", "Community", "Invite new"])
+    for (const label of [
+      "Assignments",
+      "Quizzes",
+      "New group",
+      "Move students between groups",
+      "Community",
+      "Invite new",
+    ])
       expect(screen.queryByText(label)).toBeNull();
   });
 
@@ -179,22 +192,33 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
   });
 
   // Owner 2026-11-07: a finished season is read, never changed; Duplicate starts a draft.
-  it.each(["COMPLETED", "ARCHIVED"])("shows a SUPER a %s season read-only, with Duplicate and Results", async (status) => {
-    useSessionStore.setState(makeSession("SUPER"));
-    routeGets(detail({ status }));
-    renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByText("Pat Admin")).toBeTruthy();
-    expect(await screen.findByText("Sara Student")).toBeTruthy();
-    expect(screen.getByText("Leader: Lina")).toBeTruthy();
-    for (const label of ["New group", "Move students between groups", "Assignments", "Quizzes", "Community", "Invite new", "End season"])
-      expect(screen.queryByText(label)).toBeNull();
-    expect(screen.queryByLabelText("Manage admins")).toBeNull();
-    expect(screen.getByRole("button", { name: "Sessions" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Results" })).toBeTruthy();
-    expect(screen.getByText("This season has finished")).toBeTruthy();
-    fireEvent.press(screen.getByText("Duplicate as a draft"));
-    expect(await screen.findByLabelText("Year")).toBeTruthy();
-  });
+  it.each(["COMPLETED", "ARCHIVED"])(
+    "shows a SUPER a %s season read-only, with Duplicate and Results",
+    async (status) => {
+      useSessionStore.setState(makeSession("SUPER"));
+      routeGets(detail({ status }));
+      renderWithProviders(<SeasonDetailScreen />);
+      expect(await screen.findByText("Pat Admin")).toBeTruthy();
+      expect(await screen.findByText("Sara Student")).toBeTruthy();
+      expect(screen.getByText("Leader: Lina")).toBeTruthy();
+      for (const label of [
+        "New group",
+        "Move students between groups",
+        "Assignments",
+        "Quizzes",
+        "Community",
+        "Invite new",
+        "End season",
+      ])
+        expect(screen.queryByText(label)).toBeNull();
+      expect(screen.queryByLabelText("Manage admins")).toBeNull();
+      expect(screen.getByRole("button", { name: "Sessions" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Results" })).toBeTruthy();
+      expect(screen.getByText("This season has finished")).toBeTruthy();
+      fireEvent.press(screen.getByText("Duplicate as a draft"));
+      expect(await screen.findByLabelText("Year")).toBeTruthy();
+    },
+  );
 
   it("says so when the code param is missing", async () => {
     mockParams = {};

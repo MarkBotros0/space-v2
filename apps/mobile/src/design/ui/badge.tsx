@@ -19,8 +19,7 @@ import { withTextRuns } from "../lib/text-runs";
 import { chipTextVariants, chipVariants, StatusChip, type ChipTone } from "./status-chip";
 import { Text } from "./text";
 
-type LegacyVariant =
-  "default" | "secondary" | "outline" | "success" | "warning" | "error" | "info" | "teal";
+type LegacyVariant = "default" | "secondary" | "outline" | "success" | "warning" | "error" | "info" | "teal";
 type Role = "none" | "super" | "admin" | "leader" | "mentor" | "student" | "alumni";
 
 const TONE: Record<LegacyVariant, ChipTone> = {
@@ -68,11 +67,7 @@ type Opts = { variant?: LegacyVariant | null; role?: Role | null };
 
 /** Box classes: the chip's shape and tone, or its role colour. */
 function badgeVariants({ variant, role }: Opts = {}): string {
-  return cn(
-    chipVariants({ tone: TONE[variant ?? "default"] }),
-    "self-auto gap-1",
-    roleBox({ role }),
-  );
+  return cn(chipVariants({ tone: TONE[variant ?? "default"] }), "self-auto gap-1", roleBox({ role }));
 }
 
 /** Label classes: the chip tone's text colour, or the role's foreground. */
@@ -90,13 +85,7 @@ type BadgeProps = VariantProps<typeof roleBox> & {
 function Badge({ className, textClassName, variant, role, children }: BadgeProps) {
   const runs = withTextRuns(children, (text) => text);
   if (runs.length === 1 && typeof runs[0] === "string" && (role ?? "none") === "none") {
-    return (
-      <StatusChip
-        tone={TONE[variant ?? "default"]}
-        label={runs[0]}
-        className={cn("self-auto", className)}
-      />
-    );
+    return <StatusChip tone={TONE[variant ?? "default"]} label={runs[0]} className={cn("self-auto", className)} />;
   }
   return (
     <View className={cn(badgeVariants({ variant, role }), className)}>

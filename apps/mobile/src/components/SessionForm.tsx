@@ -64,8 +64,7 @@ export function sessionWriteFields(v: SessionFormValues) {
 }
 
 /** v1 edit: a session with a YouTube link is online, anything else in-person. */
-export const sessionTypeFor = (youtubeUrl: string | null): SessionType =>
-  youtubeUrl ? "online" : "inperson";
+export const sessionTypeFor = (youtubeUrl: string | null): SessionType => (youtubeUrl ? "online" : "inperson");
 
 /** The day key as a local-midnight Date for the picker (and back) — no zone arithmetic (X13). */
 const dayToDate = (day: string): Date | null => {
@@ -92,10 +91,8 @@ export function SessionFields({
   onChange: (next: SessionFormValues) => void;
   errors: Record<string, string>;
 }) {
-  const set =
-    (key: "title" | "durationMinutes" | "location" | "youtubeUrl" | "description") =>
-    (text: string) =>
-      onChange({ ...values, [key]: text });
+  const set = (key: "title" | "durationMinutes" | "location" | "youtubeUrl" | "description") => (text: string) =>
+    onChange({ ...values, [key]: text });
   return (
     <View className="flex-col gap-4">
       <FormField label="Title" required error={errors.title}>
@@ -119,9 +116,7 @@ export function SessionFields({
         <TimePicker
           minuteStep={15}
           value={timeToParts(values.time)}
-          onChange={({ hour, minute }) =>
-            onChange({ ...values, time: `${pad(hour)}:${pad(minute)}` })
-          }
+          onChange={({ hour, minute }) => onChange({ ...values, time: `${pad(hour)}:${pad(minute)}` })}
         />
       </FormField>
       <FormField label="Duration (min)" required error={errors.durationMinutes}>
@@ -197,11 +192,7 @@ export function ScopeSelector({
 }) {
   return (
     <FormField label="Apply to" error={error}>
-      <Select
-        items={SCOPE_LABELS}
-        value={value}
-        onValueChange={(v) => onChange(v as RecurrenceScope)}
-      >
+      <Select items={SCOPE_LABELS} value={value} onValueChange={(v) => onChange(v as RecurrenceScope)}>
         <SelectTrigger accessibilityLabel="Apply to">
           <SelectValue />
         </SelectTrigger>

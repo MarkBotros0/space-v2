@@ -74,9 +74,7 @@ describe("GET /api/v1/seasons/:id", () => {
   });
 
   it("returns the season with counts and groups for a SUPER", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${superToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.id).toBe(seasonId);
@@ -94,7 +92,9 @@ describe("GET /api/v1/seasons/:id", () => {
 
   it("doesn't count a withdrawn student, and keeps counting a completed one", async () => {
     const read = async () => {
-      const { data } = (await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${superToken}`)).body;
+      const { data } = (
+        await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${superToken}`)
+      ).body;
       return [data.studentCount, data.groups[0].studentCount];
     };
     try {
@@ -108,24 +108,18 @@ describe("GET /api/v1/seasons/:id", () => {
   });
 
   it("returns 403 for a student not enrolled in the season", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}`)
-      .set("authorization", `Bearer ${outsiderToken}`);
+    const res = await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${outsiderToken}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("forbidden");
   });
 
   it("returns 403 when an ADMIN reaches outside their season scope", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${otherSeasonId}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get(`/api/v1/seasons/${otherSeasonId}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(403);
   });
 
   it("returns 404 for a season id that does not exist", async () => {
-    const res = await request(app)
-      .get("/api/v1/seasons/2147483000")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/seasons/2147483000").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("not_found");
   });
@@ -134,9 +128,7 @@ describe("GET /api/v1/seasons/:id", () => {
     // A second group the student does not belong to must not appear.
     await db.group.create({ data: { seasonId, name: "Test Group B" } });
 
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+    const res = await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${studentToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.groups).toHaveLength(1);

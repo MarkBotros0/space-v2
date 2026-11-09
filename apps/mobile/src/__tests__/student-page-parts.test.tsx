@@ -42,7 +42,7 @@ describe("StudentDetails", () => {
 describe("StudentSections", () => {
   const sections = (render2: jest.Mock) => [
     { value: "a", label: "Seasons", render: () => <Text>seasons body</Text> },
-    { value: "b", label: "Notes", render: () => (render2(), <Text>notes body</Text>) },
+    { value: "b", label: "Notes", render: () => (render2(), (<Text>notes body</Text>)) },
   ];
 
   it("mounts a section the first time it is chosen, then keeps it", () => {

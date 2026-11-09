@@ -13,8 +13,7 @@ describe("generated design tokens", () => {
   });
 
   it("light and dark values come from tokens.json", () => {
-    const hexToTriplet = (hex: string) =>
-      [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(" ");
+    const hexToTriplet = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(" ");
     expect(css).toContain(`--card: ${hexToTriplet(tokens.light.card)};`);
     const darkBlock = css.slice(css.indexOf(".dark:root"));
     expect(darkBlock).toContain(`--background: ${hexToTriplet(tokens.dark.background)};`);

@@ -178,7 +178,9 @@ describe("New announcement", () => {
 describe("Edit announcement", () => {
   it("shows To read-only and goes back after saving", async () => {
     get.mockReturnValue(
-      ok(detailItem(7, { canEdit: true, audience: "SEASON", seasonId: 3, seasonTitle: "Test Season", body: "Old body" })),
+      ok(
+        detailItem(7, { canEdit: true, audience: "SEASON", seasonId: 3, seasonTitle: "Test Season", body: "Old body" }),
+      ),
     );
     patch.mockResolvedValue(ok(detailItem(7)));
     renderWithProviders(<EditAnnouncementScreen />);

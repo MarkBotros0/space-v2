@@ -9,11 +9,7 @@ import { PillTabBar } from "../../../src/design/layout/floating-tab-bar";
 import { TabBarPresenceContext } from "../../../src/design/layout/shell-context";
 import { swipeTabs } from "../../../src/design/layout/tab-bar-scroll";
 import { useResetTabBarOnFocus } from "../../../src/design/layout/use-reset-tab-bar-on-focus";
-import {
-  DIRECTORY_ROUTE_HREFS,
-  TAB_ROUTE_NAMES,
-  routeNameForHref,
-} from "../../../src/lib/route-names";
+import { DIRECTORY_ROUTE_HREFS, TAB_ROUTE_NAMES, routeNameForHref } from "../../../src/lib/route-names";
 import { historyThenHomeTabsRouter } from "../../../src/lib/tabs-back-router";
 import { useSessionStore } from "../../../src/store/session";
 
@@ -63,8 +59,7 @@ export const SWIPE_VELOCITY = 600;
 /** A finished sideways swipe as a tab step: +1 next (swiped left), -1 previous, or none. */
 export function swipeStep(translationX: number, velocityX: number): 1 | -1 | null {
   const far = Math.abs(translationX) >= SWIPE_DISTANCE;
-  const fast =
-    Math.abs(velocityX) >= SWIPE_VELOCITY && Math.abs(translationX) >= SWIPE_DISTANCE / 2;
+  const fast = Math.abs(velocityX) >= SWIPE_VELOCITY && Math.abs(translationX) >= SWIPE_DISTANCE / 2;
   if (!far && !fast) return null;
   return translationX < 0 ? 1 : -1;
 }
@@ -141,13 +136,7 @@ export default function TabsLayout() {
           >
             {orderedRouteNames.map((name) => {
               const tab = tabByRouteName.get(name);
-              return (
-                <Tabs.Screen
-                  key={name}
-                  name={name}
-                  options={tab ? { title: tab.label } : NOT_A_TAB}
-                />
-              );
+              return <Tabs.Screen key={name} name={name} options={tab ? { title: tab.label } : NOT_A_TAB} />;
             })}
           </Tabs>
         </View>

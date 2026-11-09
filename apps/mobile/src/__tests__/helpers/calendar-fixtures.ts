@@ -32,13 +32,7 @@ export const seasonRow = (id: number, year: number, status: "DRAFT" | "ACTIVE") 
 
 export const studentSession = makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 });
 
-export const eventRow = (
-  id: number,
-  title: string,
-  date: string,
-  dayKey: string,
-  time: string | null,
-) => ({
+export const eventRow = (id: number, title: string, date: string, dayKey: string, time: string | null) => ({
   id,
   title,
   date,

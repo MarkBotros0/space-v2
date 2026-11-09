@@ -175,7 +175,9 @@ describe("PATCH /api/v1/users/:id", () => {
     const season = await createTestSeason();
     const admin = await createTestUser("edge-rename-admin", "ADMIN");
     await db.seasonAdmin.create({ data: { seasonId: season.id, userId: admin.id } });
-    const loginRes = await request(app).post("/api/v1/auth/login").send({ email: admin.email, password: "correct-horse-battery" });
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: admin.email, password: "correct-horse-battery" });
     const refreshToken = loginRes.body.data.refreshToken as string;
 
     const res = await request(app)
@@ -288,7 +290,9 @@ describe("deactivate / reactivate", () => {
     const s = await createTestUser("edge-deactivate-login", "STUDENT");
     const res = await request(app).post(`/api/v1/users/${s.id}/deactivate`).set(auth(superToken));
     expect(res.status).toBe(200);
-    const loginRes = await request(app).post("/api/v1/auth/login").send({ email: s.email, password: "correct-horse-battery" });
+    const loginRes = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: s.email, password: "correct-horse-battery" });
     expect(loginRes.status).toBe(401);
     expect(loginRes.body.error.code).toBe("invalid_credentials");
   });

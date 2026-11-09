@@ -43,8 +43,7 @@ async function setClosed(req: Request, res: Response, close: boolean) {
       select: { announcement: { select: { season: { select: { status: true } } } } },
     });
     if (!poll) return "not_found";
-    if (announcementFlags(user, { ...row, season: poll.announcement.season }).seasonFinished)
-      return "season_finished";
+    if (announcementFlags(user, { ...row, season: poll.announcement.season }).seasonFinished) return "season_finished";
     await tx.announcementPoll.update({
       where: { id: found.id },
       data: close ? { closedAt: new Date(), closedById: user.userId } : { closedAt: null, closedById: null },
@@ -53,15 +52,15 @@ async function setClosed(req: Request, res: Response, close: boolean) {
   });
 
   if (outcome === "not_found") return apiError(res, "not_found", "Poll not found.", 404);
-  if (outcome === "season_finished")
-    return apiError(res, "season_finished", "This season has finished.", 409);
-  auditLog(close ? "announcement.poll.close" : "announcement.poll.reopen", user.userId, id,
-    row.seasonId !== null ? { season: row.seasonId } : {});
-  const unread = await unreadIdsAmong(user, [row.id]);
-  return apiOk(
-    res,
-    toDetail(row, !unread.has(row.id), announcementFlags(user, row), await loadPollView(user, row)),
+  if (outcome === "season_finished") return apiError(res, "season_finished", "This season has finished.", 409);
+  auditLog(
+    close ? "announcement.poll.close" : "announcement.poll.reopen",
+    user.userId,
+    id,
+    row.seasonId !== null ? { season: row.seasonId } : {},
   );
+  const unread = await unreadIdsAmong(user, [row.id]);
+  return apiOk(res, toDetail(row, !unread.has(row.id), announcementFlags(user, row), await loadPollView(user, row)));
 }
 
 /** POST /announcements/:id/poll/close (idempotent). */
@@ -83,8 +82,7 @@ export async function listVoters(req: Request, res: Response) {
     where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
     select: ANNOUNCEMENT_SELECT,
   });
-  if (!row?.poll || !canSeePollNames(user, row))
-    return apiError(res, "not_found", "Poll not found.", 404);
+  if (!row?.poll || !canSeePollNames(user, row)) return apiError(res, "not_found", "Poll not found.", 404);
   const poll = await db.announcementPoll.findUnique({
     where: { announcementId: id },
     select: {

@@ -8,10 +8,7 @@ export interface VerifiedUser {
   name: string;
 }
 
-export async function verifyCredentials(
-  email: string,
-  password: string,
-): Promise<VerifiedUser | null> {
+export async function verifyCredentials(email: string, password: string): Promise<VerifiedUser | null> {
   const user = await findUserByEmail(email, {
     id: true,
     email: true,

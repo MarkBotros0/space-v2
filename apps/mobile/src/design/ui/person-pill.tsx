@@ -8,15 +8,7 @@ import { View } from "react-native";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-export function PersonPill({
-  name,
-  initials,
-  you = false,
-}: {
-  name: string;
-  initials: string;
-  you?: boolean;
-}) {
+export function PersonPill({ name, initials, you = false }: { name: string; initials: string; you?: boolean }) {
   return (
     <View
       className={cn(
@@ -38,10 +30,7 @@ export function PersonPill({
       <Text
         variant="caption"
         numberOfLines={1}
-        className={cn(
-          "max-w-40 font-medium",
-          you ? "text-brand-teal-800 dark:text-brand-teal-200" : "text-foreground",
-        )}
+        className={cn("max-w-40 font-medium", you ? "text-brand-teal-800 dark:text-brand-teal-200" : "text-foreground")}
       >
         {name}
       </Text>

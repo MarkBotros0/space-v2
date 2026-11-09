@@ -56,30 +56,82 @@ const publicProfile = {
   activeSeasonCode: "S99",
 };
 const engagement = {
-  score: 75, attendancePct: 50, submissionPct: 100, attendancePresent: 2, attendanceTotal: 4,
-  submissionsCompleted: 2, submissionsExpected: 2, studentUserId: 21, seasonId: 7, seasonTitle: "Spring 2099", atRisk: true,
-  quizzesGiven: 2, quizzesTaken: 1, quizPct: 50,
+  score: 75,
+  attendancePct: 50,
+  submissionPct: 100,
+  attendancePresent: 2,
+  attendanceTotal: 4,
+  submissionsCompleted: 2,
+  submissionsExpected: 2,
+  studentUserId: 21,
+  seasonId: 7,
+  seasonTitle: "Spring 2099",
+  atRisk: true,
+  quizzesGiven: 2,
+  quizzesTaken: 1,
+  quizPct: 50,
 };
 const mentorNote = {
-  id: 1, body: "Checked in about the essay", visibility: "MENTORS", followUpFlagged: true,
-  createdAt: "2099-02-01T10:00:00.000Z", updatedAt: "2099-02-01T10:00:00.000Z", edited: false,
-  authorId: 2, authorName: "Mina Mentor", authorRole: "MENTOR", seasonId: 7, seasonTitle: "Spring 2099", canEdit: true,
+  id: 1,
+  body: "Checked in about the essay",
+  visibility: "MENTORS",
+  followUpFlagged: true,
+  createdAt: "2099-02-01T10:00:00.000Z",
+  updatedAt: "2099-02-01T10:00:00.000Z",
+  edited: false,
+  authorId: 2,
+  authorName: "Mina Mentor",
+  authorRole: "MENTOR",
+  seasonId: 7,
+  seasonTitle: "Spring 2099",
+  canEdit: true,
 };
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
 let mockFollowUps: unknown[] = [];
 const followUp = {
-  id: 9, studentUserId: 21, studentName: "Sara Student", reason: "After the exam",
-  createdAt: "2099-01-01T10:00:00.000Z", dueAt: "2099-01-08T10:00:00.000Z", remindedAt: null, doneAt: null,
+  id: 9,
+  studentUserId: 21,
+  studentName: "Sara Student",
+  reason: "After the exam",
+  createdAt: "2099-01-01T10:00:00.000Z",
+  dueAt: "2099-01-08T10:00:00.000Z",
+  remindedAt: null,
+  doneAt: null,
 };
 function serveMentor() {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/students/21") return ok({ ...base, profile: publicProfile });
     if (url === "/api/v1/students/21/engagement") return ok(engagement);
     if (url === "/api/v1/students/21/attendance")
-      return ok({ history: [{ sessionId: 1, sessionTitle: "Week 4", startsAt: "2099-04-01T16:00:00.000Z", seasonId: 7, seasonTitle: "Spring 2099", status: "LATE" }] });
+      return ok({
+        history: [
+          {
+            sessionId: 1,
+            sessionTitle: "Week 4",
+            startsAt: "2099-04-01T16:00:00.000Z",
+            seasonId: 7,
+            seasonTitle: "Spring 2099",
+            status: "LATE",
+          },
+        ],
+      });
     if (url === "/api/v1/students/21/submissions")
-      return ok({ submissions: [{ publicId: "abc123defg", assignmentId: 41, assignmentTitle: "Essay one", status: "SUBMITTED", isLate: false, submittedAt: "2099-03-02T10:00:00.000Z", reviewedAt: null, seasonId: 7, seasonTitle: "Spring 2099" }] });
+      return ok({
+        submissions: [
+          {
+            publicId: "abc123defg",
+            assignmentId: 41,
+            assignmentTitle: "Essay one",
+            status: "SUBMITTED",
+            isLate: false,
+            submittedAt: "2099-03-02T10:00:00.000Z",
+            reviewedAt: null,
+            seasonId: 7,
+            seasonTitle: "Spring 2099",
+          },
+        ],
+      });
     if (url.startsWith("/api/v1/students/21/notes")) return ok({ notes: [mentorNote], nextCursor: null });
     if (url === "/api/v1/follow-ups") return ok({ followUps: mockFollowUps });
     return Promise.reject(new Error(`unexpected GET ${url}`));

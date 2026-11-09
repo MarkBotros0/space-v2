@@ -26,10 +26,7 @@ export function HomeActions() {
       {/* v1 parity: shows only on a DEV_USER_SWITCHER=1 backend. */}
       <DevUserSwitcher />
       <NotificationBell unread={unread} onPress={() => router.push("/notifications")} />
-      <UserMenu
-        initials={initialsOf(name, user.role.charAt(0))}
-        onPress={() => router.push("/profile")}
-      />
+      <UserMenu initials={initialsOf(name, user.role.charAt(0))} onPress={() => router.push("/profile")} />
     </View>
   );
 }

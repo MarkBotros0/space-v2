@@ -27,9 +27,7 @@ function asNode(content: ReactNode, textClassName: string) {
   );
 }
 
-type MetaSegment =
-  | { kind: "text"; key: string; text: string }
-  | { kind: "node"; key: string; node: ReactNode };
+type MetaSegment = { kind: "text"; key: string; text: string } | { kind: "node"; key: string; node: ReactNode };
 
 /**
  * Meta cells in order: a run of plain strings/numbers becomes one "·"-joined
@@ -90,31 +88,39 @@ function DataTable<Row>({
               }
             : {};
           return (
-          <Wrapper key={rowKey(row)} {...pressProps} className={cn("min-h-11 flex-row items-center gap-3 px-4 py-3", onRowPress && "active:bg-muted/40", i > 0 && "border-t border-border/60")}>
-            <View className="min-w-0 flex-1">
-              {primary ? asNode(primary.cell(row), "text-foreground") : null}
-              {metaColumns.length > 0 ? (
-                <View className="mt-0.5 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                  {metaSegments(metaColumns.map((col) => col.cell(row))).map((seg) =>
-                    seg.kind === "text" ? (
-                      <Text key={seg.key} className="min-w-0 max-w-full shrink text-xs text-muted-foreground">
-                        {seg.text}
-                      </Text>
-                    ) : (
-                      <Fragment key={seg.key}>{seg.node}</Fragment>
-                    ),
-                  )}
+            <Wrapper
+              key={rowKey(row)}
+              {...pressProps}
+              className={cn(
+                "min-h-11 flex-row items-center gap-3 px-4 py-3",
+                onRowPress && "active:bg-muted/40",
+                i > 0 && "border-t border-border/60",
+              )}
+            >
+              <View className="min-w-0 flex-1">
+                {primary ? asNode(primary.cell(row), "text-foreground") : null}
+                {metaColumns.length > 0 ? (
+                  <View className="mt-0.5 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                    {metaSegments(metaColumns.map((col) => col.cell(row))).map((seg) =>
+                      seg.kind === "text" ? (
+                        <Text key={seg.key} className="min-w-0 max-w-full shrink text-xs text-muted-foreground">
+                          {seg.text}
+                        </Text>
+                      ) : (
+                        <Fragment key={seg.key}>{seg.node}</Fragment>
+                      ),
+                    )}
+                  </View>
+                ) : null}
+              </View>
+              {actionColumns.length > 0 ? (
+                <View className="shrink-0 flex-row items-center gap-1">
+                  {actionColumns.map((col) => (
+                    <Fragment key={col.key}>{asNode(col.cell(row), "text-foreground")}</Fragment>
+                  ))}
                 </View>
               ) : null}
-            </View>
-            {actionColumns.length > 0 ? (
-              <View className="shrink-0 flex-row items-center gap-1">
-                {actionColumns.map((col) => (
-                  <Fragment key={col.key}>{asNode(col.cell(row), "text-foreground")}</Fragment>
-                ))}
-              </View>
-            ) : null}
-          </Wrapper>
+            </Wrapper>
           );
         })}
       </View>

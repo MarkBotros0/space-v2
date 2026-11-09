@@ -3,9 +3,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isMentor, isSuper } from "../rbac";
 import { seasonParticipant } from "./season-participants";
-import {
-  ANNOUNCEMENT_UNREAD_DAYS,
-} from "../../../../../packages/shared/src/index";
+import { ANNOUNCEMENT_UNREAD_DAYS } from "../../../../../packages/shared/src/index";
 
 export const ANNOUNCEMENT_PAGE_ORDER: Prisma.AnnouncementOrderByWithRelationInput[] = [
   { createdAt: "desc" },
@@ -38,9 +36,7 @@ async function readableSeasonIds(user: SessionUser): Promise<number[]> {
  * of every season they are a participant, admin or leader of; a soft-deleted
  * season's posts are hidden.
  */
-export async function announcementVisibilityFilter(
-  user: SessionUser,
-): Promise<Prisma.AnnouncementWhereInput> {
+export async function announcementVisibilityFilter(user: SessionUser): Promise<Prisma.AnnouncementWhereInput> {
   if (isSuper(user)) return {};
   const branches: Prisma.AnnouncementWhereInput[] = [{ audience: "COMMUNITY" }];
   if (!isMentor(user)) {

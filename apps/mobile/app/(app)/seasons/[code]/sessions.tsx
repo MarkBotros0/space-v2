@@ -44,9 +44,7 @@ export default function SeasonSessionsScreen() {
         today={orgToday ?? phoneDayKey()}
         onOpen={(id) => router.push({ pathname: "/session/[id]", params: { id: String(id) } })}
         onMarkAttendance={
-          manage
-            ? (id) => router.push({ pathname: "/session/[id]/attendance", params: { id: String(id) } })
-            : undefined
+          manage ? (id) => router.push({ pathname: "/session/[id]/attendance", params: { id: String(id) } }) : undefined
         }
         onCreate={
           s.canAdminister && !finished

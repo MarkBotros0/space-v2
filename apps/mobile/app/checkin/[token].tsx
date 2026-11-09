@@ -33,9 +33,7 @@ export default function CheckInLinkScreen() {
   const token = typeof raw === "string" ? parseCheckInCode(raw) : null;
 
   if (status !== "authenticated") {
-    return (
-      <Redirect href={token ? { pathname: "/login", params: { returnTo: `/checkin/${token}` } } : "/login"} />
-    );
+    return <Redirect href={token ? { pathname: "/login", params: { returnTo: `/checkin/${token}` } } : "/login"} />;
   }
 
   const confirm = (value: string) =>
@@ -48,7 +46,12 @@ export default function CheckInLinkScreen() {
     <Screen title="Session check-in" back={null}>
       <View className="items-center gap-4 py-6">
         {token === null ? (
-          <CheckInMessage icon={InvalidIcon} tone="error" title="Can't check in" message="This check-in link is not valid." />
+          <CheckInMessage
+            icon={InvalidIcon}
+            tone="error"
+            title="Can't check in"
+            message="This check-in link is not valid."
+          />
         ) : outcome?.kind === "checked_in" ? (
           <CheckInSuccess outcome={outcome} attendance={tally} />
         ) : outcome ? (

@@ -77,7 +77,7 @@ describe("AlumniCalendar — Events", () => {
     expect(screen.getByText("in 3 days")).toBeTruthy();
     expect(screen.getByText("in 1 day")).toBeTruthy();
     expect(screen.getAllByText("Today").length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("header").length).toBe(4) // the title + three days;
+    expect(screen.getAllByRole("header").length).toBe(4); // the title + three days;
     expect(screen.queryByLabelText("Calendar legend")).toBeNull();
   });
 
@@ -168,9 +168,7 @@ describe("AlumniCalendar — Events", () => {
 
 describe("EventDayRows", () => {
   it("renders one grouped list of rows", () => {
-    renderWithProviders(
-      <EventDayRows entries={[{ kind: "event", at: 0, event: open }]} today={deviceTodayKey()} />,
-    );
+    renderWithProviders(<EventDayRows entries={[{ kind: "event", at: 0, event: open }]} today={deviceTodayKey()} />);
     fireEvent.press(screen.getByText("Open day"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/event/[id]", params: { id: "3" } });
   });

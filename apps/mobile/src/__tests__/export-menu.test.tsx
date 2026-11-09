@@ -40,12 +40,7 @@ beforeEach(() => {
 describe("ExportMenu", () => {
   it("offers the engagement export in every scope", async () => {
     renderWithProviders(
-      <ExportMenu
-        seasonId={null}
-        scopeLabel="All seasons"
-        canExportWorkbook={false}
-        exportDay="2026-08-24"
-      />,
+      <ExportMenu seasonId={null} scopeLabel="All seasons" canExportWorkbook={false} exportDay="2026-08-24" />,
     );
     fireEvent.press(await screen.findByText("Export engagement"));
 
@@ -62,12 +57,7 @@ describe("ExportMenu", () => {
 
   it("hides the workbook button when the caller may not take one", async () => {
     renderWithProviders(
-      <ExportMenu
-        seasonId={null}
-        scopeLabel="All seasons"
-        canExportWorkbook={false}
-        exportDay="2026-08-24"
-      />,
+      <ExportMenu seasonId={null} scopeLabel="All seasons" canExportWorkbook={false} exportDay="2026-08-24" />,
     );
     expect(await screen.findByText("Export engagement")).toBeTruthy();
     // v1's ONLY mentor protection was a button that was never rendered (R86).
@@ -78,9 +68,7 @@ describe("ExportMenu", () => {
   });
 
   it("shows the manifest's size before a workbook download", async () => {
-    renderWithProviders(
-      <ExportMenu seasonId={7} scopeLabel="GBV 2026" canExportWorkbook exportDay="2026-08-24" />,
-    );
+    renderWithProviders(<ExportMenu seasonId={7} scopeLabel="GBV 2026" canExportWorkbook exportDay="2026-08-24" />);
     expect(await screen.findByText("Export season workbook (~40 KB)")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/exports/manifest");
   });
@@ -101,16 +89,9 @@ describe("ExportMenu", () => {
   });
 
   it("surfaces a failure as text rather than swallowing it", async () => {
-    mockDownloadAndShare.mockRejectedValue(
-      Object.assign(new Error("nope"), { code: "forbidden" }),
-    );
+    mockDownloadAndShare.mockRejectedValue(Object.assign(new Error("nope"), { code: "forbidden" }));
     renderWithProviders(
-      <ExportMenu
-        seasonId={null}
-        scopeLabel="All seasons"
-        canExportWorkbook={false}
-        exportDay="2026-08-24"
-      />,
+      <ExportMenu seasonId={null} scopeLabel="All seasons" canExportWorkbook={false} exportDay="2026-08-24" />,
     );
     fireEvent.press(await screen.findByText("Export engagement"));
 
@@ -119,13 +100,7 @@ describe("ExportMenu", () => {
 
   it("sheet mode: one Export button opens a sheet with the same two endpoints", async () => {
     renderWithProviders(
-      <ExportMenu
-        sheet
-        seasonId={7}
-        scopeLabel="GBV 2026"
-        canExportWorkbook
-        exportDay="2026-08-24"
-      />,
+      <ExportMenu sheet seasonId={7} scopeLabel="GBV 2026" canExportWorkbook exportDay="2026-08-24" />,
     );
     expect(screen.queryByText("Export engagement")).toBeNull();
     fireEvent.press(screen.getByLabelText("Export"));
@@ -155,13 +130,7 @@ describe("ExportMenu", () => {
   it("sheet mode: no workbook row when the caller may not take one; failures read in the sheet", async () => {
     mockDownloadAndShare.mockRejectedValue(Object.assign(new Error("nope"), { code: "forbidden" }));
     renderWithProviders(
-      <ExportMenu
-        sheet
-        seasonId={null}
-        scopeLabel="All seasons"
-        canExportWorkbook={false}
-        exportDay="2026-08-24"
-      />,
+      <ExportMenu sheet seasonId={null} scopeLabel="All seasons" canExportWorkbook={false} exportDay="2026-08-24" />,
     );
     fireEvent.press(screen.getByLabelText("Export"));
     fireEvent.press(await screen.findByText("Export engagement"));

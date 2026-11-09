@@ -18,8 +18,7 @@ jest.mock("../../lib/config", () => {
   const actual: { config: Record<string, unknown> } = jest.requireActual("../../lib/config");
   return {
     config: new Proxy(actual.config, {
-      get: (target, key) =>
-        key === "googleClientIds" ? mockGoogleClientIds.value : target[key as string],
+      get: (target, key) => (key === "googleClientIds" ? mockGoogleClientIds.value : target[key as string]),
     }),
   };
 });
@@ -42,11 +41,7 @@ const ids: Record<string, number> = {};
 beforeAll(async () => {
   await db.user.deleteMany({ where: testAccounts });
   for (const [key, email, extra] of [
-    [
-      "active",
-      ACTIVE,
-      { passwordHash: "$2a$04$notarealhashnotarealhashnotarealhashnotarealhashnot" },
-    ],
+    ["active", ACTIVE, { passwordHash: "$2a$04$notarealhashnotarealhashnotarealhashnotarealhashnot" }],
     ["invited", INVITED, { passwordHash: null }],
     ["deleted", DELETED, { passwordHash: null, deletedAt: new Date() }],
   ] as const) {

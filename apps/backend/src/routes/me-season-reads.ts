@@ -2,12 +2,7 @@ import { Router } from "express";
 
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
-import {
-  loadMyAttendance,
-  loadMySeason,
-  loadSeasonHistory,
-  loadSeasonRecord,
-} from "../lib/queries/me";
+import { loadMyAttendance, loadMySeason, loadSeasonHistory, loadSeasonRecord } from "../lib/queries/me";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 
 /** The student's own season reads, mounted under /api/v1/me. */

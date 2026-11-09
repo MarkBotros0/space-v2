@@ -152,12 +152,7 @@ describe("buildSeasonWorkbook", () => {
 
   it("has four sheets: the three data sheets plus a Key (D-17.14)", async () => {
     const result = (await buildSeasonWorkbook(seasonId))!;
-    expect(result.workbook.worksheets.map((w) => w.name)).toEqual([
-      "Attendance",
-      "Grades",
-      "Assignments",
-      "Key",
-    ]);
+    expect(result.workbook.worksheets.map((w) => w.name)).toEqual(["Attendance", "Grades", "Assignments", "Key"]);
   });
 
   it("prints 'L' for a LATE cell and never the recorded minutes (ruling C3)", async () => {
@@ -261,12 +256,8 @@ describe("buildSeasonWorkbook", () => {
     const alice = rows.find((r) => r.studentUserId === aliceId)!;
 
     const result = (await buildSeasonWorkbook(seasonId))!;
-    const attendance = sheetRows(result.workbook, "Attendance").find(
-      (r) => r[0] === "Test wb-alice",
-    )!;
-    const assignments = sheetRows(result.workbook, "Assignments").find(
-      (r) => r[0] === "Test wb-alice",
-    )!;
+    const attendance = sheetRows(result.workbook, "Attendance").find((r) => r[0] === "Test wb-alice")!;
+    const assignments = sheetRows(result.workbook, "Assignments").find((r) => r[0] === "Test wb-alice")!;
 
     // The workbook reads these two columns from the SAME function the report
     // does. v1 computed them independently and they disagreed for any season
@@ -303,12 +294,7 @@ describe("summariseSeasonWorkbook", () => {
   it("reports the sheet shape without building the workbook", async () => {
     const summary = (await summariseSeasonWorkbook(seasonId))!;
     expect(summary.rowCount).toBe(2);
-    expect(summary.sheets.map((s) => s.name)).toEqual([
-      "Attendance",
-      "Grades",
-      "Assignments",
-      "Key",
-    ]);
+    expect(summary.sheets.map((s) => s.name)).toEqual(["Attendance", "Grades", "Assignments", "Key"]);
     // 3 identity columns + 2 past sessions + 1 percentage.
     expect(summary.sheets[0]!.columnCount).toBe(6);
     expect(summary.estimatedBytes).toBeGreaterThan(0);

@@ -18,12 +18,7 @@ import {
   toBody,
   type SeasonFormValues,
 } from "./season-form-model";
-import {
-  AttendanceSection,
-  DatesSection,
-  IdentitySection,
-  TakingPartSection,
-} from "./season-form-sections";
+import { AttendanceSection, DatesSection, IdentitySection, TakingPartSection } from "./season-form-sections";
 
 export {
   allowedSeasonStatuses,
@@ -78,11 +73,7 @@ export function SeasonForm({
   const seasonFinished = initial.status === "COMPLETED" || initial.status === "ARCHIVED";
   const canSetGraduating = isSuper && !seasonFinished;
   const canSetCommunity = isSuper && canSetRequired;
-  const requiredChoices = requiredProgramChoices(
-    seasons.data ?? [],
-    v.program,
-    initial.requiredProgram,
-  );
+  const requiredChoices = requiredProgramChoices(seasons.data ?? [], v.program, initial.requiredProgram);
 
   const patch = (next: Partial<SeasonFormValues>) => {
     setV((cur) => {
@@ -113,10 +104,7 @@ export function SeasonForm({
       saveLabel={mode === "create" ? "Create season" : "Save changes"}
       saving={submitting}
       saveHint={
-        message ??
-        (Object.keys(errors).length > 0 && failedValues === v
-          ? "Fix the fields marked above."
-          : undefined)
+        message ?? (Object.keys(errors).length > 0 && failedValues === v ? "Fix the fields marked above." : undefined)
       }
       onSave={submit}
     >

@@ -68,21 +68,23 @@ export function QuizAttemptAnswers({
     <View className="flex-col gap-3">
       {attempt.answers.map((a, i) => (
         <View key={a.questionId} className={cn(i > 0 && "border-t border-separator pt-3")}>
-          <Text variant="subhead" className="font-semibold text-foreground">{a.prompt}</Text>
+          <Text variant="subhead" className="font-semibold text-foreground">
+            {a.prompt}
+          </Text>
           {a.type === "MCQ" ? (
             <View className="mt-1 flex-row items-center gap-2">
-              {a.isCorrect ? (
-                <Check size={16} className="text-ok" />
-              ) : (
-                <X size={16} className="text-bad" />
-              )}
+              {a.isCorrect ? <Check size={16} className="text-ok" /> : <X size={16} className="text-bad" />}
               <Text variant="subhead" className="shrink text-muted-foreground">
                 {a.selectedIndex !== null ? (a.options[a.selectedIndex] ?? "—") : "—"}
                 {a.correctIndex !== null && !a.isCorrect ? (
                   <Text variant="subhead" className="text-ok">{` (correct: ${a.options[a.correctIndex] ?? ""})`}</Text>
                 ) : null}
               </Text>
-              <Text variant="caption" tabular className="ml-auto text-muted-foreground">{`${a.pointsAwarded ?? 0}/${a.points}`}</Text>
+              <Text
+                variant="caption"
+                tabular
+                className="ml-auto text-muted-foreground"
+              >{`${a.pointsAwarded ?? 0}/${a.points}`}</Text>
             </View>
           ) : (
             <View className="mt-1 flex-col gap-2">
@@ -90,7 +92,9 @@ export function QuizAttemptAnswers({
                 {a.text || "—"}
               </Text>
               <View className="flex-row flex-wrap items-center gap-2">
-                <Text variant="caption" className="font-medium text-muted-foreground">Points</Text>
+                <Text variant="caption" className="font-medium text-muted-foreground">
+                  Points
+                </Text>
                 <Input
                   accessibilityLabel={`Marks for ${a.prompt}`}
                   keyboardType="number-pad"

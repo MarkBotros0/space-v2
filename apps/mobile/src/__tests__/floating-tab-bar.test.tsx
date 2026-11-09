@@ -156,9 +156,7 @@ describe("activeTabRoute", () => {
   // (app) stack), so the highlight follows an exact match or nothing (M3).
   it("is the focused route when it is in the bar, else null", () => {
     const { activeTabRoute } = jest.requireActual("../design/layout/floating-tab-bar");
-    expect(activeTabRoute("students/index", ["students/index", "dashboard"])).toBe(
-      "students/index",
-    );
+    expect(activeTabRoute("students/index", ["students/index", "dashboard"])).toBe("students/index");
     expect(activeTabRoute("notes", ["calendar", "dashboard"])).toBeNull();
     expect(activeTabRoute(undefined, ["dashboard"])).toBeNull();
   });
@@ -318,10 +316,8 @@ describe("pressing the open tab (owner, 2026-11-08)", () => {
 });
 
 describe("hide on scroll", () => {
-  const touches = () =>
-    screen.getByTestId("pill-root", { includeHiddenElements: true }).props.pointerEvents;
-  const scroll = (dir: "up" | "down", atEnd = false) =>
-    act(() => useTabBarScroll().onScrollDirection(dir, atEnd));
+  const touches = () => screen.getByTestId("pill-root", { includeHiddenElements: true }).props.pointerEvents;
+  const scroll = (dir: "up" | "down", atEnd = false) => act(() => useTabBarScroll().onScrollDirection(dir, atEnd));
 
   it("stops intercepting touches while hidden, and returns on scroll up", () => {
     renderBar();

@@ -16,7 +16,13 @@ describe("graduateStudentRequestSchema", () => {
   it("accepts 1990 through the current year, evaluated per call (R58 — v1 captured the year at module load)", () => {
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: 1990 }).success).toBe(true);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear }).success).toBe(true);
-    expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear, override: true, overrideReason: "A very rare case" }).success).toBe(true);
+    expect(
+      graduateStudentRequestSchema.safeParse({
+        graduationYear: thisYear,
+        override: true,
+        overrideReason: "A very rare case",
+      }).success,
+    ).toBe(true);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: thisYear + 1 }).success).toBe(false);
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: 1989 }).success).toBe(false);
   });
@@ -30,7 +36,8 @@ describe("graduateStudentRequestSchema", () => {
   });
 
   it("an override needs a reason of 10 to 1000 characters, trimmed", () => {
-    const parse = (extra: object) => graduateStudentRequestSchema.safeParse({ graduationYear: 2020, override: true, ...extra });
+    const parse = (extra: object) =>
+      graduateStudentRequestSchema.safeParse({ graduationYear: 2020, override: true, ...extra });
     expect(parse({}).success).toBe(false);
     expect(parse({ overrideReason: "123456789" }).success).toBe(false);
     expect(parse({ overrideReason: "   123456789   " }).success).toBe(false);
@@ -44,9 +51,7 @@ describe("graduateStudentRequestSchema", () => {
 
   it("refuses a fractional year and an unknown key", () => {
     expect(graduateStudentRequestSchema.safeParse({ graduationYear: 2020.5 }).success).toBe(false);
-    expect(
-      graduateStudentRequestSchema.safeParse({ graduationYear: 2020, role: "LEADER" }).success,
-    ).toBe(false);
+    expect(graduateStudentRequestSchema.safeParse({ graduationYear: 2020, role: "LEADER" }).success).toBe(false);
   });
 });
 
@@ -55,12 +60,8 @@ describe("lifecycle response schemas (ruling X10 — the client parses, never ca
     expect(
       graduateStudentResponseSchema.safeParse({ id: 1, graduationYear: 2020, enrollmentsCompleted: 2 }).success,
     ).toBe(true);
-    expect(
-      studentDeletedResponseSchema.safeParse({ id: 1, deletedAt: "2099-01-01T00:00:00.000Z" }).success,
-    ).toBe(true);
-    expect(
-      createStudentResponseSchema.safeParse({ id: 1, email: "a@jpc.test", inviteSent: false }).success,
-    ).toBe(true);
+    expect(studentDeletedResponseSchema.safeParse({ id: 1, deletedAt: "2099-01-01T00:00:00.000Z" }).success).toBe(true);
+    expect(createStudentResponseSchema.safeParse({ id: 1, email: "a@jpc.test", inviteSent: false }).success).toBe(true);
     // inviteSent is required: a response without it is a backend drift.
     expect(createStudentResponseSchema.safeParse({ id: 1, email: "a@jpc.test" }).success).toBe(false);
     expect(updateStudentResponseSchema.safeParse({ id: 1 }).success).toBe(true);

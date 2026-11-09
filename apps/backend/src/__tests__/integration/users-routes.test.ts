@@ -33,9 +33,7 @@ afterAll(async () => {
 
 describe("GET /api/v1/users", () => {
   it("is SUPER-only — canManageUsers, enforced at the endpoint not the page", async () => {
-    const res = await request(app)
-      .get("/api/v1/users")
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get("/api/v1/users").set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe("forbidden");
   });
@@ -103,9 +101,7 @@ describe("GET /api/v1/users", () => {
 
   it("filters by q against name and email, case-insensitively", async () => {
     const needle = await createTestUser("needle-xyzzy", "STUDENT");
-    const res = await request(app)
-      .get("/api/v1/users?q=XYZZY")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/users?q=XYZZY").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.users.map((u: { id: number }) => u.id)).toContain(needle.id);
   });
@@ -123,21 +119,15 @@ describe("GET /api/v1/users/:id", () => {
       },
     });
 
-    const res = await request(app)
-      .get(`/api/v1/users/${invited.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get(`/api/v1/users/${invited.id}`).set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe("invited");
     expect(res.body.data.invite).toMatchObject({ usedAt: null });
-    expect(Object.keys(res.body.data.invite).sort()).toEqual([
-      "expiresAt", "invitedByName", "issuedAt", "usedAt",
-    ]);
+    expect(Object.keys(res.body.data.invite).sort()).toEqual(["expiresAt", "invitedByName", "issuedAt", "usedAt"]);
   });
 
   it("404s an unknown id and 403s a non-SUPER", async () => {
-    const missing = await request(app)
-      .get("/api/v1/users/99999999")
-      .set("authorization", `Bearer ${superToken}`);
+    const missing = await request(app).get("/api/v1/users/99999999").set("authorization", `Bearer ${superToken}`);
     expect(missing.status).toBe(404);
 
     const forbidden = await request(app)
@@ -154,9 +144,7 @@ describe("PATCH /api/v1/users/:id — role change is revocation (spec 11 D3, rul
     await db.seasonAdmin.create({ data: { seasonId: season.id, userId: target.id } });
 
     // A live session for the target, captured before the demotion.
-    const targetLogin = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: target.email, password: PASSWORD });
+    const targetLogin = await request(app).post("/api/v1/auth/login").send({ email: target.email, password: PASSWORD });
     expect(targetLogin.status).toBe(200);
     const oldRefresh = targetLogin.body.data.refreshToken as string;
 
@@ -172,9 +160,7 @@ describe("PATCH /api/v1/users/:id — role change is revocation (spec 11 D3, rul
     expect(scopeRows).toBe(1);
 
     // And the old session cannot rotate: the claims cannot outlive the change.
-    const rotate = await request(app)
-      .post("/api/v1/auth/refresh")
-      .send({ refreshToken: oldRefresh });
+    const rotate = await request(app).post("/api/v1/auth/refresh").send({ refreshToken: oldRefresh });
     expect(rotate.status).toBe(401);
   });
 
@@ -257,9 +243,7 @@ describe("PATCH /api/v1/users/:id — role change is revocation (spec 11 D3, rul
 describe("POST /api/v1/users/:id/deactivate & reactivate", () => {
   it("soft-deletes, revokes the refresh token, and refuses self (R56/R57 + D6)", async () => {
     const target = await createTestUser("deactivate-me", "STUDENT");
-    const targetLogin = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: target.email, password: PASSWORD });
+    const targetLogin = await request(app).post("/api/v1/auth/login").send({ email: target.email, password: PASSWORD });
     const oldRefresh = targetLogin.body.data.refreshToken as string;
 
     const self = await request(app)
@@ -281,9 +265,7 @@ describe("POST /api/v1/users/:id/deactivate & reactivate", () => {
     const live = await db.refreshToken.count({ where: { userId: target.id, revokedAt: null } });
     expect(live).toBe(0);
 
-    const rotate = await request(app)
-      .post("/api/v1/auth/refresh")
-      .send({ refreshToken: oldRefresh });
+    const rotate = await request(app).post("/api/v1/auth/refresh").send({ refreshToken: oldRefresh });
     expect(rotate.status).toBe(401);
 
     const back = await request(app)
@@ -310,9 +292,7 @@ describe("PATCH /api/v1/users/:id — response parity with GET", () => {
       .patch(`/api/v1/users/${target.id}`)
       .set("authorization", `Bearer ${superToken}`)
       .send({ name: "Test parity renamed", role: "STUDENT", graduationYear: null });
-    const fetched = await request(app)
-      .get(`/api/v1/users/${target.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const fetched = await request(app).get(`/api/v1/users/${target.id}`).set("authorization", `Bearer ${superToken}`);
 
     expect(patched.status).toBe(200);
     expect(patched.body.data.invite).not.toBeNull();
@@ -334,9 +314,7 @@ describe("PATCH /api/v1/users/:id — soft-deleted target (REG-104)", () => {
     const row = await db.user.findUnique({ where: { id: target.id }, select: { name: true } });
     expect(row?.name).toBe("Test patch-deleted");
 
-    const fetched = await request(app)
-      .get(`/api/v1/users/${target.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const fetched = await request(app).get(`/api/v1/users/${target.id}`).set("authorization", `Bearer ${superToken}`);
     expect(fetched.status).toBe(200);
 
     const back = await request(app)

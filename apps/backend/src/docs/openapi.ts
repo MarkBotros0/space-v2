@@ -52,8 +52,8 @@ export const openApiDocument = {
       "**the same database**. Access tokens are interchangeable between the two: same",
       "secret, same `jpc-mobile` audience, same claims, same 15-minute TTL.",
       "",
-      "**Envelope.** Success responses are `{ \"data\": ... }`. Failures are",
-      "`{ \"error\": { \"code\", \"message\" } }` — including 404s, rate-limit rejections,",
+      '**Envelope.** Success responses are `{ "data": ... }`. Failures are',
+      '`{ "error": { "code", "message" } }` — including 404s, rate-limit rejections,',
       "and malformed JSON bodies. The one exception is the file-download endpoint, whose",
       "success path returns raw bytes; its error paths still use the envelope.",
       "",
@@ -68,9 +68,7 @@ export const openApiDocument = {
       "**Timestamps** are ISO-8601 strings.",
     ].join("\n"),
   },
-  servers: [
-    { url: "http://localhost:4000", description: "Local development" },
-  ],
+  servers: [{ url: "http://localhost:4000", description: "Local development" }],
   tags: [
     { name: "Health", description: "Liveness" },
     { name: "Auth", description: "Login, refresh, logout" },
@@ -83,14 +81,32 @@ export const openApiDocument = {
     { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
     { name: "Submissions", description: "Submissions and their files" },
     { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
-    { name: "Notifications", description: "The caller's own notification inbox: list, unread count, explicit mark-read" },
-    { name: "Video quiz", description: "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)" },
+    {
+      name: "Notifications",
+      description: "The caller's own notification inbox: list, unread count, explicit mark-read",
+    },
+    {
+      name: "Video quiz",
+      description:
+        "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)",
+    },
     { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
-    { name: "Events", description: "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)" },
-    { name: "Announcements", description: "A community-wide or per-season feed, unread count, and posting by SUPER and season admins" },
+    {
+      name: "Events",
+      description:
+        "JPC events: one token-derived visibility rule, a bounded window, SUPER-only writes (event photos are deferred while uploads are disabled)",
+    },
+    {
+      name: "Announcements",
+      description: "A community-wide or per-season feed, unread count, and posting by SUPER and season admins",
+    },
     { name: "Notes", description: "Pastoral notes about students (sensitive) and engagement scores" },
     { name: "Follow-ups", description: "A mentor's follow-ups, the daily reminder and the mentor's Home figures" },
-    { name: "Imports", description: "Paste-first bulk entry: SUPER student importer and season-scoped group importer (preview, then commit)" },
+    {
+      name: "Imports",
+      description:
+        "Paste-first bulk entry: SUPER student importer and season-scoped group importer (preview, then commit)",
+    },
   ],
   security: [{ bearerAuth: [] }],
   components: {

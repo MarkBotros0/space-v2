@@ -12,16 +12,23 @@ import { isoDaySchema } from "./org-time";
 // backend's own objects hold Dates and would not typecheck against these.
 
 export const seasonListItemSchema = z.object({
-  id: z.number(), code: z.string(), title: z.string(), program: z.string(),
-  year: z.number(), status: seasonStatusSchema,
-  startDate: z.string(), endDate: z.string(),
+  id: z.number(),
+  code: z.string(),
+  title: z.string(),
+  program: z.string(),
+  year: z.number(),
+  status: seasonStatusSchema,
+  startDate: z.string(),
+  endDate: z.string(),
   /** Anyone may take part as a student, alumni too. Absent means a regular season. */
   isCommunityWide: z.boolean().optional(),
 });
 export type SeasonListItem = z.infer<typeof seasonListItemSchema>;
 
 const seasonDetailGroupSchema = z.object({
-  id: z.number(), name: z.string(), studentCount: z.number(),
+  id: z.number(),
+  name: z.string(),
+  studentCount: z.number(),
   leaderNames: z.array(z.string()),
 });
 
@@ -108,11 +115,7 @@ export const seasonWriteRequestSchema = seasonWriteFields
 export type SeasonWriteBody = z.output<typeof seasonWriteRequestSchema>;
 
 /** Spec 02 D3: the only fields a season ADMIN may change. Everything else is SUPER's. */
-export const SEASON_ADMIN_EDITABLE_FIELDS = [
-  "description",
-  "absenceBudgetMinutes",
-  "absenceWeightMinutes",
-] as const;
+export const SEASON_ADMIN_EDITABLE_FIELDS = ["description", "absenceBudgetMinutes", "absenceWeightMinutes"] as const;
 
 export const seasonAdminPatchSchema = z
   .object({
@@ -136,7 +139,8 @@ export const duplicateSeasonRequestSchema = z
     endDate: z.string().datetime({ offset: true }),
   })
   .refine((v) => new Date(v.endDate).getTime() >= new Date(v.startDate).getTime(), {
-    path: ["endDate"], message: DATE_ORDER_MESSAGE,
+    path: ["endDate"],
+    message: DATE_ORDER_MESSAGE,
   });
 
 /** POST /seasons, POST /seasons/:id/duplicate and PATCH /seasons/:id all answer this. */
@@ -182,9 +186,7 @@ export const seasonHistoryResponseSchema = z.object({ seasons: z.array(seasonHis
 const mySeasonLeaderSchema = z.object({ id: z.number(), name: z.string(), email: z.string() });
 
 /** Peers: name only — never an email (R89). Strict so an address cannot slip in. */
-const mySeasonMemberSchema = z
-  .object({ id: z.number(), name: z.string(), isYou: z.boolean() })
-  .strict();
+const mySeasonMemberSchema = z.object({ id: z.number(), name: z.string(), isYou: z.boolean() }).strict();
 
 const mySeasonGroupSchema = z.object({
   id: z.number(),

@@ -17,7 +17,22 @@ import { Linking, Text as RNText, View } from "react-native";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-const ALLOWED = new Set(["p", "br", "strong", "em", "s", "a", "ul", "ol", "li", "h2", "h3", "blockquote", "code", "pre"]);
+const ALLOWED = new Set([
+  "p",
+  "br",
+  "strong",
+  "em",
+  "s",
+  "a",
+  "ul",
+  "ol",
+  "li",
+  "h2",
+  "h3",
+  "blockquote",
+  "code",
+  "pre",
+]);
 const DROPPED = new Set(["script", "style", "textarea", "option", "noscript"]);
 const BLOCK = new Set(["p", "li", "h2", "h3", "blockquote", "pre"]);
 const SAFE_HREF = /^(https?:|mailto:)/i;
@@ -40,13 +55,29 @@ function inline(nodes: ChildNode[], key: string): ReactNode[] {
       // Plain RN Text inside a block inherits its size and colour, as inline
       // HTML does; each sets only what the tag changes.
       case "strong":
-        return <RNText key={k} style={{ fontFamily: "Geist_700Bold" }}>{children}</RNText>;
+        return (
+          <RNText key={k} style={{ fontFamily: "Geist_700Bold" }}>
+            {children}
+          </RNText>
+        );
       case "em":
-        return <RNText key={k} style={{ fontStyle: "italic" }}>{children}</RNText>;
+        return (
+          <RNText key={k} style={{ fontStyle: "italic" }}>
+            {children}
+          </RNText>
+        );
       case "s":
-        return <RNText key={k} style={{ textDecorationLine: "line-through" }}>{children}</RNText>;
+        return (
+          <RNText key={k} style={{ textDecorationLine: "line-through" }}>
+            {children}
+          </RNText>
+        );
       case "code":
-        return <RNText key={k} style={{ fontFamily: "GeistMono_400Regular" }}>{children}</RNText>;
+        return (
+          <RNText key={k} style={{ fontFamily: "GeistMono_400Regular" }}>
+            {children}
+          </RNText>
+        );
       case "a": {
         const href = safeHref(node);
         return href ? (
@@ -69,7 +100,11 @@ function blocks(nodes: ChildNode[], key: string): ReactNode[] {
   let run: ChildNode[] = [];
   const flush = () => {
     if (run.some((n) => !isText(n) || n.data.trim() !== "")) {
-      out.push(<Text key={`${key}.r${out.length}`} className="text-sm text-foreground">{inline(run, `${key}.r${out.length}`)}</Text>);
+      out.push(
+        <Text key={`${key}.r${out.length}`} className="text-sm text-foreground">
+          {inline(run, `${key}.r${out.length}`)}
+        </Text>,
+      );
     }
     run = [];
   };
@@ -99,7 +134,15 @@ function blocks(nodes: ChildNode[], key: string): ReactNode[] {
   return out;
 }
 
-export function RichTextView({ html, className, emptyText }: { html: string | null | undefined; className?: string; emptyText?: string }) {
+export function RichTextView({
+  html,
+  className,
+  emptyText,
+}: {
+  html: string | null | undefined;
+  className?: string;
+  emptyText?: string;
+}) {
   if (!html || html.trim() === "" || html === "<p></p>") {
     if (!emptyText) return null;
     return <Text className={cn("text-sm italic text-muted-foreground", className)}>{emptyText}</Text>;

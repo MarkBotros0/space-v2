@@ -1,7 +1,5 @@
 // apps/backend/src/lib/dashboard-figures.ts
-import {
-  isAssignmentOutstanding,
-} from "../../../../packages/shared/src/index";
+import { isAssignmentOutstanding } from "../../../../packages/shared/src/index";
 import type { StudentAssignmentStateRow } from "./queries/assignments";
 
 /*
@@ -60,7 +58,10 @@ export function summarizeStudentAssignments(
   const toWire = ({ isLate: _isLate, ...wire }: StudentAssignmentStateRow) => wire;
   const dueSoon = [...outstanding].sort(byDue).slice(0, limit).map(toWire);
   // P2-4: work the student still has to do, RETURNED (sent back for rework) included.
-  const open = rows.filter((r) => isAssignmentOutstanding(r.status) || r.status === "RETURNED").sort(byDue).map(toWire);
+  const open = rows
+    .filter((r) => isAssignmentOutstanding(r.status) || r.status === "RETURNED")
+    .sort(byDue)
+    .map(toWire);
 
   return {
     outstandingCount: outstanding.length,

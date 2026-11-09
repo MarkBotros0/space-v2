@@ -78,9 +78,7 @@ export function SeasonGroup({ row }: { row: SeasonHistoryRow }) {
       key="season"
       title="View your season"
       chevron
-      onPress={() =>
-        router.push({ pathname: "/past-season/[seasonId]", params: { seasonId: String(row.seasonId) } })
-      }
+      onPress={() => router.push({ pathname: "/past-season/[seasonId]", params: { seasonId: String(row.seasonId) } })}
     />,
   ];
   if (count > 0) {

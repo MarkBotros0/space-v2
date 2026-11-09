@@ -11,7 +11,13 @@ jest.mock("../design/ui/toaster", () => ({
 const mockBack = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ code: "s7" }),
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: mockBack, dismissTo: jest.fn(), dismissAll: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: mockBack,
+    dismissTo: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -46,7 +52,11 @@ type Row = {
   id: number;
   name: string;
   pool: "student" | "alumni";
-  last: { seasonTitle: string; outcome: "PASSED" | "NOT_PASSED" | "DROPPED" | "COMPLETED"; attendancePct: number | null } | null;
+  last: {
+    seasonTitle: string;
+    outcome: "PASSED" | "NOT_PASSED" | "DROPPED" | "COMPLETED";
+    attendancePct: number | null;
+  } | null;
   availability: "available" | "already_passed" | "did_not_pass" | "never_finished" | "in_role" | "in_season";
   reason: string | null;
   selectable: boolean;
@@ -113,7 +123,19 @@ function serve(rows: Row[], isCommunityWide = false) {
   list = rows;
   candidates = () =>
     Promise.resolve({
-      data: { data: { season: { id: 7, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide, suggestedSourceId: null, sources: [] }, people: list } },
+      data: {
+        data: {
+          season: {
+            id: 7,
+            title: "LEAD 2027",
+            requiredProgram: "GBV",
+            isCommunityWide,
+            suggestedSourceId: null,
+            sources: [],
+          },
+          people: list,
+        },
+      },
     });
 }
 
@@ -238,8 +260,21 @@ const everyone = () => [
   ...people(true),
   row({ id: 21, name: "Alaa Alumni", pool: "alumni", last: passed("GBV 2025", 70) }),
   row({ id: 22, name: "Amir Alumni", pool: "alumni" }),
-  row({ id: 23, name: "Aya Alumni", pool: "alumni", availability: "already_passed", reason: "Already passed GBV 2026" }),
-  row({ id: 24, name: "Abdo Alumni", pool: "alumni", availability: "in_role", reason: "Leading a group", selectable: false }),
+  row({
+    id: 23,
+    name: "Aya Alumni",
+    pool: "alumni",
+    availability: "already_passed",
+    reason: "Already passed GBV 2026",
+  }),
+  row({
+    id: 24,
+    name: "Abdo Alumni",
+    pool: "alumni",
+    availability: "in_role",
+    reason: "Leading a group",
+    selectable: false,
+  }),
 ];
 const openWide = async () => {
   serve(everyone(), true);
@@ -395,9 +430,7 @@ describe("adding", () => {
         : r,
     );
     fireEvent.press(screen.getByText("Add 3 people"));
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith("Nour Hany is already leading a group in GBV 2026"),
-    );
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("Nour Hany is already leading a group in GBV 2026"));
     await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(gets));
     expect(await screen.findByText("Add 2 people")).toBeTruthy();
     expect(screen.getByText(/1 person was taken off your selection/)).toBeTruthy();

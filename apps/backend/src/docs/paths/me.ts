@@ -6,7 +6,8 @@ export const mePaths = {
     get: {
       tags: ["Me"],
       summary: "The authenticated user and their scopes",
-      description: "Scopes come from the token's claims, not a fresh database read — they are what this token was minted with. `user` is null when the row is soft-deleted (or gone).",
+      description:
+        "Scopes come from the token's claims, not a fresh database read — they are what this token was minted with. `user` is null when the row is soft-deleted (or gone).",
       responses: {
         200: ok(
           {
@@ -21,9 +22,16 @@ export const mePaths = {
                   role: { $ref: "#/components/schemas/UserRole" },
                   avatarPath: { type: ["string", "null"] },
                   phone: { type: ["string", "null"] },
-                  dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "A calendar date." },
+                  dateOfBirth: {
+                    type: ["string", "null"],
+                    pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+                    description: "A calendar date.",
+                  },
                   address: { type: ["string", "null"] },
-                  hasPassword: { type: "boolean", description: "False for an invited account that has never set a password." },
+                  hasPassword: {
+                    type: "boolean",
+                    description: "False for an invited account that has never set a password.",
+                  },
                 },
               },
               scopes: {
@@ -52,7 +60,11 @@ export const mePaths = {
         "Self-scoped soft delete, the same as a SUPER deactivating the account: sets `deletedAt` on the user (and student profile), removes this account's push devices, revokes every refresh token and ends live access tokens. Sign-in, refresh and password reset refuse the account afterwards. 409 `last_super` when the caller is the only active SUPER.",
       responses: {
         200: ok(
-          { type: "object", required: ["deletedAt"], properties: { deletedAt: { type: "string", format: "date-time" } } },
+          {
+            type: "object",
+            required: ["deletedAt"],
+            properties: { deletedAt: { type: "string", format: "date-time" } },
+          },
           "The account is deleted.",
         ),
         401: errRef("Unauthorized"),
@@ -64,7 +76,7 @@ export const mePaths = {
       tags: ["Me"],
       summary: "Update your own name and contact details (any role)",
       description:
-        "Self-scoped: the subject is the token, never the body. Partial: send any subset of `name`, `phone`, `dateOfBirth`, `address`, at least one (an empty body is a 400). Absent = untouched; for phone, dateOfBirth and address `\"\"` or null clears, and name cannot be cleared. Strings are trimmed: name 2-120 characters, phone at most 60, address at most 300; dateOfBirth is a real calendar day `YYYY-MM-DD`. A body carrying `userId` (or any unknown key) is a 400. Returns the updated user.",
+        'Self-scoped: the subject is the token, never the body. Partial: send any subset of `name`, `phone`, `dateOfBirth`, `address`, at least one (an empty body is a 400). Absent = untouched; for phone, dateOfBirth and address `""` or null clears, and name cannot be cleared. Strings are trimmed: name 2-120 characters, phone at most 60, address at most 300; dateOfBirth is a real calendar day `YYYY-MM-DD`. A body carrying `userId` (or any unknown key) is a 400. Returns the updated user.',
       requestBody: {
         required: true,
         content: {
@@ -97,7 +109,11 @@ export const mePaths = {
                   role: { $ref: "#/components/schemas/UserRole" },
                   avatarPath: { type: ["string", "null"] },
                   phone: { type: ["string", "null"] },
-                  dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "A calendar date." },
+                  dateOfBirth: {
+                    type: ["string", "null"],
+                    pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+                    description: "A calendar date.",
+                  },
                   address: { type: ["string", "null"] },
                   hasPassword: { type: "boolean" },
                 },
@@ -147,7 +163,8 @@ export const mePaths = {
                   todayOrgDay: {
                     type: "string",
                     format: "date",
-                    description: "Today's organisation-calendar day (ORG_TIMEZONE). Always present, also when the student is not enrolled.",
+                    description:
+                      "Today's organisation-calendar day (ORG_TIMEZONE). Always present, also when the student is not enrolled.",
                   },
                   season: { type: ["object", "null"] },
                   progress: {
@@ -162,13 +179,21 @@ export const mePaths = {
                   assignments: {
                     type: ["object", "null"],
                     properties: {
-                      outstandingCount: { type: "integer", description: "PENDING or DRAFT, targeted assignments only." },
+                      outstandingCount: {
+                        type: "integer",
+                        description: "PENDING or DRAFT, targeted assignments only.",
+                      },
                       overdueCount: { type: "integer" },
                       lateSubmittedCount: { type: "integer" },
-                      dueSoon: { type: "array", maxItems: 3, items: { $ref: "#/components/schemas/StudentAssignmentListItem" } },
+                      dueSoon: {
+                        type: "array",
+                        maxItems: 3,
+                        items: { $ref: "#/components/schemas/StudentAssignmentListItem" },
+                      },
                       open: {
                         type: "array",
-                        description: "Every PENDING, DRAFT or RETURNED assignment, uncapped, `dueAt` ascending with undated last, then id. RETURNED rows are open work but not in `outstandingCount`.",
+                        description:
+                          "Every PENDING, DRAFT or RETURNED assignment, uncapped, `dueAt` ascending with undated last, then id. RETURNED rows are open work but not in `outstandingCount`.",
                         items: { $ref: "#/components/schemas/StudentAssignmentListItem" },
                       },
                     },
@@ -183,7 +208,8 @@ export const mePaths = {
                   todayOrgDay: {
                     type: "string",
                     format: "date",
-                    description: "Today's organisation-calendar day (ORG_TIMEZONE). Staff screens count past, live and next sessions from this, not from the device's day.",
+                    description:
+                      "Today's organisation-calendar day (ORG_TIMEZONE). Staff screens count past, live and next sessions from this, not from the device's day.",
                   },
                   scope: { enum: ["season", "groups"] },
                   season: { type: "object" },
@@ -194,7 +220,10 @@ export const mePaths = {
                     type: "object",
                     properties: {
                       studentCount: { type: "integer" },
-                      meanAttendancePct: { type: ["integer", "null"], description: "Mean over students with at least one past session; null when none." },
+                      meanAttendancePct: {
+                        type: ["integer", "null"],
+                        description: "Mean over students with at least one past session; null when none.",
+                      },
                       atRiskTotal: { type: "integer" },
                       atRisk: { type: "array", maxItems: 10, items: { type: "object" } },
                     },
@@ -215,7 +244,7 @@ export const mePaths = {
                   leaderSession: {
                     type: ["object", "null"],
                     description:
-                      "Present only for `scope: \"groups\"` (a LEADER): the check-in counts of the leader's groups for `nextSession` (read-only). Null when there is no next session; the key is absent for ADMIN/SUPER.",
+                      'Present only for `scope: "groups"` (a LEADER): the check-in counts of the leader\'s groups for `nextSession` (read-only). Null when there is no next session; the key is absent for ADMIN/SUPER.',
                     required: ["sessionId", "total", "present", "late", "absent", "notCheckedIn"],
                     additionalProperties: false,
                     properties: {
@@ -261,9 +290,16 @@ export const mePaths = {
     get: {
       tags: ["Me"],
       summary: "The caller's past seasons (students and alumni)",
-      description: "Self only. Lists every enrollment that is not ACTIVE (finished or withdrawn), each with its season code and outcome. Soft-deleted and DRAFT seasons are hidden. Staff get 403.",
+      description:
+        "Self only. Lists every enrollment that is not ACTIVE (finished or withdrawn), each with its season code and outcome. Soft-deleted and DRAFT seasons are hidden. Staff get 403.",
       responses: {
-        200: ok({ type: "object", properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } } }, "Past seasons, most recent enrollment first."),
+        200: ok(
+          {
+            type: "object",
+            properties: { seasons: { type: "array", items: { $ref: "#/components/schemas/SeasonHistoryRow" } } },
+          },
+          "Past seasons, most recent enrollment first.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
       },
@@ -273,10 +309,14 @@ export const mePaths = {
     get: {
       tags: ["Me"],
       summary: "The caller's own read-only record of one past season (students and alumni)",
-      description: "404 when the caller has no finished enrollment in it, the enrollment is still ACTIVE, or the season is deleted or a DRAFT. Staff get 403.",
+      description:
+        "404 when the caller has no finished enrollment in it, the enrollment is still ACTIVE, or the season is deleted or a DRAFT. Staff get 403.",
       parameters: [{ name: "seasonId", in: "path", required: true, schema: { type: "integer" } }],
       responses: {
-        200: ok({ type: "object", properties: { record: { $ref: "#/components/schemas/SeasonRecord" } } }, "The season record."),
+        200: ok(
+          { type: "object", properties: { record: { $ref: "#/components/schemas/SeasonRecord" } } },
+          "The season record.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
@@ -288,7 +328,13 @@ export const mePaths = {
       tags: ["Me"],
       summary: "The caller's current season — progress, group, next sessions (students)",
       responses: {
-        200: ok({ type: "object", properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } } }, "Null when the student has no active season."),
+        200: ok(
+          {
+            type: "object",
+            properties: { season: { oneOf: [{ $ref: "#/components/schemas/MySeason" }, { type: "null" }] } },
+          },
+          "Null when the student has no active season.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
       },
@@ -299,7 +345,10 @@ export const mePaths = {
       tags: ["Me"],
       summary: "The caller's absence budget, streak and past-session attendance (students)",
       responses: {
-        200: ok({ $ref: "#/components/schemas/MyAttendance" }, "Empty shape (season null) when there is no active season."),
+        200: ok(
+          { $ref: "#/components/schemas/MyAttendance" },
+          "Empty shape (season null) when there is no active season.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
       },
@@ -310,7 +359,10 @@ export const mePaths = {
       tags: ["Me"],
       summary: "The caller's own student profile (students and alumni)",
       responses: {
-        200: ok({ type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } }, "The profile."),
+        200: ok(
+          { type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } },
+          "The profile.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
@@ -318,8 +370,10 @@ export const mePaths = {
     },
     patch: {
       tags: ["Me"],
-      summary: "Edit the caller's own student profile (students, and alumni while studying; other alumni are read-only)",
-      description: "PATCH: absent = untouched, '' or null = cleared. Any key outside university/faculty/universityGraduationYear/phone/dateOfBirth is refused 403 forbidden_field — name and address are PATCH /me, email is staff-only. phone and dateOfBirth are account-level (User) fields, the same ones PATCH /me writes.",
+      summary:
+        "Edit the caller's own student profile (students, and alumni while studying; other alumni are read-only)",
+      description:
+        "PATCH: absent = untouched, '' or null = cleared. Any key outside university/faculty/universityGraduationYear/phone/dateOfBirth is refused 403 forbidden_field — name and address are PATCH /me, email is staff-only. phone and dateOfBirth are account-level (User) fields, the same ones PATCH /me writes.",
       requestBody: {
         required: true,
         content: {
@@ -330,7 +384,12 @@ export const mePaths = {
               properties: {
                 university: { type: ["string", "null"], maxLength: 160 },
                 faculty: { type: ["string", "null"], maxLength: 160 },
-                universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
+                universityGraduationYear: {
+                  type: ["integer", "null"],
+                  minimum: 1950,
+                  maximum: 2100,
+                  description: "University graduation year; may be in the future. Not the JPCS graduationYear.",
+                },
                 phone: { type: ["string", "null"], maxLength: 60 },
                 dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
               },
@@ -339,7 +398,10 @@ export const mePaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } }, "The updated profile."),
+        200: ok(
+          { type: "object", properties: { profile: { $ref: "#/components/schemas/MyProfile" } } },
+          "The updated profile.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -386,5 +448,4 @@ export const mePaths = {
       },
     },
   },
-
 } as const;

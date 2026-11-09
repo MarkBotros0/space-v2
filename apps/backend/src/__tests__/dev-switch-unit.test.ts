@@ -9,7 +9,9 @@ jest.mock("../db/client", () => ({ db: mockDb }));
 const mockConfig = { devUserSwitcher: false };
 jest.mock("../lib/config", () => {
   const actual = jest.requireActual("../lib/config");
-  return { config: new Proxy(actual.config, { get: (t, k) => (k === "devUserSwitcher" ? mockConfig.devUserSwitcher : t[k]) }) };
+  return {
+    config: new Proxy(actual.config, { get: (t, k) => (k === "devUserSwitcher" ? mockConfig.devUserSwitcher : t[k]) }),
+  };
 });
 jest.mock("../lib/auth/tokens", () => ({
   ...jest.requireActual("../lib/auth/tokens"),
@@ -75,7 +77,9 @@ describe("dev switcher on", () => {
     const res = await request(app).post("/api/v1/dev/switch").send({ userId: 2 });
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({
-      accessToken: "a", expiresIn: 900, refreshToken: "r",
+      accessToken: "a",
+      expiresIn: 900,
+      refreshToken: "r",
       user: { id: 2, name: "Ann", email: "a@x.test", role: "LEADER" },
     });
   });

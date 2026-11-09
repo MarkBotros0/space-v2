@@ -7,7 +7,12 @@ export const sessionsAssignmentsSchemas = {
       title: { type: "string" },
       startsAt: { type: "string", format: "date-time" },
       startTime: { type: "string", pattern: "^\\d{2}:\\d{2}$", description: "Org wall-clock start, HH:mm (X13)." },
-      dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-timezone calendar day of startsAt (ruling X13). Group by this, not by formatting startsAt on the device." },
+      dayKey: {
+        type: "string",
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+        description:
+          "Org-timezone calendar day of startsAt (ruling X13). Group by this, not by formatting startsAt on the device.",
+      },
       durationMinutes: { type: "integer" },
       location: { type: ["string", "null"] },
       recurrenceGroupId: { type: ["string", "null"] },
@@ -57,7 +62,11 @@ export const sessionsAssignmentsSchemas = {
         },
       },
       canMarkAttendance: { type: "boolean" },
-      canManageCheckIn: { type: "boolean", description: "Season admins only — the gate check-in-open/close enforce. Group leaders have canMarkAttendance but not this." },
+      canManageCheckIn: {
+        type: "boolean",
+        description:
+          "Season admins only — the gate check-in-open/close enforce. Group leaders have canMarkAttendance but not this.",
+      },
     },
   },
   AttendanceRosterRow: {
@@ -101,7 +110,8 @@ export const sessionsAssignmentsSchemas = {
       dueOrgDay: {
         type: ["string", "null"],
         format: "date",
-        description: "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label deadlines with this, never by formatting `dueAt` on the device.",
+        description:
+          "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label deadlines with this, never by formatting `dueAt` on the device.",
       },
       isOverdue: {
         type: "boolean",
@@ -120,8 +130,7 @@ export const sessionsAssignmentsSchemas = {
       },
       expectedCount: {
         type: "integer",
-        description:
-          "ACTIVE season enrolments in the targeted groups (SeasonEnrollment is the authority, ruling C9).",
+        description: "ACTIVE season enrolments in the targeted groups (SeasonEnrollment is the authority, ruling C9).",
       },
       seasonCode: { type: "string" },
     },
@@ -136,17 +145,19 @@ export const sessionsAssignmentsSchemas = {
       dueOrgDay: {
         type: ["string", "null"],
         format: "date",
-        description: "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label and compare deadlines with this (and the dashboard's `todayOrgDay`), never by formatting `dueAt` on the device.",
+        description:
+          "Organisation-calendar day of `dueAt` (ORG_TIMEZONE), derived server-side. Label and compare deadlines with this (and the dashboard's `todayOrgDay`), never by formatting `dueAt` on the device.",
       },
       status: {
-        oneOf: [
-          { $ref: "#/components/schemas/SubmissionStatus" },
-          { type: "string", enum: ["PENDING"] },
-        ],
+        oneOf: [{ $ref: "#/components/schemas/SubmissionStatus" }, { type: "string", enum: ["PENDING"] }],
       },
       isOverdue: { type: "boolean", description: "Derived server-side." },
       reviewedAt: { type: ["string", "null"], format: "date-time" },
-      submittedAt: { type: ["string", "null"], format: "date-time", description: "When they last handed it in; null before they ever have." },
+      submittedAt: {
+        type: ["string", "null"],
+        format: "date-time",
+        description: "When they last handed it in; null before they ever have.",
+      },
     },
   },
   AssignmentDetail: {
@@ -169,13 +180,17 @@ export const sessionsAssignmentsSchemas = {
       dueOrgTime: {
         type: ["string", "null"],
         pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
-        description: "Organisation wall-clock time of `dueAt`, 24-hour `HH:mm`; null when there is no due date. With `dueOrgDay`, exactly what the write body's `dueDay`/`dueTime` take.",
+        description:
+          "Organisation wall-clock time of `dueAt`, 24-hour `HH:mm`; null when there is no due date. With `dueOrgDay`, exactly what the write body's `dueDay`/`dueTime` take.",
       },
       isAllGroups: { type: "boolean" },
       type: { $ref: "#/components/schemas/AssignmentType" },
       forumMinWords: { type: ["integer", "null"] },
       forumAllowComments: { type: "boolean" },
-      forumPostToRead: { type: "boolean", description: "True: a student sees group-mates' responses only after posting their own." },
+      forumPostToRead: {
+        type: "boolean",
+        description: "True: a student sees group-mates' responses only after posting their own.",
+      },
       maxFileSizeMb: { type: ["integer", "null"] },
       allowedMimeCategories: {
         type: "array",
@@ -226,10 +241,7 @@ export const sessionsAssignmentsSchemas = {
       groupId: { type: ["integer", "null"] },
       groupName: { type: ["string", "null"] },
       status: {
-        oneOf: [
-          { $ref: "#/components/schemas/SubmissionStatus" },
-          { type: "string", enum: ["PENDING"] },
-        ],
+        oneOf: [{ $ref: "#/components/schemas/SubmissionStatus" }, { type: "string", enum: ["PENDING"] }],
         description: "PENDING means no Submission row exists.",
       },
       isLate: { type: "boolean" },
@@ -244,14 +256,16 @@ export const sessionsAssignmentsSchemas = {
   AssignmentWriteRequest: {
     type: "object",
     required: ["title", "isAllGroups"],
-    description: "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season.",
+    description:
+      "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season.",
     properties: {
       title: { type: "string", minLength: 2, maxLength: 160 },
       description: { type: ["string", "null"], maxLength: 20000 },
       dueDay: {
         type: ["string", "null"],
         format: "date",
-        description: "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2) — a client never sends an instant.",
+        description:
+          "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2) — a client never sends an instant.",
       },
       dueTime: {
         type: ["string", "null"],
@@ -259,12 +273,34 @@ export const sessionsAssignmentsSchemas = {
         default: "23:59",
         description: "Organisation wall-clock time, 24-hour. Ignored when `dueDay` is null.",
       },
-      sessionId: { type: ["integer", "null"], description: "Must be a session of the assignment's season (400 `invalid_session`)." },
+      sessionId: {
+        type: ["integer", "null"],
+        description: "Must be a session of the assignment's season (400 `invalid_session`).",
+      },
       type: { $ref: "#/components/schemas/AssignmentType" },
-      forumMinWords: { type: ["integer", "null"], minimum: 0, maximum: 2000, description: "Kept only for FORUM; forced null for STANDARD." },
-      forumAllowComments: { type: "boolean", default: false, description: "Kept only for FORUM; forced false for STANDARD." },
-      forumPostToRead: { type: "boolean", default: true, description: "FORUM only: a student reads group-mates' responses only after posting their own. Forced true for STANDARD." },
-      maxFileSizeMb: { type: ["integer", "null"], minimum: 1, maximum: 100, description: "Null = accepts no files. Forced null for FORUM." },
+      forumMinWords: {
+        type: ["integer", "null"],
+        minimum: 0,
+        maximum: 2000,
+        description: "Kept only for FORUM; forced null for STANDARD.",
+      },
+      forumAllowComments: {
+        type: "boolean",
+        default: false,
+        description: "Kept only for FORUM; forced false for STANDARD.",
+      },
+      forumPostToRead: {
+        type: "boolean",
+        default: true,
+        description:
+          "FORUM only: a student reads group-mates' responses only after posting their own. Forced true for STANDARD.",
+      },
+      maxFileSizeMb: {
+        type: ["integer", "null"],
+        minimum: 1,
+        maximum: 100,
+        description: "Null = accepts no files. Forced null for FORUM.",
+      },
       allowedMimeCategories: {
         type: "array",
         items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
@@ -276,7 +312,8 @@ export const sessionsAssignmentsSchemas = {
         type: "array",
         items: { type: "integer" },
         default: [],
-        description: "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
+        description:
+          "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
       },
     },
   },
@@ -291,5 +328,4 @@ export const sessionsAssignmentsSchemas = {
       rows: { type: "array", items: { $ref: "#/components/schemas/AssignmentTrackerRow" } },
     },
   },
-
 } as const;

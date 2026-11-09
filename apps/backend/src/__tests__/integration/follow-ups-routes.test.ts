@@ -28,8 +28,7 @@ const remind = (auth?: string) => {
   const r = request(app).get("/api/v1/internal/follow-ups/remind");
   return auth ? r.set("authorization", auth) : r;
 };
-const reminders = (userId: number) =>
-  db.notification.count({ where: { userId, type: "MENTOR_FOLLOWUP" } });
+const reminders = (userId: number) => db.notification.count({ where: { userId, type: "MENTOR_FOLLOWUP" } });
 
 beforeAll(async () => {
   await cleanupTestData();

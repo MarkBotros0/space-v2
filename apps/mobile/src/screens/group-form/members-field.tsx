@@ -74,7 +74,11 @@ export function MembersField({
       >
         {value.length === 0 ? (
           <Text variant="subhead" className="px-1 text-muted-foreground">
-            {status === "loading" ? "Loading…" : status === "error" ? "Couldn't load the season's people." : "Pick members…"}
+            {status === "loading"
+              ? "Loading…"
+              : status === "error"
+                ? "Couldn't load the season's people."
+                : "Pick members…"}
           </Text>
         ) : (
           value.map((id) => (
@@ -120,7 +124,11 @@ export function MembersField({
                     className="min-h-[44px] w-full flex-row items-center gap-3 rounded-control px-2 py-2 active:bg-accent"
                   >
                     {/* Drawn only: the row is the control, so a screen reader meets one checkbox. */}
-                    <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <View
+                      pointerEvents="none"
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
                       <Checkbox checked={on} onCheckedChange={() => {}} accessibilityLabel={row.name} />
                     </View>
                     <View className="min-w-0 flex-1">

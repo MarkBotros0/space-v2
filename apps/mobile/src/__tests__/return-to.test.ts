@@ -9,7 +9,15 @@ describe("returnHrefFor (no open redirect — Decision 7)", () => {
   });
 
   it("refuses everything else", () => {
-    for (const raw of [undefined, "", "/dashboard", "https://evil.example/checkin/AbC123XyZ0", "/checkin/short", "//evil.example", ["/checkin/AbC123XyZ0"]]) {
+    for (const raw of [
+      undefined,
+      "",
+      "/dashboard",
+      "https://evil.example/checkin/AbC123XyZ0",
+      "/checkin/short",
+      "//evil.example",
+      ["/checkin/AbC123XyZ0"],
+    ]) {
       expect(returnHrefFor(raw)).toBeNull();
     }
   });

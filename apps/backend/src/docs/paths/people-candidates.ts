@@ -45,11 +45,25 @@ export const peopleCandidatePaths = {
                 type: "array",
                 items: {
                   type: "object",
-                  required: ["id", "name", "pool", "last", "availability", "reason", "selectable", "overridable", "places"],
+                  required: [
+                    "id",
+                    "name",
+                    "pool",
+                    "last",
+                    "availability",
+                    "reason",
+                    "selectable",
+                    "overridable",
+                    "places",
+                  ],
                   properties: {
                     id: { type: "integer" },
                     name: { type: "string" },
-                    pool: { type: "string", enum: ["student", "alumni"], description: "`alumni` when `graduationYear` is set." },
+                    pool: {
+                      type: "string",
+                      enum: ["student", "alumni"],
+                      description: "`alumni` when `graduationYear` is set.",
+                    },
                     last: {
                       type: ["object", "null"],
                       required: ["seasonTitle", "outcome", "attendancePct"],

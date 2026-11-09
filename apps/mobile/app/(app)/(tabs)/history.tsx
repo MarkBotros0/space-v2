@@ -58,10 +58,7 @@ export default function HistoryScreen() {
       ) : isError ? (
         <RouteError onRetry={() => void refetch()} />
       ) : (
-        <SeasonHistory
-          rows={data}
-          emptyDescription="Once you complete a season, it'll appear here."
-        />
+        <SeasonHistory rows={data} emptyDescription="Once you complete a season, it'll appear here." />
       )}
     </Screen>
   );

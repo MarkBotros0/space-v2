@@ -7,12 +7,7 @@ import { UserForm } from "../../../src/components/UserForm";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState, GroupedList, ListRow, Text, toast } from "../../../src/design/ui";
-import {
-  useSendInvite,
-  useSetActivation,
-  useUpdateUser,
-  useUserDetail,
-} from "../../../src/hooks/use-users";
+import { useSendInvite, useSetActivation, useUpdateUser, useUserDetail } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { formatDate } from "../../../src/lib/format";
 import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
@@ -64,13 +59,7 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
     canInvite ? (
       <ListRow
         key="invite"
-        title={
-          sendInvite.isPending
-            ? "Sending…"
-            : data.status === "invited"
-              ? "Resend invite"
-              : "Send invite"
-        }
+        title={sendInvite.isPending ? "Sending…" : data.status === "invited" ? "Resend invite" : "Send invite"}
         onPress={sendInvite.isPending ? undefined : invite}
       />
     ) : null,
@@ -79,9 +68,7 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
         key="activation"
         title={inactive ? "Reactivate" : "Deactivate"}
         destructive={!inactive}
-        subtitle={
-          inactive ? "They will be able to sign in again." : "They will be signed out everywhere."
-        }
+        subtitle={inactive ? "They will be able to sign in again." : "They will be signed out everywhere."}
         onPress={setActivation.isPending ? undefined : toggleActivation}
       />
     ),
@@ -120,22 +107,16 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
                 router.dismissTo("/community");
               },
               onError: (err) =>
-                setMessage(
-                  apiErrorMessage(err, "The change was refused. Check the fields and try again."),
-                ),
+                setMessage(apiErrorMessage(err, "The change was refused. Check the fields and try again.")),
             },
           );
         const confirmSuperThenSave = () => {
           if (submit.body.role === "SUPER" && data.role !== "SUPER") {
             // D7 rec 3, surfaced in the UI the same way the API enforces it.
-            Alert.alert(
-              "Grant SUPER?",
-              "SUPER can manage every user and season. This cannot be limited by scope.",
-              [
-                { text: "Cancel", style: "cancel" },
-                { text: "Grant SUPER", onPress: () => doSave(true) },
-              ],
-            );
+            Alert.alert("Grant SUPER?", "SUPER can manage every user and season. This cannot be limited by scope.", [
+              { text: "Cancel", style: "cancel" },
+              { text: "Grant SUPER", onPress: () => doSave(true) },
+            ]);
             return;
           }
           doSave(false);

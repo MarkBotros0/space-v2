@@ -3,11 +3,7 @@
  * pre-fill, and the write body validated with the server's own schema.
  */
 import { format, isValid, parse } from "date-fns";
-import {
-  assignmentWriteRequestSchema,
-  type AssignmentDetail,
-  type MimeCategory,
-} from "@space/shared";
+import { assignmentWriteRequestSchema, type AssignmentDetail, type MimeCategory } from "@space/shared";
 
 /** Form state — strings for the numeric inputs, as typed. */
 export interface AssignmentFormValues {
@@ -79,12 +75,7 @@ export function toAssignmentBody(v: AssignmentFormValues) {
     forumMinWords: isForum ? (v.forumMinWords.trim() === "" ? 0 : Number(v.forumMinWords)) : null,
     forumAllowComments: isForum ? v.forumAllowComments : false,
     forumPostToRead: isForum ? v.forumPostToRead : true,
-    maxFileSizeMb:
-      !isForum && v.acceptsFiles
-        ? v.maxFileSizeMb.trim() === ""
-          ? 10
-          : Number(v.maxFileSizeMb)
-        : null,
+    maxFileSizeMb: !isForum && v.acceptsFiles ? (v.maxFileSizeMb.trim() === "" ? 10 : Number(v.maxFileSizeMb)) : null,
     allowedMimeCategories: !isForum && v.acceptsFiles ? v.allowedMimeCategories : [],
     isAllGroups: true,
     groupIds: [],

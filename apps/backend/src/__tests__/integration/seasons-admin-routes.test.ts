@@ -61,7 +61,9 @@ describe("seasonsRouter mounting (ruling X5)", () => {
     expect((await request(app).get(`/api/v1/seasons/${seasonId}`)).status).toBe(401);
     expect((await request(app).get(`/api/v1/seasons/by-code/${seasonCode}`)).status).toBe(401);
     expect((await request(app).get(`/api/v1/seasons/${seasonId}/roster`)).status).toBe(401);
-    expect((await request(app).put(`/api/v1/seasons/${seasonId}/group-assignments`).send({ assignments: [] })).status).toBe(401);
+    expect(
+      (await request(app).put(`/api/v1/seasons/${seasonId}/group-assignments`).send({ assignments: [] })).status,
+    ).toBe(401);
   });
 });
 
@@ -79,9 +81,7 @@ describe("GET /api/v1/seasons/by-code/:code (spec 02 §7, D-16.2)", () => {
       canAdminister: true,
     });
 
-    const byId = await request(app)
-      .get(`/api/v1/seasons/${seasonId}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const byId = await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${superToken}`);
     expect(byId.body.data).toEqual(res.body.data);
   });
 
@@ -116,9 +116,7 @@ describe("GET /api/v1/seasons/by-code/:code (spec 02 §7, D-16.2)", () => {
 
   it("is not shadowed by an /:id child route — a code may be any slug, even 'roster'", async () => {
     // Registered before every /:id/* route: /by-code/roster must not reach /:id/roster.
-    const res = await request(app)
-      .get("/api/v1/seasons/by-code/roster")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/seasons/by-code/roster").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(404);
     expect(res.body.error.message).toMatch(/season not found/i);
   });

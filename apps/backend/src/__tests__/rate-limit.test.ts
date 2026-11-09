@@ -68,9 +68,7 @@ describe("makeLimiter", () => {
 
   it("counts through Postgres with the limiter's prefix when the store is postgres", async () => {
     const resetAt = new Date(Date.now() + 60_000);
-    mockDb.$queryRaw
-      .mockResolvedValueOnce([{ hits: 1, resetAt }])
-      .mockResolvedValueOnce([{ hits: 2, resetAt }]);
+    mockDb.$queryRaw.mockResolvedValueOnce([{ hits: 1, resetAt }]).mockResolvedValueOnce([{ hits: 2, resetAt }]);
     const app = appWith(
       makeLimiter({
         name: "probe-pg",
@@ -85,10 +83,7 @@ describe("makeLimiter", () => {
     const limited = await request(app).get("/probe");
     expect(limited.status).toBe(429);
     expect(limited.body.error.code).toBe("too_many_requests");
-    expect((mockDb.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual([
-      "probe-pg:client",
-      60_000,
-    ]);
+    expect((mockDb.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual(["probe-pg:client", 60_000]);
   });
 
   it("lets the request through and logs when the store fails", async () => {

@@ -10,15 +10,7 @@ import { View } from "react-native";
 import { ListSectionHeader } from "../ui/grouped-list";
 import { Text } from "../ui/text";
 
-export function FormSection({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  note?: string;
-  children: ReactNode;
-}) {
+export function FormSection({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
   return (
     <View className="flex-col gap-2">
       <ListSectionHeader className="pb-0">{title}</ListSectionHeader>
@@ -39,9 +31,5 @@ export function FieldRow({ children }: { children: ReactNode }) {
 
 /** One cell of a FieldRow. */
 export function FieldCell({ children, grow = 1 }: { children: ReactNode; grow?: 1 | 2 }) {
-  return (
-    <View className={grow === 2 ? "min-w-[180px] flex-[2]" : "min-w-[130px] flex-1"}>
-      {children}
-    </View>
-  );
+  return <View className={grow === 2 ? "min-w-[180px] flex-[2]" : "min-w-[130px] flex-1"}>{children}</View>;
 }

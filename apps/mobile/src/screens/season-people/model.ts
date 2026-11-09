@@ -14,8 +14,7 @@ export type PeopleFilters = {
 };
 
 export type PeopleItem =
-  | { kind: "header"; key: string; title: string }
-  | { kind: "row"; key: string; person: PeopleCandidate };
+  { kind: "header"; key: string; title: string } | { kind: "row"; key: string; person: PeopleCandidate };
 
 /** Unavailable kinds in the order they are listed, with their section header. */
 const SECTIONS: { availability: Availability; title: string }[] = [
@@ -71,7 +70,10 @@ export function buildItems(people: PeopleCandidate[], source: SourceSeason | nul
     );
   }
   if (stragglers.length > 0) {
-    items.push({ kind: "header", key: "header-stragglers", title: `Didn't finish ${source.title}` }, ...stragglers.map(row));
+    items.push(
+      { kind: "header", key: "header-stragglers", title: `Didn't finish ${source.title}` },
+      ...stragglers.map(row),
+    );
   }
   const others = standingItems(rest);
   if (others.length > 0 && items.length > 0 && others[0]!.kind === "row") {
@@ -91,9 +93,7 @@ export function sourceLine(p: PeopleCandidate, source: SourceSeason | null): str
 
 /** The titles present among the people, for the "Last season" choices. */
 export function lastSeasonTitles(people: PeopleCandidate[]): string[] {
-  return [...new Set(people.flatMap((p) => (p.last ? [p.last.seasonTitle] : [])))].sort((a, b) =>
-    a.localeCompare(b),
-  );
+  return [...new Set(people.flatMap((p) => (p.last ? [p.last.seasonTitle] : [])))].sort((a, b) => a.localeCompare(b));
 }
 
 export type Pool = PeopleCandidate["pool"];

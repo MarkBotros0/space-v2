@@ -29,8 +29,7 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
   // The figures count this season only, so the leader's queue opens on the
   // same season; otherwise "3 waiting" lands on a cross-season list showing
   // a different number.
-  const toSubmissions = () =>
-    router.push({ pathname: "/submissions", params: { seasonId: String(data.season.id) } });
+  const toSubmissions = () => router.push({ pathname: "/submissions", params: { seasonId: String(data.season.id) } });
   const toGroup = () => router.push("/groups");
   const hasQuizzes = quizzes.total > 0 || quizzes.drafts > 0;
   const tiles: CountTileProps[] = [

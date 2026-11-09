@@ -48,9 +48,7 @@ afterAll(async () => {
 
 describe("POST /api/v1/auth/login", () => {
   it("returns a session and user for valid credentials", async () => {
-    const res = await request(createApp())
-      .post("/api/v1/auth/login")
-      .send({ email: EMAIL, password: PASSWORD });
+    const res = await request(createApp()).post("/api/v1/auth/login").send({ email: EMAIL, password: PASSWORD });
 
     expect(res.status).toBe(200);
     expect(res.body.data.accessToken).toEqual(expect.any(String));
@@ -65,18 +63,14 @@ describe("POST /api/v1/auth/login", () => {
   });
 
   it("returns invalid_credentials for a wrong password", async () => {
-    const res = await request(createApp())
-      .post("/api/v1/auth/login")
-      .send({ email: EMAIL, password: "wrong" });
+    const res = await request(createApp()).post("/api/v1/auth/login").send({ email: EMAIL, password: "wrong" });
 
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe("invalid_credentials");
   });
 
   it("returns bad_request for a malformed body", async () => {
-    const res = await request(createApp())
-      .post("/api/v1/auth/login")
-      .send({ email: "not-an-email", password: "" });
+    const res = await request(createApp()).post("/api/v1/auth/login").send({ email: "not-an-email", password: "" });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
@@ -85,29 +79,21 @@ describe("POST /api/v1/auth/login", () => {
 
 describe("POST /api/v1/auth/refresh", () => {
   it("rotates a valid refresh token", async () => {
-    const login = await request(createApp())
-      .post("/api/v1/auth/login")
-      .send({ email: EMAIL, password: PASSWORD });
+    const login = await request(createApp()).post("/api/v1/auth/login").send({ email: EMAIL, password: PASSWORD });
     const first = login.body.data.refreshToken;
 
-    const res = await request(createApp())
-      .post("/api/v1/auth/refresh")
-      .send({ refreshToken: first });
+    const res = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
 
     expect(res.status).toBe(200);
     expect(res.body.data.refreshToken).not.toBe(first);
   });
 
   it("rejects reuse of an already-rotated token", async () => {
-    const login = await request(createApp())
-      .post("/api/v1/auth/login")
-      .send({ email: EMAIL, password: PASSWORD });
+    const login = await request(createApp()).post("/api/v1/auth/login").send({ email: EMAIL, password: PASSWORD });
     const first = login.body.data.refreshToken;
 
     await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
-    const reuse = await request(createApp())
-      .post("/api/v1/auth/refresh")
-      .send({ refreshToken: first });
+    const reuse = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
 
     expect(reuse.status).toBe(401);
     expect(reuse.body.error.code).toBe("invalid_token");

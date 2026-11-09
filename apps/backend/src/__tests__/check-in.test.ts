@@ -60,13 +60,19 @@ describe("the student's hour before the start (owner, 2026-11-08)", () => {
   });
 
   it("reads closed to a student while an early-opened check-in is still before the hour", () => {
-    const openedEarly = { startsAt: STARTS, checkInOpenAt: new Date(tooEarly.getTime() - 60_000), checkInClosedAt: null };
+    const openedEarly = {
+      startsAt: STARTS,
+      checkInOpenAt: new Date(tooEarly.getTime() - 60_000),
+      checkInClosedAt: null,
+    };
     expect(isCheckInOpen(openedEarly, tooEarly)).toBe(true);
     expect(isCheckInOpenForStudent(openedEarly, tooEarly)).toBe(false);
     expect(isCheckInOpenForStudent(openedEarly, hourBefore)).toBe(true);
   });
 
   it("still needs check-in to be open inside the hour", () => {
-    expect(isCheckInOpenForStudent({ startsAt: STARTS, checkInOpenAt: null, checkInClosedAt: null }, hourBefore)).toBe(false);
+    expect(isCheckInOpenForStudent({ startsAt: STARTS, checkInOpenAt: null, checkInClosedAt: null }, hourBefore)).toBe(
+      false,
+    );
   });
 });

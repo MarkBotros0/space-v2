@@ -33,10 +33,7 @@ export default function EditStudentScreen() {
   if (!staff) {
     return (
       <Screen title="Edit student">
-        <EmptyState
-          title="Edit student"
-          description="Only SUPER and ADMIN accounts can edit students."
-        />
+        <EmptyState title="Edit student" description="Only SUPER and ADMIN accounts can edit students." />
       </Screen>
     );
   }

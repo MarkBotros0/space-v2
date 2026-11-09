@@ -2,7 +2,17 @@
 import request from "supertest";
 
 import { db } from "../../db/client";
-import { add, app, as, ctx, leading, person, season, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  add,
+  app,
+  as,
+  ctx,
+  leading,
+  person,
+  season,
+  seedEnrollmentFixtures,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 
 jest.setTimeout(120000);
 
@@ -62,13 +72,15 @@ describe("student seats in a community-wide season", () => {
     const alumnus = await person("Switched", 2017);
     expect((await add(id, { userIds: [alumnus.id] })).status).toBeLessThan(300);
     const row = await db.season.findUniqueOrThrow({ where: { id }, select: { code: true, program: true } });
-    const patch = await request(app)
-      .patch(`/api/v1/seasons/${id}`)
-      .set(as(ctx.superToken))
-      .send({
-        program: row.program, year: 2099, code: row.code, status: "DRAFT", isCommunityWide: false,
-        startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
-      });
+    const patch = await request(app).patch(`/api/v1/seasons/${id}`).set(as(ctx.superToken)).send({
+      program: row.program,
+      year: 2099,
+      code: row.code,
+      status: "DRAFT",
+      isCommunityWide: false,
+      startDate: "2099-01-01T00:00:00.000Z",
+      endDate: "2099-12-31T00:00:00.000Z",
+    });
     expect(patch.status).toBe(200);
     const check = await request(app).get(`/api/v1/seasons/${id}/start-check`).set(as(ctx.superToken));
     expect(check.body.data.items).toEqual([

@@ -44,9 +44,13 @@ const notices = (userId: number) => db.notification.count({ where: { userId } })
 
 describe("hasActiveEnrollment", () => {
   const asUser = (userId: number) =>
-    ({ userId, role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: null }) as unknown as Parameters<
-      typeof hasActiveEnrollment
-    >[0];
+    ({
+      userId,
+      role: "STUDENT",
+      seasonAdminIds: [],
+      groupLeaderIds: [],
+      activeSeasonId: null,
+    }) as unknown as Parameters<typeof hasActiveEnrollment>[0];
 
   it("is true only for an ACTIVE enrolment in an ACTIVE, live season", async () => {
     const active = await world("ACTIVE", "pred-active");
@@ -81,8 +85,12 @@ describe("a student on a draft's roster", () => {
     const w = await world("DRAFT", "checkin");
     await db.session.create({
       data: {
-        seasonId: w.seasonId, title: "S", startsAt: new Date(), durationMinutes: 60,
-        checkInToken: "draft-checkin-token", checkInOpenAt: new Date(Date.now() - 60_000),
+        seasonId: w.seasonId,
+        title: "S",
+        startsAt: new Date(),
+        durationMinutes: 60,
+        checkInToken: "draft-checkin-token",
+        checkInOpenAt: new Date(Date.now() - 60_000),
       },
     });
     const res = await call("post", "/sessions/check-in", w.token).send({ token: "draft-checkin-token" });
@@ -96,7 +104,9 @@ describe("a student on a draft's roster", () => {
   ])("creating an assignment in a %s season sends %i notification", async (status, expected) => {
     const w = await world(status, `assign-${status.toLowerCase()}`);
     const res = await call("post", `/seasons/${w.seasonId}/assignments`, adminT).send({
-      title: "New work", isAllGroups: true, groupIds: [],
+      title: "New work",
+      isAllGroups: true,
+      groupIds: [],
     });
     expect(res.status).toBe(201);
     expect(await notices(w.studentId)).toBe(expected);
@@ -109,8 +119,13 @@ describe("a student on a draft's roster", () => {
     const w = await world(status, `quiz-${status.toLowerCase()}`);
     const quiz = await db.quiz.create({
       data: {
-        seasonId: w.seasonId, title: "Q", kind: "ONLINE", maxScore: 1,
-        questions: { create: [{ order: 1, type: "MCQ", prompt: "?", points: 1, options: ["a", "b"], correctIndex: 0 }] },
+        seasonId: w.seasonId,
+        title: "Q",
+        kind: "ONLINE",
+        maxScore: 1,
+        questions: {
+          create: [{ order: 1, type: "MCQ", prompt: "?", points: 1, options: ["a", "b"], correctIndex: 0 }],
+        },
       },
       select: { id: true },
     });

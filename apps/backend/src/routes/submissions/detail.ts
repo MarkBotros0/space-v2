@@ -51,7 +51,6 @@ async function loadSubmissionForApi(publicId: string) {
   });
 }
 
-
 export async function getSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
   // publicId is an opaque 10-character string, not an integer — no parseId here.

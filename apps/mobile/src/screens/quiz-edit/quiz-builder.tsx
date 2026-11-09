@@ -11,15 +11,7 @@ import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
 import { haptic } from "../../design/motion";
-import {
-  Button,
-  EmptyState,
-  ListSectionHeader,
-  PillButton,
-  StatusChip,
-  Text,
-  toast,
-} from "../../design/ui";
+import { Button, EmptyState, ListSectionHeader, PillButton, StatusChip, Text, toast } from "../../design/ui";
 import { useAddQuestion, usePublishQuiz } from "../../hooks/use-quiz-authoring";
 import { useQuizAuthoringDetail } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
@@ -65,12 +57,7 @@ function QuizSummary({
             </Text>
           ) : null}
         </View>
-        <PillButton
-          label="Edit"
-          accessibilityLabel="Edit quiz details"
-          onPress={onEdit}
-          className="shrink-0"
-        />
+        <PillButton label="Edit" accessibilityLabel="Edit quiz details" onPress={onEdit} className="shrink-0" />
       </View>
       {isPaper ? null : (
         <View className="flex-row flex-wrap items-center justify-between gap-2">
@@ -132,11 +119,7 @@ function QuizForm({
   // One action for the page: a draft's Publish. Questions save one by one and
   // the details save from their sheet, so there is nothing else to save here.
   const publishBlocked =
-    count === 0
-      ? "Add a question to publish."
-      : questionOpen
-        ? "Finish the question first."
-        : undefined;
+    count === 0 ? "Add a question to publish." : questionOpen ? "Finish the question first." : undefined;
   const footer =
     isPaper || published ? undefined : (
       <SaveBar
@@ -152,9 +135,7 @@ function QuizForm({
   return (
     <Screen title="Edit quiz" footer={footer} onRefresh={onRefresh} refreshing={refreshing}>
       <View className="flex-col gap-6">
-        {refreshFailed ? (
-          <InlineError message="Couldn't refresh this quiz." onRetry={onRefresh} />
-        ) : null}
+        {refreshFailed ? <InlineError message="Couldn't refresh this quiz." onRetry={onRefresh} /> : null}
         <QuizSummary
           quiz={data}
           onEdit={() => setDetailsOpen(true)}
@@ -170,9 +151,7 @@ function QuizForm({
             </Text>
             <Button
               className="self-start"
-              onPress={() =>
-                router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })
-              }
+              onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}
             >
               Open grade sheet
             </Button>
@@ -217,8 +196,7 @@ function QuizForm({
                         setAdding(false);
                         setAddError(null);
                       },
-                      onError: (err) =>
-                        setAddError(apiErrorMessage(err, "Couldn't add the question.")),
+                      onError: (err) => setAddError(apiErrorMessage(err, "Couldn't add the question.")),
                     })
                   }
                 />
@@ -248,31 +226,14 @@ export function QuizBuilder({ id }: { id: number }) {
   const { data, isPending, isError, refetch, isRefetching } = useQuizAuthoringDetail(id, true);
 
   if (data?.canManage) {
-    return (
-      <QuizForm
-        data={data}
-        onRefresh={() => void refetch()}
-        refreshing={isRefetching}
-        refreshFailed={isError}
-      />
-    );
+    return <QuizForm data={data} onRefresh={() => void refetch()} refreshing={isRefetching} refreshFailed={isError} />;
   }
   let body;
   if (isPending) body = <RouteSkeleton />;
   else if (isError) body = <RouteError onRetry={() => void refetch()} />;
-  else
-    body = (
-      <EmptyState
-        title="Not available"
-        description="Only an admin of this quiz's season can edit it."
-      />
-    );
+  else body = <EmptyState title="Not available" description="Only an admin of this quiz's season can edit it." />;
   return (
-    <Screen
-      title={data?.title ?? "Edit quiz"}
-      onRefresh={() => void refetch()}
-      refreshing={isRefetching}
-    >
+    <Screen title={data?.title ?? "Edit quiz"} onRefresh={() => void refetch()} refreshing={isRefetching}>
       {body}
     </Screen>
   );

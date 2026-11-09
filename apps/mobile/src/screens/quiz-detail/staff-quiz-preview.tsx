@@ -35,16 +35,9 @@ export function StaffPreview({ id }: { id: number }) {
         <Card className="flex-col gap-2 p-4">
           <Text className="text-lg font-semibold">{data.title}</Text>
           <Text className="text-sm font-medium text-muted-foreground">
-            {data.kind === "PAPER"
-              ? "Paper"
-              : data.publishedAt === null
-                ? "Online · Draft"
-                : "Online · Published"}
+            {data.kind === "PAPER" ? "Paper" : data.publishedAt === null ? "Online · Draft" : "Online · Published"}
           </Text>
-          <Button
-            size="lg"
-            onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}
-          >
+          <Button size="lg" onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}>
             Grade this quiz
           </Button>
           {data.canManage ? (

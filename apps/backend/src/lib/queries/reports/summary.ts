@@ -224,8 +224,7 @@ export async function buildEngagementSummary(
       // null for a targeted assignment with no AssignmentTarget rows. v1 showed
       // 0 %, which reads as total cohort failure and is a mis-configured
       // assignment (R22).
-      completionRate:
-        expectedIds.size > 0 ? Math.round((completed / expectedIds.size) * 100) : null,
+      completionRate: expectedIds.size > 0 ? Math.round((completed / expectedIds.size) * 100) : null,
     };
   });
 

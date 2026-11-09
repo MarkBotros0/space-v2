@@ -73,9 +73,7 @@ describe("LoginScreen", () => {
     fireEvent.changeText(screen.getByLabelText("Password"), "wrong");
     fireEvent.press(screen.getByText("Sign in"));
 
-    await waitFor(() =>
-      expect(screen.getByText("Invalid email or password.")).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText("Invalid email or password.")).toBeTruthy());
     expect(mockReplace).not.toHaveBeenCalled();
 
     // The error renders inline above the form now, not as a full-screen

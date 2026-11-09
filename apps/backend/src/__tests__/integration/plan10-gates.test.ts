@@ -32,11 +32,7 @@ let admin: SessionUser;
 let mentor: SessionUser;
 let superUser: SessionUser;
 
-function asUser(
-  id: number,
-  role: SessionUser["role"],
-  overrides: Partial<SessionUser> = {},
-): SessionUser {
+function asUser(id: number, role: SessionUser["role"], overrides: Partial<SessionUser> = {}): SessionUser {
   return {
     userId: id,
     role,

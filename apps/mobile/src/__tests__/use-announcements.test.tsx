@@ -69,9 +69,7 @@ describe("useAnnouncementFeed", () => {
     });
     expect(api.get).toHaveBeenLastCalledWith("/api/v1/announcements?cursor=c1");
     // Under load the second page can land a render after fetchNextPage resolves.
-    await waitFor(() =>
-      expect(result.current.data?.pages.flatMap((p) => p.items.map((i) => i.id))).toEqual([2, 1]),
-    );
+    await waitFor(() => expect(result.current.data?.pages.flatMap((p) => p.items.map((i) => i.id))).toEqual([2, 1]));
     expect(result.current.hasNextPage).toBe(false);
   });
 
@@ -252,15 +250,18 @@ describe("poll hooks", () => {
     ["vote", () => useVotePoll(5), "put", { version: 1, optionIds: [3] }],
     ["close", () => useClosePoll(5), "post", undefined],
     ["reopen", () => useReopenPoll(5), "post", undefined],
-  ] as const)("a %s invalidates the voters list, so the sheet never shows stale names", async (_n, hook, verb, body) => {
-    api[verb].mockResolvedValue({ data: { data: detail(5) } });
-    const spy = jest.spyOn(client, "invalidateQueries");
-    const { result } = renderHook(() => hook(), { wrapper });
-    await act(async () => {
-      await (result.current.mutateAsync as (b?: unknown) => Promise<unknown>)(body);
-    });
-    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.voters(5) });
-  });
+  ] as const)(
+    "a %s invalidates the voters list, so the sheet never shows stale names",
+    async (_n, hook, verb, body) => {
+      api[verb].mockResolvedValue({ data: { data: detail(5) } });
+      const spy = jest.spyOn(client, "invalidateQueries");
+      const { result } = renderHook(() => hook(), { wrapper });
+      await act(async () => {
+        await (result.current.mutateAsync as (b?: unknown) => Promise<unknown>)(body);
+      });
+      expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.voters(5) });
+    },
+  );
 
   it("pollVotesLost reads votes off a 409 poll_votes_lost, else null", () => {
     expect(pollVotesLost(conflict("poll_votes_lost", { votes: 7 }))).toBe(7);

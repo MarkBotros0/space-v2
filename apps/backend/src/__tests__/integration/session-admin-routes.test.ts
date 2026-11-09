@@ -43,19 +43,35 @@ beforeAll(async () => {
   token = newPublicId();
   sessionId = (
     await db.session.create({
-      data: { seasonId, title: "Main", startsAt: new Date("2099-03-01T18:00:00.000Z"), durationMinutes: 90, checkInToken: token },
+      data: {
+        seasonId,
+        title: "Main",
+        startsAt: new Date("2099-03-01T18:00:00.000Z"),
+        durationMinutes: 90,
+        checkInToken: token,
+      },
       select: { id: true },
     })
   ).id;
   draftSessionId = (
     await db.session.create({
-      data: { seasonId: draftSeasonId, title: "Draft", startsAt: new Date("2099-03-02T18:00:00.000Z"), durationMinutes: 60 },
+      data: {
+        seasonId: draftSeasonId,
+        title: "Draft",
+        startsAt: new Date("2099-03-02T18:00:00.000Z"),
+        durationMinutes: 60,
+      },
       select: { id: true },
     })
   ).id;
   otherSessionId = (
     await db.session.create({
-      data: { seasonId: otherSeasonId, title: "Other", startsAt: new Date("2099-03-03T18:00:00.000Z"), durationMinutes: 60 },
+      data: {
+        seasonId: otherSeasonId,
+        title: "Other",
+        startsAt: new Date("2099-03-03T18:00:00.000Z"),
+        durationMinutes: 60,
+      },
       select: { id: true },
     })
   ).id;
@@ -77,10 +93,14 @@ it("runs against the Cairo org timezone these expectations assume", () => {
 
 describe("org wall clock on session writes and reads (D-16.6)", () => {
   it("composes startDay + startTime in ORG_TIMEZONE, across DST, for every weekly sibling", async () => {
-    const res = await request(app)
-      .post("/api/v1/sessions")
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ seasonId, title: "Summer series", startDay: "2099-07-03", startTime: "19:30", durationMinutes: 60, repeatWeeks: 2 });
+    const res = await request(app).post("/api/v1/sessions").set("authorization", `Bearer ${adminToken}`).send({
+      seasonId,
+      title: "Summer series",
+      startDay: "2099-07-03",
+      startTime: "19:30",
+      durationMinutes: 60,
+      repeatWeeks: 2,
+    });
     expect(res.status).toBe(201);
     const rows = await db.session.findMany({
       where: { recurrenceGroupId: res.body.data.recurrenceGroupId },
@@ -88,20 +108,18 @@ describe("org wall clock on session writes and reads (D-16.6)", () => {
       select: { startsAt: true },
     });
     // 19:30 at UTC+3 (Egyptian summer time) is 16:30Z.
-    expect(rows.map((r) => r.startsAt.toISOString())).toEqual([
-      "2099-07-03T16:30:00.000Z",
-      "2099-07-10T16:30:00.000Z",
-    ]);
+    expect(rows.map((r) => r.startsAt.toISOString())).toEqual(["2099-07-03T16:30:00.000Z", "2099-07-10T16:30:00.000Z"]);
   });
 
   it("refuses a body carrying both startsAt and startDay/startTime", async () => {
-    const res = await request(app)
-      .post("/api/v1/sessions")
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({
-        seasonId, title: "Both", durationMinutes: 60,
-        startsAt: "2099-07-03T16:30:00.000Z", startDay: "2099-07-03", startTime: "19:30",
-      });
+    const res = await request(app).post("/api/v1/sessions").set("authorization", `Bearer ${adminToken}`).send({
+      seasonId,
+      title: "Both",
+      durationMinutes: 60,
+      startsAt: "2099-07-03T16:30:00.000Z",
+      startDay: "2099-07-03",
+      startTime: "19:30",
+    });
     expect(res.status).toBe(400);
   });
 
@@ -121,10 +139,7 @@ describe("org wall clock on session writes and reads (D-16.6)", () => {
 
 describe("GET /api/v1/sessions — windowed, role-scoped (D-16.7, G17)", () => {
   it("gives SUPER every ACTIVE season's sessions in the window, never a DRAFT season's", async () => {
-    const res = await request(app)
-      .get("/api/v1/sessions")
-      .query(WINDOW)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/sessions").query(WINDOW).set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(ids(res)).toEqual(expect.arrayContaining([sessionId, otherSessionId]));
     expect(ids(res)).not.toContain(draftSessionId);
@@ -207,10 +222,14 @@ describe("GET /api/v1/sessions/:id/series (D-16.8)", () => {
   let anchorId: number;
 
   beforeAll(async () => {
-    const created = await request(app)
-      .post("/api/v1/sessions")
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ seasonId, title: "Weekly", startDay: "2099-04-03", startTime: "19:00", durationMinutes: 60, repeatWeeks: 3 });
+    const created = await request(app).post("/api/v1/sessions").set("authorization", `Bearer ${adminToken}`).send({
+      seasonId,
+      title: "Weekly",
+      startDay: "2099-04-03",
+      startTime: "19:00",
+      durationMinutes: 60,
+      repeatWeeks: 3,
+    });
     const series = await db.session.findMany({
       where: { recurrenceGroupId: created.body.data.recurrenceGroupId },
       orderBy: { startsAt: "asc" },
@@ -219,8 +238,13 @@ describe("GET /api/v1/sessions/:id/series (D-16.8)", () => {
     const second = series[1];
     if (!second) throw new Error("series fixture did not create three sessions");
     anchorId = second.id;
-    const student = await db.seasonEnrollment.findFirstOrThrow({ where: { seasonId }, select: { studentUserId: true } });
-    await db.attendance.create({ data: { sessionId: anchorId, studentUserId: student.studentUserId, status: "PRESENT" } });
+    const student = await db.seasonEnrollment.findFirstOrThrow({
+      where: { seasonId },
+      select: { studentUserId: true },
+    });
+    await db.attendance.create({
+      data: { sessionId: anchorId, studentUserId: student.studentUserId, status: "PRESENT" },
+    });
   });
 
   it("previews 'future' as the anchor and every later sibling, with attendance counts", async () => {
@@ -230,7 +254,12 @@ describe("GET /api/v1/sessions/:id/series (D-16.8)", () => {
       .set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.sessions).toHaveLength(2);
-    expect(res.body.data.sessions[0]).toMatchObject({ id: anchorId, isAnchor: true, attendanceCount: 1, startTime: "19:00" });
+    expect(res.body.data.sessions[0]).toMatchObject({
+      id: anchorId,
+      isAnchor: true,
+      attendanceCount: 1,
+      startTime: "19:00",
+    });
     expect(res.body.data).toMatchObject({ scope: "future", attendanceCount: 1, videoProgressCount: 0 });
   });
 
@@ -244,10 +273,16 @@ describe("GET /api/v1/sessions/:id/series (D-16.8)", () => {
 
   it("requires a scope and a season admin", async () => {
     expect(
-      (await request(app).get(`/api/v1/sessions/${anchorId}/series`).set("authorization", `Bearer ${adminToken}`)).status,
+      (await request(app).get(`/api/v1/sessions/${anchorId}/series`).set("authorization", `Bearer ${adminToken}`))
+        .status,
     ).toBe(400);
     expect(
-      (await request(app).get(`/api/v1/sessions/${anchorId}/series`).query({ scope: "all" }).set("authorization", `Bearer ${leaderToken}`)).status,
+      (
+        await request(app)
+          .get(`/api/v1/sessions/${anchorId}/series`)
+          .query({ scope: "all" })
+          .set("authorization", `Bearer ${leaderToken}`)
+      ).status,
     ).toBe(403);
   });
 });
@@ -299,7 +334,11 @@ describe("check-in state and regeneration (D-16.9, G19)", () => {
     expect(stale.body.error.code).toBe("invalid_token");
 
     expect(
-      (await request(app).post(`/api/v1/sessions/${sessionId}/check-in-regenerate`).set("authorization", `Bearer ${leaderToken}`)).status,
+      (
+        await request(app)
+          .post(`/api/v1/sessions/${sessionId}/check-in-regenerate`)
+          .set("authorization", `Bearer ${leaderToken}`)
+      ).status,
     ).toBe(403);
   });
 });
@@ -317,16 +356,25 @@ describe("GET /api/v1/sessions/:id/quizzes (D-16.10, G18)", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.quizzes).toEqual([
       { id: expect.any(Number), title: "Paper quiz", kind: "PAPER", maxScore: 20, questionCount: 0, publishedAt: null },
-      { id: expect.any(Number), title: "Online draft", kind: "ONLINE", maxScore: 10, questionCount: 0, publishedAt: null },
+      {
+        id: expect.any(Number),
+        title: "Online draft",
+        kind: "ONLINE",
+        maxScore: 10,
+        questionCount: 0,
+        publishedAt: null,
+      },
     ]);
   });
 
   it("refuses a student and 404s an unknown session", async () => {
     expect(
-      (await request(app).get(`/api/v1/sessions/${sessionId}/quizzes`).set("authorization", `Bearer ${studentToken}`)).status,
+      (await request(app).get(`/api/v1/sessions/${sessionId}/quizzes`).set("authorization", `Bearer ${studentToken}`))
+        .status,
     ).toBe(403);
     expect(
-      (await request(app).get("/api/v1/sessions/2147480000/quizzes").set("authorization", `Bearer ${adminToken}`)).status,
+      (await request(app).get("/api/v1/sessions/2147480000/quizzes").set("authorization", `Bearer ${adminToken}`))
+        .status,
     ).toBe(404);
   });
 });

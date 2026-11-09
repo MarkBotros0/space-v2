@@ -61,8 +61,7 @@ export function TrendLine({ points, height = 160 }: TrendLineProps) {
 
   const width = 320;
   const pad = 8;
-  const x = (i: number) =>
-    points.length <= 1 ? width / 2 : pad + (i / (points.length - 1)) * (width - pad * 2);
+  const x = (i: number) => (points.length <= 1 ? width / 2 : pad + (i / (points.length - 1)) * (width - pad * 2));
   const y = (pct: number) => pad + (1 - pct / 100) * (height - pad * 2);
 
   const describe = (plotted: Placed[]) =>
@@ -81,15 +80,7 @@ export function TrendLine({ points, height = 160 }: TrendLineProps) {
     <View accessible accessibilityRole="image" accessibilityLabel={label}>
       <Svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`}>
         {[0, 50, 100].map((tick) => (
-          <Line
-            key={tick}
-            x1={pad}
-            x2={width - pad}
-            y1={y(tick)}
-            y2={y(tick)}
-            stroke={chart.track}
-            strokeWidth={1}
-          />
+          <Line key={tick} x1={pad} x2={width - pad} y1={y(tick)} y2={y(tick)} stroke={chart.track} strokeWidth={1} />
         ))}
         {series.map((s, k) => {
           const color = palette[k % palette.length]!;

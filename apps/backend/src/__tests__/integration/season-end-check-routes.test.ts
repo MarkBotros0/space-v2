@@ -44,7 +44,10 @@ beforeAll(async () => {
   const u2 = await createTestUser("s2", "STUDENT");
   const ud = await createTestUser("sdel", "STUDENT");
   const uw = await createTestUser("swd", "STUDENT");
-  s1 = u1.id; s2 = u2.id; sDeleted = ud.id; sWithdrawn = uw.id;
+  s1 = u1.id;
+  s2 = u2.id;
+  sDeleted = ud.id;
+  sWithdrawn = uw.id;
   await db.user.update({ where: { id: ud.id }, data: { deletedAt: new Date() } });
 
   for (const id of [seasonId, draftId, completedId]) {
@@ -82,8 +85,12 @@ beforeAll(async () => {
   const deletedAssignment = await db.assignment.create({
     data: { seasonId, title: "Gone", deletedAt: new Date() },
   });
-  const sub = (assignmentId: number, studentUserId: number, status: "DRAFT" | "SUBMITTED" | "RETURNED", publicId: string) =>
-    db.submission.create({ data: { assignmentId, studentUserId, status, publicId } });
+  const sub = (
+    assignmentId: number,
+    studentUserId: number,
+    status: "DRAFT" | "SUBMITTED" | "RETURNED",
+    publicId: string,
+  ) => db.submission.create({ data: { assignmentId, studentUserId, status, publicId } });
   await sub(assignment.id, s1, "SUBMITTED", "endchk-submitted");
   await sub(assignment.id, s2, "DRAFT", "endchk-draft");
   await sub(assignment.id, student.id, "RETURNED", "endchk-returned");
@@ -101,7 +108,10 @@ beforeAll(async () => {
     where: { studentUserId_seasonId: { studentUserId: done.id, seasonId } },
     data: { status: "COMPLETED" },
   });
-  for (const [who, uid] of [["wd", sWithdrawn], ["done", done.id]] as const) {
+  for (const [who, uid] of [
+    ["wd", sWithdrawn],
+    ["done", done.id],
+  ] as const) {
     await sub(assignment.id, uid, "SUBMITTED", `endchk-${who}`);
     await db.quizAttempt.create({ data: { quizId: quiz.id, studentUserId: uid, status: "SUBMITTED" } });
   }
@@ -180,8 +190,12 @@ describe("GET /seasons/:id/end-check", () => {
 
 describe("season status rules", () => {
   const body = (code: string, status: string) => ({
-    code, program: "TEST", year: 2099, status,
-    startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+    code,
+    program: "TEST",
+    year: 2099,
+    status,
+    startDate: "2099-01-01T00:00:00.000Z",
+    endDate: "2099-12-31T00:00:00.000Z",
   });
   const patch = async (from: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED", to: string) => {
     const s = await createTestSeason({ status: from });

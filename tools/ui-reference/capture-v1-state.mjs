@@ -14,13 +14,18 @@ const role = arg("role");
 const user = JSON.parse(readFileSync(USERS_FILE, "utf8"))[role];
 const browser = await chromium.launch();
 for (const theme of ["light", "dark"]) {
-  const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, deviceScaleFactor: 2, colorScheme: theme });
+  const ctx = await browser.newContext({
+    viewport: { width: 375, height: 812 },
+    deviceScaleFactor: 2,
+    colorScheme: theme,
+  });
   await ctx.addInitScript((t) => window.localStorage.setItem("theme", t), theme);
   if (user?.email) await signInAs(ctx, V1_BASE_URL, user.email);
   const page = await ctx.newPage();
   await page.goto(new URL(arg("path"), V1_BASE_URL).toString(), { waitUntil: "networkidle", timeout: 150000 });
   for (const name of clicks) {
-    const byRole = page.getByRole("tab", { name, exact: true })
+    const byRole = page
+      .getByRole("tab", { name, exact: true })
       .or(page.getByRole("button", { name, exact: true }))
       .or(page.getByRole("link", { name, exact: true }));
     const target = (await byRole.count()) > 0 ? byRole.first() : page.getByText(name, { exact: true }).first();

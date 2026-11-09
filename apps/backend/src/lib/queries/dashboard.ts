@@ -93,10 +93,7 @@ export async function loadStudentDashboard(user: SessionUser, now: Date) {
  * attendance screen's own roster, reduced. A student with no mark yet is
  * "not checked in"; a blank name falls back to the email.
  */
-async function loadLeaderSessionCheckIn(
-  sessionId: number,
-  groupIds: number[],
-): Promise<LeaderSessionCheckIn | null> {
+async function loadLeaderSessionCheckIn(sessionId: number, groupIds: number[]): Promise<LeaderSessionCheckIn | null> {
   const roster = await loadAttendanceRoster(sessionId, groupIds);
   if (!roster) return null;
   return {
@@ -116,12 +113,7 @@ async function loadLeaderSessionCheckIn(
  * already passed `staffScopeForSeason`; `scope` is its answer. Returns null
  * when the season does not exist or is soft-deleted.
  */
-export async function loadSeasonStaffDashboard(
-  user: SessionUser,
-  seasonId: number,
-  scope: AttendanceScope,
-  now: Date,
-) {
+export async function loadSeasonStaffDashboard(user: SessionUser, seasonId: number, scope: AttendanceScope, now: Date) {
   const season = await db.season.findFirst({ where: { id: seasonId, deletedAt: null }, select: SEASON_SELECT });
   if (!season) return null;
 

@@ -6,10 +6,7 @@ import { EmptyState } from "../../../../src/design/ui";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { isNotFoundError } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
-import {
-  AdminSessionBody,
-  LeaderSessionBody,
-} from "../../../../src/screens/session-detail/staff-session-bodies";
+import { AdminSessionBody, LeaderSessionBody } from "../../../../src/screens/session-detail/staff-session-bodies";
 import { StudentSessionBody } from "../../../../src/screens/session-detail/student-session-body";
 import { useSessionStore } from "../../../../src/store/session";
 
@@ -33,10 +30,7 @@ function SessionDetailBody({ id }: { id: number }) {
   if (isError && isNotFoundError(error)) {
     return (
       <Screen>
-        <EmptyState
-          title="Not available"
-          description="This session isn't available to you."
-        />
+        <EmptyState title="Not available" description="This session isn't available to you." />
       </Screen>
     );
   }
@@ -55,8 +49,7 @@ function SessionDetailBody({ id }: { id: number }) {
 
   // v1 showed the console only to an admin OF the season; the API also lets any
   // SUPER through (isAdminOfSeason), so the app narrows it (REG-79).
-  const showConsole =
-    data.canManageCheckIn && (role !== "SUPER" || (seasonAdminIds ?? []).includes(data.seasonId));
+  const showConsole = data.canManageCheckIn && (role !== "SUPER" || (seasonAdminIds ?? []).includes(data.seasonId));
 
   return <AdminSessionBody {...body} showConsole={showConsole} />;
 }

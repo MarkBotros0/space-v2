@@ -72,10 +72,7 @@ export function AttendanceRosterForm({
 }) {
   if (rows.length === 0) {
     return (
-      <Text
-        variant="subhead"
-        className="rounded-group bg-surface p-8 text-center text-muted-foreground"
-      >
+      <Text variant="subhead" className="rounded-group bg-surface p-8 text-center text-muted-foreground">
         No students are enrolled in this scope.
       </Text>
     );

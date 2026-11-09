@@ -1,10 +1,7 @@
 import tokens from "../design/theme/tokens.json";
 
 type Theme = Record<string, string>;
-const themes: Record<string, Theme> = { light: tokens.light, dark: tokens.dark } as Record<
-  string,
-  Theme
->;
+const themes: Record<string, Theme> = { light: tokens.light, dark: tokens.dark } as Record<string, Theme>;
 
 function parse(value: string): { rgb: number[]; alpha: number } {
   if (value.startsWith("#")) {
@@ -88,14 +85,11 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
   });
 
   // R26: the focus ring is a control edge too, and never weaker than the resting border.
-  it.each(["background", "surface"])(
-    "ring on %s is at least 3:1 and at least the control border's contrast",
-    (bg) => {
-      const ring = contrast(rgbOf(t.ring), rgbOf(t[bg]));
-      expect(ring).toBeGreaterThanOrEqual(3);
-      expect(ring).toBeGreaterThanOrEqual(contrast(rgbOf(t["control-border"]), rgbOf(t[bg])));
-    },
-  );
+  it.each(["background", "surface"])("ring on %s is at least 3:1 and at least the control border's contrast", (bg) => {
+    const ring = contrast(rgbOf(t.ring), rgbOf(t[bg]));
+    expect(ring).toBeGreaterThanOrEqual(3);
+    expect(ring).toBeGreaterThanOrEqual(contrast(rgbOf(t["control-border"]), rgbOf(t[bg])));
+  });
 
   // Error captions and the required "*" are `text-destructive` on every surface a form sits on
   // (whole-app UI sweep, Nov 2026: #EF4444 was 3.76:1 on white, 3.48 on the page background).
@@ -113,9 +107,7 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
 
   // SegmentedControl: the selected thumb must read as raised (lighter than its track).
   it("surface-raised is lighter than the neutral-soft track (L5)", () => {
-    expect(luminance(rgbOf(t["surface-raised"]))).toBeGreaterThan(
-      luminance(rgbOf(t["neutral-soft"])),
-    );
+    expect(luminance(rgbOf(t["surface-raised"]))).toBeGreaterThan(luminance(rgbOf(t["neutral-soft"])));
   });
 
   it.each([
@@ -148,9 +140,7 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
 // light the tint is the pale info-50 on white.
 it("dark unread-soft is no darker than the popover it sits on", () => {
   const dark = tokens.dark as Theme;
-  expect(luminance(rgbOf(dark["unread-soft"]))).toBeGreaterThanOrEqual(
-    luminance(rgbOf(dark.popover)),
-  );
+  expect(luminance(rgbOf(dark["unread-soft"]))).toBeGreaterThanOrEqual(luminance(rgbOf(dark.popover)));
 });
 
 // Review r2 Minor 3 asked for a 1.1:1 lift over the popover. Muted text (the row's body and

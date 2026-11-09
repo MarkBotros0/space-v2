@@ -105,9 +105,7 @@ export async function loadSeasonRecord(
       if (!released) return { ...base, status: "NOT_TAKEN", score: null };
       // A paper quiz has no attempt: it is graded or not taken.
       const score = q.grades[0]?.score ?? null;
-      return score === null
-        ? { ...base, status: "NOT_TAKEN", score: null }
-        : { ...base, status: "GRADED", score };
+      return score === null ? { ...base, status: "NOT_TAKEN", score: null } : { ...base, status: "GRADED", score };
     }),
     attendance: sessions.map((s) => ({
       sessionId: s.id,

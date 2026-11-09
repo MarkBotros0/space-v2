@@ -8,7 +8,13 @@ describe("GroupedList / ListRow", () => {
   it("renders title, subtitle, trailing and a chevron", () => {
     render(
       <GroupedList header="Upcoming">
-        <ListRow title="Session 4" subtitle="Tue 6pm" trailing={<StatusChip tone="ok" label="Present" />} chevron onPress={() => {}} />
+        <ListRow
+          title="Session 4"
+          subtitle="Tue 6pm"
+          trailing={<StatusChip tone="ok" label="Present" />}
+          chevron
+          onPress={() => {}}
+        />
       </GroupedList>,
     );
     expect(screen.getByText("UPCOMING")).toBeTruthy();
@@ -39,9 +45,18 @@ describe("GroupedList / ListRow", () => {
   });
 
   it("announces trailingLabel for a trailing value that is not a chip, and it wins over a chip's label", () => {
-    const { rerender } = render(<ListRow title="Score" trailing={<Text>8/10</Text>} trailingLabel="8 of 10" onPress={() => {}} />);
+    const { rerender } = render(
+      <ListRow title="Score" trailing={<Text>8/10</Text>} trailingLabel="8 of 10" onPress={() => {}} />,
+    );
     expect(screen.getByRole("button", { name: "Score, 8 of 10" })).toBeTruthy();
-    rerender(<ListRow title="Essay" trailing={<StatusChip tone="ok" label="Returned" />} trailingLabel="Returned with feedback" onPress={() => {}} />);
+    rerender(
+      <ListRow
+        title="Essay"
+        trailing={<StatusChip tone="ok" label="Returned" />}
+        trailingLabel="Returned with feedback"
+        onPress={() => {}}
+      />,
+    );
     expect(screen.getByRole("button", { name: "Essay, Returned with feedback" })).toBeTruthy();
   });
 

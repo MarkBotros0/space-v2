@@ -41,9 +41,7 @@ export function flattenNotePages<T>(pages: { notes: T[] }[] | undefined): T[] {
  * be refused would surface as an error state on a screen that should simply
  * say the surface is not theirs.
  */
-export function useAuthoredNotes(
-  enabled: boolean,
-): UseInfiniteQueryResult<InfiniteData<AuthoredNotePage>> {
+export function useAuthoredNotes(enabled: boolean): UseInfiniteQueryResult<InfiniteData<AuthoredNotePage>> {
   return useInfiniteQuery({
     queryKey: queryKeys.notes.authored(),
     initialPageParam: null as string | null,
@@ -68,7 +66,8 @@ export function useVisibleNotePages(
     queryKey: queryKeys.notes.visible(20, withinDays),
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
-      const path = withinDays === null ? "/api/v1/me/visible-notes" : `/api/v1/me/visible-notes?withinDays=${withinDays}`;
+      const path =
+        withinDays === null ? "/api/v1/me/visible-notes" : `/api/v1/me/visible-notes?withinDays=${withinDays}`;
       const res = await apiClient.get(withCursor(path, pageParam));
       return authoredNoteListResponseSchema.parse(res.data.data);
     },
@@ -114,11 +113,7 @@ export function useStudentNotes(
 export function useCreateNote(studentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      body: string;
-      visibility: NoteVisibility;
-      followUpFlagged: boolean;
-    }) => {
+    mutationFn: async (input: { body: string; visibility: NoteVisibility; followUpFlagged: boolean }) => {
       const res = await apiClient.post(`/api/v1/students/${studentId}/notes`, input);
       return noteSummarySchema.parse(res.data.data.note);
     },

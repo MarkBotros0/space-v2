@@ -30,8 +30,7 @@ export function VideoProgressTrack({
 }) {
   const [trackWidth, setTrackWidth] = useState(0);
   const playedPct = total > 0 ? Math.min(100, (current / total) * 100) : 0;
-  const lockedFrom =
-    total > 0 && Number.isFinite(barrier) ? Math.min(100, (barrier / total) * 100) : 100;
+  const lockedFrom = total > 0 && Number.isFinite(barrier) ? Math.min(100, (barrier / total) * 100) : 100;
 
   return (
     <>
@@ -60,10 +59,7 @@ export function VideoProgressTrack({
             ? questions.map((q) => (
                 <View
                   key={q.id}
-                  className={cn(
-                    "absolute size-2 rounded-full",
-                    q.answered ? "bg-success-500" : "bg-warning-400",
-                  )}
+                  className={cn("absolute size-2 rounded-full", q.answered ? "bg-success-500" : "bg-warning-400")}
                   style={{
                     left: `${Math.min(100, (q.atSeconds / total) * 100)}%`,
                     top: -1,

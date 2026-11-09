@@ -1,5 +1,12 @@
 import { type RefObject, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Dimensions, type NativeScrollEvent, type NativeSyntheticEvent, Platform, type ScrollViewInstance, TextInput } from "react-native";
+import {
+  Dimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Platform,
+  type ScrollViewInstance,
+  TextInput,
+} from "react-native";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { subscribeKeyboard, useKeyboardHeight } from "./keyboard-events";

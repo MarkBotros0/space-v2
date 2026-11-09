@@ -77,9 +77,7 @@ export const studentListQuerySchema = z.object({
    * "Unassigned". ANDed with scope (REG-82). Ignored for `status=dropped`,
    * whose rows are enrollments.
    */
-  groupId: z
-    .union([z.literal("none"), z.coerce.number().int().positive()])
-    .optional(),
+  groupId: z.union([z.literal("none"), z.coerce.number().int().positive()]).optional(),
   /**
    * Sort key (REG-82). Absent keeps each list's own default order — name for
    * active, graduation year for alumni. A missing value sorts as "" like v1:

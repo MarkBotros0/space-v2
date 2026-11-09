@@ -21,11 +21,7 @@ import {
 import { StatusChip } from "../../design/ui/status-chip";
 import { toast } from "../../design/ui/toaster";
 import { useAttendanceRoster, useSaveAttendance } from "../../hooks/use-attendance";
-import {
-  LIVE_ROSTER_REFRESH_MS,
-  useCheckInState,
-  useRegenerateCheckIn,
-} from "../../hooks/use-check-in";
+import { LIVE_ROSTER_REFRESH_MS, useCheckInState, useRegenerateCheckIn } from "../../hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../hooks/use-session-detail";
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatWallTime } from "../../lib/format";
@@ -134,10 +130,7 @@ export function CheckInConsoleCard({ detail }: { detail: SessionDetail }) {
   const [regenArmed, setRegenArmed] = useState(false);
 
   /** Runs one of the three check-in writes, showing `failure` in the card if it fails. */
-  const run = (
-    mutation: { mutate: (v: undefined, o: { onError: (err: Error) => void }) => void },
-    failure: string,
-  ) => {
+  const run = (mutation: { mutate: (v: undefined, o: { onError: (err: Error) => void }) => void }, failure: string) => {
     setError(null);
     mutation.mutate(undefined, {
       onError: (err) => setError(apiErrorMessage(err, failure)),
@@ -162,12 +155,7 @@ export function CheckInConsoleCard({ detail }: { detail: SessionDetail }) {
         </View>
         <View className="mt-2 flex-row flex-wrap items-center gap-2">
           {token ? (
-            <ButtonV1
-              variant="ghost"
-              size="sm"
-              disabled={regenerate.isPending}
-              onPress={onRegenerate}
-            >
+            <ButtonV1 variant="ghost" size="sm" disabled={regenerate.isPending} onPress={onRegenerate}>
               <RotateCcw size={16} className="text-foreground" />
               {regenArmed ? "Replace the code? The current one stops working." : "Regenerate code"}
             </ButtonV1>
@@ -182,11 +170,7 @@ export function CheckInConsoleCard({ detail }: { detail: SessionDetail }) {
               Close check-in
             </ButtonV1>
           ) : (
-            <ButtonV1
-              size="sm"
-              disabled={open.isPending}
-              onPress={() => run(open, "Couldn't open check-in.")}
-            >
+            <ButtonV1 size="sm" disabled={open.isPending} onPress={() => run(open, "Couldn't open check-in.")}>
               Open check-in
             </ButtonV1>
           )}

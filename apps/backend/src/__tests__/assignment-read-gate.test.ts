@@ -26,8 +26,13 @@ app.use("/api/v1/assignments", assignmentsRouter);
 
 async function tokenFor(over: Partial<SessionUser>): Promise<string> {
   const { token } = await signAccessToken({
-    userId: 10, role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: null, graduationYear: null, ...over,
+    userId: 10,
+    role: "STUDENT",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: null,
+    graduationYear: null,
+    ...over,
   });
   return token;
 }
@@ -46,7 +51,10 @@ async function get(token: string) {
 
 describe("GET /assignments/:id — the student read gate", () => {
   it("lets a student with an ACTIVE enrolment through", async () => {
-    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "ACTIVE", season: { status: "ACTIVE", deletedAt: null } });
+    mockDb.seasonEnrollment.findUnique.mockResolvedValue({
+      status: "ACTIVE",
+      season: { status: "ACTIVE", deletedAt: null },
+    });
     const res = await get(await tokenFor({ activeSeasonId: 8 }));
     expect(res.status).toBe(404);
   });

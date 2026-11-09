@@ -21,8 +21,7 @@ export function SeasonReport({
   allowAll: boolean;
   canOpenStudent?: (row: EngagementReportRow) => boolean;
 }) {
-  const { seasonId, setSeasonId, ready, permitted, summary, atRiskRows, moreFailed, showMore } =
-    scope;
+  const { seasonId, setSeasonId, ready, permitted, summary, atRiskRows, moreFailed, showMore } = scope;
 
   // Before the season list arrives there is no header to keep, so the first
   // load's states take the whole page. After it, the header (and History) stays
@@ -41,12 +40,7 @@ export function SeasonReport({
   const data = summary.data;
   return (
     <View className="flex-col gap-4">
-      <ReportSeasonHeader
-        seasons={permitted}
-        selected={seasonId}
-        onSelect={setSeasonId}
-        allowAll={allowAll}
-      />
+      <ReportSeasonHeader seasons={permitted} selected={seasonId} onSelect={setSeasonId} allowAll={allowAll} />
       {!ready || summary.isPending ? (
         <RouteSkeleton />
       ) : summary.isError && !data ? (

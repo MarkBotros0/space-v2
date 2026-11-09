@@ -7,9 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const mobile = path.resolve(here, "..");
-const tokens = JSON.parse(
-  readFileSync(path.resolve(mobile, "src/design/theme/tokens.json"), "utf8"),
-);
+const tokens = JSON.parse(readFileSync(path.resolve(mobile, "src/design/theme/tokens.json"), "utf8"));
 
 const SEMANTIC = [
   "background",
@@ -65,16 +63,7 @@ const SEMANTIC = [
   "on-hero",
   "on-hero-foreground",
 ];
-const RAMPS = [
-  "brand-navy",
-  "brand-teal",
-  "neutral",
-  "success",
-  "warning",
-  "error",
-  "info",
-  "purple",
-];
+const RAMPS = ["brand-navy", "brand-teal", "neutral", "success", "warning", "error", "info", "purple"];
 const STEPS = ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"];
 const ROLES = ["super", "admin", "leader", "student", "mentor", "alumni"];
 
@@ -87,8 +76,7 @@ function parse(value) {
   return { rgb: m.slice(1, 4).map(Number), alpha: Number(m[4]) };
 }
 
-const isTranslucent = (name) =>
-  parse(tokens.light[name]).alpha < 1 || parse(tokens.dark[name]).alpha < 1;
+const isTranslucent = (name) => parse(tokens.light[name]).alpha < 1 || parse(tokens.dark[name]).alpha < 1;
 const round = (n) => Number(n.toFixed(4));
 
 // For translucent tokens, every opacity modifier's product with the token's
@@ -136,9 +124,7 @@ for (const name of SEMANTIC) {
 for (const ramp of RAMPS) {
   const ramped = Object.fromEntries(STEPS.map((s) => [s, tokens.light[`${ramp}-${s}`]]));
   const body = JSON.stringify(ramped).slice(1, -1);
-  const extra = MERGED_INTO_RAMP.has(ramp)
-    ? `,"DEFAULT":"rgb(var(--${ramp}) / <alpha-value>)"`
-    : "";
+  const extra = MERGED_INTO_RAMP.has(ramp) ? `,"DEFAULT":"rgb(var(--${ramp}) / <alpha-value>)"` : "";
   colorSource.push(`  ${JSON.stringify(ramp)}: {${body}${extra}},`);
 }
 const role = {};
@@ -173,10 +159,7 @@ const boxShadow = {
 // Redesign type scale: text-large-title, text-title, text-headline, text-body,
 // text-subhead, text-caption (weights come from font-* classes, see ui/text.tsx).
 const fontSize = Object.fromEntries(
-  Object.entries(tokens.fontSize).map(([k, v]) => [
-    k,
-    [`${v.size}px`, { lineHeight: `${v.lineHeight}px` }],
-  ]),
+  Object.entries(tokens.fontSize).map(([k, v]) => [k, [`${v.size}px`, { lineHeight: `${v.lineHeight}px` }]]),
 );
 
 const FACES = {
@@ -206,9 +189,7 @@ const fontFamily = { sans: ["Geist_400Regular"], mono: ["GeistMono_400Regular"] 
 // Resolved semantic values for props that take a colour, not a class
 // (placeholderTextColor, svg fills, gradients): use via useThemeColors().
 const semantic = ${JSON.stringify(
-  Object.fromEntries(
-    ["light", "dark"].map((t) => [t, Object.fromEntries(SEMANTIC.map((n) => [n, tokens[t][n]]))]),
-  ),
+  Object.fromEntries(["light", "dark"].map((t) => [t, Object.fromEntries(SEMANTIC.map((n) => [n, tokens[t][n]]))])),
   null,
   2,
 )};

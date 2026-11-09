@@ -59,9 +59,7 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
 
   if (!(await canViewStudent(user, studentUserId))) return forbidden(res);
 
-  const requestedSeasonId = parseId(
-    typeof req.query.seasonId === "string" ? req.query.seasonId : undefined,
-  );
+  const requestedSeasonId = parseId(typeof req.query.seasonId === "string" ? req.query.seasonId : undefined);
   const candidates = await db.seasonEnrollment.findMany({
     where: {
       studentUserId,

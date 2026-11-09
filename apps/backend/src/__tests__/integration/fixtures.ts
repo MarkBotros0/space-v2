@@ -46,10 +46,7 @@ export function testSeasonCode(): string {
 
 export type TestRole = "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR";
 
-export async function createTestUser(
-  label: string,
-  role: TestRole,
-): Promise<{ id: number; email: string }> {
+export async function createTestUser(label: string, role: TestRole): Promise<{ id: number; email: string }> {
   const email = testEmail(label);
   const user = await db.user.create({
     data: {
@@ -65,10 +62,7 @@ export async function createTestUser(
 
 /** A user in the state only v1's CSV importer could produce (spec 11 R15):
  *  no password hash, never logged in — the precondition of the invite flow. */
-export async function createUnactivatedTestUser(
-  label: string,
-  role: TestRole,
-): Promise<{ id: number; email: string }> {
+export async function createUnactivatedTestUser(label: string, role: TestRole): Promise<{ id: number; email: string }> {
   const email = testEmail(label);
   return db.user.create({
     data: { email, name: `Test ${label}`, role, passwordHash: null },

@@ -47,7 +47,9 @@ describe("studentActionsFor (Plan 10 Decision 6 — mirrors the server gates)", 
   });
 
   it("hides Graduate once graduated (R63) and grants nothing without a session", () => {
-    expect(studentActionsFor(makeUser("SUPER"), makeScopes(), { ...student, graduationYear: 2020 }).canGraduate).toBe(false);
+    expect(studentActionsFor(makeUser("SUPER"), makeScopes(), { ...student, graduationYear: 2020 }).canGraduate).toBe(
+      false,
+    );
     const none = studentActionsFor(null, null, student);
     expect(none).toMatchObject({ canEdit: false, canGraduate: false, canDelete: false });
   });

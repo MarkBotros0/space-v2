@@ -26,9 +26,19 @@ const reportScopeDoc = {
 const engagementReportRowDoc = {
   type: "object",
   required: [
-    "score", "attendancePct", "submissionPct", "attendanceTotal", "attendancePresent",
-    "submissionsExpected", "submissionsCompleted", "studentUserId", "name", "email",
-    "seasonId", "seasonTitle", "band",
+    "score",
+    "attendancePct",
+    "submissionPct",
+    "attendanceTotal",
+    "attendancePresent",
+    "submissionsExpected",
+    "submissionsCompleted",
+    "studentUserId",
+    "name",
+    "email",
+    "seasonId",
+    "seasonTitle",
+    "band",
   ],
   properties: {
     score: intField,
@@ -49,8 +59,16 @@ const engagementReportRowDoc = {
 export const engagementSummarySchemaDoc = {
   type: "object",
   required: [
-    "scope", "attendanceTrend", "completion", "bands", "atRisk", "atRiskTotal",
-    "cohortSize", "enrollmentCount", "generatedAt", "exportDay",
+    "scope",
+    "attendanceTrend",
+    "completion",
+    "bands",
+    "atRisk",
+    "atRiskTotal",
+    "cohortSize",
+    "enrollmentCount",
+    "generatedAt",
+    "exportDay",
   ],
   properties: {
     scope: reportScopeDoc,
@@ -59,8 +77,15 @@ export const engagementSummarySchemaDoc = {
       items: {
         type: "object",
         required: [
-          "sessionId", "seasonId", "seasonTitle", "title", "startsAt", "dayKey",
-          "presentCount", "expectedCount", "pct",
+          "sessionId",
+          "seasonId",
+          "seasonTitle",
+          "title",
+          "startsAt",
+          "dayKey",
+          "presentCount",
+          "expectedCount",
+          "pct",
         ],
         properties: {
           sessionId: intField,
@@ -129,8 +154,16 @@ export const organisationReportSchemaDoc = {
       items: {
         type: "object",
         required: [
-          "seasonId", "code", "program", "year", "title", "status",
-          "activeCount", "completedCount", "withdrawnCount", "leaderCount",
+          "seasonId",
+          "code",
+          "program",
+          "year",
+          "title",
+          "status",
+          "activeCount",
+          "completedCount",
+          "withdrawnCount",
+          "leaderCount",
         ],
         properties: {
           seasonId: intField,
@@ -160,7 +193,7 @@ export const xlsxResponse = {
     "Content-Disposition": {
       schema: { type: "string" },
       description:
-        'attachment; filename="<ascii fallback>"; filename*=UTF-8\'\'<percent-encoded>. ' +
+        "attachment; filename=\"<ascii fallback>\"; filename*=UTF-8''<percent-encoded>. " +
         "The filename is built by exportFilename() in packages/shared and carries the " +
         "organisation-timezone day.",
     },

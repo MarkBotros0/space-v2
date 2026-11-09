@@ -33,13 +33,7 @@ export default function AttendanceScreen() {
   const sessionId = Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 
   const session = useSessionDetail(sessionId);
-  const {
-    data: roster,
-    isPending,
-    isError,
-    refetch,
-    isRefetching,
-  } = useAttendanceRoster(sessionId);
+  const { data: roster, isPending, isError, refetch, isRefetching } = useAttendanceRoster(sessionId);
   const save = useSaveAttendance(sessionId ?? 0);
   const [marks, setMarks] = useState<AttendanceMarks>({});
   const [lateText, setLateText] = useState<LateMinutesText>({});
@@ -72,10 +66,7 @@ export default function AttendanceScreen() {
   const error =
     formError ??
     (save.isError
-      ? apiErrorMessage(
-          save.error,
-          "Couldn't save attendance. Check your connection and try again.",
-        )
+      ? apiErrorMessage(save.error, "Couldn't save attendance. Check your connection and try again.")
       : null);
   const detail = session.data;
 
@@ -114,16 +105,10 @@ export default function AttendanceScreen() {
         <AttendanceRosterForm
           rows={roster}
           statusOf={(row) => marks[row.studentUserId] ?? row.status}
-          lateTextOf={(row) =>
-            lateText[row.studentUserId] ?? (row.lateMinutes !== null ? String(row.lateMinutes) : "")
-          }
+          lateTextOf={(row) => lateText[row.studentUserId] ?? (row.lateMinutes !== null ? String(row.lateMinutes) : "")}
           pending={save.isPending}
-          onMark={(row, status: AttendanceStatus) =>
-            setMarks((prev) => ({ ...prev, [row.studentUserId]: status }))
-          }
-          onMarkAll={(status) =>
-            setMarks(Object.fromEntries(roster.map((row) => [row.studentUserId, status])))
-          }
+          onMark={(row, status: AttendanceStatus) => setMarks((prev) => ({ ...prev, [row.studentUserId]: status }))}
+          onMarkAll={(status) => setMarks(Object.fromEntries(roster.map((row) => [row.studentUserId, status])))}
           onLateText={(row, text) => setLateText((prev) => ({ ...prev, [row.studentUserId]: text }))}
         />
       )}

@@ -39,11 +39,7 @@ export function PeoplePreview({
   return (
     <GroupedList
       header={header}
-      headerAction={
-        onSeeAll && total > people.length
-          ? { label: `See all ${total}`, onPress: onSeeAll }
-          : undefined
-      }
+      headerAction={onSeeAll && total > people.length ? { label: `See all ${total}`, onPress: onSeeAll } : undefined}
     >
       {people.map((p) => (
         <ListRow

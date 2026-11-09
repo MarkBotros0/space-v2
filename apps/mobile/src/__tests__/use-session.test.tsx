@@ -77,9 +77,7 @@ describe("useBootSession", () => {
     // no. Only this case should cost the user their stored refresh token —
     // see the network-error case below for the contrast.
     mockLoadAccessToken.mockResolvedValue("stale");
-    get.mockRejectedValue(
-      Object.assign(new Error("401"), { isAxiosError: true, response: { status: 401 } }),
-    );
+    get.mockRejectedValue(Object.assign(new Error("401"), { isAxiosError: true, response: { status: 401 } }));
     renderHook(() => useBootSession());
     await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));
     expect(mockClearSession).toHaveBeenCalled();
@@ -94,9 +92,7 @@ describe("useBootSession", () => {
     // usable (anonymous), but the tokens must survive so the next launch,
     // once connectivity returns, can retry instead of forcing a re-login.
     mockLoadAccessToken.mockResolvedValue("stale");
-    get.mockRejectedValue(
-      Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined }),
-    );
+    get.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined }));
     renderHook(() => useBootSession());
     await waitFor(() => expect(useSessionStore.getState().status).toBe("anonymous"));
     expect(mockClearSession).not.toHaveBeenCalled();
@@ -214,9 +210,7 @@ describe("useLogin", () => {
     get.mockResolvedValue({ data: { data: { ...me, user: null } } });
 
     const { result } = renderHook(() => useLogin());
-    await expect(result.current("a@b.test", "hunter2")).rejects.toThrow(
-      "me returned no user after login",
-    );
+    await expect(result.current("a@b.test", "hunter2")).rejects.toThrow("me returned no user after login");
 
     expect(mockClearSession).toHaveBeenCalled();
     expect(useSessionStore.getState().status).toBe("anonymous");

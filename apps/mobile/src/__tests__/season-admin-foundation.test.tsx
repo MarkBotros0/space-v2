@@ -74,10 +74,7 @@ describe("useStaffSeasonSelection", () => {
     get.mockResolvedValue({
       data: {
         data: {
-          seasons: [
-            row(8, "2099-09-01T00:00:00.000Z", "DRAFT"),
-            row(7, "2099-02-01T00:00:00.000Z", "ACTIVE"),
-          ],
+          seasons: [row(8, "2099-09-01T00:00:00.000Z", "DRAFT"), row(7, "2099-02-01T00:00:00.000Z", "ACTIVE")],
         },
       },
     });
@@ -102,10 +99,7 @@ describe("SeasonSwitcher", () => {
     const onSelect = jest.fn();
     renderWithProviders(
       <SeasonSwitcher
-        seasons={[
-          row(7, "2099-02-01T00:00:00.000Z", "ACTIVE"),
-          row(8, "2099-09-01T00:00:00.000Z", "DRAFT"),
-        ]}
+        seasons={[row(7, "2099-02-01T00:00:00.000Z", "ACTIVE"), row(8, "2099-09-01T00:00:00.000Z", "DRAFT")]}
         selectedId={7}
         onSelect={onSelect}
       />,
@@ -116,11 +110,7 @@ describe("SeasonSwitcher", () => {
 
   it("renders nothing when there is nothing to switch between", () => {
     renderWithProviders(
-      <SeasonSwitcher
-        seasons={[row(7, "2099-02-01T00:00:00.000Z", "ACTIVE")]}
-        selectedId={7}
-        onSelect={jest.fn()}
-      />,
+      <SeasonSwitcher seasons={[row(7, "2099-02-01T00:00:00.000Z", "ACTIVE")]} selectedId={7} onSelect={jest.fn()} />,
     );
     expect(screen.queryByText("Season 7")).toBeNull();
   });

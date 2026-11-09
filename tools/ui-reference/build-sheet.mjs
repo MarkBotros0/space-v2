@@ -49,19 +49,26 @@ const flowFiles = readdirSync(sweepDir, { recursive: true })
   .map(String)
   .filter((rel) => /^s\d+.*\.yaml$/.test(path.basename(rel)));
 for (const rel of flowsOfModule(flowFiles, module)) {
-  flowTitles[path.basename(rel).split("-")[0]] = flowTitle(readFileSync(path.join(sweepDir, rel), "utf8").split("\n")[0]);
+  flowTitles[path.basename(rel).split("-")[0]] = flowTitle(
+    readFileSync(path.join(sweepDir, rel), "utf8").split("\n")[0],
+  );
 }
 
 const hasConvert = spawnSync("convert", ["-version"]).status === 0;
 const srcFor = (cellId, name) => {
   const png = path.join(dirOfCell[cellId], `${name}.png`);
   if (hasConvert) {
-    const jpg = spawnSync("convert", [png, "-resize", "360x", "-quality", "72", "jpg:-"], { maxBuffer: 64 * 1024 * 1024 });
+    const jpg = spawnSync("convert", [png, "-resize", "360x", "-quality", "72", "jpg:-"], {
+      maxBuffer: 64 * 1024 * 1024,
+    });
     if (jpg.status === 0) return `data:image/jpeg;base64,${jpg.stdout.toString("base64")}`;
   }
   return `data:image/png;base64,${readFileSync(png).toString("base64")}`;
 };
 
-writeFileSync(out, contactSheetHtml({ title: "contact sheet", module, cells, shotsByCell, results, flowTitles, srcFor }));
+writeFileSync(
+  out,
+  contactSheetHtml({ title: "contact sheet", module, cells, shotsByCell, results, flowTitles, srcFor }),
+);
 const shots = Object.values(shotsByCell).flat().length;
 console.log(`[sheet] ${cells.length} cells, ${shots} screenshots, ${results.length} flow runs -> ${out}`);

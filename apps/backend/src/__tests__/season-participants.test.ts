@@ -5,9 +5,6 @@ import { seasonParticipant } from "../lib/queries/season-participants";
 // bring a graduate back onto a live roster and still pass the "not empty" tests.
 it("means ACTIVE, or COMPLETED in a finished season, and never WITHDRAWN", () => {
   expect(seasonParticipant).toEqual({
-    OR: [
-      { status: "ACTIVE" },
-      { status: "COMPLETED", season: { status: { in: ["COMPLETED", "ARCHIVED"] } } },
-    ],
+    OR: [{ status: "ACTIVE" }, { status: "COMPLETED", season: { status: { in: ["COMPLETED", "ARCHIVED"] } } }],
   });
 });

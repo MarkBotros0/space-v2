@@ -5,8 +5,12 @@ const axiosError = (status: number, data: unknown) =>
 
 describe("checkInRefusalCode", () => {
   it("reads the server's code from the error envelope (spec 04 R59)", () => {
-    expect(checkInRefusalCode(axiosError(409, { error: { code: "closed", message: "Check-in has closed." } }))).toBe("closed");
-    expect(checkInRefusalCode(axiosError(404, { error: { code: "invalid_token", message: "x" } }))).toBe("invalid_token");
+    expect(checkInRefusalCode(axiosError(409, { error: { code: "closed", message: "Check-in has closed." } }))).toBe(
+      "closed",
+    );
+    expect(checkInRefusalCode(axiosError(404, { error: { code: "invalid_token", message: "x" } }))).toBe(
+      "invalid_token",
+    );
   });
 
   it("is 'unknown' for a network error, a non-envelope body, or a code it does not know", () => {

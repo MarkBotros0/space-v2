@@ -2,14 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import {
-  cleanupTestData,
-  createTestSeason,
-  createTestUser,
-  login,
-  TEST_PREFIX,
-  testSeasonCode,
-} from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login, TEST_PREFIX, testSeasonCode } from "./fixtures";
 import { seedSeasonFixtures } from "./seasons-setup";
 
 // 60s, not the Jest default: the shared Neon staging database autosuspends, so
@@ -34,8 +27,12 @@ afterAll(async () => {
 });
 
 const seasonBody = (code: string) => ({
-  code, program: "TEST", year: 2099, status: "DRAFT",
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+  code,
+  program: "TEST",
+  year: 2099,
+  status: "DRAFT",
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
 });
 
 describe("season writes", () => {
@@ -87,7 +84,8 @@ describe("season writes", () => {
       .send({ description: "Updated.", absenceBudgetMinutes: 200 });
     expect(ok.status).toBe(200);
     const row = await db.season.findUnique({
-      where: { id: seasonId }, select: { description: true, absenceBudgetMinutes: true },
+      where: { id: seasonId },
+      select: { description: true, absenceBudgetMinutes: true },
     });
     expect(row).toEqual({ description: "Updated.", absenceBudgetMinutes: 200 });
 
@@ -136,16 +134,12 @@ describe("season writes", () => {
   it("soft-deletes an empty season", async () => {
     const empty = await createTestSeason();
 
-    const gone = await request(app)
-      .delete(`/api/v1/seasons/${empty.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const gone = await request(app).delete(`/api/v1/seasons/${empty.id}`).set("authorization", `Bearer ${superToken}`);
     expect(gone.status).toBe(200);
     const row = await db.season.findUnique({ where: { id: empty.id }, select: { deletedAt: true } });
     expect(row?.deletedAt).not.toBeNull();
 
-    const again = await request(app)
-      .delete(`/api/v1/seasons/${empty.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const again = await request(app).delete(`/api/v1/seasons/${empty.id}`).set("authorization", `Bearer ${superToken}`);
     expect(again.status).toBe(404);
   });
 
@@ -159,7 +153,12 @@ describe("season writes", () => {
 
     const withSession = await createTestSeason();
     await db.session.create({
-      data: { seasonId: withSession.id, title: "S", startsAt: new Date("2099-02-01T18:00:00.000Z"), durationMinutes: 60 },
+      data: {
+        seasonId: withSession.id,
+        title: "S",
+        startsAt: new Date("2099-02-01T18:00:00.000Z"),
+        durationMinutes: 60,
+      },
     });
     const blocked2 = await request(app)
       .delete(`/api/v1/seasons/${withSession.id}`)
@@ -168,9 +167,7 @@ describe("season writes", () => {
   });
 
   it("refuses delete by an ADMIN even of their own season (D3)", async () => {
-    const res = await request(app)
-      .delete(`/api/v1/seasons/${seasonId}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).delete(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(403);
   });
 });

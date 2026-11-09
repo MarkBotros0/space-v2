@@ -23,7 +23,19 @@ let mentorToken: string;
 let superToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, allEventId, alumniEventId, seasonEventId, otherSeasonEventId, studentToken, alumnusToken, leaderToken, adminToken, mentorToken, superToken } = await seedEventFixtures(app));
+  ({
+    seasonId,
+    allEventId,
+    alumniEventId,
+    seasonEventId,
+    otherSeasonEventId,
+    studentToken,
+    alumnusToken,
+    leaderToken,
+    adminToken,
+    mentorToken,
+    superToken,
+  } = await seedEventFixtures(app));
 });
 
 afterAll(async () => {
@@ -33,9 +45,7 @@ afterAll(async () => {
 const WINDOW = "?from=2099-01-01T00:00:00.000Z&to=2099-12-31T00:00:00.000Z";
 
 async function idsFor(token: string): Promise<number[]> {
-  const res = await request(app)
-    .get(`/api/v1/events${WINDOW}`)
-    .set("authorization", `Bearer ${token}`);
+  const res = await request(app).get(`/api/v1/events${WINDOW}`).set("authorization", `Bearer ${token}`);
   expect(res.status).toBe(200);
   return (res.body.data.events as { id: number }[]).map((e) => e.id);
 }
@@ -101,9 +111,7 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
     const res = await request(app)
       .get(`/api/v1/events${WINDOW}&visibility=ALUMNI_ONLY&includeAlumniOnly=true`)
       .set("authorization", `Bearer ${studentToken}`);
-    expect((res.body.data.events as { id: number }[]).map((e) => e.id)).not.toContain(
-      alumniEventId,
-    );
+    expect((res.body.data.events as { id: number }[]).map((e) => e.id)).not.toContain(alumniEventId);
   });
 
   it("windows on (endDate ?? date), so a multi-day event in progress stays (item 5)", async () => {
@@ -158,9 +166,7 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
     // The uncapped read is the reference: the cap keeps its first two (date
     // ascending), and `total` is its length. Other visible staging rows may
     // exist, so the test compares against this read rather than fixed ids.
-    const full = await request(app)
-      .get("/api/v1/events?upcoming=true")
-      .set("authorization", `Bearer ${studentToken}`);
+    const full = await request(app).get("/api/v1/events?upcoming=true").set("authorization", `Bearer ${studentToken}`);
     const fullIds = (full.body.data.events as { id: number }[]).map((e) => e.id);
     expect(fullIds).toEqual(expect.arrayContaining(future.map((e) => e.id)));
     expect(fullIds).not.toContain(past.id);
@@ -170,14 +176,8 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
   });
 
   it("refuses upcoming together with from, and a limit outside 1–20", async () => {
-    for (const qs of [
-      "?upcoming=true&from=2099-01-01T00:00:00.000Z",
-      "?limit=0",
-      "?limit=21",
-    ]) {
-      const res = await request(app)
-        .get(`/api/v1/events${qs}`)
-        .set("authorization", `Bearer ${studentToken}`);
+    for (const qs of ["?upcoming=true&from=2099-01-01T00:00:00.000Z", "?limit=0", "?limit=21"]) {
+      const res = await request(app).get(`/api/v1/events${qs}`).set("authorization", `Bearer ${studentToken}`);
       expect(res.status).toBe(400);
     }
   });
@@ -215,9 +215,7 @@ describe("GET /api/v1/events — visibility derived from the token", () => {
       },
       select: { id: true },
     });
-    const res = await request(app)
-      .get(`/api/v1/events${WINDOW}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get(`/api/v1/events${WINDOW}`).set("authorization", `Bearer ${superToken}`);
     type Row = { id: number; allDay: boolean; dayKey: string; time: string | null };
     const rows = res.body.data.events as Row[];
 

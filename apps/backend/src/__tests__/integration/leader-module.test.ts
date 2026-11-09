@@ -228,8 +228,24 @@ describe("reviewing submissions", () => {
 describe("season-admin writes a leader is refused", () => {
   it("cannot create sessions, assignments, quizzes or check-in codes, or edit the group", async () => {
     await expectStatuses(app, w.tokens.leaderA, [
-      ["post", "/api/v1/sessions", 403, { seasonId: w.seasonId, title: "Leader session", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60 }],
-      ["patch", `/api/v1/sessions/${w.sessionId}`, 403, { title: "Hijacked", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60, scope: "one" }],
+      [
+        "post",
+        "/api/v1/sessions",
+        403,
+        {
+          seasonId: w.seasonId,
+          title: "Leader session",
+          startDay: "2099-05-01",
+          startTime: "18:00",
+          durationMinutes: 60,
+        },
+      ],
+      [
+        "patch",
+        `/api/v1/sessions/${w.sessionId}`,
+        403,
+        { title: "Hijacked", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60, scope: "one" },
+      ],
       ["post", `/api/v1/sessions/${w.sessionId}/check-in-open`, 403],
       ["post", "/api/v1/quizzes", 403, { seasonId: w.seasonId, title: "Leader quiz", kind: "PAPER", maxScore: 10 }],
       ["patch", `/api/v1/assignments/${w.assignmentId}`, 403, { title: "Hijacked" }],

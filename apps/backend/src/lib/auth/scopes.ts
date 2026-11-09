@@ -26,10 +26,7 @@ function isPermanentRole(role: UserRole): boolean {
  * STUDENT according to their live season rows. A stored ADMIN or LEADER with
  * no rows is a STUDENT.
  */
-export function deriveRole(
-  storedRole: UserRole,
-  grants: { adminIds: number[]; leaderIds: number[] },
-): UserRole {
+export function deriveRole(storedRole: UserRole, grants: { adminIds: number[]; leaderIds: number[] }): UserRole {
   if (isPermanentRole(storedRole)) return storedRole;
   if (grants.adminIds.length > 0) return "ADMIN";
   if (grants.leaderIds.length > 0) return "LEADER";
@@ -76,9 +73,7 @@ async function readGrants(userIds: number[], client: Prisma.TransactionClient = 
     const enrolment = enrolments.find((e) => e.studentUserId === userId);
     return {
       ...usableGrants(
-        adminRows
-          .filter((r) => r.userId === userId)
-          .map((r) => ({ id: r.seasonId, seasonStatus: r.season.status })),
+        adminRows.filter((r) => r.userId === userId).map((r) => ({ id: r.seasonId, seasonStatus: r.season.status })),
         leaderRows
           .filter((r) => r.userId === userId)
           .map((r) => ({ id: r.groupId, seasonStatus: r.group.season.status })),
@@ -131,9 +126,7 @@ export async function derivedRoleOf(
 }
 
 /** `deriveRole` for a page of people, in one set of queries. Keyed by user id. */
-export async function deriveRoles(
-  people: { id: number; role: UserRole }[],
-): Promise<Map<number, UserRole>> {
+export async function deriveRoles(people: { id: number; role: UserRole }[]): Promise<Map<number, UserRole>> {
   const seasonal = people.filter((p) => !isPermanentRole(p.role)).map((p) => p.id);
   const grantsOf = seasonal.length > 0 ? await readGrants(seasonal) : null;
   return new Map(

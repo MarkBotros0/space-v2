@@ -4,7 +4,15 @@ import { buildAttendanceEntries } from "../lib/attendance-entries";
 
 const roster: AttendanceRosterRow[] = [
   { studentUserId: 9, name: "A", email: "a@jpc.test", groupName: null, status: null, notes: null, lateMinutes: null },
-  { studentUserId: 10, name: "B", email: "b@jpc.test", groupName: null, status: "PRESENT", notes: "Doctor's note", lateMinutes: null },
+  {
+    studentUserId: 10,
+    name: "B",
+    email: "b@jpc.test",
+    groupName: null,
+    status: "PRESENT",
+    notes: "Doctor's note",
+    lateMinutes: null,
+  },
 ];
 
 describe("buildAttendanceEntries", () => {

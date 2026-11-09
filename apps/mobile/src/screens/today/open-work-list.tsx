@@ -38,10 +38,7 @@ export function OpenWorkList({
 
   return (
     <View className="gap-2">
-      <GroupedList
-        header="To do"
-        headerAction={{ label: "See all", onPress: () => router.push(WORK_HREF) }}
-      >
+      <GroupedList header="To do" headerAction={{ label: "See all", onPress: () => router.push(WORK_HREF) }}>
         {empty ?? rows.map((row) => <WorkListRow key={row.key} row={row} />)}
       </GroupedList>
       {quizzes.isError ? (

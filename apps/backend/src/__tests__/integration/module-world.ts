@@ -32,15 +32,7 @@ export interface ModuleWorld {
 }
 
 export type Role =
-  | "super"
-  | "admin"
-  | "otherAdmin"
-  | "leaderA"
-  | "leaderB"
-  | "mentor"
-  | "studentA"
-  | "studentB"
-  | "alumnus";
+  "super" | "admin" | "otherAdmin" | "leaderA" | "leaderB" | "mentor" | "studentA" | "studentB" | "alumnus";
 
 export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   await cleanupTestData();
@@ -105,8 +97,10 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   const otherSessionId = (
     await db.session.create({
       data: {
-        seasonId: otherSeasonId, title: "MW Other Session",
-        startsAt: new Date("2100-03-01T18:00:00.000Z"), durationMinutes: 60,
+        seasonId: otherSeasonId,
+        title: "MW Other Session",
+        startsAt: new Date("2100-03-01T18:00:00.000Z"),
+        durationMinutes: 60,
       },
       select: { id: true },
     })
@@ -115,8 +109,12 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   const assignmentId = (
     await db.assignment.create({
       data: {
-        seasonId, title: "MW Assignment", description: "Write a page.",
-        dueAt: new Date("2099-03-10T21:59:00.000Z"), isAllGroups: true, createdById: users.admin.id,
+        seasonId,
+        title: "MW Assignment",
+        description: "Write a page.",
+        dueAt: new Date("2099-03-10T21:59:00.000Z"),
+        isAllGroups: true,
+        createdById: users.admin.id,
       },
       select: { id: true },
     })
@@ -124,8 +122,10 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   const otherAssignmentId = (
     await db.assignment.create({
       data: {
-        seasonId: otherSeasonId, title: "MW Other Assignment",
-        dueAt: new Date("2100-03-10T21:59:00.000Z"), isAllGroups: true,
+        seasonId: otherSeasonId,
+        title: "MW Other Assignment",
+        dueAt: new Date("2100-03-10T21:59:00.000Z"),
+        isAllGroups: true,
       },
       select: { id: true },
     })
@@ -134,16 +134,23 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   const submissionBPublicId = newPublicId();
   await db.submission.create({
     data: {
-      publicId: submissionBPublicId, assignmentId, studentUserId: users.studentB.id,
-      text: "Student B's private answer", status: "SUBMITTED", submittedAt: new Date(),
+      publicId: submissionBPublicId,
+      assignmentId,
+      studentUserId: users.studentB.id,
+      text: "Student B's private answer",
+      status: "SUBMITTED",
+      submittedAt: new Date(),
     },
   });
 
   const noteOnAId = (
     await db.engagementNote.create({
       data: {
-        studentUserId: users.studentA.id, authorUserId: users.leaderA.id, seasonId,
-        body: "Staff-only pastoral note about A", visibility: "LEADERS",
+        studentUserId: users.studentA.id,
+        authorUserId: users.leaderA.id,
+        seasonId,
+        body: "Staff-only pastoral note about A",
+        visibility: "LEADERS",
       },
       select: { id: true },
     })
@@ -157,7 +164,11 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   ).id;
   const eventAlumniId = (
     await db.jpcEvent.create({
-      data: { title: testEventTitle("mw-alumni"), date: new Date("2099-04-02T10:00:00.000Z"), visibility: "ALUMNI_ONLY" },
+      data: {
+        title: testEventTitle("mw-alumni"),
+        date: new Date("2099-04-02T10:00:00.000Z"),
+        visibility: "ALUMNI_ONLY",
+      },
       select: { id: true },
     })
   ).id;
@@ -173,9 +184,21 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   for (const [role, u] of Object.entries(users)) tokens[role as Role] = await login(app, u.email);
 
   return {
-    seasonId, otherSeasonId, groupAId, groupBId, sessionId, otherSessionId,
-    assignmentId, otherAssignmentId, submissionBPublicId, noteOnAId,
-    eventAllId, eventAlumniId, quizId, ids, tokens,
+    seasonId,
+    otherSeasonId,
+    groupAId,
+    groupBId,
+    sessionId,
+    otherSessionId,
+    assignmentId,
+    otherAssignmentId,
+    submissionBPublicId,
+    noteOnAId,
+    eventAllId,
+    eventAlumniId,
+    quizId,
+    ids,
+    tokens,
   };
 }
 

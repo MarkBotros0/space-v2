@@ -4,7 +4,11 @@ import { ScrollView, StyleSheet, Text } from "react-native";
 import { FormScreen } from "../design/layout/form-screen";
 import { renderStacked, renderWithProviders } from "./helpers/render";
 
-jest.mock("expo-router", () => ({ ...jest.requireActual("expo-router"), useRouter: () => ({ back: jest.fn(), push: jest.fn() }), Link: "Link" }));
+jest.mock("expo-router", () => ({
+  ...jest.requireActual("expo-router"),
+  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  Link: "Link",
+}));
 
 describe("FormScreen", () => {
   it("renders title, children and a save bar that calls onSave", () => {

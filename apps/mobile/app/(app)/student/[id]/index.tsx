@@ -55,11 +55,7 @@ function GroupedStudentPage({ id, role }: { id: number; role: UserRole | null })
   const staff = role !== "STUDENT";
   return (
     <Screen title={data.name} subtitle={studentSubtitle(data)} refreshing={isRefetching} onRefresh={refresh}>
-      <StudentDetailGrouped
-        student={data}
-        canWriteNote={staff}
-        staffTabs={staff}
-      />
+      <StudentDetailGrouped student={data} canWriteNote={staff} staffTabs={staff} />
     </Screen>
   );
 }

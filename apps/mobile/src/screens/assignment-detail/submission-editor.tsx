@@ -18,11 +18,7 @@ import { iconWithClassName } from "../../design/lib/icon";
 import { GroupedList, ListRow, RichTextView, SkeletonCard, Text, Textarea } from "../../design/ui";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { ConfirmDialog } from "../../design/ui/confirm-dialog";
-import {
-  useEnsureSubmission,
-  useSaveSubmission,
-  useSubmissionDetail,
-} from "../../hooks/use-submission";
+import { useEnsureSubmission, useSaveSubmission, useSubmissionDetail } from "../../hooks/use-submission";
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatDistanceOnly } from "../../lib/format";
 import { reportOutcome } from "../../lib/outcome";
@@ -172,10 +168,7 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
       .catch((err: unknown) =>
         reportOutcome(
           "error",
-          apiErrorMessage(
-            err,
-            `Couldn't ${submit ? "submit" : "save"}. Check your connection and try again.`,
-          ),
+          apiErrorMessage(err, `Couldn't ${submit ? "submit" : "save"}. Check your connection and try again.`),
         ),
       )
       .finally(() => setConfirming(false));
@@ -198,10 +191,7 @@ export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
               className="min-h-32"
             />
           ) : (
-            <RichTextView
-              html={value ? plainTextToHtml(value) : null}
-              emptyText="No written response."
-            />
+            <RichTextView html={value ? plainTextToHtml(value) : null} emptyText="No written response." />
           )}
         </View>
       </View>

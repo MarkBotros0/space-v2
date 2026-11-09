@@ -19,14 +19,7 @@ let adminToken: string;
 let leaderToken: string;
 
 beforeAll(async () => {
-  ({
-    seasonId,
-    sessionId,
-    ownStudentId,
-    otherGroupStudentId,
-    adminToken,
-    leaderToken,
-  } = await seedQuizFixtures(app));
+  ({ seasonId, sessionId, ownStudentId, otherGroupStudentId, adminToken, leaderToken } = await seedQuizFixtures(app));
 });
 
 afterAll(async () => {
@@ -47,21 +40,32 @@ describe("ONLINE grading", () => {
   beforeEach(async () => {
     const quiz = await db.quiz.create({
       data: {
-        seasonId, sessionId, title: "Graded quiz", kind: "ONLINE",
+        seasonId,
+        sessionId,
+        title: "Graded quiz",
+        kind: "ONLINE",
         // Released, so a grade notifies; held results: quizzes-release-routes.
-        maxScore: 7, publishedAt: new Date(), resultsReleasedAt: new Date(),
+        maxScore: 7,
+        publishedAt: new Date(),
+        resultsReleasedAt: new Date(),
       },
       select: { id: true },
     });
     quizId = quiz.id;
     const mcq = await db.quizQuestion.create({
-      data: { quizId, order: 0, type: "MCQ", prompt: "Capital of France?", points: 2,
-        options: ["London", "Paris"], correctIndex: 1 },
+      data: {
+        quizId,
+        order: 0,
+        type: "MCQ",
+        prompt: "Capital of France?",
+        points: 2,
+        options: ["London", "Paris"],
+        correctIndex: 1,
+      },
       select: { id: true },
     });
     const essay = await db.quizQuestion.create({
-      data: { quizId, order: 1, type: "ESSAY", prompt: "Discuss.", points: 5,
-        options: [], correctIndex: null },
+      data: { quizId, order: 1, type: "ESSAY", prompt: "Discuss.", points: 5, options: [], correctIndex: null },
       select: { id: true },
     });
     mcqId = mcq.id;
@@ -69,8 +73,12 @@ describe("ONLINE grading", () => {
 
     const attempt = await db.quizAttempt.create({
       data: {
-        quizId, studentUserId: ownStudentId, attemptNumber: 1,
-        status: "SUBMITTED", autoScore: 2, submittedAt: new Date(),
+        quizId,
+        studentUserId: ownStudentId,
+        attemptNumber: 1,
+        status: "SUBMITTED",
+        autoScore: 2,
+        submittedAt: new Date(),
         answers: {
           create: [
             { questionId: mcqId, selectedIndex: 1, isCorrect: true, pointsAwarded: 2 },
@@ -91,12 +99,13 @@ describe("ONLINE grading", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.items).toHaveLength(1);
     expect(res.body.data.items[0]).toMatchObject({
-      attemptId, studentUserId: ownStudentId, status: "SUBMITTED", autoScore: 2,
+      attemptId,
+      studentUserId: ownStudentId,
+      status: "SUBMITTED",
+      autoScore: 2,
     });
     // The grader gets the answer key — correct for this audience (R103).
-    const mcqAnswer = res.body.data.items[0].answers.find(
-      (a: { questionId: number }) => a.questionId === mcqId,
-    );
+    const mcqAnswer = res.body.data.items[0].answers.find((a: { questionId: number }) => a.questionId === mcqId);
     expect(mcqAnswer.correctIndex).toBe(1);
     // Leader scope = their own group only, so the other group's student is not
     // in the population at all.
@@ -116,9 +125,7 @@ describe("ONLINE grading", () => {
     // did any student an admin had just granted a retake to, whose earlier
     // graded attempt disappeared behind the new one.
     expect(res.body.data.items).toHaveLength(0);
-    expect(res.body.data.waiting).toEqual([
-      expect.objectContaining({ studentUserId: ownStudentId }),
-    ]);
+    expect(res.body.data.waiting).toEqual([expect.objectContaining({ studentUserId: ownStudentId })]);
     expect(res.body.data.waiting[0].startedAt).not.toBeNull();
   });
 
@@ -160,7 +167,10 @@ describe("ONLINE grading", () => {
       .send({ awards: [{ questionId: essayId, points: 4 }] });
     expect(ok.status).toBe(200);
     expect(ok.body.data).toMatchObject({
-      status: "GRADED", autoScore: 2, manualScore: 4, totalScore: 6,
+      status: "GRADED",
+      autoScore: 2,
+      manualScore: 4,
+      totalScore: 6,
     });
     expect(ok.body.data.gradedByName).toBe("Test leader");
 
@@ -186,8 +196,12 @@ describe("ONLINE grading", () => {
   it("refuses grading an attempt whose student is outside the caller's scope (R68)", async () => {
     const strangerAttempt = await db.quizAttempt.create({
       data: {
-        quizId, studentUserId: otherGroupStudentId, attemptNumber: 1,
-        status: "SUBMITTED", autoScore: 0, submittedAt: new Date(),
+        quizId,
+        studentUserId: otherGroupStudentId,
+        attemptNumber: 1,
+        status: "SUBMITTED",
+        autoScore: 0,
+        submittedAt: new Date(),
         answers: { create: [{ questionId: essayId, text: "Mine." }] },
       },
       select: { id: true },

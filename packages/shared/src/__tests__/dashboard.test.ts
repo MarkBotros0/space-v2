@@ -28,11 +28,20 @@ describe("meanAttendancePct (spec 19 D5)", () => {
 
 describe("limits (spec 19 §8)", () => {
   it("keeps v1's caps", () => {
-    expect([DASHBOARD_AT_RISK_PREVIEW, DUE_SOON_LIMIT, UPCOMING_EVENTS_LIMIT, RECENT_ACTIVITY_LIMIT]).toEqual([10, 3, 4, 8]);
+    expect([DASHBOARD_AT_RISK_PREVIEW, DUE_SOON_LIMIT, UPCOMING_EVENTS_LIMIT, RECENT_ACTIVITY_LIMIT]).toEqual([
+      10, 3, 4, 8,
+    ]);
   });
 });
 
-const notEnrolled = { variant: "STUDENT", todayOrgDay: "2099-03-01", season: null, progress: null, nextSession: null, assignments: null };
+const notEnrolled = {
+  variant: "STUDENT",
+  todayOrgDay: "2099-03-01",
+  season: null,
+  progress: null,
+  nextSession: null,
+  assignments: null,
+};
 
 describe("studentDashboardSchema (ruling C8 #2)", () => {
   it("accepts the not-enrolled shape (R63)", () => {

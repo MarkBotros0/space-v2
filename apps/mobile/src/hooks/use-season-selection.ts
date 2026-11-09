@@ -24,8 +24,7 @@ export function useStaffSeasonSelection(enabled: boolean): StaffSeasonSelection 
   const query = useSeasons(enabled);
   const [picked, setPicked] = useState<number | null>(null);
   const seasons = query.data ?? [];
-  const seasonId =
-    picked !== null && seasons.some((s) => s.id === picked) ? picked : pickCurrentSeasonId(seasons);
+  const seasonId = picked !== null && seasons.some((s) => s.id === picked) ? picked : pickCurrentSeasonId(seasons);
 
   return {
     seasons,

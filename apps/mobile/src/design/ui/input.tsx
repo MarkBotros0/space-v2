@@ -31,18 +31,26 @@ const inputVariants = cva(
 type InputProps = TextInputProps &
   VariantProps<typeof inputVariants> & { className?: string; disabled?: boolean; "aria-invalid"?: boolean };
 
-const Input = forwardRef<TextInputInstance, InputProps>(({ className, size, disabled, "aria-invalid": invalid, ...props }, ref) => {
-  const colors = useThemeColors();
-  return (
-    <TextInput
-      ref={ref}
-      editable={!disabled && !props.readOnly}
-      placeholderTextColor={colors["muted-foreground"]}
-      className={cn(inputVariants({ size }), invalid && "border-destructive", disabled && "opacity-50", props.readOnly && "text-muted-foreground", className)}
-      {...props}
-    />
-  );
-});
+const Input = forwardRef<TextInputInstance, InputProps>(
+  ({ className, size, disabled, "aria-invalid": invalid, ...props }, ref) => {
+    const colors = useThemeColors();
+    return (
+      <TextInput
+        ref={ref}
+        editable={!disabled && !props.readOnly}
+        placeholderTextColor={colors["muted-foreground"]}
+        className={cn(
+          inputVariants({ size }),
+          invalid && "border-destructive",
+          disabled && "opacity-50",
+          props.readOnly && "text-muted-foreground",
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
 Input.displayName = "Input";
 
 export { Input, inputVariants };

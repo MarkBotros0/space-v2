@@ -3,21 +3,9 @@ import { useMemo, useState } from "react";
 import { View } from "react-native";
 
 import { iconWithClassName } from "../../design/lib/icon";
-import {
-  Button,
-  ConfirmDialog,
-  GroupedList,
-  ListRow,
-  Skeleton,
-  Text,
-  toast,
-} from "../../design/ui";
+import { Button, ConfirmDialog, GroupedList, ListRow, Skeleton, Text, toast } from "../../design/ui";
 import { useGroupDetails, useSeasonGroups } from "../../hooks/use-groups";
-import {
-  useAddSeasonAdmin,
-  useRemoveSeasonAdmin,
-  useSeasonAdmins,
-} from "../../hooks/use-season-admins";
+import { useAddSeasonAdmin, useRemoveSeasonAdmin, useSeasonAdmins } from "../../hooks/use-season-admins";
 import { apiErrorMessage } from "../../lib/api-error";
 import { StaffPickerSheet, type StaffPick } from "../../screens/season-people/staff-picker-sheet";
 
@@ -43,10 +31,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
   // This season's leaders may also be its admin, though they aren't free staff
   // candidates. Read only once the sheet opens: the list rows carry no leader ids.
   const groups = useSeasonGroups(picking ? seasonId : null);
-  const groupIds = useMemo(
-    () => (picking ? (groups.data ?? []).map((g) => g.id) : []),
-    [picking, groups.data],
-  );
+  const groupIds = useMemo(() => (picking ? (groups.data ?? []).map((g) => g.id) : []), [picking, groups.data]);
   const groupDetails = useGroupDetails(groupIds);
   const leaders: StaffPick[] = groupDetails.flatMap((g) =>
     (g.data?.leaders ?? []).map((l) => ({
@@ -72,12 +57,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
           <Text variant="subhead" className="text-bad">
             Couldn't load the admins.
           </Text>
-          <Button
-            variant="secondary"
-            size="sm"
-            className="self-start"
-            onPress={() => void admins.refetch()}
-          >
+          <Button variant="secondary" size="sm" className="self-start" onPress={() => void admins.refetch()}>
             Try again
           </Button>
         </View>
@@ -144,11 +124,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
           if (!open) setConfirm(null);
         }}
         title="Remove admin?"
-        description={
-          confirm
-            ? `${confirm.name} will no longer be able to administer ${seasonTitle}.`
-            : undefined
-        }
+        description={confirm ? `${confirm.name} will no longer be able to administer ${seasonTitle}.` : undefined}
         confirmLabel="Remove"
         destructive
         pending={remove.isPending}

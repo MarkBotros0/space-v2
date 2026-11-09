@@ -2,10 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import {
-  announcementDetailSchema,
-  pollVotersResponseSchema,
-} from "../../../../../packages/shared/src/index";
+import { announcementDetailSchema, pollVotersResponseSchema } from "../../../../../packages/shared/src/index";
 import {
   insertPoll,
   insertPost,

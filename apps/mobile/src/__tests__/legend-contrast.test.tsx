@@ -10,8 +10,7 @@ const { colors, semantic } = require("../design/theme/tailwind-theme.js") as {
 /** The hex a `text-*`/`bg-*` class resolves to in a theme (dark: classes win in dark). */
 function resolve(className: string, prefix: "text" | "bg", scheme: "light" | "dark"): string {
   const all = className.split(" ");
-  const pick = (cs: string[]) =>
-    cs.find((c) => c.startsWith(`${prefix}-`) && !/^text-(xs|sm|base|caption)$/.test(c));
+  const pick = (cs: string[]) => cs.find((c) => c.startsWith(`${prefix}-`) && !/^text-(xs|sm|base|caption)$/.test(c));
   const dark = pick(all.filter((c) => c.startsWith("dark:")).map((c) => c.slice(5)));
   const cls = (scheme === "dark" && dark) || pick(all.filter((c) => !c.includes(":")));
   const name = cls!.slice(prefix.length + 1);
@@ -52,10 +51,7 @@ describe.each(["light", "dark"] as const)("events legend chips (%s)", (scheme) =
     const text = screen.getByText("Upcoming");
     const chip = screen.getByTestId("chip-Upcoming");
     expect(
-      contrast(
-        resolve(text.props.className, "text", scheme),
-        resolve(chip.props.className, "bg", scheme),
-      ),
+      contrast(resolve(text.props.className, "text", scheme), resolve(chip.props.className, "bg", scheme)),
     ).toBeGreaterThanOrEqual(6);
   });
 });

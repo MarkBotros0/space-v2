@@ -14,10 +14,7 @@ import { queryKeys } from "../lib/query-keys";
  * export is one row per enrolment and its size is already predictable from the
  * summary's `enrollmentCount`.
  */
-export function useSeasonWorkbookManifest(
-  seasonId: number | null,
-  enabled: boolean,
-): UseQueryResult<ExportManifest> {
+export function useSeasonWorkbookManifest(seasonId: number | null, enabled: boolean): UseQueryResult<ExportManifest> {
   return useQuery({
     queryKey: queryKeys.reports.exportManifest(seasonId),
     queryFn: async () => {

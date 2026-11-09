@@ -60,13 +60,11 @@ export const quizQuestionRequestSchema = z
     path: ["options"],
     message: "Add at least 2 options.",
   })
-  .refine(
-    (d) => d.type === "ESSAY" || (d.correctIndex !== null && d.correctIndex < d.options.length),
-    { path: ["correctIndex"], message: "Mark the correct answer." },
-  )
-  .transform((d) =>
-    d.type === "ESSAY" ? { ...d, options: [] as string[], correctIndex: null } : d,
-  );
+  .refine((d) => d.type === "ESSAY" || (d.correctIndex !== null && d.correctIndex < d.options.length), {
+    path: ["correctIndex"],
+    message: "Mark the correct answer.",
+  })
+  .transform((d) => (d.type === "ESSAY" ? { ...d, options: [] as string[], correctIndex: null } : d));
 /** What a client form sends (before the schema's defaults and transform run). */
 export type QuizQuestionInput = z.input<typeof quizQuestionRequestSchema>;
 
@@ -125,9 +123,7 @@ export const saveQuizGradesRequestSchema = z.object({
  * student's total (R72); completeness is checked server-side against the quiz.
  */
 export const gradeEssayAnswersRequestSchema = z.object({
-  awards: z
-    .array(z.object({ questionId: z.number().int().positive(), points: z.number().int().min(0) }))
-    .min(1),
+  awards: z.array(z.object({ questionId: z.number().int().positive(), points: z.number().int().min(0) })).min(1),
 });
 
 export const reopenAttemptRequestSchema = z.object({

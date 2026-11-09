@@ -17,8 +17,14 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 const row = (id: number, year: number, status: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED") => ({
-  id, code: `s${id}`, title: `Season ${id}`, program: "TEST", year, status,
-  startDate: `${year}-01-01T00:00:00.000Z`, endDate: `${year}-12-31T00:00:00.000Z`,
+  id,
+  code: `s${id}`,
+  title: `Season ${id}`,
+  program: "TEST",
+  year,
+  status,
+  startDate: `${year}-01-01T00:00:00.000Z`,
+  endDate: `${year}-12-31T00:00:00.000Z`,
 });
 
 beforeEach(() => {

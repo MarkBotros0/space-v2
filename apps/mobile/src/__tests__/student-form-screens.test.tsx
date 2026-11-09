@@ -109,9 +109,7 @@ describe("/students/new", () => {
       seasonId: 7,
     });
     expect(body).not.toHaveProperty("password");
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "77" } }),
-    );
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "77" } }));
     expect(toast.success).toHaveBeenCalledWith("Student created. Their invite is on its way.");
     expect(toast.error).not.toHaveBeenCalled();
   });
@@ -125,9 +123,7 @@ describe("/students/new", () => {
     fireEvent.changeText(screen.getByLabelText("Email"), "u@jpc.test");
     fireEvent.press(screen.getByText("Create and send invite"));
 
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "78" } }),
-    );
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "78" } }));
     expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/invite email couldn't be sent/));
     expect(toast.success).not.toHaveBeenCalled();
   });
@@ -141,9 +137,7 @@ describe("/students/new", () => {
     fireEvent.press(screen.getByText("Create and send invite"));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Full name").props.accessibilityHint).toBe(
-        "At least 2 characters.",
-      ),
+      expect(screen.getByLabelText("Full name").props.accessibilityHint).toBe("At least 2 characters."),
     );
     expect(screen.getByLabelText("Email").props.accessibilityHint).toBe("Must be a valid email.");
     expect(within(screen.getByTestId("save-bar")).getByText("Fix the fields marked above.")).toBeTruthy();

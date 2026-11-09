@@ -26,8 +26,13 @@ jest.mock("../db/client", () => ({ db: mockDb }));
 import { commitStudentImport, ImportRowsInvalidError } from "../lib/imports/students";
 
 const values = (name: string, email: string) => ({
-  name, email,
-  university: null, faculty: null, universityGraduationYear: null, phone: null, dateOfBirth: null,
+  name,
+  email,
+  university: null,
+  faculty: null,
+  universityGraduationYear: null,
+  phone: null,
+  dateOfBirth: null,
   notes: null,
 });
 

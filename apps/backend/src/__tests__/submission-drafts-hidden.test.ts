@@ -21,18 +21,18 @@ import type { Request, Response } from "express";
 import type { SessionUser } from "../lib/auth/tokens";
 import { isHiddenDraft } from "../lib/permissions";
 import { getSubmission } from "../routes/submissions/detail";
-import {
-  deleteSubmissionFile,
-  downloadSubmissionFile,
-  uploadSubmissionFile,
-} from "../routes/submissions/files";
+import { deleteSubmissionFile, downloadSubmissionFile, uploadSubmissionFile } from "../routes/submissions/files";
 import { reviewSubmission, updateSubmission } from "../routes/submissions/writes";
 
 const AUTHOR = 10;
 function user(role: SessionUser["role"], userId = 99): SessionUser {
   return {
-    userId, role, seasonAdminIds: [7], groupLeaderIds: [5],
-    activeSeasonId: 7, graduationYear: null,
+    userId,
+    role,
+    seasonAdminIds: [7],
+    groupLeaderIds: [5],
+    activeSeasonId: 7,
+    graduationYear: null,
   };
 }
 const staff = [user("SUPER"), user("MENTOR"), user("ADMIN"), user("LEADER")];
@@ -61,8 +61,14 @@ function submissionRow(status: string) {
     reviewedAt: null,
     assignmentId: 3,
     assignment: {
-      title: "Essay", dueAt: null, description: null, seasonId: 7, type: "STANDARD",
-      season: { code: "S7" }, maxFileSizeMb: null, allowedMimeCategories: [],
+      title: "Essay",
+      dueAt: null,
+      description: null,
+      seasonId: 7,
+      type: "STANDARD",
+      season: { code: "S7" },
+      maxFileSizeMb: null,
+      allowedMimeCategories: [],
     },
     studentUser: { name: "Student", email: "s@example.com" },
     files: [],
@@ -70,7 +76,10 @@ function submissionRow(status: string) {
 }
 function fileRow(status: string) {
   return {
-    storagePath: "x", originalName: "a.txt", mimeType: "text/plain", sizeBytes: 1,
+    storagePath: "x",
+    originalName: "a.txt",
+    mimeType: "text/plain",
+    sizeBytes: 1,
     submission: { id: 1, publicId: "p", status, studentUserId: AUTHOR, assignment: { seasonId: 7 } },
   };
 }
@@ -88,9 +97,7 @@ describe("isHiddenDraft", () => {
       expect(isHiddenDraft(caller, { status: "DRAFT", studentUserId: AUTHOR })).toBe(true);
     }
     expect(isHiddenDraft(user("STUDENT"), { status: "DRAFT", studentUserId: AUTHOR })).toBe(true);
-    expect(isHiddenDraft(user("STUDENT", AUTHOR), { status: "DRAFT", studentUserId: AUTHOR })).toBe(
-      false,
-    );
+    expect(isHiddenDraft(user("STUDENT", AUTHOR), { status: "DRAFT", studentUserId: AUTHOR })).toBe(false);
   });
 
   it.each(["SUBMITTED", "REVIEWED", "RETURNED"])("never hides a %s row", (status) => {
@@ -164,10 +171,7 @@ describe("submission files on a DRAFT", () => {
   it("delete and upload are 404 to a non-author", async () => {
     mockDb.submissionFile.findUnique.mockResolvedValue(fileRow("DRAFT"));
     const del = fakeRes();
-    await deleteSubmissionFile(
-      req(user("LEADER"), { query: { fileId: "4" } }),
-      del as unknown as Response,
-    );
+    await deleteSubmissionFile(req(user("LEADER"), { query: { fileId: "4" } }), del as unknown as Response);
     expect(del.status).toHaveBeenCalledWith(404);
     expect(mockDb.submissionFile.delete).not.toHaveBeenCalled();
 

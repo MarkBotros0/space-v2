@@ -60,8 +60,7 @@ export function usePersonalForm(user: MeUser): {
       const next: Partial<Record<Field, string>> = {};
       for (const issue of parsed.error.issues) {
         const key = issue.path[0];
-        if (typeof key === "string" && (FIELDS as string[]).includes(key))
-          next[key as Field] ??= issue.message;
+        if (typeof key === "string" && (FIELDS as string[]).includes(key)) next[key as Field] ??= issue.message;
       }
       setErrors(next);
       return null;
@@ -81,12 +80,7 @@ export function usePersonalForm(user: MeUser): {
   const fields = (
     <View className="flex-col gap-4">
       <FormField label="Name" required error={errors.name}>
-        <Input
-          accessibilityLabel="Name"
-          autoComplete="name"
-          value={values.name}
-          onChangeText={set("name")}
-        />
+        <Input accessibilityLabel="Name" autoComplete="name" value={values.name} onChangeText={set("name")} />
       </FormField>
       <FormField label="Email" description="To change your email, contact the JPC team.">
         <Input accessibilityLabel="Email" value={user.email} readOnly />

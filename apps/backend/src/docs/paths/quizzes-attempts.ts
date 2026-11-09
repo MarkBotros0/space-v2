@@ -53,7 +53,10 @@ export const quizAttemptsPaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", required: ["saved"], properties: { saved: { type: "integer" } } }, "How many answers were saved."),
+        200: ok(
+          { type: "object", required: ["saved"], properties: { saved: { type: "integer" } } },
+          "How many answers were saved.",
+        ),
         400: conflict("`bad_request`, `question_not_in_quiz`, `wrong_answer_type` or `answer_out_of_range`."),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -121,7 +124,10 @@ export const quizAttemptsPaths = {
                   items: {
                     type: "object",
                     required: ["questionId", "points"],
-                    properties: { questionId: { type: "integer", minimum: 1 }, points: { type: "integer", minimum: 0 } },
+                    properties: {
+                      questionId: { type: "integer", minimum: 1 },
+                      points: { type: "integer", minimum: 0 },
+                    },
                   },
                 },
               },
@@ -160,7 +166,11 @@ export const quizAttemptsPaths = {
       },
       responses: {
         201: ok(
-          { type: "object", required: ["attemptId", "attemptNumber"], properties: { attemptId: { type: "integer" }, attemptNumber: { type: "integer" } } },
+          {
+            type: "object",
+            required: ["attemptId", "attemptNumber"],
+            properties: { attemptId: { type: "integer" }, attemptNumber: { type: "integer" } },
+          },
           "The new attempt.",
         ),
         400: errRef("BadRequest"),

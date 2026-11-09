@@ -22,7 +22,13 @@ const IGNORED_TABLE = "_prisma_migrations";
 describe("database schema", () => {
   it("has exactly these columns", async () => {
     const rows = await db.$queryRaw<
-      { table_name: string; column_name: string; data_type: string; is_nullable: string; column_default: string | null }[]
+      {
+        table_name: string;
+        column_name: string;
+        data_type: string;
+        is_nullable: string;
+        column_default: string | null;
+      }[]
     >`
       SELECT table_name, column_name,
              CASE WHEN data_type = 'USER-DEFINED' THEN udt_name ELSE data_type END AS data_type,

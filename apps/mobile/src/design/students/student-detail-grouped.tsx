@@ -13,12 +13,7 @@ import { View } from "react-native";
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
 import { StatusChip } from "../ui/status-chip";
 import { EngagementSummary } from "./engagement-summary";
-import {
-  GroupedAttendanceTab,
-  GroupedNotesTab,
-  GroupedSeasonsTab,
-  GroupedSubmissionsTab,
-} from "./grouped-tabs";
+import { GroupedAttendanceTab, GroupedNotesTab, GroupedSeasonsTab, GroupedSubmissionsTab } from "./grouped-tabs";
 import { NoteSheet } from "./note-sheet";
 import { StudentDetails } from "./student-details";
 import { type StudentSection, StudentSections } from "./student-sections";

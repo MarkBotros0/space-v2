@@ -4,8 +4,16 @@ import { fileURLToPath } from "node:url";
 import { MANIFEST_FILE, REPO_ROOT, UI_REBUILD_DOCS } from "./lib/paths.mjs";
 
 const ROLE_PREFIXES = new Set(["student", "alumni", "leader", "admin", "super", "mentor"]);
-const SINGULAR = { groups: "group", sessions: "session", assignments: "assignment", quizzes: "quiz",
-  events: "event", submissions: "submission", users: "user", students: "student" };
+const SINGULAR = {
+  groups: "group",
+  sessions: "session",
+  assignments: "assignment",
+  quizzes: "quiz",
+  events: "event",
+  submissions: "submission",
+  users: "user",
+  students: "student",
+};
 // v1 list/new pages whose v2 "new" screen lives under a different noun.
 const NEW_TARGET = { calendar: "session" };
 // Pairings no rule derives, each checked by hand against both components.
@@ -28,7 +36,7 @@ const NOTES = {
   "(app)/event/[id]": "section of v1 `/super/events` (inline jpc-event-form)",
   "(app)/quiz/new": "section of v1 `/admin/season/[code]/sessions/[id]` (create-quiz-form)",
   "accept-invite": "no v1 page — needs an approved mockup",
-  "index": "redirect only; v1 `/` redirects too",
+  index: "redirect only; v1 `/` redirects too",
 };
 
 export function v2RouteFor(pattern, v2Routes) {
@@ -98,7 +106,10 @@ function main() {
   ];
   for (const [role, r] of Object.entries(manifest.roles)) {
     lines.push(`## ${role}`, "");
-    if (r.skipped) { lines.push(`_${r.skipped}_`, ""); continue; }
+    if (r.skipped) {
+      lines.push(`_${r.skipped}_`, "");
+      continue;
+    }
     lines.push("| v1 pattern | v2 route | status | light | dark | dialogs |", "|---|---|---|---|---|---|");
     for (const p of r.pages) {
       const v2 = v2RouteFor(p.pattern, v2Routes);
@@ -106,12 +117,19 @@ function main() {
       let status = p.error ? `capture failed: ${p.error.replace(/\|/g, "/")}` : v2 ? "match v1" : "v1-only (not in v2)";
       if (NOTES[p.pattern]) status += ` — ${NOTES[p.pattern]}`;
       const v2Cell = v2 ? `\`${v2}\`${SECTION_OF[p.pattern] ? " (section of)" : ""}` : "—";
-      lines.push(`| \`${p.pattern}\` | ${v2Cell} | ${status} | ${p.shots.light ?? "—"} | ${p.shots.dark ?? "—"} | ${p.dialogs.length} |`);
+      lines.push(
+        `| \`${p.pattern}\` | ${v2Cell} | ${status} | ${p.shots.light ?? "—"} | ${p.shots.dark ?? "—"} | ${p.dialogs.length} |`,
+      );
     }
     lines.push("");
   }
   const v2Only = v2Routes.filter((r) => !matched.has(r));
-  lines.push("## v2 screens with no v1 page (`v2-only`)", "", ...v2Only.map((r) => `- \`${r}\`${NOTES[r] ? ` — ${NOTES[r]}` : ""}`), "");
+  lines.push(
+    "## v2 screens with no v1 page (`v2-only`)",
+    "",
+    ...v2Only.map((r) => `- \`${r}\`${NOTES[r] ? ` — ${NOTES[r]}` : ""}`),
+    "",
+  );
   mkdirSync(UI_REBUILD_DOCS, { recursive: true });
   writeFileSync(path.join(UI_REBUILD_DOCS, "screen-map.md"), lines.join("\n"));
   console.log(`screen map: ${matched.size} matched, ${v2Only.length} v2-only`);

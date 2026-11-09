@@ -63,10 +63,7 @@ describe("useVisibleNotes", () => {
     (apiClient.post as jest.Mock).mockResolvedValue({
       data: { data: { note: { ...note, id: 2 } } },
     });
-    const { result } = renderHook(
-      () => ({ feed: useVisibleNotes(5, true), create: useCreateNote(9) }),
-      { wrapper },
-    );
+    const { result } = renderHook(() => ({ feed: useVisibleNotes(5, true), create: useCreateNote(9) }), { wrapper });
     await waitFor(() => expect(result.current.feed.isSuccess).toBe(true));
     get.mockClear();
     await act(async () => {

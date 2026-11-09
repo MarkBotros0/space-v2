@@ -208,9 +208,7 @@ describe("UserDetailScreen", () => {
     fireEvent.press(screen.getByText("Save changes"));
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Graduation year").props.accessibilityHint).toBe(
-        "Required for this role.",
-      ),
+      expect(screen.getByLabelText("Graduation year").props.accessibilityHint).toBe("Required for this role."),
     );
     expect(patch).not.toHaveBeenCalled();
   });

@@ -62,9 +62,7 @@ describe("User.sessionsValidFrom (Plan 18 M13)", () => {
     expect((await request(app).get("/api/v1/me").set("authorization", `Bearer ${accessToken}`)).status).toBe(401);
     const rotated = await request(app).post("/api/v1/auth/refresh").send({ refreshToken });
     expect(rotated.status).toBe(200);
-    const fresh = await request(app)
-      .get("/api/v1/me")
-      .set("authorization", `Bearer ${rotated.body.data.accessToken}`);
+    const fresh = await request(app).get("/api/v1/me").set("authorization", `Bearer ${rotated.body.data.accessToken}`);
     expect(fresh.status).toBe(200);
     const claims = JSON.parse(
       Buffer.from(String(rotated.body.data.accessToken).split(".")[1]!, "base64url").toString(),
@@ -96,9 +94,7 @@ describe("User.sessionsValidFrom (Plan 18 M13)", () => {
     expect((await request(app).get("/api/v1/me").set("authorization", `Bearer ${accessToken}`)).status).toBe(401);
     const rotated = await request(app).post("/api/v1/auth/refresh").send({ refreshToken });
     expect(rotated.status).toBe(200);
-    const fresh = await request(app)
-      .get("/api/v1/me")
-      .set("authorization", `Bearer ${rotated.body.data.accessToken}`);
+    const fresh = await request(app).get("/api/v1/me").set("authorization", `Bearer ${rotated.body.data.accessToken}`);
     expect(fresh.status).toBe(200);
   });
 });

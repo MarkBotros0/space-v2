@@ -50,16 +50,12 @@ describe("deleting your own account (DELETE /api/v1/me)", () => {
   let refreshToken: string;
 
   it("soft-deletes the user and profile, drops devices and ends sessions", async () => {
-    const signIn = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: student.email, password: PASSWORD });
+    const signIn = await request(app).post("/api/v1/auth/login").send({ email: student.email, password: PASSWORD });
     expect(signIn.status).toBe(200);
     refreshToken = signIn.body.data.refreshToken;
     expect(await listIds("active")).toContain(student.id);
 
-    const res = await request(app)
-      .delete("/api/v1/me")
-      .set("authorization", `Bearer ${signIn.body.data.accessToken}`);
+    const res = await request(app).delete("/api/v1/me").set("authorization", `Bearer ${signIn.body.data.accessToken}`);
 
     expect(res.status).toBe(200);
     expect(typeof res.body.data.deletedAt).toBe("string");
@@ -76,9 +72,7 @@ describe("deleting your own account (DELETE /api/v1/me)", () => {
     const refresh = await request(app).post("/api/v1/auth/refresh").send({ refreshToken });
     expect(refresh.status).toBe(401);
 
-    const signIn = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: student.email, password: PASSWORD });
+    const signIn = await request(app).post("/api/v1/auth/login").send({ email: student.email, password: PASSWORD });
     expect(signIn.status).toBe(401);
     expect(signIn.body.error.code).toBe("invalid_credentials");
   });

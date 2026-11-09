@@ -263,10 +263,7 @@ describe("DELETE /api/v1/submissions/:publicId/files", () => {
 describe("GET /api/v1/submissions/:publicId/files/:fileId", () => {
   /** Upload a file as the owner and return its id. Each test makes its own so
    *  no test depends on a file a neighbour may have deleted. */
-  async function uploadOwned(
-    filename: string,
-    contents: string,
-  ): Promise<{ fileId: number }> {
+  async function uploadOwned(filename: string, contents: string): Promise<{ fileId: number }> {
     const upload = await request(app)
       .post(`/api/v1/submissions/${publicId}/files`)
       .set("authorization", `Bearer ${ownerToken}`)

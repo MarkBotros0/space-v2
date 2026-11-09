@@ -53,18 +53,12 @@ export function LeaderSessionSection({
           onTheDay
             ? (onBrand) => (
                 <>
-                  <Button
-                    variant={onBrand ? "onHero" : "primary"}
-                    onPress={() => router.push(attendance)}
-                  >
+                  <Button variant={onBrand ? "onHero" : "primary"} onPress={() => router.push(attendance)}>
                     Mark attendance
                   </Button>
                   {/* D13: a stream link only while the session is running. */}
                   {session.isInProgress && session.youtubeUrl ? (
-                    <Button
-                      variant="secondary"
-                      onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}
-                    >
+                    <Button variant="secondary" onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}>
                       Join stream
                     </Button>
                   ) : null}

@@ -87,10 +87,7 @@ const LIST_SELECT = {
 } as const;
 
 /** Returns null when the caller may see no group in this season at all. */
-export async function listGroupsForSeason(
-  user: SessionUser,
-  seasonId: number,
-): Promise<GroupListRow[] | null> {
+export async function listGroupsForSeason(user: SessionUser, seasonId: number): Promise<GroupListRow[] | null> {
   const scope = await scopeForSeason(user, seasonId);
   if (scope === null) return null;
 

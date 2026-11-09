@@ -129,9 +129,13 @@ export async function buildPublishedQuizIn(
   });
   const mcq = await db.quizQuestion.create({
     data: {
-      quizId: quiz.id, order: 0, type: "MCQ",
-      prompt: "Capital of France?", points: 2,
-      options: ["London", "Paris"], correctIndex: 1,
+      quizId: quiz.id,
+      order: 0,
+      type: "MCQ",
+      prompt: "Capital of France?",
+      points: 2,
+      options: ["London", "Paris"],
+      correctIndex: 1,
     },
     select: { id: true },
   });
@@ -139,8 +143,13 @@ export async function buildPublishedQuizIn(
   if (opts.withEssay) {
     essay = await db.quizQuestion.create({
       data: {
-        quizId: quiz.id, order: 1, type: "ESSAY",
-        prompt: "Discuss the reading.", points: 5, options: [], correctIndex: null,
+        quizId: quiz.id,
+        order: 1,
+        type: "ESSAY",
+        prompt: "Discuss the reading.",
+        points: 5,
+        options: [],
+        correctIndex: null,
       },
       select: { id: true },
     });

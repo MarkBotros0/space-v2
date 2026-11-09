@@ -26,15 +26,36 @@ const emptyScopes = {
   graduationYear: null as number | null,
 };
 const superSession = {
-  user: { id: 1, name: "Test super", email: "sup@jpc.test", role: "SUPER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 1,
+    name: "Test super",
+    email: "sup@jpc.test",
+    role: "SUPER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 const mentorSession = {
-  user: { id: 2, name: "Test mentor", email: "men@jpc.test", role: "MENTOR" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 2,
+    name: "Test mentor",
+    email: "men@jpc.test",
+    role: "MENTOR" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: emptyScopes,
 };
 const studentSession = {
-  user: { id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 9,
+    name: "Test student",
+    email: "stu@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { ...emptyScopes, activeSeasonId: 7 },
 };
 
@@ -109,9 +130,7 @@ describe("StudentsScreen (active)", () => {
     fireEvent.changeText(input, "sara");
     fireEvent(input, "submitEditing");
 
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&q=sara"),
-    );
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&q=sara"));
     // Committed at once: the pending debounce is cancelled, so one request.
     await new Promise((r) => setTimeout(r, 400));
     expect(get.mock.calls.filter(([u]) => String(u).includes("q=sara"))).toHaveLength(1);
@@ -127,11 +146,17 @@ describe("StudentsScreen (active)", () => {
     try {
       const input = screen.getByLabelText("Search students");
       fireEvent.changeText(input, "sa");
-      await act(async () => { jest.advanceTimersByTime(200); });
+      await act(async () => {
+        jest.advanceTimersByTime(200);
+      });
       fireEvent.changeText(input, "sara");
-      await act(async () => { jest.advanceTimersByTime(200); });
+      await act(async () => {
+        jest.advanceTimersByTime(200);
+      });
       expect(get.mock.calls.some(([u]) => String(u).includes("q="))).toBe(false);
-      await act(async () => { jest.advanceTimersByTime(100); });
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
       const searched = get.mock.calls.filter(([u]) => String(u).includes("q="));
       expect(searched).toEqual([["/api/v1/students?status=active&q=sara"]]);
     } finally {
@@ -144,9 +169,7 @@ describe("StudentsScreen (active)", () => {
     get.mockResolvedValue(page([activeRow]));
     renderWithProviders(<StudentsScreen />);
     await screen.findByText("Sara Student");
-    const style = StyleSheet.flatten(
-      screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle,
-    );
+    const style = StyleSheet.flatten(screen.UNSAFE_getByType(ScrollView).props.contentContainerStyle);
     expect(style.paddingBottom).toBeGreaterThanOrEqual(96);
   });
 
@@ -173,7 +196,9 @@ describe("StudentsScreen (active)", () => {
 
   it("names the latest finished season when there is no active one", async () => {
     useSessionStore.setState(superSession);
-    get.mockResolvedValue(page([{ ...activeRow, activeSeasonTitle: null, lastSeasonTitle: "GBV 2025", currentGroupName: null }]));
+    get.mockResolvedValue(
+      page([{ ...activeRow, activeSeasonTitle: null, lastSeasonTitle: "GBV 2025", currentGroupName: null }]),
+    );
     renderWithProviders(<StudentsScreen />);
     expect(await screen.findByText("Last season: GBV 2025 · Cairo University")).toBeTruthy();
   });
@@ -278,10 +303,28 @@ it("offers SUPER — and only SUPER — a way to create a student", async () => 
 
 describe("StudentsScreen filter and sort (REG-82)", () => {
   const groups = [
-    { id: 3, name: "Group A", description: null, studentCount: 2, leaderNames: [], seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099" },
+    {
+      id: 3,
+      name: "Group A",
+      description: null,
+      studentCount: 2,
+      leaderNames: [],
+      seasonId: 7,
+      seasonCode: "s7",
+      seasonTitle: "Spring 2099",
+    },
   ];
   const seasons = [
-    { id: 7, code: "s7", title: "Spring 2099", program: "JPC", year: 2099, status: "ACTIVE", startDate: "2099-01-01", endDate: "2099-06-01" },
+    {
+      id: 7,
+      code: "s7",
+      title: "Spring 2099",
+      program: "JPC",
+      year: 2099,
+      status: "ACTIVE",
+      startDate: "2099-01-01",
+      endDate: "2099-06-01",
+    },
   ];
   function serve() {
     get.mockImplementation((url: string) => {
@@ -304,16 +347,12 @@ describe("StudentsScreen filter and sort (REG-82)", () => {
     fireEvent.press(await screen.findByLabelText(/^Spring 2099/));
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&seasonId=7"));
     fireEvent.press(await screen.findByLabelText(/^Group A/));
-    await waitFor(() =>
-      expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&seasonId=7&groupId=3"),
-    );
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&seasonId=7&groupId=3"));
 
     fireEvent.press(screen.getByLabelText("University"));
     fireEvent.press(screen.getByRole("tab", { name: "Z to A" }));
     await waitFor(() =>
-      expect(get).toHaveBeenCalledWith(
-        "/api/v1/students?status=active&seasonId=7&groupId=3&sort=university&dir=desc",
-      ),
+      expect(get).toHaveBeenCalledWith("/api/v1/students?status=active&seasonId=7&groupId=3&sort=university&dir=desc"),
     );
     // The button counts the filters in force: a season, a group and a sort.
     fireEvent.press(screen.getByText("Done"));

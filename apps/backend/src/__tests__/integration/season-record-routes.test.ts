@@ -5,10 +5,7 @@ import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 import { signAccessToken } from "../../lib/auth/tokens";
 import { newPublicId } from "../../lib/public-id";
-import {
-  seasonHistoryResponseSchema,
-  seasonRecordSchema,
-} from "../../../../../packages/shared/src/index";
+import { seasonHistoryResponseSchema, seasonRecordSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 
 jest.setTimeout(180000);
@@ -20,15 +17,17 @@ const SECRET_DROP = "seeded-drop-reason-ZQX";
 const SECRET_NOTE = "seeded-quiz-note-ZQX";
 
 let tokens: { student: string; mentor: string; stranger: string };
-const seasons = {} as Record<"passed" | "notPassed" | "completed" | "dropped" | "current" | "draft" | "deletedSeason", { id: number; code: string }>;
+const seasons = {} as Record<
+  "passed" | "notPassed" | "completed" | "dropped" | "current" | "draft" | "deletedSeason",
+  { id: number; code: string }
+>;
 let quizIds: { notTaken: number; progress: number; graded: number; submitted: number };
 
 async function mint(userId: number) {
   const scopes = await loadScopes(userId);
   return (await signAccessToken({ userId, ...scopes })).token;
 }
-const get = (path: string, token: string) =>
-  request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${token}`);
+const get = (path: string, token: string) => request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${token}`);
 
 beforeAll(async () => {
   await cleanupTestData();
@@ -62,19 +61,36 @@ beforeAll(async () => {
 
   // Content in the "passed" season.
   const sid = seasons.passed.id;
-  const g = await db.group.create({ data: { seasonId: sid, name: "Rec Group", students: { create: { studentUserId: s.id } } } });
+  const g = await db.group.create({
+    data: { seasonId: sid, name: "Rec Group", students: { create: { studentUserId: s.id } } },
+  });
   await db.seasonEnrollment.update({
     where: { studentUserId_seasonId: { studentUserId: s.id, seasonId: sid } },
     data: { groupId: g.id },
   });
   const a1 = await db.assignment.create({
-    data: { seasonId: sid, title: "Rec A1", isAllGroups: true, createdById: admin.id, dueAt: new Date("2099-02-01T00:00:00Z") },
+    data: {
+      seasonId: sid,
+      title: "Rec A1",
+      isAllGroups: true,
+      createdById: admin.id,
+      dueAt: new Date("2099-02-01T00:00:00Z"),
+    },
   });
   await db.assignment.create({
     data: { seasonId: sid, title: "Rec A2", isAllGroups: true, createdById: admin.id },
   });
   await db.submission.create({
-    data: { publicId: newPublicId(), assignmentId: a1.id, studentUserId: s.id, text: "x", status: "REVIEWED", submittedAt: new Date(), reviewedAt: new Date(), feedback: SECRET_NOTE },
+    data: {
+      publicId: newPublicId(),
+      assignmentId: a1.id,
+      studentUserId: s.id,
+      text: "x",
+      status: "REVIEWED",
+      submittedAt: new Date(),
+      reviewedAt: new Date(),
+      feedback: SECRET_NOTE,
+    },
   });
   const sessionIds: number[] = [];
   for (const n of [1, 2, 3, 4]) {
@@ -94,7 +110,14 @@ beforeAll(async () => {
   const mkQuiz = (title: string) =>
     db.quiz.create({
       // Released: held results read SUBMITTED (quizzes-release-routes).
-      data: { seasonId: sid, title, kind: "ONLINE", maxScore: 10, publishedAt: new Date(), resultsReleasedAt: new Date() },
+      data: {
+        seasonId: sid,
+        title,
+        kind: "ONLINE",
+        maxScore: 10,
+        publishedAt: new Date(),
+        resultsReleasedAt: new Date(),
+      },
       select: { id: true },
     });
   const q1 = await mkQuiz("Q not taken");
@@ -102,8 +125,19 @@ beforeAll(async () => {
   const q3 = await mkQuiz("Q graded");
   const q4 = await mkQuiz("Q submitted");
   await db.quizAttempt.create({ data: { quizId: q2.id, studentUserId: s.id, status: "IN_PROGRESS" } });
-  await db.quizAttempt.create({ data: { quizId: q3.id, studentUserId: s.id, status: "GRADED", totalScore: 7, submittedAt: new Date(), gradedAt: new Date() } });
-  await db.quizAttempt.create({ data: { quizId: q4.id, studentUserId: s.id, status: "SUBMITTED", autoScore: 5, submittedAt: new Date() } });
+  await db.quizAttempt.create({
+    data: {
+      quizId: q3.id,
+      studentUserId: s.id,
+      status: "GRADED",
+      totalScore: 7,
+      submittedAt: new Date(),
+      gradedAt: new Date(),
+    },
+  });
+  await db.quizAttempt.create({
+    data: { quizId: q4.id, studentUserId: s.id, status: "SUBMITTED", autoScore: 5, submittedAt: new Date() },
+  });
   await db.quizGrade.create({ data: { quizId: q3.id, studentUserId: s.id, score: 7, notes: SECRET_NOTE } });
   await db.quiz.create({ data: { seasonId: sid, title: "Q draft", kind: "ONLINE", maxScore: 10 } }); // unpublished: hidden
   quizIds = { notTaken: q1.id, progress: q2.id, graded: q3.id, submitted: q4.id };

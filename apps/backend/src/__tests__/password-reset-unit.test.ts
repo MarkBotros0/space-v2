@@ -76,14 +76,14 @@ describe("requestPasswordReset", () => {
     expect(mockDb.user.findUnique).not.toHaveBeenCalled();
   });
 
-  it.each([["unknown account", null], ["deleted account", { ...user, deletedAt: new Date() }]])(
-    "is silent for an %s",
-    async (_l, found) => {
-      mockDb.user.findUnique.mockResolvedValue(found);
-      await expect(requestPasswordReset("s@jpc.test")).resolves.toBeUndefined();
-      expect(mockSendResetEmail).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    ["unknown account", null],
+    ["deleted account", { ...user, deletedAt: new Date() }],
+  ])("is silent for an %s", async (_l, found) => {
+    mockDb.user.findUnique.mockResolvedValue(found);
+    await expect(requestPasswordReset("s@jpc.test")).resolves.toBeUndefined();
+    expect(mockSendResetEmail).not.toHaveBeenCalled();
+  });
 
   it("respects the per-account cooldown", async () => {
     mockDb.passwordResetToken.findFirst.mockResolvedValue({ id: 1 });
@@ -94,7 +94,11 @@ describe("requestPasswordReset", () => {
 
   it("mails the raw code once for a real account", async () => {
     await requestPasswordReset("s@jpc.test");
-    expect(mockSendResetEmail).toHaveBeenCalledWith("s@jpc.test", expect.stringMatching(/^[0-9a-f]{64}$/), expect.any(Date));
+    expect(mockSendResetEmail).toHaveBeenCalledWith(
+      "s@jpc.test",
+      expect.stringMatching(/^[0-9a-f]{64}$/),
+      expect.any(Date),
+    );
   });
 
   it("swallows and logs a transport failure without leaking the address or code", async () => {
@@ -110,7 +114,9 @@ describe("requestPasswordReset", () => {
 
 describe("completePasswordReset", () => {
   const live = {
-    id: 1, userId: 7, usedAt: null,
+    id: 1,
+    userId: 7,
+    usedAt: null,
     expiresAt: new Date(Date.now() + 60_000),
     user: { deletedAt: null },
   };
@@ -146,6 +152,10 @@ describe("completePasswordReset", () => {
     );
     // Plan 18 M13: live access tokens end too, stamped with the reset's instant.
     const stamp = mockDb.user.update.mock.calls.find(([a]) => "sessionsValidFrom" in a.data);
-    expect(stamp?.[0]).toEqual({ where: { id: 7 }, data: { sessionsValidFrom: expect.any(Date) }, select: { id: true } });
+    expect(stamp?.[0]).toEqual({
+      where: { id: 7 },
+      data: { sessionsValidFrom: expect.any(Date) },
+      select: { id: true },
+    });
   });
 });

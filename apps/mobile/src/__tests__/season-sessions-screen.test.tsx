@@ -16,16 +16,38 @@ import SeasonSessionsScreen from "../../app/(app)/seasons/[code]/sessions";
 const get = apiClient.get as jest.Mock;
 
 const detail = (canAdminister: boolean, status = "ACTIVE") => ({
-  id: 7, code: "s7", title: "TEST 2099", program: "TEST", year: 2099, status,
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z", description: null,
-  sessionCount: 1, studentCount: 0, absenceBudgetMinutes: 240, absenceWeightMinutes: 90,
-  canAdminister, groups: [],
+  id: 7,
+  code: "s7",
+  title: "TEST 2099",
+  program: "TEST",
+  year: 2099,
+  status,
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
+  description: null,
+  sessionCount: 1,
+  studentCount: 0,
+  absenceBudgetMinutes: 240,
+  absenceWeightMinutes: 90,
+  canAdminister,
+  groups: [],
 });
 const sessionRow = {
-  id: 12, title: "Kickoff", startsAt: "2099-03-01T18:00:00.000Z", dayKey: "2099-03-01",
-  startTime: "20:00", durationMinutes: 90, location: null, recurrenceGroupId: null,
-  attendanceMarked: false, seasonId: 7, seasonCode: "s7", seasonTitle: "TEST 2099",
-  checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
+  id: 12,
+  title: "Kickoff",
+  startsAt: "2099-03-01T18:00:00.000Z",
+  dayKey: "2099-03-01",
+  startTime: "20:00",
+  durationMinutes: 90,
+  location: null,
+  recurrenceGroupId: null,
+  attendanceMarked: false,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "TEST 2099",
+  checkInToken: null,
+  checkInOpenAt: null,
+  checkInClosedAt: null,
 };
 
 function serve(canAdminister: boolean, status = "ACTIVE") {

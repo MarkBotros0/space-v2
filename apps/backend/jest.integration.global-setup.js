@@ -40,9 +40,7 @@ module.exports = async function globalSetup() {
         // table query.
         await db.$queryRaw`SELECT 1`;
         const elapsedMs = Date.now() - start;
-        console.log(
-          `[jest.integration.global-setup] database reachable after ${attempt} attempt(s), ${elapsedMs}ms`,
-        );
+        console.log(`[jest.integration.global-setup] database reachable after ${attempt} attempt(s), ${elapsedMs}ms`);
         return;
       } catch (err) {
         lastError = err;

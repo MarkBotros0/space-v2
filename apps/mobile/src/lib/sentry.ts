@@ -28,10 +28,7 @@ export function sentryEnabled(): boolean {
 }
 
 /** Initialise Sentry if, and only if, a DSN is configured. Returns whether it did. */
-export function initSentry(
-  dsn: string | null = sentryDsn(),
-  environment: string = sentryEnvironment(),
-): boolean {
+export function initSentry(dsn: string | null = sentryDsn(), environment: string = sentryEnvironment()): boolean {
   if (!dsn || enabled) return enabled;
   Sentry.init({
     dsn,
@@ -50,14 +47,10 @@ export function initSentry(
 }
 
 /** `Sentry.wrap` the root layout when Sentry is on; the layout itself when off. */
-export function wrapRoot<P extends Record<string, unknown>>(
-  Root: ComponentType<P>,
-): ComponentType<P> {
+export function wrapRoot<P extends Record<string, unknown>>(Root: ComponentType<P>): ComponentType<P> {
   // Text extraction would read a touched row's visible text (a student's name,
   // a note body) into the breadcrumb; scrubBreadcrumb drops what is left.
-  return enabled
-    ? Sentry.wrap(Root, { touchEventBoundaryProps: { extractTextFromChildren: false } })
-    : Root;
+  return enabled ? Sentry.wrap(Root, { touchEventBoundaryProps: { extractTextFromChildren: false } }) : Root;
 }
 
 /** Report a caught error. A no-op while Sentry is off. */

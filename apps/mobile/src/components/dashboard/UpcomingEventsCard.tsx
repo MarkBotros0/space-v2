@@ -28,11 +28,7 @@ export function UpcomingEventsCard({ query }: { query: UseQueryResult<JpcEventLi
           <Skeleton className="h-9" />
         </View>
       ) : (
-        <InlineError
-          className="p-4"
-          message="Couldn't load upcoming events."
-          onRetry={() => void query.refetch()}
-        />
+        <InlineError className="p-4" message="Couldn't load upcoming events." onRetry={() => void query.refetch()} />
       )}
     </GroupedList>
   );

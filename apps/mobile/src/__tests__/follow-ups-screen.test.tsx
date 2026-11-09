@@ -16,8 +16,14 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const fu = (id: number, name: string, over: Record<string, unknown> = {}) => ({
-  id, studentUserId: 20 + id, studentName: name, reason: null,
-  createdAt: "2026-10-01T10:00:00.000Z", dueAt: "2026-10-08T10:00:00.000Z", remindedAt: null, doneAt: null,
+  id,
+  studentUserId: 20 + id,
+  studentName: name,
+  reason: null,
+  createdAt: "2026-10-01T10:00:00.000Z",
+  dueAt: "2026-10-08T10:00:00.000Z",
+  remindedAt: null,
+  doneAt: null,
   ...over,
 });
 

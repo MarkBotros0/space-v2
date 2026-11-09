@@ -48,9 +48,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
 
   it("submits a mixed quiz to SUBMITTED with autoScore only (R63)", async () => {
     const before = await quizGradedCount();
-    await request(app)
-      .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
@@ -83,9 +81,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   it("auto-grades an all-MCQ quiz, all-or-nothing, and notifies once (R60, R64, R65)", async () => {
     const built = await buildPublishedQuiz({ withEssay: false });
     const before = await quizGradedCount();
-    await request(app)
-      .put(`/api/v1/quizzes/${built.quizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${built.quizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     await request(app)
       .patch(`/api/v1/quizzes/${built.quizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
@@ -118,9 +114,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   it("scores exactly once when submits race, and a save never lands after scoring (REG-111)", async () => {
     const built = await buildPublishedQuiz({ withEssay: false });
     const before = await quizGradedCount();
-    await request(app)
-      .put(`/api/v1/quizzes/${built.quizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${built.quizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     await request(app)
       .patch(`/api/v1/quizzes/${built.quizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
@@ -158,9 +152,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
 
   it("a save that was waiting on the attempt lock is refused once the attempt closes (REG-111)", async () => {
     const built = await buildPublishedQuiz({ withEssay: false });
-    await request(app)
-      .put(`/api/v1/quizzes/${built.quizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${built.quizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     await request(app)
       .patch(`/api/v1/quizzes/${built.quizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
@@ -199,9 +191,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
 
   it("refuses a second submit and a save after submit (R49, R58)", async () => {
     const built = await buildPublishedQuiz({ withEssay: false });
-    await request(app)
-      .put(`/api/v1/quizzes/${built.quizId}/attempt`)
-      .set("authorization", `Bearer ${studentToken}`);
+    await request(app).put(`/api/v1/quizzes/${built.quizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     await request(app)
       .patch(`/api/v1/quizzes/${built.quizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)

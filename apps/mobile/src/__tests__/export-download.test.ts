@@ -67,9 +67,7 @@ describe("downloadAndShare", () => {
     // A signed query-string URL handed to the system browser would work and is
     // forbidden: it puts a credential in a URL (spec D10).
     expect(url).not.toContain("token");
-    expect((options as { headers: Record<string, string> }).headers.Authorization).toBe(
-      "Bearer access-token",
-    );
+    expect((options as { headers: Record<string, string> }).headers.Authorization).toBe("Bearer access-token");
   });
 
   it("never fetches the body into JS memory or base64-encodes it", async () => {
@@ -130,9 +128,7 @@ describe("downloadAndShare", () => {
     mockDownloadAsync
       .mockResolvedValueOnce({ uri: "file:///cache/exports/x.xlsx", status: 401 })
       .mockResolvedValueOnce({ uri: "file:///cache/exports/x.xlsx", status: 200 });
-    mockReadAsStringAsync.mockResolvedValue(
-      JSON.stringify({ error: { code: "invalid_token", message: "expired" } }),
-    );
+    mockReadAsStringAsync.mockResolvedValue(JSON.stringify({ error: { code: "invalid_token", message: "expired" } }));
     mockRefreshAccessToken.mockResolvedValue("fresh-token");
 
     await downloadAndShare({
@@ -150,14 +146,12 @@ describe("downloadAndShare", () => {
 
   it("gives up after ONE refresh, exactly like the axios interceptor", async () => {
     mockDownloadAsync.mockResolvedValue({ uri: "file:///cache/exports/x.xlsx", status: 401 });
-    mockReadAsStringAsync.mockResolvedValue(
-      JSON.stringify({ error: { code: "invalid_token", message: "expired" } }),
-    );
+    mockReadAsStringAsync.mockResolvedValue(JSON.stringify({ error: { code: "invalid_token", message: "expired" } }));
     mockRefreshAccessToken.mockResolvedValue("fresh-token");
 
-    await expect(
-      downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" }),
-    ).rejects.toBeInstanceOf(ExportAuthError);
+    await expect(downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" })).rejects.toBeInstanceOf(
+      ExportAuthError,
+    );
     expect(mockRefreshAccessToken).toHaveBeenCalledTimes(1);
   });
 
@@ -170,9 +164,9 @@ describe("downloadAndShare", () => {
     // downloadResumable writes the body whatever the status, so the JSON
     // envelope lands in the file. Reading it back is how the client tells a 403
     // from a spreadsheet (spec §7).
-    await expect(
-      downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" }),
-    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" })).rejects.toMatchObject({
+      code: "forbidden",
+    });
     expect(mockDeleteAsync).toHaveBeenCalled();
   });
 
@@ -181,16 +175,16 @@ describe("downloadAndShare", () => {
     mockReadAsStringAsync.mockResolvedValue(
       JSON.stringify({ error: { code: "too_many_requests", message: "Too many requests." } }),
     );
-    await expect(
-      downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" }),
-    ).rejects.toBeInstanceOf(ExportServerError);
+    await expect(downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" })).rejects.toBeInstanceOf(
+      ExportServerError,
+    );
   });
 
   it("refuses to start when sharing is unavailable, rather than downloading first", async () => {
     mockIsAvailableAsync.mockResolvedValue(false);
-    await expect(
-      downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" }),
-    ).rejects.toBeInstanceOf(ExportShareUnavailableError);
+    await expect(downloadAndShare({ path: "/x", filename: "x.xlsx", dialogTitle: "s" })).rejects.toBeInstanceOf(
+      ExportShareUnavailableError,
+    );
     // expo-sharing is not available on every platform (notably web). Checking
     // first means the user is not made to wait for a download that can only end
     // in an error (spec D10).

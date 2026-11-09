@@ -103,7 +103,12 @@ describe("while studying", () => {
     serve({
       "/api/v1/seasons/7/sessions": { sessions: [session(1, "Kickoff", "2099-03-01T18:00:00.000Z", "2099-03-01")] },
       "/api/v1/events": {
-        events: [{ ...eventRow(2, "Alumni dinner", "2099-03-05T18:00:00.000Z", "2099-03-05", "20:00"), visibility: "ALUMNI_ONLY" }],
+        events: [
+          {
+            ...eventRow(2, "Alumni dinner", "2099-03-05T18:00:00.000Z", "2099-03-05", "20:00"),
+            visibility: "ALUMNI_ONLY",
+          },
+        ],
         total: 1,
       },
       [DASHBOARD]: { ...studentDashboard, todayOrgDay: "2099-02-01" },
@@ -127,9 +132,12 @@ describe("once the season is over", () => {
 
   it("Home, tabs and guard are the alumni's again", () => {
     expect(dashboardBranchFor({ role: "STUDENT", graduationYear: 2025, activeSeasonId: null })).toBe("ALUMNI");
-    expect(useSessionStore.getState().nav()?.tabs.map((t) => t.label)).toEqual([
-      "Home", "Events", "History", "Profile", "More",
-    ]);
+    expect(
+      useSessionStore
+        .getState()
+        .nav()
+        ?.tabs.map((t) => t.label),
+    ).toEqual(["Home", "Events", "History", "Profile", "More"]);
     captured.segments = ["(app)", "(tabs)", "work"];
     renderWithProviders(<AppLayout />);
     expect(screen.getByTestId("redirect")).toHaveTextContent("/dashboard");

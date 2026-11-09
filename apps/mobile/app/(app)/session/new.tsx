@@ -37,10 +37,7 @@ export default function NewSessionScreen() {
   if (seasonId === null) {
     return (
       <Screen title="New session">
-        <EmptyState
-          title="No season"
-          description="Open a season first, then add a session to it."
-        />
+        <EmptyState title="No season" description="Open a season first, then add a session to it." />
       </Screen>
     );
   }
@@ -59,8 +56,7 @@ export default function NewSessionScreen() {
     }
     setErrors({});
     create.mutate(body, {
-      onSuccess: (created) =>
-        router.replace({ pathname: "/session/[id]", params: { id: String(created.id) } }),
+      onSuccess: (created) => router.replace({ pathname: "/session/[id]", params: { id: String(created.id) } }),
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the session.")),
     });
   };
@@ -68,14 +64,10 @@ export default function NewSessionScreen() {
   return (
     <FormScreen
       title="New session"
-      subtitle={
-        season.data ? `Add a session to ${season.data.title}.` : "Add a session to this season."
-      }
+      subtitle={season.data ? `Add a session to ${season.data.title}.` : "Add a session to this season."}
       saveLabel="Create session"
       saving={create.isPending}
-      saveHint={
-        message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)
-      }
+      saveHint={message ?? (Object.keys(errors).length > 0 ? "Fix the fields marked above." : undefined)}
       onSave={submit}
     >
       <View className="flex-col gap-4">

@@ -1,11 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
-import {
-  updateOwnProfileInputSchema,
-  yearFromText,
-  type MyProfile,
-  type UpdateOwnProfileInput,
-} from "@space/shared";
+import { updateOwnProfileInputSchema, yearFromText, type MyProfile, type UpdateOwnProfileInput } from "@space/shared";
 
 import { FormField, Input } from "../../design/ui";
 import { useUpdateStudentProfile } from "../../hooks/use-self-service";
@@ -25,8 +20,7 @@ function valuesOf(p: MyProfile): Values {
   return {
     university: p.university ?? "",
     faculty: p.faculty ?? "",
-    universityGraduationYear:
-      p.universityGraduationYear === null ? "" : String(p.universityGraduationYear),
+    universityGraduationYear: p.universityGraduationYear === null ? "" : String(p.universityGraduationYear),
   };
 }
 
@@ -76,11 +70,7 @@ export function useAcademicForm(profile: MyProfile): {
   const fields = (
     <View className="flex-col gap-4">
       <FormField label="University" error={errors.university}>
-        <Input
-          accessibilityLabel="University"
-          value={values.university}
-          onChangeText={set("university")}
-        />
+        <Input accessibilityLabel="University" value={values.university} onChangeText={set("university")} />
       </FormField>
       <FormField label="Faculty" error={errors.faculty}>
         <Input

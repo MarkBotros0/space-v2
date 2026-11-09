@@ -5,15 +5,7 @@ import { View } from "react-native";
 
 import { Text } from "../ui/text";
 
-export function LevelHeader({
-  icon: Icon,
-  title,
-  action,
-}: {
-  icon: LucideIcon;
-  title: string;
-  action?: ReactNode;
-}) {
+export function LevelHeader({ icon: Icon, title, action }: { icon: LucideIcon; title: string; action?: ReactNode }) {
   return (
     <View className="flex-row items-center gap-3">
       <View className="size-9 shrink-0 items-center justify-center rounded-full bg-info-soft">

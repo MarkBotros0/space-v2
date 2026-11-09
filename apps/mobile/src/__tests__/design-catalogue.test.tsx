@@ -3,12 +3,32 @@ import { ScrollView } from "react-native";
 
 let mockSweep = true;
 jest.mock("../lib/app-config", () => ({ ...jest.requireActual("../lib/app-config"), isSweepBuild: () => mockSweep }));
-jest.mock("expo-router", () => ({ ...jest.requireActual("expo-router"), useRouter: () => ({ back: jest.fn(), push: jest.fn() }), Link: "Link" }));
+jest.mock("expo-router", () => ({
+  ...jest.requireActual("expo-router"),
+  useRouter: () => ({ back: jest.fn(), push: jest.fn() }),
+  Link: "Link",
+}));
 
 import DesignCatalogue from "../../app/(app)/design-catalogue";
 import { renderWithProviders } from "./helpers/render";
 
-const SECTIONS = ["logo", "type", "buttons", "chips", "list", "hero", "stats", "controls", "states", "checkin", "toast", "sheet", "save-bar", "people-rows", "start-issues"];
+const SECTIONS = [
+  "logo",
+  "type",
+  "buttons",
+  "chips",
+  "list",
+  "hero",
+  "stats",
+  "controls",
+  "states",
+  "checkin",
+  "toast",
+  "sheet",
+  "save-bar",
+  "people-rows",
+  "start-issues",
+];
 
 it("renders every section when this is a sweep build", () => {
   mockSweep = true;

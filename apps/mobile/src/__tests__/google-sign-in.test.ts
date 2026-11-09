@@ -21,11 +21,7 @@ jest.mock("@react-native-google-signin/google-signin", () => ({
 const mockIds = { value: null as { webClientId: string; iosClientId: string | null } | null };
 jest.mock("../lib/app-config", () => ({ googleSignInIds: () => mockIds.value }));
 
-import {
-  GoogleSignInUnavailableError,
-  googleIdToken,
-  isGoogleSignInConfigured,
-} from "../lib/google-sign-in";
+import { GoogleSignInUnavailableError, googleIdToken, isGoogleSignInConfigured } from "../lib/google-sign-in";
 
 const IDS = {
   webClientId: "web.apps.googleusercontent.com",

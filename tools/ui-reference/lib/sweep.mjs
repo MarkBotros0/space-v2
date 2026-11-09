@@ -67,7 +67,8 @@ export function flowsOfModule(rels, module) {
   const folders = module === "student" ? [".", "student-scenarios"] : [`${module}-scenarios`];
   const folderOf = (rel) => path.dirname(rel.replaceAll("\\", "/"));
   const picked = rels.filter((rel) => folders.includes(folderOf(rel)));
-  if (picked.length === 0) throw new Error(`No sweep flows for module "${module}" (looked in ${folders.join(", ")} under sweep/).`);
+  if (picked.length === 0)
+    throw new Error(`No sweep flows for module "${module}" (looked in ${folders.join(", ")} under sweep/).`);
   return picked;
 }
 
@@ -136,7 +137,9 @@ export function flowTitle(firstLine) {
 function rowLabel(name) {
   if (name.endsWith("-zz-FAILED")) return { code: name.split("-")[0], label: "where the flow stopped" };
   const [flow, step, ...rest] = name.split("-");
-  return /^\d+$/.test(step ?? "") ? { code: `${flow}-${step}`, label: rest.join(" ") } : { code: flow, label: [step, ...rest].join(" ") };
+  return /^\d+$/.test(step ?? "")
+    ? { code: `${flow}-${step}`, label: rest.join(" ") }
+    : { code: flow, label: [step, ...rest].join(" ") };
 }
 
 /**
@@ -180,14 +183,20 @@ export function contactSheetHtml({ title, module = null, cells, shotsByCell, res
       return [heading, ...names.filter((n) => n.split("-")[0] === flow).map(row)].join("\n");
     })
     .join("\n");
-  const nav = flows.map((f) => `<a href="#${escapeHtml(f)}" title="${escapeHtml(flowTitles[f] ?? "")}">${escapeHtml(f)}</a>`).join("");
+  const nav = flows
+    .map((f) => `<a href="#${escapeHtml(f)}" title="${escapeHtml(flowTitles[f] ?? "")}">${escapeHtml(f)}</a>`)
+    .join("");
 
   const failures = results.filter((r) => !r.passed);
-  const shotCount = Object.values(shotsByCell).flat().filter((n) => !n.endsWith("FAILED")).length;
+  const shotCount = Object.values(shotsByCell)
+    .flat()
+    .filter((n) => !n.endsWith("FAILED")).length;
   const summary =
     `<b>${names.filter((n) => !n.endsWith("FAILED")).length}</b> screens · <b>${cells.length}</b> device cells · ` +
     `<b>${shotCount}</b> screenshots · <b>${results.length - failures.length}/${results.length}</b> flow runs completed.` +
-    (failures.length ? ` Stopped early: ${escapeHtml(failures.map((f) => `${f.flow.split("/").pop()} @ ${f.cell}`).join(", "))}.` : "");
+    (failures.length
+      ? ` Stopped early: ${escapeHtml(failures.map((f) => `${f.flow.split("/").pop()} @ ${f.cell}`).join(", "))}.`
+      : "");
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

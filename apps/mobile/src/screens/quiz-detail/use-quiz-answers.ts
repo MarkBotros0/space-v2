@@ -29,9 +29,7 @@ function isAnswered(q: QuizQuestionStudent, a: Answer): boolean {
 export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
   const save = useSaveAnswers(quizId);
   const [answers, setAnswers] = useState<Record<number, Answer>>(() =>
-    Object.fromEntries(
-      detail.questions.map((q) => [q.id, { selectedIndex: q.selectedIndex, text: q.text ?? "" }]),
-    ),
+    Object.fromEntries(detail.questions.map((q) => [q.id, { selectedIndex: q.selectedIndex, text: q.text ?? "" }])),
   );
   // Always the latest answers, readable from the debounce timer's closure.
   const answersRef = useRef(answers);
@@ -112,10 +110,7 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
     }, SAVE_DEBOUNCE_MS);
   };
 
-  const setAnswer = (
-    q: QuizQuestionStudent,
-    patch: { selectedIndex?: number | null; text?: string },
-  ) => {
+  const setAnswer = (q: QuizQuestionStudent, patch: { selectedIndex?: number | null; text?: string }) => {
     setAnswers((prev) => {
       const next = {
         ...prev,
@@ -142,8 +137,7 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
    * then hand the quiz in on reconnect, so it asks this first.
    */
   const hasUnsentOffline = () =>
-    !onlineManager.isOnline() &&
-    (pendingRef.current.size > 0 || timerRef.current !== null || save.isPending);
+    !onlineManager.isOnline() && (pendingRef.current.size > 0 || timerRef.current !== null || save.isPending);
 
   return {
     answers,

@@ -1,11 +1,7 @@
 import { z } from "zod";
 
 import { isoDaySchema } from "../org-time";
-import {
-  dateOfBirthFieldSchema,
-  phoneFieldSchema,
-  universityGraduationYearFieldSchema,
-} from "../contact-fields";
+import { dateOfBirthFieldSchema, phoneFieldSchema, universityGraduationYearFieldSchema } from "../contact-fields";
 import { emptyToNull } from "./empty-to-null";
 
 // ---------------------------------------------------------------------------

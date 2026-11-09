@@ -22,7 +22,22 @@ export const quizSchemas = {
   },
   QuizSummary: {
     type: "object",
-    required: ["id", "title", "kind", "publishedAt", "questionCount", "maxScore", "sessionId", "sessionTitle", "sessionDate", "seasonId", "seasonCode", "gradedCount", "studentCount", "resultsReleasedAt"],
+    required: [
+      "id",
+      "title",
+      "kind",
+      "publishedAt",
+      "questionCount",
+      "maxScore",
+      "sessionId",
+      "sessionTitle",
+      "sessionDate",
+      "seasonId",
+      "seasonCode",
+      "gradedCount",
+      "studentCount",
+      "resultsReleasedAt",
+    ],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -37,12 +52,17 @@ export const quizSchemas = {
       seasonCode: { type: "string" },
       gradedCount: { type: "integer" },
       studentCount: { type: "integer" },
-      resultsReleasedAt: { type: ["string", "null"], format: "date-time", description: "Null while students' results are held back." },
+      resultsReleasedAt: {
+        type: ["string", "null"],
+        format: "date-time",
+        description: "Null while students' results are held back.",
+      },
     },
   },
   QuizQuestionAuthoring: {
     type: "object",
-    description: "The authoring projection — the only quiz question shape that carries the answer key (`correctIndex`).",
+    description:
+      "The authoring projection — the only quiz question shape that carries the answer key (`correctIndex`).",
     required: ["id", "order", "type", "prompt", "points", "options", "correctIndex"],
     properties: {
       id: { type: "integer" },
@@ -61,14 +81,40 @@ export const quizSchemas = {
       type: { $ref: "#/components/schemas/QuizQuestionType" },
       prompt: { type: "string", minLength: 2, maxLength: 2000 },
       points: { type: "integer", minimum: 1, maximum: 100 },
-      options: { type: "array", maxItems: 6, items: { type: "string", minLength: 1, maxLength: 500 }, description: "MCQ needs at least 2. An ESSAY's options are discarded." },
-      correctIndex: { type: ["integer", "null"], minimum: 0, description: "MCQ only; must be a valid index into `options`. Discarded for ESSAY." },
+      options: {
+        type: "array",
+        maxItems: 6,
+        items: { type: "string", minLength: 1, maxLength: 500 },
+        description: "MCQ needs at least 2. An ESSAY's options are discarded.",
+      },
+      correctIndex: {
+        type: ["integer", "null"],
+        minimum: 0,
+        description: "MCQ only; must be a valid index into `options`. Discarded for ESSAY.",
+      },
     },
   },
   QuizAuthoringDetail: {
     type: "object",
     description: "Staff projection of a quiz. Carries the answer key (`questions[].correctIndex`).",
-    required: ["id", "title", "kind", "seasonId", "seasonCode", "sessionId", "sessionTitle", "publishedAt", "maxScore", "attemptCount", "gradeCount", "canEditStructure", "canManage", "resultsReleasedAt", "canReleaseResults", "questions"],
+    required: [
+      "id",
+      "title",
+      "kind",
+      "seasonId",
+      "seasonCode",
+      "sessionId",
+      "sessionTitle",
+      "publishedAt",
+      "maxScore",
+      "attemptCount",
+      "gradeCount",
+      "canEditStructure",
+      "canManage",
+      "resultsReleasedAt",
+      "canReleaseResults",
+      "questions",
+    ],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -81,17 +127,44 @@ export const quizSchemas = {
       maxScore: { type: "integer" },
       attemptCount: { type: "integer" },
       gradeCount: { type: "integer" },
-      canEditStructure: { type: "boolean", description: "`canManage`, ONLINE, and no attempts yet — exactly the condition the question writes enforce." },
-      canManage: { type: "boolean", description: "SUPER or admin of the quiz's season (authoring and publishing); a grading-only leader gets false." },
-      resultsReleasedAt: { type: ["string", "null"], format: "date-time", description: "Null while students' results are held back: they see no score and no right or wrong answer until it is set." },
-      canReleaseResults: { type: "boolean", description: "SUPER or admin of the quiz's season: who may `POST /quizzes/{id}/release`." },
+      canEditStructure: {
+        type: "boolean",
+        description: "`canManage`, ONLINE, and no attempts yet — exactly the condition the question writes enforce.",
+      },
+      canManage: {
+        type: "boolean",
+        description:
+          "SUPER or admin of the quiz's season (authoring and publishing); a grading-only leader gets false.",
+      },
+      resultsReleasedAt: {
+        type: ["string", "null"],
+        format: "date-time",
+        description:
+          "Null while students' results are held back: they see no score and no right or wrong answer until it is set.",
+      },
+      canReleaseResults: {
+        type: "boolean",
+        description: "SUPER or admin of the quiz's season: who may `POST /quizzes/{id}/release`.",
+      },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionAuthoring" } },
     },
   },
   QuizQuestionStudent: {
     type: "object",
-    description: "The student projection of a question. **There is no `correctIndex` field** — not null, not optional; it is a different shape from `QuizQuestionAuthoring`.",
-    required: ["id", "order", "type", "prompt", "points", "options", "selectedIndex", "text", "isCorrect", "pointsAwarded"],
+    description:
+      "The student projection of a question. **There is no `correctIndex` field** — not null, not optional; it is a different shape from `QuizQuestionAuthoring`.",
+    required: [
+      "id",
+      "order",
+      "type",
+      "prompt",
+      "points",
+      "options",
+      "selectedIndex",
+      "text",
+      "isCorrect",
+      "pointsAwarded",
+    ],
     properties: {
       id: { type: "integer" },
       order: { type: "integer" },
@@ -107,8 +180,25 @@ export const quizSchemas = {
   },
   StudentQuizDetail: {
     type: "object",
-    description: "A student's view of an ONLINE quiz and their own attempt. `autoScore`/`manualScore` are deliberately absent; `totalScore` is the only score shown.",
-    required: ["id", "title", "kind", "seasonId", "maxScore", "sessionTitle", "attemptId", "attemptNumber", "status", "totalScore", "submittedAt", "gradedAt", "questions", "readOnly", "resultsReleased"],
+    description:
+      "A student's view of an ONLINE quiz and their own attempt. `autoScore`/`manualScore` are deliberately absent; `totalScore` is the only score shown.",
+    required: [
+      "id",
+      "title",
+      "kind",
+      "seasonId",
+      "maxScore",
+      "sessionTitle",
+      "attemptId",
+      "attemptNumber",
+      "status",
+      "totalScore",
+      "submittedAt",
+      "gradedAt",
+      "questions",
+      "readOnly",
+      "resultsReleased",
+    ],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -123,14 +213,33 @@ export const quizSchemas = {
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedAt: { type: ["string", "null"], format: "date-time" },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionStudent" } },
-      readOnly: { type: "boolean", description: "True when the student's enrolment is no longer ACTIVE: they can read the quiz and their attempt, not take it." },
-      resultsReleased: { type: "boolean", description: "False until staff release the results. Until then a graded attempt reads SUBMITTED and `totalScore`, `gradedAt` and every question's `isCorrect`/`pointsAwarded` are null." },
+      readOnly: {
+        type: "boolean",
+        description:
+          "True when the student's enrolment is no longer ACTIVE: they can read the quiz and their attempt, not take it.",
+      },
+      resultsReleased: {
+        type: "boolean",
+        description:
+          "False until staff release the results. Until then a graded attempt reads SUBMITTED and `totalScore`, `gradedAt` and every question's `isCorrect`/`pointsAwarded` are null.",
+      },
     },
   },
   QuizGradingAnswer: {
     type: "object",
     description: "Grader-only: carries the answer key by design.",
-    required: ["questionId", "type", "prompt", "points", "options", "correctIndex", "selectedIndex", "isCorrect", "text", "pointsAwarded"],
+    required: [
+      "questionId",
+      "type",
+      "prompt",
+      "points",
+      "options",
+      "correctIndex",
+      "selectedIndex",
+      "isCorrect",
+      "text",
+      "pointsAwarded",
+    ],
     properties: {
       questionId: { type: "integer" },
       type: { $ref: "#/components/schemas/QuizQuestionType" },
@@ -146,7 +255,19 @@ export const quizSchemas = {
   },
   QuizGradingAttempt: {
     type: "object",
-    required: ["attemptId", "studentUserId", "studentName", "attemptNumber", "status", "autoScore", "manualScore", "totalScore", "submittedAt", "gradedByName", "answers"],
+    required: [
+      "attemptId",
+      "studentUserId",
+      "studentName",
+      "attemptNumber",
+      "status",
+      "autoScore",
+      "manualScore",
+      "totalScore",
+      "submittedAt",
+      "gradedByName",
+      "answers",
+    ],
     properties: {
       attemptId: { type: "integer" },
       studentUserId: { type: "integer" },
@@ -171,10 +292,15 @@ export const quizSchemas = {
       maxScore: { type: "integer" },
       hasEssays: { type: "boolean" },
       studentCount: { type: "integer", description: "The caller's whole student set, not just this page." },
-      items: { type: "array", description: "The latest attempt of each student on this page whose attempt is SUBMITTED or GRADED.", items: { $ref: "#/components/schemas/QuizGradingAttempt" } },
+      items: {
+        type: "array",
+        description: "The latest attempt of each student on this page whose attempt is SUBMITTED or GRADED.",
+        items: { $ref: "#/components/schemas/QuizGradingAttempt" },
+      },
       waiting: {
         type: "array",
-        description: "Students on this page with no gradable attempt: never started (`startedAt` null) or latest attempt IN_PROGRESS (`startedAt` = when it was opened).",
+        description:
+          "Students on this page with no gradable attempt: never started (`startedAt` null) or latest attempt IN_PROGRESS (`startedAt` = when it was opened).",
         items: {
           type: "object",
           required: ["studentUserId", "studentName", "startedAt"],
@@ -218,7 +344,19 @@ export const quizSchemas = {
   },
   StudentQuizResult: {
     type: "object",
-    required: ["quizId", "title", "kind", "maxScore", "score", "notes", "gradedAt", "sessionTitle", "sessionDate", "attemptStatus", "resultsReleased"],
+    required: [
+      "quizId",
+      "title",
+      "kind",
+      "maxScore",
+      "score",
+      "notes",
+      "gradedAt",
+      "sessionTitle",
+      "sessionDate",
+      "attemptStatus",
+      "resultsReleased",
+    ],
     properties: {
       quizId: { type: "integer" },
       title: { type: "string" },
@@ -229,9 +367,15 @@ export const quizSchemas = {
       gradedAt: { type: ["string", "null"], format: "date-time" },
       sessionTitle: { type: ["string", "null"] },
       sessionDate: { type: ["string", "null"], format: "date-time" },
-      attemptStatus: { oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }], description: "ONLINE only. A graded attempt reads SUBMITTED until results are released." },
-      resultsReleased: { type: "boolean", description: "False until staff release the results; `score` and `gradedAt` are null until then. A PAPER row appears only once released." },
+      attemptStatus: {
+        oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }],
+        description: "ONLINE only. A graded attempt reads SUBMITTED until results are released.",
+      },
+      resultsReleased: {
+        type: "boolean",
+        description:
+          "False until staff release the results; `score` and `gradedAt` are null until then. A PAPER row appears only once released.",
+      },
     },
   },
-
 } as const;

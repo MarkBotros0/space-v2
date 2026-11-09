@@ -25,7 +25,11 @@ export function memberSections(roster: SeasonRosterRow[], groupId: number | null
   );
   const toRow = (r: SeasonRosterRow): MemberRow => ({ id: r.userId, name: nameOf(r), line: memberLine(r, groupId) });
   const sections: MemberSection[] = [
-    { key: "this", title: "In this group", rows: match.filter((r) => r.groupId !== null && r.groupId === groupId).map(toRow) },
+    {
+      key: "this",
+      title: "In this group",
+      rows: match.filter((r) => r.groupId !== null && r.groupId === groupId).map(toRow),
+    },
     { key: "none", title: "Not in a group", rows: match.filter((r) => r.groupId === null).map(toRow) },
     {
       key: "other",
@@ -39,11 +43,16 @@ export function memberSections(roster: SeasonRosterRow[], groupId: number | null
 /** `3 members. 1 person in GBV 2026 isn't in a group.` */
 export function membersSummary(roster: SeasonRosterRow[], picked: number[], groupId: number | null): string {
   const pickedSet = new Set(picked);
-  const lead = picked.length === 0 ? "No members yet." : picked.length === 1 ? "1 member." : `${picked.length} members.`;
+  const lead =
+    picked.length === 0 ? "No members yet." : picked.length === 1 ? "1 member." : `${picked.length} members.`;
   const loose = roster.filter((r) => r.groupId === null && !pickedSet.has(r.userId)).length;
   const moving = roster.filter((r) => pickedSet.has(r.userId) && r.groupId !== null && r.groupId !== groupId).length;
   const parts = [lead];
-  if (moving > 0) parts.push(moving === 1 ? "1 moves here from another group." : `${moving} move here from other groups.`);
-  if (loose > 0) parts.push(loose === 1 ? "1 person in the season isn't in a group." : `${loose} people in the season aren't in a group.`);
+  if (moving > 0)
+    parts.push(moving === 1 ? "1 moves here from another group." : `${moving} move here from other groups.`);
+  if (loose > 0)
+    parts.push(
+      loose === 1 ? "1 person in the season isn't in a group." : `${loose} people in the season aren't in a group.`,
+    );
   return parts.join(" ");
 }

@@ -48,20 +48,8 @@ describe("Button redesign", () => {
       "primary",
       "plain",
     ] as const) {
-      for (const size of [
-        "default",
-        "xs",
-        "sm",
-        "lg",
-        "icon",
-        "icon-xs",
-        "icon-sm",
-        "icon-lg",
-        "md",
-      ] as const) {
-        const { unmount } = render(
-          <Button variant={variant} size={size}>{`${variant}-${size}`}</Button>,
-        );
+      for (const size of ["default", "xs", "sm", "lg", "icon", "icon-xs", "icon-sm", "icon-lg", "md"] as const) {
+        const { unmount } = render(<Button variant={variant} size={size}>{`${variant}-${size}`}</Button>);
         expect(screen.getByText(`${variant}-${size}`)).toBeTruthy();
         unmount();
       }
@@ -124,9 +112,7 @@ describe("Button redesign", () => {
       </Button>,
     );
     expect(screen.getByText("Skip").props.className.split(" ")).toContain("text-muted-foreground");
-    expect(screen.getByTestId("button-look").props.className.split(" ")).toContain(
-      "bg-transparent",
-    );
+    expect(screen.getByTestId("button-look").props.className.split(" ")).toContain("bg-transparent");
   });
 
   it("a caller's label colour does not override the disabled label", () => {

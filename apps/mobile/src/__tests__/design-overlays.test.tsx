@@ -6,13 +6,17 @@ it("Modal renders content only when open and closes on backdrop press", () => {
   const onOpenChange = jest.fn();
   const { rerender } = render(
     <Modal open={false} onOpenChange={onOpenChange}>
-      <ModalContent><ModalTitle>Edit group</ModalTitle></ModalContent>
+      <ModalContent>
+        <ModalTitle>Edit group</ModalTitle>
+      </ModalContent>
     </Modal>,
   );
   expect(screen.queryByText("Edit group")).toBeNull();
   rerender(
     <Modal open onOpenChange={onOpenChange}>
-      <ModalContent><ModalTitle>Edit group</ModalTitle></ModalContent>
+      <ModalContent>
+        <ModalTitle>Edit group</ModalTitle>
+      </ModalContent>
     </Modal>,
   );
   expect(screen.getByText("Edit group")).toBeTruthy();
@@ -23,7 +27,16 @@ it("Modal renders content only when open and closes on backdrop press", () => {
 it("ConfirmDialog calls onConfirm and not on cancel (v1 defaults)", () => {
   const onConfirm = jest.fn();
   const onOpenChange = jest.fn();
-  render(<ConfirmDialog open title="Delete note?" confirmLabel="Delete" destructive onConfirm={onConfirm} onOpenChange={onOpenChange} />);
+  render(
+    <ConfirmDialog
+      open
+      title="Delete note?"
+      confirmLabel="Delete"
+      destructive
+      onConfirm={onConfirm}
+      onOpenChange={onOpenChange}
+    />,
+  );
   fireEvent.press(screen.getByRole("button", { name: "Cancel" }));
   expect(onConfirm).not.toHaveBeenCalled();
   expect(onOpenChange).toHaveBeenCalledWith(false);
@@ -36,4 +49,3 @@ it("ConfirmDialog shows v1's pending label and disables both buttons", () => {
   expect(screen.getByRole("button", { name: "Working…" }).props.accessibilityState).toMatchObject({ disabled: true });
   expect(screen.getByRole("button", { name: "Cancel" }).props.accessibilityState).toMatchObject({ disabled: true });
 });
-

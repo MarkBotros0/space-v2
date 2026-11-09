@@ -65,8 +65,14 @@ async function world(seasonStatus: "ACTIVE" | "COMPLETED", enrolStatus: "ACTIVE"
     return enrolment.groupId === group.id && mirror === 1;
   };
   return {
-    seasonId: season.id, groupId: group.id, stays: stays.id, goes: goes.id,
-    served: served.id, deleted: deleted.id, leader: leader.id, inGroup,
+    seasonId: season.id,
+    groupId: group.id,
+    stays: stays.id,
+    goes: goes.id,
+    served: served.id,
+    deleted: deleted.id,
+    leader: leader.id,
+    inGroup,
   };
 }
 
@@ -77,7 +83,9 @@ describe.each([
   it("the form's full body keeps a role-changed and a soft-deleted member", async () => {
     const w = await world(seasonStatus, enrolStatus);
     const res = await patch(w.groupId, {
-      name: "New name", leaderIds: [w.leader], studentIds: [w.stays, w.goes],
+      name: "New name",
+      leaderIds: [w.leader],
+      studentIds: [w.stays, w.goes],
     });
     expect(res.status).toBe(200);
     for (const id of [w.stays, w.goes, w.served, w.deleted]) expect(await w.inGroup(id)).toBe(true);

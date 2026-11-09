@@ -20,7 +20,8 @@ const community: AnnouncementListItem = {
   audience: "COMMUNITY",
   seasonId: null,
   seasonTitle: null,
-  excerpt: "Registration for the next season opens on Friday. Please read the details and tell us if anything is unclear.",
+  excerpt:
+    "Registration for the next season opens on Friday. Please read the details and tell us if anything is unclear.",
   authorName: "Mina Adel",
   createdAt: "2026-11-03T09:00:00.000Z",
   editedAt: null,
@@ -100,7 +101,13 @@ const editLines = [
 type OpenSheet = "voters" | "edit" | "edit-new-votes" | null;
 const noErrors: PollErrors = {};
 const editorValue = { allowsMultiple: true, options: [{ label: "Thursday" }, { label: "" }] };
-const pollPost: AnnouncementListItem = { ...season, id: 4, excerpt: "Which evening suits the retreat?", hasPoll: true, pollClosed: false };
+const pollPost: AnnouncementListItem = {
+  ...season,
+  id: 4,
+  excerpt: "Which evening suits the retreat?",
+  hasPoll: true,
+  pollClosed: false,
+};
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (

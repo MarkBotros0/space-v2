@@ -5,16 +5,26 @@ describe("isBlockedForAlumni (REG-81)", () => {
     expect(isBlockedForAlumni(["(app)", seg])).toBe(true);
   });
 
-  it.each(["dashboard", "calendar", "history", "profile", "notifications", "settings", "more", "seasons", "session", "assignment", "quiz", "past-season"])(
-    "lets an alumnus reach %s",
-    (seg) => {
-      expect(isBlockedForAlumni(["(app)", seg])).toBe(false);
-    },
-  );
+  it.each([
+    "dashboard",
+    "calendar",
+    "history",
+    "profile",
+    "notifications",
+    "settings",
+    "more",
+    "seasons",
+    "session",
+    "assignment",
+    "quiz",
+    "past-season",
+  ])("lets an alumnus reach %s", (seg) => {
+    expect(isBlockedForAlumni(["(app)", seg])).toBe(false);
+  });
 });
 
 describe("isBlockedForAlumni under the (tabs) group (redesign Task 9)", () => {
-  it("skips both groups for a tab: segments gain \"(tabs)\"", () => {
+  it('skips both groups for a tab: segments gain "(tabs)"', () => {
     expect(isBlockedForAlumni(["(app)", "(tabs)", "work"])).toBe(true);
     expect(isBlockedForAlumni(["(app)", "(tabs)", "history"])).toBe(false);
   });

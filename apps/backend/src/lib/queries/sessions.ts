@@ -194,10 +194,7 @@ const CARD_SESSION_SELECT = {
  * session with `startsAt >= now`, so the session a student needs to check in
  * to vanished from Home the minute it started (R21, R64). Two bounded reads.
  */
-export async function loadCurrentOrNextSession(
-  seasonId: number,
-  now: Date,
-): Promise<CurrentOrNextSession | null> {
+export async function loadCurrentOrNextSession(seasonId: number, now: Date): Promise<CurrentOrNextSession | null> {
   const [latestStarted, next] = await Promise.all([
     db.session.findFirst({
       where: { seasonId, startsAt: { lte: now } },

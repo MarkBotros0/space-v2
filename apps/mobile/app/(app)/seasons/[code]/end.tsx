@@ -98,7 +98,11 @@ export default function EndSeasonScreen() {
       <EmptyState
         title="Already ended"
         description="Someone else already ended this season."
-        action={<Button variant="secondary" onPress={() => (isSuper ? router.back() : router.dismissAll())}>Done</Button>}
+        action={
+          <Button variant="secondary" onPress={() => (isSuper ? router.back() : router.dismissAll())}>
+            Done
+          </Button>
+        }
       />
     );
   } else if (season.isError) {
@@ -109,12 +113,19 @@ export default function EndSeasonScreen() {
     body = <RouteError onRetry={() => void check.refetch()} />;
   } else {
     const { blockers, students } = check.data;
-    const blocked =
-      blockers.submissions.length + blockers.quizAttempts.length + blockers.attendance.length > 0;
+    const blocked = blockers.submissions.length + blockers.quizAttempts.length + blockers.attendance.length > 0;
     if (blocked) {
       body = <BlockersList blockers={blockers} />;
     } else {
-      body = <ReviewList students={students} staged={staged} graduating={check.data.graduatesOnPass} year={season.data?.year ?? null} onOpen={setEditing} />;
+      body = (
+        <ReviewList
+          students={students}
+          staged={staged}
+          graduating={check.data.graduatesOnPass}
+          year={season.data?.year ?? null}
+          onOpen={setEditing}
+        />
+      );
       footer = (
         <SaveBar
           label="End season"

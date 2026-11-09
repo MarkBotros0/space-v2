@@ -2,11 +2,7 @@
 import { z } from "zod";
 
 import { announcementAudienceSchema } from "./enums";
-import {
-  announcementPollSchema,
-  pollInputSchema,
-  pollInputWithoutIdsSchema,
-} from "./announcement-poll";
+import { announcementPollSchema, pollInputSchema, pollInputWithoutIdsSchema } from "./announcement-poll";
 
 export const ANNOUNCEMENT_BODY_MAX = 5000;
 export const ANNOUNCEMENT_EXCERPT_LENGTH = 280;

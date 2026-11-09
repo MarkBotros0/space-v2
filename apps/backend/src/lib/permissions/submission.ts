@@ -23,9 +23,7 @@ export async function leadsStudentInSeason(
 }
 
 /** A submission's author and season, or null when it does not exist. */
-async function submissionSubject(
-  submissionId: number,
-): Promise<{ studentUserId: number; seasonId: number } | null> {
+async function submissionSubject(submissionId: number): Promise<{ studentUserId: number; seasonId: number } | null> {
   const submission = await db.submission.findUnique({
     where: { id: submissionId },
     select: {
@@ -46,10 +44,7 @@ async function submissionSubject(
  * exist, before any role check — a 403 would tell staff the draft is there.
  * RETURNED is not a draft: it was turned in and sent back, and stays visible.
  */
-export function isHiddenDraft(
-  user: SessionUser,
-  submission: { status: string; studentUserId: number },
-): boolean {
+export function isHiddenDraft(user: SessionUser, submission: { status: string; studentUserId: number }): boolean {
   return submission.status === "DRAFT" && submission.studentUserId !== user.userId;
 }
 
@@ -78,10 +73,7 @@ export async function canViewSubmission(user: SessionUser, submissionId: number)
  * author reads their own but must never review it. Deriving one from the other
  * is exactly how a read gate becomes a write gate by accident.
  */
-export async function canReviewSubmission(
-  user: SessionUser,
-  submissionId: number,
-): Promise<boolean> {
+export async function canReviewSubmission(user: SessionUser, submissionId: number): Promise<boolean> {
   if (isSuper(user)) return true;
 
   const submission = await submissionSubject(submissionId);
@@ -111,9 +103,7 @@ export async function canReviewSubmission(
  * Returns null when the queue is empty by construction (a STUDENT, or a leader
  * with no enrolments in their groups).
  */
-export async function submissionQueueScopeFor(
-  user: SessionUser,
-): Promise<Prisma.SubmissionWhereInput | null> {
+export async function submissionQueueScopeFor(user: SessionUser): Promise<Prisma.SubmissionWhereInput | null> {
   if (isSuper(user) || isMentor(user)) return {};
   if (user.role === "ADMIN") return { assignment: { seasonId: { in: user.seasonAdminIds } } };
   if (user.role !== "LEADER") return null;

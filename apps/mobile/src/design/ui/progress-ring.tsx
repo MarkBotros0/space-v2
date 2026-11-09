@@ -122,8 +122,7 @@ export function ProgressRing({
     .split(/\s+/)
     .filter((c) => c.startsWith("stroke-"))
     .pop();
-  const indicator =
-    (lastStroke && strokeColor(lastStroke, scheme)) ?? strokeColor("stroke-brand-teal-500", scheme);
+  const indicator = (lastStroke && strokeColor(lastStroke, scheme)) ?? strokeColor("stroke-brand-teal-500", scheme);
   const track = strokeColor("stroke-border", scheme);
 
   return (
@@ -136,14 +135,7 @@ export function ProgressRing({
     >
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
         <G rotation={-90} origin={`${size / 2}, ${size / 2}`}>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            strokeWidth={strokeWidth}
-            stroke={track}
-          />
+          <Circle cx={size / 2} cy={size / 2} r={radius} fill="none" strokeWidth={strokeWidth} stroke={track} />
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -157,10 +149,7 @@ export function ProgressRing({
         </G>
       </Svg>
       {children != null ? (
-        <View
-          pointerEvents="none"
-          className="absolute inset-0 items-center justify-center"
-        >
+        <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
           <View
             testID="ring-content"
             className="flex-col items-center"

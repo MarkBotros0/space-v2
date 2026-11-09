@@ -189,9 +189,7 @@ describe("GET /api/v1/seasons/:id/engagement", () => {
     const rows: Array<{ studentUserId: number }> = res.body.data.students;
     expect(rows).toHaveLength(3);
 
-    const early = res.body.data.students.find(
-      (r: { studentUserId: number }) => r.studentUserId === earlyStudentId,
-    );
+    const early = res.body.data.students.find((r: { studentUserId: number }) => r.studentUserId === earlyStudentId);
     // 2 of 4 present (PRESENT and LATE both count — R54) → 50%.
     // 2 of 2 assignments done → 100%. Composite = round(50*0.5 + 100*0.5) = 75.
     expect(early).toMatchObject({
@@ -214,9 +212,7 @@ describe("GET /api/v1/seasons/:id/engagement", () => {
       .get(`/api/v1/seasons/${seasonId}/engagement`)
       .set("authorization", `Bearer ${superToken}`);
 
-    const late = res.body.data.students.find(
-      (r: { studentUserId: number }) => r.studentUserId === lateJoinerId,
-    );
+    const late = res.body.data.students.find((r: { studentUserId: number }) => r.studentUserId === lateJoinerId);
     // Two sessions ran after 2020-01-10; one attended. v1 divided by all four
     // and reported 25%, the largest source of spurious at-risk flags.
     expect(late).toMatchObject({ attendanceTotal: 2, attendancePresent: 1, attendancePct: 50 });

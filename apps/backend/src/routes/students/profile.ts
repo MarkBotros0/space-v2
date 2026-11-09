@@ -10,10 +10,7 @@ import { createStudentRows } from "../../lib/queries/students";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import { newPersonRefusal, readSeatSeason, refusalStatus, type SeatRefusal } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
-import {
-  createStudentRequestSchema,
-  updateStudentRequestSchema,
-} from "../../../../../packages/shared/src/index";
+import { createStudentRequestSchema, updateStudentRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
 
 /**
@@ -28,13 +25,11 @@ import { forbidden } from "../respond";
  *   `notes` (R23), and never `activeSeasonId`, which is derived. v1 silently dropped those from a
  *   self-edit (R24); an API that pretends a write worked teaches clients to
  *   trust it, so this refuses with `forbidden_field` instead.
- * - ADMIN adds `name`, `email` and `notes`. 
+ * - ADMIN adds `name`, `email` and `notes`.
  * - SUPER: everything except `activeSeasonId`, which no role may send
  *   (derived from enrolments; refused for everyone before this table).
  */
-const SELF_EDITABLE = new Set([
-  "university", "faculty", "universityGraduationYear", "phone", "dateOfBirth",
-]);
+const SELF_EDITABLE = new Set(["university", "faculty", "universityGraduationYear", "phone", "dateOfBirth"]);
 const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "name", "email", "notes"]);
 
 export async function createStudent(req: Request, res: Response) {
@@ -184,12 +179,7 @@ export async function updateStudent(req: Request, res: Response) {
     name: body.name,
     email: body.email,
     phone: body.phone,
-    dateOfBirth:
-      body.dateOfBirth === undefined
-        ? undefined
-        : body.dateOfBirth
-          ? new Date(body.dateOfBirth)
-          : null,
+    dateOfBirth: body.dateOfBirth === undefined ? undefined : body.dateOfBirth ? new Date(body.dateOfBirth) : null,
   };
   const profileData = {
     university: body.university,

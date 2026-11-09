@@ -27,7 +27,20 @@ let outsideLeaderToken: string;
 let studentToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, studentUserId, mentorsNoteId, adminsNoteId, leadersNoteId, legacyHtmlNoteId, superToken, adminToken, mentorToken, insideLeaderToken, outsideLeaderToken, studentToken } = await seedNotesFixtures(app));
+  ({
+    seasonId,
+    studentUserId,
+    mentorsNoteId,
+    adminsNoteId,
+    leadersNoteId,
+    legacyHtmlNoteId,
+    superToken,
+    adminToken,
+    mentorToken,
+    insideLeaderToken,
+    outsideLeaderToken,
+    studentToken,
+  } = await seedNotesFixtures(app));
 });
 
 afterAll(async () => {
@@ -91,9 +104,7 @@ describe("GET /api/v1/students/:id/notes — the visibility gate", () => {
 
     expect(res.status).toBe(200);
     const ids = res.body.data.notes.map((n: { id: number }) => n.id);
-    expect(ids).toEqual(
-      expect.arrayContaining([mentorsNoteId, adminsNoteId, leadersNoteId, legacyHtmlNoteId]),
-    );
+    expect(ids).toEqual(expect.arrayContaining([mentorsNoteId, adminsNoteId, leadersNoteId, legacyHtmlNoteId]));
   });
 
   it("REFUSES a student their own notes explicitly — 403, never an empty array (D5 #2)", async () => {
@@ -114,10 +125,12 @@ describe("GET /api/v1/students/:id/notes — the visibility gate", () => {
     const own = await db.engagementNote.create({
       data: {
         studentUserId,
-        authorUserId: (await db.engagementNote.findUniqueOrThrow({
-          where: { id: leadersNoteId },
-          select: { authorUserId: true },
-        })).authorUserId,
+        authorUserId: (
+          await db.engagementNote.findUniqueOrThrow({
+            where: { id: leadersNoteId },
+            select: { authorUserId: true },
+          })
+        ).authorUserId,
         seasonId,
         body: "<p>space-v2-test own admins-visibility note</p>",
         visibility: "ADMINS",
@@ -169,9 +182,7 @@ describe("GET /api/v1/students/:id/notes — the visibility gate", () => {
 
 describe("GET /api/v1/me/notes", () => {
   it("returns only the caller's own notes, with the student attached", async () => {
-    const res = await request(app)
-      .get("/api/v1/me/notes")
-      .set("authorization", `Bearer ${mentorToken}`);
+    const res = await request(app).get("/api/v1/me/notes").set("authorization", `Bearer ${mentorToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.notes.map((n: { id: number }) => n.id)).toEqual([mentorsNoteId]);
@@ -179,9 +190,7 @@ describe("GET /api/v1/me/notes", () => {
   });
 
   it("works for an ADMIN too — v1 had no authored-notes surface for them (R44)", async () => {
-    const res = await request(app)
-      .get("/api/v1/me/notes")
-      .set("authorization", `Bearer ${adminToken}`);
+    const res = await request(app).get("/api/v1/me/notes").set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.notes.map((n: { id: number }) => n.id)).toContain(adminsNoteId);
   });
@@ -191,15 +200,11 @@ describe("GET /api/v1/me/notes", () => {
       .get(`/api/v1/me/notes?studentId=${studentUserId}`)
       .set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
-    expect(
-      res.body.data.notes.every((n: { student: { id: number } }) => n.student.id === studentUserId),
-    ).toBe(true);
+    expect(res.body.data.notes.every((n: { student: { id: number } }) => n.student.id === studentUserId)).toBe(true);
   });
 
   it("refuses a STUDENT — they can never author a note (R51)", async () => {
-    const res = await request(app)
-      .get("/api/v1/me/notes")
-      .set("authorization", `Bearer ${studentToken}`);
+    const res = await request(app).get("/api/v1/me/notes").set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(403);
   });
 });

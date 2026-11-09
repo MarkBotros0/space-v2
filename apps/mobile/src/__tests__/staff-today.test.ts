@@ -6,10 +6,21 @@ const NOW = new Date("2026-11-05T12:00:00.000Z");
 
 function session(id: number, startsAt: string, durationMinutes: number, marked = false): SessionListItem {
   return {
-    id, title: `S${id}`, startsAt, dayKey: startsAt.slice(0, 10), startTime: "10:00",
-    durationMinutes, location: null, recurrenceGroupId: null, attendanceMarked: marked,
-    seasonId: 1, seasonCode: "s1", seasonTitle: "Season 1",
-    checkInToken: null, checkInOpenAt: null, checkInClosedAt: null,
+    id,
+    title: `S${id}`,
+    startsAt,
+    dayKey: startsAt.slice(0, 10),
+    startTime: "10:00",
+    durationMinutes,
+    location: null,
+    recurrenceGroupId: null,
+    attendanceMarked: marked,
+    seasonId: 1,
+    seasonCode: "s1",
+    seasonTitle: "Season 1",
+    checkInToken: null,
+    checkInOpenAt: null,
+    checkInClosedAt: null,
   };
 }
 

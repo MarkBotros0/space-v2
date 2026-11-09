@@ -37,12 +37,7 @@ export function NeedsActionList({
 
   const tiles: CountTileProps[] = [];
   const unknown: string[] = [];
-  const {
-    pendingReview: review,
-    unmarkedSessions: unmarked,
-    atRisk,
-    pendingInvites: invites,
-  } = needs;
+  const { pendingReview: review, unmarkedSessions: unmarked, atRisk, pendingInvites: invites } = needs;
 
   if (review === null) unknown.push("submissions waiting for review");
   else
@@ -75,9 +70,7 @@ export function NeedsActionList({
       icon: TriangleAlert,
       tone: "bad",
       onPress: () =>
-        hasSeason
-          ? router.push({ pathname: "/attention/at-risk", params: season })
-          : router.push("/attention/at-risk"),
+        hasSeason ? router.push({ pathname: "/attention/at-risk", params: season }) : router.push("/attention/at-risk"),
     });
   // ADMIN has no invites count at all (undefined): no tile.
   if (invites === null) unknown.push("people not invited yet");
@@ -97,9 +90,7 @@ export function NeedsActionList({
       {tiles.some((t) => t.value > 0) || (tiles.length > 0 && unknown.length === 0) ? (
         <CountGrid tiles={tiles} />
       ) : null}
-      {unknown.length > 0 ? (
-        <InlineError message={`Couldn't load ${unknown.join(", ")}.`} onRetry={onRetry} />
-      ) : null}
+      {unknown.length > 0 ? <InlineError message={`Couldn't load ${unknown.join(", ")}.`} onRetry={onRetry} /> : null}
     </View>
   );
 }

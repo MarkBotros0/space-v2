@@ -8,11 +8,7 @@ jest.mock("../lib/api-client", () => ({
 
 import { apiClient } from "../lib/api-client";
 import { useAssignmentTracker, useStaffAssignments } from "../hooks/use-assignments";
-import {
-  useCreateAssignment,
-  useDeleteAssignment,
-  useUpdateAssignment,
-} from "../hooks/use-assignment-writes";
+import { useCreateAssignment, useDeleteAssignment, useUpdateAssignment } from "../hooks/use-assignment-writes";
 import { useSeasonGroups } from "../hooks/use-groups";
 import { useEnsureSubmission } from "../hooks/use-submission";
 import { queryKeys } from "../lib/query-keys";
@@ -28,18 +24,42 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 const detail = {
-  id: 41, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
-  sessionId: null, sessionTitle: null, title: "Essay one", description: null,
-  dueAt: null, dueOrgDay: null, dueOrgTime: null, isOverdue: false,
-  isAllGroups: true, type: "STANDARD" as const, forumMinWords: null,
-  forumAllowComments: false, forumPostToRead: true, maxFileSizeMb: null, allowedMimeCategories: [],
-  groupIds: [], mySubmission: null, canManage: true, readOnly: false,
+  id: 41,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
+  sessionId: null,
+  sessionTitle: null,
+  title: "Essay one",
+  description: null,
+  dueAt: null,
+  dueOrgDay: null,
+  dueOrgTime: null,
+  isOverdue: false,
+  isAllGroups: true,
+  type: "STANDARD" as const,
+  forumMinWords: null,
+  forumAllowComments: false,
+  forumPostToRead: true,
+  maxFileSizeMb: null,
+  allowedMimeCategories: [],
+  groupIds: [],
+  mySubmission: null,
+  canManage: true,
+  readOnly: false,
 };
 
 const staffRow = {
-  id: 41, title: "Essay one", dueAt: "2099-04-01T21:59:00.000Z", dueOrgDay: "2099-04-01",
-  isOverdue: false, isAllGroups: false, targetGroupIds: [3], submissionCount: 1,
-  expectedCount: 2, seasonCode: "s7",
+  id: 41,
+  title: "Essay one",
+  dueAt: "2099-04-01T21:59:00.000Z",
+  dueOrgDay: "2099-04-01",
+  isOverdue: false,
+  isAllGroups: false,
+  targetGroupIds: [3],
+  submissionCount: 1,
+  expectedCount: 2,
+  seasonCode: "s7",
 };
 
 beforeEach(() => {
@@ -76,7 +96,11 @@ describe("read hooks", () => {
 
   it("useStaffAssignments refuses the student arm instead of quietly accepting it", async () => {
     get.mockResolvedValue({
-      data: { data: { assignments: [{ id: 41, title: "x", dueAt: null, isOverdue: false, status: "PENDING", reviewedAt: null }] } },
+      data: {
+        data: {
+          assignments: [{ id: 41, title: "x", dueAt: null, isOverdue: false, status: "PENDING", reviewedAt: null }],
+        },
+      },
     });
     const { result } = renderHook(() => useStaffAssignments(7), { wrapper });
     await waitFor(() => expect(result.current.isError).toBe(true));

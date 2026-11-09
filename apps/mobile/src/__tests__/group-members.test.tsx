@@ -54,9 +54,19 @@ describe("MembersField", () => {
   it("with nobody in the season, says so and points to the season page", () => {
     const onOpenSeason = jest.fn();
     renderWithProviders(
-      <MembersField roster={[]} groupId={null} seasonTitle="GBV 2026" value={[]} onChange={jest.fn()} status="ready" onOpenSeason={onOpenSeason} />,
+      <MembersField
+        roster={[]}
+        groupId={null}
+        seasonTitle="GBV 2026"
+        value={[]}
+        onChange={jest.fn()}
+        status="ready"
+        onOpenSeason={onOpenSeason}
+      />,
     );
-    expect(screen.getByText("Nobody is in GBV 2026 yet. Add people to the season first, from the season page.")).toBeTruthy();
+    expect(
+      screen.getByText("Nobody is in GBV 2026 yet. Add people to the season first, from the season page."),
+    ).toBeTruthy();
     expect(screen.queryByText("No students found.")).toBeNull();
     fireEvent.press(screen.getByText("Go to the season page"));
     expect(onOpenSeason).toHaveBeenCalled();
@@ -65,7 +75,14 @@ describe("MembersField", () => {
   it("ticks and unticks from the sheet", () => {
     const onChange = jest.fn();
     renderWithProviders(
-      <MembersField roster={roster} groupId={10} seasonTitle="GBV 2026" value={[1]} onChange={onChange} status="ready" />,
+      <MembersField
+        roster={roster}
+        groupId={10}
+        seasonTitle="GBV 2026"
+        value={[1]}
+        onChange={onChange}
+        status="ready"
+      />,
     );
     fireEvent.press(screen.getByLabelText("Members"));
     expect(screen.getByLabelText("Abanob Magdy. In this group")).toBeChecked();

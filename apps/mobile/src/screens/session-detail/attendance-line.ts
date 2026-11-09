@@ -5,9 +5,7 @@ import { formatMinutes } from "../../lib/format";
 export function attendanceLine(a: MyAttendance): string {
   if (a.status === "PRESENT") return "Your attendance: Present";
   if (a.status === "LATE") {
-    return a.lateMinutes !== null
-      ? `Your attendance: Late (${formatMinutes(a.lateMinutes)})`
-      : "Your attendance: Late";
+    return a.lateMinutes !== null ? `Your attendance: Late (${formatMinutes(a.lateMinutes)})` : "Your attendance: Late";
   }
   return "Your attendance: Absent";
 }

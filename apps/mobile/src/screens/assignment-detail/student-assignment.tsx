@@ -55,13 +55,7 @@ function ChipRow({ detail, todayOrgDay }: { detail: AssignmentDetail; todayOrgDa
   );
 }
 
-function StudentAssignment({
-  detail,
-  refresh,
-}: {
-  detail: AssignmentDetail;
-  refresh: () => Promise<unknown>;
-}) {
+function StudentAssignment({ detail, refresh }: { detail: AssignmentDetail; refresh: () => Promise<unknown> }) {
   const forum = detail.type === "FORUM";
   const dash = useStudentDashboard(detail.seasonId);
   const { body, footer } = useSubmissionEditor(detail);
@@ -71,9 +65,7 @@ function StudentAssignment({
   const submission = useSubmissionDetail(publicId);
   // The spinner is the pull's own, so a save or a poll never raises it, and it waits for
   // both reads. `enabled` gates only the automatic run, so the submission read is guarded.
-  const pull = usePullRefresh(() =>
-    Promise.all([refresh(), publicId !== null ? submission.refetch() : undefined]),
-  );
+  const pull = usePullRefresh(() => Promise.all([refresh(), publicId !== null ? submission.refetch() : undefined]));
   const subtitle = [detail.seasonTitle, detail.sessionTitle].filter(Boolean).join(" · ");
   return (
     <Screen
@@ -112,7 +104,5 @@ export function StudentAssignmentView({ query }: { query: UseQueryResult<Assignm
       </Screen>
     );
   }
-  return (
-    <StudentAssignment detail={query.data} refresh={() => query.refetch()} />
-  );
+  return <StudentAssignment detail={query.data} refresh={() => query.refetch()} />;
 }

@@ -73,7 +73,14 @@ export async function seedSuperScenario({ user, superUser, student, season }: Sw
 }
 
 /** Notes the mentor wrote, a follow-up for them and notifications. */
-export async function seedMentorScenario({ mentor, student, classmate, alumni, season, pastSeason }: SweepPeople): Promise<void> {
+export async function seedMentorScenario({
+  mentor,
+  student,
+  classmate,
+  alumni,
+  season,
+  pastSeason,
+}: SweepPeople): Promise<void> {
   await db.engagementNote.createMany({
     data: [
       {

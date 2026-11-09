@@ -41,14 +41,7 @@ export function BandDonut({ bands, size = 160 }: BandDonutProps) {
       className="flex-row flex-wrap items-center gap-4"
     >
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={chart.track}
-          strokeWidth={16}
-        />
+        <Circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={chart.track} strokeWidth={16} />
         {total > 0
           ? bands.map((b) => {
               const dash = (b.count / total) * c;

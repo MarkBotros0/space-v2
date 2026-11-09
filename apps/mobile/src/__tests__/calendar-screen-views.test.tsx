@@ -26,9 +26,7 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
         ? Promise.resolve({
             data: {
               data: {
-                events: [
-                  eventRow(3, "Summer retreat", "2099-03-01T09:00:00.000Z", "2099-03-01", "11:00"),
-                ],
+                events: [eventRow(3, "Summer retreat", "2099-03-01T09:00:00.000Z", "2099-03-01", "11:00")],
                 total: 1,
               },
             },
@@ -81,9 +79,7 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
         ? Promise.resolve({
             data: {
               data: {
-                events: [
-                  eventRow(4, "Alumni dinner", "2099-03-05T17:00:00.000Z", "2099-03-05", "19:00"),
-                ],
+                events: [eventRow(4, "Alumni dinner", "2099-03-05T17:00:00.000Z", "2099-03-05", "19:00")],
                 total: 1,
               },
             },
@@ -111,9 +107,7 @@ describe("calendar — JPC events merged into the day buckets (Plan 14)", () => 
         return Promise.resolve({
           data: {
             data: {
-              events: [
-                eventRow(5, "JPC retreat", "2099-03-02T08:00:00.000Z", "2099-03-02", "10:00"),
-              ],
+              events: [eventRow(5, "JPC retreat", "2099-03-02T08:00:00.000Z", "2099-03-02", "10:00")],
               total: 1,
             },
           },
@@ -137,10 +131,7 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
         : Promise.resolve({
             data: {
               data: {
-                sessions: [
-                  kickoff,
-                  session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12"),
-                ],
+                sessions: [kickoff, session(2, "Week two", "2099-03-12T18:00:00.000Z", "2099-03-12")],
               },
             },
           }),

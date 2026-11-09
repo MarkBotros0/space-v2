@@ -57,11 +57,7 @@ function RecordQuery({
 
 function NotFound() {
   return (
-    <EmptyState
-      icon={SearchX}
-      title="Season not found"
-      description="You can only open seasons you have finished."
-    />
+    <EmptyState icon={SearchX} title="Season not found" description="You can only open seasons you have finished." />
   );
 }
 

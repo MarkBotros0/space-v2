@@ -75,13 +75,7 @@ export function CheckInWatcher({ detail }: { detail: SessionDetail }) {
  * and keeps a typed-code fallback. Whether check-in is open is the server's
  * `checkInOpen` (C4) — never the client's own three-hour sum (R51, R73).
  */
-export function StudentCheckInCard({
-  detail,
-  onHero = false,
-}: {
-  detail: SessionDetail;
-  onHero?: boolean;
-}) {
+export function StudentCheckInCard({ detail, onHero = false }: { detail: SessionDetail; onHero?: boolean }) {
   useLiveCheckIn(detail);
   const checkIn = useCheckIn();
   const tally = useCheckInTally();
@@ -103,8 +97,7 @@ export function StudentCheckInCard({
     inFlight.current = true;
     setOutcome(null);
     checkIn.mutate(token, {
-      onSuccess: (data) =>
-        setOutcome({ kind: "checked_in", status: data.status, minutesLate: data.minutesLate }),
+      onSuccess: (data) => setOutcome({ kind: "checked_in", status: data.status, minutesLate: data.minutesLate }),
       onError: (err) => {
         const refused: CheckInOutcome = { kind: "refused", code: checkInRefusalCode(err) };
         setOutcome(refused);
@@ -180,11 +173,7 @@ export function StudentCheckInCard({
     sheet = (
       <View className="flex-col gap-3">
         <QrScanner onCode={submit} onCancel={() => setOpen(false)} />
-        <Pressable
-          accessibilityRole="link"
-          onPress={() => setEntering(true)}
-          className="self-center"
-        >
+        <Pressable accessibilityRole="link" onPress={() => setEntering(true)} className="self-center">
           <Text variant="subhead" className="min-h-[44px] py-3 text-muted-foreground">
             Enter code instead
           </Text>
@@ -209,24 +198,13 @@ export function StudentCheckInCard({
   return (
     <View className="flex-col items-start gap-1.5">
       {enabled && !marked ? (
-        <Button
-          variant={onHero ? "onHero" : "primary"}
-          size="lg"
-          className="min-h-[44px] w-full"
-          onPress={openSheet}
-        >
-          <QrCode
-            size={16}
-            className={onHero ? "text-on-hero-foreground" : "text-primary-foreground"}
-          />
+        <Button variant={onHero ? "onHero" : "primary"} size="lg" className="min-h-[44px] w-full" onPress={openSheet}>
+          <QrCode size={16} className={onHero ? "text-on-hero-foreground" : "text-primary-foreground"} />
           Check In
         </Button>
       ) : null}
       {checkedInAt !== null ? (
-        <Text
-          variant="subhead"
-          className={caption}
-        >{`You checked in at ${formatSessionTime(checkedInAt)}.`}</Text>
+        <Text variant="subhead" className={caption}>{`You checked in at ${formatSessionTime(checkedInAt)}.`}</Text>
       ) : null}
       <Sheet open={open} onClose={() => setOpen(false)} title={sheetTitle}>
         <View className="pb-4">

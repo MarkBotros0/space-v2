@@ -57,8 +57,7 @@ interface GoogleSignInIds {
  * iOS also needs the plugin's `iosUrlScheme` in app.json.
  */
 export function googleSignInIds(os: string = Platform.OS): GoogleSignInIds | null {
-  const extra = Constants.expoConfig?.extra as
-    { googleWebClientId?: unknown; googleIosClientId?: unknown } | undefined;
+  const extra = Constants.expoConfig?.extra as { googleWebClientId?: unknown; googleIosClientId?: unknown } | undefined;
   const pick = (env: string | undefined, fallback: unknown): string | null =>
     env ? env : typeof fallback === "string" && fallback.length > 0 ? fallback : null;
   const webClientId = pick(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, extra?.googleWebClientId);

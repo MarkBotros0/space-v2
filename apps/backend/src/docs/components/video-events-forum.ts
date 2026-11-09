@@ -27,8 +27,23 @@ export const videoEventsForumSchemas = {
   },
   JpcEventListItem: {
     type: "object",
-    description: "Every day and time here is computed on the server in the organisation timezone; the client never derives a day from `date`.",
-    required: ["id", "title", "date", "endDate", "dayKey", "endDayKey", "isPast", "time", "allDay", "url", "visibility", "seasonId", "seasonCode"],
+    description:
+      "Every day and time here is computed on the server in the organisation timezone; the client never derives a day from `date`.",
+    required: [
+      "id",
+      "title",
+      "date",
+      "endDate",
+      "dayKey",
+      "endDayKey",
+      "isPast",
+      "time",
+      "allDay",
+      "url",
+      "visibility",
+      "seasonId",
+      "seasonCode",
+    ],
     properties: {
       id: { type: "integer" },
       title: { type: "string" },
@@ -36,9 +51,16 @@ export const videoEventsForumSchemas = {
       endDate: { type: ["string", "null"], format: "date-time" },
       dayKey: { type: "string", description: "`YYYY-MM-DD`, the organisation day `date` falls on." },
       endDayKey: { type: ["string", "null"] },
-      isPast: { type: "boolean", description: "Server-derived: `(endDayKey ?? dayKey)` is before today on the organisation clock (day granularity; the complement of `upcoming`)." },
+      isPast: {
+        type: "boolean",
+        description:
+          "Server-derived: `(endDayKey ?? dayKey)` is before today on the organisation clock (day granularity; the complement of `upcoming`).",
+      },
       time: { type: ["string", "null"], description: "Organisation wall-clock `HH:mm`; null exactly when `allDay`." },
-      allDay: { type: "boolean", description: "Server-derived: `date` is midnight on the organisation clock (there is no column)." },
+      allDay: {
+        type: "boolean",
+        description: "Server-derived: `date` is midnight on the organisation clock (there is no column).",
+      },
       url: { type: ["string", "null"] },
       visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
       seasonId: { type: ["integer", "null"] },
@@ -62,22 +84,33 @@ export const videoEventsForumSchemas = {
   },
   CreateJpcEventRequest: {
     type: "object",
-    description: "Wall-clock fields in the organisation timezone — the request carries no zone and the server composes the instant.",
+    description:
+      "Wall-clock fields in the organisation timezone — the request carries no zone and the server composes the instant.",
     required: ["title", "day", "visibility"],
     properties: {
       title: { type: "string", minLength: 1, maxLength: 200 },
       day: { type: "string", description: "`YYYY-MM-DD`." },
-      time: { type: ["string", "null"], description: "`HH:mm`; null (default) means all-day, stored as organisation midnight." },
-      endDay: { type: ["string", "null"], description: "`YYYY-MM-DD`, on or after `day`; stored at organisation midnight." },
+      time: {
+        type: ["string", "null"],
+        description: "`HH:mm`; null (default) means all-day, stored as organisation midnight.",
+      },
+      endDay: {
+        type: ["string", "null"],
+        description: "`YYYY-MM-DD`, on or after `day`; stored at organisation midnight.",
+      },
       description: { type: ["string", "null"], maxLength: 2000 },
       url: { type: ["string", "null"], format: "uri" },
       visibility: { type: "string", enum: ["ALL", "ALUMNI_ONLY", "SEASON"] },
-      seasonId: { type: ["integer", "null"], description: "Required when `visibility` is SEASON; ignored (nulled) otherwise." },
+      seasonId: {
+        type: ["integer", "null"],
+        description: "Required when `visibility` is SEASON; ignored (nulled) otherwise.",
+      },
     },
   },
   UpdateJpcEventRequest: {
     type: "object",
-    description: "Every field optional. The patch is merged onto the stored row (read back as wall-clock fields) and both refinements re-run against the merged result.",
+    description:
+      "Every field optional. The patch is merged onto the stored row (read back as wall-clock fields) and both refinements re-run against the merged result.",
     properties: {
       title: { type: "string", minLength: 1, maxLength: 200 },
       day: { type: "string" },
@@ -99,7 +132,17 @@ export const videoEventsForumSchemas = {
         type: "array",
         items: {
           type: "object",
-          required: ["studentUserId", "studentName", "groupId", "groupName", "answeredCount", "questionCount", "earnedPoints", "totalPoints", "completedAt"],
+          required: [
+            "studentUserId",
+            "studentName",
+            "groupId",
+            "groupName",
+            "answeredCount",
+            "questionCount",
+            "earnedPoints",
+            "totalPoints",
+            "completedAt",
+          ],
           properties: {
             studentUserId: { type: "integer" },
             studentName: { type: ["string", "null"] },
@@ -119,9 +162,22 @@ export const videoEventsForumSchemas = {
     type: "object",
     description:
       "The student's view of a session's video quiz. **`correctIndex` is absent from every question by design** (the answer-key split): the select list never reads it and the mobile schema is strict. It is returned only by the answer endpoint, for the question just answered.",
-    required: ["videoId", "youtubeUrl", "questions", "furthestSeconds", "completedAt", "earnedPoints", "totalPoints", "answeredCount", "nextQuestionId"],
+    required: [
+      "videoId",
+      "youtubeUrl",
+      "questions",
+      "furthestSeconds",
+      "completedAt",
+      "earnedPoints",
+      "totalPoints",
+      "answeredCount",
+      "nextQuestionId",
+    ],
     properties: {
-      videoId: { type: ["string", "null"], description: "Resolved server-side from `Session.youtubeUrl`; null when missing or unparseable." },
+      videoId: {
+        type: ["string", "null"],
+        description: "Resolved server-side from `Session.youtubeUrl`; null when missing or unparseable.",
+      },
       youtubeUrl: { type: ["string", "null"] },
       questions: {
         type: "array",
@@ -145,7 +201,11 @@ export const videoEventsForumSchemas = {
       earnedPoints: { type: "integer" },
       totalPoints: { type: "integer" },
       answeredCount: { type: "integer" },
-      nextQuestionId: { type: ["integer", "null"], description: "The only question the server will accept an answer for next (earliest unanswered by `atSeconds`, `id` tiebreak); null when all are answered." },
+      nextQuestionId: {
+        type: ["integer", "null"],
+        description:
+          "The only question the server will accept an answer for next (earliest unanswered by `atSeconds`, `id` tiebreak); null when all are answered.",
+      },
     },
   },
   SubmitVideoAnswerRequest: {
@@ -153,7 +213,11 @@ export const videoEventsForumSchemas = {
     required: ["questionId", "selectedIndex"],
     properties: {
       questionId: { type: "integer", minimum: 1 },
-      selectedIndex: { type: "integer", minimum: 0, description: "Checked against the stored option count, not a client value." },
+      selectedIndex: {
+        type: "integer",
+        minimum: 0,
+        description: "Checked against the stored option count, not a client value.",
+      },
     },
   },
   SubmitVideoAnswerResponse: {
@@ -161,7 +225,10 @@ export const videoEventsForumSchemas = {
     required: ["isCorrect", "correctIndex", "furthestSeconds", "completedAt", "nextQuestionId"],
     properties: {
       isCorrect: { type: "boolean" },
-      correctIndex: { type: "integer", description: "Returned for the question just answered, and only then. Safe because the first answer is final." },
+      correctIndex: {
+        type: "integer",
+        description: "Returned for the question just answered, and only then. Safe because the first answer is final.",
+      },
       furthestSeconds: { type: "integer" },
       completedAt: { type: ["string", "null"], format: "date-time" },
       nextQuestionId: { type: ["integer", "null"] },
@@ -170,20 +237,28 @@ export const videoEventsForumSchemas = {
   VideoProgressRequest: {
     type: "object",
     required: ["furthestSeconds"],
-    description: "There is no `completed` field: any extra key is ignored. Completion is derived by the server when the last question is answered.",
+    description:
+      "There is no `completed` field: any extra key is ignored. Completion is derived by the server when the last question is answered.",
     properties: { furthestSeconds: { type: "integer", minimum: 0, maximum: 86400 } },
   },
   ForumOwnResponse: {
     type: "object",
-    description: "The caller's own post. With no submission row in existence (nothing creates one on read) `submissionPublicId` is null, `status` DRAFT and `posted` false.",
+    description:
+      "The caller's own post. With no submission row in existence (nothing creates one on read) `submissionPublicId` is null, `status` DRAFT and `posted` false.",
     required: ["submissionPublicId", "text", "status", "wordCount", "posted", "feedback", "reviewedAt"],
     properties: {
       submissionPublicId: { type: ["string", "null"] },
-      text: { type: "string", description: "Plain text. Stored as HTML for v1's renderer and converted at this boundary in both directions." },
+      text: {
+        type: "string",
+        description: "Plain text. Stored as HTML for v1's renderer and converted at this boundary in both directions.",
+      },
       status: { $ref: "#/components/schemas/SubmissionStatus" },
       wordCount: { type: "integer" },
       posted: { type: "boolean" },
-      feedback: { type: ["string", "null"], description: "A reviewer's verdict, as plain text. v1's forum screen never rendered it." },
+      feedback: {
+        type: ["string", "null"],
+        description: "A reviewer's verdict, as plain text. v1's forum screen never rendered it.",
+      },
       reviewedAt: { type: ["string", "null"], format: "date-time" },
     },
   },
@@ -193,15 +268,30 @@ export const videoEventsForumSchemas = {
     properties: {
       id: { type: "integer" },
       authorUserId: { type: "integer" },
-      authorDisplayName: { type: "string", description: "`name`, or the literal \"Group member\". Never an email address." },
+      authorDisplayName: {
+        type: "string",
+        description: '`name`, or the literal "Group member". Never an email address.',
+      },
       body: { type: "string", description: "Plain text, rendered as plain text." },
       createdAt: { type: "string", format: "date-time" },
-      canDelete: { type: "boolean", description: "Authoritative: computed from the same gate as DELETE. The client must not re-derive it." },
+      canDelete: {
+        type: "boolean",
+        description: "Authoritative: computed from the same gate as DELETE. The client must not re-derive it.",
+      },
     },
   },
   ForumPost: {
     type: "object",
-    required: ["submissionPublicId", "studentUserId", "authorDisplayName", "text", "submittedAt", "commentCount", "comments", "canComment"],
+    required: [
+      "submissionPublicId",
+      "studentUserId",
+      "authorDisplayName",
+      "text",
+      "submittedAt",
+      "commentCount",
+      "comments",
+      "canComment",
+    ],
     properties: {
       submissionPublicId: { type: "string" },
       studentUserId: { type: "integer" },
@@ -209,7 +299,11 @@ export const videoEventsForumSchemas = {
       text: { type: "string", description: "Plain text." },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       commentCount: { type: "integer" },
-      comments: { type: "array", items: { $ref: "#/components/schemas/ForumComment" }, description: "The first three, oldest first. The rest come from the comments endpoint." },
+      comments: {
+        type: "array",
+        items: { $ref: "#/components/schemas/ForumComment" },
+        description: "The first three, oldest first. The rest come from the comments endpoint.",
+      },
       canComment: { type: "boolean" },
     },
   },
@@ -219,8 +313,15 @@ export const videoEventsForumSchemas = {
     properties: {
       assignmentId: { type: "integer" },
       dueAt: { type: ["string", "null"], format: "date-time" },
-      own: { oneOf: [{ $ref: "#/components/schemas/ForumOwnResponse" }, { type: "null" }], description: "Null for a staff reader." },
-      locked: { type: "boolean", description: "A product mechanic, not an error: on a forum with `forumPostToRead`, a student sees no peer's work until their own response is posted. Staff are never locked." },
+      own: {
+        oneOf: [{ $ref: "#/components/schemas/ForumOwnResponse" }, { type: "null" }],
+        description: "Null for a staff reader.",
+      },
+      locked: {
+        type: "boolean",
+        description:
+          "A product mechanic, not an error: on a forum with `forumPostToRead`, a student sees no peer's work until their own response is posted. Staff are never locked.",
+      },
       minWords: { type: ["integer", "null"] },
       allowComments: { type: "boolean" },
       groupId: { type: ["integer", "null"], description: "Null for a staff reader seeing every group." },
@@ -231,7 +332,15 @@ export const videoEventsForumSchemas = {
   SubmitForumResponseRequest: {
     type: "object",
     required: ["text"],
-    properties: { text: { type: "string", minLength: 1, maxLength: 20000, description: "Plain text. At least one word regardless of `forumMinWords`, so an empty post cannot unlock the feed." } },
+    properties: {
+      text: {
+        type: "string",
+        minLength: 1,
+        maxLength: 20000,
+        description:
+          "Plain text. At least one word regardless of `forumMinWords`, so an empty post cannot unlock the feed.",
+      },
+    },
   },
   AddForumCommentRequest: {
     type: "object",

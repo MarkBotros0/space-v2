@@ -37,12 +37,7 @@ function BackLink({ label, href }: BackTarget) {
       className="-ml-1.5 min-h-[44px] flex-row items-center gap-0.5 self-start pr-2"
     >
       <ChevronLeft size={22} className="text-primary" />
-      <Text
-        variant="body"
-        numberOfLines={1}
-        maxFontSizeMultiplier={1.3}
-        className="min-w-0 shrink text-primary"
-      >
+      <Text variant="body" numberOfLines={1} maxFontSizeMultiplier={1.3} className="min-w-0 shrink text-primary">
         {label}
       </Text>
     </Pressable>
@@ -73,7 +68,10 @@ export function LargeTitle({
             ) : null}
           </View>
           {trailing ? (
-            <View testID="large-title-trailing" className="ml-auto shrink-0 flex-row flex-wrap items-center justify-end gap-2">
+            <View
+              testID="large-title-trailing"
+              className="ml-auto shrink-0 flex-row flex-wrap items-center justify-end gap-2"
+            >
               {trailing}
             </View>
           ) : null}
@@ -198,12 +196,7 @@ export function CompactHeader({
 
 function CompactTitle({ title }: { title?: string }) {
   return (
-    <Text
-      variant="headline"
-      numberOfLines={1}
-      maxFontSizeMultiplier={1.3}
-      className="text-center text-foreground"
-    >
+    <Text variant="headline" numberOfLines={1} maxFontSizeMultiplier={1.3} className="text-center text-foreground">
       {title}
     </Text>
   );

@@ -32,13 +32,13 @@ afterAll(async () => {
 
 describe("POST /api/v1/sessions", () => {
   it("creates a weekly series sharing one recurrence id, one calendar week apart", async () => {
-    const res = await request(app)
-      .post("/api/v1/sessions")
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({
-        seasonId, title: "Weekly session", startsAt: "2099-03-01T18:00:00.000Z",
-        durationMinutes: 90, repeatWeeks: 3,
-      });
+    const res = await request(app).post("/api/v1/sessions").set("authorization", `Bearer ${adminToken}`).send({
+      seasonId,
+      title: "Weekly session",
+      startsAt: "2099-03-01T18:00:00.000Z",
+      durationMinutes: 90,
+      repeatWeeks: 3,
+    });
 
     expect(res.status).toBe(201);
     expect(typeof res.body.data.recurrenceGroupId).toBe("string");
@@ -48,7 +48,9 @@ describe("POST /api/v1/sessions", () => {
       select: { id: true, startsAt: true, seasonId: true },
     });
     expect(rows.map((r) => r.startsAt.toISOString())).toEqual([
-      "2099-03-01T18:00:00.000Z", "2099-03-08T18:00:00.000Z", "2099-03-15T18:00:00.000Z",
+      "2099-03-01T18:00:00.000Z",
+      "2099-03-08T18:00:00.000Z",
+      "2099-03-15T18:00:00.000Z",
     ]);
     expect(rows.every((r) => r.seasonId === seasonId)).toBe(true);
     expect(res.body.data.id).toBe(rows[0]?.id);
@@ -59,13 +61,13 @@ describe("POST /api/v1/sessions", () => {
     expect(config.orgTimezone).toBe("Africa/Cairo");
     // Cairo moves UTC+2 → UTC+3 on 2099-04-24. v1's host-zone addDays would
     // keep the UTC instant on a UTC server and drift the class to 21:00.
-    const res = await request(app)
-      .post("/api/v1/sessions")
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({
-        seasonId, title: "Spring series", startsAt: "2099-04-17T18:00:00.000Z",
-        durationMinutes: 60, repeatWeeks: 3,
-      });
+    const res = await request(app).post("/api/v1/sessions").set("authorization", `Bearer ${adminToken}`).send({
+      seasonId,
+      title: "Spring series",
+      startsAt: "2099-04-17T18:00:00.000Z",
+      durationMinutes: 60,
+      repeatWeeks: 3,
+    });
 
     expect(res.status).toBe(201);
     const rows = await db.session.findMany({
@@ -74,7 +76,9 @@ describe("POST /api/v1/sessions", () => {
       select: { startsAt: true },
     });
     expect(rows.map((r) => r.startsAt.toISOString())).toEqual([
-      "2099-04-17T18:00:00.000Z", "2099-04-24T17:00:00.000Z", "2099-05-01T17:00:00.000Z",
+      "2099-04-17T18:00:00.000Z",
+      "2099-04-24T17:00:00.000Z",
+      "2099-05-01T17:00:00.000Z",
     ]);
   });
 
@@ -132,8 +136,12 @@ describe("PATCH /api/v1/sessions/:id", () => {
     const res = await request(app)
       .patch(`/api/v1/sessions/${b.id}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ title: "Moved", startsAt: new Date(b.startsAt.getTime() + HOUR).toISOString(),
-        durationMinutes: 60, scope: "one" });
+      .send({
+        title: "Moved",
+        startsAt: new Date(b.startsAt.getTime() + HOUR).toISOString(),
+        durationMinutes: 60,
+        scope: "one",
+      });
     expect(res.status).toBe(200);
     expect(res.body.data.updated).toBe(1);
 
@@ -153,8 +161,12 @@ describe("PATCH /api/v1/sessions/:id", () => {
     const res = await request(app)
       .patch(`/api/v1/sessions/${b.id}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ title: "Series two", startsAt: new Date(b.startsAt.getTime() + HOUR).toISOString(),
-        durationMinutes: 60, scope: "future" });
+      .send({
+        title: "Series two",
+        startsAt: new Date(b.startsAt.getTime() + HOUR).toISOString(),
+        durationMinutes: 60,
+        scope: "future",
+      });
     expect(res.status).toBe(200);
     expect(res.body.data.updated).toBe(2);
 
@@ -164,7 +176,9 @@ describe("PATCH /api/v1/sessions/:id", () => {
       select: { startsAt: true },
     });
     expect(rows.map((r) => r.startsAt.getTime())).toEqual([
-      a.startsAt.getTime(), b.startsAt.getTime() + HOUR, c.startsAt.getTime() + HOUR,
+      a.startsAt.getTime(),
+      b.startsAt.getTime() + HOUR,
+      c.startsAt.getTime() + HOUR,
     ]);
   });
 
@@ -175,42 +189,54 @@ describe("PATCH /api/v1/sessions/:id", () => {
     const otherSeason = await createTestSeason();
     const shared = "space-v2-test-xrg";
     const mine = await db.session.create({
-      data: { seasonId, title: "Mine", startsAt: new Date("2099-05-01T18:00:00.000Z"),
-        durationMinutes: 60, recurrenceGroupId: shared },
+      data: {
+        seasonId,
+        title: "Mine",
+        startsAt: new Date("2099-05-01T18:00:00.000Z"),
+        durationMinutes: 60,
+        recurrenceGroupId: shared,
+      },
       select: { id: true },
     });
     const theirs = await db.session.create({
-      data: { seasonId: otherSeason.id, title: "Theirs",
-        startsAt: new Date("2099-05-08T18:00:00.000Z"), durationMinutes: 60,
-        recurrenceGroupId: shared },
+      data: {
+        seasonId: otherSeason.id,
+        title: "Theirs",
+        startsAt: new Date("2099-05-08T18:00:00.000Z"),
+        durationMinutes: 60,
+        recurrenceGroupId: shared,
+      },
       select: { id: true },
     });
 
     const res = await request(app)
       .patch(`/api/v1/sessions/${mine.id}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ title: "Renamed", startsAt: "2099-05-01T19:00:00.000Z",
-        durationMinutes: 60, scope: "all" });
+      .send({ title: "Renamed", startsAt: "2099-05-01T19:00:00.000Z", durationMinutes: 60, scope: "all" });
     expect(res.status).toBe(200);
 
     const untouched = await db.session.findUnique({
-      where: { id: theirs.id }, select: { title: true, startsAt: true },
+      where: { id: theirs.id },
+      select: { title: true, startsAt: true },
     });
     expect(untouched?.title).toBe("Theirs");
     expect(untouched?.startsAt.toISOString()).toBe("2099-05-08T18:00:00.000Z");
   });
 
   it("notifies enrolled students when the start time changes, and not otherwise", async () => {
-    const count = () =>
-      db.notification.count({ where: { userId: studentUserId, type: "SESSION_RESCHEDULED" } });
+    const count = () => db.notification.count({ where: { userId: studentUserId, type: "SESSION_RESCHEDULED" } });
     const before = await count();
 
     // Title only, same start: no notification.
     const same = await request(app)
       .patch(`/api/v1/sessions/${sessionId}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ title: "Session One (renamed)", startsAt: "2099-03-01T18:00:00.000Z",
-        durationMinutes: 90, scope: "one" });
+      .send({
+        title: "Session One (renamed)",
+        startsAt: "2099-03-01T18:00:00.000Z",
+        durationMinutes: 90,
+        scope: "one",
+      });
     expect(same.status).toBe(200);
     expect(await count()).toBe(before);
 
@@ -218,8 +244,12 @@ describe("PATCH /api/v1/sessions/:id", () => {
     const moved = await request(app)
       .patch(`/api/v1/sessions/${sessionId}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ title: "Session One (renamed)", startsAt: "2099-03-01T19:00:00.000Z",
-        durationMinutes: 90, scope: "one" });
+      .send({
+        title: "Session One (renamed)",
+        startsAt: "2099-03-01T19:00:00.000Z",
+        durationMinutes: 90,
+        scope: "one",
+      });
     expect(moved.status).toBe(200);
     expect(await count()).toBe(before + 1);
     const latest = await db.notification.findFirst({
@@ -266,17 +296,32 @@ describe("DELETE /api/v1/sessions/:id", () => {
     const otherSeason = await createTestSeason();
     const shared = "space-v2-test-xrg-del";
     const mine = await db.session.create({
-      data: { seasonId, title: "Mine 1", startsAt: new Date("2099-09-01T18:00:00.000Z"),
-        durationMinutes: 60, recurrenceGroupId: shared },
+      data: {
+        seasonId,
+        title: "Mine 1",
+        startsAt: new Date("2099-09-01T18:00:00.000Z"),
+        durationMinutes: 60,
+        recurrenceGroupId: shared,
+      },
       select: { id: true },
     });
     await db.session.create({
-      data: { seasonId, title: "Mine 2", startsAt: new Date("2099-09-08T18:00:00.000Z"),
-        durationMinutes: 60, recurrenceGroupId: shared },
+      data: {
+        seasonId,
+        title: "Mine 2",
+        startsAt: new Date("2099-09-08T18:00:00.000Z"),
+        durationMinutes: 60,
+        recurrenceGroupId: shared,
+      },
     });
     const theirs = await db.session.create({
-      data: { seasonId: otherSeason.id, title: "Theirs", startsAt: new Date("2099-09-15T18:00:00.000Z"),
-        durationMinutes: 60, recurrenceGroupId: shared },
+      data: {
+        seasonId: otherSeason.id,
+        title: "Theirs",
+        startsAt: new Date("2099-09-15T18:00:00.000Z"),
+        durationMinutes: 60,
+        recurrenceGroupId: shared,
+      },
       select: { id: true },
     });
 

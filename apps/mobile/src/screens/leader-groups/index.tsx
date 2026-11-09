@@ -80,9 +80,7 @@ export function LeaderGroups() {
 
   // Past = a finished season; a DRAFT season being set up is upcoming, so it stays current.
   const past = new Set(
-    (seasons.data ?? [])
-      .filter((x) => x.status === "COMPLETED" || x.status === "ARCHIVED")
-      .map((x) => x.id),
+    (seasons.data ?? []).filter((x) => x.status === "COMPLETED" || x.status === "ARCHIVED").map((x) => x.id),
   );
   // Until the seasons load, every group counts as current.
   const isCurrent = (g: GroupListItem) => !past.has(g.seasonId);

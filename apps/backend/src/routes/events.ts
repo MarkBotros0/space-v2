@@ -3,12 +3,7 @@ import { Router } from "express";
 import { db } from "../db/client";
 import type { JpcVisibility } from "../generated/prisma/enums";
 import { apiError, apiOk } from "../lib/api-response";
-import {
-  isOrgMidnight,
-  orgDayKey,
-  orgWallClockToInstant,
-  orgWallTime,
-} from "../lib/org-time";
+import { isOrgMidnight, orgDayKey, orgWallClockToInstant, orgWallTime } from "../lib/org-time";
 import { parseId } from "../lib/parse-id";
 import {
   EVENT_PAGE_ORDER,
@@ -119,11 +114,7 @@ eventsRouter.get("/", async (req, res) => {
   // remain optional narrowing; `upcoming` is v1's dashboard-card filter
   // ((endDate ?? date) >= start of today, org zone) moved server-side.
   const to = toRaw ? new Date(toRaw) : null;
-  const from = upcoming
-    ? orgWallClockToInstant(orgDayKey(new Date()), null)
-    : fromRaw
-      ? new Date(fromRaw)
-      : null;
+  const from = upcoming ? orgWallClockToInstant(orgDayKey(new Date()), null) : fromRaw ? new Date(fromRaw) : null;
 
   const where = { AND: [await eventVisibilityFilter(user), eventWindowFilter(from, to)] };
 
@@ -233,9 +224,7 @@ eventsRouter.patch("/:id", async (req, res) => {
     seasonId: row.seasonId,
   };
   // Drop undefined keys so an omitted field keeps its stored value.
-  const patch = Object.fromEntries(
-    Object.entries(parsed.data).filter(([, v]) => v !== undefined),
-  );
+  const patch = Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== undefined));
   const merged = mergedEventSchema.safeParse({ ...stored, ...patch });
   if (!merged.success) return apiError(res, "bad_request", "Invalid event.", 400);
   const m = merged.data;

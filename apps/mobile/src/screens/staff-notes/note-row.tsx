@@ -18,16 +18,12 @@ export function NoteRow({ item, byAuthor = false }: { item: AuthoredNote; byAuth
   const router = useRouter();
   const press = usePressDim();
   // One string, so a missing season can never leave a dangling separator (R33).
-  const meta = [formatDate(item.createdAt), byAuthor ? item.authorName : item.seasonTitle]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = [formatDate(item.createdAt), byAuthor ? item.authorName : item.seasonTitle].filter(Boolean).join(" · ");
 
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={() =>
-        router.push({ pathname: "/student/[id]", params: { id: String(item.student.id) } })
-      }
+      onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(item.student.id) } })}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >
@@ -41,9 +37,7 @@ export function NoteRow({ item, byAuthor = false }: { item: AuthoredNote; byAuth
               {meta}
             </Text>
             <Text variant="body">{item.body}</Text>
-            {item.followUpFlagged ? (
-              <StatusChip tone="warn" label="Follow-up flagged" className="self-start" />
-            ) : null}
+            {item.followUpFlagged ? <StatusChip tone="warn" label="Follow-up flagged" className="self-start" /> : null}
             <Text variant="caption" className="text-muted-foreground">
               {VISIBILITY_LABEL[item.visibility]}
             </Text>

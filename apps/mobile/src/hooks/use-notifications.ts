@@ -1,10 +1,4 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type UseQueryResult,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
   markReadResponseSchema,
   notificationListResponseSchema,
@@ -127,8 +121,6 @@ export function useUpdateNotificationPreferences() {
 }
 
 /** Flattened pages, for a FlatList's `data`. */
-export function flattenNotifications(
-  pages: { items: NotificationItem[] }[] | undefined,
-): NotificationItem[] {
+export function flattenNotifications(pages: { items: NotificationItem[] }[] | undefined): NotificationItem[] {
   return (pages ?? []).flatMap((p) => p.items);
 }

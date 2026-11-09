@@ -3,8 +3,28 @@ import request from "supertest";
 
 import { backfillResults } from "../../../scripts/community-preflight";
 import { db } from "../../db/client";
-import { auditLines, correct, enrol, finished, graduate, mint, nextSecond, seasonOf, yearOf } from "./graduating-seasons-setup";
-import { adminTokenOf, app, as, ctx, person, rowOf, seedEnrollmentFixtures, stamp, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  auditLines,
+  correct,
+  enrol,
+  finished,
+  graduate,
+  mint,
+  nextSecond,
+  seasonOf,
+  yearOf,
+} from "./graduating-seasons-setup";
+import {
+  adminTokenOf,
+  app,
+  as,
+  ctx,
+  person,
+  rowOf,
+  seedEnrollmentFixtures,
+  stamp,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 
 jest.setTimeout(180000);
 
@@ -112,14 +132,17 @@ describe("Season.graduatesOnPass", () => {
     expect(await flag(id)).toBe(true);
   });
 
-  it.each(["COMPLETED", "ARCHIVED"] as const)("can't change on a %s season, though the same value saves", async (status) => {
-    const id = await seasonOf(status, false);
-    const refused = await patchSeason(id, await ownBody(id, { graduatesOnPass: true }));
-    expect(refused.status).toBe(409);
-    expect(refused.body.error.code).toBe("season_finished");
-    expect(await flag(id)).toBe(false);
-    expect((await patchSeason(id, await ownBody(id, { graduatesOnPass: false }))).status).toBe(200);
-  });
+  it.each(["COMPLETED", "ARCHIVED"] as const)(
+    "can't change on a %s season, though the same value saves",
+    async (status) => {
+      const id = await seasonOf(status, false);
+      const refused = await patchSeason(id, await ownBody(id, { graduatesOnPass: true }));
+      expect(refused.status).toBe(409);
+      expect(refused.body.error.code).toBe("season_finished");
+      expect(await flag(id)).toBe(false);
+      expect((await patchSeason(id, await ownBody(id, { graduatesOnPass: false }))).status).toBe(200);
+    },
+  );
 
   it("a season admin can't write it", async () => {
     const id = await seasonOf("ACTIVE", false);
@@ -147,7 +170,12 @@ describe("Season.graduatesOnPass", () => {
     const res = await request(app)
       .post(`/api/v1/seasons/${id}/duplicate`)
       .set(as(ctx.superToken))
-      .send({ year: 2099, code: `space-v2-test-d${Date.now() % 100000}`, startDate: "2099-02-01T00:00:00.000Z", endDate: "2099-12-01T00:00:00.000Z" });
+      .send({
+        year: 2099,
+        code: `space-v2-test-d${Date.now() % 100000}`,
+        startDate: "2099-02-01T00:00:00.000Z",
+        endDate: "2099-12-01T00:00:00.000Z",
+      });
     expect(res.status).toBe(201);
     expect(await flag(res.body.data.id)).toBe(true);
   });
@@ -178,7 +206,11 @@ describe("Graduating someone by exception", () => {
     const live = await seasonOf("ACTIVE", false);
     await enrol(live, student.id);
     const lines = await auditLines(async () => {
-      const res = await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: "A very rare case" });
+      const res = await graduate(student.id, {
+        graduationYear: 2025,
+        override: true,
+        overrideReason: "A very rare case",
+      });
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual({ id: student.id, graduationYear: 2025, enrollmentsCompleted: 1 });
     });
@@ -203,7 +235,15 @@ describe("Graduating someone by exception", () => {
     const id = await seasonOf("ACTIVE", false);
     await enrol(id, student.id);
     const token = await adminTokenOf(id);
-    expect((await graduate(student.id, { graduationYear: 2025, override: true, overrideReason: "Test exception, see ticket" }, token)).status).toBe(403);
+    expect(
+      (
+        await graduate(
+          student.id,
+          { graduationYear: 2025, override: true, overrideReason: "Test exception, see ticket" },
+          token,
+        )
+      ).status,
+    ).toBe(403);
     expect(await yearOf(student.id)).toBeNull();
   });
 
@@ -214,7 +254,15 @@ describe("Graduating someone by exception", () => {
 
   it("keeps the year's bounds", async () => {
     const student = await person("Bounds");
-    expect((await graduate(student.id, { graduationYear: 1989, override: true, overrideReason: "Test exception, see ticket" })).status).toBe(400);
+    expect(
+      (
+        await graduate(student.id, {
+          graduationYear: 1989,
+          override: true,
+          overrideReason: "Test exception, see ticket",
+        })
+      ).status,
+    ).toBe(400);
   });
 });
 
@@ -254,8 +302,9 @@ describe("Results read", () => {
     await finished(id, alumnus.id, "PASSED");
     await finished(id, student.id, "NOT_PASSED");
     const res = await request(app).get(`/api/v1/seasons/${id}/results`).set(as(ctx.superToken));
-    const flags = Object.fromEntries((res.body.data.results as { userId: number; isAlumnus: boolean }[]).map((r) => [r.userId, r.isAlumnus]));
+    const flags = Object.fromEntries(
+      (res.body.data.results as { userId: number; isAlumnus: boolean }[]).map((r) => [r.userId, r.isAlumnus]),
+    );
     expect(flags).toEqual({ [alumnus.id]: true, [student.id]: false });
   });
 });
-

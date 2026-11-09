@@ -18,20 +18,10 @@ export {
 } from "./season";
 export { canAccessGroup } from "./group";
 export { canGradeQuiz, canManageQuiz } from "./quiz";
-export {
-  canReviewSubmission,
-  canViewSubmission,
-  isHiddenDraft,
-  submissionQueueScopeFor,
-} from "./submission";
+export { canReviewSubmission, canViewSubmission, isHiddenDraft, submissionQueueScopeFor } from "./submission";
 export { canEditStudent, canViewStudent, staffRosterWhere, type StaffRoster } from "./student";
 export { canEditNote, canViewNote, canWriteNote, noteSeasonWhere, noteVisibilityWhere } from "./note";
-export {
-  canCommentOnForumSubmission,
-  canDeleteForumComment,
-  forumAudienceFor,
-  type ForumAudience,
-} from "./forum";
+export { canCommentOnForumSubmission, canDeleteForumComment, forumAudienceFor, type ForumAudience } from "./forum";
 export { canExportSeasonWorkbook, reportScopeFor, type ReportScope } from "./report";
 export {
   announcementFlags,
@@ -44,9 +34,4 @@ export {
   type PostTarget,
   type PostVerdict,
 } from "./announcement";
-export {
-  canManagePoll,
-  canSeePollNames,
-  canVotePoll,
-  isPollClosed,
-} from "./announcement-poll";
+export { canManagePoll, canSeePollNames, canVotePoll, isPollClosed } from "./announcement-poll";

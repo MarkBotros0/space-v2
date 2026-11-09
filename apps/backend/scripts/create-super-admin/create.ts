@@ -12,9 +12,7 @@ const superAdminInputSchema = z.object({
   password: passwordSchema,
 });
 
-type CreateSuperAdminResult =
-  | { ok: true; id: number; email: string }
-  | { ok: false; error: string };
+type CreateSuperAdminResult = { ok: true; id: number; email: string } | { ok: false; error: string };
 
 /** Same cost as password reset (lib/auth/password-reset.ts). */
 const BCRYPT_COST = 12;

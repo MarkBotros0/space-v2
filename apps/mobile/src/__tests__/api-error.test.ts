@@ -4,7 +4,10 @@ describe("apiErrorMessage", () => {
   it("returns the envelope's message from an axios error", () => {
     const err = Object.assign(new Error("409"), {
       isAxiosError: true,
-      response: { status: 409, data: { error: { code: "code_taken", message: "A season with that code already exists." } } },
+      response: {
+        status: 409,
+        data: { error: { code: "code_taken", message: "A season with that code already exists." } },
+      },
     });
     expect(apiErrorMessage(err, "fallback")).toBe("A season with that code already exists.");
   });

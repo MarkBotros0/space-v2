@@ -48,7 +48,16 @@ const finished = (
   });
 const candidates = (seasonId: number, token = superToken) =>
   request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(as(token));
-type Row = { id: number; name: string; pool: string; availability: string; reason: string | null; selectable: boolean; overridable: boolean; last: { seasonTitle: string; outcome: string; attendancePct: number | null } | null };
+type Row = {
+  id: number;
+  name: string;
+  pool: string;
+  availability: string;
+  reason: string | null;
+  selectable: boolean;
+  overridable: boolean;
+  last: { seasonTitle: string; outcome: string; attendancePct: number | null } | null;
+};
 const rowOf = (res: request.Response, id: number) => (res.body.data.people as Row[]).find((p) => p.id === id)!;
 
 beforeAll(async () => {
@@ -79,8 +88,15 @@ describe("GET /seasons/:id/people-candidates", () => {
 
     const res = await candidates(target);
     expect(res.status).toBe(200);
-    expect(res.body.data.season).toMatchObject({ id: target, title: "LEAD 2027", requiredProgram: "GBV", isCommunityWide: false });
-    const mine = (res.body.data.people as Row[]).filter((p) => [zed, amy, bob, cat, dan, alum].some((x) => x.id === p.id));
+    expect(res.body.data.season).toMatchObject({
+      id: target,
+      title: "LEAD 2027",
+      requiredProgram: "GBV",
+      isCommunityWide: false,
+    });
+    const mine = (res.body.data.people as Row[]).filter((p) =>
+      [zed, amy, bob, cat, dan, alum].some((x) => x.id === p.id),
+    );
     expect(mine.map((p) => p.name)).toEqual(["Amy Passed", "Zed Passed", "Dan Passed Lead", "Bob Failed", "Cat Never"]);
 
     expect(rowOf(res, amy.id)).toMatchObject({
@@ -225,7 +241,9 @@ describe("GET /seasons/:id/people-candidates", () => {
     const sessions = [];
     for (let i = 0; i < 4; i++) {
       sessions.push(
-        await db.session.create({ data: { seasonId: gbv26, title: `S${i}`, startsAt: new Date(Date.UTC(2026, 1, 1 + i)) } }),
+        await db.session.create({
+          data: { seasonId: gbv26, title: `S${i}`, startsAt: new Date(Date.UTC(2026, 1, 1 + i)) },
+        }),
       );
     }
     await finished(gbv26, early.id, "PASSED");
@@ -343,7 +361,10 @@ describe("community-wide seasons: the pool", () => {
     expect(ids).toHaveLength(200);
 
     const started = Date.now();
-    const res = await request(app).post(`/api/v1/seasons/${target}/enrollments`).set(as(superToken)).send({ userIds: ids });
+    const res = await request(app)
+      .post(`/api/v1/seasons/${target}/enrollments`)
+      .set(as(superToken))
+      .send({ userIds: ids });
     const ms = Date.now() - started;
     expect(res.status).toBe(201);
     expect(await db.seasonEnrollment.count({ where: { seasonId: target } })).toBe(200);
@@ -363,13 +384,20 @@ describe("requiredProgram on a season", () => {
   });
 
   it("is set on create and changed by SUPER while the season is a draft", async () => {
-    const created = await request(app).post("/api/v1/seasons").set(as(superToken)).send(body({ requiredProgram: "GBV" }));
+    const created = await request(app)
+      .post("/api/v1/seasons")
+      .set(as(superToken))
+      .send(body({ requiredProgram: "GBV" }));
     expect(created.status).toBe(201);
     const id = created.body.data.id as number;
     expect((await db.season.findUniqueOrThrow({ where: { id } })).requiredProgram).toBe("GBV");
 
     const code = (await db.season.findUniqueOrThrow({ where: { id } })).code;
-    const patch = (over: object) => request(app).patch(`/api/v1/seasons/${id}`).set(as(superToken)).send(body({ code, ...over }));
+    const patch = (over: object) =>
+      request(app)
+        .patch(`/api/v1/seasons/${id}`)
+        .set(as(superToken))
+        .send(body({ code, ...over }));
     const changed = await patch({ requiredProgram: "ABC" });
     expect(changed.status).toBe(200);
     expect((await db.season.findUniqueOrThrow({ where: { id } })).requiredProgram).toBe("ABC");
@@ -384,12 +412,18 @@ describe("requiredProgram on a season", () => {
   });
 
   it("refuses a season requiring its own program, on create and on a program change", async () => {
-    const own = await request(app).post("/api/v1/seasons").set(as(superToken)).send(body({ requiredProgram: "LEAD" }));
+    const own = await request(app)
+      .post("/api/v1/seasons")
+      .set(as(superToken))
+      .send(body({ requiredProgram: "LEAD" }));
     expect(own.status).toBe(400);
 
     const id = await season("DRAFT", "GBV", 2030, "LEAD");
     const code = (await db.season.findUniqueOrThrow({ where: { id } })).code;
-    const clash = await request(app).patch(`/api/v1/seasons/${id}`).set(as(superToken)).send(body({ code, program: "LEAD", year: 2030 }));
+    const clash = await request(app)
+      .patch(`/api/v1/seasons/${id}`)
+      .set(as(superToken))
+      .send(body({ code, program: "LEAD", year: 2030 }));
     expect(clash.status).toBe(400);
   });
 

@@ -68,9 +68,7 @@ describe("LocalFsStorage", () => {
   it("rejects with FileNotFoundError for a missing file", async () => {
     // The route turns this into a 404 rather than a 500, so a dangling
     // SubmissionFile row cannot crash a download.
-    await expect(getStorage().get("test-bucket/does-not-exist.txt")).rejects.toThrow(
-      FileNotFoundError,
-    );
+    await expect(getStorage().get("test-bucket/does-not-exist.txt")).rejects.toThrow(FileNotFoundError);
   });
 
   it("refuses a storagePath that escapes the storage root", async () => {

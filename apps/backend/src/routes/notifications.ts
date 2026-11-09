@@ -5,10 +5,7 @@ import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseNotificationLink } from "../lib/notification-target";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import {
-  markReadRequestSchema,
-  notificationListQuerySchema,
-} from "../../../../packages/shared/src/index";
+import { markReadRequestSchema, notificationListQuerySchema } from "../../../../packages/shared/src/index";
 
 export const notificationsRouter = Router();
 

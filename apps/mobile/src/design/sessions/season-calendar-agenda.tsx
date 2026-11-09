@@ -66,13 +66,7 @@ export function AgendaSession({
   );
 }
 
-export function AgendaEvent({
-  e,
-  onOpenEvent,
-}: {
-  e: JpcEventListItem;
-  onOpenEvent: (e: JpcEventListItem) => void;
-}) {
+export function AgendaEvent({ e, onOpenEvent }: { e: JpcEventListItem; onOpenEvent: (e: JpcEventListItem) => void }) {
   return (
     <ListRow
       title={e.title}
@@ -119,11 +113,7 @@ export function AgendaView({
                 seasonColors={handlers.seasonColors}
               />
             ) : (
-              <AgendaEvent
-                key={`e${entry.event.id}`}
-                e={entry.event}
-                onOpenEvent={handlers.onOpenEvent}
-              />
+              <AgendaEvent key={`e${entry.event.id}`} e={entry.event} onOpenEvent={handlers.onOpenEvent} />
             ),
           )}
         </GroupedList>

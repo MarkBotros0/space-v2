@@ -14,7 +14,13 @@ let mockParams: Record<string, string> = { code: "s7" };
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: jest.fn(), dismissTo: jest.fn(), dismissAll: jest.fn() }),
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: mockReplace,
+    back: jest.fn(),
+    dismissTo: jest.fn(),
+    dismissAll: jest.fn(),
+  }),
 }));
 
 import { apiClient } from "../lib/api-client";
@@ -27,15 +33,34 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const detail = (status: "DRAFT" | "ACTIVE") => ({
-  id: 7, code: "s7", title: "GBV 2026", program: "GBV", year: 2026, status,
-  startDate: "2026-01-01T00:00:00.000Z", endDate: "2026-12-31T00:00:00.000Z", description: null,
-  sessionCount: 0, studentCount: 0, absenceBudgetMinutes: 240, absenceWeightMinutes: 90,
-  canAdminister: true, groups: [],
+  id: 7,
+  code: "s7",
+  title: "GBV 2026",
+  program: "GBV",
+  year: 2026,
+  status,
+  startDate: "2026-01-01T00:00:00.000Z",
+  endDate: "2026-12-31T00:00:00.000Z",
+  description: null,
+  sessionCount: 0,
+  studentCount: 0,
+  absenceBudgetMinutes: 240,
+  absenceWeightMinutes: 90,
+  canAdminister: true,
+  groups: [],
 });
 type Outcome = "passed" | "not_passed" | "dropped";
 const person = (id: number, name: string, places: [number, Outcome][], over: Record<string, unknown> = {}) => ({
-  id, name, pool: "student", last: null, availability: "available", reason: null, selectable: true,
-  overridable: false, places: places.map(([seasonId, outcome]) => ({ seasonId, outcome })), ...over,
+  id,
+  name,
+  pool: "student",
+  last: null,
+  availability: "available",
+  reason: null,
+  selectable: true,
+  overridable: false,
+  places: places.map(([seasonId, outcome]) => ({ seasonId, outcome })),
+  ...over,
 });
 const SOURCES = [
   { id: 25, code: "gbv-2025", title: "GBV 2025", passed: 2, graduated: 1 },
@@ -44,7 +69,10 @@ const SOURCES = [
 const PEOPLE = [
   person(1, "Pia Passed", [[25, "passed"]]),
   person(2, "Paul Passed", [[25, "passed"]]),
-  person(3, "Fadi Failed", [[25, "not_passed"], [24, "passed"]]),
+  person(3, "Fadi Failed", [
+    [25, "not_passed"],
+    [24, "passed"],
+  ]),
   person(4, "Dina Dropped", [[25, "dropped"]]),
   person(5, "Nadia New", []),
 ];
@@ -56,7 +84,14 @@ function serve(status: "DRAFT" | "ACTIVE", people: unknown[] = PEOPLE) {
       return Promise.resolve({
         data: {
           data: {
-            season: { id: 7, title: "GBV 2026", requiredProgram: null, isCommunityWide: false, suggestedSourceId: 25, sources: SOURCES },
+            season: {
+              id: 7,
+              title: "GBV 2026",
+              requiredProgram: null,
+              isCommunityWide: false,
+              suggestedSourceId: 25,
+              sources: SOURCES,
+            },
             people,
           },
         },
@@ -114,7 +149,9 @@ describe("the season to bring passers in from", () => {
     expect(screen.getByText("Added by choice")).toBeTruthy();
     fireEvent.press(screen.getByText("Add 3 people"));
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/enrollments", { userIds: expect.arrayContaining([1, 2, 4]) }),
+      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/enrollments", {
+        userIds: expect.arrayContaining([1, 2, 4]),
+      }),
     );
   });
 
@@ -150,10 +187,15 @@ describe("the season to bring passers in from", () => {
     expect(box("Pia Passed")).not.toBeChecked();
     view.unmount();
 
-    serve("DRAFT", [...PEOPLE, person(6, "Omar Here", [], { availability: "in_season", selectable: false, reason: "Already in this season" })]);
+    serve("DRAFT", [
+      ...PEOPLE,
+      person(6, "Omar Here", [], { availability: "in_season", selectable: false, reason: "Already in this season" }),
+    ]);
     await open();
     expect(box("Pia Passed")).not.toBeChecked();
-    expect(screen.getByText("Most seasons start with everyone who passed the last one. Pick a season to tick its passers.")).toBeTruthy();
+    expect(
+      screen.getByText("Most seasons start with everyone who passed the last one. Pick a season to tick its passers."),
+    ).toBeTruthy();
   });
 
   it("offers Invite new when no one matches, swapping this screen for its form", async () => {

@@ -23,9 +23,7 @@ const post = apiClient.post as jest.Mock;
 
 function serve(routes: Record<string, unknown>) {
   get.mockImplementation((url: string) =>
-    url in routes
-      ? Promise.resolve({ data: { data: routes[url] } })
-      : Promise.reject(new Error(`not served: ${url}`)),
+    url in routes ? Promise.resolve({ data: { data: routes[url] } }) : Promise.reject(new Error(`not served: ${url}`)),
   );
 }
 const confirmEnd = () => fireEvent.press(screen.getAllByRole("button", { name: "End season" })[0]!);
@@ -101,8 +99,24 @@ describe("Correcting a result on a graduating season", () => {
       [BY_CODE]: detail({ status: "COMPLETED", graduatesOnPass }),
       "/api/v1/seasons/7/results": {
         results: [
-          { userId: 1, name: "Mina", isAlumnus: true, groupName: null, attendancePct: 90, result: "PASSED", reason: null },
-          { userId: 2, name: "Nour", isAlumnus: false, groupName: null, attendancePct: 40, result: "NOT_PASSED", reason: null },
+          {
+            userId: 1,
+            name: "Mina",
+            isAlumnus: true,
+            groupName: null,
+            attendancePct: 90,
+            result: "PASSED",
+            reason: null,
+          },
+          {
+            userId: 2,
+            name: "Nour",
+            isAlumnus: false,
+            groupName: null,
+            attendancePct: 40,
+            result: "NOT_PASSED",
+            reason: null,
+          },
         ],
       },
     });
@@ -110,7 +124,8 @@ describe("Correcting a result on a graduating season", () => {
     await screen.findByText("Mina");
   };
   const KEEPS = "This doesn't remove their alumni status.";
-  const WILL = "Passing makes them School of 2026. Any regular season they're in now ends for them. A community-wide season carries on.";
+  const WILL =
+    "Passing makes them School of 2026. Any regular season they're in now ends for them. A community-wide season carries on.";
 
   it("says Did not pass doesn't remove alumni status", async () => {
     await open(true);
@@ -139,7 +154,10 @@ describe("Correcting a result on a graduating season", () => {
 describe("A stale review", () => {
   const rosterChanged = {
     isAxiosError: true,
-    response: { status: 409, data: { error: { code: "season_unfinished", message: "The roster changed; check the season again." } } },
+    response: {
+      status: 409,
+      data: { error: { code: "season_unfinished", message: "The roster changed; check the season again." } },
+    },
   };
   const markStudent2 = () => {
     fireEvent.press(screen.getByText("Student 2"));
@@ -150,7 +168,9 @@ describe("A stale review", () => {
 
   it("sends what the screen shows", async () => {
     serve({ [BY_CODE]: detail(), [END_CHECK]: check({}, 2, true) });
-    post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 2 } } });
+    post.mockResolvedValue({
+      data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 2 } },
+    });
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
@@ -183,7 +203,9 @@ describe("A stale review", () => {
     expect(await screen.findByText("Student 3")).toBeTruthy();
     expect(screen.getAllByText("Did not pass")).toHaveLength(1);
 
-    post.mockResolvedValueOnce({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 2 } } });
+    post.mockResolvedValueOnce({
+      data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 2 } },
+    });
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     expect(await screen.findByText(/2 people will graduate\.$/)).toBeTruthy();
     confirmEnd();
@@ -209,7 +231,9 @@ describe("A stale review", () => {
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     await waitFor(() => expect(screen.queryByText("Student 2")).toBeNull(), { timeout: 5000 });
 
-    post.mockResolvedValueOnce({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 1 } } });
+    post.mockResolvedValueOnce({
+      data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 1 } },
+    });
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     expect(await screen.findByText(/1 person will graduate\.$/)).toBeTruthy();
     confirmEnd();

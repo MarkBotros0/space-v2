@@ -288,7 +288,8 @@ describe("POST /seasons/:id/start", () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ season: { id, code: await codeOf(id), status: "ACTIVE" } });
     const stamp = async (userId: number) =>
-      (await db.user.findUniqueOrThrow({ where: { id: userId }, select: { sessionsValidFrom: true } })).sessionsValidFrom;
+      (await db.user.findUniqueOrThrow({ where: { id: userId }, select: { sessionsValidFrom: true } }))
+        .sessionsValidFrom;
     expect(await stamp(student.id)).not.toBeNull();
     expect(await stamp(admin.id)).not.toBeNull();
     expect(await stamp(leader.id)).not.toBeNull();

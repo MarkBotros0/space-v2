@@ -63,7 +63,11 @@ describe("Button", () => {
     fireEvent.press(screen.getByRole("button", { name: "Save" }));
     expect(onPress).toHaveBeenCalledTimes(1);
 
-    render(<Button disabled onPress={onPress}>Locked</Button>);
+    render(
+      <Button disabled onPress={onPress}>
+        Locked
+      </Button>,
+    );
     expect(screen.getByRole("button", { name: "Locked" }).props.accessibilityState).toMatchObject({ disabled: true });
   });
 
@@ -91,7 +95,9 @@ describe("Card", () => {
   it("renders header, title and content", () => {
     render(
       <Card>
-        <CardHeader><CardTitle>Week 3</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Week 3</CardTitle>
+        </CardHeader>
         <CardContent />
       </Card>,
     );
@@ -135,7 +141,11 @@ describe("status components", () => {
   });
 
   it("Avatar shows the fallback initials", () => {
-    render(<Avatar><AvatarFallback>AT</AvatarFallback></Avatar>);
+    render(
+      <Avatar>
+        <AvatarFallback>AT</AvatarFallback>
+      </Avatar>,
+    );
     expect(screen.getByText("AT")).toBeTruthy();
   });
 

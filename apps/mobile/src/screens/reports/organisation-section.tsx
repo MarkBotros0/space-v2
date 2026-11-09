@@ -54,11 +54,7 @@ export function OrganisationSection() {
     <View className="flex-col gap-4">
       <View testID="organisation-tiles" className="flex-row flex-wrap gap-3">
         <TilePress onPress={() => router.push("/students")}>
-          <StatTile
-            className="flex-none"
-            label="Student accounts"
-            value={data.totalStudentsNotGraduated}
-          />
+          <StatTile className="flex-none" label="Student accounts" value={data.totalStudentsNotGraduated} />
         </TilePress>
         <TilePress onPress={() => router.push({ pathname: "/students", params: { show: "alumni" } })}>
           <StatTile className="flex-none" label="Alumni" value={data.totalAlumni} />
@@ -147,9 +143,7 @@ export function OrganisationSection() {
                 subtitleLines={3}
                 trailing={<StatusChip {...statusChip("season", r.status)} />}
                 chevron
-                onPress={() =>
-                  router.push({ pathname: "/seasons/[code]", params: { code: r.code } })
-                }
+                onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: r.code } })}
               />
             ))}
           </GroupedList>

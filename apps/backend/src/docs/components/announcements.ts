@@ -4,7 +4,7 @@ const listItemProps = {
   audience: { type: "string", enum: ["COMMUNITY", "SEASON"] },
   seasonId: { type: ["integer", "null"] },
   seasonTitle: { type: ["string", "null"] },
-  authorName: { type: ["string", "null"], description: "Null once the author's account is gone (\"Former member\")." },
+  authorName: { type: ["string", "null"], description: 'Null once the author\'s account is gone ("Former member").' },
   createdAt: { type: "string", format: "date-time" },
   editedAt: { type: ["string", "null"], format: "date-time" },
   isRead: { type: "boolean" },
@@ -17,7 +17,11 @@ const pollOptionInput = {
   required: ["label"],
   additionalProperties: false,
   properties: {
-    id: { type: "integer", minimum: 1, description: "On an edit, keeps an existing option and its votes; omit for a new option. Refused on a new post." },
+    id: {
+      type: "integer",
+      minimum: 1,
+      description: "On an edit, keeps an existing option and its votes; omit for a new option. Refused on a new post.",
+    },
     label: { type: "string", minLength: 1, maxLength: 150, description: "Trimmed; unique ignoring case." },
   },
 } as const;
@@ -35,12 +39,40 @@ const pollInput = {
 export const announcementSchemas = {
   AnnouncementListItem: {
     type: "object",
-    required: ["id", "audience", "seasonId", "seasonTitle", "excerpt", "authorName", "createdAt", "editedAt", "isRead", "hasPoll", "pollClosed"],
+    required: [
+      "id",
+      "audience",
+      "seasonId",
+      "seasonTitle",
+      "excerpt",
+      "authorName",
+      "createdAt",
+      "editedAt",
+      "isRead",
+      "hasPoll",
+      "pollClosed",
+    ],
     properties: { ...listItemProps, excerpt: { type: "string", description: "First 280 characters of the body." } },
   },
   AnnouncementDetail: {
     type: "object",
-    required: ["id", "audience", "seasonId", "seasonTitle", "authorName", "createdAt", "editedAt", "isRead", "hasPoll", "pollClosed", "body", "canEdit", "canDelete", "seasonFinished", "poll"],
+    required: [
+      "id",
+      "audience",
+      "seasonId",
+      "seasonTitle",
+      "authorName",
+      "createdAt",
+      "editedAt",
+      "isRead",
+      "hasPoll",
+      "pollClosed",
+      "body",
+      "canEdit",
+      "canDelete",
+      "seasonFinished",
+      "poll",
+    ],
     properties: {
       ...listItemProps,
       body: { type: "string", description: "Plain text, never HTML." },
@@ -52,18 +84,47 @@ export const announcementSchemas = {
   },
   AnnouncementPoll: {
     type: "object",
-    required: ["version", "allowsMultiple", "closed", "canVote", "canManage", "canSeeNames", "myOptionIds", "voterCount", "multiPickVoters", "multiPickVotes", "options"],
+    required: [
+      "version",
+      "allowsMultiple",
+      "closed",
+      "canVote",
+      "canManage",
+      "canSeeNames",
+      "myOptionIds",
+      "voterCount",
+      "multiPickVoters",
+      "multiPickVotes",
+      "options",
+    ],
     properties: {
-      version: { type: "integer", minimum: 1, description: "Bumped when the options change; send it back with a vote." },
+      version: {
+        type: "integer",
+        minimum: 1,
+        description: "Bumped when the options change; send it back with a vote.",
+      },
       allowsMultiple: { type: "boolean" },
       closed: { type: "boolean" },
       canVote: { type: "boolean" },
       canManage: { type: "boolean" },
-      canSeeNames: { type: "boolean", description: "May open who voted for what: managers, and a Super once the season has finished." },
+      canSeeNames: {
+        type: "boolean",
+        description: "May open who voted for what: managers, and a Super once the season has finished.",
+      },
       myOptionIds: { type: "array", items: { type: "integer" } },
-      voterCount: { type: ["integer", "null"], description: "Null while the caller may not see counts (before they vote, unless a manager)." },
-      multiPickVoters: { type: ["integer", "null"], description: "Managers only: people with more than one pick. Null otherwise." },
-      multiPickVotes: { type: ["integer", "null"], description: "Managers only: the vote rows of those people, which a several -> one edit removes. Null otherwise." },
+      voterCount: {
+        type: ["integer", "null"],
+        description: "Null while the caller may not see counts (before they vote, unless a manager).",
+      },
+      multiPickVoters: {
+        type: ["integer", "null"],
+        description: "Managers only: people with more than one pick. Null otherwise.",
+      },
+      multiPickVotes: {
+        type: ["integer", "null"],
+        description:
+          "Managers only: the vote rows of those people, which a several -> one edit removes. Null otherwise.",
+      },
       options: {
         type: "array",
         items: {
@@ -81,7 +142,12 @@ export const announcementSchemas = {
     additionalProperties: false,
     properties: {
       version: { type: "integer", minimum: 1, description: "The `version` of the poll the caller saw." },
-      optionIds: { type: "array", minItems: 1, items: { type: "integer", minimum: 1 }, description: "Distinct option ids of this poll; one only unless `allowsMultiple`." },
+      optionIds: {
+        type: "array",
+        minItems: 1,
+        items: { type: "integer", minimum: 1 },
+        description: "Distinct option ids of this poll; one only unless `allowsMultiple`.",
+      },
     },
   },
   PollVoters: {
@@ -192,8 +258,15 @@ export const announcementSchemas = {
     additionalProperties: false,
     properties: {
       body: { type: "string", minLength: 1, maxLength: 5000 },
-      poll: { oneOf: [pollInput, { type: "null" }], description: "Absent leaves the poll alone; null removes it (and its votes); an object replaces its options (options with an `id` are kept)." },
-      confirmVoteLoss: { type: "boolean", description: "Must be true for a poll edit that would remove votes; otherwise 409 `poll_votes_lost`." },
+      poll: {
+        oneOf: [pollInput, { type: "null" }],
+        description:
+          "Absent leaves the poll alone; null removes it (and its votes); an object replaces its options (options with an `id` are kept).",
+      },
+      confirmVoteLoss: {
+        type: "boolean",
+        description: "Must be true for a poll edit that would remove votes; otherwise 409 `poll_votes_lost`.",
+      },
     },
   },
 } as const;

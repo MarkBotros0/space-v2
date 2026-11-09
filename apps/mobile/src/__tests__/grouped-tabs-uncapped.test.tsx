@@ -17,9 +17,7 @@ import { GroupedAttendanceTab, GroupedNotesTab } from "../design/students/groupe
 import { StudentDetails } from "../design/students/student-details";
 import { renderWithProviders } from "./helpers/render";
 
-const LONG = Array.from({ length: 30 }, (_, i) => `Line ${i + 1} of a long pastoral note.`).join(
-  " ",
-);
+const LONG = Array.from({ length: 30 }, (_, i) => `Line ${i + 1} of a long pastoral note.`).join(" ");
 
 describe("student page free text is read in full", () => {
   it("a long note body has no line cap, with the metadata and Follow up chip below it", () => {

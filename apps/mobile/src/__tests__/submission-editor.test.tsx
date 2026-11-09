@@ -28,27 +28,62 @@ const patch = apiClient.patch as jest.Mock;
 const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
 
 const detailNoSubmission = {
-  id: 41, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026",
-  sessionId: null, sessionTitle: null, title: "Essay one",
-  description: null, dueAt: null, dueOrgDay: null, dueOrgTime: null, isOverdue: false, isAllGroups: true,
-  type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false, forumPostToRead: true,
-  maxFileSizeMb: 10, allowedMimeCategories: [], groupIds: null,
-  mySubmission: null, canManage: false, readOnly: false,
+  id: 41,
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
+  sessionId: null,
+  sessionTitle: null,
+  title: "Essay one",
+  description: null,
+  dueAt: null,
+  dueOrgDay: null,
+  dueOrgTime: null,
+  isOverdue: false,
+  isAllGroups: true,
+  type: "STANDARD" as const,
+  forumMinWords: null,
+  forumAllowComments: false,
+  forumPostToRead: true,
+  maxFileSizeMb: 10,
+  allowedMimeCategories: [],
+  groupIds: null,
+  mySubmission: null,
+  canManage: false,
+  readOnly: false,
 };
 
 const draftSummary = {
-  publicId: "abc123defg", status: "DRAFT" as const, submittedAt: null,
-  reviewedAt: null, feedback: null, isLate: false,
+  publicId: "abc123defg",
+  status: "DRAFT" as const,
+  submittedAt: null,
+  reviewedAt: null,
+  feedback: null,
+  isLate: false,
 };
 
 const submissionDetail = {
-  id: 900, publicId: "abc123defg", status: "DRAFT" as const,
-  text: "first draft", feedback: null,
-  submittedAt: null, reviewedAt: null, isLate: false,
-  assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
-  assignmentDescription: null, seasonCode: "S26",
-  studentUserId: 9, studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
-  files: [], canUploadFiles: false, canReview: false,
+  id: 900,
+  publicId: "abc123defg",
+  status: "DRAFT" as const,
+  text: "first draft",
+  feedback: null,
+  submittedAt: null,
+  reviewedAt: null,
+  isLate: false,
+  assignmentId: 41,
+  assignmentTitle: "Essay one",
+  assignmentDueAt: null,
+  assignmentDescription: null,
+  seasonCode: "S26",
+  studentUserId: 9,
+  studentName: "Test student",
+  studentEmail: "s@jpc.test",
+  groupId: null,
+  groupName: null,
+  files: [],
+  canUploadFiles: false,
+  canReview: false,
 };
 
 function serve(assignment: unknown) {
@@ -81,9 +116,7 @@ describe("submission editor", () => {
       url === "/api/v1/assignments/41"
         ? Promise.resolve({
             data: {
-              data: submissionStarted
-                ? { ...detailNoSubmission, mySubmission: draftSummary }
-                : detailNoSubmission,
+              data: submissionStarted ? { ...detailNoSubmission, mySubmission: draftSummary } : detailNoSubmission,
             },
           })
         : Promise.resolve({ data: { data: submissionDetail } }),
@@ -92,9 +125,7 @@ describe("submission editor", () => {
     renderWithProviders(<AssignmentDetailScreen />);
     fireEvent.press(await screen.findByText("Start working"));
 
-    await waitFor(() =>
-      expect(put).toHaveBeenCalledWith("/api/v1/submissions/by-assignment/41"),
-    );
+    await waitFor(() => expect(put).toHaveBeenCalledWith("/api/v1/submissions/by-assignment/41"));
     expect(await screen.findByDisplayValue("first draft")).toBeTruthy();
   });
 
@@ -304,7 +335,13 @@ describe("submission editor: the fixed save bar", () => {
         data: {
           data:
             url === "/api/v1/assignments/41"
-              ? { ...detailNoSubmission, dueAt: "2099-01-01T00:00:00.000Z", dueOrgDay: "2099-01-01", isOverdue: true, mySubmission: draftSummary }
+              ? {
+                  ...detailNoSubmission,
+                  dueAt: "2099-01-01T00:00:00.000Z",
+                  dueOrgDay: "2099-01-01",
+                  isOverdue: true,
+                  mySubmission: draftSummary,
+                }
               : submissionDetail,
         },
       }),
@@ -316,10 +353,7 @@ describe("submission editor: the fixed save bar", () => {
 
   it("with the keyboard open the footer drops the hint and sets Save draft beside Submit", async () => {
     const listeners: Record<string, ((e: unknown) => void)[]> = {};
-    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((
-      event: string,
-      cb: never,
-    ) => {
+    const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {
       (listeners[event] ??= []).push(cb);
       return { remove: jest.fn() };
     }) as unknown as typeof Keyboard.addListener);

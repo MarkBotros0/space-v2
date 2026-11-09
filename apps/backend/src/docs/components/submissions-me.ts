@@ -17,7 +17,10 @@ export const submissionsMeSchemas = {
       id: { type: "integer" },
       publicId: { type: "string" },
       status: { $ref: "#/components/schemas/SubmissionStatus" },
-      text: { type: ["string", "null"], description: "Plain text: stored HTML is converted on read (ruling C11, REG-90)." },
+      text: {
+        type: ["string", "null"],
+        description: "Plain text: stored HTML is converted on read (ruling C11, REG-90).",
+      },
       feedback: { type: ["string", "null"], description: "Plain text, as `text`." },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       reviewedAt: { type: ["string", "null"], format: "date-time" },
@@ -34,7 +37,10 @@ export const submissionsMeSchemas = {
       studentUserId: { type: "integer" },
       studentName: { type: ["string", "null"] },
       studentEmail: { type: "string", format: "email" },
-      groupId: { type: ["integer", "null"], description: "The student's group in this assignment's season, from their enrolment (ruling C9)." },
+      groupId: {
+        type: ["integer", "null"],
+        description: "The student's group in this assignment's season, from their enrolment (ruling C9).",
+      },
       groupName: { type: ["string", "null"] },
       files: { type: "array", items: { $ref: "#/components/schemas/SubmissionFile" } },
       canUploadFiles: {
@@ -90,7 +96,8 @@ export const submissionsMeSchemas = {
   SeasonHistoryRow: {
     type: "object",
     additionalProperties: false,
-    description: "A past enrollment — attendance %, curriculum and outcome ONLY (spec 02 R34: no submissions, feedback, notes or reasons, by design).",
+    description:
+      "A past enrollment — attendance %, curriculum and outcome ONLY (spec 02 R34: no submissions, feedback, notes or reasons, by design).",
     properties: {
       seasonId: { type: "integer" },
       code: { type: "string" },
@@ -108,7 +115,11 @@ export const submissionsMeSchemas = {
             sessionId: { type: "integer" },
             title: { type: "string" },
             startsAt: { type: "string", format: "date-time" },
-            dayKey: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Org-calendar day (ruling X13)." },
+            dayKey: {
+              type: "string",
+              pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+              description: "Org-calendar day (ruling X13).",
+            },
           },
         },
       },
@@ -186,8 +197,20 @@ export const submissionsMeSchemas = {
           id: { type: "integer" },
           name: { type: "string" },
           description: { type: ["string", "null"] },
-          leaders: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" }, email: { type: "string" } } } },
-          members: { type: "array", items: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" }, isYou: { type: "boolean" } } } },
+          leaders: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { id: { type: "integer" }, name: { type: "string" }, email: { type: "string" } },
+            },
+          },
+          members: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: { id: { type: "integer" }, name: { type: "string" }, isYou: { type: "boolean" } },
+            },
+          },
         },
       },
       upcoming: {
@@ -214,13 +237,26 @@ export const submissionsMeSchemas = {
       name: { type: "string" },
       email: { type: "string" },
       avatarPath: { type: ["string", "null"] },
-      graduationYear: { type: ["integer", "null"], description: "Non-null = alumnus; the profile is then read-only, unless they are studying in a community-wide season (then it is edited like a student's)." },
+      graduationYear: {
+        type: ["integer", "null"],
+        description:
+          "Non-null = alumnus; the profile is then read-only, unless they are studying in a community-wide season (then it is edited like a student's).",
+      },
       activeSeasonTitle: { type: ["string", "null"] },
       university: { type: ["string", "null"] },
       faculty: { type: ["string", "null"] },
-      universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
+      universityGraduationYear: {
+        type: ["integer", "null"],
+        minimum: 1950,
+        maximum: 2100,
+        description: "University graduation year; may be in the future. Not the JPCS graduationYear.",
+      },
       phone: { type: ["string", "null"], description: "Account-level (User)." },
-      dateOfBirth: { type: ["string", "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "A calendar date. Account-level (User)." },
+      dateOfBirth: {
+        type: ["string", "null"],
+        pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+        description: "A calendar date. Account-level (User).",
+      },
     },
   },
   MyAttendance: {
@@ -241,12 +277,21 @@ export const submissionsMeSchemas = {
           minutesUsed: { type: "integer" },
           budgetMinutes: { type: "integer" },
           budgetPct: { type: "integer", minimum: 0, maximum: 100 },
-          remainingPct: { type: "integer", minimum: 0, maximum: 100, description: "max(0, 100 − budgetPct) — 'Absence budget left' (spec 19 D14)." },
+          remainingPct: {
+            type: "integer",
+            minimum: 0,
+            maximum: 100,
+            description: "max(0, 100 − budgetPct) — 'Absence budget left' (spec 19 D14).",
+          },
           absentCount: { type: "integer" },
           lateCount: { type: "integer" },
         },
       },
-      streak: { type: "integer", minimum: 0, description: "Consecutive attended past sessions; ABSENT breaks it, unmarked is skipped." },
+      streak: {
+        type: "integer",
+        minimum: 0,
+        description: "Consecutive attended past sessions; ABSENT breaks it, unmarked is skipped.",
+      },
       sessions: {
         type: "array",
         description: "Past sessions, newest first.",

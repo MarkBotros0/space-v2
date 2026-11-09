@@ -67,10 +67,12 @@ beforeAll(async () => {
   });
 
   const sess = async (seasonId: number, title: string, startsAt: Date) =>
-    (await db.session.create({
-      data: { seasonId, title, startsAt, durationMinutes: 60, checkInToken: newPublicId() },
-      select: { id: true },
-    })).id;
+    (
+      await db.session.create({
+        data: { seasonId, title, startsAt, durationMinutes: 60, checkInToken: newPublicId() },
+        select: { id: true },
+      })
+    ).id;
   const a1 = await sess(seasonAId, "A past one", at("2000-01-01T10:00:00.000Z"));
   const a2 = await sess(seasonAId, "A past two", at("2000-02-01T10:00:00.000Z"));
   await sess(seasonAId, "A future", at("2099-01-01T10:00:00.000Z"));
@@ -84,17 +86,35 @@ beforeAll(async () => {
   });
 
   const asg = async (seasonId: number, title: string, dueAt: Date | null) =>
-    (await db.assignment.create({
-      data: { seasonId, title, isAllGroups: true, dueAt },
-      select: { id: true },
-    })).id;
+    (
+      await db.assignment.create({
+        data: { seasonId, title, isAllGroups: true, dueAt },
+        select: { id: true },
+      })
+    ).id;
   const sa = await asg(seasonAId, "A late essay", at("2000-01-01T00:00:00.000Z"));
   const sb = await asg(seasonBId, "B essay", null);
   const sd = await asg(seasonAId, "A draft", null);
   await db.submission.createMany({
     data: [
-      { assignmentId: sa, studentUserId: s1, publicId: newPublicId(), status: "SUBMITTED", text: "x", submittedAt: at("2000-02-01T00:00:00.000Z"), createdAt: at("2000-02-01T00:00:00.000Z") },
-      { assignmentId: sb, studentUserId: s1, publicId: newPublicId(), status: "REVIEWED", text: "y", submittedAt: at("2000-04-01T00:00:00.000Z"), createdAt: at("2000-04-01T00:00:00.000Z") },
+      {
+        assignmentId: sa,
+        studentUserId: s1,
+        publicId: newPublicId(),
+        status: "SUBMITTED",
+        text: "x",
+        submittedAt: at("2000-02-01T00:00:00.000Z"),
+        createdAt: at("2000-02-01T00:00:00.000Z"),
+      },
+      {
+        assignmentId: sb,
+        studentUserId: s1,
+        publicId: newPublicId(),
+        status: "REVIEWED",
+        text: "y",
+        submittedAt: at("2000-04-01T00:00:00.000Z"),
+        createdAt: at("2000-04-01T00:00:00.000Z"),
+      },
       { assignmentId: sd, studentUserId: s1, publicId: newPublicId(), status: "DRAFT", text: "z" },
     ],
   });
@@ -111,8 +131,7 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
-const get = (path: string, token: string) =>
-  request(app).get(path).set("authorization", `Bearer ${token}`);
+const get = (path: string, token: string) => request(app).get(path).set("authorization", `Bearer ${token}`);
 type Row = { id: number };
 const ids = (res: { body: { data: { students: Row[] } } }) => res.body.data.students.map((s) => s.id);
 
@@ -167,8 +186,9 @@ describe("GET /api/v1/students — group filter and sort keys (REG-82)", () => {
 });
 
 describe("GET /api/v1/students/:id — per-enrolment attendance percentage (REG-83)", () => {
-  const pctBySeason = (res: { body: { data: { enrollments: { seasonId: number; attendancePct: number | null }[] } } }) =>
-    Object.fromEntries(res.body.data.enrollments.map((e) => [e.seasonId, e.attendancePct]));
+  const pctBySeason = (res: {
+    body: { data: { enrollments: { seasonId: number; attendancePct: number | null }[] } };
+  }) => Object.fromEntries(res.body.data.enrollments.map((e) => [e.seasonId, e.attendancePct]));
 
   it("gives SUPER and MENTOR a percentage for every enrolment (past sessions, from enrolment)", async () => {
     for (const token of [superToken, mentorToken]) {
@@ -216,10 +236,7 @@ describe("GET /api/v1/students/:id/attendance (REG-83)", () => {
     for (const token of [adminToken, leaderToken]) {
       const res = await get(`/api/v1/students/${s1}/attendance`, token);
       expect(res.status).toBe(200);
-      expect(res.body.data.history.map((h: { seasonId: number }) => h.seasonId)).toEqual([
-        seasonAId,
-        seasonAId,
-      ]);
+      expect(res.body.data.history.map((h: { seasonId: number }) => h.seasonId)).toEqual([seasonAId, seasonAId]);
     }
   });
 
@@ -240,10 +257,7 @@ describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
     const res = await get(`/api/v1/students/${s1}/submissions`, superToken);
     expect(res.status).toBe(200);
     const subs = res.body.data.submissions;
-    expect(subs.map((s: { assignmentTitle: string }) => s.assignmentTitle)).toEqual([
-      "B essay",
-      "A late essay",
-    ]);
+    expect(subs.map((s: { assignmentTitle: string }) => s.assignmentTitle)).toEqual(["B essay", "A late essay"]);
     expect(subs[1]).toMatchObject({ status: "SUBMITTED", isLate: true, seasonId: seasonAId });
     expect(subs[0]).toMatchObject({ status: "REVIEWED", isLate: false });
     expect(JSON.stringify(res.body)).not.toContain("A draft");
@@ -253,9 +267,9 @@ describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
     for (const token of [adminToken, leaderToken]) {
       const res = await get(`/api/v1/students/${s1}/submissions`, token);
       expect(res.status).toBe(200);
-      expect(
-        res.body.data.submissions.map((s: { assignmentTitle: string }) => s.assignmentTitle),
-      ).toEqual(["A late essay"]);
+      expect(res.body.data.submissions.map((s: { assignmentTitle: string }) => s.assignmentTitle)).toEqual([
+        "A late essay",
+      ]);
     }
   });
 

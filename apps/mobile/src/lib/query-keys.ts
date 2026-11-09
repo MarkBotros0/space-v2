@@ -29,14 +29,12 @@ export const queryKeys = {
     all: ["reports"] as const,
     // The scope is part of the key: two seasons' summaries are different
     // cached documents, and invalidating `reports.all` catches both.
-    engagement: (seasonId: number | null) =>
-      [...queryKeys.reports.all, "engagement", { seasonId }] as const,
+    engagement: (seasonId: number | null) => [...queryKeys.reports.all, "engagement", { seasonId }] as const,
     engagementStudents: (seasonId: number | null, band: string | null) =>
       [...queryKeys.reports.all, "engagement", "students", { seasonId, band }] as const,
     organisation: () => [...queryKeys.reports.all, "organisation"] as const,
     // Nullable per this file's header convention — no -1 sentinel.
-    exportManifest: (seasonId: number | null) =>
-      [...queryKeys.reports.all, "export-manifest", { seasonId }] as const,
+    exportManifest: (seasonId: number | null) => [...queryKeys.reports.all, "export-manifest", { seasonId }] as const,
   },
   notes: {
     all: ["notes"] as const,
@@ -55,10 +53,8 @@ export const queryKeys = {
   engagement: {
     all: ["engagement"] as const,
     // Nullable per this file's header convention — no -1 sentinel.
-    student: (studentId: number | null) =>
-      [...queryKeys.engagement.all, "student", { studentId }] as const,
-    season: (seasonId: number | null) =>
-      [...queryKeys.engagement.all, "season", { seasonId }] as const,
+    student: (studentId: number | null) => [...queryKeys.engagement.all, "student", { studentId }] as const,
+    season: (seasonId: number | null) => [...queryKeys.engagement.all, "season", { seasonId }] as const,
   },
   imports: {
     all: ["imports"] as const,
@@ -100,8 +96,7 @@ export const queryKeys = {
   users: {
     all: ["users"] as const,
     lists: () => [...queryKeys.users.all, "list"] as const,
-    list: (filters: { q: string; role?: string; status?: string }) =>
-      [...queryKeys.users.lists(), filters] as const,
+    list: (filters: { q: string; role?: string; status?: string }) => [...queryKeys.users.lists(), filters] as const,
     details: () => [...queryKeys.users.all, "detail"] as const,
     // Nullable, per this file's header convention (a null key never collides
     // with a real id) — not a -1 sentinel.
@@ -126,11 +121,9 @@ export const queryKeys = {
     // with a real student's cached detail (no -1 sentinel).
     detail: (id: number | null) => [...queryKeys.students.details(), { id }] as const,
     /** GET /students/:id/attendance (REG-83) — under details(), so student writes refresh it. */
-    attendance: (id: number | null) =>
-      [...queryKeys.students.details(), "attendance", { id }] as const,
+    attendance: (id: number | null) => [...queryKeys.students.details(), "attendance", { id }] as const,
     /** GET /students/:id/submissions (REG-83). */
-    submissions: (id: number | null) =>
-      [...queryKeys.students.details(), "submissions", { id }] as const,
+    submissions: (id: number | null) => [...queryKeys.students.details(), "submissions", { id }] as const,
   },
   seasons: {
     all: ["seasons"] as const,
@@ -140,11 +133,9 @@ export const queryKeys = {
     /** GET /seasons/:id/admins (SUPER) — under `all`, so a season write refreshes it too. */
     admins: (id: number | null) => [...queryKeys.seasons.all, "admins", { id }] as const,
     /** GET /seasons/:id/staff-candidates — alumni with no active role. */
-    staffCandidates: (id: number | null) =>
-      [...queryKeys.seasons.all, "staffCandidates", { id }] as const,
+    staffCandidates: (id: number | null) => [...queryKeys.seasons.all, "staffCandidates", { id }] as const,
     /** GET /seasons/:id/people-candidates — the people picker's rows. */
-    peopleCandidates: (id: number | null) =>
-      [...queryKeys.seasons.all, "peopleCandidates", { id }] as const,
+    peopleCandidates: (id: number | null) => [...queryKeys.seasons.all, "peopleCandidates", { id }] as const,
     /** GET /seasons/:id/end-check, /results, and /overdue: under `all`, so ending a season refreshes them. */
     endCheck: (id: number | null) => [...queryKeys.seasons.all, "end-check", { id }] as const,
     /** GET /seasons/:id/start-check: under `all`, so a roster or staff write refreshes it. */
@@ -155,14 +146,12 @@ export const queryKeys = {
   assignments: {
     all: ["assignments"] as const,
     lists: () => [...queryKeys.assignments.all, "list"] as const,
-    bySeason: (seasonId: number | null) =>
-      [...queryKeys.assignments.lists(), { seasonId }] as const,
+    bySeason: (seasonId: number | null) => [...queryKeys.assignments.lists(), { seasonId }] as const,
     details: () => [...queryKeys.assignments.all, "detail"] as const,
     detail: (id: number | null) => [...queryKeys.assignments.details(), id] as const,
     // The staff arm of the same endpoint, keyed apart from the student arm so
     // one role's cached shape can never be served to the other's parser.
-    staffBySeason: (seasonId: number | null) =>
-      [...queryKeys.assignments.lists(), "staff", { seasonId }] as const,
+    staffBySeason: (seasonId: number | null) => [...queryKeys.assignments.lists(), "staff", { seasonId }] as const,
     trackers: () => [...queryKeys.assignments.all, "tracker"] as const,
     tracker: (id: number | null) => [...queryKeys.assignments.trackers(), id] as const,
   },
@@ -178,8 +167,7 @@ export const queryKeys = {
     all: ["groups"] as const,
     mine: () => [...queryKeys.groups.all, "mine"] as const,
     detail: (id: number | null) => [...queryKeys.groups.all, "detail", id] as const,
-    bySeason: (seasonId: number | null) =>
-      [...queryKeys.groups.all, "season", { seasonId }] as const,
+    bySeason: (seasonId: number | null) => [...queryKeys.groups.all, "season", { seasonId }] as const,
     impact: (id: number | null) => [...queryKeys.groups.all, "impact", { id }] as const,
     /**
      * Under groups.all ON PURPOSE: every group write (create, edit, delete,
@@ -190,8 +178,7 @@ export const queryKeys = {
   },
   attendance: {
     all: ["attendance"] as const,
-    roster: (sessionId: number | null) =>
-      [...queryKeys.attendance.all, "roster", sessionId] as const,
+    roster: (sessionId: number | null) => [...queryKeys.attendance.all, "roster", sessionId] as const,
   },
   quizzes: {
     all: ["quizzes"] as const,
@@ -216,8 +203,7 @@ export const queryKeys = {
     season: (seasonId: number | null) => [...queryKeys.me.all, "season", { seasonId }] as const,
     /** One finished season in full (GET /me/seasons/:seasonId). */
     seasonRecord: (seasonId: number) => [...queryKeys.me.all, "season-record", { seasonId }] as const,
-    attendance: (seasonId: number | null) =>
-      [...queryKeys.me.all, "attendance", { seasonId }] as const,
+    attendance: (seasonId: number | null) => [...queryKeys.me.all, "attendance", { seasonId }] as const,
     profile: () => [...queryKeys.me.all, "profile"] as const,
   },
   videoQuiz: {

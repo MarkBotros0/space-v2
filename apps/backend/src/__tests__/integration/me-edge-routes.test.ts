@@ -30,7 +30,10 @@ describe("PATCH /api/v1/me", () => {
   it("400s a name that is too short, with the schema's message", async () => {
     const u = await createTestUser("me-edge-name", "LEADER");
     const { accessToken } = await session(u.email);
-    const res = await request(app).patch("/api/v1/me").set("authorization", `Bearer ${accessToken}`).send({ name: "x" });
+    const res = await request(app)
+      .patch("/api/v1/me")
+      .set("authorization", `Bearer ${accessToken}`)
+      .send({ name: "x" });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
     const row = await db.user.findUnique({ where: { id: u.id }, select: { name: true } });
@@ -63,7 +66,9 @@ describe("POST /api/v1/me/password", () => {
     for (const t of [a.refreshToken, b.refreshToken]) {
       expect((await request(app).post("/api/v1/auth/refresh").send({ refreshToken: t })).status).toBe(401);
     }
-    const relog = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: "a-brand-new-password-9" });
+    const relog = await request(app)
+      .post("/api/v1/auth/login")
+      .send({ email: u.email, password: "a-brand-new-password-9" });
     expect(relog.status).toBe(200);
   });
 });
@@ -75,7 +80,11 @@ describe("/api/v1/me/profile for a student with no profile row", () => {
     const res = await request(app).get("/api/v1/me/profile").set("authorization", `Bearer ${accessToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toMatchObject({
-      name: "Test me-edge-noprofile", email: u.email, university: null, phone: null, activeSeasonTitle: null,
+      name: "Test me-edge-noprofile",
+      email: u.email,
+      university: null,
+      phone: null,
+      activeSeasonTitle: null,
     });
   });
 

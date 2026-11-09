@@ -37,9 +37,7 @@ describe("notificationPreferencesSchema", () => {
     // (spec R56, R57). The shape is derived here, and this is the runtime
     // half of that guarantee; the `satisfies` in the source is the compile half.
     expect(Object.keys(notificationPreferencesSchema.shape).sort()).toEqual(
-      notificationTypeSchema.options
-        .map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t])
-        .sort(),
+      notificationTypeSchema.options.map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t]).sort(),
     );
     expect(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).toHaveLength(10);
     expect(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).toContain("quizGraded");
@@ -67,12 +65,8 @@ describe("notificationPreferencesSchema", () => {
   });
 
   it("refuses a partial body — PUT carries every key", () => {
-    expect(notificationPreferencesSchema.safeParse({ assignmentCreated: false }).success).toBe(
-      false,
-    );
-    expect(notificationPreferencesSchema.safeParse(DEFAULT_NOTIFICATION_PREFERENCES).success).toBe(
-      true,
-    );
+    expect(notificationPreferencesSchema.safeParse({ assignmentCreated: false }).success).toBe(false);
+    expect(notificationPreferencesSchema.safeParse(DEFAULT_NOTIFICATION_PREFERENCES).success).toBe(true);
     // The six keys an older client sends are no longer a full body.
     const added = ["quizPublished", "submissionReceived", "sessionCancelled"];
     const six = Object.fromEntries(
@@ -95,9 +89,7 @@ describe("markReadRequestSchema", () => {
   });
 
   it("bounds the id batch", () => {
-    expect(markReadRequestSchema.safeParse({ ids: Array.from({ length: 201 }, (_, i) => i + 1) }).success).toBe(
-      false,
-    );
+    expect(markReadRequestSchema.safeParse({ ids: Array.from({ length: 201 }, (_, i) => i + 1) }).success).toBe(false);
   });
 });
 
@@ -144,9 +136,9 @@ describe("notificationSchema", () => {
     expect(
       notificationSchema.parse({ ...base, target: { entityType: "submission", entityId: "Ab3dE5gH9k" } }).target,
     ).toEqual({ entityType: "submission", entityId: "Ab3dE5gH9k" });
-    expect(
-      notificationSchema.safeParse({ ...base, target: { entityType: "submission", entityId: 41 } }).success,
-    ).toBe(false);
+    expect(notificationSchema.safeParse({ ...base, target: { entityType: "submission", entityId: 41 } }).success).toBe(
+      false,
+    );
     expect(
       notificationSchema.safeParse({ ...base, target: { entityType: "submission", entityId: null } }).success,
     ).toBe(false);
@@ -214,12 +206,8 @@ describe("push policy", () => {
 
 describe("deviceRegistrationSchema", () => {
   it("takes a token and a platform, and no user id", () => {
-    expect(deviceRegistrationSchema.safeParse({ token: "ExponentPushToken[x]", platform: "ios" }).success).toBe(
-      true,
-    );
-    expect(
-      deviceRegistrationSchema.safeParse({ token: "t", platform: "ios", userId: 3 }).success,
-    ).toBe(false);
+    expect(deviceRegistrationSchema.safeParse({ token: "ExponentPushToken[x]", platform: "ios" }).success).toBe(true);
+    expect(deviceRegistrationSchema.safeParse({ token: "t", platform: "ios", userId: 3 }).success).toBe(false);
     expect(deviceRegistrationSchema.safeParse({ token: "t", platform: "web" }).success).toBe(false);
   });
 

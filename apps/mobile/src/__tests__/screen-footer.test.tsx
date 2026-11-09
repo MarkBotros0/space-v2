@@ -1,12 +1,5 @@
 import { act, fireEvent, screen, within } from "@testing-library/react-native";
-import {
-  Keyboard,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text as RNText,
-  TextInput,
-} from "react-native";
+import { Keyboard, Platform, ScrollView, StyleSheet, Text as RNText, TextInput } from "react-native";
 
 import { SaveBar } from "../design/layout/save-bar";
 import { Screen } from "../design/layout/screen";
@@ -26,10 +19,7 @@ type ShowEvent = { endCoordinates: { height: number; screenY: number } };
 function withKeyboard(run: (show: (e: ShowEvent) => void) => void) {
   jest.useFakeTimers();
   const listeners: Record<string, (e: ShowEvent) => void> = {};
-  const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((
-    event: string,
-    cb: never,
-  ) => {
+  const spy = jest.spyOn(Keyboard, "addListener").mockImplementation(((event: string, cb: never) => {
     listeners[event] = cb;
     return { remove: jest.fn() };
   }) as unknown as typeof Keyboard.addListener);
@@ -70,9 +60,7 @@ describe("Screen footer", () => {
 
   it("inside the footer, SaveBar draws only its body; the slot does the pinning", () => {
     renderStacked(form);
-    expect(
-      StyleSheet.flatten(screen.getByTestId("save-bar").props.style)?.position,
-    ).toBeUndefined();
+    expect(StyleSheet.flatten(screen.getByTestId("save-bar").props.style)?.position).toBeUndefined();
     expect(footerStyle().position).toBe("absolute");
   });
 
@@ -122,8 +110,7 @@ describe("Screen footer", () => {
 
   it("keeps the focused field above the bar as well as the keyboard", () => {
     const focused = jest.spyOn(TextInput.State, "currentlyFocusedInput").mockReturnValue({
-      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) =>
-        cb(0, 300, 300, 40),
+      measureInWindow: (cb: (x: number, y: number, w: number, h: number) => void) => cb(0, 300, 300, 40),
     } as never);
     try {
       withKeyboard((show) => {

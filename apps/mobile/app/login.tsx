@@ -69,10 +69,7 @@ export default function LoginScreen() {
 
   async function onGoogle() {
     if (!isGoogleSignInConfigured()) {
-      Alert.alert(
-        "Coming soon",
-        "Signing in with Google isn't switched on yet. Use your email for now.",
-      );
+      Alert.alert("Coming soon", "Signing in with Google isn't switched on yet. Use your email for now.");
       return;
     }
     setError(null);
@@ -138,11 +135,7 @@ export default function LoginScreen() {
         {needsInvite ? (
           <View className="gap-1">
             <AuthNotice tone="info">{INVITE_FIRST_MESSAGE}</AuthNotice>
-            <AuthLink
-              tone="accent"
-              label="Enter your invite code"
-              onPress={() => router.push("/accept-invite")}
-            />
+            <AuthLink tone="accent" label="Enter your invite code" onPress={() => router.push("/accept-invite")} />
           </View>
         ) : null}
         <Button
@@ -174,8 +167,7 @@ export default function LoginScreen() {
   );
 }
 
-const INVITE_FIRST_MESSAGE =
-  "To sign in with Google, first set up your account with the invite code from your email.";
+const INVITE_FIRST_MESSAGE = "To sign in with Google, first set up your account with the invite code from your email.";
 
 /** A failed Google sign-in in words: the server's own refusal, else what went wrong where. */
 function googleErrorMessage(err: unknown): string {

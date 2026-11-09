@@ -12,10 +12,7 @@ interface BudgetSeason {
  * season lookup — callers already hold the season row. R91 kept: every
  * attendance row in the season counts, whatever the session's date.
  */
-export async function computeAttendanceBudget(
-  studentUserId: number,
-  season: BudgetSeason,
-): Promise<AttendanceBudget> {
+export async function computeAttendanceBudget(studentUserId: number, season: BudgetSeason): Promise<AttendanceBudget> {
   const [absentCount, late] = await Promise.all([
     db.attendance.count({
       where: { studentUserId, status: "ABSENT", session: { seasonId: season.id } },

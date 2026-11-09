@@ -24,10 +24,8 @@ import { useSessionStore } from "../../src/store/session";
 
 /** v1 assignments-list.tsx dueBadge, with the overdue flag from the server (C4) and the org day (X13). */
 function StaffDueBadge({ item }: { item: StaffAssignmentListItem }) {
-  if (item.dueAt === null || item.dueOrgDay === null)
-    return <Badge variant="outline">No due date</Badge>;
-  if (item.isOverdue)
-    return <Badge variant="warning">{`Due ${formatDayKey(item.dueOrgDay)}`}</Badge>;
+  if (item.dueAt === null || item.dueOrgDay === null) return <Badge variant="outline">No due date</Badge>;
+  if (item.isOverdue) return <Badge variant="warning">{`Due ${formatDayKey(item.dueOrgDay)}`}</Badge>;
   return <Badge variant="info">{`Due in ${formatDistanceOnly(item.dueAt)}`}</Badge>;
 }
 
@@ -66,9 +64,7 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
       cell: (row) => (
         <Pressable
           accessibilityRole="link"
-          onPress={() =>
-            router.push({ pathname: "/assignment/[id]", params: { id: String(row.id) } })
-          }
+          onPress={() => router.push({ pathname: "/assignment/[id]", params: { id: String(row.id) } })}
         >
           <TextV1 className="font-medium text-foreground">{row.title}</TextV1>
         </Pressable>
@@ -97,9 +93,7 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
   if (current.isPending || (current.seasonId !== null && list.isPending)) body = <RouteSkeleton />;
   else if (current.isError) body = <RouteError onRetry={current.refetch} />;
   else if (current.seasonId === null)
-    body = (
-      <EmptyStateV1 title="No season" description="There's no season to show assignments for." />
-    );
+    body = <EmptyStateV1 title="No season" description="There's no season to show assignments for." />;
   else if (list.isError) body = <RouteError onRetry={() => void list.refetch()} />;
   else
     body = (
@@ -125,15 +119,9 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
   return (
     <Screen
       title="Assignments"
-      subtitle={
-        list.data
-          ? `${list.data.length} ${list.data.length === 1 ? "assignment" : "assignments"}`
-          : undefined
-      }
+      subtitle={list.data ? `${list.data.length} ${list.data.length === 1 ? "assignment" : "assignments"}` : undefined}
       trailing={
-        canCreate && current.seasonId !== null ? (
-          <Button onPress={newAssignment}>New assignment</Button>
-        ) : undefined
+        canCreate && current.seasonId !== null ? <Button onPress={newAssignment}>New assignment</Button> : undefined
       }
       onRefresh={handleRefresh}
       refreshing={list.isRefetching}

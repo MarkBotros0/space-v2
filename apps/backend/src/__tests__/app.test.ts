@@ -32,17 +32,14 @@ describe("CORS", () => {
   // for an endpoint that existed. Deriving the list from the router is more
   // machinery than it is worth; asserting every verb the API actually uses is
   // enough to catch the next omission.
-  it.each(["GET", "POST", "PUT", "PATCH", "DELETE"])(
-    "allows %s through the preflight",
-    async (method) => {
-      const res = await request(createApp())
-        .options("/api/v1/health")
-        .set("Origin", "http://localhost:8081")
-        .set("Access-Control-Request-Method", method);
+  it.each(["GET", "POST", "PUT", "PATCH", "DELETE"])("allows %s through the preflight", async (method) => {
+    const res = await request(createApp())
+      .options("/api/v1/health")
+      .set("Origin", "http://localhost:8081")
+      .set("Access-Control-Request-Method", method);
 
-      expect(res.headers["access-control-allow-methods"]).toContain(method);
-    },
-  );
+    expect(res.headers["access-control-allow-methods"]).toContain(method);
+  });
 });
 
 describe("routers mounted on the shared /api/v1 prefix (ruling X5)", () => {

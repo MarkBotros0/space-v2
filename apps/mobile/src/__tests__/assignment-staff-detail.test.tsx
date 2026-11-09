@@ -19,33 +19,76 @@ const get = apiClient.get as jest.Mock;
 const del = apiClient.delete as jest.Mock;
 
 const detail = {
-  id: 55, seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
-  sessionId: 12, sessionTitle: "Week 4", title: "Essay one",
-  description: "<p>Write about <strong>the thing</strong>.</p>", dueAt: "2099-04-01T21:59:00.000Z",
-  dueOrgDay: "2099-04-01", dueOrgTime: "23:59", isOverdue: false, isAllGroups: false,
-  type: "STANDARD" as const, forumMinWords: null, forumAllowComments: false, forumPostToRead: true,
-  maxFileSizeMb: 10, allowedMimeCategories: ["pdf" as const], groupIds: [3],
-  mySubmission: null, canManage: true, readOnly: false,
+  id: 55,
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
+  sessionId: 12,
+  sessionTitle: "Week 4",
+  title: "Essay one",
+  description: "<p>Write about <strong>the thing</strong>.</p>",
+  dueAt: "2099-04-01T21:59:00.000Z",
+  dueOrgDay: "2099-04-01",
+  dueOrgTime: "23:59",
+  isOverdue: false,
+  isAllGroups: false,
+  type: "STANDARD" as const,
+  forumMinWords: null,
+  forumAllowComments: false,
+  forumPostToRead: true,
+  maxFileSizeMb: 10,
+  allowedMimeCategories: ["pdf" as const],
+  groupIds: [3],
+  mySubmission: null,
+  canManage: true,
+  readOnly: false,
 };
 
 const tracker = {
-  assignmentId: 55, dueAt: detail.dueAt, isOverdue: false, submittedCount: 1, expectedCount: 2,
+  assignmentId: 55,
+  dueAt: detail.dueAt,
+  isOverdue: false,
+  submittedCount: 1,
+  expectedCount: 2,
   rows: [
     {
-      studentUserId: 9, name: "Sara Student", email: "sara@jpc.test", groupId: 3, groupName: "Group A",
-      status: "SUBMITTED" as const, isLate: true, submittedAt: "2099-04-02T10:00:00.000Z",
-      reviewedAt: null, submissionPublicId: "abc123defg",
+      studentUserId: 9,
+      name: "Sara Student",
+      email: "sara@jpc.test",
+      groupId: 3,
+      groupName: "Group A",
+      status: "SUBMITTED" as const,
+      isLate: true,
+      submittedAt: "2099-04-02T10:00:00.000Z",
+      reviewedAt: null,
+      submissionPublicId: "abc123defg",
     },
     {
-      studentUserId: 10, name: null, email: "noname@jpc.test", groupId: 3, groupName: "Group A",
-      status: "PENDING" as const, isLate: false, submittedAt: null, reviewedAt: null,
+      studentUserId: 10,
+      name: null,
+      email: "noname@jpc.test",
+      groupId: 3,
+      groupName: "Group A",
+      status: "PENDING" as const,
+      isLate: false,
+      submittedAt: null,
+      reviewedAt: null,
       submissionPublicId: null,
     },
   ],
 };
 
 const groups = [
-  { id: 3, name: "Group A", description: null, studentCount: 2, leaderNames: [], seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099" },
+  {
+    id: 3,
+    name: "Group A",
+    description: null,
+    studentCount: 2,
+    leaderNames: [],
+    seasonId: 7,
+    seasonCode: "s7",
+    seasonTitle: "Spring 2099",
+  },
 ];
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
@@ -129,7 +172,12 @@ describe("AssignmentDetailScreen (staff)", () => {
         isAxiosError: true,
         response: {
           status: 409,
-          data: { error: { code: "has_submissions", message: "Students have already started this assignment, so it can't be deleted." } },
+          data: {
+            error: {
+              code: "has_submissions",
+              message: "Students have already started this assignment, so it can't be deleted.",
+            },
+          },
         },
       }),
     );

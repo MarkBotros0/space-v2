@@ -23,8 +23,12 @@ import { groupsRouter } from "../routes/groups";
 const app = express().use(express.json()).use("/groups", groupsRouter);
 
 const admin = {
-  userId: 1, role: "ADMIN", seasonAdminIds: [7], groupLeaderIds: [],
-  activeSeasonId: null, graduationYear: null,
+  userId: 1,
+  role: "ADMIN",
+  seasonAdminIds: [7],
+  groupLeaderIds: [],
+  activeSeasonId: null,
+  graduationYear: null,
 };
 
 beforeEach(() => {
@@ -34,7 +38,10 @@ beforeEach(() => {
 
 it("selects members from enrolments with the member statuses and live students", async () => {
   mockDb.group.findUnique.mockResolvedValue({
-    id: 3, name: "Tuesday", description: null, seasonId: 7,
+    id: 3,
+    name: "Tuesday",
+    description: null,
+    seasonId: 7,
     season: { code: "s7", title: "S7" },
     leaders: [],
     seasonEnrollments: [

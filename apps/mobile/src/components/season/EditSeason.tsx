@@ -60,8 +60,7 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
     setMessage(null);
     update.mutate(body, {
       onSuccess: () => setMessage({ text: "Saved.", error: false }),
-      onError: (err) =>
-        setMessage({ text: apiErrorMessage(err, "Couldn't save the season."), error: true }),
+      onError: (err) => setMessage({ text: apiErrorMessage(err, "Couldn't save the season."), error: true }),
     });
   };
 
@@ -71,11 +70,7 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
         Season settings
       </Text>
       <FormField label="Description">
-        <Textarea
-          accessibilityLabel="Description"
-          value={description}
-          onChangeText={edit(setDescription)}
-        />
+        <Textarea accessibilityLabel="Description" value={description} onChangeText={edit(setDescription)} />
       </FormField>
       <FormField label="Absence budget (minutes)">
         <Input

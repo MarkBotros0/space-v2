@@ -1,11 +1,6 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { z } from "zod";
-import {
-  seasonDetailSchema,
-  seasonListItemSchema,
-  type SeasonDetail,
-  type SeasonListItem,
-} from "@space/shared";
+import { seasonDetailSchema, seasonListItemSchema, type SeasonDetail, type SeasonListItem } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
@@ -50,9 +45,7 @@ export function useSeasonDetail(id: number | null): UseQueryResult<SeasonDetail>
  * tested on its own, not only through a screen.
  */
 export function pickCurrentSeasonId(seasons: SeasonListItem[]): number | null {
-  const latestFirst = [...seasons].sort((a, b) =>
-    a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0,
-  );
+  const latestFirst = [...seasons].sort((a, b) => (a.startDate < b.startDate ? 1 : a.startDate > b.startDate ? -1 : 0));
   const active = latestFirst.find((s) => s.status === "ACTIVE");
   return (active ?? latestFirst[0])?.id ?? null;
 }

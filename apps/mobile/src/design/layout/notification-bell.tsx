@@ -30,9 +30,7 @@ export function NotificationBell({ unread, onPress }: { unread: number; onPress:
         >
           {/* 10px, under the caption floor, accepted with the tab labels (M6): a count badge
               inside a 44px button; the button's label carries the count for screen readers. */}
-          <Text className="text-[10px] font-semibold leading-none text-white">
-            {unread > 9 ? "9+" : unread}
-          </Text>
+          <Text className="text-[10px] font-semibold leading-none text-white">{unread > 9 ? "9+" : unread}</Text>
         </View>
       ) : null}
     </Pressable>

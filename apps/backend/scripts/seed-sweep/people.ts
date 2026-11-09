@@ -8,12 +8,7 @@ type Role = "SUPER" | "ADMIN" | "LEADER" | "STUDENT" | "MENTOR";
 /** Every role's user, the two seasons, the group and its enrolments. */
 export async function seedPeople() {
   const passwordHash = await bcrypt.hash(SWEEP_PASSWORD, 10);
-  const user = (
-    key: string,
-    name: string,
-    role: Role,
-    graduationYear?: number,
-  ) =>
+  const user = (key: string, name: string, role: Role, graduationYear?: number) =>
     db.user.create({
       data: { email: `${key}@sweep.jpc.test`, name, role, passwordHash, graduationYear },
     });
@@ -64,7 +59,13 @@ export async function seedPeople() {
     await db.groupStudent.create({ data: { groupId: group.id, seasonId: season.id, studentUserId: s.id } });
     await db.seasonEnrollment.create({
       // Joined at the season start, so the reports trend counts them for its past sessions.
-      data: { studentUserId: s.id, seasonId: season.id, groupId: group.id, status: "ACTIVE", enrolledAt: fromToday(-30) },
+      data: {
+        studentUserId: s.id,
+        seasonId: season.id,
+        groupId: group.id,
+        status: "ACTIVE",
+        enrolledAt: fromToday(-30),
+      },
     });
     await db.studentProfile.create({
       data: { userId: s.id, university: "Cairo University", year: "3" },

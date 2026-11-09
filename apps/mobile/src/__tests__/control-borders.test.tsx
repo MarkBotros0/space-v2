@@ -30,12 +30,24 @@ describe("control borders", () => {
   });
 
   // R26: every text-entry control shows the focus ring while focused.
-  it.each(["input", "textarea", "combobox", "rich-text-editor", "search-field"])("%s.tsx marks focus with border-ring", (name) => {
-    const source = readFileSync(path.resolve(__dirname, `../design/ui/${name}.tsx`), "utf8");
-    expect(source).toMatch(/(focus:border-ring|&& "border-ring")/);
-  });
+  it.each(["input", "textarea", "combobox", "rich-text-editor", "search-field"])(
+    "%s.tsx marks focus with border-ring",
+    (name) => {
+      const source = readFileSync(path.resolve(__dirname, `../design/ui/${name}.tsx`), "utf8");
+      expect(source).toMatch(/(focus:border-ring|&& "border-ring")/);
+    },
+  );
 
-  const CONTROLS = ["input", "textarea", "select", "combobox", "date-picker", "multi-select", "rich-text-editor", "checkbox"];
+  const CONTROLS = [
+    "input",
+    "textarea",
+    "select",
+    "combobox",
+    "date-picker",
+    "multi-select",
+    "rich-text-editor",
+    "checkbox",
+  ];
   it.each(CONTROLS)("%s.tsx draws no low-contrast border-input edge", (name) => {
     const source = readFileSync(path.resolve(__dirname, `../design/ui/${name}.tsx`), "utf8");
     expect(source).not.toMatch(/\bborder-input\b/);

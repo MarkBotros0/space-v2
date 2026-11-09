@@ -30,13 +30,7 @@ export function AnnouncementsHomeCard() {
  * One compact row (owner, 2026-11-08): it says a post is new in words, shows the latest post's first
  * line, and opens that post. The full feed stays on More.
  */
-export function AnnouncementsHomeCardView({
-  count,
-  latest,
-}: {
-  count: number;
-  latest: AnnouncementListItem;
-}) {
+export function AnnouncementsHomeCardView({ count, latest }: { count: number; latest: AnnouncementListItem }) {
   const router = useRouter();
   const press = usePressDim();
   const heading = count === 1 ? "New announcement" : `${count} new announcements`;
@@ -48,9 +42,7 @@ export function AnnouncementsHomeCardView({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint="Opens the announcement"
-      onPress={() =>
-        router.push({ pathname: "/announcements/[id]", params: { id: String(latest.id) } })
-      }
+      onPress={() => router.push({ pathname: "/announcements/[id]", params: { id: String(latest.id) } })}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
     >

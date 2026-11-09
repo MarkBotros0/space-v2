@@ -127,16 +127,34 @@ describe("Admins screen (SUPER), opened from the People card", () => {
       if (url === "/api/v1/seasons/7/admins") return Promise.resolve({ data: { data: { admins } } });
       if (url === "/api/v1/seasons/7/staff-candidates") return candidates(person(22, "Rana Admin"));
       if (url === "/api/v1/seasons/7/groups") {
-        const row = { id: 70, name: "Group A", description: null, studentCount: 0, leaderNames: ["Lina Leader"], seasonId: 7, seasonCode: "s7", seasonTitle: "TEST 2099" };
+        const row = {
+          id: 70,
+          name: "Group A",
+          description: null,
+          studentCount: 0,
+          leaderNames: ["Lina Leader"],
+          seasonId: 7,
+          seasonCode: "s7",
+          seasonTitle: "TEST 2099",
+        };
         return Promise.resolve({ data: { data: { groups: [row] } } });
       }
       if (url === "/api/v1/groups/70") {
         return Promise.resolve({
           data: {
             data: {
-              id: 70, name: "Group A", description: null, seasonId: 7, seasonCode: "s7", seasonTitle: "TEST 2099",
-              leaders: [{ id: 21, name: "Pat Admin" }, { id: 23, name: "Lina Leader" }],
-              students: [], canManage: true,
+              id: 70,
+              name: "Group A",
+              description: null,
+              seasonId: 7,
+              seasonCode: "s7",
+              seasonTitle: "TEST 2099",
+              leaders: [
+                { id: 21, name: "Pat Admin" },
+                { id: 23, name: "Lina Leader" },
+              ],
+              students: [],
+              canManage: true,
             },
           },
         });
@@ -172,12 +190,8 @@ describe("Admins screen (SUPER), opened from the People card", () => {
     fireEvent.press(await screen.findByText("Rana Admin"));
     fireEvent.press(screen.getByText("Add"));
 
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }),
-    );
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith("Rana Admin can now administer TEST 2099."),
-    );
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rana Admin can now administer TEST 2099."));
     expect(await screen.findByText("rana@jpc.test")).toBeTruthy();
     for (const queryKey of [queryKeys.seasons.all, queryKeys.users.all, queryKeys.dashboard.all]) {
       expect(invalidate).toHaveBeenCalledWith({ queryKey });

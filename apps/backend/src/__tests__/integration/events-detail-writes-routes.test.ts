@@ -27,9 +27,7 @@ afterAll(async () => {
 
 describe("GET /api/v1/events/:id", () => {
   it("serves the detail v1 has no page for", async () => {
-    const res = await request(app)
-      .get(`/api/v1/events/${allEventId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+    const res = await request(app).get(`/api/v1/events/${allEventId}`).set("authorization", `Bearer ${studentToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ id: allEventId, canManage: false });
     expect(res.body.data).toHaveProperty("description");
@@ -98,10 +96,7 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
   });
 
   it("refuses create, update and delete to an ADMIN", async () => {
-    const create = await request(app)
-      .post("/api/v1/events")
-      .set("authorization", `Bearer ${adminToken}`)
-      .send(body);
+    const create = await request(app).post("/api/v1/events").set("authorization", `Bearer ${adminToken}`).send(body);
     expect(create.status).toBe(403);
 
     const patch = await request(app)
@@ -110,9 +105,7 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
       .send({ title: "space-v2-test-renamed" });
     expect(patch.status).toBe(403);
 
-    const del = await request(app)
-      .delete(`/api/v1/events/${allEventId}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const del = await request(app).delete(`/api/v1/events/${allEventId}`).set("authorization", `Bearer ${adminToken}`);
     expect(del.status).toBe(403);
   });
 
@@ -185,9 +178,7 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
   it("404s a stale id instead of throwing a raw Prisma error (spec 15 item 11)", async () => {
     // v1's delete does not read the row first, so P2025 reaches the client as
     // an unhandled server-action error (R36).
-    const del = await request(app)
-      .delete("/api/v1/events/987654321")
-      .set("authorization", `Bearer ${superToken}`);
+    const del = await request(app).delete("/api/v1/events/987654321").set("authorization", `Bearer ${superToken}`);
     expect(del.status).toBe(404);
     expect(del.body.error.code).toBe("not_found");
   });
@@ -201,9 +192,7 @@ describe("event writes are SUPER-only (spec 15 R1/R3)", () => {
       },
       select: { id: true },
     });
-    const res = await request(app)
-      .delete(`/api/v1/events/${doomed.id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).delete(`/api/v1/events/${doomed.id}`).set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ deleted: true });
     expect(await db.jpcEvent.count({ where: { id: doomed.id } })).toBe(0);

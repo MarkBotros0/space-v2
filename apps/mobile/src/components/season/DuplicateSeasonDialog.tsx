@@ -86,8 +86,8 @@ export function DuplicateSeasonDialog({
     >
       <View className="flex-col gap-4">
         <Text variant="subhead" className="text-muted-foreground">
-          Copies groups, sessions, and assignments with dates shifted to match. Students are not
-          copied — the new season starts as an empty batch.
+          Copies groups, sessions, and assignments with dates shifted to match. Students are not copied — the new season
+          starts as an empty batch.
         </Text>
         <FormField label="Year" required error={errors.year}>
           <Input
@@ -100,12 +100,7 @@ export function DuplicateSeasonDialog({
             keyboardType="number-pad"
           />
         </FormField>
-        <FormField
-          label="Code"
-          required
-          description="URL slug — auto-filled from year."
-          error={errors.code}
-        >
+        <FormField label="Code" required description="URL slug — auto-filled from year." error={errors.code}>
           <Input
             accessibilityLabel="Code"
             value={code}

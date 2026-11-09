@@ -48,9 +48,7 @@ function ModeTile({
       onPress={onPress}
       className={cn(
         "rounded-control border px-4 py-3",
-        selected
-          ? "border-ring bg-accent"
-          : "border-control-border bg-surface active:bg-accent",
+        selected ? "border-ring bg-accent" : "border-control-border bg-surface active:bg-accent",
       )}
     >
       <Text className="text-sm font-semibold text-foreground">{title}</Text>
@@ -78,8 +76,7 @@ export function ImportPasteStep({
   const sampleHeader = readableHeader(template.data?.headerRow);
   const yearNum = Number(graduationYear);
   const yearInvalid =
-    graduationYear !== "" &&
-    !(/^\d{4}$/.test(graduationYear) && yearNum >= 1990 && yearNum <= CURRENT_YEAR);
+    graduationYear !== "" && !(/^\d{4}$/.test(graduationYear) && yearNum >= 1990 && yearNum <= CURRENT_YEAR);
 
   return (
     <View className="flex-col gap-4">
@@ -116,8 +113,7 @@ export function ImportPasteStep({
               ) : (seasons.data ?? []).length === 0 ? (
                 <View className="rounded-control bg-warn-soft px-3 py-2">
                   <Text className="text-sm text-warning-800 dark:text-warning-200">
-                    No seasons yet — create a season first, or import these people as alumni
-                    instead.
+                    No seasons yet — create a season first, or import these people as alumni instead.
                   </Text>
                 </View>
               ) : (
@@ -167,12 +163,10 @@ export function ImportPasteStep({
               />
               <View className="mt-1 flex-col gap-0.5">
                 <Text variant="caption" className="text-muted-foreground">
-                  A name and an email per line is all it needs. To add more details, start
-                  with a header row naming the columns.
+                  A name and an email per line is all it needs. To add more details, start with a header row naming the
+                  columns.
                 </Text>
-                <Text className="mt-1 text-xs font-medium text-muted-foreground">
-                  Columns we recognise
-                </Text>
+                <Text className="mt-1 text-xs font-medium text-muted-foreground">Columns we recognise</Text>
                 {template.data?.columns.map((c) => (
                   <Text key={c.label} className="text-xs text-muted-foreground">
                     {`${c.label}${c.required ? " (required)" : ""} — ${c.acceptedHeaders.join(", ")}`}

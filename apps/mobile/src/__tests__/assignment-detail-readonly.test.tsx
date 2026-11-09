@@ -43,17 +43,32 @@ const detail = {
   allowedMimeCategories: ["pdf" as const],
   groupIds: null,
   mySubmission: null,
-  canManage: false, readOnly: false,
+  canManage: false,
+  readOnly: false,
 };
 
 const submissionFor = (status: "REVIEWED" | "SUBMITTED", isLate: boolean, feedback: string | null) => ({
-  id: 900, publicId: "abc123defg", status, text: "the work", feedback,
+  id: 900,
+  publicId: "abc123defg",
+  status,
+  text: "the work",
+  feedback,
   submittedAt: "2099-03-30T10:00:00.000Z",
   reviewedAt: status === "REVIEWED" ? "2099-03-31T10:00:00.000Z" : null,
-  isLate, assignmentId: 41, assignmentTitle: "Essay one", assignmentDueAt: null,
-  assignmentDescription: null, seasonCode: "S26", studentUserId: 9,
-  studentName: "Test student", studentEmail: "s@jpc.test", groupId: null, groupName: null,
-  files: [], canUploadFiles: false, canReview: false,
+  isLate,
+  assignmentId: 41,
+  assignmentTitle: "Essay one",
+  assignmentDueAt: null,
+  assignmentDescription: null,
+  seasonCode: "S26",
+  studentUserId: 9,
+  studentName: "Test student",
+  studentEmail: "s@jpc.test",
+  groupId: null,
+  groupName: null,
+  files: [],
+  canUploadFiles: false,
+  canReview: false,
 });
 
 beforeEach(() => {
@@ -66,7 +81,12 @@ beforeEach(() => {
 
 describe("AssignmentDetailScreen, read-only (a finished season)", () => {
   const sub = (status: "DRAFT" | "REVIEWED") => ({
-    publicId: "abc123defg", status, submittedAt: null, reviewedAt: null, feedback: null, isLate: false,
+    publicId: "abc123defg",
+    status,
+    submittedAt: null,
+    reviewedAt: null,
+    feedback: null,
+    isLate: false,
   });
   const serve = (assignment: unknown, submission?: unknown) =>
     get.mockImplementation((url: string) => {
@@ -92,7 +112,10 @@ describe("AssignmentDetailScreen, read-only (a finished season)", () => {
   });
 
   it("shows a draft as plain text, not an editor", async () => {
-    serve({ ...detail, readOnly: true, mySubmission: sub("DRAFT") }, { ...submissionFor("REVIEWED", false, null), status: "DRAFT" });
+    serve(
+      { ...detail, readOnly: true, mySubmission: sub("DRAFT") },
+      { ...submissionFor("REVIEWED", false, null), status: "DRAFT" },
+    );
     renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText("the work")).toBeTruthy();
     expect(screen.queryByLabelText("Your response")).toBeNull();

@@ -50,10 +50,7 @@ export async function updateUser(req: Request, res: Response) {
 
   const parsed = updateUserRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    return apiError(
-      res, "bad_request",
-      parsed.error.issues[0]?.message ?? "Invalid user body.", 400,
-    );
+    return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid user body.", 400);
   }
   const body = parsed.data;
 
@@ -61,8 +58,7 @@ export async function updateUser(req: Request, res: Response) {
     // A SUPER's demotion locks every SUPER before this person alone: two
     // demotions each holding their own row and waiting on the other's would deadlock.
     const before = await tx.user.findUnique({ where: { id }, select: { role: true } });
-    const lockedSuperIds =
-      before?.role === "SUPER" && body.role !== "SUPER" ? await lockActiveSuperIds(tx) : null;
+    const lockedSuperIds = before?.role === "SUPER" && body.role !== "SUPER" ? await lockActiveSuperIds(tx) : null;
 
     await lockPeople(tx, [id]);
     const target = await tx.user.findUnique({
@@ -97,10 +93,7 @@ export async function updateUser(req: Request, res: Response) {
     // D7 rec 3: SUPER is never a mis-tapped picker item.
     if (roleChanged && body.role === "SUPER" && body.confirmSuper !== true) {
       return {
-        fail: [
-          "confirm_super_required",
-          "Granting SUPER requires explicit confirmation.", 400,
-        ] as const,
+        fail: ["confirm_super_required", "Granting SUPER requires explicit confirmation.", 400] as const,
       };
     }
 
@@ -259,10 +252,7 @@ export async function createUser(req: Request, res: Response) {
 
   const parsed = createUserRequestSchema.safeParse(req.body);
   if (!parsed.success) {
-    return apiError(
-      res, "bad_request",
-      parsed.error.issues[0]?.message ?? "Invalid user body.", 400,
-    );
+    return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid user body.", 400);
   }
   const body = parsed.data;
 

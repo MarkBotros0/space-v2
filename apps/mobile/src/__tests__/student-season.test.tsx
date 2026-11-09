@@ -65,11 +65,7 @@ const takenQuiz = (quizId: number, title: string, sessionDate: string) => ({
 });
 
 /** Routes by URL: the season, and the two lists the submissions card reads. */
-function serve(
-  season: unknown = mySeason,
-  assignments: unknown[] = [],
-  quizzes: unknown[] = [],
-) {
+function serve(season: unknown = mySeason, assignments: unknown[] = [], quizzes: unknown[] = []) {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/me/season") return Promise.resolve({ data: { data: { season } } });
     if (url === ASSIGNMENTS) return Promise.resolve({ data: { data: { assignments } } });
@@ -172,7 +168,13 @@ describe("SeasonScreen — STUDENT branch (v1 student/season)", () => {
   // Owner 2026-11-07: the next session only; the rest are on the calendar.
   it("shows only the next session", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
-    const later = { id: 42, title: "Week 5", startsAt: "2099-03-29T18:00:00.000Z", dayKey: "2099-03-29", location: null };
+    const later = {
+      id: 42,
+      title: "Week 5",
+      startsAt: "2099-03-29T18:00:00.000Z",
+      dayKey: "2099-03-29",
+      location: null,
+    };
     serve({ ...mySeason, upcoming: [...mySeason.upcoming, later] });
     renderWithProviders(<SeasonScreen />);
     expect(await screen.findByText("Week 4")).toBeTruthy();

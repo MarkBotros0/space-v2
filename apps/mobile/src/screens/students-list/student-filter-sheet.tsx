@@ -83,10 +83,7 @@ export function StudentFilterSheet({
   const seasons = useSeasons(open && bySeason);
   const seasonGroups = useSeasonGroups(bySeason && open ? view.seasonId : null);
   const groupOptions: { id: number | "none" | null; label: string }[] = bySeason
-    ? [
-        { id: null, label: "All groups" },
-        ...(seasonGroups.data ?? []).map((g) => ({ id: g.id, label: g.name })),
-      ]
+    ? [{ id: null, label: "All groups" }, ...(seasonGroups.data ?? []).map((g) => ({ id: g.id, label: g.name }))]
     : [
         { id: null, label: "All groups" },
         { id: "none", label: "Unassigned" },
@@ -100,12 +97,7 @@ export function StudentFilterSheet({
       {show && show.options.length > 1 ? (
         <GroupedList header="Show" className="mb-4">
           {show.options.map((o) => (
-            <ListRow
-              key={o}
-              title={SHOW_LABEL[o]}
-              {...tick(show.value === o)}
-              onPress={() => show.onChange(o)}
-            />
+            <ListRow key={o} title={SHOW_LABEL[o]} {...tick(show.value === o)} onPress={() => show.onChange(o)} />
           ))}
         </GroupedList>
       ) : null}

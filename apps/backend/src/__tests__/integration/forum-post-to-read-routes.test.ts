@@ -22,8 +22,7 @@ let studentBToken: string;
 let adminToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, assignmentId, studentAToken, studentA2Token, studentBToken, adminToken } =
-    await seedForumFixtures(app));
+  ({ seasonId, assignmentId, studentAToken, studentA2Token, studentBToken, adminToken } = await seedForumFixtures(app));
 });
 
 beforeEach(() => resetSubmissions(seasonId));
@@ -103,9 +102,7 @@ describe("the setting through the assignment writes", () => {
       .set("authorization", `Bearer ${adminToken}`)
       .send({ ...body, forumPostToRead: false });
     expect(off.status).toBe(200);
-    const detail = await request(app)
-      .get(`/api/v1/assignments/${id}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const detail = await request(app).get(`/api/v1/assignments/${id}`).set("authorization", `Bearer ${adminToken}`);
     expect(detail.body.data.forumPostToRead).toBe(false);
 
     const standard = await request(app)

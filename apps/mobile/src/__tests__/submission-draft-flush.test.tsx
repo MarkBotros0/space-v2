@@ -30,18 +30,50 @@ const rejected = (status: number) =>
 const saved = { data: { data: { saved: true, submitted: false } } };
 
 const assignment = {
-  id: 41, seasonId: 7, seasonCode: "S26", seasonTitle: "Spring 2026", sessionId: null,
-  sessionTitle: null, title: "Essay one", description: null, dueAt: null, dueOrgDay: null,
-  dueOrgTime: null, isOverdue: false, isAllGroups: true, type: "STANDARD" as const,
-  forumMinWords: null, forumAllowComments: false, forumPostToRead: true, maxFileSizeMb: null, allowedMimeCategories: [],
-  groupIds: null, canManage: false, readOnly: false,
+  id: 41,
+  seasonId: 7,
+  seasonCode: "S26",
+  seasonTitle: "Spring 2026",
+  sessionId: null,
+  sessionTitle: null,
+  title: "Essay one",
+  description: null,
+  dueAt: null,
+  dueOrgDay: null,
+  dueOrgTime: null,
+  isOverdue: false,
+  isAllGroups: true,
+  type: "STANDARD" as const,
+  forumMinWords: null,
+  forumAllowComments: false,
+  forumPostToRead: true,
+  maxFileSizeMb: null,
+  allowedMimeCategories: [],
+  groupIds: null,
+  canManage: false,
+  readOnly: false,
 };
 const submission = {
-  id: 900, publicId: "abc123defg", text: "first draft", feedback: null, submittedAt: null,
-  reviewedAt: null, isLate: false, assignmentId: 41, assignmentTitle: "Essay one",
-  assignmentDueAt: null, assignmentDescription: null, seasonCode: "S26", studentUserId: 9,
-  studentName: "S", studentEmail: "s@jpc.test", groupId: null, groupName: null, files: [],
-  canUploadFiles: false, canReview: false,
+  id: 900,
+  publicId: "abc123defg",
+  text: "first draft",
+  feedback: null,
+  submittedAt: null,
+  reviewedAt: null,
+  isLate: false,
+  assignmentId: 41,
+  assignmentTitle: "Essay one",
+  assignmentDueAt: null,
+  assignmentDescription: null,
+  seasonCode: "S26",
+  studentUserId: 9,
+  studentName: "S",
+  studentEmail: "s@jpc.test",
+  groupId: null,
+  groupName: null,
+  files: [],
+  canUploadFiles: false,
+  canReview: false,
 };
 
 function serve(status: "DRAFT" | "RETURNED" | "SUBMITTED" = "DRAFT") {
@@ -53,8 +85,12 @@ function serve(status: "DRAFT" | "RETURNED" | "SUBMITTED" = "DRAFT") {
             ? {
                 ...assignment,
                 mySubmission: {
-                  publicId: "abc123defg", status, submittedAt: null, reviewedAt: null,
-                  feedback: null, isLate: false,
+                  publicId: "abc123defg",
+                  status,
+                  submittedAt: null,
+                  reviewedAt: null,
+                  feedback: null,
+                  isLate: false,
                 },
               }
             : { ...submission, status },
@@ -172,7 +208,12 @@ describe("leaving the screen saves what was written", () => {
   it("re-opening while a flush is in flight: the new save waits for it", async () => {
     serve();
     let finishFlush: (value: unknown) => void = () => undefined;
-    patch.mockImplementationOnce(() => new Promise((resolve) => { finishFlush = resolve; }));
+    patch.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFlush = resolve;
+        }),
+    );
     patch.mockResolvedValue(saved);
     const first = open();
     fireEvent.changeText(await screen.findByLabelText("Your response"), "older");
@@ -245,8 +286,12 @@ describe("work returned while the screen stays open", () => {
               ? {
                   ...assignment,
                   mySubmission: {
-                    publicId: "abc123defg", status, submittedAt: null, reviewedAt: null,
-                    feedback: null, isLate: false,
+                    publicId: "abc123defg",
+                    status,
+                    submittedAt: null,
+                    reviewedAt: null,
+                    feedback: null,
+                    isLate: false,
                   },
                 }
               : { ...submission, status, text: "final" },
@@ -300,7 +345,10 @@ describe("backgrounding saves what was written", () => {
     });
     return {
       spy,
-      send: (state: AppStateStatus) => act(async () => { for (const fn of listeners) fn(state); }),
+      send: (state: AppStateStatus) =>
+        act(async () => {
+          for (const fn of listeners) fn(state);
+        }),
     };
   }
 

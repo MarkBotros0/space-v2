@@ -52,11 +52,7 @@ export function AuthCard({
           <View className="mb-8 flex-col items-center gap-4">
             <Logo size="lg" />
             <View className="flex-col gap-1">
-              <Text
-                accessibilityRole="header"
-                variant="title"
-                className="text-center text-foreground"
-              >
+              <Text accessibilityRole="header" variant="title" className="text-center text-foreground">
                 {title}
               </Text>
               <Text variant="subhead" className="text-center text-muted-foreground">
@@ -116,7 +112,11 @@ export function AuthLink({
 /** "or" between two ways in: a hairline each side of the word. */
 export function AuthDivider({ label = "or" }: { label?: string }) {
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" className="flex-row items-center gap-3">
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      className="flex-row items-center gap-3"
+    >
       <View className="h-px flex-1 bg-separator" />
       <Text variant="caption" className="text-muted-foreground">
         {label}
@@ -134,13 +134,7 @@ const NOTICE_TONES = {
   info: { box: "bg-info-soft", text: "text-foreground" },
 } as const;
 
-export function AuthNotice({
-  tone,
-  children,
-}: {
-  tone: keyof typeof NOTICE_TONES;
-  children: ReactNode;
-}) {
+export function AuthNotice({ tone, children }: { tone: keyof typeof NOTICE_TONES; children: ReactNode }) {
   return (
     <View className={cn("rounded-control px-3 py-2", NOTICE_TONES[tone].box)}>
       <Text
@@ -160,23 +154,12 @@ export function AuthNotice({
  * `font-medium text-foreground` (body line height, not Label's leading-none).
  * An error reaches the control as its accessibilityHint, like FormField.
  */
-export function AuthField({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: ReactElement;
-}) {
+export function AuthField({ label, error, children }: { label: string; error?: string; children: ReactElement }) {
   const control = error
-    ? cloneElement(
-        children as ReactElement<{ accessibilityHint?: string; "aria-invalid"?: boolean }>,
-        {
-          accessibilityHint: error,
-          "aria-invalid": true,
-        },
-      )
+    ? cloneElement(children as ReactElement<{ accessibilityHint?: string; "aria-invalid"?: boolean }>, {
+        accessibilityHint: error,
+        "aria-invalid": true,
+      })
     : children;
   return (
     <View className="flex-col gap-1.5">

@@ -40,8 +40,7 @@ function assertLocalDatabase(): void {
 
 async function main(): Promise<void> {
   assertLocalDatabase();
-  if ((await db.user.count()) > 0)
-    throw new Error("seed:sweep expects an empty, freshly migrated database.");
+  if ((await db.user.count()) > 0) throw new Error("seed:sweep expects an empty, freshly migrated database.");
 
   // Order matters: ids are insertion order, and the sweep flows name some of
   // them (e.g. leader-scenarios/s14-session-attendance.yaml's session ids).
@@ -61,9 +60,7 @@ async function main(): Promise<void> {
   // `dropped` is scenarios.ts's student3; the others are the community-model states.
   const dropped = await db.user.findFirstOrThrow({ where: { email: "student3@sweep.jpc.test" } });
   const roles = { student, alumni, leader, admin, super: superUser, mentor, ...community, dropped };
-  const users = Object.fromEntries(
-    Object.entries(roles).map(([role, u]) => [role, { email: u.email, name: u.name }]),
-  );
+  const users = Object.fromEntries(Object.entries(roles).map(([role, u]) => [role, { email: u.email, name: u.name }]));
   const out = process.argv[2];
   if (out) writeFileSync(out, JSON.stringify(users, null, 2));
   console.log(`Seeded ${Object.keys(users).length} sweep roles${out ? ` -> ${out}` : ""}`);

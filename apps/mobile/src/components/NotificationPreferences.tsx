@@ -6,10 +6,7 @@ import type { NotificationPreferences as Prefs, UserRole } from "@space/shared";
 import { Section } from "../design/settings/section";
 import { Button, Skeleton, Switch, Text } from "../design/ui";
 import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
-import {
-  useNotificationPreferences,
-  useUpdateNotificationPreferences,
-} from "../hooks/use-notifications";
+import { useNotificationPreferences, useUpdateNotificationPreferences } from "../hooks/use-notifications";
 import { enablePush, type PushStatus } from "../lib/push";
 import { useSessionStore } from "../store/session";
 
@@ -93,8 +90,7 @@ function preferenceKeysFor(
   if (role === "MENTOR") return ["mentorFollowup", "announcement"];
   const keys: ShownKey[] = [];
   if (scopes && scopes.groupLeaderIds.length > 0) keys.push("submissionReceived");
-  if (scopes && (scopes.groupLeaderIds.length > 0 || scopes.seasonAdminIds.length > 0))
-    keys.push("lowAttendanceFlag");
+  if (scopes && (scopes.groupLeaderIds.length > 0 || scopes.seasonAdminIds.length > 0)) keys.push("lowAttendanceFlag");
   // Everyone, Super included, is sent announcements.
   keys.push("announcement");
   return keys;
@@ -196,7 +192,8 @@ export function NotificationPreferences() {
               outbound channels. Saying so is the difference between a setting
               and a surprise. */}
           <Text variant="caption" className="px-4 text-muted-foreground">
-            Changes save automatically. Turning one off stops the push notifications for that kind. They will still appear in your inbox — that is your history.
+            Changes save automatically. Turning one off stops the push notifications for that kind. They will still
+            appear in your inbox — that is your history.
           </Text>
         </View>
       ) : null}

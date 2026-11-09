@@ -20,31 +20,68 @@ const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 const leaderSession = {
-  user: { id: 5, name: "Test leader", email: "l@jpc.test", role: "LEADER" as const, avatarPath: null, hasPassword: true },
+  user: {
+    id: 5,
+    name: "Test leader",
+    email: "l@jpc.test",
+    role: "LEADER" as const,
+    avatarPath: null,
+    hasPassword: true,
+  },
   scopes: { seasonAdminIds: [], groupLeaderIds: [3], activeSeasonId: null, graduationYear: null },
 };
 
 function authoring(over: Partial<Record<string, unknown>> = {}) {
   return {
-    id: 41, title: "Week 1 quiz", kind: "PAPER", seasonId: 7, seasonCode: "s26",
-    sessionId: 12, sessionTitle: "Week 1", publishedAt: null, maxScore: 20,
-    attemptCount: 0, gradeCount: 0, canEditStructure: false, canManage: false,
-    resultsReleasedAt: null, canReleaseResults: false,
-    questions: [], ...over,
+    id: 41,
+    title: "Week 1 quiz",
+    kind: "PAPER",
+    seasonId: 7,
+    seasonCode: "s26",
+    sessionId: 12,
+    sessionTitle: "Week 1",
+    publishedAt: null,
+    maxScore: 20,
+    attemptCount: 0,
+    gradeCount: 0,
+    canEditStructure: false,
+    canManage: false,
+    resultsReleasedAt: null,
+    canReleaseResults: false,
+    questions: [],
+    ...over,
   };
 }
 
 const gradeSheet = {
-  id: 41, title: "Week 1 quiz", kind: "PAPER", maxScore: 20, seasonId: 7,
-  sessionTitle: "Week 1", studentCount: 2,
+  id: 41,
+  title: "Week 1 quiz",
+  kind: "PAPER",
+  maxScore: 20,
+  seasonId: 7,
+  sessionTitle: "Week 1",
+  studentCount: 2,
   rows: [
-    { studentUserId: 9, studentName: "Test student", groupName: "Group A", score: null, notes: null,
-      gradedAt: null, gradedByName: null },
-    { studentUserId: 10, studentName: "Second student", groupName: "Group A", score: 18, notes: "Good.",
-      gradedAt: "2099-03-02T10:00:00.000Z", gradedByName: "Test leader" },
+    {
+      studentUserId: 9,
+      studentName: "Test student",
+      groupName: "Group A",
+      score: null,
+      notes: null,
+      gradedAt: null,
+      gradedByName: null,
+    },
+    {
+      studentUserId: 10,
+      studentName: "Second student",
+      groupName: "Group A",
+      score: 18,
+      notes: "Good.",
+      gradedAt: "2099-03-02T10:00:00.000Z",
+      gradedByName: "Test leader",
+    },
   ],
 };
-
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -213,8 +250,7 @@ describe("grading screen — PAPER", () => {
     post.mockRejectedValue(
       Object.assign(new Error("400"), {
         isAxiosError: true,
-        response: { status: 400, data: { error: { code: "score_exceeds_max",
-          message: "This quiz is out of 20." } } },
+        response: { status: 400, data: { error: { code: "score_exceeds_max", message: "This quiz is out of 20." } } },
       }),
     );
     renderStacked(<QuizGradeScreen />);
@@ -230,4 +266,3 @@ describe("grading screen — PAPER", () => {
     expect(screen.getByDisplayValue("25")).toBeTruthy();
   });
 });
-

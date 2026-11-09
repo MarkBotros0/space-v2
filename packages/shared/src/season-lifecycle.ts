@@ -48,9 +48,7 @@ export const seasonStartCheckSchema = z.object({
   ready: z.boolean(),
   items: z.array(startIssueSchema),
   /** Other ACTIVE seasons that must end first: any, for a community-wide draft; a community-wide one, for a regular draft. */
-  seasonsInTheWay: z.array(
-    z.object({ id: z.number(), code: z.string(), title: z.string(), message: z.string() }),
-  ),
+  seasonsInTheWay: z.array(z.object({ id: z.number(), code: z.string(), title: z.string(), message: z.string() })),
 });
 export type SeasonStartCheck = z.infer<typeof seasonStartCheckSchema>;
 
@@ -59,9 +57,7 @@ export const seasonEndCheckSchema = z.object({
   /** Everyone who passes becomes an alumnus when the season ends. */
   graduatesOnPass: z.boolean(),
   blockers: z.object({
-    submissions: z.array(
-      z.object({ publicId: z.string(), assignmentTitle: z.string(), studentName: z.string() }),
-    ),
+    submissions: z.array(z.object({ publicId: z.string(), assignmentTitle: z.string(), studentName: z.string() })),
     quizAttempts: z.array(
       z.object({
         quizId: z.number(),
@@ -135,9 +131,7 @@ export const updateSeasonResultRequestSchema = z
 export type UpdateSeasonResultRequest = z.infer<typeof updateSeasonResultRequestSchema>;
 
 export const overdueSeasonsResponseSchema = z.object({
-  seasons: z.array(
-    z.object({ id: z.number(), code: z.string(), title: z.string(), endDate: z.string() }),
-  ),
+  seasons: z.array(z.object({ id: z.number(), code: z.string(), title: z.string(), endDate: z.string() })),
 });
 export type OverdueSeasonsResponse = z.infer<typeof overdueSeasonsResponseSchema>;
 

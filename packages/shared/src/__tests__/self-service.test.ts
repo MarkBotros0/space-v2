@@ -133,7 +133,14 @@ describe("privacy-strict read contracts", () => {
   });
 
   it("attendanceBudgetSchema bounds both percentages to 0–100", () => {
-    const budget = { minutesUsed: 105, budgetMinutes: 180, budgetPct: 58, remainingPct: 42, absentCount: 1, lateCount: 1 };
+    const budget = {
+      minutesUsed: 105,
+      budgetMinutes: 180,
+      budgetPct: 58,
+      remainingPct: 42,
+      absentCount: 1,
+      lateCount: 1,
+    };
     expect(attendanceBudgetSchema.safeParse(budget).success).toBe(true);
     expect(attendanceBudgetSchema.safeParse({ ...budget, budgetPct: 101 }).success).toBe(false);
     expect(attendanceBudgetSchema.safeParse({ ...budget, remainingPct: -1 }).success).toBe(false);

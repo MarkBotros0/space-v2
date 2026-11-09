@@ -3,24 +3,12 @@ import { View } from "react-native";
 import type { ImportRowStatus, StudentImportPreview } from "@space/shared";
 
 import { FormErrorBox } from "../../design/forms/form-parts";
-import {
-  Badge,
-  Button,
-  Card,
-  CardContent,
-  DataTable,
-  EmptyState,
-  Text,
-  type DataTableColumn,
-} from "../../design/ui";
+import { Badge, Button, Card, CardContent, DataTable, EmptyState, Text, type DataTableColumn } from "../../design/ui";
 import type { StudentImportFlow } from "./use-student-import-flow";
 
 type PreviewRow = StudentImportPreview["rows"][number];
 
-const STATUS_BADGE: Record<
-  ImportRowStatus,
-  { variant: "success" | "warning" | "error"; label: string }
-> = {
+const STATUS_BADGE: Record<ImportRowStatus, { variant: "success" | "warning" | "error"; label: string }> = {
   new: { variant: "success", label: "New" },
   exists: { variant: "warning", label: "Skip · already here" },
   duplicate: { variant: "warning", label: "Skip · repeated" },
@@ -123,10 +111,7 @@ export function ImportPreviewStep({
             ) : null}
             {flow.mode === "season" ? (
               <View className="flex-col gap-2">
-                <Button
-                  variant={flow.enrolExisting ? "default" : "outline"}
-                  onPress={flow.toggleEnrolExisting}
-                >
+                <Button variant={flow.enrolExisting ? "default" : "outline"} onPress={flow.toggleEnrolExisting}>
                   Enrol existing students
                 </Button>
                 {flow.enrolExisting && !flow.enrolConfirmed ? (
@@ -141,10 +126,7 @@ export function ImportPreviewStep({
               </View>
             ) : null}
             <FormErrorBox message={flow.localError} />
-            <Button
-              disabled={needsSeason || importable.length === 0 || flow.commitPending}
-              onPress={flow.runCommit}
-            >
+            <Button disabled={needsSeason || importable.length === 0 || flow.commitPending} onPress={flow.runCommit}>
               {needsSeason
                 ? "Pick a season first"
                 : importable.length === 0

@@ -99,14 +99,10 @@ describe("POST /api/v1/students/:id/invite", () => {
 
   it("shows staff the invite state on the student's page, and nobody else", async () => {
     const id = await newcomer("resend-state", seasonAId);
-    const staff = await request(app)
-      .get(`/api/v1/students/${id}`)
-      .set("authorization", `Bearer ${adminToken}`);
+    const staff = await request(app).get(`/api/v1/students/${id}`).set("authorization", `Bearer ${adminToken}`);
     expect(staff.body.data.invite).toMatchObject({ status: "invited" });
 
-    const setUp = await request(app)
-      .get(`/api/v1/students/${student1Id}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const setUp = await request(app).get(`/api/v1/students/${student1Id}`).set("authorization", `Bearer ${superToken}`);
     expect(setUp.body.data.invite).toBeNull();
 
     const own = await request(app)

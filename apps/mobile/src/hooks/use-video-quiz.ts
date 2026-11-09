@@ -20,10 +20,7 @@ import { queryKeys } from "../lib/query-keys";
 
 const adminListSchema = z.array(videoQuestionAdminSchema);
 
-export function useStudentVideoQuiz(
-  sessionId: number | null,
-  enabled: boolean,
-): UseQueryResult<StudentVideoQuiz> {
+export function useStudentVideoQuiz(sessionId: number | null, enabled: boolean): UseQueryResult<StudentVideoQuiz> {
   return useQuery({
     queryKey: queryKeys.videoQuiz.forSession(sessionId ?? -1),
     queryFn: async () => {
@@ -44,8 +41,7 @@ export function useSubmitVideoAnswer(sessionId: number) {
       const res = await apiClient.post(`/api/v1/sessions/${sessionId}/video-quiz/answers`, input);
       return submitVideoAnswerResponseSchema.parse(res.data.data);
     },
-    onSuccess: () =>
-      void queryClient.invalidateQueries({ queryKey: queryKeys.videoQuiz.forSession(sessionId) }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.videoQuiz.forSession(sessionId) }),
   });
 }
 
@@ -66,10 +62,7 @@ export function useSaveVideoProgress(sessionId: number) {
   });
 }
 
-export function useVideoQuestions(
-  sessionId: number | null,
-  enabled: boolean,
-): UseQueryResult<VideoQuestionAdmin[]> {
+export function useVideoQuestions(sessionId: number | null, enabled: boolean): UseQueryResult<VideoQuestionAdmin[]> {
   return useQuery({
     queryKey: queryKeys.videoQuiz.questions(sessionId ?? -1),
     queryFn: async () => {
@@ -115,10 +108,7 @@ export function useVideoQuestionWrites(sessionId: number) {
   return { create, update, remove };
 }
 
-export function useVideoQuizResults(
-  sessionId: number | null,
-  enabled: boolean,
-): UseQueryResult<VideoQuizResults> {
+export function useVideoQuizResults(sessionId: number | null, enabled: boolean): UseQueryResult<VideoQuizResults> {
   return useQuery({
     queryKey: queryKeys.videoQuiz.results(sessionId ?? -1),
     queryFn: async () => {

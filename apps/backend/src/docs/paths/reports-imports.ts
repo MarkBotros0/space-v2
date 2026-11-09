@@ -1,7 +1,22 @@
 import { conflict, errRef, ok } from "../helpers";
-import { groupImportPreviewDoc, groupImportResultDoc, importTemplateDoc, pastedSheetBodyDoc, studentImportCommitBodyDoc, studentImportPreviewDoc, studentImportResultDoc } from "../shared/imports";
+import {
+  groupImportPreviewDoc,
+  groupImportResultDoc,
+  importTemplateDoc,
+  pastedSheetBodyDoc,
+  studentImportCommitBodyDoc,
+  studentImportPreviewDoc,
+  studentImportResultDoc,
+} from "../shared/imports";
 import { idParam } from "../shared/params";
-import { EXPORT_COMMON, engagementStudentPageSchemaDoc, engagementSummarySchemaDoc, exportManifestSchemaDoc, organisationReportSchemaDoc, xlsxResponse } from "../shared/reports";
+import {
+  EXPORT_COMMON,
+  engagementStudentPageSchemaDoc,
+  engagementSummarySchemaDoc,
+  exportManifestSchemaDoc,
+  organisationReportSchemaDoc,
+  xlsxResponse,
+} from "../shared/reports";
 
 /** Reports, exports and imports. Assembled into the document by `../openapi.ts`. */
 export const reportsImportsPaths = {
@@ -25,10 +40,22 @@ export const reportsImportsPaths = {
         "Times: `startsAt` is a raw UTC instant (for ordering); `dayKey` is its " +
         "organisation-calendar day (YYYY-MM-DD, ORG_TIMEZONE), which clients label by.",
       parameters: [
-        { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+        {
+          name: "seasonId",
+          in: "query",
+          required: false,
+          schema: { type: "array", items: { type: "integer" } },
+          style: "form",
+          explode: true,
+        },
         { name: "from", in: "query", required: false, schema: { type: "string", format: "date-time" } },
         { name: "to", in: "query", required: false, schema: { type: "string", format: "date-time" } },
-        { name: "trendLimit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 26 } },
+        {
+          name: "trendLimit",
+          in: "query",
+          required: false,
+          schema: { type: "integer", minimum: 1, maximum: 200, default: 26 },
+        },
       ],
       responses: {
         200: ok(engagementSummarySchemaDoc, "Engagement summary"),
@@ -51,10 +78,27 @@ export const reportsImportsPaths = {
         "`cursor` is opaque; a malformed cursor restarts the list. `band` filters to " +
         "one engagement band. Scope intersection is identical to the summary's.",
       parameters: [
-        { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
-        { name: "band", in: "query", required: false, schema: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] } },
+        {
+          name: "seasonId",
+          in: "query",
+          required: false,
+          schema: { type: "array", items: { type: "integer" } },
+          style: "form",
+          explode: true,
+        },
+        {
+          name: "band",
+          in: "query",
+          required: false,
+          schema: { type: "string", enum: ["HIGH", "MEDIUM", "LOW", "AT_RISK"] },
+        },
         { name: "cursor", in: "query", required: false, schema: { type: "string" } },
-        { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 200, default: 50 } },
+        {
+          name: "limit",
+          in: "query",
+          required: false,
+          schema: { type: "integer", minimum: 1, maximum: 200, default: 50 },
+        },
       ],
       responses: {
         200: ok(engagementStudentPageSchemaDoc, "One page of the cohort"),
@@ -72,8 +116,8 @@ export const reportsImportsPaths = {
         "Counts across the whole organisation; every other role is refused with 403.\n\n" +
         "`totalStudentsNotGraduated` counts student ACCOUNTS (role STUDENT, no " +
         "graduationYear, not deleted), not enrolments — the same population v1 " +
-        "labelled \"Current students\", renamed so the label stops overclaiming (D4). " +
-        "`withdrawnCount` is the WITHDRAWN enrolment status, displayed as \"Dropped\". " +
+        'labelled "Current students", renamed so the label stops overclaiming (D4). ' +
+        '`withdrawnCount` is the WITHDRAWN enrolment status, displayed as "Dropped". ' +
         "Season rows carry `code` beside `seasonId` so a client can address the " +
         "season detail route by code (D13).",
       responses: {
@@ -88,13 +132,21 @@ export const reportsImportsPaths = {
       tags: ["Reports"],
       summary: "Engagement export (XLSX) for the caller's permitted seasons",
       description:
-        EXPORT_COMMON + "\n\n" +
+        EXPORT_COMMON +
+        "\n\n" +
         "Roles: SUPER, ADMIN (their seasons) and MENTOR. MENTOR may take THIS export — " +
         "it is the data v1 shows mentors on screen — and may not take the season " +
         "workbook. Scope intersection is identical to /reports/engagement. " +
         "`?format=csv` is refused with a legible 400: XLSX is the only format (D7).",
       parameters: [
-        { name: "seasonId", in: "query", required: false, schema: { type: "array", items: { type: "integer" } }, style: "form", explode: true },
+        {
+          name: "seasonId",
+          in: "query",
+          required: false,
+          schema: { type: "array", items: { type: "integer" } },
+          style: "form",
+          explode: true,
+        },
         { name: "format", in: "query", required: false, schema: { type: "string", enum: ["xlsx"], default: "xlsx" } },
       ],
       responses: {
@@ -111,13 +163,14 @@ export const reportsImportsPaths = {
       tags: ["Reports"],
       summary: "Season workbook (XLSX): attendance, grades, assignments, key",
       description:
-        EXPORT_COMMON + "\n\n" +
+        EXPORT_COMMON +
+        "\n\n" +
         "Roles: SUPER, or an ADMIN of this season. MENTOR is REFUSED — a deliberate " +
         "divergence from v1, whose only mentor protection was an unrendered button " +
         "(spec D6 #3). A soft-deleted season is 404.\n\n" +
         "`Submitted %` divides by the assignments assigned to that student (ruling C5), " +
         "which CHANGES its value relative to v1 for any season with a group-targeted " +
-        "assignment. LATE attendance cells render \"L\": the recorded minutes are " +
+        'assignment. LATE attendance cells render "L": the recorded minutes are ' +
         "measured from the wrong instant for v1-era rows, and nothing tells those apart, so they are withheld " +
         "(ruling C3).",
       parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],

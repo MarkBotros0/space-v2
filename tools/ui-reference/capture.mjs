@@ -57,7 +57,10 @@ function withTimeout(promise, ms) {
 async function settle(page) {
   await page.waitForLoadState("networkidle", { timeout: 20000 }).catch(() => {});
   // No browser call may wait forever: a hang here once stalled a whole run.
-  await withTimeout(page.evaluate(() => document.fonts.ready).catch(() => {}), 5000);
+  await withTimeout(
+    page.evaluate(() => document.fonts.ready).catch(() => {}),
+    5000,
+  );
   await page.waitForTimeout(300); // let entrance animations finish
 }
 
@@ -80,7 +83,9 @@ async function captureDialogs(page, dir, slug, theme) {
   for (let i = 0; i < count; i++) {
     const trigger = triggers.nth(i);
     try {
-      const label = ((await trigger.getAttribute("aria-label")) ?? (await trigger.innerText({ timeout: 1000 })).trim()).slice(0, 40);
+      const label = (
+        (await trigger.getAttribute("aria-label")) ?? (await trigger.innerText({ timeout: 1000 })).trim()
+      ).slice(0, 40);
       await trigger.click({ timeout: 3000 });
       await page.waitForTimeout(400);
       const file = path.join(dir, `${slug}__dialog-${i}.png`);
@@ -150,7 +155,10 @@ for (const [role, user] of Object.entries(users)) {
       if (err.message.includes("page capture exceeded")) {
         // A frozen tab ignores further calls: replace both tabs.
         for (const theme of ["light", "dark"]) {
-          await withTimeout(pages[theme].close().catch(() => {}), 5000);
+          await withTimeout(
+            pages[theme].close().catch(() => {}),
+            5000,
+          );
           pages[theme] = await contexts[theme].newPage();
           pages[theme].setDefaultTimeout(15000);
         }
@@ -180,10 +188,11 @@ for (const [role, user] of Object.entries(users)) {
     if (extraOnly) continue;
     // Re-read links from a fresh load: dialogs opened above may have navigated.
     if (await deadline(visit(pages.light, landed), 200000, "link reload").catch((e) => e.message)) continue;
-    const hrefs = await withTimeout(
-      pages.light.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href"))).catch(() => []),
-      15000,
-    ) ?? [];
+    const hrefs =
+      (await withTimeout(
+        pages.light.$$eval("a[href]", (as) => as.map((a) => a.getAttribute("href"))).catch(() => []),
+        15000,
+      )) ?? [];
     for (const href of hrefs) {
       if (!isCrawlable(href, V1_BASE_URL)) continue;
       const next = new URL(href, V1_BASE_URL).pathname;

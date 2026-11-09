@@ -40,7 +40,10 @@ beforeEach(() => {
 
 describe("PushNotificationsBridge", () => {
   it("opens the push's screen once per tapped notification", () => {
-    mockLastResponse = response("n1", { type: "ASSIGNMENT_CREATED", target: { entityType: "assignment", entityId: 4 } });
+    mockLastResponse = response("n1", {
+      type: "ASSIGNMENT_CREATED",
+      target: { entityType: "assignment", entityId: 4 },
+    });
     const view = mount();
     view.rerender(
       <QueryClientProvider client={new QueryClient()}>

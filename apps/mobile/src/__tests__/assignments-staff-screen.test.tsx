@@ -21,17 +21,37 @@ import AssignmentsScreen from "../../app/(app)/assignments";
 const get = apiClient.get as jest.Mock;
 
 const season = {
-  id: 7, code: "s7", title: "Spring 2099", program: "TEST", year: 2099, status: "ACTIVE" as const,
-  startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z",
+  id: 7,
+  code: "s7",
+  title: "Spring 2099",
+  program: "TEST",
+  year: 2099,
+  status: "ACTIVE" as const,
+  startDate: "2099-01-01T00:00:00.000Z",
+  endDate: "2099-12-31T00:00:00.000Z",
 };
 const group = (id: number, name: string) => ({
-  id, name, description: null, studentCount: 2, leaderNames: [],
-  seasonId: 7, seasonCode: "s7", seasonTitle: "Spring 2099",
+  id,
+  name,
+  description: null,
+  studentCount: 2,
+  leaderNames: [],
+  seasonId: 7,
+  seasonCode: "s7",
+  seasonTitle: "Spring 2099",
 });
 const row = (over: Record<string, unknown> = {}) => ({
-  id: 41, title: "Essay one", dueAt: "2099-04-01T21:59:00.000Z", dueOrgDay: "2099-04-01",
-  isOverdue: false, isAllGroups: false, targetGroupIds: [3], submissionCount: 1,
-  expectedCount: 2, seasonCode: "s7", ...over,
+  id: 41,
+  title: "Essay one",
+  dueAt: "2099-04-01T21:59:00.000Z",
+  dueOrgDay: "2099-04-01",
+  isOverdue: false,
+  isAllGroups: false,
+  targetGroupIds: [3],
+  submissionCount: 1,
+  expectedCount: 2,
+  seasonCode: "s7",
+  ...over,
 });
 
 function serve(assignments: unknown[] | Error) {
@@ -59,7 +79,16 @@ describe("AssignmentsScreen (staff)", () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     serve([
       row(),
-      row({ id: 42, title: "Everyone", dueAt: null, dueOrgDay: null, isAllGroups: true, targetGroupIds: [], submissionCount: 0, expectedCount: 3 }),
+      row({
+        id: 42,
+        title: "Everyone",
+        dueAt: null,
+        dueOrgDay: null,
+        isAllGroups: true,
+        targetGroupIds: [],
+        submissionCount: 0,
+        expectedCount: 3,
+      }),
       row({ id: 43, title: "Late one", isOverdue: true, targetGroupIds: [3, 4], submissionCount: 2, expectedCount: 4 }),
     ]);
 

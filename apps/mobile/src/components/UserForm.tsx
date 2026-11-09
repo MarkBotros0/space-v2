@@ -31,9 +31,7 @@ export const NEW_USER_VALUES: UserFormValues = {
   graduationYear: "",
 };
 
-type Submit =
-  | { mode: "create"; body: CreateUserBody }
-  | { mode: "edit"; body: Omit<UpdateUserBody, "confirmSuper"> };
+type Submit = { mode: "create"; body: CreateUserBody } | { mode: "edit"; body: Omit<UpdateUserBody, "confirmSuper"> };
 
 /**
  * v1 src/components/users/user-form.tsx for create and edit (B5-4): Name,

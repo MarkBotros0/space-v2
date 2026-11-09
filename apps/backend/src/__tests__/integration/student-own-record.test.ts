@@ -17,8 +17,7 @@ async function mint(userId: number) {
   const scopes = await loadScopes(userId);
   return (await signAccessToken({ userId, ...scopes })).token;
 }
-const get = (path: string, t: string) =>
-  request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${t}`);
+const get = (path: string, t: string) => request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${t}`);
 
 beforeAll(cleanupTestData);
 afterAll(async () => {
@@ -36,8 +35,11 @@ describe("a drop reason (C2)", () => {
     ]);
     await db.seasonEnrollment.create({
       data: {
-        seasonId: season.id, studentUserId: student.id, status: "WITHDRAWN",
-        droppedAt: new Date(), dropReason: "Private staff reason",
+        seasonId: season.id,
+        studentUserId: student.id,
+        status: "WITHDRAWN",
+        droppedAt: new Date(),
+        dropReason: "Private staff reason",
       },
     });
     const reason = async (t: string) => {
@@ -60,7 +62,13 @@ describe("a draft season in a student's past (I6)", () => {
     await db.seasonEnrollment.createMany({
       data: [
         { seasonId: draft.id, studentUserId: student.id, status },
-        { seasonId: finished.id, studentUserId: student.id, status: "COMPLETED", result: "PASSED", enrolledAt: new Date("2020-01-01") },
+        {
+          seasonId: finished.id,
+          studentUserId: student.id,
+          status: "COMPLETED",
+          result: "PASSED",
+          enrolledAt: new Date("2020-01-01"),
+        },
       ],
     });
     const t = await mint(student.id);
@@ -89,7 +97,11 @@ describe("a former leader's seasons (I1)", () => {
   it("lists a draft they lead and no finished season", async () => {
     const leader = await createTestUser("own-draft-leader", "LEADER");
     const draft = await createTestSeason({ status: "DRAFT" });
-    for (const s of [draft, await createTestSeason({ status: "COMPLETED" }), await createTestSeason({ status: "ARCHIVED" })]) {
+    for (const s of [
+      draft,
+      await createTestSeason({ status: "COMPLETED" }),
+      await createTestSeason({ status: "ARCHIVED" }),
+    ]) {
       await leadIn(leader.id, s.id);
     }
     expect(await seasonIdsSeenBy(leader.id)).toEqual([draft.id]);
@@ -130,8 +142,11 @@ describe("a season admin's own record", () => {
     await db.seasonAdmin.create({ data: { seasonId: served.id, userId: admin.id } });
     await db.seasonEnrollment.create({
       data: {
-        seasonId: left.id, studentUserId: admin.id, status: "WITHDRAWN",
-        droppedAt: new Date(), dropReason: "SECRET-DROP-REASON",
+        seasonId: left.id,
+        studentUserId: admin.id,
+        status: "WITHDRAWN",
+        droppedAt: new Date(),
+        dropReason: "SECRET-DROP-REASON",
       },
     });
 

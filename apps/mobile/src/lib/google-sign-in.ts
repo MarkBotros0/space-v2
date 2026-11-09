@@ -1,9 +1,5 @@
 // apps/mobile/src/lib/google-sign-in.ts
-import {
-  GoogleSignin,
-  isErrorWithCode,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+import { GoogleSignin, isErrorWithCode, statusCodes } from "@react-native-google-signin/google-signin";
 
 import { googleSignInIds } from "./app-config";
 
@@ -25,8 +21,7 @@ export function isGoogleSignInConfigured(): boolean {
  */
 export async function googleIdToken(): Promise<string | null> {
   const ids = googleSignInIds();
-  if (!ids)
-    throw new GoogleSignInUnavailableError("Google sign-in isn't configured in this build.");
+  if (!ids) throw new GoogleSignInUnavailableError("Google sign-in isn't configured in this build.");
   if (!configured) {
     GoogleSignin.configure({
       webClientId: ids.webClientId,
@@ -45,12 +40,9 @@ export async function googleIdToken(): Promise<string | null> {
     return idToken;
   } catch (err) {
     if (isErrorWithCode(err)) {
-      if (err.code === statusCodes.SIGN_IN_CANCELLED || err.code === statusCodes.IN_PROGRESS)
-        return null;
+      if (err.code === statusCodes.SIGN_IN_CANCELLED || err.code === statusCodes.IN_PROGRESS) return null;
       if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        throw new GoogleSignInUnavailableError(
-          "Google Play services aren't available on this phone.",
-        );
+        throw new GoogleSignInUnavailableError("Google Play services aren't available on this phone.");
       }
     }
     throw err;

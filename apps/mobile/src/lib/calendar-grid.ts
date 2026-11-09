@@ -75,11 +75,7 @@ export function visibleKeys(view: Exclude<CalendarView, "upcoming">, anchor: str
 }
 
 /** Previous/next week, or the first of the previous/next month. */
-export function stepAnchor(
-  view: Exclude<CalendarView, "upcoming">,
-  anchor: string,
-  dir: 1 | -1,
-): string {
+export function stepAnchor(view: Exclude<CalendarView, "upcoming">, anchor: string, dir: 1 | -1): string {
   if (view === "week") return addDays(anchor, 7 * dir);
   const d = toUtc(firstOfMonth(anchor));
   return toKey(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + dir, 1)));
@@ -108,8 +104,7 @@ export function rangeLabel(view: Exclude<CalendarView, "upcoming">, anchor: stri
   const keys = weekKeys(anchor);
   const first = keys[0] ?? anchor;
   const last = keys[6] ?? anchor;
-  const short = (k: string) =>
-    `${MONTHS[Number(k.slice(5, 7)) - 1]?.slice(0, 3)} ${Number(k.slice(8, 10))}`;
+  const short = (k: string) => `${MONTHS[Number(k.slice(5, 7)) - 1]?.slice(0, 3)} ${Number(k.slice(8, 10))}`;
   return isSameMonth(first, last)
     ? `${short(first)} – ${Number(last.slice(8, 10))}`
     : `${short(first)} – ${short(last)}`;
@@ -153,10 +148,7 @@ export interface DayContents {
 }
 
 /** Files sessions and events under their server-assigned `dayKey`. */
-export function bucketByDay(
-  sessions: SessionListItem[],
-  events: JpcEventListItem[],
-): Map<string, DayContents> {
+export function bucketByDay(sessions: SessionListItem[], events: JpcEventListItem[]): Map<string, DayContents> {
   const byDay = new Map<string, DayContents>();
   const at = (key: string) => {
     let day = byDay.get(key);

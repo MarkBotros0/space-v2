@@ -68,9 +68,7 @@ describe("GET /students?absentLately=1", () => {
   });
 
   it("is refused to anyone but a mentor", async () => {
-    const res = await request(app)
-      .get("/api/v1/students?absentLately=1")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/students?absentLately=1").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(403);
   });
 

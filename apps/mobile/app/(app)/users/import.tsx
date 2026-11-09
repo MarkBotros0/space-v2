@@ -36,10 +36,7 @@ export default function ImportScreen() {
   if (!isSuper) {
     return (
       <Screen {...frame}>
-        <EmptyState
-          title="Not available"
-          description="This screen isn't available for your role."
-        />
+        <EmptyState title="Not available" description="This screen isn't available for your role." />
       </Screen>
     );
   }

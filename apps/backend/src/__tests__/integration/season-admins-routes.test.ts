@@ -58,7 +58,13 @@ describe("season admin routes", () => {
     for (const token of [adminToken, leaderToken]) {
       expect((await request(app).get(path()).set(as(token))).status).toBe(403);
       expect((await request(app).post(path()).set(as(token)).send({ userId: targetId })).status).toBe(403);
-      expect((await request(app).delete(path(`/${targetId}`)).set(as(token))).status).toBe(403);
+      expect(
+        (
+          await request(app)
+            .delete(path(`/${targetId}`))
+            .set(as(token))
+        ).status,
+      ).toBe(403);
     }
     expect(await db.seasonAdmin.count({ where: { seasonId, userId: targetId } })).toBe(0);
   });
@@ -98,12 +104,16 @@ describe("season admin routes", () => {
   });
 
   it("removes the admin (200), idempotently, and canAdminister goes with it", async () => {
-    const removed = await request(app).delete(path(`/${targetId}`)).set(as(superToken));
+    const removed = await request(app)
+      .delete(path(`/${targetId}`))
+      .set(as(superToken));
     expect(removed.status).toBe(200);
     expect(removed.body.data.admins.map((a: { userId: number }) => a.userId)).not.toContain(targetId);
     expect(await db.seasonAdmin.count({ where: { seasonId, userId: targetId } })).toBe(0);
 
-    const again = await request(app).delete(path(`/${targetId}`)).set(as(superToken));
+    const again = await request(app)
+      .delete(path(`/${targetId}`))
+      .set(as(superToken));
     expect(again.status).toBe(200);
     expect(again.body.data).toEqual(removed.body.data);
 

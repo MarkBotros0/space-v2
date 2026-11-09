@@ -28,9 +28,7 @@ async function takeHeldQuiz() {
     .patch(`/api/v1/quizzes/${built.quizId}/attempt`)
     .set(bearer(f.studentToken))
     .send({ answers: [{ questionId: built.mcqId, selectedIndex: 1, text: null }] });
-  const submit = await request(app)
-    .post(`/api/v1/quizzes/${built.quizId}/attempt/submit`)
-    .set(bearer(f.studentToken));
+  const submit = await request(app).post(`/api/v1/quizzes/${built.quizId}/attempt/submit`).set(bearer(f.studentToken));
   return { ...built, submit };
 }
 
@@ -41,14 +39,17 @@ describe("held quiz results (owner, 2026-11-07)", () => {
 
     expect(submit.status).toBe(200);
     // Graded underneath, handed in on the student's side.
-    expect(submit.body.data).toMatchObject({ status: "SUBMITTED", totalScore: null, gradedAt: null, resultsReleased: false });
+    expect(submit.body.data).toMatchObject({
+      status: "SUBMITTED",
+      totalScore: null,
+      gradedAt: null,
+      resultsReleased: false,
+    });
     expect(submit.body.data.questions[0]).toMatchObject({ selectedIndex: 1, isCorrect: null, pointsAwarded: null });
     const stored = await db.quizAttempt.findFirst({ where: { quizId }, select: { status: true, totalScore: true } });
     expect(stored).toEqual({ status: "GRADED", totalScore: 2 });
 
-    const list = await request(app)
-      .get(`/api/v1/quizzes?seasonId=${f.seasonId}`)
-      .set(bearer(f.studentToken));
+    const list = await request(app).get(`/api/v1/quizzes?seasonId=${f.seasonId}`).set(bearer(f.studentToken));
     const row = list.body.data.items.find((r: { quizId: number }) => r.quizId === quizId);
     expect(row).toMatchObject({ attemptStatus: "SUBMITTED", score: null, gradedAt: null, resultsReleased: false });
 
@@ -106,9 +107,9 @@ describe("held quiz results (owner, 2026-11-07)", () => {
     });
     await db.quizGrade.create({ data: { quizId: quiz.id, studentUserId: f.ownStudentId, score: 7 } });
     const listed = async () =>
-      (await request(app).get(`/api/v1/quizzes?seasonId=${f.seasonId}`).set(bearer(f.studentToken))).body.data.items.find(
-        (r: { quizId: number }) => r.quizId === quiz.id,
-      );
+      (
+        await request(app).get(`/api/v1/quizzes?seasonId=${f.seasonId}`).set(bearer(f.studentToken))
+      ).body.data.items.find((r: { quizId: number }) => r.quizId === quiz.id);
     expect(await listed()).toBeUndefined();
     await request(app).post(`/api/v1/quizzes/${quiz.id}/release`).set(bearer(f.adminToken));
     expect(await listed()).toMatchObject({ score: 7, resultsReleased: true });

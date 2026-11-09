@@ -13,7 +13,12 @@ export const notesNotificationsPaths = {
         idParam,
         { name: "cursor", in: "query", schema: { type: "string" } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
-        { name: "withinDays", in: "query", description: "Only notes written in the last N days (the mentor's This week is 7).", schema: { type: "integer", minimum: 1, maximum: 365 } },
+        {
+          name: "withinDays",
+          in: "query",
+          description: "Only notes written in the last N days (the mentor's This week is 7).",
+          schema: { type: "integer", minimum: 1, maximum: 365 },
+        },
       ],
       responses: {
         200: ok(
@@ -120,9 +125,25 @@ export const notesNotificationsPaths = {
       description:
         "Returns only the caller's own rows (the user id comes from the token, never a parameter). **Performs no write** — it never marks anything read, however often the client refetches (ruling C6); use `POST /notifications/read`. Ordered by id descending; `nextCursor` is the id of the last row of the page, or null at the end. `unreadCount` is a real count over all of the caller's unread rows, not a filter over the page. `target` is derived from the stored v1 link in one server-side function.",
       parameters: [
-        { name: "cursor", in: "query", required: false, schema: { type: "integer", minimum: 1 }, description: "`nextCursor` of the previous page." },
-        { name: "limit", in: "query", required: false, schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
-        { name: "unreadOnly", in: "query", required: false, schema: { type: "string", enum: ["true", "false"], default: "false" } },
+        {
+          name: "cursor",
+          in: "query",
+          required: false,
+          schema: { type: "integer", minimum: 1 },
+          description: "`nextCursor` of the previous page.",
+        },
+        {
+          name: "limit",
+          in: "query",
+          required: false,
+          schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+        },
+        {
+          name: "unreadOnly",
+          in: "query",
+          required: false,
+          schema: { type: "string", enum: ["true", "false"], default: "false" },
+        },
       ],
       responses: {
         200: ok(
@@ -146,7 +167,8 @@ export const notesNotificationsPaths = {
     get: {
       tags: ["Notifications"],
       summary: "The caller's unread notification count (the badge)",
-      description: "A single count over the caller's own unread rows. Separate from the list so rendering a badge never fetches rows.",
+      description:
+        "A single count over the caller's own unread rows. Separate from the list so rendering a badge never fetches rows.",
       responses: {
         200: ok(
           { type: "object", required: ["unreadCount"], properties: { unreadCount: { type: "integer", minimum: 0 } } },
@@ -172,7 +194,9 @@ export const notesNotificationsPaths = {
                   type: "object",
                   required: ["ids"],
                   additionalProperties: false,
-                  properties: { ids: { type: "array", minItems: 1, maxItems: 200, items: { type: "integer", minimum: 1 } } },
+                  properties: {
+                    ids: { type: "array", minItems: 1, maxItems: 200, items: { type: "integer", minimum: 1 } },
+                  },
                 },
                 {
                   type: "object",
@@ -203,7 +227,11 @@ export const notesNotificationsPaths = {
         "Always returns all nine keys. A user with no stored row is opted in to everything — the row is created lazily on first save, so most users have none. The preference governs push only (notifications are never emailed); the in-app inbox row is always written.",
       responses: {
         200: ok(
-          { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
+          {
+            type: "object",
+            required: ["preferences"],
+            properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } },
+          },
           "The caller's preferences.",
         ),
         401: errRef("Unauthorized"),
@@ -220,7 +248,11 @@ export const notesNotificationsPaths = {
       },
       responses: {
         200: ok(
-          { type: "object", required: ["preferences"], properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } } },
+          {
+            type: "object",
+            required: ["preferences"],
+            properties: { preferences: { $ref: "#/components/schemas/NotificationPreferences" } },
+          },
           "What was stored.",
         ),
         400: errRef("BadRequest"),
@@ -239,7 +271,10 @@ export const notesNotificationsPaths = {
         content: { "application/json": { schema: { $ref: "#/components/schemas/DeviceRegistration" } } },
       },
       responses: {
-        200: ok({ type: "object", required: ["registered"], properties: { registered: { type: "boolean", enum: [true] } } }, "Registered."),
+        200: ok(
+          { type: "object", required: ["registered"], properties: { registered: { type: "boolean", enum: [true] } } },
+          "Registered.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
       },
@@ -265,7 +300,14 @@ export const notesNotificationsPaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", required: ["unregistered"], properties: { unregistered: { type: "boolean", enum: [true] } } }, "Unregistered (or never registered)."),
+        200: ok(
+          {
+            type: "object",
+            required: ["unregistered"],
+            properties: { unregistered: { type: "boolean", enum: [true] } },
+          },
+          "Unregistered (or never registered).",
+        ),
         400: errRef("BadRequest"),
         429: errRef("TooManyRequests"),
       },
@@ -281,7 +323,12 @@ export const notesNotificationsPaths = {
         { name: "studentId", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "cursor", in: "query", schema: { type: "string" } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
-        { name: "withinDays", in: "query", description: "Only notes written in the last N days (the mentor's This week is 7).", schema: { type: "integer", minimum: 1, maximum: 365 } },
+        {
+          name: "withinDays",
+          in: "query",
+          description: "Only notes written in the last N days (the mentor's This week is 7).",
+          schema: { type: "integer", minimum: 1, maximum: 365 },
+        },
       ],
       responses: {
         200: ok(
@@ -312,7 +359,12 @@ export const notesNotificationsPaths = {
       parameters: [
         { name: "cursor", in: "query", schema: { type: "string" } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 20 } },
-        { name: "withinDays", in: "query", description: "Only notes written in the last N days (the mentor's This week is 7).", schema: { type: "integer", minimum: 1, maximum: 365 } },
+        {
+          name: "withinDays",
+          in: "query",
+          description: "Only notes written in the last N days (the mentor's This week is 7).",
+          schema: { type: "integer", minimum: 1, maximum: 365 },
+        },
       ],
       responses: {
         200: ok(
@@ -343,7 +395,12 @@ export const notesNotificationsPaths = {
       parameters: [idParam, { name: "seasonId", in: "query", schema: { type: "integer", minimum: 1 } }],
       responses: {
         200: ok(
-          { oneOf: [{ $ref: "#/components/schemas/StudentEngagementDetail" }, { $ref: "#/components/schemas/StudentSelfEngagement" }] },
+          {
+            oneOf: [
+              { $ref: "#/components/schemas/StudentEngagementDetail" },
+              { $ref: "#/components/schemas/StudentSelfEngagement" },
+            ],
+          },
           "Staff arm or the student's own arm, by caller role.",
         ),
         400: errRef("BadRequest"),
@@ -376,5 +433,4 @@ export const notesNotificationsPaths = {
       },
     },
   },
-
 } as const;

@@ -98,7 +98,13 @@ export async function sendDueFollowUpReminders(now = new Date()): Promise<number
     },
     orderBy: { id: "asc" },
     take: 200,
-    select: { id: true, mentorUserId: true, studentUserId: true, reason: true, studentUser: { select: { name: true } } },
+    select: {
+      id: true,
+      mentorUserId: true,
+      studentUserId: true,
+      reason: true,
+      studentUser: { select: { name: true } },
+    },
   });
   let sent = 0;
   for (const f of due) {

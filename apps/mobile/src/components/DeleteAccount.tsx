@@ -33,9 +33,7 @@ export function useDeleteAccountFlow(): { request: () => void; dialog: ReactNode
       onError: (err) => {
         setOpen(false);
         if (apiErrorCode(err) === "last_super") {
-          toast.error(
-            apiErrorMessage(err, "You're the only active SUPER account, so it can't be deleted."),
-          );
+          toast.error(apiErrorMessage(err, "You're the only active SUPER account, so it can't be deleted."));
         } else {
           toast.error("Couldn't delete your account. Try again.");
         }

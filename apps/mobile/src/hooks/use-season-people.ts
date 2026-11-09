@@ -35,9 +35,7 @@ export function useSeasonPeople(
  * candidates (everything under `seasons`, which also holds the season's student
  * count) refresh; a refusal changes nothing, so the screen refetches itself.
  */
-export function useAddSeasonPeople(
-  seasonId: number,
-): UseMutationResult<number, Error, AddSeasonEnrollmentsBody> {
+export function useAddSeasonPeople(seasonId: number): UseMutationResult<number, Error, AddSeasonEnrollmentsBody> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (body: AddSeasonEnrollmentsBody) => {

@@ -144,12 +144,38 @@ beforeAll(async () => {
   await db.submission.createMany({
     data: [
       // Late: submitted 2020-01-12, due 2020-01-10.
-      { publicId: newPublicId(), assignmentId: aAll.id, studentUserId: s1, status: "SUBMITTED", submittedAt: at("2020-01-12T10:00:00.000Z") },
+      {
+        publicId: newPublicId(),
+        assignmentId: aAll.id,
+        studentUserId: s1,
+        status: "SUBMITTED",
+        submittedAt: at("2020-01-12T10:00:00.000Z"),
+      },
       { publicId: newPublicId(), assignmentId: aAId, studentUserId: s1, status: "DRAFT" },
-      { publicId: newPublicId(), assignmentId: aAll.id, studentUserId: s2, status: "REVIEWED", submittedAt: at("2020-01-09T10:00:00.000Z"), reviewedAt: at("2020-01-11T10:00:00.000Z") },
-      { publicId: newPublicId(), assignmentId: aAll.id, studentUserId: s3, status: "RETURNED", submittedAt: at("2020-01-09T10:00:00.000Z"), reviewedAt: at("2020-01-11T10:00:00.000Z") },
+      {
+        publicId: newPublicId(),
+        assignmentId: aAll.id,
+        studentUserId: s2,
+        status: "REVIEWED",
+        submittedAt: at("2020-01-09T10:00:00.000Z"),
+        reviewedAt: at("2020-01-11T10:00:00.000Z"),
+      },
+      {
+        publicId: newPublicId(),
+        assignmentId: aAll.id,
+        studentUserId: s3,
+        status: "RETURNED",
+        submittedAt: at("2020-01-09T10:00:00.000Z"),
+        reviewedAt: at("2020-01-11T10:00:00.000Z"),
+      },
       // On a soft-deleted assignment: must count nowhere.
-      { publicId: newPublicId(), assignmentId: aDeleted.id, studentUserId: s2, status: "SUBMITTED", submittedAt: at("2020-01-09T10:00:00.000Z") },
+      {
+        publicId: newPublicId(),
+        assignmentId: aDeleted.id,
+        studentUserId: s2,
+        status: "SUBMITTED",
+        submittedAt: at("2020-01-09T10:00:00.000Z"),
+      },
     ],
   });
 
@@ -200,17 +226,41 @@ beforeAll(async () => {
     data: [
       { sessionId: feedSession.id, studentUserId: m1, status: "PRESENT", markedAt: at("2099-05-01T09:00:00.000Z") },
       // Graduated student — excluded (D18 recommendation).
-      { sessionId: feedSession.id, studentUserId: graduatedId, status: "PRESENT", markedAt: at("2099-06-02T09:00:00.000Z") },
+      {
+        sessionId: feedSession.id,
+        studentUserId: graduatedId,
+        status: "PRESENT",
+        markedAt: at("2099-06-02T09:00:00.000Z"),
+      },
       // Soft-deleted season — excluded.
       { sessionId: deletedSession.id, studentUserId: m1, status: "PRESENT", markedAt: at("2099-06-03T09:00:00.000Z") },
     ],
   });
   await db.submission.createMany({
     data: [
-      { publicId: newPublicId(), assignmentId: feedAssignment.id, studentUserId: m1, status: "SUBMITTED", submittedAt: at("2099-05-02T09:00:00.000Z") },
-      { publicId: newPublicId(), assignmentId: feedAssignment.id, studentUserId: m2, status: "REVIEWED", submittedAt: at("2099-04-01T09:00:00.000Z"), reviewedAt: at("2099-05-03T09:00:00.000Z") },
+      {
+        publicId: newPublicId(),
+        assignmentId: feedAssignment.id,
+        studentUserId: m1,
+        status: "SUBMITTED",
+        submittedAt: at("2099-05-02T09:00:00.000Z"),
+      },
+      {
+        publicId: newPublicId(),
+        assignmentId: feedAssignment.id,
+        studentUserId: m2,
+        status: "REVIEWED",
+        submittedAt: at("2099-04-01T09:00:00.000Z"),
+        reviewedAt: at("2099-05-03T09:00:00.000Z"),
+      },
       // DRAFT never appears (spec 08 D8), whatever its timestamps.
-      { publicId: newPublicId(), assignmentId: feedAssignment.id, studentUserId: m3, status: "DRAFT", submittedAt: at("2099-06-01T09:00:00.000Z") },
+      {
+        publicId: newPublicId(),
+        assignmentId: feedAssignment.id,
+        studentUserId: m3,
+        status: "DRAFT",
+        submittedAt: at("2099-06-01T09:00:00.000Z"),
+      },
     ],
   });
 
@@ -223,7 +273,10 @@ beforeAll(async () => {
   tokens.alumnus = await login(app, alumnus.email);
   tokens.student = await login(app, student.email);
   tokens.studentNone = await login(app, studentNone.email);
-  tokens.student3 = await login(app, (await db.user.findUniqueOrThrow({ where: { id: s3 }, select: { email: true } })).email);
+  tokens.student3 = await login(
+    app,
+    (await db.user.findUniqueOrThrow({ where: { id: s3 }, select: { email: true } })).email,
+  );
 });
 
 afterAll(async () => {
@@ -276,7 +329,16 @@ describe("SEASON_STAFF", () => {
     // The org's day, so staff screens count sessions from it rather than the device's.
     expect(d.todayOrgDay).toBe(orgDayKey(new Date()));
     expect(Object.keys(res.body.data).sort()).toEqual([
-      "cohort", "groups", "nextSession", "progress", "quizzes", "scope", "season", "submissions", "todayOrgDay", "variant",
+      "cohort",
+      "groups",
+      "nextSession",
+      "progress",
+      "quizzes",
+      "scope",
+      "season",
+      "submissions",
+      "todayOrgDay",
+      "variant",
     ]);
     expect(d.groups).toEqual([]);
     expect(d.season).toMatchObject({ id: seasonId, status: "ACTIVE" });
@@ -327,7 +389,14 @@ describe("STUDENT", () => {
   it("carries only the caller's own figures and ignores ?seasonId= (C8 #2, D22)", async () => {
     const res = await get(`/api/v1/me/dashboard?seasonId=${otherSeasonId}`, tokens.student);
     expect(res.status).toBe(200);
-    expect(Object.keys(res.body.data).sort()).toEqual(["assignments", "nextSession", "progress", "season", "todayOrgDay", "variant"]);
+    expect(Object.keys(res.body.data).sort()).toEqual([
+      "assignments",
+      "nextSession",
+      "progress",
+      "season",
+      "todayOrgDay",
+      "variant",
+    ]);
     const d = studentDashboardSchema.parse(res.body.data);
 
     expect(d.todayOrgDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);

@@ -50,8 +50,14 @@ const detail = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 const listRow = (id: number, program: string) => ({
-  id, code: `c${id}`, title: `${program} ${2020 + id}`, program, year: 2020 + id, status: "COMPLETED",
-  startDate: "2020-01-01T00:00:00.000Z", endDate: "2020-12-31T00:00:00.000Z",
+  id,
+  code: `c${id}`,
+  title: `${program} ${2020 + id}`,
+  program,
+  year: 2020 + id,
+  status: "COMPLETED",
+  startDate: "2020-01-01T00:00:00.000Z",
+  endDate: "2020-12-31T00:00:00.000Z",
 });
 
 function routeGets(d = detail(), extra: Record<string, unknown> = {}) {
@@ -63,16 +69,44 @@ function routeGets(d = detail(), extra: Record<string, unknown> = {}) {
     "/api/v1/seasons": {
       seasons: [listRow(1, "GBV"), listRow(2, "GBV"), listRow(3, "ABC"), listRow(4, "LEAD")],
     },
-    "/api/v1/seasons/7/roster": { roster: [{ userId: 21, name: "Sara", email: "sara@jpc.test", groupId: null, groupName: null }] },
+    "/api/v1/seasons/7/roster": {
+      roster: [{ userId: 21, name: "Sara", email: "sara@jpc.test", groupId: null, groupName: null }],
+    },
     "/api/v1/seasons/7/people-candidates": {
-      season: { id: 7, title: "LEAD 2026", requiredProgram: "GBV", isCommunityWide: false, suggestedSourceId: 2, sources: [{ id: 2, code: "c2", title: "GBV 2022", passed: 2, graduated: 0 }] },
+      season: {
+        id: 7,
+        title: "LEAD 2026",
+        requiredProgram: "GBV",
+        isCommunityWide: false,
+        suggestedSourceId: 2,
+        sources: [{ id: 2, code: "c2", title: "GBV 2022", passed: 2, graduated: 0 }],
+      },
       people: [21, 22, 23].map((id) => ({
-        id, name: `P${id}`, pool: "student", last: null, reason: id === 21 ? "Already in this season" : null,
-        availability: id === 21 ? "in_season" : "available", selectable: id !== 21, overridable: false,
+        id,
+        name: `P${id}`,
+        pool: "student",
+        last: null,
+        reason: id === 21 ? "Already in this season" : null,
+        availability: id === 21 ? "in_season" : "available",
+        selectable: id !== 21,
+        overridable: false,
         places: [{ seasonId: 2, outcome: id === 23 ? "not_passed" : "passed" }],
       })),
     },
-    "/api/v1/seasons/7/groups": { groups: [{ id: 3, name: "Group A", description: null, studentCount: 1, leaderNames: [], seasonId: 7, seasonCode: "s7", seasonTitle: "LEAD 2026" }] },
+    "/api/v1/seasons/7/groups": {
+      groups: [
+        {
+          id: 3,
+          name: "Group A",
+          description: null,
+          studentCount: 1,
+          leaderNames: [],
+          seasonId: 7,
+          seasonCode: "s7",
+          seasonTitle: "LEAD 2026",
+        },
+      ],
+    },
     ...extra,
   };
   get.mockImplementation((url: string) =>
@@ -181,7 +215,10 @@ describe("required program on the form", () => {
     fireEvent.press(await screen.findByText("ABC"));
     fireEvent.press(screen.getByText("Save changes"));
     await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith("/api/v1/seasons/7", expect.objectContaining({ requiredProgram: "ABC", status: "DRAFT" })),
+      expect(patch).toHaveBeenCalledWith(
+        "/api/v1/seasons/7",
+        expect.objectContaining({ requiredProgram: "ABC", status: "DRAFT" }),
+      ),
     );
   });
 
@@ -219,7 +256,12 @@ describe("removing someone from a draft's roster", () => {
     del.mockRejectedValue(
       Object.assign(new Error("409"), {
         isAxiosError: true,
-        response: { status: 409, data: { error: { code: "has_work", message: "This person already has work or attendance recorded in this season." } } },
+        response: {
+          status: 409,
+          data: {
+            error: { code: "has_work", message: "This person already has work or attendance recorded in this season." },
+          },
+        },
       }),
     );
     await openSara();

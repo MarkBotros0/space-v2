@@ -40,7 +40,12 @@ function Initials({ name }: { name: string }) {
 
 /** Lower-case, accent- and space-insensitive: "Mína  Adel" matches "mina a". */
 const fold = (s: string) =>
-  s.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
+  s
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
 
 export function StudentList<T extends StudentListItem>({
   items,

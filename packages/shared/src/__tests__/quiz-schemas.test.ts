@@ -18,9 +18,16 @@ describe("the answer-key split (spec D2)", () => {
 
   it("strips a correctIndex a careless handler passed in", () => {
     const parsed = quizQuestionStudentSchema.parse({
-      id: 1, order: 0, type: "MCQ", prompt: "Capital of France?", points: 2,
-      options: ["London", "Paris"], selectedIndex: 1, text: null,
-      isCorrect: null, pointsAwarded: null,
+      id: 1,
+      order: 0,
+      type: "MCQ",
+      prompt: "Capital of France?",
+      points: 2,
+      options: ["London", "Paris"],
+      selectedIndex: 1,
+      text: null,
+      isCorrect: null,
+      pointsAwarded: null,
       correctIndex: 1,
     } as never);
     expect(JSON.stringify(parsed)).not.toContain("correctIndex");
@@ -32,22 +39,16 @@ describe("createQuizRequestSchema", () => {
 
   it("requires maxScore for PAPER (R3)", () => {
     expect(createQuizRequestSchema.safeParse({ ...base, kind: "PAPER" }).success).toBe(false);
-    expect(
-      createQuizRequestSchema.safeParse({ ...base, kind: "PAPER", maxScore: 20 }).success,
-    ).toBe(true);
+    expect(createQuizRequestSchema.safeParse({ ...base, kind: "PAPER", maxScore: 20 }).success).toBe(true);
   });
 
   it("REJECTS maxScore for ONLINE instead of silently zeroing it (R4, §7)", () => {
-    expect(
-      createQuizRequestSchema.safeParse({ ...base, kind: "ONLINE", maxScore: 20 }).success,
-    ).toBe(false);
+    expect(createQuizRequestSchema.safeParse({ ...base, kind: "ONLINE", maxScore: 20 }).success).toBe(false);
     expect(createQuizRequestSchema.safeParse({ ...base, kind: "ONLINE" }).success).toBe(true);
   });
 
   it("accepts a session-less quiz (D12) — the column is nullable", () => {
-    expect(
-      createQuizRequestSchema.safeParse({ ...base, sessionId: null, kind: "ONLINE" }).success,
-    ).toBe(true);
+    expect(createQuizRequestSchema.safeParse({ ...base, sessionId: null, kind: "ONLINE" }).success).toBe(true);
   });
 });
 
@@ -55,18 +56,17 @@ describe("quizQuestionRequestSchema", () => {
   it("needs at least 2 options and an in-range correctIndex for MCQ (R17, R18)", () => {
     const mcq = { type: "MCQ", prompt: "Pick one", points: 2, options: ["a"], correctIndex: 0 };
     expect(quizQuestionRequestSchema.safeParse(mcq).success).toBe(false);
-    expect(
-      quizQuestionRequestSchema.safeParse({ ...mcq, options: ["a", "b"], correctIndex: 2 }).success,
-    ).toBe(false);
-    expect(
-      quizQuestionRequestSchema.safeParse({ ...mcq, options: ["a", "b"], correctIndex: 1 }).success,
-    ).toBe(true);
+    expect(quizQuestionRequestSchema.safeParse({ ...mcq, options: ["a", "b"], correctIndex: 2 }).success).toBe(false);
+    expect(quizQuestionRequestSchema.safeParse({ ...mcq, options: ["a", "b"], correctIndex: 1 }).success).toBe(true);
   });
 
   it("normalises ESSAY to no options and no correct answer in the transform (R19)", () => {
     const parsed = quizQuestionRequestSchema.parse({
-      type: "ESSAY", prompt: "  Discuss.  ", points: 5,
-      options: ["stray", "values"], correctIndex: 1,
+      type: "ESSAY",
+      prompt: "  Discuss.  ",
+      points: 5,
+      options: ["stray", "values"],
+      correctIndex: 1,
     });
     expect(parsed).toMatchObject({ prompt: "Discuss.", options: [], correctIndex: null });
   });
@@ -74,8 +74,11 @@ describe("quizQuestionRequestSchema", () => {
   it("caps options at 6 and prompt at 2000 (R16)", () => {
     expect(
       quizQuestionRequestSchema.safeParse({
-        type: "MCQ", prompt: "Pick", points: 1,
-        options: ["a", "b", "c", "d", "e", "f", "g"], correctIndex: 0,
+        type: "MCQ",
+        prompt: "Pick",
+        points: 1,
+        options: ["a", "b", "c", "d", "e", "f", "g"],
+        correctIndex: 0,
       }).success,
     ).toBe(false);
   });
@@ -118,9 +121,7 @@ describe("saveQuizGradesRequestSchema", () => {
 describe("gradeEssayAnswersRequestSchema / reorderQuestionsRequestSchema", () => {
   it("requires at least one award and a non-negative integer", () => {
     expect(gradeEssayAnswersRequestSchema.safeParse({ awards: [] }).success).toBe(false);
-    expect(
-      gradeEssayAnswersRequestSchema.safeParse({ awards: [{ questionId: 1, points: -1 }] }).success,
-    ).toBe(false);
+    expect(gradeEssayAnswersRequestSchema.safeParse({ awards: [{ questionId: 1, points: -1 }] }).success).toBe(false);
   });
 
   it("requires a non-empty questionIds list to reorder", () => {

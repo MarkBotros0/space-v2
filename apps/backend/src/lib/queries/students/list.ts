@@ -165,10 +165,7 @@ async function listByRelatedSort(
     )?.toLowerCase() ?? "";
   const sign = dir === "asc" ? 1 : -1;
   keyed.sort(
-    (a, b) =>
-      sign * keyOf(a).localeCompare(keyOf(b)) ||
-      (a.name ?? "").localeCompare(b.name ?? "") ||
-      a.id - b.id,
+    (a, b) => sign * keyOf(a).localeCompare(keyOf(b)) || (a.name ?? "").localeCompare(b.name ?? "") || a.id - b.id,
   );
 
   const start = query.cursor === undefined ? 0 : keyed.findIndex((u) => u.id === query.cursor) + 1;
@@ -213,10 +210,7 @@ function graduationFilter(
 }
 
 /** Returns null when the caller may not read this surface at all → 403. */
-export async function listStudents(
-  user: SessionUser,
-  query: StudentListQuery,
-): Promise<StudentListResult | null> {
+export async function listStudents(user: SessionUser, query: StudentListQuery): Promise<StudentListResult | null> {
   if (query.status === "dropped") return listDroppedEnrollments(user, query);
 
   // Alumni surface: SUPER, ADMIN, MENTOR (spec 06 §4.1/§7). LEADER never had
@@ -291,10 +285,7 @@ export async function listStudents(
  * page ever called it; as an endpoint that would hand every drop reason in
  * the database to read-all (spec 06 §4.3), so the surface narrows (§7).
  */
-async function listDroppedEnrollments(
-  user: SessionUser,
-  query: StudentListQuery,
-): Promise<StudentListResult | null> {
+async function listDroppedEnrollments(user: SessionUser, query: StudentListQuery): Promise<StudentListResult | null> {
   if (!isSuper(user) && user.role !== "ADMIN") return null;
   if (user.role === "ADMIN" && user.seasonAdminIds.length === 0) return emptyList();
 

@@ -68,9 +68,7 @@ describe("GET /api/v1/seasons/:id/groups", () => {
   });
 
   it("returns 400 for a non-numeric season id", async () => {
-    const res = await request(app)
-      .get("/api/v1/seasons/abc/groups")
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await request(app).get("/api/v1/seasons/abc/groups").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(400);
   });
 

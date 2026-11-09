@@ -9,14 +9,7 @@
  * Plans 02–05 move the call sites to Sheet and delete this file.
  */
 import { X } from "lucide-react-native";
-import {
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { Animated, KeyboardAvoidingView, Modal as RNModal, Platform, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
@@ -91,8 +84,14 @@ function ModalContent({
       >
         <View className="absolute inset-0 bg-black/40" />
       </Pressable>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} className="flex-1 justify-end" pointerEvents="box-none">
-        <Animated.View style={{ transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [0, 600] }) }] }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1 justify-end"
+        pointerEvents="box-none"
+      >
+        <Animated.View
+          style={{ transform: [{ translateY: slide.interpolate({ inputRange: [0, 1], outputRange: [0, 600] }) }] }}
+        >
           <View
             className={cn("max-h-[90vh] flex-col gap-4 rounded-t-sheet bg-surface p-4 pt-6", className)}
             style={{ paddingBottom: Math.max(16, bottomInset) }}
@@ -100,14 +99,14 @@ function ModalContent({
             <View className="absolute left-1/2 top-3 -ml-5 h-1 w-10 rounded-full bg-separator" />
             {children}
             {dismissible ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-              onPress={() => setOpen(false)}
-              className="absolute right-2 top-2 size-11 items-center justify-center rounded-full active:bg-muted"
-            >
-              <X size={16} className="text-muted-foreground" />
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setOpen(false)}
+                className="absolute right-2 top-2 size-11 items-center justify-center rounded-full active:bg-muted"
+              >
+                <X size={16} className="text-muted-foreground" />
+              </Pressable>
             ) : null}
           </View>
         </Animated.View>

@@ -26,7 +26,21 @@ let adminToken: string;
 let mentorToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, assignmentId, untargetedAssignmentId, groupAId, studentAId, studentA2Id, studentAToken, studentA2Token, studentBToken, leaderAToken, leaderBToken, adminToken, mentorToken } = await seedForumFixtures(app));
+  ({
+    seasonId,
+    assignmentId,
+    untargetedAssignmentId,
+    groupAId,
+    studentAId,
+    studentA2Id,
+    studentAToken,
+    studentA2Token,
+    studentBToken,
+    leaderAToken,
+    leaderBToken,
+    adminToken,
+    mentorToken,
+  } = await seedForumFixtures(app));
 });
 
 beforeEach(() => resetSubmissions(seasonId));
@@ -199,18 +213,12 @@ describe("GET /api/v1/assignments/:id/forum", () => {
     // Staff read every post they are scoped to, and are never locked.
     expect(leaderA.body.data.locked).toBe(false);
     expect(leaderA.body.data.own).toBeNull();
-    expect(leaderA.body.data.posts.map((p: { studentUserId: number }) => p.studentUserId)).toEqual([
-      studentAId,
-    ]);
+    expect(leaderA.body.data.posts.map((p: { studentUserId: number }) => p.studentUserId)).toEqual([studentAId]);
 
     const leaderB = await request(app)
       .get(`/api/v1/assignments/${assignmentId}/forum`)
       .set("authorization", `Bearer ${leaderBToken}`);
-    expect(
-      leaderB.body.data.posts.some(
-        (p: { studentUserId: number }) => p.studentUserId === studentAId,
-      ),
-    ).toBe(false);
+    expect(leaderB.body.data.posts.some((p: { studentUserId: number }) => p.studentUserId === studentAId)).toBe(false);
   });
 
   it("gives an admin and a mentor every group", async () => {
@@ -237,9 +245,7 @@ describe("GET /api/v1/assignments/:id/forum", () => {
   });
 
   it("paginates instead of returning the whole thread (spec 14 D7)", async () => {
-    const extras = await Promise.all(
-      Array.from({ length: 3 }, (_, i) => createTestUser(`fbulk${i}`, "STUDENT")),
-    );
+    const extras = await Promise.all(Array.from({ length: 3 }, (_, i) => createTestUser(`fbulk${i}`, "STUDENT")));
     await db.seasonEnrollment.createMany({
       data: extras.map((u) => ({
         seasonId,

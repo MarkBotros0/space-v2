@@ -81,10 +81,8 @@ afterAll(async () => {
 
 const as = (token: string) => ({
   get: (path: string) => request(app).get(path).set("authorization", `Bearer ${token}`),
-  patch: (path: string, body: object) =>
-    request(app).patch(path).set("authorization", `Bearer ${token}`).send(body),
-  post: (path: string, body: object) =>
-    request(app).post(path).set("authorization", `Bearer ${token}`).send(body),
+  patch: (path: string, body: object) => request(app).patch(path).set("authorization", `Bearer ${token}`).send(body),
+  post: (path: string, body: object) => request(app).post(path).set("authorization", `Bearer ${token}`).send(body),
 });
 
 function expectNoSecrets(res: { text: string }): void {

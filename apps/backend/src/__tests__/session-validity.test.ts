@@ -19,11 +19,7 @@ import express from "express";
 import request from "supertest";
 
 import { createApp } from "../app";
-import {
-  invalidateSessions,
-  isAccessTokenInvalidated,
-  issuedBeforeCutoff,
-} from "../lib/auth/session-validity";
+import { invalidateSessions, isAccessTokenInvalidated, issuedBeforeCutoff } from "../lib/auth/session-validity";
 import { signAccessToken, type SessionUser } from "../lib/auth/tokens";
 import { requireAuth } from "../middleware/require-auth";
 
@@ -161,7 +157,9 @@ describe("writers", () => {
     expect(res.status).toBe(200);
     expect(stampedFor(7)).toBe(true);
     expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ userId: 7, tokenHash: { not: expect.any(String) } }) }),
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: 7, tokenHash: { not: expect.any(String) } }),
+      }),
     );
   });
 

@@ -141,7 +141,10 @@ describe("POST /seasons/:id/admins", () => {
   });
 
   it("a refusal is a 409 in its own words, with no write, no stamp and no audit", async () => {
-    mockRefuseNewSeats.mockResolvedValue({ code: "not_alumnus", message: "Only alumni can serve. Pat hasn't graduated." });
+    mockRefuseNewSeats.mockResolvedValue({
+      code: "not_alumnus",
+      message: "Only alumni can serve. Pat hasn't graduated.",
+    });
     const res = await add({ userId: 7 });
     expect(res.status).toBe(409);
     expect(res.body.error).toEqual({ code: "not_alumnus", message: "Only alumni can serve. Pat hasn't graduated." });

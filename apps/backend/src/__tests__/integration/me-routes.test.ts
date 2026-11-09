@@ -35,9 +35,7 @@ beforeAll(async () => {
   });
   userId = user.id;
 
-  const login = await request(app)
-    .post("/api/v1/auth/login")
-    .send({ email: EMAIL, password: PASSWORD });
+  const login = await request(app).post("/api/v1/auth/login").send({ email: EMAIL, password: PASSWORD });
   accessToken = login.body.data.accessToken;
   refreshToken = login.body.data.refreshToken;
 });
@@ -103,14 +101,10 @@ describe("GET /api/v1/me", () => {
       },
     });
 
-    const login = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: graduate.email, password: PASSWORD });
+    const login = await request(app).post("/api/v1/auth/login").send({ email: graduate.email, password: PASSWORD });
     expect(login.status).toBe(200);
 
-    const res = await request(app)
-      .get("/api/v1/me")
-      .set("authorization", `Bearer ${login.body.data.accessToken}`);
+    const res = await request(app).get("/api/v1/me").set("authorization", `Bearer ${login.body.data.accessToken}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.scopes.graduationYear).toBe(2024);
@@ -153,9 +147,7 @@ describe("POST /api/v1/auth/logout", () => {
   });
 
   it("returns 200 for an unknown token (revocation is idempotent)", async () => {
-    const res = await request(app)
-      .post("/api/v1/auth/logout")
-      .send({ refreshToken: "no-such-token" });
+    const res = await request(app).post("/api/v1/auth/logout").send({ refreshToken: "no-such-token" });
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ ok: true });
   });

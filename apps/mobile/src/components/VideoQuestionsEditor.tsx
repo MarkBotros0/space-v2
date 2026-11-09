@@ -1,17 +1,8 @@
 import { useState } from "react";
 import { View, type TextInputProps } from "react-native";
-import {
-  formatTimestamp,
-  parseTimestamp,
-  videoQuestionInputSchema,
-  type VideoQuestionAdmin,
-} from "@space/shared";
+import { formatTimestamp, parseTimestamp, videoQuestionInputSchema, type VideoQuestionAdmin } from "@space/shared";
 
-import {
-  useVideoQuestions,
-  useVideoQuestionWrites,
-  useVideoQuizResults,
-} from "../hooks/use-video-quiz";
+import { useVideoQuestions, useVideoQuestionWrites, useVideoQuizResults } from "../hooks/use-video-quiz";
 import { FormErrorBox } from "../design/forms/form-parts";
 import { InlineError } from "../design/layout/route-states";
 import { Button } from "../design/ui/button";
@@ -105,8 +96,7 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
   const [status, setStatus] = useState<string | null>(null);
   const [armedDelete, setArmedDelete] = useState<number | null>(null);
 
-  const patch = (changes: Partial<FormState>): void =>
-    setForm((f) => (f === null ? f : { ...f, ...changes }));
+  const patch = (changes: Partial<FormState>): void => setForm((f) => (f === null ? f : { ...f, ...changes }));
 
   const openAdd = (): void => {
     setStatus(null);

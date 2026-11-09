@@ -66,8 +66,15 @@ function routeGets(over: Record<string, unknown> = {}) {
     "/api/v1/seasons/7/staff-candidates": candidates,
     "/api/v1/seasons/7/roster": { roster: [] },
     "/api/v1/groups/3": {
-      id: 3, name: "Group A", description: null, seasonId: 7, seasonCode: "s7", seasonTitle: "GBV 2026",
-      leaders: [lina], students: [], canManage: true,
+      id: 3,
+      name: "Group A",
+      description: null,
+      seasonId: 7,
+      seasonCode: "s7",
+      seasonTitle: "GBV 2026",
+      leaders: [lina],
+      students: [],
+      canManage: true,
     },
     ...over,
   };
@@ -114,7 +121,19 @@ describe("adding a season admin (super)", () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets();
     post.mockResolvedValue({
-      data: { data: { admins: [{ userId: 6, name: "Karim", email: "k@jpc.test", assignedAt: "2026-01-02T00:00:00.000Z", assignedByName: null }] } },
+      data: {
+        data: {
+          admins: [
+            {
+              userId: 6,
+              name: "Karim",
+              email: "k@jpc.test",
+              assignedAt: "2026-01-02T00:00:00.000Z",
+              assignedByName: null,
+            },
+          ],
+        },
+      },
     });
     renderWithProviders(<SeasonAdminsScreen />);
     fireEvent.press(await screen.findByText("Add admin"));

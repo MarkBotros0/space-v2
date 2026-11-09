@@ -92,10 +92,26 @@ export async function seedCommunityScenario({ superUser, admin, leader, alumni, 
     },
   });
   await db.quizQuestion.create({
-    data: { quizId: quiz.id, order: 1, type: "MCQ", prompt: "Which hall did we meet in?", points: 1, options: ["Hall A", "Hall B"], correctIndex: 0 },
+    data: {
+      quizId: quiz.id,
+      order: 1,
+      type: "MCQ",
+      prompt: "Which hall did we meet in?",
+      points: 1,
+      options: ["Hall A", "Hall B"],
+      correctIndex: 0,
+    },
   });
   await db.quizAttempt.create({
-    data: { quizId: quiz.id, studentUserId: finished.id, status: "GRADED", autoScore: 1, totalScore: 1, submittedAt: fromToday(-389), gradedAt: fromToday(-389) },
+    data: {
+      quizId: quiz.id,
+      studentUserId: finished.id,
+      status: "GRADED",
+      autoScore: 1,
+      totalScore: 1,
+      submittedAt: fromToday(-389),
+      gradedAt: fromToday(-389),
+    },
   });
   await db.attendance.create({
     data: { sessionId: finale.id, studentUserId: finished.id, status: "PRESENT", markedById: leader.id },
@@ -117,11 +133,21 @@ export async function seedCommunityScenario({ superUser, admin, leader, alumni, 
   });
   await db.seasonAdmin.create({ data: { seasonId: overdue.id, userId: admin.id, assignedById: superUser.id } });
   const group = await db.group.create({ data: { seasonId: overdue.id, name: "Spring Group" } });
-  for (const [key, name] of [["spring1", "Sami Spring"], ["spring2", "Salwa Spring"], ["spring3", "Sherif Spring"]] as const) {
+  for (const [key, name] of [
+    ["spring1", "Sami Spring"],
+    ["spring2", "Salwa Spring"],
+    ["spring3", "Sherif Spring"],
+  ] as const) {
     const s = await student(key, name);
     await db.groupStudent.create({ data: { groupId: group.id, seasonId: overdue.id, studentUserId: s.id } });
     await db.seasonEnrollment.create({
-      data: { studentUserId: s.id, seasonId: overdue.id, groupId: group.id, status: "ACTIVE", enrolledAt: fromToday(-60) },
+      data: {
+        studentUserId: s.id,
+        seasonId: overdue.id,
+        groupId: group.id,
+        status: "ACTIVE",
+        enrolledAt: fromToday(-60),
+      },
     });
   }
 

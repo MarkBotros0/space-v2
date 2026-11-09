@@ -58,9 +58,7 @@ export async function prepareSessionCancelledNotice(
         select: { userId: true },
       }),
     ]);
-    const recipientIds = [
-      ...new Set([...enrolled.map((e) => e.studentUserId), ...leaders.map((l) => l.userId)]),
-    ];
+    const recipientIds = [...new Set([...enrolled.map((e) => e.studentUserId), ...leaders.map((l) => l.userId)])];
     if (recipientIds.length === 0) return;
 
     // Org wall clock (C2), formatted as the SESSION_RESCHEDULED notice is.

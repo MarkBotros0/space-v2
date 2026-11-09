@@ -11,7 +11,12 @@ const mockWithRepeat = jest.fn((anim: unknown) => anim);
 
 jest.mock("react-native-reanimated", () => {
   const actual = jest.requireActual("react-native-reanimated");
-  return { ...actual, __esModule: true, default: actual.default, withRepeat: (...args: [unknown]) => mockWithRepeat(...args) };
+  return {
+    ...actual,
+    __esModule: true,
+    default: actual.default,
+    withRepeat: (...args: [unknown]) => mockWithRepeat(...args),
+  };
 });
 
 beforeEach(() => mockWithRepeat.mockClear());
@@ -62,9 +67,13 @@ describe("Skeleton", () => {
     setReducedMotionForTests(true);
     render(<Skeleton height={20} width={100} />);
     expect(mockWithRepeat).not.toHaveBeenCalled();
-    expect(StyleSheet.flatten(screen.getByTestId("skeleton-pulse", { includeHiddenElements: true }).props.style)).toMatchObject({ opacity: 0.7 });
+    expect(
+      StyleSheet.flatten(screen.getByTestId("skeleton-pulse", { includeHiddenElements: true }).props.style),
+    ).toMatchObject({ opacity: 0.7 });
     // The size sits on the plain layout box, so percentages resolve against the real parent.
-    expect(StyleSheet.flatten(screen.getByTestId("skeleton", { includeHiddenElements: true }).props.style)).toMatchObject({ width: 100, height: 20 });
+    expect(
+      StyleSheet.flatten(screen.getByTestId("skeleton", { includeHiddenElements: true }).props.style),
+    ).toMatchObject({ width: 100, height: 20 });
   });
 
   it("shimmers when motion is on", () => {

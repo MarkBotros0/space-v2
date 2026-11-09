@@ -23,10 +23,7 @@ import { seasonParticipant } from "./queries/season-participants";
  *
  * Returns null when the caller has no staff scope in the season at all.
  */
-export async function visibleStudentIdsForQuiz(
-  user: SessionUser,
-  seasonId: number,
-): Promise<number[] | null> {
+export async function visibleStudentIdsForQuiz(user: SessionUser, seasonId: number): Promise<number[] | null> {
   const scope = await staffScopeForSeason(user, seasonId);
   if (scope === null) return null;
 
@@ -72,7 +69,5 @@ export async function countGradedByQuiz(
   ]);
   const paperBy = new Map(paperGraded.map((g) => [g.quizId, g._count._all]));
   const onlineBy = new Map(onlineGraded.map((g) => [g.quizId, g._count._all]));
-  return new Map(
-    quizzes.map((q) => [q.id, (q.kind === "PAPER" ? paperBy.get(q.id) : onlineBy.get(q.id)) ?? 0]),
-  );
+  return new Map(quizzes.map((q) => [q.id, (q.kind === "PAPER" ? paperBy.get(q.id) : onlineBy.get(q.id)) ?? 0]));
 }

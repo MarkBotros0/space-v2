@@ -32,15 +32,8 @@ function endMs(s: SessionListItem): number {
  */
 
 /** Over (ends at or before `now`, or on an earlier org day) and attendance not marked; newest first. */
-export function unmarkedSessions(
-  sessions: SessionListItem[],
-  now: Date,
-  today?: string,
-): SessionListItem[] {
+export function unmarkedSessions(sessions: SessionListItem[], now: Date, today?: string): SessionListItem[] {
   const t = now.getTime();
-  const over = (s: SessionListItem) =>
-    today === undefined || s.dayKey === today ? endMs(s) <= t : s.dayKey < today;
-  return sessions
-    .filter((s) => over(s) && !s.attendanceMarked)
-    .sort((a, b) => startMs(b) - startMs(a) || b.id - a.id);
+  const over = (s: SessionListItem) => (today === undefined || s.dayKey === today ? endMs(s) <= t : s.dayKey < today);
+  return sessions.filter((s) => over(s) && !s.attendanceMarked).sort((a, b) => startMs(b) - startMs(a) || b.id - a.id);
 }

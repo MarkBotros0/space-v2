@@ -30,13 +30,15 @@ import request from "supertest";
 import { requireAuth } from "../middleware/require-auth";
 import { saveAttendance } from "../routes/sessions/attendance";
 
-const app = express()
-  .use(express.json())
-  .post("/sessions/:id/attendance", requireAuth, saveAttendance);
+const app = express().use(express.json()).post("/sessions/:id/attendance", requireAuth, saveAttendance);
 
 const admin = {
-  userId: 1, role: "ADMIN", seasonAdminIds: [7], groupLeaderIds: [],
-  activeSeasonId: null, graduationYear: null,
+  userId: 1,
+  role: "ADMIN",
+  seasonAdminIds: [7],
+  groupLeaderIds: [],
+  activeSeasonId: null,
+  graduationYear: null,
 };
 
 const save = (entries: unknown[]) =>

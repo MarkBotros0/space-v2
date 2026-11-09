@@ -256,9 +256,7 @@ export function navFor(user: NavAudience): RoleNav {
  * `ALL_NAV_HREFS`, and reusable in tests against synthetic nav data.
  */
 export function hrefUnion(navs: readonly RoleNav[]): string[] {
-  return Array.from(
-    new Set(navs.flatMap((nav) => [...nav.tabs, ...nav.sidebar]).map((item) => item.href)),
-  );
+  return Array.from(new Set(navs.flatMap((nav) => [...nav.tabs, ...nav.sidebar]).map((item) => item.href)));
 }
 
 /** All seven navs: navByRole plus ALUMNI and STUDENT_BETWEEN, which only navFor reaches. */

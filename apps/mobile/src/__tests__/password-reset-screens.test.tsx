@@ -57,9 +57,7 @@ describe("ForgotPasswordScreen", () => {
     renderWithProviders(<ForgotPasswordScreen />);
     fireEvent.changeText(screen.getByLabelText("Email"), "nope");
     fireEvent.press(screen.getByText("Send reset code"));
-    await waitFor(() =>
-      expect(screen.getByLabelText("Email").props.accessibilityHint).toBe("Must be a valid email."),
-    );
+    await waitFor(() => expect(screen.getByLabelText("Email").props.accessibilityHint).toBe("Must be a valid email."));
     expect(post).not.toHaveBeenCalled();
   });
 });
@@ -120,9 +118,7 @@ describe("ResetPasswordScreen", () => {
     fireEvent.changeText(screen.getByLabelText("Confirm password"), "brand-new-password");
     fireEvent.press(screen.getByText("Set new password"));
 
-    expect(
-      await screen.findByText("This reset code is invalid or has expired. Request a new one."),
-    ).toBeTruthy();
+    expect(await screen.findByText("This reset code is invalid or has expired. Request a new one.")).toBeTruthy();
     fireEvent.press(screen.getByText("Request a new code"));
     expect(mockReplace).toHaveBeenCalledWith("/forgot-password");
   });

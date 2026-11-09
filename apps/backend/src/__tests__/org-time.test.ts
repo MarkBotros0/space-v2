@@ -24,7 +24,9 @@ describe("addWeeksInOrgTime (X13: calendar-week steps in the org zone)", () => {
   it("is plain 7-day steps when no DST boundary is crossed", () => {
     const start = new Date("2099-03-01T18:00:00.000Z");
     expect([0, 1, 2].map((i) => addWeeksInOrgTime(start, i).toISOString())).toEqual([
-      "2099-03-01T18:00:00.000Z", "2099-03-08T18:00:00.000Z", "2099-03-15T18:00:00.000Z",
+      "2099-03-01T18:00:00.000Z",
+      "2099-03-08T18:00:00.000Z",
+      "2099-03-15T18:00:00.000Z",
     ]);
   });
 
@@ -33,14 +35,18 @@ describe("addWeeksInOrgTime (X13: calendar-week steps in the org zone)", () => {
     // Fixed 7-day instants would drift to 21:00; the series must stay at 20:00.
     const start = new Date("2099-04-17T18:00:00.000Z");
     expect([0, 1, 2].map((i) => addWeeksInOrgTime(start, i).toISOString())).toEqual([
-      "2099-04-17T18:00:00.000Z", "2099-04-24T17:00:00.000Z", "2099-05-01T17:00:00.000Z",
+      "2099-04-17T18:00:00.000Z",
+      "2099-04-24T17:00:00.000Z",
+      "2099-05-01T17:00:00.000Z",
     ]);
   });
 
   it("keeps 21:00 Cairo across the fall-back boundary (last Thursday of October)", () => {
     const start = new Date("2099-10-16T18:00:00.000Z"); // 21:00 at UTC+3
     expect([0, 1, 2].map((i) => addWeeksInOrgTime(start, i).toISOString())).toEqual([
-      "2099-10-16T18:00:00.000Z", "2099-10-23T18:00:00.000Z", "2099-10-30T19:00:00.000Z",
+      "2099-10-16T18:00:00.000Z",
+      "2099-10-23T18:00:00.000Z",
+      "2099-10-30T19:00:00.000Z",
     ]);
   });
 });
@@ -77,12 +83,8 @@ describe("orgWallTime / orgWallClockToInstant (Plan 5 — due dates, C2)", () =>
   });
 
   it("composes the instant an org day and time name — the offset follows DST", () => {
-    expect(orgWallClockToInstant("2099-03-10", "23:59").toISOString()).toBe(
-      "2099-03-10T21:59:00.000Z",
-    );
-    expect(orgWallClockToInstant("2099-05-01", "23:59").toISOString()).toBe(
-      "2099-05-01T20:59:00.000Z",
-    );
+    expect(orgWallClockToInstant("2099-03-10", "23:59").toISOString()).toBe("2099-03-10T21:59:00.000Z");
+    expect(orgWallClockToInstant("2099-05-01", "23:59").toISOString()).toBe("2099-05-01T20:59:00.000Z");
     expect(orgWallClockToInstant("2099-01-15", null).toISOString()).toBe("2099-01-14T22:00:00.000Z");
   });
 

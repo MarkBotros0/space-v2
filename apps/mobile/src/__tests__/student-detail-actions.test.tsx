@@ -52,8 +52,12 @@ const base = {
 };
 const publicProfile = {
   phone: null,
-  university: null, faculty: null, universityGraduationYear: null,
-  activeSeasonId: 7, activeSeasonTitle: "Spring 2099", activeSeasonCode: "S7",
+  university: null,
+  faculty: null,
+  universityGraduationYear: null,
+  activeSeasonId: 7,
+  activeSeasonTitle: "Spring 2099",
+  activeSeasonCode: "S7",
 };
 const internalDetail = {
   ...base,
@@ -161,9 +165,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     expect(screen.getByLabelText("JPCS graduation year").props.value).toBe(String(year));
     fireEvent.press(screen.getByText("Graduate student"));
 
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/students/21/graduate", { graduationYear: year }),
-    );
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/students/21/graduate", { graduationYear: year }));
     // Asked to close: gone, or on its way out and no longer taking touches (jest never ends the slide).
     await waitFor(() => {
       const backdrop = screen.queryByTestId("sheet-backdrop");
@@ -174,7 +176,10 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
   describe("someone who hasn't passed a graduating season", () => {
     const notQualified = {
       isAxiosError: true,
-      response: { status: 409, data: { error: { code: "not_qualified", message: "Sara Student hasn't passed a graduating season." } } },
+      response: {
+        status: 409,
+        data: { error: { code: "not_qualified", message: "Sara Student hasn't passed a graduating season." } },
+      },
     };
 
     const TICK = "I understand this can't be undone";
@@ -191,11 +196,21 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
       renderWithProviders(<StudentDetailScreen />);
       await openWarning();
 
-      expect(screen.getByText("Sara Student hasn't passed a graduating season. Students become alumni by passing one. Only use this in a very rare case.")).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Sara Student hasn't passed a graduating season. Students become alumni by passing one. Only use this in a very rare case.",
+        ),
+      ).toBeTruthy();
       expect(screen.getByText("They become an alumnus permanently. This can't be undone in the app.")).toBeTruthy();
       expect(screen.getByText(`They'll be listed as School of ${new Date().getFullYear()}.`)).toBeTruthy();
-      expect(screen.getByText("They can be appointed leader or admin, and can no longer join regular seasons as a student.")).toBeTruthy();
-      expect(screen.getByText("Any regular season they're in now ends for them, with no result. A community-wide season carries on.")).toBeTruthy();
+      expect(
+        screen.getByText("They can be appointed leader or admin, and can no longer join regular seasons as a student."),
+      ).toBeTruthy();
+      expect(
+        screen.getByText(
+          "Any regular season they're in now ends for them, with no result. A community-wide season carries on.",
+        ),
+      ).toBeTruthy();
       expect(screen.getByText("Your name and your reason are recorded.")).toBeTruthy();
       expect(screen.queryByLabelText("JPCS graduation year")).toBeNull();
       expect(screen.getAllByTestId("sheet")).toHaveLength(1);
@@ -284,7 +299,10 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
       useSessionStore.setState(makeSession("SUPER"));
       post.mockRejectedValueOnce({
         isAxiosError: true,
-        response: { status: 409, data: { error: { code: "already_graduated", message: "This student has already graduated." } } },
+        response: {
+          status: 409,
+          data: { error: { code: "already_graduated", message: "This student has already graduated." } },
+        },
       });
       renderWithProviders(<StudentDetailScreen />);
       fireEvent.press(await screen.findByText("Graduate"));
@@ -301,9 +319,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     fireEvent.press(await screen.findByText("Graduate"));
     fireEvent.changeText(screen.getByLabelText("JPCS graduation year"), "");
     fireEvent.press(screen.getByText("Graduate student"));
-    await waitFor(() =>
-      expect(screen.getByLabelText("JPCS graduation year").props.accessibilityHint).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByLabelText("JPCS graduation year").props.accessibilityHint).toBeTruthy());
     fireEvent.changeText(screen.getByLabelText("JPCS graduation year"), String(new Date().getFullYear()));
     expect(screen.getByLabelText("JPCS graduation year").props.accessibilityHint).toBeFalsy();
   });

@@ -6,7 +6,15 @@ import request from "supertest";
 import { db } from "../../db/client";
 import { newPublicId } from "../../lib/public-id";
 import { createTestUser, login } from "./fixtures";
-import { app, as, ctx, person, season, seedEnrollmentFixtures, teardownEnrollmentFixtures } from "./season-enrollments-setup";
+import {
+  app,
+  as,
+  ctx,
+  person,
+  season,
+  seedEnrollmentFixtures,
+  teardownEnrollmentFixtures,
+} from "./season-enrollments-setup";
 
 jest.setTimeout(180000);
 
@@ -47,8 +55,16 @@ async function workIn(seasonId: number, label: string) {
   });
 }
 
-const note = (body: string, authorUserId: number, seasonId: number | null, visibility: "ADMINS" | "LEADERS" | "MENTORS") =>
-  db.engagementNote.create({ data: { studentUserId: studentId, authorUserId, seasonId, body, visibility }, select: { id: true } });
+const note = (
+  body: string,
+  authorUserId: number,
+  seasonId: number | null,
+  visibility: "ADMINS" | "LEADERS" | "MENTORS",
+) =>
+  db.engagementNote.create({
+    data: { studentUserId: studentId, authorUserId, seasonId, body, visibility },
+    select: { id: true },
+  });
 
 const titles = (rows: { seasonId: number }[]) => rows.map((r) => r.seasonId).sort((x, y) => x - y);
 const bodies = (rows: { body: string }[]) => rows.map((r) => r.body).sort();
@@ -67,10 +83,14 @@ beforeAll(async () => {
   const leader = await person("Leader of both", 2020);
   leaderB = leader.id;
   groupA = (
-    await db.group.create({ data: { seasonId: seasonA, name: "Earlier group", leaders: { create: { userId: leader.id } } } })
+    await db.group.create({
+      data: { seasonId: seasonA, name: "Earlier group", leaders: { create: { userId: leader.id } } },
+    })
   ).id;
   groupB = (
-    await db.group.create({ data: { seasonId: seasonB, name: "Current group", leaders: { create: { userId: leader.id } } } })
+    await db.group.create({
+      data: { seasonId: seasonB, name: "Current group", leaders: { create: { userId: leader.id } } },
+    })
   ).id;
   leaderT = await login(app, leader.email);
   mentorT = await login(app, (await createTestUser("earlier-mentor", "MENTOR")).email);
@@ -86,7 +106,13 @@ beforeAll(async () => {
         completedAt: new Date(Date.UTC(2026, 5, 1)),
         enrolledAt: new Date(Date.UTC(2020, 0, 1)),
       },
-      { seasonId: seasonB, studentUserId: studentId, groupId: groupB, status: "ACTIVE", enrolledAt: new Date(Date.UTC(2020, 0, 1)) },
+      {
+        seasonId: seasonB,
+        studentUserId: studentId,
+        groupId: groupB,
+        status: "ACTIVE",
+        enrolledAt: new Date(Date.UTC(2020, 0, 1)),
+      },
     ],
   });
   // Only an earlier season's membership: the "current group" must not surface it.
@@ -141,7 +167,9 @@ describe.each([
 
   it("doesn't find the earlier season's group or the student's other season on the student list", async () => {
     const res = await get("/students?status=active", token());
-    const row = (res.body.data.students as { id: number; currentGroupName: string | null }[]).find((s) => s.id === studentId);
+    const row = (res.body.data.students as { id: number; currentGroupName: string | null }[]).find(
+      (s) => s.id === studentId,
+    );
     expect(row?.currentGroupName).toBeNull();
   });
 
@@ -193,7 +221,12 @@ describe.each([
     await db.groupStudent.createMany({
       data: [
         { seasonId: seasonB, groupId: groupB, studentUserId: studentId, enrolledAt: new Date(Date.UTC(2021, 0, 1)) },
-        { seasonId: other, groupId: elsewhere.id, studentUserId: studentId, enrolledAt: new Date(Date.UTC(2022, 0, 1)) },
+        {
+          seasonId: other,
+          groupId: elsewhere.id,
+          studentUserId: studentId,
+          enrolledAt: new Date(Date.UTC(2022, 0, 1)),
+        },
       ],
     });
     try {
@@ -221,7 +254,11 @@ describe("an admin of two live seasons", () => {
   it("filters to the one season named, not every season they run", async () => {
     const first = await season("ACTIVE", "First");
     const second = await season("ACTIVE", "Second");
-    const [inFirst, inSecond, admin] = [await person("In first"), await person("In second"), await person("Two seasons", 2020)];
+    const [inFirst, inSecond, admin] = [
+      await person("In first"),
+      await person("In second"),
+      await person("Two seasons", 2020),
+    ];
     await db.seasonAdmin.createMany({ data: [first, second].map((seasonId) => ({ seasonId, userId: admin.id })) });
     await db.seasonEnrollment.createMany({
       data: [
@@ -267,11 +304,15 @@ describe("an admin of a draft whose student is live in another season", () => {
       expect(detail.body.data.profile.activeSeasonTitle).toBeNull();
 
       const list = await get("/students?status=active", token);
-      const row = (list.body.data.students as { id: number; activeSeasonTitle: string | null }[]).find((s) => s.id === studentId);
+      const row = (list.body.data.students as { id: number; activeSeasonTitle: string | null }[]).find(
+        (s) => s.id === studentId,
+      );
       expect(row).toBeDefined();
       expect(row?.activeSeasonTitle).toBeNull();
     } finally {
-      await db.seasonEnrollment.delete({ where: { studentUserId_seasonId: { studentUserId: studentId, seasonId: draft } } });
+      await db.seasonEnrollment.delete({
+        where: { studentUserId_seasonId: { studentUserId: studentId, seasonId: draft } },
+      });
     }
   });
 });
@@ -281,16 +322,28 @@ describe("those who keep the whole picture", () => {
     const detail = await get(`/students/${studentId}`, ctx.superToken);
     expect(titles(detail.body.data.enrollments)).toEqual([seasonA, seasonB]);
     expect(detail.body.data.currentGroup.name).toBe("Earlier group");
-    expect(titles((await get(`/students/${studentId}/attendance`, ctx.superToken)).body.data.history)).toEqual([seasonA, seasonB]);
-    expect(titles((await get(`/students/${studentId}/submissions`, ctx.superToken)).body.data.submissions)).toEqual([seasonA, seasonB]);
+    expect(titles((await get(`/students/${studentId}/attendance`, ctx.superToken)).body.data.history)).toEqual([
+      seasonA,
+      seasonB,
+    ]);
+    expect(titles((await get(`/students/${studentId}/submissions`, ctx.superToken)).body.data.submissions)).toEqual([
+      seasonA,
+      seasonB,
+    ]);
     expect(bodies((await get(`/students/${studentId}/notes`, ctx.superToken)).body.data.notes)).toContain("A admins");
   });
 
   it("MENTOR too", async () => {
     const detail = await get(`/students/${studentId}`, mentorT);
     expect(titles(detail.body.data.enrollments)).toEqual([seasonA, seasonB]);
-    expect(titles((await get(`/students/${studentId}/attendance`, mentorT)).body.data.history)).toEqual([seasonA, seasonB]);
-    expect(titles((await get(`/students/${studentId}/submissions`, mentorT)).body.data.submissions)).toEqual([seasonA, seasonB]);
+    expect(titles((await get(`/students/${studentId}/attendance`, mentorT)).body.data.history)).toEqual([
+      seasonA,
+      seasonB,
+    ]);
+    expect(titles((await get(`/students/${studentId}/submissions`, mentorT)).body.data.submissions)).toEqual([
+      seasonA,
+      seasonB,
+    ]);
     expect(bodies((await get(`/students/${studentId}/notes`, mentorT)).body.data.notes)).toEqual(["A mentors"]);
   });
 

@@ -14,7 +14,9 @@ import { USERS_FILE } from "./lib/paths.mjs";
 export const PASSWORD_FILE = path.join(os.homedir(), ".secrets/jpc-v1-reference-password");
 export const BACKUP_FILE = path.join(os.homedir(), ".secrets/jpc-reference-password-backup.json");
 
-const emails = Object.values(JSON.parse(readFileSync(USERS_FILE, "utf8"))).filter(Boolean).map((u) => u.email);
+const emails = Object.values(JSON.parse(readFileSync(USERS_FILE, "utf8")))
+  .filter(Boolean)
+  .map((u) => u.email);
 const client = new pg.Client({ connectionString: readDatabaseUrl() });
 await client.connect();
 
@@ -28,6 +30,9 @@ if (!existsSync(PASSWORD_FILE)) {
   writeFileSync(PASSWORD_FILE, randomBytes(18).toString("base64url"), { mode: 0o600 });
 }
 const hash = await bcrypt.hash(readFileSync(PASSWORD_FILE, "utf8").trim(), 10);
-const { rowCount } = await client.query(`update "User" set "passwordHash" = $1 where email = any($2::text[])`, [hash, emails]);
+const { rowCount } = await client.query(`update "User" set "passwordHash" = $1 where email = any($2::text[])`, [
+  hash,
+  emails,
+]);
 await client.end();
 console.log(`updated ${rowCount} reference users; originals saved for restore`);

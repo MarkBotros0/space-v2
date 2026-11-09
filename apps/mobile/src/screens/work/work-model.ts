@@ -49,8 +49,7 @@ function assignmentSubtitle(
 ): { subtitle?: string } {
   const chipHasDate = chipNamesDate(chip);
   const sameYear = dueOrgDay !== null && dueOrgDay.slice(0, 4) === todayOrgDay.slice(0, 4);
-  const due =
-    dueOrgDay !== null && !(chipHasDate && sameYear) ? `Due ${formatDayKey(dueOrgDay)}` : null;
+  const due = dueOrgDay !== null && !(chipHasDate && sameYear) ? `Due ${formatDayKey(dueOrgDay)}` : null;
   const subtitle = [note, due].filter((part) => part !== null).join(" · ");
   return subtitle ? { subtitle } : {};
 }
@@ -127,11 +126,7 @@ export function quizRow(q: StudentQuizResult): WorkRow {
 
 /** P2-4: an ONLINE quiz with no score, not started or still in progress. */
 export function isOpenQuiz(q: StudentQuizResult): boolean {
-  return (
-    q.kind === "ONLINE" &&
-    q.score === null &&
-    (q.attemptStatus === null || q.attemptStatus === "IN_PROGRESS")
-  );
+  return q.kind === "ONLINE" && q.score === null && (q.attemptStatus === null || q.attemptStatus === "IN_PROGRESS");
 }
 
 /**
@@ -139,19 +134,12 @@ export function isOpenQuiz(q: StudentQuizResult): boolean {
  * inside a group the server's order holds. `isOverdue` is only about the
  * deadline, so a returned row past it is filed by its status, as its chip says.
  */
-export function todayWork(
-  open: DashboardDueItem[],
-  quizzes: StudentQuizResult[],
-  todayOrgDay: string,
-): WorkRow[] {
+export function todayWork(open: DashboardDueItem[], quizzes: StudentQuizResult[], todayOrgDay: string): WorkRow[] {
   const returned = open.filter((a) => a.status === "RETURNED");
   const rest = open.filter((a) => a.status !== "RETURNED");
   const overdue = rest.filter((a) => a.isOverdue);
   const dueSoon = rest.filter(
-    (a) =>
-      !a.isOverdue &&
-      a.dueOrgDay !== null &&
-      daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
+    (a) => !a.isOverdue && a.dueOrgDay !== null && daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
   );
   return [
     ...[...overdue, ...returned, ...dueSoon].map((a) => assignmentRow(a, todayOrgDay)),
@@ -176,10 +164,7 @@ export function todoGroups(
   const returned = assignments.filter((a) => a.status === "RETURNED");
   const overdue = open.filter((a) => a.isOverdue);
   const thisWeek = open.filter(
-    (a) =>
-      !a.isOverdue &&
-      a.dueOrgDay !== null &&
-      daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
+    (a) => !a.isOverdue && a.dueOrgDay !== null && daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
   );
   const shown = new Set([...overdue, ...thisWeek].map((a) => a.id));
   const later = open.filter((a) => !shown.has(a.id));
@@ -209,9 +194,7 @@ function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
         ? unbreakable(`Reviewed ${formatDate(a.reviewedAt)}`) + " · Open to read the feedback"
         : "Open to read the feedback"
       : "Your leader hasn't reviewed it yet",
-    chip: reviewed
-      ? { tone: "ok", label: "Reviewed" }
-      : { tone: "info", label: "Waiting for review" },
+    chip: reviewed ? { tone: "ok", label: "Reviewed" } : { tone: "info", label: "Waiting for review" },
     href: { pathname: "/assignment/[id]" as const, params: { id: String(a.id) } },
   };
 }

@@ -22,10 +22,7 @@ export function NextStepCard({
   return (
     <View
       testID="next-step"
-      className={cn(
-        "flex-col gap-3 rounded-group p-4",
-        tone === "warn" ? "bg-warn-soft" : "bg-info-soft",
-      )}
+      className={cn("flex-col gap-3 rounded-group p-4", tone === "warn" ? "bg-warn-soft" : "bg-info-soft")}
     >
       <View className="flex-col gap-1">
         <Text variant="headline">{title}</Text>

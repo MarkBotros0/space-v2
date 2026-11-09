@@ -70,11 +70,7 @@ export const NO_REQUIRED = "__none__";
  * super already reads, except the season's own, plus the one already set (so it
  * stays visible even when no listed season carries it). Alphabetical.
  */
-export function requiredProgramChoices(
-  seasons: { program: string }[],
-  ownProgram: string,
-  current: string,
-): string[] {
+export function requiredProgramChoices(seasons: { program: string }[], ownProgram: string, current: string): string[] {
   const own = ownProgram.trim();
   const set = new Set(seasons.map((s) => s.program.trim()).filter((p) => p !== ""));
   if (current !== "") set.add(current);

@@ -3,13 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { issueSession } from "../../lib/auth/tokens";
-import {
-  PASSWORD,
-  cleanupTestData,
-  createTestUser,
-  createUnactivatedTestUser,
-  login,
-} from "./fixtures";
+import { PASSWORD, cleanupTestData, createTestUser, createUnactivatedTestUser, login } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -30,9 +24,7 @@ describe("GET /api/v1/me — the two spec-flagged fixes", () => {
     const ghostToken = await login(app, ghost.email);
     await db.user.update({ where: { id: ghost.id }, data: { deletedAt: new Date() } });
 
-    const res = await request(app)
-      .get("/api/v1/me")
-      .set("authorization", `Bearer ${ghostToken}`);
+    const res = await request(app).get("/api/v1/me").set("authorization", `Bearer ${ghostToken}`);
     expect(res.status).toBe(200);
     // packages/shared/src/auth.ts:53 documented this and me.ts didn't do it.
     expect(res.body.data.user).toBeNull();
@@ -41,9 +33,7 @@ describe("GET /api/v1/me — the two spec-flagged fixes", () => {
   it("carries hasPassword so the settings screen can branch before submitting (R27)", async () => {
     const withPw = await createTestUser("has-pw", "STUDENT");
     const token = await login(app, withPw.email);
-    const res = await request(app)
-      .get("/api/v1/me")
-      .set("authorization", `Bearer ${token}`);
+    const res = await request(app).get("/api/v1/me").set("authorization", `Bearer ${token}`);
     expect(res.body.data.user.hasPassword).toBe(true);
   });
 });
@@ -75,37 +65,26 @@ describe("POST /api/v1/me/password — the change that finally evicts (spec 18 D
   it("revokes every other session and spares the presented one", async () => {
     const u = await createTestUser("pw-change", "STUDENT");
     // Two live sessions for the same user.
-    const sessionA = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: u.email, password: PASSWORD });
-    const sessionB = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: u.email, password: PASSWORD });
+    const sessionA = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
+    const sessionB = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
     const accessB = sessionB.body.data.accessToken as string;
     const refreshA = sessionA.body.data.refreshToken as string;
     const refreshB = sessionB.body.data.refreshToken as string;
 
-    const res = await request(app)
-      .post("/api/v1/me/password")
-      .set("authorization", `Bearer ${accessB}`)
-      .send({
-        currentPassword: PASSWORD,
-        newPassword: "a-whole-new-password",
-        refreshToken: refreshB,
-      });
+    const res = await request(app).post("/api/v1/me/password").set("authorization", `Bearer ${accessB}`).send({
+      currentPassword: PASSWORD,
+      newPassword: "a-whole-new-password",
+      refreshToken: refreshB,
+    });
     expect(res.status).toBe(200);
     expect(res.body.data.sessionsRevoked).toBe(1);
 
     // Session A (the "attacker" holding a stolen session) is evicted...
-    const rotateA = await request(app)
-      .post("/api/v1/auth/refresh")
-      .send({ refreshToken: refreshA });
+    const rotateA = await request(app).post("/api/v1/auth/refresh").send({ refreshToken: refreshA });
     expect(rotateA.status).toBe(401);
 
     // ...the device that changed the password keeps working...
-    const rotateB = await request(app)
-      .post("/api/v1/auth/refresh")
-      .send({ refreshToken: refreshB });
+    const rotateB = await request(app).post("/api/v1/auth/refresh").send({ refreshToken: refreshB });
     expect(rotateB.status).toBe(200);
 
     // ...and the new hash is cost 12 (D8).
@@ -147,12 +126,8 @@ describe("POST /api/v1/me/password — the change that finally evicts (spec 18 D
 describe("POST /api/v1/auth/logout-all (spec 18 D1 — the lost-phone lever)", () => {
   it("revokes every live refresh token the caller holds, including the current one", async () => {
     const u = await createTestUser("logout-all", "STUDENT");
-    const s1 = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: u.email, password: PASSWORD });
-    const s2 = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: u.email, password: PASSWORD });
+    const s1 = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
+    const s2 = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
 
     const res = await request(app)
       .post("/api/v1/auth/logout-all")

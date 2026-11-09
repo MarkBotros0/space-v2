@@ -9,14 +9,7 @@ import {
   listSeasonGroups,
   listSeasonSessions,
 } from "./children";
-import {
-  createSeason,
-  deleteSeason,
-  getSeason,
-  getSeasonByCode,
-  listSeasons,
-  updateSeason,
-} from "./crud";
+import { createSeason, deleteSeason, getSeason, getSeasonByCode, listSeasons, updateSeason } from "./crud";
 import { duplicateSeason } from "./duplicate";
 import { endSeason, getSeasonEndCheck } from "./end";
 import { addSeasonEnrollments, overrideSeasonEnrollment, removeSeasonEnrollment } from "./enrollments";

@@ -122,8 +122,14 @@ export function MultiSelect({
                   {selected ? <Check size={14} className="text-foreground" /> : null}
                 </View>
                 <View className="flex-1">
-                  <Text variant="body" className="text-foreground">{o.label}</Text>
-                  {o.description ? <Text variant="caption" className="text-muted-foreground">{o.description}</Text> : null}
+                  <Text variant="body" className="text-foreground">
+                    {o.label}
+                  </Text>
+                  {o.description ? (
+                    <Text variant="caption" className="text-muted-foreground">
+                      {o.description}
+                    </Text>
+                  ) : null}
                 </View>
               </Pressable>
             );

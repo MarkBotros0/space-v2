@@ -17,5 +17,4 @@ export function defaultReportSeason(seasons: ReportSeason[]): number | null {
 }
 
 /** Running or about to: listed above History's past seasons. */
-export const isCurrentSeason = (s: Pick<ReportSeason, "status">) =>
-  s.status === "ACTIVE" || s.status === "DRAFT";
+export const isCurrentSeason = (s: Pick<ReportSeason, "status">) => s.status === "ACTIVE" || s.status === "DRAFT";

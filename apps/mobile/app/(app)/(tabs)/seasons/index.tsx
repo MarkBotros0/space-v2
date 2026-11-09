@@ -49,10 +49,7 @@ export default function SeasonsScreen() {
   if (!isStaff) {
     return (
       <Screen title="Seasons">
-        <EmptyState
-          title="Not available"
-          description="The seasons list isn't available for your role."
-        />
+        <EmptyState title="Not available" description="The seasons list isn't available for your role." />
       </Screen>
     );
   }
@@ -93,9 +90,7 @@ export default function SeasonsScreen() {
             ) : (
               <SeasonsList
                 rows={visible}
-                onOpen={(row) =>
-                  router.push({ pathname: "/seasons/[code]", params: { code: row.code } })
-                }
+                onOpen={(row) => router.push({ pathname: "/seasons/[code]", params: { code: row.code } })}
                 emptyDescription={isSuper ? undefined : "No seasons to show."}
                 emptyAction={isSuper ? <Button onPress={newSeason}>New season</Button> : undefined}
               />

@@ -25,10 +25,18 @@ function queueItem(
   status: "SUBMITTED" | "REVIEWED" | "RETURNED" = "SUBMITTED",
 ) {
   return {
-    publicId, status, submittedAt: "2099-03-30T10:00:00.000Z",
-    isLate, assignmentId: 41, assignmentTitle: title, assignmentDueAt: null,
-    seasonCode: "S26", studentUserId: 9, studentName: "Test student",
-    groupId: 3, groupName: "Group A",
+    publicId,
+    status,
+    submittedAt: "2099-03-30T10:00:00.000Z",
+    isLate,
+    assignmentId: 41,
+    assignmentTitle: title,
+    assignmentDueAt: null,
+    seasonCode: "S26",
+    studentUserId: 9,
+    studentName: "Test student",
+    groupId: 3,
+    groupName: "Group A",
   };
 }
 
@@ -42,7 +50,13 @@ beforeEach(() => {
 it("lists every reviewable submission (v1, B3-8) and loads the next page from the cursor", async () => {
   get
     .mockResolvedValueOnce({
-      data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 2, total: 5, late: 0 }, nextCursor: "aaa1111111" } },
+      data: {
+        data: {
+          items: [queueItem("aaa1111111", "Essay one")],
+          counts: { pending: 2, total: 5, late: 0 },
+          nextCursor: "aaa1111111",
+        },
+      },
     })
     .mockResolvedValueOnce({
       // A cursor page carries no counts; the header keeps the first page's.
@@ -56,9 +70,7 @@ it("lists every reviewable submission (v1, B3-8) and loads the next page from th
 
   fireEvent.press(screen.getByText("Load more"));
   expect(await screen.findByText(/^Essay two/)).toBeTruthy();
-  expect(get).toHaveBeenLastCalledWith(
-    "/api/v1/submissions?pendingOnly=false&limit=25&cursor=aaa1111111",
-  );
+  expect(get).toHaveBeenLastCalledWith("/api/v1/submissions?pendingOnly=false&limit=25&cursor=aaa1111111");
   // Last page: the button goes away.
   expect(screen.queryByText("Load more")).toBeNull();
   expect(screen.getByText("2 pending review · 5 total")).toBeTruthy();
@@ -67,7 +79,13 @@ it("lists every reviewable submission (v1, B3-8) and loads the next page from th
 it("narrows to the dashboard's season when opened with one, and says so", async () => {
   mockParams = { seasonId: "7" };
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 1, total: 1, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one")],
+        counts: { pending: 1, total: 1, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -94,7 +112,13 @@ it("ignores a malformed season param and shows every season", async () => {
 
 it("labels a late hand-in from the contract flag, in the row's subtitle", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one", true)], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one", true)],
+        counts: { pending: 0, total: 0, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -106,7 +130,13 @@ it("labels a late hand-in from the contract flag, in the row's subtitle", async 
 
 it("leaves no dangling separator when the group is missing", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [{ ...queueItem("aaa1111111", "Essay one"), groupName: null }], counts: { pending: 1, total: 1, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [{ ...queueItem("aaa1111111", "Essay one"), groupName: null }],
+        counts: { pending: 1, total: 1, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -118,10 +148,13 @@ it("leaves no dangling separator when the group is missing", async () => {
 
 it("groups the queue into waiting and reviewed sections, omitting an empty one", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [
-      queueItem("aaa1111111", "Essay one"),
-      queueItem("bbb2222222", "Essay two", false, "REVIEWED"),
-    ], counts: { pending: 1, total: 2, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one"), queueItem("bbb2222222", "Essay two", false, "REVIEWED")],
+        counts: { pending: 1, total: 2, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -132,7 +165,13 @@ it("groups the queue into waiting and reviewed sections, omitting an empty one",
 
 it("shows only the waiting section when nothing is reviewed", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 1, total: 1, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one")],
+        counts: { pending: 1, total: 1, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -157,7 +196,13 @@ describe("queueSections", () => {
 
 it("navigates to the review screen on press", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one")],
+        counts: { pending: 0, total: 0, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -171,7 +216,13 @@ it("navigates to the review screen on press", async () => {
 
 it("opens from anywhere on the row, and starts loading the detail on touch-down", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 0, total: 0, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one")],
+        counts: { pending: 0, total: 0, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
 
   renderWithProviders(<SubmissionsScreen />);
@@ -206,7 +257,13 @@ it("keeps the tab an empty state for a student, without a request", async () => 
 
 it("shows v1's header counts, omitting late when there are none", async () => {
   get.mockResolvedValueOnce({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 4, total: 9, late: 2 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one")],
+        counts: { pending: 4, total: 9, late: 2 },
+        nextCursor: null,
+      },
+    },
   });
   renderWithProviders(<SubmissionsScreen />);
   expect(await screen.findByText("4 pending review · 9 total · 2 late")).toBeTruthy();
@@ -215,7 +272,13 @@ it("shows v1's header counts, omitting late when there are none", async () => {
 
 it("leaves the late count out of the header when zero", async () => {
   get.mockResolvedValueOnce({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 1, total: 3, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one")],
+        counts: { pending: 1, total: 3, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
   renderWithProviders(<SubmissionsScreen />);
   expect(await screen.findByText("1 pending review · 3 total")).toBeTruthy();
@@ -233,7 +296,13 @@ it("keeps the pre-batch pending queue for an admin until batch 4 (plan: other ro
 
 it("shows the hand-in time in the app's one short date-time format, unbreakable", async () => {
   get.mockResolvedValue({
-    data: { data: { items: [queueItem("aaa1111111", "Essay one")], counts: { pending: 1, total: 1, late: 0 }, nextCursor: null } },
+    data: {
+      data: {
+        items: [queueItem("aaa1111111", "Essay one")],
+        counts: { pending: 1, total: 1, late: 0 },
+        nextCursor: null,
+      },
+    },
   });
   renderWithProviders(<SubmissionsScreen />);
   expect(await screen.findByText("Test student")).toBeTruthy();

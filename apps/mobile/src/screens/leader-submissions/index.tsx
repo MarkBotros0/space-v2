@@ -45,8 +45,7 @@ export function LeaderQueue() {
   // Counts ignore paging and pendingOnly; only the first page carries them.
   const counts = data?.pages[0]?.counts;
   const { waiting, done } = queueSections(items);
-  const open = (publicId: string) =>
-    router.push({ pathname: "/submission/[publicId]", params: { publicId } });
+  const open = (publicId: string) => router.push({ pathname: "/submission/[publicId]", params: { publicId } });
   const row = (item: SubmissionQueueItem) => (
     <ListRow
       key={item.publicId}
@@ -103,9 +102,7 @@ export function LeaderQueue() {
             />
           ) : (
             <>
-              {waiting.length > 0 ? (
-                <GroupedList header="Waiting for review">{waiting.map(row)}</GroupedList>
-              ) : null}
+              {waiting.length > 0 ? <GroupedList header="Waiting for review">{waiting.map(row)}</GroupedList> : null}
               {done.length > 0 ? <GroupedList header="Reviewed">{done.map(row)}</GroupedList> : null}
             </>
           )}

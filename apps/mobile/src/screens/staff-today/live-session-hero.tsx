@@ -12,13 +12,7 @@ import { Button } from "../../design/ui";
  * the session. The season ring above already names the season, so the meta
  * line doesn't repeat it.
  */
-export function LiveSessionHero({
-  session,
-  todayKey,
-}: {
-  session: DashboardSession;
-  todayKey: string;
-}) {
+export function LiveSessionHero({ session, todayKey }: { session: DashboardSession; todayKey: string }) {
   const router = useRouter();
   return (
     <SessionHomeCard
@@ -40,10 +34,7 @@ export function LiveSessionHero({
                   Mark attendance
                 </Button>
                 {session.youtubeUrl ? (
-                  <Button
-                    variant="secondary"
-                    onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}
-                  >
+                  <Button variant="secondary" onPress={() => void Linking.openURL(session.youtubeUrl ?? "")}>
                     Join stream
                   </Button>
                 ) : null}

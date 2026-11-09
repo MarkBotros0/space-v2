@@ -1,8 +1,7 @@
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 export type CalendarEntry =
-  | { kind: "session"; at: number; session: SessionListItem }
-  | { kind: "event"; at: number; event: JpcEventListItem };
+  { kind: "session"; at: number; session: SessionListItem } | { kind: "event"; at: number; event: JpcEventListItem };
 
 export interface CalendarDayGroup {
   dayKey: string;
@@ -17,10 +16,7 @@ export interface CalendarDayGroup {
  * so a 09:00 event precedes an 18:00 session. Input order can't be relied on:
  * the two arrays arrive separately.
  */
-export function groupCalendarByDay(
-  sessions: SessionListItem[],
-  events: JpcEventListItem[],
-): CalendarDayGroup[] {
+export function groupCalendarByDay(sessions: SessionListItem[], events: JpcEventListItem[]): CalendarDayGroup[] {
   const byDay = new Map<string, CalendarEntry[]>();
   const add = (dayKey: string, entry: CalendarEntry) => {
     const list = byDay.get(dayKey);

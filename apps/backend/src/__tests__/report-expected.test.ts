@@ -12,22 +12,16 @@ const ids = (s: Set<number>) => [...s].sort((a, b) => a - b);
 
 describe("expectedStudentIds", () => {
   it("counts ACTIVE and COMPLETED enrolments, never WITHDRAWN", () => {
-    expect(ids(expectedStudentIds(enrollments, { isAllGroups: true, targets: [] }))).toEqual([
-      1, 2, 3, 5,
-    ]);
+    expect(ids(expectedStudentIds(enrollments, { isAllGroups: true, targets: [] }))).toEqual([1, 2, 3, 5]);
   });
 
   it("keeps a finished season's bar measurable once every enrolment is COMPLETED", () => {
-    const finished = enrollments.map((e) =>
-      e.status === "ACTIVE" ? { ...e, status: "COMPLETED" as const } : e,
-    );
+    const finished = enrollments.map((e) => (e.status === "ACTIVE" ? { ...e, status: "COMPLETED" as const } : e));
     expect(expectedStudentIds(finished, { isAllGroups: true, targets: [] }).size).toBe(4);
   });
 
   it("narrows a targeted assignment to its groups; an unassigned enrolment never matches", () => {
-    expect(
-      ids(expectedStudentIds(enrollments, { isAllGroups: false, targets: [{ groupId: 10 }] })),
-    ).toEqual([1, 2]);
+    expect(ids(expectedStudentIds(enrollments, { isAllGroups: false, targets: [{ groupId: 10 }] }))).toEqual([1, 2]);
   });
 
   it("is empty for a targeted assignment with no targets", () => {

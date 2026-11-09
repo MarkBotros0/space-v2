@@ -32,7 +32,26 @@ let leaderToken: string;
 let studentToken: string;
 
 beforeAll(async () => {
-  ({ seasonId, groupAId, groupBId, otherGroupId, sessionId, otherSessionId, superId, adminId, studentAId, studentBId, optedOutId, withdrawnId, movedId, superToken, adminToken, otherAdminToken, leaderToken, studentToken } = await seedAssignmentWriteFixtures(app));
+  ({
+    seasonId,
+    groupAId,
+    groupBId,
+    otherGroupId,
+    sessionId,
+    otherSessionId,
+    superId,
+    adminId,
+    studentAId,
+    studentBId,
+    optedOutId,
+    withdrawnId,
+    movedId,
+    superToken,
+    adminToken,
+    otherAdminToken,
+    leaderToken,
+    studentToken,
+  } = await seedAssignmentWriteFixtures(app));
 });
 
 afterAll(async () => {
@@ -125,13 +144,21 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
 
   it("applies the FORUM/STANDARD coercion on write (R14–R16)", async () => {
     const forum = await create({
-      type: "FORUM", forumMinWords: 120, forumAllowComments: true, maxFileSizeMb: 20,
+      type: "FORUM",
+      forumMinWords: 120,
+      forumAllowComments: true,
+      maxFileSizeMb: 20,
     });
     const row = await db.assignment.findUnique({
       where: { id: forum.body.data.id },
       select: { forumMinWords: true, forumAllowComments: true, maxFileSizeMb: true, allowedMimeCategories: true },
     });
-    expect(row).toEqual({ forumMinWords: 120, forumAllowComments: true, maxFileSizeMb: null, allowedMimeCategories: [] });
+    expect(row).toEqual({
+      forumMinWords: 120,
+      forumAllowComments: true,
+      maxFileSizeMb: null,
+      allowedMimeCategories: [],
+    });
   });
 
   it("collapses a repeated group id into one target row (R70)", async () => {

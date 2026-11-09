@@ -17,8 +17,12 @@ let token: string;
 
 beforeAll(async () => {
   ({ token } = await signAccessToken({
-    userId: 7, role: "STUDENT", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: 3, graduationYear: null,
+    userId: 7,
+    role: "STUDENT",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: 3,
+    graduationYear: null,
   }));
 });
 
@@ -33,7 +37,10 @@ const pushToken = "ExponentPushToken[abc]";
 
 describe("POST /api/v1/me/devices", () => {
   it("upserts the token onto the caller, so a handed-over phone moves to them", async () => {
-    const res = await request(app).post("/api/v1/me/devices").set(auth()).send({ token: pushToken, platform: "android" });
+    const res = await request(app)
+      .post("/api/v1/me/devices")
+      .set(auth())
+      .send({ token: pushToken, platform: "android" });
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ registered: true });
     expect(mockDb.deviceToken.upsert).toHaveBeenCalledWith({
@@ -44,7 +51,10 @@ describe("POST /api/v1/me/devices", () => {
   });
 
   it("rejects an unknown platform or extra keys", async () => {
-    for (const body of [{ token: pushToken, platform: "web" }, { token: pushToken, platform: "ios", userId: 1 }]) {
+    for (const body of [
+      { token: pushToken, platform: "web" },
+      { token: pushToken, platform: "ios", userId: 1 },
+    ]) {
       const res = await request(app).post("/api/v1/me/devices").set(auth()).send(body);
       expect(res.status).toBe(400);
     }

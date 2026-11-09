@@ -13,7 +13,12 @@ export function LogoSection() {
       <View className="items-center justify-center rounded-group border border-border bg-background py-8">
         <LogoWriting key={run} />
       </View>
-      <Button testID="catalogue-logo-replay" variant="secondary" className="self-start" onPress={() => setRun((n) => n + 1)}>
+      <Button
+        testID="catalogue-logo-replay"
+        variant="secondary"
+        className="self-start"
+        onPress={() => setRun((n) => n + 1)}
+      >
         Replay
       </Button>
     </CatalogueSection>

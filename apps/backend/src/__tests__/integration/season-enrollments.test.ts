@@ -162,7 +162,9 @@ describe("POST /seasons/:id/enrollments", () => {
     expect(first.status).toBe(409);
     expect(first.body.error).toEqual({ code: "people_unavailable", message: "Here is already in this season" });
     const second = await add(target, { userIds: [gone.id] });
-    expect(second.body.error.message).toBe("Gone was dropped from this season - only a super admin can bring them back");
+    expect(second.body.error.message).toBe(
+      "Gone was dropped from this season - only a super admin can bring them back",
+    );
     expect(await rowOf(target, gone.id)).toMatchObject({ status: "WITHDRAWN" });
   });
 
@@ -171,7 +173,9 @@ describe("POST /seasons/:id/enrollments", () => {
     const mina = await person("Mina");
     await leading(mina.id);
     const refused = await add(target, { userIds: [mina.id] });
-    expect(refused.body.error.message).toBe("Mina hasn't finished GBV yet. Mina is already leading a group in GBV 2026");
+    expect(refused.body.error.message).toBe(
+      "Mina hasn't finished GBV yet. Mina is already leading a group in GBV 2026",
+    );
     const overridden = await add(target, { userIds: [mina.id], overrideUserIds: [mina.id] });
     expect(overridden.status).toBe(409);
     expect(overridden.body.error.message).toBe("Mina is already leading a group in GBV 2026");

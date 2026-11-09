@@ -30,7 +30,13 @@ function bySeason(sessions: SessionListItem[]): { seasonId: number; title: strin
  * season (what ADMIN's Today passed); without one it is what `useStaffToday`
  * returned for the role (SUPER: every active season).
  */
-export function SessionsWithoutAttendance({ role, seasonId }: { role: "ADMIN" | "SUPER"; seasonId: number | undefined }) {
+export function SessionsWithoutAttendance({
+  role,
+  seasonId,
+}: {
+  role: "ADMIN" | "SUPER";
+  seasonId: number | undefined;
+}) {
   const router = useRouter();
   const today = useStaffToday(role);
   const led = useLedSeasonSessions(seasonId === undefined ? [] : [seasonId]);

@@ -29,11 +29,7 @@ export function EditProfile() {
     if (profile.isPending || profile.isError) {
       return (
         <Screen title="Edit profile">
-          {profile.isPending ? (
-            <RouteSkeleton />
-          ) : (
-            <RouteError onRetry={() => void profile.refetch()} />
-          )}
+          {profile.isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void profile.refetch()} />}
         </Screen>
       );
     }

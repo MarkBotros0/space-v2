@@ -94,7 +94,10 @@ function Sheet({ open, onClose, title, children, footer, avoidKeyboard = false }
         if (done) scheduleOnRN(unmount);
       });
     } else {
-      translateY.value = withTiming(Math.max(height, 1) + 40, { duration: DURATION.base, easing: Easing.in(Easing.cubic) });
+      translateY.value = withTiming(Math.max(height, 1) + 40, {
+        duration: DURATION.base,
+        easing: Easing.in(Easing.cubic),
+      });
       progress.value = withTiming(0, { duration: DURATION.base }, (done) => {
         if (done) scheduleOnRN(unmount);
       });
@@ -165,7 +168,10 @@ function Sheet({ open, onClose, title, children, footer, avoidKeyboard = false }
                 <ScrollView
                   testID="sheet-scroll"
                   {...scrollProps}
-                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: footer ? barHeight + 16 : (lift ? 0 : offset) + 16 }}
+                  contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingBottom: footer ? barHeight + 16 : (lift ? 0 : offset) + 16,
+                  }}
                 >
                   {children}
                 </ScrollView>

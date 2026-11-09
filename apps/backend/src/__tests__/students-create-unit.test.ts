@@ -33,8 +33,12 @@ let token: string;
 
 beforeAll(async () => {
   ({ token } = await signAccessToken({
-    userId: 1, role: "SUPER", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: null, graduationYear: null,
+    userId: 1,
+    role: "SUPER",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: null,
+    graduationYear: null,
   }));
 });
 

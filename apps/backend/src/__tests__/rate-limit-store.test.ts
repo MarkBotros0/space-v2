@@ -60,10 +60,7 @@ describe("PostgresStore", () => {
     const store = new PostgresStore("bulk-invite", { client: mockDb as never, random: () => 1 });
     store.init({ windowMs: 60 * 60 * 1000 } as Options);
     await store.increment("9");
-    expect((mockDb.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual([
-      "bulk-invite:9",
-      60 * 60 * 1000,
-    ]);
+    expect((mockDb.$queryRaw.mock.calls[0] as unknown[]).slice(1)).toEqual(["bulk-invite:9", 60 * 60 * 1000]);
   });
 
   it("passes a database error through so express-rate-limit can decide", async () => {

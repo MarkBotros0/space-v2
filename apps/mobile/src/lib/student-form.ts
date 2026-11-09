@@ -31,7 +31,15 @@ export interface StudentFormValues {
 export type StudentFormErrors = Partial<Record<keyof StudentFormValues, string>>;
 
 const FORM_KEYS: readonly (keyof StudentFormValues)[] = [
-  "name", "email", "university", "faculty", "universityGraduationYear", "phone", "dateOfBirth", "notes", "seasonId",
+  "name",
+  "email",
+  "university",
+  "faculty",
+  "universityGraduationYear",
+  "phone",
+  "dateOfBirth",
+  "notes",
+  "seasonId",
 ];
 
 function isFormKey(key: unknown): key is keyof StudentFormValues {
@@ -40,8 +48,15 @@ function isFormKey(key: unknown): key is keyof StudentFormValues {
 
 export function emptyStudentForm(): StudentFormValues {
   return {
-    name: "", email: "", university: "", faculty: "", universityGraduationYear: "", phone: "",
-    dateOfBirth: "", notes: "", seasonId: null,
+    name: "",
+    email: "",
+    university: "",
+    faculty: "",
+    universityGraduationYear: "",
+    phone: "",
+    dateOfBirth: "",
+    notes: "",
+    seasonId: null,
   };
 }
 
@@ -55,8 +70,7 @@ export function studentFormFromDetail(
     email: detail.email,
     university: p.university ?? "",
     faculty: p.faculty ?? "",
-    universityGraduationYear:
-      p.universityGraduationYear === null ? "" : String(p.universityGraduationYear),
+    universityGraduationYear: p.universityGraduationYear === null ? "" : String(p.universityGraduationYear),
     phone: "phone" in p ? (p.phone ?? "") : "",
     dateOfBirth: "dateOfBirth" in p ? (dateOnlyFromIso(p.dateOfBirth) ?? "") : "",
     notes: "notes" in p ? (p.notes ?? "") : "",

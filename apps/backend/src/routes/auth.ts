@@ -66,18 +66,14 @@ authRouter.post("/login", authLimiter, async (req, res) => {
   return apiOk(res, sessionBody(issued, verified));
 });
 
-function sessionBody(
-  issued: NonNullable<Awaited<ReturnType<typeof issueSession>>>,
-  verified: VerifiedUser,
-) {
+function sessionBody(issued: NonNullable<Awaited<ReturnType<typeof issueSession>>>, verified: VerifiedUser) {
   return {
     ...issued.session,
     user: { id: verified.id, name: verified.name, email: verified.email, role: issued.user.role },
   };
 }
 
-const NO_ACCOUNT_MESSAGE =
-  "To sign in with Google, first set up your account with the invite code from your email.";
+const NO_ACCOUNT_MESSAGE = "To sign in with Google, first set up your account with the invite code from your email.";
 
 // Google sign-in (owner, 2026-11-09). Signs in an EXISTING account whose
 // address Google has verified; it never creates one. A 404 until
@@ -91,12 +87,7 @@ authRouter.post("/google", authLimiter, async (req, res) => {
 
   const identity = await verifyGoogleIdToken(parsed.data.idToken, config.googleClientIds);
   if (!identity) {
-    return apiError(
-      res,
-      "invalid_google_token",
-      "Google couldn't confirm this sign-in. Try again.",
-      400,
-    );
+    return apiError(res, "invalid_google_token", "Google couldn't confirm this sign-in. Try again.", 400);
   }
 
   // Worded as the next step, never as "you aren't invited" (owner,
@@ -163,7 +154,10 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
   const invite = await db.inviteToken.findUnique({
     where: { token: hashToken(parsed.data.token) },
     select: {
-      id: true, userId: true, usedAt: true, expiresAt: true,
+      id: true,
+      userId: true,
+      usedAt: true,
+      expiresAt: true,
       user: { select: { passwordHash: true, deletedAt: true } },
     },
   });

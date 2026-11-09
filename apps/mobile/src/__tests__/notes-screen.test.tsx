@@ -29,8 +29,12 @@ const emptyScopes = {
 // The author: a leader (the mentor's Notes tab lists everyone's notes instead; see below).
 const authorSession = {
   user: {
-    id: 2, name: "Test leader", email: "lea@jpc.test", role: "LEADER" as const,
-    avatarPath: null, hasPassword: true,
+    id: 2,
+    name: "Test leader",
+    email: "lea@jpc.test",
+    role: "LEADER" as const,
+    avatarPath: null,
+    hasPassword: true,
   },
   scopes: emptyScopes,
 };
@@ -40,8 +44,12 @@ const mentorSession = {
 };
 const studentSession = {
   user: {
-    id: 9, name: "Test student", email: "stu@jpc.test", role: "STUDENT" as const,
-    avatarPath: null, hasPassword: true,
+    id: 9,
+    name: "Test student",
+    email: "stu@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true,
   },
   scopes: emptyScopes,
 };
@@ -109,7 +117,9 @@ describe("NotesScreen", () => {
     const { TabBarPresenceContext } = jest.requireActual("../design/layout/shell-context");
     useSessionStore.setState(authorSession);
     renderWithProviders(
-      <TabBarPresenceContext.Provider value={true}><NotesScreen /></TabBarPresenceContext.Provider>,
+      <TabBarPresenceContext.Provider value={true}>
+        <NotesScreen />
+      </TabBarPresenceContext.Provider>,
     );
     await screen.findByText("Sara Student");
     expect(screen.getAllByLabelText("Back").length).toBeGreaterThan(0);

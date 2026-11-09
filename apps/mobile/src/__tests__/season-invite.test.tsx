@@ -43,9 +43,7 @@ describe("/seasons/[code]/invite (owner, 2026-11-07: season admins invite people
       "/api/v1/students",
       expect.objectContaining({ name: "New Person", email: "new@jpc.test", seasonId: 7 }),
     ]);
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "77" } }),
-    );
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "77" } }));
     expect(toast.success).toHaveBeenCalledWith("Added to TEST 2099. Their invite is on its way.");
   });
 

@@ -1,13 +1,7 @@
 import type { Express } from "express";
 
 import { db } from "../../db/client";
-import {
-  cleanupTestData,
-  createTestSeason,
-  createTestUser,
-  login,
-  testEventTitle,
-} from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login, testEventTitle } from "./fixtures";
 
 export interface AnnouncementFixtures {
   seasonId: number;

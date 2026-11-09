@@ -62,9 +62,7 @@ export function useStudentImportFlow() {
   const needsSeason = mode === "season" && seasonId === null;
   const visibleRows = useMemo(() => {
     if (!preview) return [];
-    return filter === "all"
-      ? preview.rows
-      : preview.rows.filter((r) => ATTENTION.includes(r.status));
+    return filter === "all" ? preview.rows : preview.rows.filter((r) => ATTENTION.includes(r.status));
   }, [preview, filter]);
 
   /** Switching the filter starts the list again from its first page. */

@@ -91,9 +91,25 @@ describe("mentor writes", () => {
   it("never reviews, marks attendance, grades or administers", async () => {
     await expectStatuses(app, w.tokens.mentor, [
       ["post", `/api/v1/submissions/${w.submissionBPublicId}/review`, 403, { feedback: "Mentor verdict" }],
-      ["post", `/api/v1/sessions/${w.sessionId}/attendance`, 403, { entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }] }],
+      [
+        "post",
+        `/api/v1/sessions/${w.sessionId}/attendance`,
+        403,
+        { entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }] },
+      ],
       ["post", `/api/v1/sessions/${w.sessionId}/check-in-open`, 403],
-      ["post", "/api/v1/sessions", 403, { seasonId: w.seasonId, title: "Mentor session", startDay: "2099-05-01", startTime: "18:00", durationMinutes: 60 }],
+      [
+        "post",
+        "/api/v1/sessions",
+        403,
+        {
+          seasonId: w.seasonId,
+          title: "Mentor session",
+          startDay: "2099-05-01",
+          startTime: "18:00",
+          durationMinutes: 60,
+        },
+      ],
       ["post", "/api/v1/quizzes", 403, { seasonId: w.seasonId, title: "Mentor quiz", kind: "PAPER", maxScore: 10 }],
       ["patch", `/api/v1/groups/${w.groupAId}`, 403, { name: "Mentor group" }],
     ]);

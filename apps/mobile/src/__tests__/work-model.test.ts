@@ -1,11 +1,6 @@
 import type { DashboardDueItem, StudentQuizResult } from "@space/shared";
 
-import {
-  assignmentRow,
-  isOpenQuiz,
-  quizRow,
-  todayWork,
-} from "../screens/work/work-model";
+import { assignmentRow, isOpenQuiz, quizRow, todayWork } from "../screens/work/work-model";
 
 const TODAY = "2099-03-01";
 
@@ -79,10 +74,7 @@ describe("assignmentRow", () => {
   });
 
   it("a chip that already names the date does not repeat it in the subtitle", () => {
-    const row = assignmentRow(
-      assignment({ id: 1, dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
-      TODAY,
-    );
+    const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Mar 20");
     expect(row.subtitle).toBeUndefined();
     const draft = assignmentRow(
@@ -93,19 +85,13 @@ describe("assignmentRow", () => {
   });
 
   it("a date chip across a year boundary keeps the year in the subtitle", () => {
-    const row = assignmentRow(
-      assignment({ id: 1, dueOrgDay: "2100-01-20", dueAt: "2100-01-20T10:00:00.000Z" }),
-      TODAY,
-    );
+    const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2100-01-20", dueAt: "2100-01-20T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Jan 20");
     expect(row.subtitle).toBe("Due Jan 20, 2100");
   });
 
   it("a weekday chip is relative wording, so the date stays", () => {
-    const row = assignmentRow(
-      assignment({ id: 1, dueOrgDay: "2099-03-06", dueAt: "2099-03-06T10:00:00.000Z" }),
-      TODAY,
-    );
+    const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2099-03-06", dueAt: "2099-03-06T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Friday");
     expect(row.subtitle).toBe("Due Mar 6, 2099");
   });
@@ -133,7 +119,12 @@ describe("assignmentRow", () => {
 describe("quizRow", () => {
   it("never started: Take quiz, linking to the quiz", () => {
     const row = quizRow(quiz({ quizId: 5 }));
-    expect(row).toMatchObject({ key: "quiz-ONLINE-5", kind: "quiz", id: 5, chip: { tone: "info", label: "Take quiz" } });
+    expect(row).toMatchObject({
+      key: "quiz-ONLINE-5",
+      kind: "quiz",
+      id: 5,
+      chip: { tone: "info", label: "Take quiz" },
+    });
     expect(row.href).toEqual({ pathname: "/quiz/[id]", params: { id: "5" } });
   });
 

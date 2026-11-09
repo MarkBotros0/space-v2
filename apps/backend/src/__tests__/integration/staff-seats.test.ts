@@ -42,7 +42,10 @@ const group = async (seasonId: number, leaderIds: number[] = []) =>
 const addAdmin = (seasonId: number, userId: number, token = superToken) =>
   request(app).post(`/api/v1/seasons/${seasonId}/admins`).set(as(token)).send({ userId });
 const createGroup = (seasonId: number, body: object, token = superToken) =>
-  request(app).post(`/api/v1/seasons/${seasonId}/groups`).set(as(token)).send({ name: `New ${++n}`, ...body });
+  request(app)
+    .post(`/api/v1/seasons/${seasonId}/groups`)
+    .set(as(token))
+    .send({ name: `New ${++n}`, ...body });
 const patchGroup = (groupId: number, body: object, token = superToken) =>
   request(app).patch(`/api/v1/groups/${groupId}`).set(as(token)).send(body);
 const stamp = async (id: number) =>
@@ -66,7 +69,10 @@ describe("POST /seasons/:id/admins", () => {
   it("refuses someone who hasn't graduated", async () => {
     const res = await addAdmin(await season(), (await person("Non Alum", null)).id);
     expect(res.status).toBe(409);
-    expect(res.body.error).toEqual({ code: "not_alumnus", message: "Only alumni can serve. Non Alum hasn't graduated." });
+    expect(res.body.error).toEqual({
+      code: "not_alumnus",
+      message: "Only alumni can serve. Non Alum hasn't graduated.",
+    });
   });
 
   it("refuses someone leading in another ACTIVE season, by name and season", async () => {
@@ -139,7 +145,10 @@ describe("the group form's leaderIds", () => {
     await group(await season("ACTIVE", "GBV 2026"), [mina.id]);
     const busy = await createGroup(seasonId, { name: "Nope B", leaderIds: [mina.id] });
     expect(busy.status).toBe(409);
-    expect(busy.body.error).toEqual({ code: "already_in_role", message: "Mina is already leading a group in GBV 2026" });
+    expect(busy.body.error).toEqual({
+      code: "already_in_role",
+      message: "Mina is already leading a group in GBV 2026",
+    });
     expect(await db.group.count({ where: { seasonId, name: { startsWith: "Nope" } } })).toBe(0);
   });
 
@@ -216,7 +225,10 @@ describe("who may seat whom", () => {
   it("an admin may add and remove leaders; a leader can't; an admin can't add admins", async () => {
     const seasonId = await season();
     const [admin, leader, recruit, second] = [
-      await person("Admin"), await person("Leader"), await person("Recruit"), await person("Second"),
+      await person("Admin"),
+      await person("Leader"),
+      await person("Recruit"),
+      await person("Second"),
     ];
     await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
     const groupId = await group(seasonId, [leader.id]);
@@ -285,7 +297,9 @@ describe("GET /seasons/:id/staff-candidates", () => {
     const administering = await person("Busy Admin");
     await db.seasonAdmin.create({ data: { seasonId: await season(), userId: administering.id } });
     const studying = await person("Busy Student");
-    await db.seasonEnrollment.create({ data: { seasonId: await season(), studentUserId: studying.id, status: "ACTIVE" } });
+    await db.seasonEnrollment.create({
+      data: { seasonId: await season(), studentUserId: studying.id, status: "ACTIVE" },
+    });
     const student = await person("Non Alum", null);
     const mentor = await person("Mentor");
     const deleted = await person("Deleted");
@@ -301,7 +315,11 @@ describe("GET /seasons/:id/staff-candidates", () => {
     for (const id of [leading.id, administering.id, studying.id, student.id, mentor.id, deleted.id]) {
       expect(ids).not.toContain(id);
     }
-    expect(people.find((p) => p.id === free.id)).toEqual({ id: free.id, name: "Aaa Free", lastSeason: { title: "GBV 2021" } });
+    expect(people.find((p) => p.id === free.id)).toEqual({
+      id: free.id,
+      name: "Aaa Free",
+      lastSeason: { title: "GBV 2021" },
+    });
     expect(people.find((p) => p.id === noHistory.id)).toEqual({ id: noHistory.id, name: "Bbb Free", lastSeason: null });
     expect(ids.indexOf(free.id)).toBeLessThan(ids.indexOf(noHistory.id));
     expect(ids).toContain(draftOnly.id);

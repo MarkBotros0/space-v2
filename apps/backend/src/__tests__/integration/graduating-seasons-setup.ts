@@ -8,9 +8,16 @@ import { app, as, ctx } from "./season-enrollments-setup";
 
 // Shared by the graduating-seasons*.test.ts suites.
 
-export const THIS_YEAR = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", year: "numeric" }).format(new Date()));
+export const THIS_YEAR = Number(
+  new Intl.DateTimeFormat("en-US", { timeZone: "Africa/Cairo", year: "numeric" }).format(new Date()),
+);
 
-export const seasonOf = async (status: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED", graduatesOnPass: boolean, endDate?: Date, year = THIS_YEAR) => {
+export const seasonOf = async (
+  status: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED",
+  graduatesOnPass: boolean,
+  endDate?: Date,
+  year = THIS_YEAR,
+) => {
   const row = await createTestSeason({ status, year });
   await db.season.update({ where: { id: row.id }, data: { graduatesOnPass, ...(endDate ? { endDate } : {}) } });
   return row.id;
@@ -35,7 +42,10 @@ export const end = async (
     .set(as(token))
     .send({ notPassed, reviewed: reviewed ?? (await reviewedOf(seasonId)) });
 export const correct = (seasonId: number, userId: number, result: "PASSED" | "NOT_PASSED") =>
-  request(app).patch(`/api/v1/seasons/${seasonId}/results/${userId}`).set(as(ctx.superToken)).send({ result, reason: null });
+  request(app)
+    .patch(`/api/v1/seasons/${seasonId}/results/${userId}`)
+    .set(as(ctx.superToken))
+    .send({ result, reason: null });
 export const graduate = (userId: number, body: object, token = ctx.superToken) =>
   request(app).post(`/api/v1/students/${userId}/graduate`).set(as(token)).send(body);
 export const nextSecond = () => new Promise((resolve) => setTimeout(resolve, 1100));
@@ -48,4 +58,3 @@ export const auditLines = async (run: () => Promise<unknown>) => {
   info.mockRestore();
   return lines;
 };
-

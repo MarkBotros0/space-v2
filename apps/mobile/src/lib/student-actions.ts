@@ -6,11 +6,7 @@ import type { EnrollmentHistoryItem, MeScopes, MeUser } from "@space/shared";
  * that season. A stray SeasonAdmin row on a STUDENT grants nothing here
  * either.
  */
-function isAdminOfSeasonForUi(
-  user: Pick<MeUser, "role"> | null,
-  scopes: MeScopes | null,
-  seasonId: number,
-): boolean {
+function isAdminOfSeasonForUi(user: Pick<MeUser, "role"> | null, scopes: MeScopes | null, seasonId: number): boolean {
   if (!user || !scopes) return false;
   if (user.role === "SUPER") return true;
   return user.role === "ADMIN" && scopes.seasonAdminIds.includes(seasonId);
@@ -49,8 +45,10 @@ export function studentActionsFor(
     canEdit: isSuper || isAdminWithActiveRow,
     canGraduate: isSuper && student.graduationYear === null,
     canDelete: isSuper,
-    canDrop: (e) => e.status === "ACTIVE" && e.seasonStatus !== "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
-    canRemove: (e) => e.status === "ACTIVE" && e.seasonStatus === "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
+    canDrop: (e) =>
+      e.status === "ACTIVE" && e.seasonStatus !== "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
+    canRemove: (e) =>
+      e.status === "ACTIVE" && e.seasonStatus === "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
     canRestore: (e) =>
       isSuper && e.status === "WITHDRAWN" && (e.seasonStatus === "DRAFT" || e.seasonStatus === "ACTIVE"),
   };

@@ -69,78 +69,88 @@ export async function endSeason(req: Request, res: Response) {
 
   const now = new Date();
   try {
-    const ended = await db.$transaction(async (tx) => {
-      await lockSeason(tx, id, "update");
-      const claimed = await tx.season.updateMany({
-        where: { id, status: "ACTIVE", deletedAt: null },
-        data: { status: "COMPLETED", updatedById: user.userId },
-      });
-      if (claimed.count === 0) {
-        throw new EndRefused("season_not_active", 409, "Only an active season can be ended.");
-      }
-      const check = await loadSeasonEndCheck(id, now, tx);
-      const { submissions, quizAttempts, attendance } = check.blockers;
-      if (submissions.length + quizAttempts.length + attendance.length > 0) {
-        throw new EndRefused("season_unfinished", 409, "The season still has work to finish.");
-      }
-      const activeIds = new Set(check.students.map((s) => s.userId));
-      // Graduating can't be undone, and everyone not named in notPassed passes:
-      // End only goes ahead on what the staff member was actually shown.
-      const reviewedIds = new Set(parsed.data.reviewed.userIds);
-      if (
-        parsed.data.reviewed.graduatesOnPass !== check.graduatesOnPass ||
-        reviewedIds.size !== activeIds.size ||
-        [...activeIds].some((uid) => !reviewedIds.has(uid))
-      ) {
-        throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
-      }
-      if ([...reasons.keys()].some((uid) => !activeIds.has(uid))) {
-        throw new EndRefused("bad_request", 400, "notPassed names a student who is not active in this season.");
-      }
-
-      // Season, people, rows: the same order as a graduation or a correction, which
-      // hold the person and then write the row. A person is seated only under the
-      // season's lock, so this list can't grow.
-      const people = await seasonPeopleIds(tx, id);
-      await lockPeople(tx, people);
-
-      const passedIds = [...activeIds].filter((uid) => !reasons.has(uid));
-      const stamp = { status: "COMPLETED" as const, completedAt: now, resultSetAt: now };
-      const completed = await tx.seasonEnrollment.updateManyAndReturn({
-        where: { seasonId: id, status: "ACTIVE", studentUserId: { in: passedIds } },
-        data: { ...stamp, result: "PASSED", resultReason: null },
-        select: { studentUserId: true },
-      });
-      for (const [uid, reason] of reasons) {
-        await tx.seasonEnrollment.updateMany({
-          where: { seasonId: id, status: "ACTIVE", studentUserId: uid },
-          data: { ...stamp, result: "NOT_PASSED", resultReason: reason },
+    const ended = await db.$transaction(
+      async (tx) => {
+        await lockSeason(tx, id, "update");
+        const claimed = await tx.season.updateMany({
+          where: { id, status: "ACTIVE", deletedAt: null },
+          data: { status: "COMPLETED", updatedById: user.userId },
         });
-      }
-      // A deleted account is neither passed nor failed: close its enrolment with no result.
-      await tx.seasonEnrollment.updateMany({
-        where: { seasonId: id, status: "ACTIVE", studentUser: { deletedAt: { not: null } } },
-        data: { status: "COMPLETED", completedAt: now },
-      });
-      // A live student enrolled between the check and here was never reviewed: refuse.
-      const unreviewed = await tx.seasonEnrollment.count({
-        where: { seasonId: id, status: "ACTIVE", studentUser: { deletedAt: null } },
-      });
-      if (unreviewed > 0) {
-        throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
-      }
-      // Only those whose row was completed just now: someone who left it while End
-      // waited for them didn't pass. Under the people's locks, since a seat write
-      // elsewhere reads graduationYear under them.
-      const graduated = check.graduatesOnPass
-        ? await graduatePassed(tx, completed.map((c) => c.studentUserId), season.year)
-        : [];
-      // Stamped now, not at the transaction's start: a token refreshed after that
-      // start still carries the old grants and must fall before the cut-off.
-      await markSessionsStale(tx, people, new Date());
-      const row = await tx.season.findUniqueOrThrow({ where: { id }, select: { id: true, code: true, status: true } });
-      return { season: row, graduated };
-    }, { timeout: 30_000 });
+        if (claimed.count === 0) {
+          throw new EndRefused("season_not_active", 409, "Only an active season can be ended.");
+        }
+        const check = await loadSeasonEndCheck(id, now, tx);
+        const { submissions, quizAttempts, attendance } = check.blockers;
+        if (submissions.length + quizAttempts.length + attendance.length > 0) {
+          throw new EndRefused("season_unfinished", 409, "The season still has work to finish.");
+        }
+        const activeIds = new Set(check.students.map((s) => s.userId));
+        // Graduating can't be undone, and everyone not named in notPassed passes:
+        // End only goes ahead on what the staff member was actually shown.
+        const reviewedIds = new Set(parsed.data.reviewed.userIds);
+        if (
+          parsed.data.reviewed.graduatesOnPass !== check.graduatesOnPass ||
+          reviewedIds.size !== activeIds.size ||
+          [...activeIds].some((uid) => !reviewedIds.has(uid))
+        ) {
+          throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
+        }
+        if ([...reasons.keys()].some((uid) => !activeIds.has(uid))) {
+          throw new EndRefused("bad_request", 400, "notPassed names a student who is not active in this season.");
+        }
+
+        // Season, people, rows: the same order as a graduation or a correction, which
+        // hold the person and then write the row. A person is seated only under the
+        // season's lock, so this list can't grow.
+        const people = await seasonPeopleIds(tx, id);
+        await lockPeople(tx, people);
+
+        const passedIds = [...activeIds].filter((uid) => !reasons.has(uid));
+        const stamp = { status: "COMPLETED" as const, completedAt: now, resultSetAt: now };
+        const completed = await tx.seasonEnrollment.updateManyAndReturn({
+          where: { seasonId: id, status: "ACTIVE", studentUserId: { in: passedIds } },
+          data: { ...stamp, result: "PASSED", resultReason: null },
+          select: { studentUserId: true },
+        });
+        for (const [uid, reason] of reasons) {
+          await tx.seasonEnrollment.updateMany({
+            where: { seasonId: id, status: "ACTIVE", studentUserId: uid },
+            data: { ...stamp, result: "NOT_PASSED", resultReason: reason },
+          });
+        }
+        // A deleted account is neither passed nor failed: close its enrolment with no result.
+        await tx.seasonEnrollment.updateMany({
+          where: { seasonId: id, status: "ACTIVE", studentUser: { deletedAt: { not: null } } },
+          data: { status: "COMPLETED", completedAt: now },
+        });
+        // A live student enrolled between the check and here was never reviewed: refuse.
+        const unreviewed = await tx.seasonEnrollment.count({
+          where: { seasonId: id, status: "ACTIVE", studentUser: { deletedAt: null } },
+        });
+        if (unreviewed > 0) {
+          throw new EndRefused("season_unfinished", 409, "The roster changed; check the season again.");
+        }
+        // Only those whose row was completed just now: someone who left it while End
+        // waited for them didn't pass. Under the people's locks, since a seat write
+        // elsewhere reads graduationYear under them.
+        const graduated = check.graduatesOnPass
+          ? await graduatePassed(
+              tx,
+              completed.map((c) => c.studentUserId),
+              season.year,
+            )
+          : [];
+        // Stamped now, not at the transaction's start: a token refreshed after that
+        // start still carries the old grants and must fall before the cut-off.
+        await markSessionsStale(tx, people, new Date());
+        const row = await tx.season.findUniqueOrThrow({
+          where: { id },
+          select: { id: true, code: true, status: true },
+        });
+        return { season: row, graduated };
+      },
+      { timeout: 30_000 },
+    );
     auditLog("season.end", user.userId, user.userId, { season: id });
     for (const graduate of ended.graduated) {
       auditLog("student.graduate", user.userId, graduate, { season: id });

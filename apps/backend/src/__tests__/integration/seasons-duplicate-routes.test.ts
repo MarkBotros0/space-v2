@@ -2,12 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import {
-  cleanupTestData,
-  createTestSeason,
-  createTestUser,
-  testSeasonCode,
-} from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, testSeasonCode } from "./fixtures";
 import { seedSeasonFixtures } from "./seasons-setup";
 
 // 60s, not the Jest default: the shared Neon staging database autosuspends, so
@@ -58,18 +53,31 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     });
 
     const s1 = await db.session.create({
-      data: { seasonId: source.id, title: "Series A", startsAt: new Date("2099-01-05T18:00:00.000Z"),
-        durationMinutes: 60, recurrenceGroupId: "space-v2-test-rgrp" },
+      data: {
+        seasonId: source.id,
+        title: "Series A",
+        startsAt: new Date("2099-01-05T18:00:00.000Z"),
+        durationMinutes: 60,
+        recurrenceGroupId: "space-v2-test-rgrp",
+      },
       select: { id: true },
     });
     await db.session.create({
-      data: { seasonId: source.id, title: "Series A", startsAt: new Date("2099-01-12T18:00:00.000Z"),
-        durationMinutes: 60, recurrenceGroupId: "space-v2-test-rgrp" },
+      data: {
+        seasonId: source.id,
+        title: "Series A",
+        startsAt: new Date("2099-01-12T18:00:00.000Z"),
+        durationMinutes: 60,
+        recurrenceGroupId: "space-v2-test-rgrp",
+      },
     });
 
     await db.assignment.create({
       data: {
-        seasonId: source.id, sessionId: s1.id, title: "Linked", isAllGroups: false,
+        seasonId: source.id,
+        sessionId: s1.id,
+        title: "Linked",
+        isAllGroups: false,
         dueAt: new Date("2099-02-01T21:59:00.000Z"),
         targets: { create: { groupId: group.id } },
       },
@@ -94,7 +102,8 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
       orderBy: { startsAt: "asc" },
     });
     expect(cloned.map((s) => s.startsAt.toISOString())).toEqual([
-      "2100-01-08T18:00:00.000Z", "2100-01-15T18:00:00.000Z",
+      "2100-01-08T18:00:00.000Z",
+      "2100-01-15T18:00:00.000Z",
     ]);
     // Fresh series id: shared by the clones, different from the source's —
     // v1 copied it verbatim, which is how a series edit in one season
@@ -132,7 +141,10 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
       select: { status: true, title: true, absenceBudgetMinutes: true, description: true },
     });
     expect(season).toEqual({
-      status: "DRAFT", title: "TEST 2100", absenceBudgetMinutes: 240, description: "Source description",
+      status: "DRAFT",
+      title: "TEST 2100",
+      absenceBudgetMinutes: 240,
+      description: "Source description",
     });
   });
 
@@ -158,7 +170,12 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     const res = await request(app)
       .post(`/api/v1/seasons/${source.id}/duplicate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ year: 2100, code: source.code, startDate: "2100-01-01T00:00:00.000Z", endDate: "2100-12-31T00:00:00.000Z" });
+      .send({
+        year: 2100,
+        code: source.code,
+        startDate: "2100-01-01T00:00:00.000Z",
+        endDate: "2100-12-31T00:00:00.000Z",
+      });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("code_taken");
   });
@@ -169,7 +186,12 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     const res = await request(app)
       .post(`/api/v1/seasons/${source.id}/duplicate`)
       .set("authorization", `Bearer ${superToken}`)
-      .send({ year: 2100, code: testSeasonCode(), startDate: "2100-01-01T00:00:00.000Z", endDate: "2100-12-31T00:00:00.000Z" });
+      .send({
+        year: 2100,
+        code: testSeasonCode(),
+        startDate: "2100-01-01T00:00:00.000Z",
+        endDate: "2100-12-31T00:00:00.000Z",
+      });
     expect(res.status).toBe(404);
   });
 
@@ -177,7 +199,12 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     const res = await request(app)
       .post(`/api/v1/seasons/${seasonId}/duplicate`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ year: 2100, code: testSeasonCode(), startDate: "2100-01-01T00:00:00.000Z", endDate: "2100-12-31T00:00:00.000Z" });
+      .send({
+        year: 2100,
+        code: testSeasonCode(),
+        startDate: "2100-01-01T00:00:00.000Z",
+        endDate: "2100-12-31T00:00:00.000Z",
+      });
     expect(res.status).toBe(403);
   });
 });

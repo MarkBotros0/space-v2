@@ -9,8 +9,7 @@ import { VISIBILITY_LABELS } from "../../components/EventForm";
 function eventChip(e: JpcEventListItem): ChipSpec | null {
   if (e.isPast) return { tone: "neutral", label: "Past" };
   if (e.visibility === "ALUMNI_ONLY") return { tone: "warn", label: VISIBILITY_LABELS.ALUMNI_ONLY };
-  if (e.visibility === "SEASON")
-    return { tone: "info", label: e.seasonCode ?? VISIBILITY_LABELS.SEASON };
+  if (e.visibility === "SEASON") return { tone: "info", label: e.seasonCode ?? VISIBILITY_LABELS.SEASON };
   return null;
 }
 

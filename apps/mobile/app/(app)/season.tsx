@@ -122,11 +122,7 @@ function AdminSeason() {
     );
 
   return (
-    <Screen
-      title="My Season"
-      refreshing={seasons.isRefetching}
-      onRefresh={() => void seasons.refetch()}
-    >
+    <Screen title="My Season" refreshing={seasons.isRefetching} onRefresh={() => void seasons.refetch()}>
       {body}
     </Screen>
   );

@@ -231,7 +231,9 @@ describe("AppLayout stack", () => {
     [["(app)", "attendance"]],
   ])("redirects an alumnus away from a student-only destination %j, but not a student (REG-81)", (segments) => {
     captured.segments = segments;
-    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2024 }));
+    useSessionStore
+      .getState()
+      .setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2024 }));
     const { unmount } = renderWithProviders(<AppLayout />);
     expect(screen.getByTestId("redirect")).toHaveTextContent("/dashboard");
     expect(captured.stackScreens).toHaveLength(0);
@@ -243,9 +245,15 @@ describe("AppLayout stack", () => {
   });
 
   it("lets an alumnus reach their own destinations (REG-81)", () => {
-    for (const segments of [["(app)", "(tabs)", "history"], ["(app)", "settings"], ["(app)", "notifications"]]) {
+    for (const segments of [
+      ["(app)", "(tabs)", "history"],
+      ["(app)", "settings"],
+      ["(app)", "notifications"],
+    ]) {
       captured.segments = segments;
-      useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2024 }));
+      useSessionStore
+        .getState()
+        .setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2024 }));
       const { unmount } = renderWithProviders(<AppLayout />);
       expect([segments, screen.queryByTestId("redirect")]).toEqual([segments, null]);
       unmount();

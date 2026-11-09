@@ -10,12 +10,7 @@ import {
   targetedStudentIds,
   validateAssignmentRefs,
 } from "../lib/assignment-writes";
-import {
-  canAccessSeason,
-  canManageAssignment,
-  hasActiveEnrollment,
-  staffScopeForSeason,
-} from "../lib/permissions";
+import { canAccessSeason, canManageAssignment, hasActiveEnrollment, staffScopeForSeason } from "../lib/permissions";
 import {
   assignmentDetailPayload,
   isLate,
@@ -71,12 +66,7 @@ assignmentsRouter.get("/:id", async (req, res) => {
   const isStudent = user.role === "STUDENT";
   if (
     isStudent &&
-    !(await studentCanSeeAssignment(
-      user.userId,
-      detail.seasonId,
-      detail.isAllGroups,
-      detail.groupIds,
-    ))
+    !(await studentCanSeeAssignment(user.userId, detail.seasonId, detail.isAllGroups, detail.groupIds))
   ) {
     return forbidden(res);
   }
@@ -128,10 +118,7 @@ assignmentsRouter.get("/:id/tracker", async (req, res) => {
   const scope = await staffScopeForSeason(user, assignment.seasonId);
   if (scope === null) return forbidden(res);
 
-  const tracker = await loadAssignmentTracker(
-    id,
-    scope.kind === "groups" ? scope.groupIds : undefined,
-  );
+  const tracker = await loadAssignmentTracker(id, scope.kind === "groups" ? scope.groupIds : undefined);
   if (!tracker) return apiError(res, "not_found", "Assignment not found.", 404);
 
   return apiOk(res, tracker);

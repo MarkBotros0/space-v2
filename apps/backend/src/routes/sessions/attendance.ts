@@ -12,7 +12,6 @@ import { requireUser } from "../../middleware/require-auth";
 import { saveAttendanceRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
 
-
 export async function getAttendance(req: Request, res: Response) {
   const user = requireUser(req);
   const sessionId = parseId(req.params.id);
@@ -24,10 +23,7 @@ export async function getAttendance(req: Request, res: Response) {
   const scope = await attendanceScopeFor(user, sessionId);
   if (scope === null) return forbidden(res);
 
-  const roster = await loadAttendanceRoster(
-    sessionId,
-    scope.kind === "groups" ? scope.groupIds : undefined,
-  );
+  const roster = await loadAttendanceRoster(sessionId, scope.kind === "groups" ? scope.groupIds : undefined);
   if (roster === null) return apiError(res, "not_found", "Session not found.", 404);
 
   return apiOk(res, { roster });
@@ -117,14 +113,10 @@ export async function saveAttendance(req: Request, res: Response) {
   // The attendance rows are committed. A notification failure after that point
   // must not tell the leader their marking failed (spec D6).
   const newlyAbsent = parsed.data.entries.filter(
-    (e) =>
-      e.status === AttendanceStatus.ABSENT &&
-      previousStatus.get(e.studentUserId) !== AttendanceStatus.ABSENT,
+    (e) => e.status === AttendanceStatus.ABSENT && previousStatus.get(e.studentUserId) !== AttendanceStatus.ABSENT,
   );
   if (newlyAbsent.length > 0) {
-    await bestEffort("notify:LOW_ATTENDANCE_FLAG", () =>
-      flagLowAttendance(sessionId, newlyAbsent),
-    );
+    await bestEffort("notify:LOW_ATTENDANCE_FLAG", () => flagLowAttendance(sessionId, newlyAbsent));
   }
 
   return apiOk(res, { saved: parsed.data.entries.length });

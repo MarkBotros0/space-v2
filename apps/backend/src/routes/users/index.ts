@@ -1,19 +1,8 @@
 import { Router } from "express";
 
 import { requireAuth } from "../../middleware/require-auth";
-import {
-  createUser,
-  deactivateUser,
-  getUser,
-  reactivateUser,
-  updateUser,
-} from "./accounts";
-import {
-  bulkInviteLimiter,
-  countPendingInvites,
-  resendInvite,
-  sendPendingInvites,
-} from "./invites";
+import { createUser, deactivateUser, getUser, reactivateUser, updateUser } from "./accounts";
+import { bulkInviteLimiter, countPendingInvites, resendInvite, sendPendingInvites } from "./invites";
 import { listUsers } from "./list";
 
 /**

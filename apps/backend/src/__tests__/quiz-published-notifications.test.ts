@@ -26,8 +26,12 @@ import { notifyQuizPublished } from "../routes/quizzes/notify";
 import { publishQuiz } from "../routes/quizzes/questions";
 
 const admin: SessionUser = {
-  userId: 1, role: "ADMIN", seasonAdminIds: [7], groupLeaderIds: [],
-  activeSeasonId: 7, graduationYear: null,
+  userId: 1,
+  role: "ADMIN",
+  seasonAdminIds: [7],
+  groupLeaderIds: [],
+  activeSeasonId: 7,
+  graduationYear: null,
 };
 
 function fakeRes() {

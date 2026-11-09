@@ -144,11 +144,7 @@ seasonExportsRouter.get("/:id/exports/workbook", requireAuth, exportLimiter, asy
   const built = await buildSeasonWorkbook(seasonId);
   if (!built) return apiError(res, "not_found", "Season not found.", 404);
 
-  const filename = exportFilename(
-    "season-workbook",
-    built.seasonCode,
-    orgDayKey(new Date()),
-  );
+  const filename = exportFilename("season-workbook", built.seasonCode, orgDayKey(new Date()));
 
   setDownloadHeaders(res, filename);
   // One materialisation, streamed. v1 built a Buffer and copied it again into a

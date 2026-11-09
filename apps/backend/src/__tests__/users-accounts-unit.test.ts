@@ -39,15 +39,25 @@ let token: string;
 
 beforeAll(async () => {
   ({ token } = await signAccessToken({
-    userId: 1, role: "SUPER", seasonAdminIds: [], groupLeaderIds: [],
-    activeSeasonId: null, graduationYear: null,
+    userId: 1,
+    role: "SUPER",
+    seasonAdminIds: [],
+    groupLeaderIds: [],
+    activeSeasonId: null,
+    graduationYear: null,
   }));
 });
 
 const pendingTarget = { email: "p@jpc.test", passwordHash: null, lastLoginAt: null, deletedAt: null };
 const listRow = {
-  id: 7, name: "Pat", email: "p@jpc.test", role: "ADMIN", graduationYear: 2015,
-  lastLoginAt: null, deletedAt: null, passwordHash: null,
+  id: 7,
+  name: "Pat",
+  email: "p@jpc.test",
+  role: "ADMIN",
+  graduationYear: 2015,
+  lastLoginAt: null,
+  deletedAt: null,
+  passwordHash: null,
 };
 
 let info: jest.SpyInstance;

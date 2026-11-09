@@ -33,7 +33,9 @@ function SessionRow({ row }: { row: MyAttendanceSession }) {
   // Day and time are both the server's org-clock strings (X13), never the device zone.
   const lines = [`${formatWeekdayDayYear(row.dayKey)} · ${formatWallTime(row.startTime)}`];
   const cost = [
-    row.status === "LATE" && row.lateMinutes !== null && row.lateMinutes > 0 ? `${formatMinutes(row.lateMinutes)} late` : null,
+    row.status === "LATE" && row.lateMinutes !== null && row.lateMinutes > 0
+      ? `${formatMinutes(row.lateMinutes)} late`
+      : null,
     row.costMinutes !== null && row.costMinutes > 0 ? `−${formatMinutes(row.costMinutes)} from budget` : null,
   ].filter(Boolean);
   if (cost.length > 0) lines.push(cost.join(" · "));

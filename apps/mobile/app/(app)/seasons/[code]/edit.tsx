@@ -63,8 +63,7 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
           // The code may have changed — every URL addressing the season moves (spec 02 D8).
           // dismissTo pops back to the detail this was opened from and gives it the
           // (possibly new) code, so there is one season detail, at the right URL.
-          onSuccess: (ref) =>
-            router.dismissTo({ pathname: "/seasons/[code]", params: { code: ref.code } }),
+          onSuccess: (ref) => router.dismissTo({ pathname: "/seasons/[code]", params: { code: ref.code } }),
           onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the season.")),
         });
       }}
@@ -127,12 +126,7 @@ export default function SeasonEditScreen() {
 
   let body: ReactNode;
   if (!isSuper) {
-    body = (
-      <EmptyState
-        title="Not available"
-        description="Only a super admin can edit a season's identity."
-      />
-    );
+    body = <EmptyState title="Not available" description="Only a super admin can edit a season's identity." />;
   } else if (code === null) {
     body = <EmptyState title="Not found" description="That season link isn't valid." />;
   } else if (detail.isError) {

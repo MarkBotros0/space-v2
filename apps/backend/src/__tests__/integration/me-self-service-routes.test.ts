@@ -65,9 +65,26 @@ beforeAll(async () => {
 
   await db.seasonEnrollment.createMany({
     data: [
-      { studentUserId: student.id, seasonId: past.id, groupId: pastGroup.id, status: "COMPLETED", enrolledAt: new Date(Date.now() - 400 * DAY) },
-      { studentUserId: student.id, seasonId: current.id, groupId: currentGroup.id, status: "ACTIVE", enrolledAt: new Date(Date.now() - 30 * DAY) },
-      { studentUserId: student.id, seasonId: deleted.id, status: "COMPLETED", enrolledAt: new Date(Date.now() - 500 * DAY) },
+      {
+        studentUserId: student.id,
+        seasonId: past.id,
+        groupId: pastGroup.id,
+        status: "COMPLETED",
+        enrolledAt: new Date(Date.now() - 400 * DAY),
+      },
+      {
+        studentUserId: student.id,
+        seasonId: current.id,
+        groupId: currentGroup.id,
+        status: "ACTIVE",
+        enrolledAt: new Date(Date.now() - 30 * DAY),
+      },
+      {
+        studentUserId: student.id,
+        seasonId: deleted.id,
+        status: "COMPLETED",
+        enrolledAt: new Date(Date.now() - 500 * DAY),
+      },
       { studentUserId: peer.id, seasonId: current.id, groupId: currentGroup.id, status: "ACTIVE" },
       { studentUserId: withdrawn.id, seasonId: current.id, groupId: currentGroup.id, status: "WITHDRAWN" },
       // R33: history lists an enrollment whatever its status.
@@ -135,8 +152,7 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
-const get = (path: string, token: string) =>
-  request(app).get(path).set("authorization", `Bearer ${token}`);
+const get = (path: string, token: string) => request(app).get(path).set("authorization", `Bearer ${token}`);
 
 describe("GET /api/v1/me/season-history (spec 02 R33–R41)", () => {
   it("lists past enrollments only — not the current season, not a deleted one (R35, D2)", async () => {
@@ -163,7 +179,17 @@ describe("GET /api/v1/me/season-history (spec 02 R33–R41)", () => {
   it("carries attendance %, curriculum and outcome only — no submissions, feedback or notes (R34)", async () => {
     const res = await get("/api/v1/me/season-history", studentToken);
     expect(Object.keys(res.body.data.seasons[0]).sort()).toEqual(
-      ["attendancePct", "code", "curriculum", "endDate", "groupName", "outcome", "seasonId", "startDate", "title"].sort(),
+      [
+        "attendancePct",
+        "code",
+        "curriculum",
+        "endDate",
+        "groupName",
+        "outcome",
+        "seasonId",
+        "startDate",
+        "title",
+      ].sort(),
     );
   });
 
@@ -303,7 +329,10 @@ describe("GET /api/v1/me/profile (spec 06 §7)", () => {
 
 describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
   const patch = (body: unknown, token = studentToken) =>
-    request(app).patch("/api/v1/me/profile").set("authorization", `Bearer ${token}`).send(body as object);
+    request(app)
+      .patch("/api/v1/me/profile")
+      .set("authorization", `Bearer ${token}`)
+      .send(body as object);
 
   it("writes only the fields sent; '' clears to null (R26); returns the fresh row", async () => {
     const res = await patch({ phone: "+20 122 222 2222", faculty: "", universityGraduationYear: 2030 });
@@ -318,7 +347,11 @@ describe("PATCH /api/v1/me/profile (Plan 11 Decision 1)", () => {
       where: { userId: studentId },
       select: { faculty: true, universityGraduationYear: true, notes: true },
     });
-    expect(row).toEqual({ faculty: null, universityGraduationYear: 2030, notes: "STAFF ONLY — never sent to the subject" });
+    expect(row).toEqual({
+      faculty: null,
+      universityGraduationYear: 2030,
+      notes: "STAFF ONLY — never sent to the subject",
+    });
     // Phone lands on the User row (account-level).
     const user = await db.user.findUnique({ where: { id: studentId }, select: { phone: true } });
     expect(user?.phone).toBe("01222222222");

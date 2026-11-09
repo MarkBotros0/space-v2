@@ -17,9 +17,7 @@ function NewGroupForm({ seasonId }: { seasonId: number }) {
   return (
     <GroupForm
       title="New group"
-      subtitle={
-        season.data ? `Add a group to ${season.data.title}.` : "Add a group to this season."
-      }
+      subtitle={season.data ? `Add a group to ${season.data.title}.` : "Add a group to this season."}
       seasonId={seasonId}
       groupId={null}
       initial={{ name: "", description: "", leaderIds: [], studentIds: [] }}
@@ -29,8 +27,7 @@ function NewGroupForm({ seasonId }: { seasonId: number }) {
       onSubmit={(body) => {
         setMessage(null);
         create.mutate(body, {
-          onSuccess: (ref) =>
-            router.replace({ pathname: "/group/[id]", params: { id: String(ref.id) } }),
+          onSuccess: (ref) => router.replace({ pathname: "/group/[id]", params: { id: String(ref.id) } }),
           onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the group.")),
         });
       }}

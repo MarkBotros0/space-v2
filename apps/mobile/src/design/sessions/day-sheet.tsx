@@ -41,17 +41,9 @@ export function DaySheet({
     fn();
   };
   return (
-    <Sheet
-      open={day !== null}
-      onClose={onClose}
-      title={shown ? formatWeekdayDayYear(shown) : undefined}
-    >
+    <Sheet open={day !== null} onClose={onClose} title={shown ? formatWeekdayDayYear(shown) : undefined}>
       {daySessions.length + dayEvents.length === 0 ? (
-        <EmptyState
-          icon={CalendarDays}
-          title="Nothing on this day"
-          description="No sessions or events."
-        />
+        <EmptyState icon={CalendarDays} title="Nothing on this day" description="No sessions or events." />
       ) : (
         <GroupedList>
           {daySessions.map((s) => (
@@ -64,11 +56,7 @@ export function DaySheet({
             />
           ))}
           {dayEvents.map((e) => (
-            <AgendaEvent
-              key={`e${e.id}`}
-              e={e}
-              onOpenEvent={(ev) => open(() => handlers.onOpenEvent(ev))}
-            />
+            <AgendaEvent key={`e${e.id}`} e={e} onOpenEvent={(ev) => open(() => handlers.onOpenEvent(ev))} />
           ))}
         </GroupedList>
       )}

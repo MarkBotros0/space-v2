@@ -11,9 +11,7 @@ const BAD = "Invalid email or password.";
 
 describe("authErrorMessage", () => {
   it("says it can't reach the server when there is no response", () => {
-    expect(authErrorMessage(axiosError(null), BAD)).toBe(
-      "Can't reach JPC Space. Check your connection and try again.",
-    );
+    expect(authErrorMessage(axiosError(null), BAD)).toBe("Can't reach JPC Space. Check your connection and try again.");
   });
 
   it("uses the caller's copy for a 401", () => {
@@ -43,8 +41,6 @@ describe("authErrorMessage", () => {
   });
 
   it("treats a non-axios error (e.g. a schema parse failure) as our side", () => {
-    expect(authErrorMessage(new Error("parse"), BAD)).toBe(
-      "Something went wrong on our side. Try again in a moment.",
-    );
+    expect(authErrorMessage(new Error("parse"), BAD)).toBe("Something went wrong on our side. Try again in a moment.");
   });
 });

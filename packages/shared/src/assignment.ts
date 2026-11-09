@@ -24,10 +24,7 @@ export type MimeCategory = z.infer<typeof mimeCategorySchema>;
  * there would be a migration, and the absence of a row is not a status the
  * database should have to represent.
  */
-const assignmentStudentStatusSchema = z.union([
-  submissionStatusSchema,
-  z.literal("PENDING"),
-]);
+const assignmentStudentStatusSchema = z.union([submissionStatusSchema, z.literal("PENDING")]);
 type AssignmentStudentStatus = z.infer<typeof assignmentStudentStatusSchema>;
 
 // ---------------------------------------------------------------------------

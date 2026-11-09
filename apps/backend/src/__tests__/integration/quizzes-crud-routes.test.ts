@@ -110,10 +110,7 @@ describe("POST /api/v1/quizzes", () => {
   it("refuses an admin of another season, a leader, and a student", async () => {
     const body = { seasonId, sessionId, title: "Nope", kind: "PAPER", maxScore: 10 };
     for (const token of [otherAdminToken, leaderToken, studentToken]) {
-      const res = await request(app)
-        .post("/api/v1/quizzes")
-        .set("authorization", `Bearer ${token}`)
-        .send(body);
+      const res = await request(app).post("/api/v1/quizzes").set("authorization", `Bearer ${token}`).send(body);
       expect(res.status).toBe(403);
     }
   });
@@ -205,8 +202,11 @@ describe("GET /api/v1/quizzes", () => {
     await db.quizGrade.upsert({
       where: { quizId_studentUserId: { quizId: paperQuizId, studentUserId: ownStudentId } },
       create: {
-        quizId: paperQuizId, studentUserId: ownStudentId, score: 15,
-        notes: "Nice work.", gradedAt: new Date(),
+        quizId: paperQuizId,
+        studentUserId: ownStudentId,
+        score: 15,
+        notes: "Nice work.",
+        gradedAt: new Date(),
       },
       update: { score: 15, notes: "Nice work.", gradedAt: new Date() },
     });

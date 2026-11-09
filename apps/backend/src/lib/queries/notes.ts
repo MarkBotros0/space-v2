@@ -96,9 +96,7 @@ export interface NotePage<T> {
 
 function cursorClause(cursor: string | undefined): { cursor?: { id: number }; skip?: number } {
   const id = Number(cursor);
-  return cursor !== undefined && Number.isInteger(id) && id > 0
-    ? { cursor: { id }, skip: 1 }
-    : {};
+  return cursor !== undefined && Number.isInteger(id) && id > 0 ? { cursor: { id }, skip: 1 } : {};
 }
 
 /**
@@ -153,11 +151,7 @@ type AuthoredRow = NoteRow & {
  * The one projection of an over-fetched (limit + 1) authored-note page, shared
  * by `/me/notes` and `/me/visible-notes` so the two cannot drift.
  */
-async function toAuthoredPage(
-  rows: AuthoredRow[],
-  limit: number,
-  user: SessionUser,
-): Promise<NotePage<AuthoredNote>> {
+async function toAuthoredPage(rows: AuthoredRow[], limit: number, user: SessionUser): Promise<NotePage<AuthoredNote>> {
   const page = rows.slice(0, limit);
   return {
     notes: (await withDerivedAuthorRoles(page)).map((r) => ({
@@ -193,10 +187,7 @@ export function writtenWithin(days: number | undefined, now = new Date()) {
   return days === undefined ? {} : { createdAt: { gte: new Date(now.getTime() - days * 86_400_000) } };
 }
 
-export async function listAuthoredNotes(
-  user: SessionUser,
-  query: NoteListQuery,
-): Promise<NotePage<AuthoredNote>> {
+export async function listAuthoredNotes(user: SessionUser, query: NoteListQuery): Promise<NotePage<AuthoredNote>> {
   const rows = await db.engagementNote.findMany({
     where: {
       authorUserId: user.userId,

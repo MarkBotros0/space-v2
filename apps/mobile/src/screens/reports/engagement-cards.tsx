@@ -1,11 +1,7 @@
 import { Fragment, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
-import {
-  REPORT_METRIC_NOTES,
-  type EngagementReportRow,
-  type EngagementSummary,
-} from "@space/shared";
+import { REPORT_METRIC_NOTES, type EngagementReportRow, type EngagementSummary } from "@space/shared";
 
 import { BandDonut } from "../../components/charts/BandDonut";
 import { RankedBars } from "../../components/charts/RankedBars";
@@ -16,15 +12,7 @@ import { formatDayKey } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
 
 /** One titled card of the report. */
-function ReportCard({
-  title,
-  caption,
-  children,
-}: {
-  title: string;
-  caption?: string;
-  children: ReactNode;
-}) {
+function ReportCard({ title, caption, children }: { title: string; caption?: string; children: ReactNode }) {
   return (
     <View className="flex-col gap-3 rounded-group bg-surface p-4">
       <View className="gap-0.5">
@@ -56,10 +44,7 @@ function Figures({ summary }: { summary: EngagementSummary }) {
     { label: "At risk", value: summary.atRiskTotal },
   ];
   return (
-    <View
-      testID="engagement-tiles"
-      className="flex-row items-stretch rounded-group bg-surface py-4"
-    >
+    <View testID="engagement-tiles" className="flex-row items-stretch rounded-group bg-surface py-4">
       {figures.map((f, i) => (
         <Fragment key={f.label}>
           {i > 0 ? <View className="w-px self-stretch bg-separator" /> : null}
@@ -77,12 +62,7 @@ function Figures({ summary }: { summary: EngagementSummary }) {
             >
               {String(f.value)}
             </Text>
-            <Text
-              variant="caption"
-              numberOfLines={1}
-              maxFontSizeMultiplier={1.3}
-              className="text-muted-foreground"
-            >
+            <Text variant="caption" numberOfLines={1} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
               {f.label}
             </Text>
           </View>
@@ -103,17 +83,13 @@ function AtRiskRow({ row, canOpen }: { row: EngagementReportRow; canOpen: boolea
   return (
     <ListRow
       title={row.name}
-      subtitle={joinMeta([
-        row.seasonTitle,
-        `${row.attendancePct}% attendance · ${row.submissionPct}% submissions`,
-      ])}
+      subtitle={joinMeta([row.seasonTitle, `${row.attendancePct}% attendance · ${row.submissionPct}% submissions`])}
       titleLines={2}
       subtitleLines={3}
       chevron={canOpen}
       onPress={
         canOpen
-          ? () =>
-              router.push({ pathname: "/student/[id]", params: { id: String(row.studentUserId) } })
+          ? () => router.push({ pathname: "/student/[id]", params: { id: String(row.studentUserId) } })
           : undefined
       }
     />
@@ -130,9 +106,7 @@ function AttendanceTrend({ summary }: { summary: EngagementSummary }) {
   return (
     <ReportCard
       title="Attendance trend"
-      caption={
-        trend.length > 0 ? trendRange(trend[0]!.dayKey, trend[trend.length - 1]!.dayKey) : undefined
-      }
+      caption={trend.length > 0 ? trendRange(trend[0]!.dayKey, trend[trend.length - 1]!.dayKey) : undefined}
     >
       {trend.length < 2 ? (
         <Text variant="subhead" className="text-muted-foreground">
@@ -213,17 +187,11 @@ export function EngagementCards({
         ) : (
           <GroupedList header={`Students at risk (${atRiskRows.length} of ${summary.atRiskTotal})`}>
             {atRiskRows.map((row) => (
-              <AtRiskRow
-                key={`${row.studentUserId}-${row.seasonId}`}
-                row={row}
-                canOpen={canOpenStudent(row)}
-              />
+              <AtRiskRow key={`${row.studentUserId}-${row.seasonId}`} row={row} canOpen={canOpenStudent(row)} />
             ))}
           </GroupedList>
         )}
-        {moreFailed ? (
-          <InlineError message="Couldn't load more students." onRetry={onShowMore} />
-        ) : null}
+        {moreFailed ? <InlineError message="Couldn't load more students." onRetry={onShowMore} /> : null}
         {summary.atRiskTotal > atRiskRows.length ? (
           <PillButton className="self-start" label="Show more" onPress={onShowMore} />
         ) : null}
@@ -236,10 +204,7 @@ export function EngagementCards({
       <AttendanceTrend summary={summary} />
 
       {/* "Completion rate", not "Submission %": it is a property of an assignment (D-17.1). */}
-      <ReportCard
-        title="Assignment completion"
-        caption="Share of the expected students who handed each one in."
-      >
+      <ReportCard title="Assignment completion" caption="Share of the expected students who handed each one in.">
         {summary.completion.length === 0 ? (
           <Text variant="subhead" className="text-muted-foreground">
             No assignments yet.

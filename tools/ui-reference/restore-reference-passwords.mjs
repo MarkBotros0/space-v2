@@ -16,7 +16,10 @@ const client = new pg.Client({ connectionString: readDatabaseUrl() });
 await client.connect();
 const failed = [];
 for (const r of rows) {
-  const { rowCount } = await client.query(`update "User" set "passwordHash" = $1 where email = $2`, [r.passwordHash, r.email]);
+  const { rowCount } = await client.query(`update "User" set "passwordHash" = $1 where email = $2`, [
+    r.passwordHash,
+    r.email,
+  ]);
   if (rowCount !== 1) failed.push(r);
 }
 await client.end();

@@ -56,7 +56,10 @@ export const seasonStartPaths = {
                     id: { type: "integer" },
                     code: { type: "string" },
                     title: { type: "string" },
-                    message: { type: "string", description: "In words, with the season's title; ends with `End it first.`" },
+                    message: {
+                      type: "string",
+                      description: "In words, with the season's title; ends with `End it first.`",
+                    },
                   },
                 },
               },

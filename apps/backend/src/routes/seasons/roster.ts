@@ -15,10 +15,7 @@ import { groupAssignmentsRequestSchema } from "../../../../../packages/shared/sr
 import { forbidden } from "../respond";
 
 /** Season-admin only (spec 05 §4 — v1's roster page required canEditSeason). */
-async function requireLiveSeasonAdmin(
-  req: Request,
-  res: Response,
-): Promise<number | null> {
+async function requireLiveSeasonAdmin(req: Request, res: Response): Promise<number | null> {
   const user = requireUser(req);
   const seasonId = parseId(req.params.id);
   if (seasonId === null) {

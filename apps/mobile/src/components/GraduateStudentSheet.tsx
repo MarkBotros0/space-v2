@@ -35,12 +35,7 @@ const TICK_LABEL = "I understand this can't be undone";
  * written reason (at least 10 characters) and a tick; the server keeps both with
  * the super's name, and shows them to supers alone.
  */
-export function GraduateStudentSheet({
-  visible,
-  studentId,
-  studentName,
-  onClose,
-}: GraduateStudentSheetProps) {
+export function GraduateStudentSheet({ visible, studentId, studentName, onClose }: GraduateStudentSheetProps) {
   const graduate = useGraduateStudent();
   const [year, setYear] = useState(String(new Date().getFullYear()));
   const [fieldError, setFieldError] = useState<string | null>(null);
@@ -64,14 +59,12 @@ export function GraduateStudentSheet({
   const trimmedYear = year.trim();
   const yearNum = Number(trimmedYear);
   const currentYear = new Date().getFullYear();
-  const yearInvalid =
-    trimmedYear !== "" && !(/^\d{4}$/.test(trimmedYear) && yearNum >= 1990 && yearNum <= currentYear);
+  const yearInvalid = trimmedYear !== "" && !(/^\d{4}$/.test(trimmedYear) && yearNum >= 1990 && yearNum <= currentYear);
   const yearError = yearInvalid ? `Enter a year between 1990 and ${currentYear}.` : null;
 
   const trimmedReason = reason.trim();
   const reasonValid = trimmedReason.length >= REASON_MIN;
-  const reasonError =
-    trimmedReason !== "" && !reasonValid ? `Write at least ${REASON_MIN} characters.` : undefined;
+  const reasonError = trimmedReason !== "" && !reasonValid ? `Write at least ${REASON_MIN} characters.` : undefined;
   const locked = exception && !(reasonValid && understood);
   const lockedReason = !reasonValid
     ? `Write a reason of at least ${REASON_MIN} characters, then tick the box.`
@@ -155,21 +148,13 @@ export function GraduateStudentSheet({
             <Text variant="subhead">
               They can be appointed leader or admin, and can no longer join regular seasons as a student.
             </Text>
-            <Text variant="subhead">Any regular season they&apos;re in now ends for them, with no result. A community-wide season carries on.</Text>
+            <Text variant="subhead">
+              Any regular season they&apos;re in now ends for them, with no result. A community-wide season carries on.
+            </Text>
             <Text variant="subhead">Your name and your reason are recorded.</Text>
           </View>
-          <FormField
-            label="Reason"
-            required
-            description="Only super admins can read this."
-            error={reasonError}
-          >
-            <Textarea
-              accessibilityLabel="Reason"
-              value={reason}
-              maxLength={REASON_MAX}
-              onChangeText={setReason}
-            />
+          <FormField label="Reason" required description="Only super admins can read this." error={reasonError}>
+            <Textarea accessibilityLabel="Reason" value={reason} maxLength={REASON_MAX} onChangeText={setReason} />
           </FormField>
           <Pressable
             accessibilityRole="checkbox"

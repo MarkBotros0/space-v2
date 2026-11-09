@@ -68,7 +68,14 @@ describe("NotificationPreferences", () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByLabelText("New assignments")).toBeTruthy();
-    for (const label of ["Submission reviewed", "New quizzes", "Quiz graded", "Session rescheduled", "Session cancelled", "New announcements"]) {
+    for (const label of [
+      "Submission reviewed",
+      "New quizzes",
+      "Quiz graded",
+      "Session rescheduled",
+      "Session cancelled",
+      "New announcements",
+    ]) {
       expect(screen.getByLabelText(label)).toBeTruthy();
     }
     expect(screen.getAllByRole("switch")).toHaveLength(7);
@@ -153,7 +160,11 @@ describe("NotificationPreferences", () => {
 
   it("flips the switch instantly, before the server answers (REG-80)", async () => {
     let resolvePut: (v: unknown) => void = () => {};
-    put.mockReturnValue(new Promise((r) => { resolvePut = r; }));
+    put.mockReturnValue(
+      new Promise((r) => {
+        resolvePut = r;
+      }),
+    );
     renderWithProviders(<NotificationPreferences />);
 
     fireEvent.press(await screen.findByLabelText("Quiz graded"));

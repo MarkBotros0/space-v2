@@ -47,7 +47,16 @@ beforeEach(() => {
     data: {
       data: {
         seasons: [
-          { id: 9, code: "s9", title: "S9", program: "T", year: 2099, status: "ACTIVE", startDate: "2099-01-01T00:00:00.000Z", endDate: "2099-12-31T00:00:00.000Z" },
+          {
+            id: 9,
+            code: "s9",
+            title: "S9",
+            program: "T",
+            year: 2099,
+            status: "ACTIVE",
+            startDate: "2099-01-01T00:00:00.000Z",
+            endDate: "2099-12-31T00:00:00.000Z",
+          },
         ],
       },
     },
@@ -63,7 +72,11 @@ describe("navFor follows the derived role", () => {
   });
   it("gives a person whose serving ended (derived STUDENT, graduation year) the alumni tabs again", () => {
     expect(hrefs({ role: "STUDENT", graduationYear: 2020, activeSeasonId: null })).toEqual([
-      "/dashboard", "/calendar", "/history", "/profile", "/more",
+      "/dashboard",
+      "/calendar",
+      "/history",
+      "/profile",
+      "/more",
     ]);
   });
 });
@@ -77,7 +90,14 @@ describe("a token that changes role on refresh", () => {
     expect(screen.getByTestId("season").props.children).toBe("5");
     expect(get).not.toHaveBeenCalled();
 
-    act(() => useSessionStore.getState().setSession(makeUser("LEADER"), makeScopes({ activeSeasonId: null, graduationYear: 2020, groupLeaderIds: [3] })));
+    act(() =>
+      useSessionStore
+        .getState()
+        .setSession(
+          makeUser("LEADER"),
+          makeScopes({ activeSeasonId: null, graduationYear: 2020, groupLeaderIds: [3] }),
+        ),
+    );
 
     expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
     await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));
@@ -85,12 +105,21 @@ describe("a token that changes role on refresh", () => {
   });
 
   it("takes a real alumnus (no season) who becomes a leader again to the leader's tabs and queries", async () => {
-    useSessionStore.getState().setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2020 }));
+    useSessionStore
+      .getState()
+      .setSession(makeUser("STUDENT"), makeScopes({ activeSeasonId: null, graduationYear: 2020 }));
     renderWithProviders(<Shell />);
     expect(labels()).toEqual(["Home", "Events", "History", "Profile", "More"]);
     expect(screen.getByTestId("season").props.children).toBe("null");
 
-    act(() => useSessionStore.getState().setSession(makeUser("LEADER"), makeScopes({ activeSeasonId: null, graduationYear: 2020, groupLeaderIds: [3] })));
+    act(() =>
+      useSessionStore
+        .getState()
+        .setSession(
+          makeUser("LEADER"),
+          makeScopes({ activeSeasonId: null, graduationYear: 2020, groupLeaderIds: [3] }),
+        ),
+    );
 
     expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
     await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));

@@ -10,11 +10,7 @@ import { canReleaseQuizResults } from "./release";
 import { loadStudentQuizDetail } from "./student-detail";
 
 /** The authoring/grading projection — the answer key, for the audience that needs it. */
-async function loadQuizAuthoringDetail(
-  quizId: number,
-  canManage: boolean,
-  canRelease: (seasonId: number) => boolean,
-) {
+async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRelease: (seasonId: number) => boolean) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     select: {

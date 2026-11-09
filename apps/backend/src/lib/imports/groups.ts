@@ -39,9 +39,7 @@ function mapGroupHeaders(header: string[]): HeaderMap {
   });
 
   if (emailCol === -1 || groupCol === -1) {
-    throw new ImportParseError(
-      'The first line must be a header row with "email" and "group" columns.',
-    );
+    throw new ImportParseError('The first line must be a header row with "email" and "group" columns.');
   }
   return { nameCol, emailCol, groupCol };
 }
@@ -57,10 +55,7 @@ function mapGroupHeaders(header: string[]): HeaderMap {
  *
  * `name` is read for display only: never written, never validated (R56).
  */
-export async function buildGroupImportPreview(
-  sheet: ParsedSheet,
-  seasonId: number,
-): Promise<GroupImportPreview> {
+export async function buildGroupImportPreview(sheet: ParsedSheet, seasonId: number): Promise<GroupImportPreview> {
   const map = mapGroupHeaders(sheet.header);
 
   const [enrolments, groups] = await Promise.all([
@@ -80,10 +75,7 @@ export async function buildGroupImportPreview(
   ]);
 
   const studentByEmail = new Map(
-    enrolments.map((e) => [
-      normaliseEmail(e.studentUser.email),
-      { userId: e.studentUserId, groupId: e.groupId },
-    ]),
+    enrolments.map((e) => [normaliseEmail(e.studentUser.email), { userId: e.studentUserId, groupId: e.groupId }]),
   );
 
   // D-16.19.1 / spec D17: Group.name has no uniqueness constraint of any kind

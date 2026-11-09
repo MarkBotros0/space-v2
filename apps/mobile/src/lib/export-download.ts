@@ -136,9 +136,7 @@ async function run(
       // totalBytesExpectedToWrite comes back as -1. The manifest's estimate is
       // the denominator in that case (spec §7).
       const expected =
-        progress.totalBytesExpectedToWrite > 0
-          ? progress.totalBytesExpectedToWrite
-          : (options.estimatedBytes ?? 0);
+        progress.totalBytesExpectedToWrite > 0 ? progress.totalBytesExpectedToWrite : (options.estimatedBytes ?? 0);
       if (expected > 0) {
         options.onProgress(Math.min(1, progress.totalBytesWritten / expected));
       }

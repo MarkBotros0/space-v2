@@ -20,7 +20,8 @@ type ResultGraduation = { isAlumnus: boolean; stored: ResultValue | null; year: 
 
 /** What saving this draft does to alumni status, on a graduating season; null when it does nothing to say. */
 function graduationNote(graduation: ResultGraduation, result: ResultValue): string | null {
-  if (result === "PASSED") return graduation.isAlumnus
+  if (result === "PASSED")
+    return graduation.isAlumnus
       ? null
       : `${graduation.year === null ? "Passing graduates them" : `Passing makes them School of ${graduation.year}`}. Any regular season they're in now ends for them. A community-wide season carries on.`;
   return graduation.isAlumnus && graduation.stored !== "NOT_PASSED" ? "This doesn't remove their alumni status." : null;

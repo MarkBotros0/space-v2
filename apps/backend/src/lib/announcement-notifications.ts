@@ -14,10 +14,7 @@ interface RecipientTarget {
  * season is ACTIVE, plus its admins and group leaders; Super and Mentor are
  * permanent roles with no season, so they are left out.
  */
-export async function announcementRecipients(
-  target: RecipientTarget,
-  excludeUserId: number | null,
-): Promise<number[]> {
+export async function announcementRecipients(target: RecipientTarget, excludeUserId: number | null): Promise<number[]> {
   const live = { deletedAt: null, ...(excludeUserId !== null ? { id: { not: excludeUserId } } : {}) };
   if (target.audience === "COMMUNITY") {
     const users = await db.user.findMany({ where: live, select: { id: true } });

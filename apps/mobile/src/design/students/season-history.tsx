@@ -12,17 +12,9 @@ import { SeasonGroup } from "../../screens/alumni/alumni-history";
 import { NAV_ICONS } from "../icons/nav-icon";
 import { EmptyState } from "../ui/empty-state";
 
-export function SeasonHistory({
-  rows,
-  emptyDescription,
-}: {
-  rows: SeasonHistoryRow[];
-  emptyDescription: string;
-}) {
+export function SeasonHistory({ rows, emptyDescription }: { rows: SeasonHistoryRow[]; emptyDescription: string }) {
   if (rows.length === 0) {
-    return (
-      <EmptyState icon={NAV_ICONS.season} title="No past seasons" description={emptyDescription} />
-    );
+    return <EmptyState icon={NAV_ICONS.season} title="No past seasons" description={emptyDescription} />;
   }
   return (
     <View className="flex-col gap-3">

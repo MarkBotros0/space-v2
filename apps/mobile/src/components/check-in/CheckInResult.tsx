@@ -66,9 +66,7 @@ export function CheckInMessage({
 export function CheckInResult({ outcome }: { outcome: CheckInOutcome }) {
   const copy = checkInCopy(outcome);
   if (outcome.kind === "checked_in") {
-    return (
-      <CheckInMessage icon={CheckCircle} tone="success" title={copy.title} message={copy.message} />
-    );
+    return <CheckInMessage icon={CheckCircle} tone="success" title={copy.title} message={copy.message} />;
   }
   const icon = outcome.code === "already_checked_in" ? Clock : XCircle;
   return <CheckInMessage icon={icon} tone="error" title={copy.title} message={copy.message} />;

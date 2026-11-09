@@ -42,9 +42,7 @@ it("PasswordInput toggles visibility with v1's labels", () => {
 
 it("Switch toggles", () => {
   const onCheckedChange = jest.fn();
-  render(
-    <Switch accessibilityLabel="Email me" checked={false} onCheckedChange={onCheckedChange} />,
-  );
+  render(<Switch accessibilityLabel="Email me" checked={false} onCheckedChange={onCheckedChange} />);
   fireEvent.press(screen.getByRole("switch"));
   expect(onCheckedChange).toHaveBeenCalledWith(true);
 });
@@ -130,9 +128,7 @@ it("MultiSelect toggles several options (v1 onChange)", () => {
 
 it("DatePicker shows the app format (Oct 14, 2026) and picks a day", () => {
   const onChange = jest.fn();
-  render(
-    <DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={onChange} />,
-  );
+  render(<DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={onChange} />);
   expect(screen.getByLabelText("Start")).toHaveTextContent("Oct 14, 2026");
   fireEvent.press(screen.getByLabelText("Start"));
   expect(screen.getByText("October 2026")).toBeTruthy();
@@ -141,9 +137,7 @@ it("DatePicker shows the app format (Oct 14, 2026) and picks a day", () => {
 });
 
 it("DatePicker weekday headers stay on one line and ignore font scaling (K4)", () => {
-  render(
-    <DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={() => {}} />,
-  );
+  render(<DatePicker accessibilityLabel="Start" value={new Date(2026, 9, 14)} onChange={() => {}} />);
   fireEvent.press(screen.getByLabelText("Start"));
   const heads = screen.getAllByTestId("date-picker-weekday");
   expect(heads).toHaveLength(7);
@@ -155,13 +149,7 @@ it("DatePicker weekday headers stay on one line and ignore font scaling (K4)", (
 
 it("DatePicker jumps to a far year through the title: years, then month, then day", () => {
   const onChange = jest.fn();
-  render(
-    <DatePicker
-      accessibilityLabel="Date of birth"
-      value={new Date(2026, 9, 14)}
-      onChange={onChange}
-    />,
-  );
+  render(<DatePicker accessibilityLabel="Date of birth" value={new Date(2026, 9, 14)} onChange={onChange} />);
   fireEvent.press(screen.getByLabelText("Date of birth"));
   fireEvent.press(screen.getByLabelText("October 2026, choose month and year"));
   expect(screen.getByText("2016 – 2027")).toBeTruthy();
@@ -177,14 +165,7 @@ it("DatePicker jumps to a far year through the title: years, then month, then da
 });
 
 it('DatePicker startWith="year" opens an empty field on the year grid', () => {
-  render(
-    <DatePicker
-      accessibilityLabel="Date of birth"
-      value={null}
-      onChange={() => {}}
-      startWith="year"
-    />,
-  );
+  render(<DatePicker accessibilityLabel="Date of birth" value={null} onChange={() => {}} startWith="year" />);
   fireEvent.press(screen.getByLabelText("Date of birth"));
   expect(screen.getByTestId("date-picker-years")).toBeTruthy();
 });

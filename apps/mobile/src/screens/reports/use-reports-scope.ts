@@ -37,8 +37,7 @@ export function useReportsScope(enabled: boolean) {
   }, [seasonId, picked, summary.data]);
 
   const extraRows = more.data?.pages.flatMap((p) => p.rows) ?? [];
-  const atRiskRows =
-    showAllAtRisk && extraRows.length > 0 ? extraRows : (summary.data?.atRisk ?? []);
+  const atRiskRows = showAllAtRisk && extraRows.length > 0 ? extraRows : (summary.data?.atRisk ?? []);
 
   return {
     seasonId,

@@ -30,7 +30,8 @@ let student1Id: number; // enrolled in A (group-linked via the ENROLLMENT row) a
 let student2Id: number; // enrolled in B only
 
 beforeAll(async () => {
-  ({ seasonAId, seasonBId, superToken, adminToken, leaderToken, student1Id, student2Id } = await seedStudentFixtures(app));
+  ({ seasonAId, seasonBId, superToken, adminToken, leaderToken, student1Id, student2Id } =
+    await seedStudentFixtures(app));
 });
 
 afterAll(async () => {
@@ -192,7 +193,9 @@ describe("enrollment transitions leave an audit line (spec 06 D15, Plan 10 Decis
 
     expect(res.status).toBe(200);
     const lines = info.mock.calls.map((c) => String(c[0]));
-    expect(lines.some((l) => new RegExp(`^\\[audit\\] enrollment\\.drop actor=\\d+ subject=${s.id}$`).test(l))).toBe(true);
+    expect(lines.some((l) => new RegExp(`^\\[audit\\] enrollment\\.drop actor=\\d+ subject=${s.id}$`).test(l))).toBe(
+      true,
+    );
     expect(lines.join("\n")).not.toContain("Private family matter");
     info.mockRestore();
   });

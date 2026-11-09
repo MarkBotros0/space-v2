@@ -10,13 +10,46 @@ export const studentPaths = {
       description:
         "One endpoint serves all three list surfaces, selected by `status` (default `active`).\n\nScope is per role: SUPER and MENTOR read every student; ADMIN gets the students enrolled in their live seasons, and their `activeSeasonTitle` and `currentGroupName` come only from those seasons; LEADER likewise through the students whose **enrollment** names one of their groups (C9 — never GroupStudent). `alumni` (graduationYear set) is refused with 403 `forbidden` to LEADER. `active` keeps to no graduationYear, except on one season's list (`seasonId`, or a staff member's own roster), which also holds alumni studying in a community-wide season. `dropped` lists WITHDRAWN enrollments, not students (a student dropped from three seasons appears three times; rows carry `droppedEnrollment`) and is SUPER/ADMIN only — it hands out drop reasons, so MENTOR and LEADER get 403. STUDENT is refused on every surface.\n\nPagination is cursor-based: pass the last row's id (the enrollment id when `status=dropped`) as `cursor`; `nextCursor` is null on the last page. `total` is the whole population under the current filters, not the page size (D14). `q` matches name, email or university, case-insensitive.",
       parameters: [
-        { name: "status", in: "query", schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" } },
-        { name: "seasonId", in: "query", description: "Has an enrollment in this season (any status). For ADMIN and LEADER, on their roster only: another season finds nobody.", schema: { type: "integer", minimum: 1 } },
-        { name: "groupId", in: "query", description: "Only students whose displayed current group (`currentGroupName`: their most recent GroupStudent membership, any season, or for ADMIN and LEADER within their roster) is this group; `none` is v1's \"Unassigned\", by the same measure, so a student unplaced in the caller's season counts despite an earlier group. A group outside an ADMIN's or LEADER's roster finds nobody. ANDed with scope. Ignored for `status=dropped`. (REG-82)", schema: { oneOf: [{ type: "integer", minimum: 1 }, { type: "string", enum: ["none"] }] } },
-        { name: "sort", in: "query", description: "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)", schema: { type: "string", enum: ["name", "university", "season", "group"] } },
+        {
+          name: "status",
+          in: "query",
+          schema: { type: "string", enum: ["active", "alumni", "dropped"], default: "active" },
+        },
+        {
+          name: "seasonId",
+          in: "query",
+          description:
+            "Has an enrollment in this season (any status). For ADMIN and LEADER, on their roster only: another season finds nobody.",
+          schema: { type: "integer", minimum: 1 },
+        },
+        {
+          name: "groupId",
+          in: "query",
+          description:
+            "Only students whose displayed current group (`currentGroupName`: their most recent GroupStudent membership, any season, or for ADMIN and LEADER within their roster) is this group; `none` is v1's \"Unassigned\", by the same measure, so a student unplaced in the caller's season counts despite an earlier group. A group outside an ADMIN's or LEADER's roster finds nobody. ANDed with scope. Ignored for `status=dropped`. (REG-82)",
+          schema: {
+            oneOf: [
+              { type: "integer", minimum: 1 },
+              { type: "string", enum: ["none"] },
+            ],
+          },
+        },
+        {
+          name: "sort",
+          in: "query",
+          description:
+            "v1's sort keys. A missing value sorts as an empty string: first ascending, last descending. Omitted keeps the list's own order (name; graduation year for alumni). Ignored for `status=dropped`. (REG-82)",
+          schema: { type: "string", enum: ["name", "university", "season", "group"] },
+        },
         { name: "dir", in: "query", schema: { type: "string", enum: ["asc", "desc"], default: "asc" } },
         { name: "q", in: "query", schema: { type: "string", maxLength: 120 } },
-        { name: "absentLately", in: "query", description: "MENTOR only (403 for anyone else; owner, 2026-11-07): students whose last two marked sessions that have started, in any season, were both ABSENT. A LATE or PRESENT mark breaks the run; fewer than two marks never counts. ANDed with the other filters.", schema: { type: "string", enum: ["1"] } },
+        {
+          name: "absentLately",
+          in: "query",
+          description:
+            "MENTOR only (403 for anyone else; owner, 2026-11-07): students whose last two marked sessions that have started, in any season, were both ABSENT. A LATE or PRESENT mark breaks the run; fewer than two marks never counts. ANDed with the other filters.",
+          schema: { type: "string", enum: ["1"] },
+        },
         { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 25 } },
       ],
@@ -54,9 +87,18 @@ export const studentPaths = {
                 email: { type: "string", format: "email" },
                 university: { type: ["string", "null"], maxLength: 160 },
                 faculty: { type: ["string", "null"], maxLength: 160 },
-                universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
+                universityGraduationYear: {
+                  type: ["integer", "null"],
+                  minimum: 1950,
+                  maximum: 2100,
+                  description: "University graduation year; may be in the future. Not the JPCS graduationYear.",
+                },
                 phone: { type: ["string", "null"], maxLength: 60, description: "Stored on the User (account-level)." },
-                dateOfBirth: { type: ["string", "null"], format: "date-time", description: "Stored on the User (account-level)." },
+                dateOfBirth: {
+                  type: ["string", "null"],
+                  format: "date-time",
+                  description: "Stored on the User (account-level).",
+                },
                 notes: { type: ["string", "null"], maxLength: 4000 },
                 seasonId: { type: ["integer", "null"] },
               },
@@ -81,7 +123,9 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`season_finished` when `seasonId` names a COMPLETED or ARCHIVED season, `not_eligible` when that season's required program blocks a new person (nothing is created), or `email_taken` — also for a soft-deleted student's address, which stays reserved."),
+        409: conflict(
+          "`season_finished` when `seasonId` names a COMPLETED or ARCHIVED season, `not_eligible` when that season's required program blocks a new person (nothing is created), or `email_taken` — also for a soft-deleted student's address, which stays reserved.",
+        ),
       },
     },
   },
@@ -95,7 +139,12 @@ export const studentPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", properties: { history: { type: "array", items: { $ref: "#/components/schemas/StudentAttendanceHistoryItem" } } } },
+          {
+            type: "object",
+            properties: {
+              history: { type: "array", items: { $ref: "#/components/schemas/StudentAttendanceHistoryItem" } },
+            },
+          },
           "The history.",
         ),
         400: errRef("BadRequest"),
@@ -114,7 +163,12 @@ export const studentPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", properties: { submissions: { type: "array", items: { $ref: "#/components/schemas/StudentSubmissionItem" } } } },
+          {
+            type: "object",
+            properties: {
+              submissions: { type: "array", items: { $ref: "#/components/schemas/StudentSubmissionItem" } },
+            },
+          },
           "The submissions.",
         ),
         400: errRef("BadRequest"),
@@ -156,7 +210,12 @@ export const studentPaths = {
                 email: { type: "string", format: "email" },
                 university: { type: ["string", "null"] },
                 faculty: { type: ["string", "null"] },
-                universityGraduationYear: { type: ["integer", "null"], minimum: 1950, maximum: 2100, description: "University graduation year; may be in the future. Not the JPCS graduationYear." },
+                universityGraduationYear: {
+                  type: ["integer", "null"],
+                  minimum: 1950,
+                  maximum: 2100,
+                  description: "University graduation year; may be in the future. Not the JPCS graduationYear.",
+                },
                 phone: { type: ["string", "null"] },
                 dateOfBirth: { type: ["string", "null"], format: "date-time" },
                 notes: { type: ["string", "null"] },
@@ -182,7 +241,10 @@ export const studentPaths = {
       parameters: [idParam],
       responses: {
         200: ok(
-          { type: "object", properties: { id: { type: "integer" }, deletedAt: { type: "string", format: "date-time" } } },
+          {
+            type: "object",
+            properties: { id: { type: "integer" }, deletedAt: { type: "string", format: "date-time" } },
+          },
           "Deleted.",
         ),
         400: errRef("BadRequest"),
@@ -210,7 +272,12 @@ export const studentPaths = {
               properties: {
                 graduationYear: { type: "integer", minimum: 1990 },
                 override: { type: "boolean", description: "Graduate someone who hasn't passed a graduating season." },
-                overrideReason: { type: "string", minLength: 10, maxLength: 1000, description: "Required with `override: true`; trimmed. Shown to SUPER only." },
+                overrideReason: {
+                  type: "string",
+                  minLength: 10,
+                  maxLength: 1000,
+                  description: "Required with `override: true`; trimmed. Shown to SUPER only.",
+                },
               },
             },
           },
@@ -232,7 +299,9 @@ export const studentPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`already_graduated`, `not_qualified`, or `wrong_class` (they passed a graduating season of another year; that season's year is their class)."),
+        409: conflict(
+          "`already_graduated`, `not_qualified`, or `wrong_class` (they passed a graduating season of another year; that season's year is their class).",
+        ),
       },
     },
   },
@@ -268,13 +337,24 @@ export const studentPaths = {
         required: true,
         content: {
           "application/json": {
-            schema: { type: "object", required: ["seasonId"], properties: { seasonId: { type: "integer", minimum: 1 } } },
+            schema: {
+              type: "object",
+              required: ["seasonId"],
+              properties: { seasonId: { type: "integer", minimum: 1 } },
+            },
           },
         },
       },
       responses: {
         201: ok(
-          { type: "object", properties: { id: { type: "integer" }, seasonId: { type: "integer" }, status: { type: "string", enum: ["ACTIVE"] } } },
+          {
+            type: "object",
+            properties: {
+              id: { type: "integer" },
+              seasonId: { type: "integer" },
+              status: { type: "string", enum: ["ACTIVE"] },
+            },
+          },
           "Enrolled.",
         ),
         400: errRef("BadRequest"),
@@ -292,10 +372,7 @@ export const studentPaths = {
       summary: "Drop an enrollment",
       description:
         "Addressed by (student, season) \u2014 the natural unique key. Season-admin of that season (SUPER passes); the gate runs **before** the row lookup so a refused caller learns nothing about whether the enrollment exists. The one transition is ACTIVE \u2192 WITHDRAWN (sets droppedAt, optional `dropReason`). `COMPLETED` is 409 `use_end_season` for everyone, SUPER included, before anything else is checked: finishing one student alone would skip pass/fail, so only ending the season or graduating completes a row. ACTIVE is not accepted in the body; `POST .../restore` is the way back. The write holds the season's share lock, then the person's, and the update is conditional on ACTIVE, so a row that moved on answers 409 `not_active` rather than being overwritten. A finished season is 409 `season_finished`. A DRAFT season is 409 `season_draft`: a draft's row is a plan, so `DELETE /seasons/{id}/enrollments/{userId}` takes it off. The row is transitioned in place and never deleted. Writes a server-side audit line (actor and subject ids only).",
-      parameters: [
-        idParam,
-        { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
-      ],
+      parameters: [idParam, { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
       requestBody: {
         required: true,
         content: {
@@ -312,7 +389,10 @@ export const studentPaths = {
         },
       },
       responses: {
-        200: ok({ type: "object", properties: { id: { type: "integer" }, status: { type: "string" } } }, "Transitioned."),
+        200: ok(
+          { type: "object", properties: { id: { type: "integer" }, status: { type: "string" } } },
+          "Transitioned.",
+        ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
@@ -328,10 +408,7 @@ export const studentPaths = {
       summary: "Bring a dropped student back (SUPER only)",
       description:
         "WITHDRAWN \u2192 ACTIVE on the row the student already has, keeping their group. Clears `droppedAt`. `dropReason` stays on the row but no read returns it unless the row is WITHDRAWN, and a later drop overwrites it; the audit line is ids only. The season must be DRAFT or ACTIVE. The rule is checked again as if adding, under the season's share lock and the person's row lock, with the reason in the message: `already_in_role`, `is_alumnus`, `user_inactive`, `permanent_role`, `not_student`, or `not_eligible` when the required program blocks them. `override: true` lets a blocked person back and records `overrideById` and `overrideAt`; it lifts the block and nothing else. An override from before the drop no longer counts, and the row keeps none unless they're blocked now. Marks sessions stale.",
-      parameters: [
-        idParam,
-        { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } },
-      ],
+      parameters: [idParam, { name: "seasonId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
       requestBody: {
         required: false,
         content: {
@@ -346,7 +423,11 @@ export const studentPaths = {
       },
       responses: {
         200: ok(
-          { type: "object", required: ["id", "status"], properties: { id: { type: "integer" }, status: { type: "string", enum: ["ACTIVE"] } } },
+          {
+            type: "object",
+            required: ["id", "status"],
+            properties: { id: { type: "integer" }, status: { type: "string", enum: ["ACTIVE"] } },
+          },
           "Brought back.",
         ),
         400: errRef("BadRequest"),
@@ -357,5 +438,4 @@ export const studentPaths = {
       },
     },
   },
-
 } as const;

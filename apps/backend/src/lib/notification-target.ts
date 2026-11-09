@@ -1,7 +1,4 @@
-import type {
-  NotificationEntityType,
-  NotificationTarget,
-} from "../../../../packages/shared/src/index";
+import type { NotificationEntityType, NotificationTarget } from "../../../../packages/shared/src/index";
 
 /**
  * The one place a stored `Notification.link` becomes a route-independent

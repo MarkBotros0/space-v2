@@ -57,33 +57,28 @@ export function expoRouterMock() {
       });
       return null;
     };
-  const Tabs = ({
-    children,
-    tabBar,
-    ...rest
-  }: {
-    children: ReactNode;
-    tabBar?: (props: unknown) => ReactNode;
-  }) => (
+  const Tabs = ({ children, tabBar, ...rest }: { children: ReactNode; tabBar?: (props: unknown) => ReactNode }) => (
     (captured.tabsProps = rest),
     (captured.presence.tabs = usePresence()),
-    <>
-      {children}
-      {captured.renderChrome && tabBar
-        ? tabBar({
-            state: { index: 0, routes: [{ key: "dashboard", name: "dashboard" }] },
-            navigation: { navigate: () => {} },
-            descriptors: {},
-            insets: { top: 0, bottom: 0, left: 0, right: 0 },
-          })
-        : null}
-    </>
+    (
+      <>
+        {children}
+        {captured.renderChrome && tabBar
+          ? tabBar({
+              state: { index: 0, routes: [{ key: "dashboard", name: "dashboard" }] },
+              navigation: { navigate: () => {} },
+              descriptors: {},
+              insets: { top: 0, bottom: 0, left: 0, right: 0 },
+            })
+          : null}
+      </>
+    )
   );
   Tabs.Screen = capture(() => captured.screens);
   const Stack = ({ children, ...rest }: { children: ReactNode }) => (
     (captured.stackProps = rest),
     (captured.presence.stack = usePresence()),
-    <>{children}</>
+    (<>{children}</>)
   );
   Stack.Screen = capture(() => captured.stackScreens);
   return {

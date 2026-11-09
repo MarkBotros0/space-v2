@@ -3,9 +3,17 @@ import assert from "node:assert/strict";
 import { v2RouteFor } from "../screen-map.mjs";
 
 const v2 = [
-  "(app)/calendar", "(app)/dashboard", "(app)/groups", "(app)/group/[id]/index", "(app)/season",
-  "(app)/seasons/[code]/index", "(app)/seasons/[code]/roster/index", "(app)/students/index",
-  "(app)/submission/[publicId]", "login", "forgot-password",
+  "(app)/calendar",
+  "(app)/dashboard",
+  "(app)/groups",
+  "(app)/group/[id]/index",
+  "(app)/season",
+  "(app)/seasons/[code]/index",
+  "(app)/seasons/[code]/roster/index",
+  "(app)/students/index",
+  "(app)/submission/[publicId]",
+  "login",
+  "forgot-password",
 ];
 
 test("strips the role prefix and matches a flat route", () => {
@@ -40,9 +48,17 @@ test("returns null when nothing matches", () => {
   assert.equal(v2RouteFor("/super/audit-log", v2), null);
 });
 
-const v2b = [...v2, "(app)/assignment/new", "(app)/assignment/[id]/edit", "(app)/session/new",
-  "(app)/session/[id]/attendance", "(app)/student/[id]/index", "(app)/reports", "(app)/quiz/[id]/grade",
-  "(app)/seasons/[code]/edit"];
+const v2b = [
+  ...v2,
+  "(app)/assignment/new",
+  "(app)/assignment/[id]/edit",
+  "(app)/session/new",
+  "(app)/session/[id]/attendance",
+  "(app)/student/[id]/index",
+  "(app)/reports",
+  "(app)/quiz/[id]/grade",
+  "(app)/seasons/[code]/edit",
+];
 
 test("season-scoped v1 pages map onto v2's flat routes", () => {
   assert.equal(v2RouteFor("/admin/season/[code]/calendar", v2b), "(app)/calendar");

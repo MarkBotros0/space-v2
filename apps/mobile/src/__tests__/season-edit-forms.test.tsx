@@ -179,7 +179,9 @@ describe("SeasonEditScreen delete", () => {
         isAxiosError: true,
         response: {
           status: 409,
-          data: { error: { code: "season_in_use", message: "This season has sessions or enrollments; archive it instead." } },
+          data: {
+            error: { code: "season_in_use", message: "This season has sessions or enrollments; archive it instead." },
+          },
         },
       }),
     );

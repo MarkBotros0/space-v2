@@ -21,7 +21,10 @@ function sources(dir: string): string[] {
 const BANNED: [RegExp, string][] = [
   [/\bwithSpring\b/, "withSpring (use withTiming + EASE_OUT)"],
   [/\bentering=|\bexiting=|\blayout=\{/, "an entering/exiting/layout animation"],
-  [/\b(FadeIn|FadeInDown|FadeInUp|SlideIn\w*|ZoomIn\w*|BounceIn\w*|LinearTransition)\b/, "a Reanimated layout animation"],
+  [
+    /\b(FadeIn|FadeInDown|FadeInUp|SlideIn\w*|ZoomIn\w*|BounceIn\w*|LinearTransition)\b/,
+    "a Reanimated layout animation",
+  ],
   [/\bwithSequence\b/, "a sequenced (pulse) animation"],
   [/\bscale:\s*\w+\.value\b/, "a scale animation"],
 ];

@@ -73,9 +73,7 @@ describe("DashboardScreen — STUDENT", () => {
   afterEach(settle);
 
   beforeEach(() => {
-    useSessionStore.setState(
-      makeSession("STUDENT", { activeSeasonId: 7 }, { name: "Sara Mansour" }),
-    );
+    useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { name: "Sara Mansour" }));
   });
 
   it("renders the server's figures and requests only what the student branch owns (C8 #2 at the client)", async () => {
@@ -137,9 +135,7 @@ describe("DashboardScreen — STUDENT", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Welcome to JPC Space")).toBeTruthy();
-    expect(
-      screen.getByText("You'll see your first season here when you're added."),
-    ).toBeTruthy();
+    expect(screen.getByText("You'll see your first season here when you're added.")).toBeTruthy();
     expect(screen.getByText("Sunday, March 1")).toBeTruthy();
     fireEvent.press(screen.getByText("Complete your profile"));
     expect(mockPush).toHaveBeenCalledWith("/profile");
@@ -239,17 +235,14 @@ describe("dashboard body", () => {
   it.each([
     ["STUDENT", { activeSeasonId: null }],
     ["STUDENT", { activeSeasonId: null, graduationYear: 2024 }],
-  ] as const)(
-    "%s %j: Home's frame carries the bell and menu once, the body none",
-    async (role, scopes) => {
-      serve({ [UNREAD]: { unreadCount: 3 }, [EVENTS]: events });
-      useSessionStore.setState(makeSession(role, scopes));
-      renderWithProviders(<DashboardScreen />);
-      await waitFor(() => expect(requested().length).toBeGreaterThan(0));
-      expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
-      expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
-    },
-  );
+  ] as const)("%s %j: Home's frame carries the bell and menu once, the body none", async (role, scopes) => {
+    serve({ [UNREAD]: { unreadCount: 3 }, [EVENTS]: events });
+    useSessionStore.setState(makeSession(role, scopes));
+    renderWithProviders(<DashboardScreen />);
+    await waitFor(() => expect(requested().length).toBeGreaterThan(0));
+    expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
+    expect(screen.queryByLabelText(/^Notifications/)).toBeNull();
+  });
 
   it("the loading frame before the session lands is Home's too", () => {
     renderWithProviders(<DashboardScreen />);

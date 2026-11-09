@@ -20,8 +20,12 @@ const post = apiClient.post as jest.Mock;
 
 const studentSession = {
   user: {
-    id: 9, name: "Test student", email: "s@jpc.test", role: "STUDENT" as const,
-    avatarPath: null, hasPassword: true, // every required MeUser field (ruling X11)
+    id: 9,
+    name: "Test student",
+    email: "s@jpc.test",
+    role: "STUDENT" as const,
+    avatarPath: null,
+    hasPassword: true, // every required MeUser field (ruling X11)
   },
   scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
 };
@@ -94,9 +98,7 @@ describe("NotificationsScreen", () => {
     renderWithProviders(<NotificationsScreen />);
     fireEvent.press(await screen.findByText("Essay one was reviewed"));
 
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/notifications/read", { ids: [5] }),
-    );
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/notifications/read", { ids: [5] }));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/assignment/[id]",
       params: { id: "41" },
@@ -171,9 +173,7 @@ describe("NotificationsScreen", () => {
     renderWithProviders(<NotificationsScreen />);
     fireEvent.press(await screen.findByText("Mark all read"));
 
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/notifications/read", { all: true }),
-    );
+    await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/notifications/read", { all: true }));
   });
 
   it("shows an empty state with no notifications", async () => {

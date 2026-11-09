@@ -42,7 +42,15 @@ const VARIANTS: Record<Variant, { size: string; weight: string }> = {
 const TABULAR: TextStyle = { fontVariant: ["tabular-nums"] };
 
 const SIZE_PX: Record<string, number> = {
-  xs: 12, sm: 14, base: 16, lg: 18, xl: 20, "2xl": 24, "3xl": 30, "4xl": 36, "5xl": 48,
+  xs: 12,
+  sm: 14,
+  base: 16,
+  lg: 18,
+  xl: 20,
+  "2xl": 24,
+  "3xl": 30,
+  "4xl": 36,
+  "5xl": 48,
 };
 
 function letterSpacingFor(classes: string[]): TextStyle | null {
@@ -96,7 +104,14 @@ function Text({ className, style, variant, tabular = false, ...props }: Props) {
   return (
     <RNText
       className={merged}
-      style={[BODY_FEATURES, variant ? scaleStyleFor(classes) : null, tabular && TABULAR, mono && MONO, tracking, style]}
+      style={[
+        BODY_FEATURES,
+        variant ? scaleStyleFor(classes) : null,
+        tabular && TABULAR,
+        mono && MONO,
+        tracking,
+        style,
+      ]}
       {...props}
     />
   );

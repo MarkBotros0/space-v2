@@ -27,10 +27,7 @@ export function staffRosterWhere(user: SessionUser): StaffRoster | null {
  * they then see of the student is narrowed to that season: see
  * canReadEnrollmentHistory.
  */
-export async function staffRosterIncludes(
-  user: SessionUser,
-  studentUserId: number,
-): Promise<boolean> {
+export async function staffRosterIncludes(user: SessionUser, studentUserId: number): Promise<boolean> {
   const roster = staffRosterWhere(user);
   if (!roster) return false;
   const enrollment = await db.seasonEnrollment.findFirst({

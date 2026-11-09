@@ -42,16 +42,11 @@ export function ToggleButtons<T extends string>({
             onPress={() => onChange(o.value)}
             className={cn(
               "min-h-[44px] flex-1 items-center justify-center rounded-control border px-3 py-2",
-              selected
-                ? "border-ring bg-accent"
-                : "border-control-border bg-surface active:border-ring",
+              selected ? "border-ring bg-accent" : "border-control-border bg-surface active:border-ring",
             )}
           >
             <Text
-              className={cn(
-                "text-sm font-semibold",
-                selected ? "text-accent-foreground" : "text-muted-foreground",
-              )}
+              className={cn("text-sm font-semibold", selected ? "text-accent-foreground" : "text-muted-foreground")}
             >
               {o.label}
             </Text>

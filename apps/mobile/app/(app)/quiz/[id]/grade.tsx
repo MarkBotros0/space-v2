@@ -26,11 +26,7 @@ import { parseMark } from "../../../../src/lib/parse-mark";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { AttemptSheet } from "../../../../src/screens/quiz-grade/attempt-sheet";
 import { ReleaseResultsCard } from "../../../../src/screens/quiz-grade/release-results";
-import {
-  PaperGradeSheet,
-  seedDraft,
-  type PaperDraft,
-} from "../../../../src/screens/quiz-grade/paper-grade-sheet";
+import { PaperGradeSheet, seedDraft, type PaperDraft } from "../../../../src/screens/quiz-grade/paper-grade-sheet";
 import { useSessionStore } from "../../../../src/store/session";
 
 function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
@@ -52,8 +48,7 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
     ? `${sheet.sessionTitle ? `${sheet.sessionTitle} · ` : ""}Max score: ${sheet.maxScore} · ${unbreakable(`${graded} / ${sheet.rows.length} graded`)}`
     : undefined;
 
-  const draftOf = (r: NonNullable<typeof row>): PaperDraft =>
-    drafts[r.studentUserId] ?? seedDraft(r);
+  const draftOf = (r: NonNullable<typeof row>): PaperDraft => drafts[r.studentUserId] ?? seedDraft(r);
 
   const onSave = () => {
     if (!row) return;
@@ -125,9 +120,7 @@ function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) 
                 </Text>
               )
             }
-            trailingLabel={({ row: r }) =>
-              r.score == null ? "Not graded" : `${r.score} of ${sheet.maxScore}`
-            }
+            trailingLabel={({ row: r }) => (r.score == null ? "Not graded" : `${r.score} of ${sheet.maxScore}`)}
             onPress={({ row: r }) => {
               setError(null);
               setShown(r.studentUserId);
@@ -167,8 +160,7 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
   let body: ReactNode;
   let sheet: ReactNode = null;
   if (attempts.isPending) body = <RouteSkeleton />;
-  else if (attempts.isError || !first)
-    body = <RouteError onRetry={() => void attempts.refetch()} />;
+  else if (attempts.isError || !first) body = <RouteError onRetry={() => void attempts.refetch()} />;
   else {
     // The server pages over students, 20 at a time; both lists grow per page.
     const { items, waiting } = flattenGradingPages(attempts.data.pages);
@@ -230,9 +222,7 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
                 title={w.studentName ?? "Student"}
                 titleLines={2}
                 subtitle={
-                  w.startedAt === null
-                    ? "Not started"
-                    : `In progress since ${unbreakable(formatDate(w.startedAt))}`
+                  w.startedAt === null ? "Not started" : `In progress since ${unbreakable(formatDate(w.startedAt))}`
                 }
               />
             ))}
@@ -287,14 +277,9 @@ export default function QuizGradeScreen() {
   let body: ReactNode;
   if (!isStaff)
     body = (
-      <EmptyState
-        icon={NAV_ICONS.quizzes}
-        title="Quizzes"
-        description="This screen isn't available for your role."
-      />
+      <EmptyState icon={NAV_ICONS.quizzes} title="Quizzes" description="This screen isn't available for your role." />
     );
-  else if (id === null)
-    body = <EmptyState icon={SearchX} title="Not found" description="That quiz doesn't exist." />;
+  else if (id === null) body = <EmptyState icon={SearchX} title="Not found" description="That quiz doesn't exist." />;
   else if (detail.isError) body = <RouteError onRetry={() => void detail.refetch()} />;
   else body = <RouteSkeleton />;
   return <Screen title="Quiz">{body}</Screen>;

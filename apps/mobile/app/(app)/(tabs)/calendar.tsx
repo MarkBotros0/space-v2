@@ -38,11 +38,7 @@ export default function CalendarScreen() {
   if (role === "MENTOR") {
     return (
       <Screen title="Calendar">
-        <EmptyState
-          icon={CalendarIcon}
-          title="Calendar"
-          description="The calendar isn't available for your role."
-        />
+        <EmptyState icon={CalendarIcon} title="Calendar" description="The calendar isn't available for your role." />
       </Screen>
     );
   }

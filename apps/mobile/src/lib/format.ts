@@ -81,11 +81,7 @@ export function formatOrgDue(day: string | null, time: string | null): string {
  * ruling X13). `date`/`endDate` are never formatted on the device, so an
  * org-midnight event cannot move to the previous day west of the org zone.
  */
-export function formatEventWhen(event: {
-  dayKey: string;
-  endDayKey: string | null;
-  time: string | null;
-}): string {
+export function formatEventWhen(event: { dayKey: string; endDayKey: string | null; time: string | null }): string {
   const days =
     event.endDayKey && event.endDayKey !== event.dayKey
       ? `${formatDayKey(event.dayKey)} – ${formatDayKey(event.endDayKey)}`
@@ -161,7 +157,9 @@ export function formatDistanceOnly(iso: string | null): string {
 /** v1 upcoming-events-card whenLabel: "Mar 5 · 6:30 PM", "Mar 5 – Mar 7" (no year). */
 export function formatEventWhenShort(event: { dayKey: string; endDayKey: string | null; time: string | null }): string {
   const start =
-    event.time !== null ? `${formatShortDay(event.dayKey)} · ${formatWallTime(event.time)}` : formatShortDay(event.dayKey);
+    event.time !== null
+      ? `${formatShortDay(event.dayKey)} · ${formatWallTime(event.time)}`
+      : formatShortDay(event.dayKey);
   if (event.endDayKey && event.endDayKey !== event.dayKey) return `${start} – ${formatShortDay(event.endDayKey)}`;
   return start;
 }
