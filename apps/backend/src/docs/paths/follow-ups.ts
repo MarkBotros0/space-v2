@@ -85,6 +85,37 @@ export const followUpPaths = {
       },
     },
   },
+  "/api/v1/internal/retention/purge": {
+    get: {
+      tags: ["Follow-ups"],
+      summary: "Delete rows past their retention (Vercel Cron)",
+      description:
+        "Called daily by Vercel Cron (`vercel.json`) with `Authorization: Bearer <CRON_SECRET>`. 404 while `CRON_SECRET` is unset, 401 with any other header. Deletes refresh, invite and reset tokens dead (revoked, used or expired) for more than 7 days, except each person's newest invite; notifications older than 180 days; push devices not seen for 180 days. Batched: at most 20 × 5000 rows per table a run.",
+      security: [],
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            properties: {
+              deleted: {
+                type: "object",
+                properties: {
+                  refreshTokens: { type: "integer" },
+                  inviteTokens: { type: "integer" },
+                  passwordResetTokens: { type: "integer" },
+                  notifications: { type: "integer" },
+                  deviceTokens: { type: "integer" },
+                },
+              },
+            },
+          },
+          "How many rows went, per table.",
+        ),
+        401: errRef("Unauthorized"),
+        404: errRef("NotFound"),
+      },
+    },
+  },
   "/api/v1/me/mentor-summary": {
     get: {
       tags: ["Follow-ups"],

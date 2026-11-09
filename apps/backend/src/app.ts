@@ -30,6 +30,7 @@ import { docsRouter } from "./routes/docs";
 import { reportsRouter } from "./routes/reports";
 import { importsRouter, seasonImportsRouter } from "./routes/imports";
 import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
+import { retentionRouter } from "./routes/retention";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -108,6 +109,7 @@ export function createApp(): Express {
   app.use("/api/v1/follow-ups", followUpsRouter);
   app.use("/api/v1/students", studentFollowUpsRouter);
   app.use("/api/v1/internal", internalRouter);
+  app.use("/api/v1/internal", retentionRouter);
   app.use("/api/v1/me", mentorSummaryRouter);
   // Same fall-through mounting as the notes routers: /students/:id/engagement
   // and /seasons/:id/engagement cannot be matched by those domains' /:id
