@@ -12,16 +12,19 @@ import {
   announcementPageResponseSchema,
   announcementTargetsResponseSchema,
   announcementUnreadResponseSchema,
+  pollVotersResponseSchema,
   type AnnouncementDetail,
   type AnnouncementPageResponse,
   type AnnouncementTargetsResponse,
   type AnnouncementUnreadResponse,
   type CreateAnnouncementRequest,
+  type PollVoteRequest,
+  type PollVotersResponse,
   type UpdateAnnouncementRequest,
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
-import { isNotFoundError } from "../lib/api-error";
+import { apiErrorCode, isNotFoundError } from "../lib/api-error";
 import { queryKeys } from "../lib/query-keys";
 
 /** What `useAnnouncement` yields for a post that is gone or was never visible to this reader. */
@@ -147,5 +150,75 @@ export function useDeleteAnnouncement() {
       queryClient.removeQueries({ queryKey: queryKeys.announcements.detail(id) });
       invalidate();
     },
+  });
+}
+
+/**
+ * Writes a poll action's returned detail into the post's own query, so the screen updates without a refetch,
+ * and drops the voters list, so the next open of "See who voted" never shows names from before the write.
+ */
+function usePollDetailWrite(postId: number) {
+  const queryClient = useQueryClient();
+  return (data: unknown): AnnouncementDetail => {
+    const next = announcementDetailSchema.parse(data);
+    queryClient.setQueryData(queryKeys.announcements.detail(postId), next);
+    void queryClient.invalidateQueries({ queryKey: queryKeys.announcements.feed() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.announcements.voters(postId) });
+    return next;
+  };
+}
+
+/** Codes after which the poll on screen is out of date: changed options, closed, or a finished season. */
+const STALE_POLL_CODES = new Set(["poll_changed", "poll_closed", "season_finished"]);
+
+/** Cast or change a vote. A 409 saying the poll moved on refetches the post, so the card shows it as it now is. */
+export function useVotePoll(postId: number) {
+  const queryClient = useQueryClient();
+  const write = usePollDetailWrite(postId);
+  return useMutation({
+    mutationFn: async (body: PollVoteRequest) => {
+      const res = await apiClient.put(`/api/v1/announcements/${postId}/poll/vote`, body);
+      return write(res.data.data);
+    },
+    onError: (err) => {
+      if (STALE_POLL_CODES.has(apiErrorCode(err) ?? "")) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.announcements.detail(postId) });
+      }
+    },
+  });
+}
+
+export function useClosePoll(postId: number) {
+  const write = usePollDetailWrite(postId);
+  return useMutation({
+    mutationFn: async (): Promise<AnnouncementDetail> => {
+      const res = await apiClient.post(`/api/v1/announcements/${postId}/poll/close`);
+      return write(res.data.data);
+    },
+  });
+}
+
+export function useReopenPoll(postId: number) {
+  const write = usePollDetailWrite(postId);
+  return useMutation({
+    mutationFn: async (): Promise<AnnouncementDetail> => {
+      const res = await apiClient.post(`/api/v1/announcements/${postId}/poll/reopen`);
+      return write(res.data.data);
+    },
+  });
+}
+
+/** Who voted for what; only a poll's managers may read it, so fetch only when the sheet opens. */
+export function usePollVoters(
+  postId: number,
+  enabled: boolean,
+): UseQueryResult<PollVotersResponse> {
+  return useQuery({
+    queryKey: queryKeys.announcements.voters(postId),
+    queryFn: async () => {
+      const res = await apiClient.get(`/api/v1/announcements/${postId}/poll/voters`);
+      return pollVotersResponseSchema.parse(res.data.data);
+    },
+    enabled,
   });
 }

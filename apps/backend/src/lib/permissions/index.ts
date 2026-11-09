@@ -45,3 +45,9 @@ export {
   type PostTarget,
   type PostVerdict,
 } from "./announcement";
+export {
+  canManagePoll,
+  canSeePollNames,
+  canVotePoll,
+  isPollClosed,
+} from "./announcement-poll";

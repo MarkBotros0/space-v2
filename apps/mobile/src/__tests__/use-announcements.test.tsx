@@ -4,7 +4,7 @@ import { AxiosError, type AxiosResponse } from "axios";
 import type { ReactNode } from "react";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
+  apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 
 import {
@@ -14,13 +14,18 @@ import {
   useAnnouncementUnread,
   useCreateAnnouncement,
   useDeleteAnnouncement,
+  useClosePoll,
   useMarkAnnouncementRead,
+  usePollVoters,
+  useReopenPoll,
   useUpdateAnnouncement,
+  useVotePoll,
 } from "../hooks/use-announcements";
 import { apiClient } from "../lib/api-client";
+import { pollVotesLost } from "../lib/api-error";
 import { queryKeys } from "../lib/query-keys";
 
-const api = apiClient as unknown as Record<"get" | "post" | "patch" | "delete", jest.Mock>;
+const api = apiClient as unknown as Record<"get" | "post" | "put" | "patch" | "delete", jest.Mock>;
 
 const item = (id: number) => ({
   id,
@@ -32,10 +37,12 @@ const item = (id: number) => ({
   createdAt: "2026-11-07T10:00:00.000Z",
   editedAt: null,
   isRead: false,
+  hasPoll: false,
+  pollClosed: null,
 });
 const detail = (id: number) => {
   const { excerpt: _e, ...rest } = item(id);
-  return { ...rest, body: "Full body", canEdit: false, canDelete: false, seasonFinished: false };
+  return { ...rest, body: "Full body", canEdit: false, canDelete: false, seasonFinished: false, poll: null };
 };
 
 let client: QueryClient;
@@ -179,5 +186,112 @@ describe("mutations invalidate announcements.all", () => {
     });
     expect(order).toEqual(["remove", "invalidate"]);
     expect(client.removeQueries).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.detail(5) });
+  });
+});
+
+const conflict = (code: string, extra: object = {}) =>
+  new AxiosError("conflict", "ERR_BAD_REQUEST", undefined, undefined, {
+    status: 409,
+    data: { error: { code, message: "Conflict" }, ...extra },
+  } as AxiosResponse);
+
+describe("poll hooks", () => {
+  it("a vote writes the returned detail into the cache and invalidates the feed", async () => {
+    const voted = { ...detail(5), body: "Voted" };
+    api.put.mockResolvedValue({ data: { data: voted } });
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useVotePoll(5), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ version: 2, optionIds: [3] });
+    });
+    expect(api.put).toHaveBeenCalledWith("/api/v1/announcements/5/poll/vote", {
+      version: 2,
+      optionIds: [3],
+    });
+    expect(client.getQueryData(queryKeys.announcements.detail(5))).toMatchObject({ body: "Voted" });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.feed() });
+  });
+
+  it.each(["poll_changed", "poll_closed", "season_finished"])(
+    "a %s 409 invalidates the detail, so the card shows the poll as it now is",
+    async (code) => {
+      api.put.mockRejectedValue(conflict(code));
+      const spy = jest.spyOn(client, "invalidateQueries");
+      const { result } = renderHook(() => useVotePoll(5), { wrapper });
+      await act(async () => {
+        await result.current.mutateAsync({ version: 1, optionIds: [3] }).catch(() => undefined);
+      });
+      expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.detail(5) });
+    },
+  );
+
+  it("any other vote failure leaves the detail alone", async () => {
+    api.put.mockRejectedValue(conflict("bad_request"));
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useVotePoll(5), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ version: 1, optionIds: [3] }).catch(() => undefined);
+    });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: queryKeys.announcements.detail(5) });
+  });
+
+  it.each([
+    ["close", () => useClosePoll(5), "/api/v1/announcements/5/poll/close"],
+    ["reopen", () => useReopenPoll(5), "/api/v1/announcements/5/poll/reopen"],
+  ] as const)("%s posts and writes the detail", async (_n, hook, url) => {
+    api.post.mockResolvedValue({ data: { data: { ...detail(5), body: "After" } } });
+    const { result } = renderHook(() => hook(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync();
+    });
+    expect(api.post).toHaveBeenCalledWith(url);
+    expect(client.getQueryData(queryKeys.announcements.detail(5))).toMatchObject({ body: "After" });
+  });
+
+  it.each([
+    ["vote", () => useVotePoll(5), "put", { version: 1, optionIds: [3] }],
+    ["close", () => useClosePoll(5), "post", undefined],
+    ["reopen", () => useReopenPoll(5), "post", undefined],
+  ] as const)("a %s invalidates the voters list, so the sheet never shows stale names", async (_n, hook, verb, body) => {
+    api[verb].mockResolvedValue({ data: { data: detail(5) } });
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => hook(), { wrapper });
+    await act(async () => {
+      await (result.current.mutateAsync as (b?: unknown) => Promise<unknown>)(body);
+    });
+    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.voters(5) });
+  });
+
+  it("pollVotesLost reads votes off a 409 poll_votes_lost, else null", () => {
+    expect(pollVotesLost(conflict("poll_votes_lost", { votes: 7 }))).toBe(7);
+    expect(pollVotesLost(conflict("poll_changed"))).toBeNull();
+    expect(pollVotesLost(conflict("poll_votes_lost"))).toBeNull();
+    expect(pollVotesLost(new Error("x"))).toBeNull();
+  });
+
+  it("voters are parsed, and not fetched while disabled", async () => {
+    const off = renderHook(() => usePollVoters(5, false), { wrapper });
+    expect(off.result.current.fetchStatus).toBe("idle");
+    expect(api.get).not.toHaveBeenCalled();
+    api.get.mockResolvedValue({
+      data: { data: { options: [{ id: 3, label: "A", voters: [{ name: "Sam" }, { name: null }] }] } },
+    });
+    const { result } = renderHook(() => usePollVoters(5, true), { wrapper });
+    await waitFor(() => expect(result.current.data?.options[0]?.voters).toHaveLength(2));
+    expect(api.get).toHaveBeenCalledWith("/api/v1/announcements/5/poll/voters");
+  });
+
+  it("update passes poll and confirmVoteLoss through", async () => {
+    api.patch.mockResolvedValue({ data: { data: detail(5) } });
+    const body = {
+      body: "B",
+      poll: { options: [{ label: "A" }, { label: "B" }], multiSelect: false },
+      confirmVoteLoss: true,
+    };
+    const { result } = renderHook(() => useUpdateAnnouncement(5), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync(body as never);
+    });
+    expect(api.patch).toHaveBeenCalledWith("/api/v1/announcements/5", body);
   });
 });

@@ -22,10 +22,12 @@ type PillButtonProps = {
   accessibilityLabel?: string;
   /** Greys it and ignores presses (an action already in flight). */
   disabled?: boolean;
+  /** A removing action: bad-soft fill and bad text instead of info. */
+  destructive?: boolean;
   className?: string;
 };
 
-function PillButton({ label, onPress, accessibilityLabel, disabled = false, className }: PillButtonProps) {
+function PillButton({ label, onPress, accessibilityLabel, disabled = false, destructive = false, className }: PillButtonProps) {
   const press = usePressDim();
   return (
     <Pressable
@@ -40,8 +42,8 @@ function PillButton({ label, onPress, accessibilityLabel, disabled = false, clas
       className={cn("shrink-0", disabled && "opacity-50", className)}
     >
       <Animated.View style={press.animatedStyle}>
-        <View testID="pill-button" className="min-h-[32px] items-center justify-center rounded-full bg-info-soft px-3">
-          <Text variant="subhead" numberOfLines={1} maxFontSizeMultiplier={1.3} className="font-semibold text-info">
+        <View testID="pill-button" className={cn("min-h-[32px] items-center justify-center rounded-full px-3", destructive ? "bg-bad-soft" : "bg-info-soft")}>
+          <Text variant="subhead" numberOfLines={1} maxFontSizeMultiplier={1.3} className={cn("font-semibold", destructive ? "text-bad" : "text-info")}>
             {label}
           </Text>
         </View>

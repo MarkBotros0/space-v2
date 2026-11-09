@@ -1,9 +1,10 @@
 import type {
   AnnouncementDetail,
+  AnnouncementPoll,
   AnnouncementListItem,
 } from "../../../../../packages/shared/src/index";
 import { ANNOUNCEMENT_EXCERPT_LENGTH } from "../../../../../packages/shared/src/index";
-import type { AnnouncementFlags } from "../../lib/permissions";
+import { isPollClosed, type AnnouncementFlags } from "../../lib/permissions";
 
 export const ANNOUNCEMENT_SELECT = {
   id: true,
@@ -15,6 +16,7 @@ export const ANNOUNCEMENT_SELECT = {
   editedAt: true,
   season: { select: { title: true, status: true } },
   author: { select: { name: true, deletedAt: true } },
+  poll: { select: { closedAt: true } },
 } as const;
 
 export interface AnnouncementRow {
@@ -27,6 +29,7 @@ export interface AnnouncementRow {
   editedAt: Date | null;
   season: { title: string; status: string } | null;
   author: { name: string; deletedAt: Date | null } | null;
+  poll: { closedAt: Date | null } | null;
 }
 
 /** Cut by code point, so an emoji (a surrogate pair) is never split at the limit. */
@@ -52,13 +55,26 @@ function common(row: AnnouncementRow, isRead: boolean) {
 }
 
 export function toListItem(row: AnnouncementRow, isRead: boolean): AnnouncementListItem {
-  return { ...common(row, isRead), excerpt: excerptOf(row.body) };
+  return {
+    ...common(row, isRead),
+    excerpt: excerptOf(row.body),
+    hasPoll: row.poll !== null,
+    pollClosed: row.poll ? isPollClosed(row, row.poll) : null,
+  };
 }
 
 export function toDetail(
   row: AnnouncementRow,
   isRead: boolean,
   flags: AnnouncementFlags,
+  poll: AnnouncementPoll | null,
 ): AnnouncementDetail {
-  return { ...common(row, isRead), body: row.body, ...flags };
+  return {
+    ...common(row, isRead),
+    body: row.body,
+    ...flags,
+    hasPoll: row.poll !== null,
+    pollClosed: row.poll ? isPollClosed(row, row.poll) : null,
+    poll,
+  };
 }

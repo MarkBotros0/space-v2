@@ -2,7 +2,7 @@
 # New announcement form with the keyboard open on Message, and its confirm sheet (then Cancel).
 # Needs the seeded posts (apps/backend/scripts/seed-sweep/announcements.ts). Read-only: nothing is
 # posted or saved; Post is tapped only to open the confirm sheet, and the sheet's Post is never
-# tapped. Opening a post marks it read, so the Home shot comes first.
+# tapped. Also opens the poll post (See who voted) and the form's Add a poll; nothing is voted or saved. Opening a post marks it read, so the Home shot comes first.
 appId: com.jpc.space
 ---
 - runFlow:
@@ -93,3 +93,37 @@ appId: com.jpc.space
     timeout: 3000
 - assertNotVisible: 'Post to Everyone\?'
 - takeScreenshot: s56-09-confirm-cancelled
+# The poll post as a manager: results with counts, then who voted (a sheet; closed without saving).
+- openLink: spacev2://announcements
+- extendedWaitUntil:
+    visible: 'Which evening suits the retreat.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Which evening suits the retreat.*'
+- extendedWaitUntil:
+    visible: 'Poll · Pick any'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s56-10-poll
+- tapOn: 'See who voted'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s56-11-poll-voters
+# The composer's poll section: Add a poll opens it; nothing is posted.
+- openLink: spacev2://announcements/new
+- extendedWaitUntil:
+    visible: 'New announcement'
+    timeout: 40000
+- scrollUntilVisible:
+    element: 'Add a poll'
+    direction: DOWN
+    timeout: 20000
+- tapOn: 'Add a poll'
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: s56-12-new-poll

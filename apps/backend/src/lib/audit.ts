@@ -43,7 +43,10 @@ export type AuditOperation =
   // id (none for a community post). Never the title or body.
   | "announcement.create"
   | "announcement.update"
-  | "announcement.delete";
+  | "announcement.delete"
+  | "announcement.poll.close"
+  | "announcement.poll.reopen"
+  | "announcement.poll.update";
 
 /** Extra ids that locate a change — ids only, like the rest of the line. */
 export type AuditScope = {

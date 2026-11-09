@@ -13,6 +13,7 @@ export function ConfirmPostSheet({
   open,
   audienceLabel,
   reach,
+  withPoll = false,
   pending,
   onClose,
   onConfirm,
@@ -21,6 +22,8 @@ export function ConfirmPostSheet({
   /** "Everyone" or the season's title. */
   audienceLabel: string;
   reach: number;
+  /** The post carries a poll: the summary says so. */
+  withPoll?: boolean;
   pending: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -42,7 +45,7 @@ export function ConfirmPostSheet({
     >
       <View className="pb-4">
         <Text variant="body" className="text-foreground">
-          {`This notifies ${peopleCount(reach)}.`}
+          {`This notifies ${peopleCount(reach)}${withPoll ? ", with a poll" : ""}.`}
         </Text>
       </View>
     </Sheet>

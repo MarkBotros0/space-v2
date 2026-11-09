@@ -28,6 +28,20 @@ describe("OpenAPI: announcements", () => {
     expect(doc.paths[`${BASE}/{id}/read`]?.post).toBeDefined();
   });
 
+  it("documents the poll routes and shapes", () => {
+    expect(doc.paths[`${BASE}/{id}/poll/vote`]?.put).toBeDefined();
+    expect(doc.paths[`${BASE}/{id}/poll/close`]?.post).toBeDefined();
+    expect(doc.paths[`${BASE}/{id}/poll/reopen`]?.post).toBeDefined();
+    expect(doc.paths[`${BASE}/{id}/poll/voters`]?.get).toBeDefined();
+    const detail = doc.components.schemas.AnnouncementDetail as { properties: Record<string, unknown> };
+    expect(JSON.stringify(detail.properties.poll)).toContain("#/components/schemas/AnnouncementPoll");
+    expect(doc.components.schemas.AnnouncementPoll).toBeDefined();
+    const patch = JSON.stringify(doc.paths[`${BASE}/{id}`]?.patch);
+    expect(patch).toContain("poll_votes_lost");
+    expect(JSON.stringify(doc.components.schemas.UpdateAnnouncementRequest)).toContain("confirmVoteLoss");
+    expect(JSON.stringify(doc.components.schemas.AnnouncementListItem)).toContain("hasPoll");
+  });
+
   it("resolves every $ref under the announcement paths", () => {
     const announcementSchemas = Object.entries(doc.components.schemas).filter(([k]) => /Announcement/.test(k));
     const refs = collectRefs([announcementPaths, announcementSchemas]);

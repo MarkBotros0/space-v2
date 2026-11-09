@@ -25,7 +25,7 @@ export interface AnnouncementRowForAuth {
   season: { status: string } | null;
 }
 
-function isFinished(row: AnnouncementRowForAuth): boolean {
+export function isFinished(row: AnnouncementRowForAuth): boolean {
   return row.season?.status === "COMPLETED" || row.season?.status === "ARCHIVED";
 }
 

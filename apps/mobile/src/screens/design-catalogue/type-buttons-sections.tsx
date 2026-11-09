@@ -55,6 +55,7 @@ export function ButtonsSection() {
       <View className="flex-row flex-wrap items-center gap-2">
         <PillButton label="See all" onPress={() => {}} />
         <PillButton label="Clear due date" onPress={() => {}} />
+        <PillButton destructive label="Remove poll" onPress={() => {}} />
       </View>
     </CatalogueSection>
   );
