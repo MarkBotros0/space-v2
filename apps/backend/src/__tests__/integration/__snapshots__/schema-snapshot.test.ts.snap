@@ -476,6 +476,7 @@ exports[`database schema has exactly these constraints 1`] = `
   ""Submission" Submission_studentUserId_fkey: FOREIGN KEY ("studentUserId") REFERENCES "User"(id) ON UPDATE CASCADE ON DELETE RESTRICT",
   ""SubmissionFile" SubmissionFile_pkey: PRIMARY KEY (id)",
   ""SubmissionFile" SubmissionFile_submissionId_fkey: FOREIGN KEY ("submissionId") REFERENCES "Submission"(id) ON UPDATE CASCADE ON DELETE CASCADE",
+  ""User" User_email_lowercase_check: CHECK ((email = lower(email)))",
   ""User" User_graduationOverrideById_fkey: FOREIGN KEY ("graduationOverrideById") REFERENCES "User"(id) ON UPDATE CASCADE ON DELETE SET NULL",
   ""User" User_pkey: PRIMARY KEY (id)",
 ]

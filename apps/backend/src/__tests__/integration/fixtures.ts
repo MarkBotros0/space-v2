@@ -21,8 +21,9 @@ export const testUserFilter = {
   email: { startsWith: TEST_PREFIX, endsWith: EMAIL_SUFFIX },
 } as const;
 
+/** Lowercase, as every write path stores it (the database CHECKs that, migration 20261110080000). */
 export function testEmail(label: string): string {
-  return `${TEST_PREFIX}${label}-${randomUUID()}${EMAIL_SUFFIX}`;
+  return `${TEST_PREFIX}${label}-${randomUUID()}${EMAIL_SUFFIX}`.toLowerCase();
 }
 
 /**

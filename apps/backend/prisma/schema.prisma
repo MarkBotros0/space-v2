@@ -125,6 +125,8 @@ model User {
   announcementPollsClosed AnnouncementPoll[] @relation("AnnouncementPollClosedBy")
   announcementPollVotes AnnouncementPollVote[]
   id           Int       @id @default(autoincrement())
+  // SQL-only: CHECK User_email_lowercase_check (email = lower(email)), so the unique
+  // is case-insensitive in effect (migration 20261110080000). Write it trimmed and lowercased.
   email        String    @unique
   name         String
   passwordHash String?

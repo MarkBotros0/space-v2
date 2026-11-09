@@ -48,6 +48,25 @@ export const CHECKS: Check[] = [
       return { ok: true, detail: `${n} row(s)` };
     },
   },
+  {
+    step: "3.8",
+    title: "accounts whose emails differ only in case (the migration fails until they are resolved)",
+    run: async () => {
+      const n = await count`
+        SELECT count(*) AS n FROM (
+          SELECT lower(trim("email")) FROM "User" GROUP BY 1 HAVING count(*) > 1
+        ) dup`;
+      return { ok: n === 0, detail: `${n} address(es)` };
+    },
+  },
+  {
+    step: "3.8",
+    title: "emails the migration will trim or lowercase",
+    run: async () => {
+      const n = await count`SELECT count(*) AS n FROM "User" WHERE "email" <> lower(trim("email"))`;
+      return { ok: true, detail: `${n} row(s)` };
+    },
+  },
 ];
 
 async function main(): Promise<void> {
