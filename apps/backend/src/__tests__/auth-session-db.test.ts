@@ -106,7 +106,7 @@ describe("issueSession", () => {
     mockDb.user.findUnique
       .mockResolvedValueOnce({ id: 5, deletedAt: null })
       .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
-    const issued = await issueSession(5, "jest-agent");
+    const issued = await issueSession(5);
     expect(issued).not.toBeNull();
     expect(issued!.user).toMatchObject({ userId: 5, role: "ADMIN", groupLeaderIds: [8] });
     await expect(verifyAccessToken(issued!.session.accessToken)).resolves.toMatchObject({ userId: 5 });
@@ -114,17 +114,8 @@ describe("issueSession", () => {
     const data = mockDb.refreshToken.create.mock.calls[0][0].data;
     expect(data.tokenHash).toBe(hashToken(issued!.session.refreshToken));
     expect(data.tokenHash).not.toBe(issued!.session.refreshToken);
-    expect(data.userAgent).toBe("jest-agent");
+    expect(data).not.toHaveProperty("userAgent");
     expect(data.expiresAt.getTime()).toBeGreaterThan(Date.now());
-  });
-
-  it("stores a null user agent when none is given", async () => {
-    stubScopes();
-    mockDb.user.findUnique
-      .mockResolvedValueOnce({ id: 5, deletedAt: null })
-      .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
-    await issueSession(5);
-    expect(mockDb.refreshToken.create.mock.calls[0][0].data.userAgent).toBeNull();
   });
 });
 

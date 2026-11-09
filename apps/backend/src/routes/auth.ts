@@ -49,7 +49,7 @@ authRouter.post("/login", authLimiter, async (req, res) => {
     return apiError(res, "invalid_credentials", "Incorrect email or password.", 401);
   }
 
-  const issued = await issueSession(verified.id, req.get("user-agent"));
+  const issued = await issueSession(verified.id);
   if (!issued) {
     return apiError(res, "invalid_credentials", "Incorrect email or password.", 401);
   }
@@ -86,7 +86,7 @@ authRouter.post("/google", authLimiter, async (req, res) => {
   const noAccount = () => apiError(res, "no_account", NO_ACCOUNT_MESSAGE, 403);
   const verified = await findGoogleUser(identity.email);
   if (!verified) return noAccount();
-  const issued = await issueSession(verified.id, req.get("user-agent"));
+  const issued = await issueSession(verified.id);
   if (!issued) return noAccount();
 
   return apiOk(res, sessionBody(issued, verified));
@@ -98,7 +98,7 @@ authRouter.post("/refresh", refreshLimiter, async (req, res) => {
     return apiError(res, "bad_request", "refreshToken is required.", 400);
   }
 
-  const session = await rotateRefreshToken(parsed.data.refreshToken, req.get("user-agent"));
+  const session = await rotateRefreshToken(parsed.data.refreshToken);
   if (!session) {
     return apiError(res, "invalid_token", "Refresh token is invalid or expired.", 401);
   }

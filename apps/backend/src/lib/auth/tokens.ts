@@ -79,22 +79,18 @@ export function hashToken(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
-async function issueRefreshToken(
-  userId: number,
-  userAgent?: string | null,
-): Promise<{ token: string; expiresAt: Date }> {
+// RefreshToken.userAgent is no longer written: no screen ever read it, and it is
+// identifying data (refactor DB-006; the column is dropped in Wave 6).
+async function issueRefreshToken(userId: number): Promise<{ token: string; expiresAt: Date }> {
   const raw = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
   await db.refreshToken.create({
-    data: { tokenHash: hashToken(raw), userId, expiresAt, userAgent: userAgent ?? null },
+    data: { tokenHash: hashToken(raw), userId, expiresAt },
   });
   return { token: raw, expiresAt };
 }
 
-export async function issueSession(
-  userId: number,
-  userAgent?: string | null,
-): Promise<{ session: IssuedSession; user: SessionUser } | null> {
+export async function issueSession(userId: number): Promise<{ session: IssuedSession; user: SessionUser } | null> {
   const dbUser = await db.user.findUnique({
     where: { id: userId },
     select: { id: true, deletedAt: true },
@@ -103,7 +99,7 @@ export async function issueSession(
 
   const user: SessionUser = { userId: dbUser.id, ...(await loadScopes(dbUser.id)) };
   const access = await signAccessToken(user);
-  const refresh = await issueRefreshToken(user.userId, userAgent);
+  const refresh = await issueRefreshToken(user.userId);
   return {
     session: {
       accessToken: access.token,
@@ -114,7 +110,7 @@ export async function issueSession(
   };
 }
 
-export async function rotateRefreshToken(rawToken: string, userAgent?: string | null): Promise<IssuedSession | null> {
+export async function rotateRefreshToken(rawToken: string): Promise<IssuedSession | null> {
   const record = await db.refreshToken.findUnique({ where: { tokenHash: hashToken(rawToken) } });
   if (!record || record.revokedAt || record.expiresAt < new Date()) return null;
 
@@ -126,7 +122,7 @@ export async function rotateRefreshToken(rawToken: string, userAgent?: string | 
   });
   if (revoked.count !== 1) return null;
 
-  const issued = await issueSession(record.userId, userAgent);
+  const issued = await issueSession(record.userId);
   return issued?.session ?? null;
 }
 

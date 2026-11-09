@@ -73,7 +73,7 @@ devRouter.post("/switch", devLimiter, async (req, res) => {
   });
   if (!target || target.deletedAt) return apiError(res, "not_found", "User not found.", 404);
 
-  const issued = await issueSession(target.id, req.get("user-agent"));
+  const issued = await issueSession(target.id);
   if (!issued) return apiError(res, "not_found", "User not found.", 404);
   await db.user.update({ where: { id: target.id }, data: { lastLoginAt: new Date() } });
 
