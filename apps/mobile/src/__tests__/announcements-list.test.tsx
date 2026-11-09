@@ -56,6 +56,24 @@ describe("AnnouncementsScreen", () => {
     });
   });
 
+  it("says Poll, or Poll · Closed, on a post that has one, in words and in its label", async () => {
+    serve(
+      [
+        listItem(1, { hasPoll: true, pollClosed: false }),
+        listItem(2, { hasPoll: true, pollClosed: true }),
+        listItem(3),
+      ],
+      noTargets,
+    );
+    renderWithProviders(<AnnouncementsScreen />);
+    await screen.findByText("Excerpt 1");
+    expect(screen.getByText("Poll")).toBeTruthy();
+    expect(screen.getByText("Poll · Closed")).toBeTruthy();
+    expect(screen.getByLabelText(/^Excerpt 1, Poll,/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Excerpt 2, Poll · Closed,/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Excerpt 3, Sam/)).toBeTruthy();
+  });
+
   it("shows New post only when the viewer can post somewhere", async () => {
     serve([listItem(1)], noTargets);
     const first = renderWithProviders(<AnnouncementsScreen />);
