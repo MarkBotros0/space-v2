@@ -71,7 +71,7 @@ describe("POST /students — the invite", () => {
     expect(res.body.data).toEqual({ id: 70, email: "new@jpc.test", inviteSent: true });
     expect(mockDb.inviteToken.create).toHaveBeenCalledTimes(1);
     const raw = mockSendInviteEmail.mock.calls[0][1] as string;
-    expect(mockDb.inviteToken.create.mock.calls[0][0].data.token).toBe(hashToken(raw));
+    expect(mockDb.inviteToken.create.mock.calls[0][0].data.tokenHash).toBe(hashToken(raw));
     // A brand-new account has no older invite, and a delivered one stays live.
     expect(mockDb.inviteToken.updateMany).not.toHaveBeenCalled();
     expect(JSON.stringify(res.body)).not.toContain(raw);
@@ -84,7 +84,7 @@ describe("POST /students — the invite", () => {
     expect(res.body.data).toEqual({ id: 70, email: "new@jpc.test", inviteSent: false });
     const raw = mockSendInviteEmail.mock.calls[0][1] as string;
     expect(mockDb.inviteToken.updateMany).toHaveBeenCalledWith({
-      where: { token: hashToken(raw), usedAt: null },
+      where: { tokenHash: hashToken(raw), usedAt: null },
       data: { expiresAt: expect.any(Date) },
     });
   });

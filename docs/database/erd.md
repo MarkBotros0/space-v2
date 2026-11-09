@@ -42,7 +42,7 @@ erDiagram
   }
   InviteToken {
     Int id PK
-    String token UK
+    String tokenHash UK
     Int userId FK
     Int invitedById FK
     DateTime expiresAt
@@ -60,7 +60,7 @@ erDiagram
   }
   PasswordResetToken {
     Int id PK
-    String token UK
+    String tokenHash UK
     Int userId FK
     DateTime expiresAt
     DateTime usedAt "nullable"

@@ -45,7 +45,7 @@ describe("GET /api/v1/users", () => {
     await db.user.update({ where: { id: inactive.id }, data: { deletedAt: new Date() } });
     await db.inviteToken.create({
       data: {
-        token: "0".repeat(64), // digest-shaped placeholder, no raw token exists
+        tokenHash: "0".repeat(64), // digest-shaped placeholder, no raw token exists
         userId: invited.id,
         invitedById: superUser.id,
         expiresAt: new Date(Date.now() + 60_000),
@@ -112,7 +112,7 @@ describe("GET /api/v1/users/:id", () => {
     const invited = await createUnactivatedTestUser("detail-invited", "STUDENT");
     await db.inviteToken.create({
       data: {
-        token: "1".repeat(64),
+        tokenHash: "1".repeat(64),
         userId: invited.id,
         invitedById: superUser.id,
         expiresAt: new Date(Date.now() + 60_000),
@@ -281,7 +281,7 @@ describe("PATCH /api/v1/users/:id — response parity with GET", () => {
     const target = await createUnactivatedTestUser("parity", "STUDENT");
     await db.inviteToken.create({
       data: {
-        token: "2".repeat(64),
+        tokenHash: "2".repeat(64),
         userId: target.id,
         invitedById: superUser.id,
         expiresAt: new Date(Date.now() + 60_000),

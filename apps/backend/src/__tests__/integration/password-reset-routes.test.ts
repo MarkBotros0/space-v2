@@ -52,7 +52,7 @@ async function waitForResetRows(userId: number, count: number) {
     const rows = await db.passwordResetToken.findMany({
       where: { userId },
       orderBy: { id: "asc" },
-      select: { token: true, expiresAt: true, usedAt: true, createdAt: true },
+      select: { tokenHash: true, expiresAt: true, usedAt: true, createdAt: true },
     });
     if (rows.length >= count) return rows;
     if (Date.now() > deadline) throw new Error(`expected ${count} reset rows for user ${userId}, saw ${rows.length}`);
@@ -80,7 +80,7 @@ describe("POST /api/v1/auth/forgot-password", () => {
 
     const rows = await waitForResetRows(known.id, 1);
     // v1's format exactly (R71/R72): stored as a 64-hex SHA-256 digest.
-    expect(rows[0]!.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(rows[0]!.tokenHash).toMatch(/^[0-9a-f]{64}$/);
     const ttl = rows[0]!.expiresAt.getTime() - rows[0]!.createdAt.getTime();
     expect(Math.abs(ttl - 60 * 60 * 1000)).toBeLessThan(5_000);
 
@@ -89,7 +89,7 @@ describe("POST /api/v1/auth/forgot-password", () => {
     const call = mockSendPasswordResetEmail.mock.calls[0] as [string, string, Date];
     expect(call[0]).toBe(known.email);
     expect(call[1]).toMatch(/^[0-9a-f]{64}$/); // raw: 32 random bytes as hex
-    expect(hashToken(call[1])).toBe(rows[0]!.token);
+    expect(hashToken(call[1])).toBe(rows[0]!.tokenHash);
   });
 
   it("does not wait for the mailer — the response can't time a known address (R69)", async () => {
@@ -162,7 +162,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     // have expired the first): the reset must consume it too.
     const other = await db.passwordResetToken.create({
       data: {
-        token: hashToken(randomBytes(32).toString("hex")),
+        tokenHash: hashToken(randomBytes(32).toString("hex")),
         userId: u.id,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       },
@@ -178,7 +178,10 @@ describe("POST /api/v1/auth/reset-password", () => {
     const row = await db.user.findUnique({ where: { id: u.id }, select: { passwordHash: true } });
     expect(row?.passwordHash).toMatch(/^\$2[aby]\$12\$/); // bcrypt, cost 12 (spec 11 D8)
 
-    const used = await db.passwordResetToken.findUnique({ where: { token: hashToken(raw) }, select: { usedAt: true } });
+    const used = await db.passwordResetToken.findUnique({
+      where: { tokenHash: hashToken(raw) },
+      select: { usedAt: true },
+    });
     expect(used?.usedAt).not.toBeNull();
     const otherRow = await db.passwordResetToken.findUnique({ where: { id: other.id }, select: { expiresAt: true } });
     expect(otherRow!.expiresAt.getTime()).toBeLessThanOrEqual(Date.now());
@@ -214,7 +217,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     const expiredUser = await createTestUser("reset-expired", "STUDENT");
     const expired = await mintReset(expiredUser.id);
     await db.passwordResetToken.updateMany({
-      where: { token: hashToken(expired) },
+      where: { tokenHash: hashToken(expired) },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
     const goneUser = await createTestUser("reset-gone", "STUDENT");
@@ -240,7 +243,7 @@ describe("POST /api/v1/auth/reset-password", () => {
     const v1Raw = randomBytes(32).toString("hex");
     await db.passwordResetToken.create({
       data: {
-        token: createHash("sha256").update(v1Raw).digest("hex"),
+        tokenHash: createHash("sha256").update(v1Raw).digest("hex"),
         userId: u.id,
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       },
@@ -275,7 +278,10 @@ describe("POST /api/v1/auth/reset-password", () => {
     const res = await request(app).post("/api/v1/auth/reset-password").send({ token: raw, password: "short" });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
-    const row = await db.passwordResetToken.findUnique({ where: { token: hashToken(raw) }, select: { usedAt: true } });
+    const row = await db.passwordResetToken.findUnique({
+      where: { tokenHash: hashToken(raw) },
+      select: { usedAt: true },
+    });
     expect(row?.usedAt).toBeNull();
   });
 });

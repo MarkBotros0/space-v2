@@ -69,7 +69,7 @@ async function seedPool() {
   // v1's shape: a 32-char raw code stored as-is (spec 11 R13/R23).
   await db.inviteToken.create({
     data: {
-      token: randomBytes(16).toString("hex"),
+      tokenHash: randomBytes(16).toString("hex"),
       userId: v1Holder.id,
       invitedById: superUser.id,
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
@@ -107,7 +107,7 @@ describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
     const { pending, invited } = await seedPool();
     const before = await db.inviteToken.findFirst({
       where: { userId: invited.id },
-      select: { token: true },
+      select: { tokenHash: true },
     });
 
     const res = await request(app).post("/api/v1/users/invites/pending").set("authorization", `Bearer ${superToken}`);
@@ -120,15 +120,15 @@ describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
     for (const user of pending) {
       const live = await db.inviteToken.findMany({
         where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
-        select: { token: true },
+        select: { tokenHash: true },
       });
       expect(live).toHaveLength(1);
-      expect(isV2InviteDigest(live[0]!.token)).toBe(true);
+      expect(isV2InviteDigest(live[0]!.tokenHash)).toBe(true);
       const call = calls.find((c) => c[0] === user.email);
-      expect(call && hashToken(call[1])).toBe(live[0]!.token);
+      expect(call && hashToken(call[1])).toBe(live[0]!.tokenHash);
     }
     // The already-invited account was not re-minted.
-    const after = await db.inviteToken.findMany({ where: { userId: invited.id }, select: { token: true } });
+    const after = await db.inviteToken.findMany({ where: { userId: invited.id }, select: { tokenHash: true } });
     expect(after).toEqual([before]);
     // No raw code in the response.
     for (const c of calls) expect(JSON.stringify(res.body)).not.toContain(c[1]);
@@ -144,9 +144,9 @@ describe("POST /api/v1/users/invites/pending (Plan 10 Decision 12)", () => {
     expect(res.body.error.code).toBe("email_not_configured");
     const digests = await db.inviteToken.findMany({
       where: { userId: { in: pending.map((p) => p.id) } },
-      select: { token: true },
+      select: { tokenHash: true },
     });
-    expect(digests.filter((d) => isV2InviteDigest(d.token))).toEqual([]);
+    expect(digests.filter((d) => isV2InviteDigest(d.tokenHash))).toEqual([]);
   });
 
   it("is SUPER-only", async () => {

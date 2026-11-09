@@ -62,7 +62,7 @@ export async function mintInvite(
   const raw = randomBytes(24).toString("base64url");
   const expiresAt = new Date(now.getTime() + config.inviteTokenTtlHours * MS_PER_HOUR);
   const row = await client.inviteToken.create({
-    data: { token: hashToken(raw), userId, invitedById, expiresAt },
+    data: { tokenHash: hashToken(raw), userId, invitedById, expiresAt },
     select: { id: true },
   });
   return { id: row.id, raw, expiresAt };
@@ -71,7 +71,7 @@ export async function mintInvite(
 /** Withdraw an invite nobody received, found by its raw code's digest. */
 async function expireUndelivered(raw: string): Promise<void> {
   await db.inviteToken.updateMany({
-    where: { token: hashToken(raw), usedAt: null },
+    where: { tokenHash: hashToken(raw), usedAt: null },
     data: { expiresAt: new Date() },
   });
 }
@@ -155,11 +155,11 @@ export async function listPendingInviteUserIds(scope: Prisma.UserWhereInput = {}
   const now = new Date();
   const rows = await db.user.findMany({
     where: { AND: [scope, INVITABLE_USER_WHERE] },
-    select: { id: true, invitesReceived: { where: liveInviteWhere(now), select: { token: true } } },
+    select: { id: true, invitesReceived: { where: liveInviteWhere(now), select: { tokenHash: true } } },
     orderBy: { id: "asc" },
   });
   return rows
-    .filter((row) => !row.invitesReceived.some((invite) => isV2InviteDigest(invite.token)))
+    .filter((row) => !row.invitesReceived.some((invite) => isV2InviteDigest(invite.tokenHash)))
     .map((row) => row.id);
 }
 
@@ -179,9 +179,9 @@ export async function inviteIfStillPending(userId: number, invitedById: number):
     await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
     const row = await tx.user.findFirst({
       where: { id: userId, ...INVITABLE_USER_WHERE },
-      select: { email: true, invitesReceived: { where: liveInviteWhere(new Date()), select: { token: true } } },
+      select: { email: true, invitesReceived: { where: liveInviteWhere(new Date()), select: { tokenHash: true } } },
     });
-    if (!row || row.invitesReceived.some((invite) => isV2InviteDigest(invite.token))) return null;
+    if (!row || row.invitesReceived.some((invite) => isV2InviteDigest(invite.tokenHash))) return null;
     const issued = await issueInvite(tx, userId, invitedById);
     return { userId, email: row.email, ...issued };
   });

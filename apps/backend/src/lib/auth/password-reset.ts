@@ -47,7 +47,7 @@ export async function issuePasswordReset(
   const now = new Date();
   const expiresAt = new Date(now.getTime() + PASSWORD_RESET_TTL_MS);
   await expireLiveResetTokens(client, userId, now);
-  await client.passwordResetToken.create({ data: { token: hashToken(raw), userId, expiresAt } });
+  await client.passwordResetToken.create({ data: { tokenHash: hashToken(raw), userId, expiresAt } });
   return { raw, expiresAt };
 }
 
@@ -96,7 +96,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
  */
 export async function completePasswordReset(rawToken: string, password: string): Promise<"ok" | "invalid"> {
   const record = await db.passwordResetToken.findUnique({
-    where: { token: hashToken(rawToken) },
+    where: { tokenHash: hashToken(rawToken) },
     select: { id: true, userId: true, usedAt: true, expiresAt: true, user: { select: { deletedAt: true } } },
   });
   if (!record) return "invalid";

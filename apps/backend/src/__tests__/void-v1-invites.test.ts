@@ -21,8 +21,8 @@ describe("voided v1 invite codes (Plan 18 M12)", () => {
 
   it("the holder of a voided invite is still pending; the holder of a v2 invite is not", async () => {
     mockDb.user.findMany.mockResolvedValue([
-      { id: 1, invitesReceived: [{ token: "v1-void-7" }] },
-      { id: 2, invitesReceived: [{ token: hashToken("live") }] },
+      { id: 1, invitesReceived: [{ tokenHash: "v1-void-7" }] },
+      { id: 2, invitesReceived: [{ tokenHash: hashToken("live") }] },
       { id: 3, invitesReceived: [] },
     ]);
     await expect(listPendingInviteUserIds()).resolves.toEqual([1, 3]);

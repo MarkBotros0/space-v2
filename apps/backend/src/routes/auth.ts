@@ -143,7 +143,7 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
   const refuse = () => apiError(res, "invalid_invite", "This invite is invalid or has expired.", 400);
 
   const invite = await db.inviteToken.findUnique({
-    where: { token: hashToken(parsed.data.token) },
+    where: { tokenHash: hashToken(parsed.data.token) },
     select: {
       id: true,
       userId: true,

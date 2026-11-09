@@ -223,7 +223,7 @@ model User {
 
 model InviteToken {
   id          Int       @id @default(autoincrement())
-  token       String    @unique
+  tokenHash       String    @unique @map("token") // a SHA-256 hex digest, never the raw token
   userId      Int
   user        User      @relation("InviteUser", fields: [userId], references: [id], onDelete: Cascade)
   invitedById Int
@@ -255,7 +255,7 @@ model RefreshToken {
 
 model PasswordResetToken {
   id        Int       @id @default(autoincrement())
-  token     String    @unique
+  tokenHash     String    @unique @map("token") // a SHA-256 hex digest, never the raw token
   userId    Int
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime @db.Timestamptz(3)

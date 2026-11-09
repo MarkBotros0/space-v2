@@ -115,7 +115,7 @@ describe("POST /users/:id/invite — never leaves the person without a working c
 
     const raw = mockSendInviteEmail.mock.calls[0][1] as string;
     expect(mockDb.inviteToken.updateMany).toHaveBeenCalledTimes(1);
-    expect(mockDb.inviteToken.updateMany.mock.calls[0][0].where).toEqual({ token: hashToken(raw), usedAt: null });
+    expect(mockDb.inviteToken.updateMany.mock.calls[0][0].where).toEqual({ tokenHash: hashToken(raw), usedAt: null });
   });
 
   it("expires the older live invites only after the mail went", async () => {
@@ -164,7 +164,7 @@ describe("POST /users", () => {
     const raw = mockSendInviteEmail.mock.calls[0][1] as string;
     // issueInvite's prior-expiry, then the withdrawal of the undelivered code.
     expect(mockDb.inviteToken.updateMany).toHaveBeenLastCalledWith({
-      where: { token: hashToken(raw), usedAt: null },
+      where: { tokenHash: hashToken(raw), usedAt: null },
       data: { expiresAt: expect.any(Date) },
     });
   });

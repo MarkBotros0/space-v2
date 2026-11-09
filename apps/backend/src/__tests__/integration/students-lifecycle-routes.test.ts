@@ -52,18 +52,18 @@ describe("POST /api/v1/students — credentials only via Plan 9's invite (Plan 1
 
     const row = await db.user.findUnique({
       where: { id: res.body.data.id },
-      select: { passwordHash: true, invitesReceived: { select: { token: true, usedAt: true } } },
+      select: { passwordHash: true, invitesReceived: { select: { tokenHash: true, usedAt: true } } },
     });
     // D7: still no password — the invite is the ONLY credential path.
     expect(row?.passwordHash).toBeNull();
     expect(row?.invitesReceived).toHaveLength(1);
-    expect(row?.invitesReceived[0]?.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(row?.invitesReceived[0]?.tokenHash).toMatch(/^[0-9a-f]{64}$/);
     expect(row?.invitesReceived[0]?.usedAt).toBeNull();
 
     const calls = mockSendInviteEmail.mock.calls as [string, string, Date][];
     const call = calls[calls.length - 1]!;
     expect(call[0]).toBe(email);
-    expect(hashToken(call[1])).toBe(row?.invitesReceived[0]?.token);
+    expect(hashToken(call[1])).toBe(row?.invitesReceived[0]?.tokenHash);
     // The raw code is in no response body.
     expect(JSON.stringify(res.body)).not.toContain(call[1]);
   });

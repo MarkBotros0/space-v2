@@ -34,7 +34,7 @@ export async function seedSuperScenario({ user, superUser, student, season }: Sw
     data: {
       // Only a digest is ever stored; nobody holds the raw token, so the invite
       // can't be accepted, only shown.
-      token: createHash("sha256").update("sweep-invite-ivy").digest("hex"),
+      tokenHash: createHash("sha256").update("sweep-invite-ivy").digest("hex"),
       userId: invited.id,
       invitedById: superUser.id,
       expiresAt: fromToday(5),

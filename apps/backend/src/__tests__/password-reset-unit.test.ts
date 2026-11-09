@@ -51,8 +51,8 @@ describe("expireLiveResetTokens / issuePasswordReset", () => {
     expect(raw).toMatch(/^[0-9a-f]{64}$/);
     expect(mockDb.passwordResetToken.updateMany).toHaveBeenCalledTimes(1);
     const data = mockDb.passwordResetToken.create.mock.calls[0][0].data;
-    expect(data).toMatchObject({ token: hashToken(raw), userId: 7 });
-    expect(data.token).not.toBe(raw);
+    expect(data).toMatchObject({ tokenHash: hashToken(raw), userId: 7 });
+    expect(data.tokenHash).not.toBe(raw);
     expect(Math.abs(expiresAt.getTime() - (Date.now() + PASSWORD_RESET_TTL_MS))).toBeLessThan(5000);
     const expireOrder = mockDb.passwordResetToken.updateMany.mock.invocationCallOrder[0] ?? Infinity;
     const createOrder = mockDb.passwordResetToken.create.mock.invocationCallOrder[0] ?? -1;
@@ -142,7 +142,7 @@ describe("completePasswordReset", () => {
   it("sets a bcrypt hash, expires other reset/invite tokens and revokes every session", async () => {
     mockDb.passwordResetToken.findUnique.mockResolvedValue(live);
     await expect(completePasswordReset("raw", "NewPassw0rd!")).resolves.toBe("ok");
-    expect(mockDb.passwordResetToken.findUnique.mock.calls[0][0].where).toEqual({ token: hashToken("raw") });
+    expect(mockDb.passwordResetToken.findUnique.mock.calls[0][0].where).toEqual({ tokenHash: hashToken("raw") });
     const { passwordHash } = mockDb.user.update.mock.calls[0][0].data;
     expect(passwordHash).not.toBe("NewPassw0rd!");
     expect(await bcrypt.compare("NewPassw0rd!", passwordHash)).toBe(true);

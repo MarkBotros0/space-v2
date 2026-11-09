@@ -56,11 +56,11 @@ describe("POST /api/v1/users — creation issues credentials to no one (D2)", ()
 
     const invite = await db.inviteToken.findFirst({
       where: { userId: res.body.data.userId },
-      select: { token: true, usedAt: true },
+      select: { tokenHash: true, usedAt: true },
     });
     expect(invite).not.toBeNull();
     // Digest at rest: 64 lowercase hex chars, not a 32-char raw code.
-    expect(invite?.token).toMatch(/^[0-9a-f]{64}$/);
+    expect(invite?.tokenHash).toMatch(/^[0-9a-f]{64}$/);
     expect(invite?.usedAt).toBeNull();
 
     // And the response carried no credential of any kind.
@@ -70,7 +70,7 @@ describe("POST /api/v1/users — creation issues credentials to no one (D2)", ()
     const calls = mockSendInviteEmail.mock.calls as [string, string, Date][];
     const call = calls[calls.length - 1]!;
     expect(call[0]).toBe(email);
-    expect(hashToken(call[1])).toBe(invite?.token);
+    expect(hashToken(call[1])).toBe(invite?.tokenHash);
     expect(JSON.stringify(res.body)).not.toContain(call[1]);
   });
 
@@ -175,7 +175,7 @@ describe("POST /api/v1/auth/accept-invite", () => {
     const expiredTarget = await createUnactivatedTestUser("expired", "STUDENT");
     const expired = await issueInvite(db, expiredTarget.id, superUser.id);
     await db.inviteToken.updateMany({
-      where: { token: hashToken(expired.raw) },
+      where: { tokenHash: hashToken(expired.raw) },
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
 
@@ -201,9 +201,9 @@ describe("POST /api/v1/auth/accept-invite", () => {
     const row = await db.inviteToken.findFirst({
       where: { userId: target.id },
       orderBy: { createdAt: "desc" },
-      select: { token: true },
+      select: { tokenHash: true },
     });
-    expect(row?.token).not.toBe(raw);
-    expect(row?.token).toBe(hashToken(raw));
+    expect(row?.tokenHash).not.toBe(raw);
+    expect(row?.tokenHash).toBe(hashToken(raw));
   });
 });
