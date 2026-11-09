@@ -459,6 +459,7 @@ model Session {
   videoProgress  SessionVideoProgress[]
 
   @@index([seasonId, startsAt])
+  @@index([startsAt])
   @@index([recurrenceGroupId])
 }
 

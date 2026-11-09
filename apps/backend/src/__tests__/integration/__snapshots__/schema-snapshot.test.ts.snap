@@ -592,6 +592,7 @@ exports[`database schema has exactly these indexes 1`] = `
   "CREATE UNIQUE INDEX "Session_pkey" ON public."Session" USING btree (id)",
   "CREATE INDEX "Session_recurrenceGroupId_idx" ON public."Session" USING btree ("recurrenceGroupId")",
   "CREATE INDEX "Session_seasonId_startsAt_idx" ON public."Session" USING btree ("seasonId", "startsAt")",
+  "CREATE INDEX "Session_startsAt_idx" ON public."Session" USING btree ("startsAt")",
   "CREATE UNIQUE INDEX "SessionVideoProgress_pkey" ON public."SessionVideoProgress" USING btree (id)",
   "CREATE UNIQUE INDEX "SessionVideoProgress_sessionId_studentUserId_key" ON public."SessionVideoProgress" USING btree ("sessionId", "studentUserId")",
   "CREATE UNIQUE INDEX "SessionVideoQuestion_pkey" ON public."SessionVideoQuestion" USING btree (id)",
