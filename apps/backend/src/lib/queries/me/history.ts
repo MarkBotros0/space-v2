@@ -4,6 +4,7 @@ import { orgDayKey } from "../../org-time";
 import type { SeasonOutcome } from "../../../../../../packages/shared/src/season-lifecycle";
 import { attendancePct } from "../attendance-pct";
 import { outcomeOf } from "./outcome";
+import { liveSeason } from "../../db/live";
 
 /*
  * Season history: past enrolments only (anything not ACTIVE), for students and
@@ -38,7 +39,7 @@ export async function loadSeasonHistory(user: SessionUser): Promise<SeasonHistor
       status: { not: "ACTIVE" },
       // Deleted: spec 02 D2 (diverges from v1 R38). DRAFT: being taken off a draft's
       // roster is not a season the student finished or left.
-      season: { deletedAt: null, status: { not: "DRAFT" } },
+      season: { ...liveSeason, status: { not: "DRAFT" } },
     },
     orderBy: { enrolledAt: "desc" },
     select: {

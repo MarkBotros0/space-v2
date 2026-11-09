@@ -6,8 +6,9 @@ import {
 } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk } from "../../lib/api-response";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
+import { parseOr400 } from "../../lib/http/validate";
 
 export const mePreferencesRouter = Router();
 
@@ -57,15 +58,13 @@ mePreferencesRouter.get("/notification-preferences", requireAuth, async (req, re
 mePreferencesRouter.put("/notification-preferences", requireAuth, async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationPreferencesSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return apiError(res, "bad_request", "Every notification preference is required.", 400);
-  }
+  const parsed = parseOr400(notificationPreferencesSchema, req.body, res, "Every notification preference is required.");
+  if (parsed === null) return;
 
   const preferences = await db.notificationPreference.upsert({
     where: { userId: user.userId },
-    update: parsed.data,
-    create: { userId: user.userId, ...parsed.data },
+    update: parsed,
+    create: { userId: user.userId, ...parsed },
     select: PREFERENCE_SELECT,
   });
 

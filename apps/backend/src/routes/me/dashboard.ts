@@ -6,6 +6,7 @@ import { staffScopeForSeason } from "../../lib/permissions";
 import { loadMentorDashboard, loadSeasonStaffDashboard, loadStudentDashboard } from "../../lib/queries/dashboard";
 import { isAlumnusNotStudying } from "../../lib/rbac";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
+import { notFound } from "../../lib/http/not-found";
 
 export const meDashboardRouter = Router();
 
@@ -37,6 +38,6 @@ meDashboardRouter.get("/dashboard", requireAuth, async (req, res) => {
   if (scope === null) return forbidden(res);
 
   const dashboard = await loadSeasonStaffDashboard(user, seasonId, scope, now);
-  if (!dashboard) return apiError(res, "not_found", "Season not found.", 404);
+  if (!dashboard) return notFound(res, "Season");
   return apiOk(res, dashboard);
 });

@@ -1,6 +1,7 @@
 import { db } from "../../../db/client";
 import { dayFromDate } from "../../org-time";
 import { currentSeasonEnrollmentSelect } from "../students/current-season";
+import { liveUser } from "../../db/live";
 
 // ---------------------------------------------------------------------------
 // Own profile — v1 app/student/profile/page.tsx, app/alumni/profile/page.tsx
@@ -25,7 +26,7 @@ interface MyProfileRow {
  */
 export async function loadMyProfile(userId: number): Promise<MyProfileRow | null> {
   const row = await db.user.findFirst({
-    where: { id: userId, deletedAt: null },
+    where: { id: userId, ...liveUser },
     select: {
       name: true,
       email: true,

@@ -6,9 +6,10 @@ import {
   deviceUnregistrationSchema,
 } from "../../../../../packages/shared/src/index";
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk } from "../../lib/api-response";
 import { makeLimiter } from "../../lib/rate-limit";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
+import { parseOr400 } from "../../lib/http/validate";
 
 /**
  * This device's Expo push token, mounted under /api/v1/me.
@@ -23,15 +24,15 @@ export const meDevicesRouter = Router();
  * notifying both people. Calling it again just bumps `lastSeenAt`.
  */
 meDevicesRouter.post("/devices", requireAuth, async (req, res) => {
-  const parsed = deviceRegistrationSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid device registration.", 400);
+  const parsed = parseOr400(deviceRegistrationSchema, req.body, res, "Invalid device registration.");
+  if (parsed === null) return;
 
   const user = requireUser(req);
-  const platform = DEVICE_PLATFORM_TO_DB[parsed.data.platform];
+  const platform = DEVICE_PLATFORM_TO_DB[parsed.platform];
   await db.deviceToken.upsert({
-    where: { token: parsed.data.token },
+    where: { token: parsed.token },
     update: { userId: user.userId, platform, lastSeenAt: new Date() },
-    create: { userId: user.userId, token: parsed.data.token, platform },
+    create: { userId: user.userId, token: parsed.token, platform },
   });
   return apiOk(res, { registered: true });
 });
@@ -56,9 +57,9 @@ const unregisterLimiter = makeLimiter({
 export const devicesRouter = Router();
 
 devicesRouter.post("/unregister", unregisterLimiter, async (req, res) => {
-  const parsed = deviceUnregistrationSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid device token.", 400);
+  const parsed = parseOr400(deviceUnregistrationSchema, req.body, res, "Invalid device token.");
+  if (parsed === null) return;
 
-  await db.deviceToken.deleteMany({ where: { token: parsed.data.token } });
+  await db.deviceToken.deleteMany({ where: { token: parsed.token } });
   return apiOk(res, { unregistered: true });
 });

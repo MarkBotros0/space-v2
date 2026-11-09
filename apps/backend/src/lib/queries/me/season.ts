@@ -3,6 +3,7 @@ import type { SeasonStatus } from "../../../generated/prisma/enums";
 import type { SessionUser } from "../../auth/tokens";
 import { orgDayKey } from "../../org-time";
 import { loadSeasonProgress } from "../sessions";
+import { liveSeason, liveUser } from "../../db/live";
 
 /*
  * The student's own reads. Every function takes the SessionUser and reads
@@ -42,7 +43,7 @@ export async function loadMySeason(user: SessionUser, now: Date = new Date()): P
 
   const season = await db.season.findFirst({
     // Spec 02 D2: v1 R27 showed a soft-deleted season to its students.
-    where: { id: seasonId, deletedAt: null },
+    where: { id: seasonId, ...liveSeason },
     select: { id: true, code: true, title: true, description: true, status: true, startDate: true, endDate: true },
   });
   if (!season) return null;
@@ -81,7 +82,7 @@ export async function loadMySeason(user: SessionUser, now: Date = new Date()): P
   // groupListItemSchema.studentCount uses (C9), so the two never disagree.
   const members = group
     ? await db.seasonEnrollment.findMany({
-        where: { seasonId, groupId: group.id, status: "ACTIVE", studentUser: { deletedAt: null } },
+        where: { seasonId, groupId: group.id, status: "ACTIVE", studentUser: liveUser },
         orderBy: { studentUser: { name: "asc" } },
         select: { studentUser: { select: { id: true, name: true } } },
       })

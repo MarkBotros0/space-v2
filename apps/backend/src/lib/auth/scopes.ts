@@ -3,6 +3,7 @@ import type { SeasonStatus, UserRole } from "@space/shared";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { liveSeasonStatus } from "../seasons/status";
+import { liveSeason } from "../db/live";
 
 export interface Scopes {
   seasonAdminIds: number[];
@@ -14,7 +15,7 @@ export interface Scopes {
 /** A season that still grants its people anything. */
 const LIVE_SEASON = {
   status: liveSeasonStatus,
-  deletedAt: null,
+  ...liveSeason,
 };
 
 /** The two roles `User.role` still decides, and no season row can change. */
@@ -64,7 +65,7 @@ async function readGrants(userIds: number[], client: Prisma.TransactionClient = 
       where: {
         studentUserId: { in: userIds },
         status: "ACTIVE",
-        season: { status: "ACTIVE", deletedAt: null },
+        season: { status: "ACTIVE", ...liveSeason },
       },
       orderBy: [{ enrolledAt: "desc" }, { id: "desc" }],
       select: { studentUserId: true, seasonId: true },

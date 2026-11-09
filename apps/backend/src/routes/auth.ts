@@ -23,6 +23,7 @@ import { makeLimiter } from "../lib/rate-limit";
 import { apiOk, apiError } from "../lib/api-response";
 import { runInBackground } from "../lib/background";
 import { config } from "../lib/config";
+import { parseOr400 } from "../lib/http/validate";
 
 const authLimiter = makeLimiter({ name: "auth", limit: 20 });
 const refreshLimiter = makeLimiter({ name: "refresh", limit: 60 });
@@ -38,12 +39,10 @@ const acceptInviteLimiter = makeLimiter({
 export const authRouter = Router();
 
 authRouter.post("/login", authLimiter, async (req, res) => {
-  const parsed = loginRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return apiError(res, "bad_request", "Email and password are required.", 400);
-  }
+  const parsed = parseOr400(loginRequestSchema, req.body, res, "Email and password are required.");
+  if (parsed === null) return;
 
-  const verified = await verifyCredentials(parsed.data.email, parsed.data.password);
+  const verified = await verifyCredentials(parsed.email, parsed.password);
   if (!verified) {
     return apiError(res, "invalid_credentials", "Incorrect email or password.", 401);
   }
@@ -72,10 +71,10 @@ const NO_ACCOUNT_MESSAGE = "To sign in with Google, first set up your account wi
 authRouter.post("/google", authLimiter, async (req, res) => {
   if (config.googleClientIds.length === 0) return apiError(res, "not_found", "Not found.", 404);
 
-  const parsed = googleSignInRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "A Google ID token is required.", 400);
+  const parsed = parseOr400(googleSignInRequestSchema, req.body, res, "A Google ID token is required.");
+  if (parsed === null) return;
 
-  const identity = await verifyGoogleIdToken(parsed.data.idToken, config.googleClientIds);
+  const identity = await verifyGoogleIdToken(parsed.idToken, config.googleClientIds);
   if (!identity) {
     return apiError(res, "invalid_google_token", "Google couldn't confirm this sign-in. Try again.", 400);
   }
@@ -92,12 +91,10 @@ authRouter.post("/google", authLimiter, async (req, res) => {
 });
 
 authRouter.post("/refresh", refreshLimiter, async (req, res) => {
-  const parsed = refreshRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return apiError(res, "bad_request", "refreshToken is required.", 400);
-  }
+  const parsed = parseOr400(refreshRequestSchema, req.body, res, "refreshToken is required.");
+  if (parsed === null) return;
 
-  const session = await rotateRefreshToken(parsed.data.refreshToken);
+  const session = await rotateRefreshToken(parsed.refreshToken);
   if (!session) {
     return apiError(res, "invalid_token", "Refresh token is invalid or expired.", 401);
   }
@@ -114,15 +111,13 @@ authRouter.post("/refresh", refreshLimiter, async (req, res) => {
 // once per session, so rate limiting costs nothing and closes a cheap
 // write-amplification vector v1 left open.
 authRouter.post("/logout", refreshLimiter, async (req, res) => {
-  const parsed = refreshRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return apiError(res, "bad_request", "refreshToken is required.", 400);
-  }
+  const parsed = parseOr400(refreshRequestSchema, req.body, res, "refreshToken is required.");
+  if (parsed === null) return;
 
   // revokeRefreshToken uses updateMany, so an unknown or already-revoked token
   // is a no-op. Returning 200 either way means logout is idempotent and never
   // discloses whether a token existed.
-  await revokeRefreshToken(parsed.data.refreshToken);
+  await revokeRefreshToken(parsed.refreshToken);
   return apiOk(res, { ok: true });
 });
 
@@ -131,15 +126,18 @@ authRouter.post("/logout", refreshLimiter, async (req, res) => {
 // sits behind a strict limiter: an unauthenticated write against a
 // guessable surface (spec 11 §7 note on the anonymous endpoints).
 authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
-  const parsed = acceptInviteRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return apiError(res, "bad_request", "A token and a password of at least 8 characters are required.", 400);
-  }
+  const parsed = parseOr400(
+    acceptInviteRequestSchema,
+    req.body,
+    res,
+    "A token and a password of at least 8 characters are required.",
+  );
+  if (parsed === null) return;
 
   // ONE opaque refusal for every failure mode — unknown, used, expired,
   // already-activated target, deactivated target. v1 disclosed which (R27);
   // the distinction belongs in server-side behaviour only (D5 rec 3).
-  if (!(await acceptInvite(parsed.data.token, parsed.data.password))) {
+  if (!(await acceptInvite(parsed.token, parsed.password))) {
     return apiError(res, "invalid_invite", "This invite is invalid or has expired.", 400);
   }
   return apiOk(res, { ok: true });
@@ -162,11 +160,9 @@ const resetPasswordLimiter = makeLimiter({
  * reveal whether the address exists either (R69). v1 had no limiter here.
  */
 authRouter.post("/forgot-password", forgotPasswordLimiter, (req, res) => {
-  const parsed = forgotPasswordRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return apiError(res, "bad_request", "A valid email is required.", 400);
-  }
-  runInBackground("password-reset", requestPasswordReset(parsed.data.email));
+  const parsed = parseOr400(forgotPasswordRequestSchema, req.body, res, "A valid email is required.");
+  if (parsed === null) return;
+  runInBackground("password-reset", requestPasswordReset(parsed.email));
   return apiOk(res, { ok: true });
 });
 
@@ -178,16 +174,16 @@ authRouter.post("/forgot-password", forgotPasswordLimiter, (req, res) => {
  * password never consumes a token.
  */
 authRouter.post("/reset-password", resetPasswordLimiter, async (req, res) => {
-  const parsed = resetPasswordRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
+  const checked = resetPasswordRequestSchema.safeParse(req.body);
+  if (!checked.success) {
     return apiError(
       res,
       "bad_request",
-      parsed.error.issues[0]?.message ?? "A reset code and a valid password are required.",
+      checked.error.issues[0]?.message ?? "A reset code and a valid password are required.",
       400,
     );
   }
-  const outcome = await completePasswordReset(parsed.data.token, parsed.data.password);
+  const outcome = await completePasswordReset(checked.data.token, checked.data.password);
   if (outcome === "invalid") {
     return apiError(res, "invalid_reset_token", "This reset code is invalid or has expired. Request a new one.", 400);
   }

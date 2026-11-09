@@ -4,6 +4,7 @@ import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { loadMyAttendance, loadMySeason, loadSeasonHistory, loadSeasonRecord } from "../../lib/queries/me";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
+import { notFound } from "../../lib/http/not-found";
 
 /** The student's own season reads, mounted under /api/v1/me. */
 export const meSeasonReadsRouter = Router();
@@ -26,7 +27,7 @@ meSeasonReadsRouter.get("/seasons/:seasonId", requireAuth, async (req, res) => {
   if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
   const seasonId = parseId(req.params.seasonId);
   const record = seasonId === null ? null : await loadSeasonRecord(user, seasonId);
-  if (!record) return apiError(res, "not_found", "Season not found.", 404);
+  if (!record) return notFound(res, "Season");
   return apiOk(res, { record });
 });
 

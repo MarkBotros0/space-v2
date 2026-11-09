@@ -5,6 +5,7 @@ import { listAssignmentStatesForStudent } from "../assignments";
 import { attendancePct } from "../attendance-pct";
 import { studentAttemptStatus } from "../../quiz-results";
 import { outcomeOf } from "./outcome";
+import { liveSeason } from "../../db/live";
 
 /*
  * One past season, read-only, for the student it belongs to. Built from the
@@ -25,7 +26,7 @@ export async function loadSeasonRecord(
       studentUserId: user.userId,
       seasonId,
       status: { not: "ACTIVE" },
-      season: { deletedAt: null, status: { not: "DRAFT" } },
+      season: { ...liveSeason, status: { not: "DRAFT" } },
     },
     select: {
       status: true,

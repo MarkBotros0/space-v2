@@ -4,6 +4,7 @@ import type { SessionUser } from "../../auth/tokens";
 import { costMinutesFor, streakFrom, type AttendanceBudget } from "../../attendance-budget";
 import { orgDayKey, orgWallTime } from "../../org-time";
 import { computeAttendanceBudget } from "../attendance-budget";
+import { liveSeason } from "../../db/live";
 
 // ---------------------------------------------------------------------------
 // Attendance — v1 app/student/attendance/page.tsx:44-72 + engagement streak
@@ -33,7 +34,7 @@ export async function loadMyAttendance(user: SessionUser, now: Date = new Date()
   if (user.activeSeasonId === null) return none; // R93
 
   const season = await db.season.findFirst({
-    where: { id: user.activeSeasonId, deletedAt: null },
+    where: { id: user.activeSeasonId, ...liveSeason },
     select: { id: true, title: true, absenceBudgetMinutes: true, absenceWeightMinutes: true },
   });
   if (!season) return none;

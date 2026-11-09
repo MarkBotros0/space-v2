@@ -8,6 +8,7 @@ import { loadMyProfile } from "../../lib/queries/me";
 import { isAlumnusNotStudying } from "../../lib/rbac";
 import { saveOwnProfile } from "../../lib/me/account";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
+import { notFound } from "../../lib/http/not-found";
 
 export const meProfileRouter = Router();
 
@@ -19,7 +20,7 @@ meProfileRouter.get("/profile", requireAuth, async (req, res) => {
   const user = requireUser(req);
   if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
   const profile = await loadMyProfile(user.userId);
-  if (!profile) return apiError(res, "not_found", "Profile not found.", 404);
+  if (!profile) return notFound(res, "Profile");
   return apiOk(res, { profile });
 });
 
@@ -56,11 +57,11 @@ meProfileRouter.patch("/profile", requireAuth, async (req, res) => {
   if (!parsed.success) {
     return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid profile body.", 400);
   }
-  if (!(await loadMyProfile(user.userId))) return apiError(res, "not_found", "Profile not found.", 404);
+  if (!(await loadMyProfile(user.userId))) return notFound(res, "Profile");
 
   await saveOwnProfile(user.userId, parsed.data);
 
   const profile = await loadMyProfile(user.userId);
-  if (!profile) return apiError(res, "not_found", "Profile not found.", 404);
+  if (!profile) return notFound(res, "Profile");
   return apiOk(res, { profile });
 });

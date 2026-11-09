@@ -12,6 +12,7 @@ import type { BulkInviteResponse } from "@space/shared";
 // Relative, not "@space/shared": a VALUE import (ruling X12 — the rootDir emit trap).
 import { BULK_INVITE_BATCH_SIZE } from "../../../../packages/shared/src/index";
 import { MS_PER_HOUR } from "./org-time";
+import { liveUser } from "./db/live";
 
 type InviteWriter = Pick<typeof db, "inviteToken">;
 
@@ -144,7 +145,7 @@ export function isV2InviteDigest(token: string): boolean {
 }
 
 /** v1's invitability filter (spec 11 R14), unchanged. */
-const INVITABLE_USER_WHERE = { deletedAt: null, passwordHash: null, lastLoginAt: null } as const;
+const INVITABLE_USER_WHERE = { ...liveUser, passwordHash: null, lastLoginAt: null } as const;
 
 /**
  * Ids of every account the bulk button would reach, oldest first: invitable
