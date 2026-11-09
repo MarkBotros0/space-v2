@@ -573,7 +573,7 @@ route now, a tab for no role).
   and MENTOR are permanent and ignore season rows. Never gate on the stored role for staff.
 - **`lib/roles` guards every seat write**: `activeRolesFor` reads a person's one active role,
   `lockPeople` / `lockSeason` take the row locks, and the refusal helpers (`seatRefusal`,
-  `checkStudentSeat`, ...) answer 409 with the reason in words. Lock order is **Season, then
+  `seatStudents`, `newPersonRefusal`, ...) answer 409 with the reason in words. Lock order is **Season, then
   People, then rows**, always; a new seat-writing path takes them in that order inside its
   transaction. That covers every enrolment-status write: a drop refuses a finished season
   (`season_finished`) and a draft (`season_draft`; Remove is the way off a draft), and updates only

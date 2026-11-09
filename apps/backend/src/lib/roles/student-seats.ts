@@ -60,22 +60,6 @@ async function decide(
   return null;
 }
 
-/**
- * Why this person can't be newly seated as a student here, or null. Call it
- * after `lockPeople`, with a person row read after the lock. It doesn't look at
- * a row they already hold in this season; `seatStudents` does.
- */
-export async function checkStudentSeat(
-  tx: Prisma.TransactionClient,
-  person: SeatPerson,
-  season: StudentSeatSeason,
-  options: StudentSeatOptions,
-): Promise<SeatRefusal | null> {
-  const active = await activeRolesFor(tx, [person.id]);
-  const standings = await loadStandings(tx, [person.id], season);
-  return decide(tx, person, season, active.get(person.id), standings.get(person.id)!, options);
-}
-
 /** The same check for an account that doesn't exist yet: no history and no role. */
 export async function newPersonRefusal(
   tx: Prisma.TransactionClient,

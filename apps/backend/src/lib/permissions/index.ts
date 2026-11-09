@@ -20,7 +20,7 @@ export { canAccessGroup } from "./group";
 export { canGradeQuiz, canManageQuiz } from "./quiz";
 export { canReviewSubmission, canViewSubmission, isHiddenDraft, submissionQueueScopeFor } from "./submission";
 export { canEditStudent, canViewStudent, staffRosterWhere, type StaffRoster } from "./student";
-export { canEditNote, canViewNote, canWriteNote, noteSeasonWhere, noteVisibilityWhere } from "./note";
+export { canEditNote, canWriteNote, noteSeasonWhere, noteVisibilityWhere } from "./note";
 export { canCommentOnForumSubmission, canDeleteForumComment, forumAudienceFor, type ForumAudience } from "./forum";
 export { canExportSeasonWorkbook, reportScopeFor, type ReportScope } from "./report";
 export {

@@ -3,7 +3,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isMentor, isSuper } from "../rbac";
 import { readableSeasonIds } from "../queries/students/history";
-import { canViewStudent, staffRosterIncludes } from "./student";
+import { staffRosterIncludes } from "./student";
 
 /**
  * NoteVisibility literal → the single role that matches it.
@@ -75,26 +75,6 @@ async function noteSeasonReadable(
 ): Promise<boolean> {
   if (note.seasonId === null || isSuper(user) || isMentor(user)) return true;
   return (await readableSeasonIds(user, note.studentUserId)).includes(note.seasonId);
-}
-
-/**
- * May this caller read this specific note?
- *
- * Every gate, in order: the visibility rule on the note, then canViewStudent on
- * its subject, then the season rule. v1 had the first two as independent implicit
- * checks neither of which knew about the other (R39), each called by hand in a page.
- */
-export async function canViewNote(user: SessionUser, noteId: number): Promise<boolean> {
-  const scope = noteVisibilityWhere(user);
-  if (scope === null) return false;
-
-  const note = await db.engagementNote.findFirst({
-    where: { AND: [{ id: noteId }, scope] },
-    select: { studentUserId: true, seasonId: true },
-  });
-  if (!note) return false;
-  if (!(await canViewStudent(user, note.studentUserId))) return false;
-  return noteSeasonReadable(user, note);
 }
 
 /**

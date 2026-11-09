@@ -4,7 +4,7 @@
 import request from "supertest";
 
 import { db } from "../../db/client";
-import { checkStudentSeat, readSeatSeason, seatStudents } from "../../lib/roles";
+import { readSeatSeason, seatStudents } from "../../lib/roles";
 import { createTestUser, testEmail } from "./fixtures";
 import {
   add,
@@ -280,20 +280,30 @@ describe("POST /seasons/:id/enrollments/:userId/override", () => {
   });
 });
 
-describe("checkStudentSeat", () => {
+describe("seatStudents overrides", () => {
   it("lifts a block only for an override by a super, and never lifts a role", async () => {
     const target = await readySeason("LEAD 2027");
     const sara = await person("Sara");
     await finishedGbv(sara.id, "NOT_PASSED");
-    const check = (overridden: boolean, actorMayOverride: boolean) =>
-      db.$transaction(async (tx) => {
-        const row = await tx.user.findUniqueOrThrow({
-          where: { id: sara.id },
-          select: { id: true, name: true, role: true, graduationYear: true, deletedAt: true },
+    // Each check runs in a transaction rolled back after the decision, so a
+    // successful seat doesn't turn the next check into "already in this season".
+    const rollback = new Error("rollback");
+    const check = async (overridden: boolean, actorMayOverride: boolean) => {
+      let refusal: unknown;
+      await db
+        .$transaction(async (tx) => {
+          const seatSeason = (await readSeatSeason(tx, target))!;
+          const { refused } = await seatStudents(tx, seatSeason, [sara.id], {
+            override: { userIds: overridden ? [sara.id] : [], actorId: sara.id, actorMayOverride },
+          });
+          refusal = refused[0]?.refusal ?? null;
+          throw rollback;
+        })
+        .catch((e: unknown) => {
+          if (e !== rollback) throw e;
         });
-        const seatSeason = (await readSeatSeason(tx, target))!;
-        return checkStudentSeat(tx, row, seatSeason, { overridden, actorMayOverride });
-      });
+      return refusal;
+    };
     const notEligible = { code: "not_eligible", message: "Sara did not pass GBV 2026" };
     expect(await check(false, true)).toEqual(notEligible);
     expect(await check(true, false)).toEqual(notEligible);

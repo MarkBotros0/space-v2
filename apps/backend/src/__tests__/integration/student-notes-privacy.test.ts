@@ -2,7 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { canViewNote, noteVisibilityWhere } from "../../lib/permissions";
+import { noteVisibilityWhere } from "../../lib/permissions";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(60000);
@@ -198,6 +198,5 @@ describe("the pastoral-note surfaces refuse a student outright (REG-97)", () => 
       graduationYear: null,
     };
     expect(noteVisibilityWhere(student)).toBeNull();
-    expect(await canViewNote(student, noteId)).toBe(false);
   });
 });
