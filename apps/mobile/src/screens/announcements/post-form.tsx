@@ -5,6 +5,7 @@ import {
   createAnnouncementRequestSchema,
   updateAnnouncementRequestSchema,
   type AnnouncementTargetsResponse,
+  type AnnouncementPoll,
   type CreateAnnouncementRequest,
   type PollInput,
   type UpdateAnnouncementRequest,
@@ -24,7 +25,9 @@ import {
   Textarea,
 } from "../../design/ui";
 import { PillButton } from "../../design/ui/pill-button";
+import { ConfirmEditSheet } from "./confirm-edit-sheet";
 import { ConfirmPostSheet } from "./confirm-post-sheet";
+import { editWarnings } from "./poll/edit-warnings";
 import { EMPTY_POLL, PollEditor, pollErrors, type PollErrors } from "./poll/poll-editor";
 
 /** The counter shows once the message is this long. */
@@ -69,6 +72,12 @@ type Props = {
       mode: "edit";
       /** Edit: where it went, read-only. */
       toLabel: string;
+      /** The poll as saved, with its counts: what an edit is warned against. */
+      currentPoll?: AnnouncementPoll | null;
+      /** The server's count when it refused with `poll_votes_lost`: reopens the sheet. */
+      serverLostVotes?: number | null;
+      /** The sheet was cancelled after a server refusal. */
+      onDismissVoteLoss?: () => void;
       onSubmit: (request: UpdateAnnouncementRequest) => void;
     }
 );
@@ -92,9 +101,16 @@ export function PostForm(props: Props) {
   const pickSeason = toSeason && seasons.length > 1;
 
   // A failed post closes the confirm so its message, above the fields, is what shows.
+  const serverLost = props.mode === "edit" ? (props.serverLostVotes ?? null) : null;
+  // Kept after the retry starts, so the sheet's words don't flip back while it saves.
+  const [lostSeen, setLostSeen] = useState<number | null>(null);
   useEffect(() => {
-    if (error) setConfirming(false);
-  }, [error]);
+    if (serverLost !== null) {
+      setConfirming(true);
+      setLostSeen(serverLost);
+    }
+    else if (error) setConfirming(false);
+  }, [error, serverLost]);
 
   const toLabel = props.mode === "edit" ? props.toLabel : toSeason ? (chosen?.title ?? "") : "Everyone";
   const reach = toSeason ? (chosen?.reach ?? 0) : (targets?.communityReach ?? 0);
@@ -122,10 +138,14 @@ export function PostForm(props: Props) {
     return parsed.success ? parsed.data : null;
   }
 
+  const warnings = props.mode === "edit" ? editWarnings(props.currentPoll ?? null, poll) : null;
+
   function submit(): void {
     if (props.mode === "edit") {
       const update = buildUpdate();
-      if (update !== null) props.onSubmit(update);
+      if (update === null) return;
+      if (warnings !== null && warnings.lines.length > 0) setConfirming(true);
+      else props.onSubmit(update);
       return;
     }
     if (buildRequest() !== null) setConfirming(true);
@@ -196,6 +216,26 @@ export function PostForm(props: Props) {
           <PillButton label="Add a poll" onPress={() => setPoll(EMPTY_POLL)} className="self-start" />
         )}
       </View>
+
+      {props.mode === "edit" ? (
+        <ConfirmEditSheet
+          open={confirming}
+          lines={warnings?.lines ?? []}
+          serverLostVotes={serverLost ?? lostSeen}
+          pending={pending}
+          onClose={() => {
+            setConfirming(false);
+            setLostSeen(null);
+            props.onDismissVoteLoss?.();
+          }}
+          onConfirm={() => {
+            const update = buildUpdate();
+            if (update === null) return;
+            const confirm = serverLost !== null || lostSeen !== null || warnings?.losesVotes === true;
+            props.onSubmit(confirm ? { ...update, confirmVoteLoss: true } : update);
+          }}
+        />
+      ) : null}
 
       {targets ? (
         <ConfirmPostSheet

@@ -4,7 +4,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState } from "../../../../src/design/ui";
 import { useAnnouncement, useUpdateAnnouncement } from "../../../../src/hooks/use-announcements";
-import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { apiErrorMessage, pollVotesLost } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { PostForm } from "../../../../src/screens/announcements/post-form";
 
@@ -15,6 +15,8 @@ export default function EditAnnouncementScreen() {
   const id = parsePositiveInt(raw);
   const post = useAnnouncement(id);
   const update = useUpdateAnnouncement(id ?? 0);
+
+  const lost = update.isError ? pollVotesLost(update.error) : null;
 
   const cannotEdit = (
     <Screen title="Edit announcement">
@@ -41,8 +43,11 @@ export default function EditAnnouncementScreen() {
           ? { allowsMultiple: data.poll.allowsMultiple, options: data.poll.options.map((o) => ({ id: o.id, label: o.label })) }
           : null,
       }}
+      currentPoll={data.poll}
+      serverLostVotes={lost}
+      onDismissVoteLoss={() => update.reset()}
       pending={update.isPending}
-      error={update.isError ? apiErrorMessage(update.error, "Couldn't save. Try again.") : null}
+      error={update.isError && lost === null ? apiErrorMessage(update.error, "Couldn't save. Try again.") : null}
       onSubmit={(request) => update.mutate(request, { onSuccess: () => router.back() })}
     />
   );
