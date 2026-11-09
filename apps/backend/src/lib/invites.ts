@@ -1,5 +1,7 @@
 import { randomBytes } from "node:crypto";
 
+import bcrypt from "bcryptjs";
+
 import { db } from "../db/client";
 import type { Prisma } from "../generated/prisma/client";
 import { hashToken } from "./auth/tokens";
@@ -245,4 +247,38 @@ export async function sendPendingInviteBatch(
   failed += delivered.length - sent;
   const remaining = (await listPendingInviteUserIds(options.scope)).length;
   return { sent, skipped, failed, remaining };
+}
+
+/**
+ * Activates an account from its invite: sets the password and consumes the
+ * code. False, with nothing written, for an unknown, used or expired code, and
+ * for an account that already has a password or is deleted: an invite is an
+ * activation, never a reset (D4 rec 2; v1's acceptInvite set the password of a
+ * live account, R31). The guarded updateMany makes the consume atomic, so two
+ * concurrent accepts of one code cannot both win (R28/R29).
+ */
+export async function acceptInvite(rawToken: string, password: string): Promise<boolean> {
+  const invite = await db.inviteToken.findUnique({
+    where: { tokenHash: hashToken(rawToken) },
+    select: {
+      id: true,
+      userId: true,
+      usedAt: true,
+      expiresAt: true,
+      user: { select: { passwordHash: true, deletedAt: true } },
+    },
+  });
+  if (!invite || invite.usedAt !== null || invite.expiresAt < new Date()) return false;
+  if (invite.user.passwordHash !== null || invite.user.deletedAt !== null) return false;
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  return db.$transaction(async (tx) => {
+    const stamped = await tx.inviteToken.updateMany({
+      where: { id: invite.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    if (stamped.count === 0) return false;
+    await tx.user.update({ where: { id: invite.userId }, data: { passwordHash } });
+    return true;
+  });
 }

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
 // Relative, not "@space/shared": tsc's rootDir here is the repo root (so it can
 // also compile packages/shared), which emits this file to
 // dist/apps/backend/src/routes/auth.js without rewriting bare specifiers. A
@@ -15,11 +14,11 @@ import {
   resetPasswordRequestSchema,
 } from "../../../../packages/shared/src/index";
 
-import { db } from "../db/client";
 import { verifyCredentials, type VerifiedUser } from "../lib/auth/credentials";
 import { findGoogleUser, verifyGoogleIdToken } from "../lib/auth/google";
 import { completePasswordReset, requestPasswordReset } from "../lib/auth/password-reset";
-import { hashToken, issueSession, rotateRefreshToken, revokeRefreshToken } from "../lib/auth/tokens";
+import { issueSession, rotateRefreshToken, revokeRefreshToken } from "../lib/auth/tokens";
+import { acceptInvite } from "../lib/invites";
 import { makeLimiter } from "../lib/rate-limit";
 import { apiOk, apiError } from "../lib/api-response";
 import { runInBackground } from "../lib/background";
@@ -140,41 +139,9 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
   // ONE opaque refusal for every failure mode — unknown, used, expired,
   // already-activated target, deactivated target. v1 disclosed which (R27);
   // the distinction belongs in server-side behaviour only (D5 rec 3).
-  const refuse = () => apiError(res, "invalid_invite", "This invite is invalid or has expired.", 400);
-
-  const invite = await db.inviteToken.findUnique({
-    where: { tokenHash: hashToken(parsed.data.token) },
-    select: {
-      id: true,
-      userId: true,
-      usedAt: true,
-      expiresAt: true,
-      user: { select: { passwordHash: true, deletedAt: true } },
-    },
-  });
-  if (!invite) return refuse();
-  if (invite.usedAt !== null) return refuse();
-  if (invite.expiresAt < new Date()) return refuse();
-  // D4 rec 2: an invite is an ACTIVATION, not a reset. v1's acceptInvite
-  // would set the password of a live account (R31); refused here.
-  if (invite.user.passwordHash !== null || invite.user.deletedAt !== null) return refuse();
-
-  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-
-  // Atomic consume: the guarded updateMany means two concurrent accepts of
-  // the same token cannot both win — the loser's count is 0 (R28/R29 kept,
-  // with the race v1's read-then-transact left open actually closed).
-  const consumed = await db.$transaction(async (tx) => {
-    const stamped = await tx.inviteToken.updateMany({
-      where: { id: invite.id, usedAt: null },
-      data: { usedAt: new Date() },
-    });
-    if (stamped.count === 0) return false;
-    await tx.user.update({ where: { id: invite.userId }, data: { passwordHash } });
-    return true;
-  });
-  if (!consumed) return refuse();
-
+  if (!(await acceptInvite(parsed.data.token, parsed.data.password))) {
+    return apiError(res, "invalid_invite", "This invite is invalid or has expired.", 400);
+  }
   return apiOk(res, { ok: true });
 });
 
