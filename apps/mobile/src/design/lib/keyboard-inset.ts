@@ -43,6 +43,14 @@ type Measurable = { measureInWindow?: (cb: (x: number, y: number, w: number, h: 
  *   runs out of scroll range short of the keyboard (UI sweep, Oct 2026).
  * A bar pinned on the keyboard (`Screen`'s footer) passes `getBarHeight`, and
  * the field is kept above it as well.
+ * The field's top is never scrolled above the top of what is visible: the
+ * scroll view's own top plus `getTopCover` (a header drawn over it, `Screen`'s
+ * collapsed title on a tab). Where the field and its gap don't both fit
+ * between that top and the keyboard (a small phone at font 1.3, a SaveBar, a
+ * tall text area), its top line wins: that is where the caret and the typed
+ * text are (whole-app UI sweep, Nov 2026: search fields behind the collapsed
+ * title, a text area's caret line under the header, a SaveBar form's field
+ * off screen).
  * Spread `scrollProps` onto the ScrollView. A scroll view whose `onScroll` is
  * taken by something else (a Reanimated handler: `Screen`) passes
  * `getOffset` instead and leaves `scrollProps.onScroll` off.
@@ -52,12 +60,12 @@ export function useKeyboardInset(options?: {
   /** Height of a bar riding on the keyboard (a screen's footer) the focused field must also clear. */
   getBarHeight?: () => number;
   /**
-   * Never scroll the focused field's top above the scroll view's own top.
-   * For a scroll view that reaches under the keyboard but whose top is covered
-   * by a header (a sheet's title): the field's gap above the keyboard is
-   * wasted there, and scrolling by it puts the field under the title.
+   * Never scroll the focused field's top above the scroll view's own top (plus
+   * `getTopCover`). On by default; `false` scrolls by the whole overlap.
    */
   clampToViewport?: boolean;
+  /** Height of a header drawn over the scroll view's top (a tab's collapsed title) the field must stay below. */
+  getTopCover?: () => number;
 }): {
   inset: number;
   offset: number;
@@ -80,8 +88,10 @@ export function useKeyboardInset(options?: {
   getOffset.current = options?.getOffset;
   const getBarHeight = useRef(options?.getBarHeight);
   getBarHeight.current = options?.getBarHeight;
-  const clamp = useRef(options?.clampToViewport);
-  clamp.current = options?.clampToViewport;
+  const clamp = useRef(options?.clampToViewport ?? true);
+  clamp.current = options?.clampToViewport ?? true;
+  const getTopCover = useRef(options?.getTopCover);
+  getTopCover.current = options?.getTopCover;
 
   const ensureVisible = useCallback(() => {
     const top = keyboardTop.current;
@@ -90,16 +100,20 @@ export function useKeyboardInset(options?: {
     input?.measureInWindow?.((_x, y, _w, h) => {
       const overlap = y + h + FIELD_GAP + (getBarHeight.current?.() ?? 0) - top;
       const from = getOffset.current ? getOffset.current() : offset.current;
-      if (overlap <= 1) return;
       const scroller = ref.current as unknown as Measurable | null;
       if (clamp.current && scroller?.measureInWindow) {
         scroller.measureInWindow((_sx, sy) => {
-          const by = Math.min(overlap, y - sy - VIEWPORT_MARGIN);
-          if (by > 1) ref.current?.scrollTo({ y: from + by, animated: false });
+          const visibleTop = sy + (getTopCover.current?.() ?? 0);
+          // Room between the visible top and the field's top: negative when the field is
+          // already under the header (Android's own focus scroll ignores a header drawn over
+          // the scroll view), and then the content scrolls back down by it.
+          const room = y - visibleTop - VIEWPORT_MARGIN;
+          const by = room < 0 ? room : overlap > 1 ? Math.min(overlap, room) : 0;
+          if (Math.abs(by) > 1) ref.current?.scrollTo({ y: Math.max(0, from + by), animated: false });
         });
         return;
       }
-      ref.current?.scrollTo({ y: from + overlap, animated: false });
+      if (overlap > 1) ref.current?.scrollTo({ y: from + overlap, animated: false });
     });
   }, []);
 

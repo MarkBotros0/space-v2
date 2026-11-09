@@ -33,9 +33,15 @@ function withKeyboard(run: (show: (e: ShowEvent) => void) => void) {
     listeners[event] = cb;
     return { remove: jest.fn() };
   }) as unknown as typeof Keyboard.addListener);
+  // The scroll view's own top, which the focused field is kept below (keyboard-inset's clamp):
+  // at the window's top here, so these cases have room and scroll by the whole overlap.
+  const proto = ScrollView.prototype as unknown as Record<string, unknown>;
+  const measure = proto.measureInWindow;
+  proto.measureInWindow = (cb: (x: number, y: number, w: number, h: number) => void) => cb(0, 0, 390, 800);
   try {
     run((e) => (listeners.keyboardWillShow ?? listeners.keyboardDidShow)!(e));
   } finally {
+    proto.measureInWindow = measure;
     spy.mockRestore();
     jest.useRealTimers();
   }

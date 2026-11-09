@@ -485,6 +485,14 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   `ShellFrame` or `AuthCard`, which pad their scroll content by the keyboard
   height and scroll the focused field above it (`design/lib/keyboard-inset.ts`). A bare `ScrollView` or
   `View` form hides its lower fields.
+- **The focused field lands below the header, not just above the keyboard.** Scrolling a field into view
+  must allow for the pinned/collapsed header, a `SaveBar` footer and a sheet's title: the Nov 2026 sweep found search
+  fields behind the collapsed title (Students, Community), a textarea's caret line under the header (roster import),
+  a SaveBar form's field scrolled off screen at 1.3, and a sheet's choice cut under its title while typing.
+  A multi-line field scrolls to its caret line, not its bottom edge.
+- **Error text uses a token that reaches 4.5:1.** `destructive` was #EF4444, 3.76:1 on white (Nov 2026 sweep);
+  it is now the `bad` tone (#B42318 light, #F7A097 dark), and `design-tokens-contrast.test.ts` holds it at
+  4.5:1 on every surface a form sits on. Never hand-pick a brighter red for caption text.
 - **Last content clears the floating tab bar by the inset, not a flat 96px.** The bar sits at
   `max(16, bottom inset)`, so bottom padding in the shell comes from `useShellBottomPadding()`
   (`design/layout/shell-context.ts`). A hard-coded `pb-24` ends under the bar on a 3-button phone.

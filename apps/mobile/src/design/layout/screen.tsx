@@ -180,9 +180,13 @@ export function Screen({
   const step = useSharedValue<ScrollStep>(INITIAL_SCROLL_STEP);
   // The scroll handler runs on the UI thread, so the keyboard reads the
   // offset from it when it needs one instead of tracking every frame.
+  // A tab's collapsed title is drawn over the scroll view's top: a focused field is kept below it.
+  // (With `back` the bar sits above the scroll view, so the scroll view's own top already clears it.)
+  const topCover = useRef(0);
   const keyboard = useKeyboardInset({
     getOffset: () => scrollY.value,
     getBarHeight: () => footerHeightRef.current,
+    getTopCover: () => topCover.current,
   });
   // The open tab pressed again (owner, 2026-11-08, as Instagram does): scroll to the top, or
   // reload once already there. Only the focused screen under the pill answers it.
@@ -336,6 +340,9 @@ export function Screen({
             progress={progress}
             trailing={home ? <HomeActions /> : undefined}
             interactive={collapsed}
+            onLayout={(e) => {
+              topCover.current = e.nativeEvent.layout.height;
+            }}
           />
         ) : null}
       </View>

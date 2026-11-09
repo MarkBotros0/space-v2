@@ -97,6 +97,15 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     },
   );
 
+  // Error captions and the required "*" are `text-destructive` on every surface a form sits on
+  // (whole-app UI sweep, Nov 2026: #EF4444 was 3.76:1 on white, 3.48 on the page background).
+  it.each(["background", "card", "surface", "surface-raised"])(
+    "destructive text is at least 4.5:1 on %s",
+    (surface) => {
+      expect(contrast(rgbOf(t.destructive), rgbOf(t[surface]))).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
   // The bell's count: white on error-600 (error-500 was 3.8:1).
   it("the bell count is at least 4.5:1", () => {
     expect(contrast(rgbOf("#FFFFFF"), rgbOf(t["error-600"]))).toBeGreaterThanOrEqual(4.5);

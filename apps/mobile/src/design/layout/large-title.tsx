@@ -122,12 +122,15 @@ export function CompactHeader({
   progress,
   trailing,
   interactive = false,
+  onLayout,
 }: {
   title?: string;
   back?: BackTarget;
   progress: SharedValue<number>;
   trailing?: ReactNode;
   interactive?: boolean;
+  /** The pinned bar's layout (without `back`): `Screen` keeps a focused field below it. */
+  onLayout?: (e: LayoutChangeEvent) => void;
 }) {
   const fade = useAnimatedStyle(() => ({ opacity: progress.value }));
   if (!back) {
@@ -139,6 +142,7 @@ export function CompactHeader({
         accessibilityElementsHidden={!live}
         importantForAccessibility={live ? "auto" : "no-hide-descendants"}
         style={[styles.pinned, fade]}
+        onLayout={onLayout}
       >
         {trailing ? (
           <View
