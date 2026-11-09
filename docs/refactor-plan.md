@@ -10,9 +10,12 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
   what is slow or complicated) and D9 (losing data is acceptable); Q1–Q27 answered below. **Next: finish Wave 0 (0.9–0.11), then Wave 1.**
 - `main` @ `edc1fad0` (announcement polls) was merged into `refactor/wave-0-safety-net` at the
   owner's request (`bcb79a93`); the route-inventory snapshot now includes the 4 poll routes (`cea0568e`).
-- **Blocked (Q28):** applying the poll migration to the throwaway DB (`db:migrate:deploy`) is refused by
-  the session's permission classifier, so the schema snapshot and the integration suite haven't run on
-  the merged tree yet (Wave 0 0.9–0.10). `apps/backend/.env` was checked: `127.0.0.1:55441/refactor_test`.
+- Both databases migrated on the owner's instruction (Q28, 2026-11-09): the throwaway DB got
+  `20261109090000_announcement_polls`; staging (`STG_DATABASE_URL`, `db.prisma.io`) was already up to
+  date, so `migrate deploy` applied nothing there. Integration on the merged tree: **133 suites / 1,598
+  tests pass**. **Next: push + Wave 0 PR (needs the owner's go-ahead), then Wave 1.**
+- Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
+  into the session output; the owner was asked to rotate both.
 - No code outside tests has changed. Nothing has been pushed; no PR opened yet.
 
 ## Working setup
@@ -46,8 +49,8 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 | Files > 400 lines | 4, all tests: `mobile/src/__tests__/season-people.test.tsx` 475, `student-today.test.tsx` 462, `session-detail.test.tsx` 432, `backend/src/__tests__/integration/people-candidates.test.ts` 423 |
 | Size | 1,313 TS/TSX files (521 tests), ~163k lines; 36 Prisma models, 15 enums, 36 migrations |
 
-**After the polls merge (`bcb79a93` + `cea0568e`):** 39 models, 37 migrations, still 4 files > 400
-(the same tests). Lint/typecheck/unit/build: see Wave 0 step 0.8. Integration: not yet run (0.10).
+**After the polls merge (`bcb79a93` + `cea0568e`):** 39 models, 36 migration folders, still 4 files > 400
+(the same tests). Lint/typecheck/unit/build: see Wave 0 step 0.8. Integration: 133 / 1,598 pass (0.10).
 
 ## Wave 0 — safety net (`refactor/wave-0-safety-net`)
 
@@ -67,10 +70,10 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
       route-inventory snapshot += 4 poll routes, nothing else changed (`cea0568e`).
       Lint/typecheck/unit/build on the merged tree: **all pass** (lint 0 warnings; unit: shared 30 / 331,
       backend 72 / 553, mobile 265 / 2328; build ok; `~/logs/space-v2-refactor-merge-check.log`)
-- [ ] 0.9 Apply `20261109090000_announcement_polls` to the throwaway DB, update the schema snapshot
-      (expect exactly the 3 poll tables, their 3 indexes + 3 PKs + 6 FKs), commit — **blocked on owner
-      permission** (see Status)
-- [ ] 0.10 Full integration suite on the merged tree (tmux `space-v2-refactor-integration`)
+- [x] 0.9 Poll migration applied to the throwaway DB (staging: already up to date, no-op); schema snapshot
+      += exactly the 3 poll tables (15 columns, 3 PKs, 3 indexes, 6 FKs) — `a7fb7d19`
+- [x] 0.10 Full integration suite on the merged tree: 133 suites / 1,598 tests / 4 snapshots pass
+      (`~/logs/space-v2-refactor-integration.log`)
 - [ ] 0.11 Push + open the Wave 0 PR once the owner approves Phase 1
 
 ## Phase 1 — audit (read-only)
@@ -154,7 +157,7 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 | 25 | keeping up with `main` | merge `main` at each wave start and before its PR |
 | 26 | User ↔ StudentProfile | keep |
 | 27 | D1, D5–D7 | approved (fits the repo) |
-| 28 | migrations on the throwaway DB | **still open**: the permission classifier blocks `db:migrate:deploy`; the owner runs it once, or allows it |
+| 28 | migrations | owner: "migrate both databases" — throwaway applied, staging was already current |
 
 ## Waves
 
