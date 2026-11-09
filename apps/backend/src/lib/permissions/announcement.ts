@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import { liveSeason } from "../db/live";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason, isSuper } from "../rbac";
 import { isSeasonFinished } from "../seasons/status";
@@ -64,7 +65,7 @@ export async function canPostTo(user: SessionUser, target: PostTarget): Promise<
   if (target.audience === "COMMUNITY") return isSuper(user) ? "ok" : "forbidden";
   if (target.seasonId === undefined) return "not_found";
   const season = await db.season.findFirst({
-    where: { id: target.seasonId, deletedAt: null },
+    where: { id: target.seasonId, ...liveSeason },
     select: { status: true },
   });
   if (!season) return "not_found";
@@ -82,7 +83,7 @@ export async function postTargetsFor(
   const ids = user.seasonAdminIds;
   if (!community && (user.role === "MENTOR" || ids.length === 0)) return { community, seasons: [] };
   const seasons = await db.season.findMany({
-    where: { status: "ACTIVE", deletedAt: null, ...(community ? {} : { id: { in: ids } }) },
+    where: { status: "ACTIVE", ...liveSeason, ...(community ? {} : { id: { in: ids } }) },
     orderBy: { id: "asc" },
     select: { id: true, code: true, title: true },
   });

@@ -1,4 +1,5 @@
 import { db } from "../db/client";
+import { liveSeason, liveUser } from "./db/live";
 import { ANNOUNCEMENT_PUSH_LENGTH } from "../../../../packages/shared/src/index";
 import { runInBackground } from "./background";
 import { createNotificationsBulk } from "./notifications";
@@ -16,14 +17,14 @@ interface RecipientTarget {
  * permanent roles with no season, so they are left out.
  */
 export async function announcementRecipients(target: RecipientTarget, excludeUserId: number | null): Promise<number[]> {
-  const live = { deletedAt: null, ...(excludeUserId !== null ? { id: { not: excludeUserId } } : {}) };
+  const live = { ...liveUser, ...(excludeUserId !== null ? { id: { not: excludeUserId } } : {}) };
   if (target.audience === "COMMUNITY") {
     const users = await db.user.findMany({ where: live, select: { id: true } });
     return users.map((u) => u.id);
   }
   if (target.seasonId === null || target.seasonId === undefined) return [];
   const seasonId = target.seasonId;
-  const seasonActive = { id: seasonId, status: "ACTIVE" as const, deletedAt: null };
+  const seasonActive = { id: seasonId, status: "ACTIVE" as const, ...liveSeason };
   const notPermanent = { role: { notIn: ["SUPER", "MENTOR"] as ("SUPER" | "MENTOR")[] } };
   const users = await db.user.findMany({
     where: {

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiError, apiOk, apiNoContent } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
+
 import { announcementFlags } from "../../lib/permissions";
 import {
   ANNOUNCEMENT_PAGE_ORDER,
@@ -13,6 +13,9 @@ import {
   announcementVisibilityFilter,
   encodeAnnouncementCursor,
 } from "../../lib/queries/announcements";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { pageOf } from "../../lib/pagination";
 import { requireUser } from "../../middleware/require-auth";
 import { ANNOUNCEMENT_PAGE_SIZE } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
@@ -57,9 +60,7 @@ export async function listFeed(req: Request, res: Response) {
     take: ANNOUNCEMENT_PAGE_SIZE + 1,
     select: ANNOUNCEMENT_SELECT,
   });
-  const page = rows.slice(0, ANNOUNCEMENT_PAGE_SIZE);
-  const last = page[page.length - 1];
-  const nextCursor = rows.length > ANNOUNCEMENT_PAGE_SIZE && last ? encodeAnnouncementCursor(last) : null;
+  const { page, nextCursor } = pageOf(rows, ANNOUNCEMENT_PAGE_SIZE, encodeAnnouncementCursor);
   const unread = await unreadIdsAmong(
     user,
     page.map((r) => r.id),
@@ -82,21 +83,21 @@ export async function unreadSummary(req: Request, res: Response) {
 
 export async function getOne(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
+  const id = idParam(res, req.params.id, "post");
+  if (id === null) return;
   const row = await findReadableAnnouncement(user, id);
   // 404, not 403: a post the caller may not read looks like one that isn't there.
-  if (!row) return apiError(res, "not_found", "Post not found.", 404);
+  if (!row) return notFound(res, "Post");
   const unread = await unreadIdsAmong(user, [row.id]);
   return apiOk(res, toDetail(row, !unread.has(row.id), announcementFlags(user, row), await loadPollView(user, row)));
 }
 
 export async function markRead(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
+  const id = idParam(res, req.params.id, "post");
+  if (id === null) return;
   const readable = await findReadableAnnouncement(user, id);
-  if (!readable) return apiError(res, "not_found", "Post not found.", 404);
+  if (!readable) return notFound(res, "Post");
   await db.announcementRead.createMany({
     data: [{ announcementId: id, userId: user.userId }],
     skipDuplicates: true,

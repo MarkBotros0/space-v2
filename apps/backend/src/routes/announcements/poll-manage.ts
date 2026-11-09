@@ -4,10 +4,12 @@ import { db } from "../../db/client";
 
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { parseId } from "../../lib/parse-id";
+
 import { announcementFlags, canManagePoll, canSeePollNames } from "../../lib/permissions";
 import { findReadableAnnouncement } from "../../lib/queries/announcements";
 import { setPollClosed } from "../../lib/announcements/poll-close";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
 import { requireUser } from "../../middleware/require-auth";
 import type { PollVotersResponse } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
@@ -17,10 +19,10 @@ import { toDetail } from "./serialize";
 /** Shared by close and reopen: pre-checks, then set or clear closedAt under the poll lock. */
 async function setClosed(req: Request, res: Response, close: boolean) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
+  const id = idParam(res, req.params.id, "post");
+  if (id === null) return;
   const row = await findReadableAnnouncement(user, id);
-  if (!row?.poll) return apiError(res, "not_found", "Poll not found.", 404);
+  if (!row?.poll) return notFound(res, "Poll");
   if (announcementFlags(user, row).seasonFinished)
     return apiError(res, "season_finished", "This season has finished.", 409);
   if (!canManagePoll(user, row)) return forbidden(res);
@@ -49,10 +51,10 @@ export const reopenPoll = (req: Request, res: Response) => setClosed(req, res, f
  */
 export async function listVoters(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
+  const id = idParam(res, req.params.id, "post");
+  if (id === null) return;
   const row = await findReadableAnnouncement(user, id);
-  if (!row?.poll || !canSeePollNames(user, row)) return apiError(res, "not_found", "Poll not found.", 404);
+  if (!row?.poll || !canSeePollNames(user, row)) return notFound(res, "Poll");
   const poll = await db.announcementPoll.findUnique({
     where: { announcementId: id },
     select: {
@@ -69,7 +71,7 @@ export async function listVoters(req: Request, res: Response) {
       },
     },
   });
-  if (!poll) return apiError(res, "not_found", "Poll not found.", 404);
+  if (!poll) return notFound(res, "Poll");
   const data: PollVotersResponse = {
     options: poll.options.map((o) => ({
       id: o.id,
