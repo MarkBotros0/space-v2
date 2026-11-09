@@ -6,8 +6,8 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-09)
 
-- **Current phase:** Phase 1 approved by the owner with ruling D8 (fit the rules to the repo, skip
-  what is slow or complicated); Q1–Q27 answered below. **Next: finish Wave 0 (0.9–0.11), then Wave 1.**
+- **Current phase:** Phase 1 approved by the owner with rulings D8 (fit the rules to the repo, skip
+  what is slow or complicated) and D9 (losing data is acceptable); Q1–Q27 answered below. **Next: finish Wave 0 (0.9–0.11), then Wave 1.**
 - `main` @ `edc1fad0` (announcement polls) was merged into `refactor/wave-0-safety-net` at the
   owner's request (`bcb79a93`); the route-inventory snapshot now includes the 4 poll routes (`cea0568e`).
 - **Blocked (Q28):** applying the poll migration to the throwaway DB (`db:migrate:deploy`) is refused by
@@ -117,7 +117,13 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
   rewrites a subtle rule across many call sites. Skipped findings stay in the audit as known gaps
   and are listed under "Skipped (D8)" at the end of each wave; nothing skipped is half-done.
 
-## Owner answers (D8, 2026-11-09)
+- D9. **Owner ruling (2026-11-09): losing data is acceptable** — "I am still in testing phase, I didn't
+  release". So a Wave 3 constraint may clean up or delete the rows that would violate it, in the same
+  migration, instead of waiting for a real-data check; no archive is needed before Wave 6 (a backup is
+  optional). Expand → migrate → contract still holds, because a running build must not break.
+  Skips made for semantics, complexity or the redesign branches (D8) are unchanged.
+
+## Owner answers (D8, 2026-11-09; D9 updates marked)
 
 | Q | Topic | Answer |
 |---|---|---|
@@ -132,15 +138,15 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 | 9 | assignment notifications to deleted students | fix as a bug, with a test |
 | 10 | tooling deps | **no new dependency approved** → in-repo dead-code script; built-in `no-restricted-imports`/`no-restricted-syntax` for boundaries; **duplication check skipped** unless the owner later approves `jscpd` |
 | 11 | drop deps | yes: `expo-linear-gradient`, `pg`, `@types/pg`, `react-hook-form`, `@hookform/resolvers` |
-| 12 | archive + row counts | skipped: the pre-Wave-6 backup is the archive; sizes stay estimates |
-| 13 | retention | token purge only (refresh, invite, reset); device prune and notification retention skipped |
+| 12 | archive + row counts | **D9:** no archive; backup before Wave 6 optional; sizes stay estimates |
+| 13 | retention | **D9:** purge refresh/invite/reset tokens (7-day grace), device tokens unseen > 180 days, notifications > 180 days |
 | 14 | `GroupStudent` | **keep** (moving 7 reads off the mirror is semantics-sensitive); add IDX-2, drop redundant IDX-D1 |
-| 15 | case-insensitive email | skipped (needs a duplicate check on real data) |
+| 15 | case-insensitive email | **D9:** lowercase every stored email + `CHECK (email = lower(email))`; the existing unique then is case-insensitive in effect; lookups become one exact match. A case-duplicate pair makes the migration fail loudly (resolve by hand on that DB) |
 | 16 | group targeting | keep |
 | 17 | dormant switches | remove `IMPORT_FILE_UPLOAD_SUPPORTED`, `s3` driver, `READ_ONLY`, `AUTH_URL`; sync turbo env |
 | 18 | CMS columns | drop the three never-read path columns; keep `avatarPath` |
 | 19 | write-only columns | drop `RefreshToken.userAgent`; keep `DeviceToken.lastSeenAt` + index |
-| 20 | DB guards | skipped: every CHECK / partial unique can fail on existing rows or on an update of one (DB-014, DB-016…019, DB-031, IDX-3/6/7, uuid cast) |
+| 20 | DB guards | **D9:** yes, each with a cleanup of violating rows first: IDX-6, IDX-7, date-order / positive-quantity CHECKs (DB-019), `totalScore` (DB-016), mime + `correctIndex` CHECKs and `recurrenceGroupId` → uuid (DB-017). Still skipped: DB-014 (CLAUDE.md forbids a migration changing `User.role`), the enrolment-coherence CHECKs (semantics), DB-018 (limits would have to move with Zod), DB-031 (conditional, 3.11) |
 | 21 | NotificationPreference | keep |
 | 22 | copy | keep every current text and trim behaviour |
 | 23 | unused type aliases | delete those unused anywhere |
@@ -215,7 +221,7 @@ Every step: migration + `rollback.sql` (D6), apply → rollback → apply on the
 snapshot updated, `schema.prisma` updated where expressible.
 
 - [ ] 3.0 Verify `CREATE INDEX CONCURRENTLY` under Prisma 7 `migrate deploy` (one statement per file);
-      record the pattern as D9 (or the psql fallback, audit §2.11)
+      record the pattern as D10 (or the psql fallback, audit §2.11)
 - [ ] 3.1 IDX-1 `SeasonEnrollment(groupId, status)`
 - [ ] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14)
 - [ ] 3.3 IDX-4 open follow-ups partial index
@@ -223,12 +229,19 @@ snapshot updated, `schema.prisma` updated where expressible.
 - [ ] 3.5 IDX-8 + DB-029 composite FK on `AnnouncementPollVote` (`NOT VALID` → `VALIDATE`)
 - [ ] 3.6 Missing base columns DB-021 / DB-030 (MentorFollowUp, SessionVideoProgress, AnnouncementPoll, AnnouncementPollOption)
 - [ ] 3.7 DB-015: every `DateTime` → `timestamptz(3)` (`USING … AT TIME ZONE 'UTC'`), `User.dateOfBirth` → `date`
-- [ ] 3.8 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
+- [ ] 3.8 DB-004 (D9): `UPDATE "User" SET email = lower(trim(email))`, then `CHECK (email = lower(email))`
+- [ ] 3.9 DB-019 (D9), each constraint after its cleanup in the same migration: IDX-6 (older duplicate
+      IN_PROGRESS attempts deleted, newest kept), IDX-7 (duplicate group names get a " (2)" suffix),
+      `Season endDate >= startDate`, `JpcEvent endDate IS NULL OR >= date`, positive durations, budgets, points
+- [ ] 3.10 DB-016 `totalScore` CHECK (recomputed first); DB-017 mime-category CHECK (unknown values removed),
+      `correctIndex` CHECK (out-of-range questions fixed or deleted), `Session.recurrenceGroupId` → uuid
+      (non-uuid values nulled)
+- [ ] 3.11 DB-031 option uniques — only if `applyUpdate`'s write order never holds a transient duplicate
+- [ ] 3.12 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
       from audit §2.1, kept current from here on
-- [ ] 3.9 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
-- Skipped (D8): DB-004 / IDX-3 (real-data duplicate check), DB-014 (fails on updates of unconverted
-  rows), DB-016, DB-017, DB-018, DB-019 / IDX-6 / IDX-7, DB-031 (each can fail on existing rows),
-  DB-012 parity, DB-011b
+- [ ] 3.13 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
+- Skipped (D8): DB-014 (CLAUDE.md: no migration may change `User.role`), DB-019 enrolment-coherence
+  CHECKs (semantics), DB-018, IDX-3 (not needed after 3.8), DB-012 parity, DB-011b
 
 ### Wave 4 — backend per domain (`refactor/wave-4-backend`)
 
@@ -238,7 +251,8 @@ transactions out of handlers into `lib/<domain>/` (BE-035), files kept under 300
 
 - [ ] 4.1 Announcements & polls (reference domain first, to settle the pattern): BE-090, BE-091
 - [ ] 4.2 Auth & me: BE-010 (`routes/me/` split), DB-020 (`tokenHash` via `@map`), DB-010 stop writing
-      `StudentProfile.deletedAt`, DB-006 stop writing `userAgent`, DB-007 token purge (internal cron route + test)
+      `StudentProfile.deletedAt`, DB-006 stop writing `userAgent`, DB-007 + DB-006 purge (tokens, stale devices, old notifications; internal
+      cron route + test), DB-004 single exact-match email lookup (ILIKE fallback and raw `lower()` removed)
 - [ ] 4.3 Users: BE-001 `updateUserInTx`, BE-029 sites, DB-010 (restore)
 - [ ] 4.4 Students: BE-014, BE-016 (`lib/students/graduation.ts`), DB-010 (lifecycle), DB-001 seed `year` removed
 - [ ] 4.5 Groups & enrolment: BE-073; BE-027 helpers for the **identical** variants only
@@ -256,9 +270,8 @@ transactions out of handlers into `lib/<domain>/` (BE-035), files kept under 300
 - [ ] 4.16 Events, dev, health, scripts: remaining call sites (BE-02D adoption); BE-006 left as is
 - [ ] 4.17 Sweep: no `deletedAt` literal outside `lib/db/live.ts`, no `$transaction` in `routes/`, no
       inline `apiError` with a catalogued code; full verification + wave summary + PR → **STOP**
-- Skipped (D8): DB-004 lookup switch, DB-012 read switch, DB-026 (a bounded query changes the result),
-  BE-050 (authz scopes across domains), BE-052, BE-076, BE-02B, DB-006 device prune, BE-027 variants
-  that differ
+- Skipped (D8): DB-012 read switch, DB-026 (a bounded query changes the result), BE-050 (authz scopes
+  across domains), BE-052, BE-076, BE-02B, BE-027 variants that differ
 
 ### Wave 5 — mobile per feature area (`refactor/wave-5-mobile`)
 
@@ -285,10 +298,10 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 
 ### Wave 6 — schema contract (`refactor/wave-6-schema-contract`)
 
-**Deploy only after Waves 3–5 are live. The owner takes a database backup on each environment first
-(it is also the archive of the dropped personal data, Q12); a rollback restores columns, not data.**
+**Deploy only after Waves 3–5 are live (a running build must not break). Data loss is acceptable (D9);
+a backup first is optional. A rollback restores columns, not data.**
 
-- [ ] 6.0 Confirm Waves 3–5 deployed; owner backup done
+- [ ] 6.0 Confirm Waves 3–5 deployed
 - [ ] 6.1 DB-001: drop the 7 dead `StudentProfile` columns, its FK and IDX-D2
 - [ ] 6.2 DB-002: drop `Season.coverImagePath`, `Session.materialsPath`, `JpcEvent.imagePath`
 - [ ] 6.3 DB-003: drop `StudentDocument` and its User relations
@@ -296,7 +309,7 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 - [ ] 6.5 DB-010: drop `StudentProfile.deletedAt`
 - [ ] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`)
 - [ ] 6.7 ERD final; full verification + wave summary + PR → **STOP**
-- Skipped (D8): DB-012 table drop, DB-004 old unique, DB-005, IDX-D4, DB-011b
+- Skipped (D8): DB-012 table drop, DB-005, IDX-D4 (kept: the device prune reads `lastSeenAt`), DB-011b
 
 ### Wave 7 — guardrails (`refactor/wave-7-guardrails`)
 

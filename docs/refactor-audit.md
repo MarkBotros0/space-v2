@@ -1698,8 +1698,9 @@ environment, read-only:
 Answered by the owner on 2026-11-09 with ruling **D8** (`docs/refactor-plan.md` → "Owner answers"):
 fit the rules to the repo, skip what is slow or complicated. **Where this report and the plan differ,
 the plan wins**: each wave there ends with a "Skipped (D8)" list, and those findings stay here as
-known gaps (notably DB-004, DB-012, DB-014, DB-016…019, DB-026, DB-031, BE-050, FE-017, FE-071 part 2,
-FE-072, and the duplication check).
+known gaps (notably DB-012, DB-014, DB-018, DB-026, BE-050, FE-017, FE-071 part 2, FE-072 and the
+duplication check). Ruling **D9** (losing data is acceptable) brought DB-004, DB-016, DB-017 and most
+of DB-019 back in, each constraint after a cleanup of the rows that would violate it.
 
 ## 4. Checks run for this audit
 
