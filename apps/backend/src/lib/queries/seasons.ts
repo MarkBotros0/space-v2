@@ -1,6 +1,7 @@
 import type { SeasonStatus } from "@space/shared";
 
 import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason } from "../rbac";
 
@@ -101,4 +102,12 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
       leaderNames: g.leaders.map((l) => l.user.name).filter((n): n is string => Boolean(n)),
     })),
   };
+}
+
+/**
+ * A season that hasn't been deleted, read with the caller's own `select`
+ * (each route needs different columns, on purpose), or null.
+ */
+export function findLiveSeason<S extends Prisma.SeasonSelect>(id: number, select: S) {
+  return db.season.findFirst({ where: { id, deletedAt: null }, select });
 }

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { idCursorSchema } from "./pagination";
+
 import { submissionStatusSchema } from "./enums";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
@@ -117,7 +119,7 @@ export const forumFeedQuerySchema = z.object({
 });
 
 export const forumCommentsQuerySchema = z.object({
-  cursor: z.coerce.number().int().positive().optional(),
+  cursor: idCursorSchema,
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 

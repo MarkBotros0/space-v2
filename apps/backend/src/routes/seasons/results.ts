@@ -4,7 +4,11 @@ import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 import { loadSeasonResults } from "../../lib/queries/season-results";
+import { findLiveSeason } from "../../lib/queries/seasons";
 import { graduatePerson } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
@@ -16,10 +20,10 @@ import { isSeasonFinished } from "../../lib/seasons/status";
 export async function getSeasonResults(req: Request, res: Response) {
   const user = requireUser(req);
   if (!isSuper(user)) return forbidden(res);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
-  const season = await db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  const id = idParam(res, req.params.id, "season");
+  if (id === null) return;
+  const season = await findLiveSeason(id, { id: true });
+  if (!season) return notFound(res, "Season");
   return apiOk(res, { results: await loadSeasonResults(id) });
 }
 
@@ -34,14 +38,11 @@ export async function updateSeasonResult(req: Request, res: Response) {
   const id = parseId(req.params.id);
   const studentUserId = parseId(req.params.studentUserId);
   if (id === null || studentUserId === null) return apiError(res, "bad_request", "Invalid id.", 400);
-  const parsed = updateSeasonResultRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid result body.", 400);
+  const body = parseOr400(updateSeasonResultRequestSchema, req.body, res, "Invalid result body.");
+  if (body === null) return;
 
-  const season = await db.season.findFirst({
-    where: { id, deletedAt: null },
-    select: { status: true, year: true, graduatesOnPass: true },
-  });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  const season = await findLiveSeason(id, { status: true, year: true, graduatesOnPass: true });
+  if (!season) return notFound(res, "Season");
   if (!isSeasonFinished(season.status)) {
     return apiError(res, "not_finished", "Results can be corrected once the season has ended.", 409);
   }
@@ -54,8 +55,8 @@ export async function updateSeasonResult(req: Request, res: Response) {
     return apiError(res, "no_result", "This student has no result for the season.", 409);
   }
 
-  const { result } = parsed.data;
-  const reason = result === "NOT_PASSED" ? parsed.data.reason?.trim() || null : null;
+  const { result } = body;
+  const reason = result === "NOT_PASSED" ? body.reason?.trim() || null : null;
   const now = new Date();
   const graduated = await db.$transaction(async (tx) => {
     await lockPeople(tx, [studentUserId]);

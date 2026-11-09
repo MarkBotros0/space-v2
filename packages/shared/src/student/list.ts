@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { idCursorSchema } from "../pagination";
+
 // ---------------------------------------------------------------------------
 // List
 // ---------------------------------------------------------------------------
@@ -93,7 +95,7 @@ export const studentListQuerySchema = z.object({
    */
   absentLately: z.enum(["1"]).optional(),
   /** Row id of the last row of the previous page (enrollment id when status=dropped). */
-  cursor: z.coerce.number().int().positive().optional(),
+  cursor: idCursorSchema,
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 export type StudentListQuery = z.output<typeof studentListQuerySchema>;

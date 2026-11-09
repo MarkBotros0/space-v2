@@ -1,6 +1,8 @@
 // packages/shared/src/notification.ts
 import { z } from "zod";
 
+import { idCursorSchema } from "./pagination";
+
 import { notificationTypeSchema, type NotificationType } from "./enums";
 
 // Wire shapes — timestamps are strings, matching the note in season.ts.
@@ -70,7 +72,7 @@ export type NotificationItem = z.infer<typeof notificationSchema>;
 
 export const notificationListQuerySchema = z.object({
   /** Id of the last row of the previous page; the list is ordered by id desc. */
-  cursor: z.coerce.number().int().positive().optional(),
+  cursor: idCursorSchema,
   limit: z.coerce.number().int().min(1).max(50).default(20),
   unreadOnly: z
     .enum(["true", "false"])

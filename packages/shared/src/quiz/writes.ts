@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { idCursorSchema } from "../pagination";
+
 import { quizKindSchema, quizQuestionTypeSchema } from "../enums";
 
 // ---------------------------------------------------------------------------
@@ -138,11 +140,11 @@ export const reopenAttemptRequestSchema = z.object({
 export const quizListQuerySchema = z.object({
   seasonId: z.coerce.number().int().positive().optional(),
   sessionId: z.coerce.number().int().positive().optional(),
-  cursor: z.coerce.number().int().positive().optional(),
+  cursor: idCursorSchema,
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
 
 export const quizAttemptsQuerySchema = z.object({
-  cursor: z.coerce.number().int().positive().optional(),
+  cursor: idCursorSchema,
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });

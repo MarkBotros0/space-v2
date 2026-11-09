@@ -6,6 +6,8 @@ import { apiOk, apiError } from "../lib/api-response";
 import { parseNotificationLink } from "../lib/notification-target";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { markReadRequestSchema, notificationListQuerySchema } from "../../../../packages/shared/src/index";
+import { parseOr400 } from "../lib/http/validate";
+import { pageOf } from "../lib/pagination";
 
 export const notificationsRouter = Router();
 
@@ -67,9 +69,9 @@ function toWire(row: Row) {
 notificationsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = notificationListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { cursor, limit, unreadOnly } = parsed.data;
+  const query = parseOr400(notificationListQuerySchema, req.query, res, "Invalid query.");
+  if (query === null) return;
+  const { cursor, limit, unreadOnly } = query;
 
   const where = { userId: user.userId, ...(unreadOnly ? { readAt: null } : {}) };
 
@@ -83,7 +85,7 @@ notificationsRouter.get("/", async (req, res) => {
     select: LIST_SELECT,
   });
 
-  const page = rows.slice(0, limit);
+  const { page, nextCursor } = pageOf(rows, limit, (r) => r.id);
 
   // A real count, not a filter over the page: v1 counted unread by filtering
   // the 100 rows it had already fetched, so past 100 the header silently
@@ -94,7 +96,7 @@ notificationsRouter.get("/", async (req, res) => {
 
   return apiOk(res, {
     items: page.map(toWire),
-    nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,
+    nextCursor,
     unreadCount,
   });
 });
