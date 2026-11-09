@@ -9,6 +9,7 @@ import { isEmailConfigured, sendInviteEmail } from "./email";
 import type { BulkInviteResponse } from "@space/shared";
 // Relative, not "@space/shared": a VALUE import (ruling X12 — the rootDir emit trap).
 import { BULK_INVITE_BATCH_SIZE } from "../../../../packages/shared/src/index";
+import { MS_PER_HOUR } from "./org-time";
 
 type InviteWriter = Pick<typeof db, "inviteToken">;
 
@@ -59,7 +60,7 @@ export async function mintInvite(
   now: Date = new Date(),
 ): Promise<IssuedInvite & { id: number }> {
   const raw = randomBytes(24).toString("base64url");
-  const expiresAt = new Date(now.getTime() + config.inviteTokenTtlHours * 60 * 60 * 1000);
+  const expiresAt = new Date(now.getTime() + config.inviteTokenTtlHours * MS_PER_HOUR);
   const row = await client.inviteToken.create({
     data: { token: hashToken(raw), userId, invitedById, expiresAt },
     select: { id: true },

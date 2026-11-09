@@ -1,4 +1,5 @@
 import type { SessionListItem } from "@space/shared";
+import { MS_PER_MINUTE } from "./time";
 
 /**
  * The four "needs action" counts on the ADMIN / SUPER Today screen.
@@ -12,14 +13,12 @@ export type NeedsAction = {
   pendingInvites: number | null | undefined;
 };
 
-const MINUTE_MS = 60_000;
-
 function startMs(s: SessionListItem): number {
   return Date.parse(s.startsAt);
 }
 
 function endMs(s: SessionListItem): number {
-  return startMs(s) + s.durationMinutes * MINUTE_MS;
+  return startMs(s) + s.durationMinutes * MS_PER_MINUTE;
 }
 
 /*

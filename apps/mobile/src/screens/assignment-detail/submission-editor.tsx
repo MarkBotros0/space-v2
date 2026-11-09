@@ -23,6 +23,7 @@ import { apiErrorMessage } from "../../lib/api-error";
 import { formatDistanceOnly } from "../../lib/format";
 import { reportOutcome } from "../../lib/outcome";
 import { useDraftFlush } from "./use-draft-flush";
+import { MS_PER_DAY } from "../../lib/time";
 
 iconWithClassName(FileIcon);
 
@@ -55,7 +56,7 @@ function DueBanner({ detail, status }: { detail: AssignmentDetail; status: strin
   if (detail.isOverdue) {
     return <Callout tone="bad">Past due — submitted work will be marked late.</Callout>;
   }
-  const urgent = Date.parse(detail.dueAt) - Date.now() < 86_400_000;
+  const urgent = Date.parse(detail.dueAt) - Date.now() < MS_PER_DAY;
   return <Callout tone={urgent ? "warn" : "info"}>{`Due in ${formatDistanceOnly(detail.dueAt)}`}</Callout>;
 }
 

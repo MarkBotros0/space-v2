@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen, isStudentCheckInWindow } from "../../lib/check-in";
-import { orgWallTime } from "../../lib/org-time";
+import { MS_PER_MINUTE, orgWallTime } from "../../lib/org-time";
 import { parseId } from "../../lib/parse-id";
 import { newPublicId } from "../../lib/public-id";
 import { isAdminOfSeason } from "../../lib/rbac";
@@ -61,7 +61,7 @@ export async function studentCheckIn(req: Request, res: Response) {
   // there is no `Season.lateThresholdMinutes` (C3 over spec 04 D1's
   // 15-minute grace). Rows v1 wrote still mean "minutes since opening";
   // C3 accepts that divergence (the workbook withholds those minutes).
-  const minutesLate = Math.max(0, Math.floor((now.getTime() - session.startsAt.getTime()) / 60_000));
+  const minutesLate = Math.max(0, Math.floor((now.getTime() - session.startsAt.getTime()) / MS_PER_MINUTE));
   const status: "PRESENT" | "LATE" = minutesLate > 0 ? "LATE" : "PRESENT";
 
   await db.attendance.upsert({

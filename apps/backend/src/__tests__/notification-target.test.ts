@@ -1,4 +1,4 @@
-import { NOTIFICATION_LINK_PATTERNS, parseNotificationLink } from "../lib/notification-target";
+import { NOTIFICATION_LINK_PATTERNS, notificationLink, parseNotificationLink } from "../lib/notification-target";
 
 describe("parseNotificationLink", () => {
   // The complete set of link shapes v1 emits (jpc-space src/lib, nine
@@ -50,5 +50,23 @@ describe("parseNotificationLink", () => {
       entityType: "calendar",
       entityId: null,
     });
+  });
+});
+
+describe("notificationLink", () => {
+  it.each([
+    [notificationLink.studentAssignment(12), { entityType: "assignment", entityId: 12 }],
+    [notificationLink.studentQuizzes(), { entityType: "quiz", entityId: null }],
+    [notificationLink.studentCalendar(), { entityType: "calendar", entityId: null }],
+    [notificationLink.adminStudent(7), { entityType: "student", entityId: 7 }],
+    [notificationLink.leaderStudent(7), { entityType: "student", entityId: 7 }],
+    [notificationLink.leaderSubmission("Ab12cD"), { entityType: "submission", entityId: "Ab12cD" }],
+    [notificationLink.announcement(3), { entityType: "announcement", entityId: 3 }],
+  ])("%s parses back to its target", (link, target) => {
+    expect(parseNotificationLink(link)).toEqual(target);
+  });
+
+  it("has one builder per pattern", () => {
+    expect(Object.keys(notificationLink)).toHaveLength(NOTIFICATION_LINK_PATTERNS.length);
   });
 });

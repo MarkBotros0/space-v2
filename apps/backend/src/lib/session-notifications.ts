@@ -3,9 +3,10 @@ import { db } from "../db/client";
 import { bestEffort } from "./best-effort";
 import { createNotificationsBulk } from "./notifications";
 import { formatInOrgTime } from "./org-time";
+import { notificationLink } from "./notification-target";
 
 /** Same destination as SESSION_RESCHEDULED: the calendar (X1 link shape). */
-const SESSION_CANCELLED_LINK = "/student/calendar";
+const SESSION_CANCELLED_LINK = notificationLink.studentCalendar();
 
 /** How many cancelled dates a series notice spells out before "and N more". */
 const LISTED_DATES = 8;

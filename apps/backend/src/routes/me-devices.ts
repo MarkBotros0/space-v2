@@ -50,7 +50,6 @@ meDevicesRouter.post("/devices", requireAuth, async (req, res) => {
  */
 const unregisterLimiter = makeLimiter({
   name: "device-unregister",
-  windowMs: 15 * 60 * 1000,
   limit: 30,
 });
 

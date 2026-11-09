@@ -56,7 +56,7 @@ import { isSeasonFinished } from "../lib/seasons/status";
  * test that builds `importLimiter("import-test", 1)` directly (import-limits.test.ts).
  */
 export function importLimiter(name: string, limit: number) {
-  return makeLimiter({ name, windowMs: 15 * 60 * 1000, limit });
+  return makeLimiter({ name, limit });
 }
 const previewLimiter = importLimiter("import-preview", config.importPreviewRateLimit);
 const commitLimiter = importLimiter("import-commit", config.importCommitRateLimit);

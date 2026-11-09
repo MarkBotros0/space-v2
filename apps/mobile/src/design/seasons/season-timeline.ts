@@ -8,13 +8,13 @@ import { isSeasonFinished } from "@space/shared";
 import type { SeasonDetail } from "@space/shared";
 
 import { formatSeasonDay } from "../../lib/format";
+import { MS_PER_MINUTE, MS_PER_DAY } from "../../lib/time";
 
-const DAY_MS = 86_400_000;
-const dayNumber = (key: string) => Math.round(Date.parse(`${key}T00:00:00Z`) / DAY_MS);
+const dayNumber = (key: string) => Math.round(Date.parse(`${key}T00:00:00Z`) / MS_PER_DAY);
 const plural = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
 
 export function phoneDayKey(now = new Date()): string {
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * MS_PER_MINUTE);
   return local.toISOString().slice(0, 10);
 }
 

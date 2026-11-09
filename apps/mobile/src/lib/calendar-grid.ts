@@ -7,12 +7,11 @@
  * start on Monday, as v1's `weekStartsOn: 1`.
  */
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
+import { MS_PER_DAY } from "./time";
 
 export type CalendarView = "upcoming" | "week" | "month";
 
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
-
-const MS_PER_DAY = 86_400_000;
 
 function toUtc(key: string): Date {
   const [y, m, d] = key.split("-").map(Number);

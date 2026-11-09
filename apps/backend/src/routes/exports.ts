@@ -46,7 +46,6 @@ export const seasonExportsRouter = Router();
  */
 const exportLimiter = makeLimiter({
   name: "export",
-  windowMs: 15 * 60 * 1000,
   limit: 10,
   keyGenerator: (req) => String(requireUser(req).userId),
 });

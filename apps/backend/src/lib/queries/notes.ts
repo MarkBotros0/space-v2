@@ -9,6 +9,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { noteSeasonWhere, noteVisibilityWhere } from "../permissions";
 import { isMentor, isSuper } from "../rbac";
+import { MS_PER_DAY } from "../org-time";
 
 /**
  * The row shape both list functions select. Kept in one place so the two
@@ -184,7 +185,7 @@ function authoredSeasonWhere(user: SessionUser): Prisma.EngagementNoteWhereInput
  */
 /** `withinDays`: only notes written in the last N days (the mentor's "This week"). */
 export function writtenWithin(days: number | undefined, now = new Date()) {
-  return days === undefined ? {} : { createdAt: { gte: new Date(now.getTime() - days * 86_400_000) } };
+  return days === undefined ? {} : { createdAt: { gte: new Date(now.getTime() - days * MS_PER_DAY) } };
 }
 
 export async function listAuthoredNotes(user: SessionUser, query: NoteListQuery): Promise<NotePage<AuthoredNote>> {

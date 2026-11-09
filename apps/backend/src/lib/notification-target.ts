@@ -42,6 +42,21 @@ export const NOTIFICATION_LINK_PATTERNS: readonly {
   { re: /^\/announcements\/(\d+)$/, entityType: "announcement", id: "number" },
 ];
 
+/**
+ * The producers' side of the patterns above: every stored link is built here,
+ * so a producer can't write a shape the parser doesn't know
+ * (notification-target.test.ts round-trips each one).
+ */
+export const notificationLink = {
+  studentAssignment: (assignmentId: number) => `/student/assignments/${assignmentId}`,
+  studentQuizzes: () => "/student/quizzes",
+  studentCalendar: () => "/student/calendar",
+  adminStudent: (studentUserId: number) => `/admin/students/${studentUserId}`,
+  leaderStudent: (studentUserId: number) => `/leader/students/${studentUserId}`,
+  leaderSubmission: (publicId: string) => `/leader/submissions/${publicId}`,
+  announcement: (announcementId: number) => `/announcements/${announcementId}`,
+} as const;
+
 export function parseNotificationLink(link: string | null): NotificationTarget | null {
   if (!link) return null;
   // Relative paths only: a stored absolute URL is not a route this app owns,

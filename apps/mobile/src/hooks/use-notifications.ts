@@ -11,6 +11,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { MS_PER_MINUTE } from "../lib/time";
 
 type MarkReadInput = MarkReadRequest;
 
@@ -51,7 +52,7 @@ export function useUnreadCount(): UseQueryResult<number> {
       const res = await apiClient.get("/api/v1/notifications/unread-count");
       return unreadCountResponseSchema.parse(res.data.data).unreadCount;
     },
-    refetchInterval: 60_000,
+    refetchInterval: MS_PER_MINUTE,
   });
 }
 

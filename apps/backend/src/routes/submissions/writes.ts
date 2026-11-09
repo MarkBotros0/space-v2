@@ -18,6 +18,7 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { EDITABLE_STATUSES, studentWriteRefusal } from "../../lib/permissions";
 import { submissionLocked } from "./editable";
+import { notificationLink } from "../../lib/notification-target";
 
 export async function updateSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
@@ -221,7 +222,7 @@ export async function reviewSubmission(req: Request<{ publicId: string }>, res: 
         : `Feedback ready on "${sub.assignment.title}"`,
       // v1's exact link (submission-actions.ts:197; ruling X1): the assignment,
       // not the list.
-      link: `/student/assignments/${sub.assignmentId}`,
+      link: notificationLink.studentAssignment(sub.assignmentId),
     }),
   );
 

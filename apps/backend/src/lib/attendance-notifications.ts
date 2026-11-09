@@ -4,6 +4,7 @@ import { AttendanceStatus } from "../generated/prisma/enums";
 import { createNotificationsBulk } from "./notifications";
 import { groupIdInSeason } from "./queries/enrollment";
 import { liveSeasonStatus } from "./seasons/status";
+import { notificationLink } from "./notification-target";
 
 /** If a student has 2+ consecutive ABSENTs in this season, flag them as high-risk
  *  to their group leaders and season admins (each with a link they can actually open). */
@@ -65,7 +66,7 @@ export async function flagLowAttendance(
         type: "LOW_ATTENDANCE_FLAG",
         title,
         body,
-        link: `/admin/students/${studentUserId}`,
+        link: notificationLink.adminStudent(studentUserId),
       });
     }
     if (leaderOnlyIds.length > 0) {
@@ -73,7 +74,7 @@ export async function flagLowAttendance(
         type: "LOW_ATTENDANCE_FLAG",
         title,
         body,
-        link: `/leader/students/${studentUserId}`,
+        link: notificationLink.leaderStudent(studentUserId),
       });
     }
   }

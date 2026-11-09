@@ -51,7 +51,7 @@ export const myNotesRouter = Router();
  * would record it. Generous enough for a person paging through a caseload,
  * far below a scripted sweep.
  */
-const noteReadLimiter = makeLimiter({ name: "note-read", windowMs: 15 * 60 * 1000, limit: 300 });
+const noteReadLimiter = makeLimiter({ name: "note-read", limit: 300 });
 
 // requireAuth is attached to each route below, never with router.use()
 // (ruling X5). studentNotesRouter and myNotesRouter share /api/v1/students

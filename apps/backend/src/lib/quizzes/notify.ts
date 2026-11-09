@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import { bestEffort } from "../best-effort";
 import { createNotificationsBulk } from "../notifications";
+import { notificationLink } from "../notification-target";
 
 /**
  * v1's exact link for every QUIZ_GRADED row — `quiz-actions.ts:167,483,554`
@@ -10,7 +11,7 @@ import { createNotificationsBulk } from "../notifications";
  * `/quizzes` tab. Do not "improve" it to a per-quiz path here without adding
  * that shape to the parser.
  */
-const QUIZ_GRADED_LINK = "/student/quizzes";
+const QUIZ_GRADED_LINK = notificationLink.studentQuizzes();
 
 /**
  * Every QUIZ_GRADED notification this domain sends (auto-grade, essay grade,

@@ -2,6 +2,7 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonEndCheck } from "../../../../../packages/shared/src/index";
 import { attendancePct } from "./attendance-pct";
+import { MS_PER_MINUTE } from "../org-time";
 
 /**
  * What stops a season from ending, and the students it would end for.
@@ -75,7 +76,7 @@ export async function loadSeasonEndCheck(
   }
 
   const attendance = sessions
-    .filter((s) => s.startsAt.getTime() + s.durationMinutes * 60_000 <= now.getTime())
+    .filter((s) => s.startsAt.getTime() + s.durationMinutes * MS_PER_MINUTE <= now.getTime())
     .map((s) => ({
       sessionId: s.id,
       title: s.title,

@@ -30,6 +30,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { MS_PER_MINUTE } from "../lib/time";
 
 /**
  * What an account write (create, role change, deactivate, reactivate) can
@@ -178,7 +179,7 @@ export function useSendPendingInvites(): UseMutationResult<BulkInviteResponse, E
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post("/api/v1/users/invites/pending", undefined, { timeout: 60_000 });
+      const res = await apiClient.post("/api/v1/users/invites/pending", undefined, { timeout: MS_PER_MINUTE });
       return bulkInviteResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {

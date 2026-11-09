@@ -8,13 +8,14 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { MS_PER_MINUTE } from "../lib/time";
 
 /**
  * Home is every role's most-refetched screen; a minute of freshness absorbs
  * focus/remount churn without letting the at-risk list go stale beyond that
  * (spec 19 §7, spec 09 §5 item 3).
  */
-export const DASHBOARD_STALE_TIME = 60_000;
+export const DASHBOARD_STALE_TIME = MS_PER_MINUTE;
 
 /*
  * One hook per variant, each parsing against ITS arm, not the union: a server

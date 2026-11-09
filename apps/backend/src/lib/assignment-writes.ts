@@ -6,6 +6,7 @@ import { db } from "../db/client";
 import { createNotificationsBulk } from "./notifications";
 import { bestEffort } from "./best-effort";
 import { formatInOrgTime, orgWallClockToInstant } from "./org-time";
+import { notificationLink } from "./notification-target";
 
 /**
  * Rules every assignment write shares, in one place so create and edit cannot
@@ -112,7 +113,7 @@ export async function notifyAssignmentCreated(
       type: "ASSIGNMENT_CREATED",
       title: `New assignment: ${assignment.title}`,
       body: assignment.dueAt ? `Due ${formatInOrgTime(assignment.dueAt)}` : undefined,
-      link: `/student/assignments/${assignment.id}`,
+      link: notificationLink.studentAssignment(assignment.id),
     }),
   );
 }

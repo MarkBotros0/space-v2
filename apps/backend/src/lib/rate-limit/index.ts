@@ -8,6 +8,7 @@ import rateLimit, {
 import { config } from "../config";
 import { rateLimitHandler } from "./handler";
 import { PostgresStore } from "./postgres-store";
+import { MS_PER_MINUTE } from "../org-time";
 
 export { rateLimitHandler } from "./handler";
 export { PostgresStore } from "./postgres-store";
@@ -20,7 +21,8 @@ interface LimiterSpec {
    * two limiters keyed on the same IP or user id never share a bucket.
    */
   name: string;
-  windowMs: number;
+  /** Defaults to RATE_LIMIT_WINDOW_MS. */
+  windowMs?: number;
   limit: number;
   /** Defaults to express-rate-limit's IP key (req.ip, see TRUST_PROXY). */
   keyGenerator?: RateLimitOptions["keyGenerator"];
@@ -44,9 +46,12 @@ function storeFor(kind: RateLimitStoreKind, name: string): Store {
  * into a total outage; a request that gets through un-counted is the cheaper
  * failure.
  */
+/** The window every limiter uses unless it names its own. */
+export const RATE_LIMIT_WINDOW_MS = 15 * MS_PER_MINUTE;
+
 export function makeLimiter(spec: LimiterSpec): RateLimitRequestHandler {
   return rateLimit({
-    windowMs: spec.windowMs,
+    windowMs: spec.windowMs ?? RATE_LIMIT_WINDOW_MS,
     limit: spec.limit,
     handler: rateLimitHandler,
     standardHeaders: "draft-7",

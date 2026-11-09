@@ -1,3 +1,4 @@
+import { MS_PER_HOUR } from "./org-time";
 /**
  * Hard stop three hours after opening, so an admin who forgets to close a
  * session cannot leave a working code live indefinitely.
@@ -11,7 +12,7 @@
  * expiry, while one only the reader honours is decoration — so both callers
  * now derive their answer here and cannot drift apart again.
  */
-export const CHECK_IN_WINDOW_MS = 3 * 60 * 60 * 1000;
+export const CHECK_IN_WINDOW_MS = 3 * MS_PER_HOUR;
 
 type CheckInState = "not_open" | "open" | "expired" | "closed";
 
@@ -40,7 +41,7 @@ export function isCheckInOpen(session: CheckInTimes, now: Date = new Date()): bo
  * session starts (owner, 2026-11-08). An admin may open it earlier (to put the
  * code up, say); until the hour it still reads as not open to students.
  */
-export const STUDENT_CHECK_IN_LEAD_MS = 60 * 60 * 1000;
+export const STUDENT_CHECK_IN_LEAD_MS = MS_PER_HOUR;
 
 export function isStudentCheckInWindow(startsAt: Date, now: Date = new Date()): boolean {
   return now.getTime() >= startsAt.getTime() - STUDENT_CHECK_IN_LEAD_MS;

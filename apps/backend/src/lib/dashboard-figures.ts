@@ -1,6 +1,7 @@
 // apps/backend/src/lib/dashboard-figures.ts
 import { isAssignmentOutstanding } from "../../../../packages/shared/src/index";
 import type { StudentAssignmentStateRow } from "./queries/assignments";
+import { MS_PER_MINUTE } from "./org-time";
 
 /*
  * The dashboard's own arithmetic (spec 19 §7) — pure, so it is unit-tested
@@ -11,7 +12,7 @@ import type { StudentAssignmentStateRow } from "./queries/assignments";
 /** D13: a session is in progress from its start instant until start + duration. */
 export function isSessionInProgress(startsAt: Date, durationMinutes: number, now: Date): boolean {
   const start = startsAt.getTime();
-  return start <= now.getTime() && now.getTime() < start + durationMinutes * 60_000;
+  return start <= now.getTime() && now.getTime() < start + durationMinutes * MS_PER_MINUTE;
 }
 
 export interface ProgressFigures {

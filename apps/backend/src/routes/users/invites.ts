@@ -9,12 +9,13 @@ import { makeLimiter } from "../../lib/rate-limit";
 import { loadUserDetail } from "./views";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
+import { MS_PER_HOUR } from "../../lib/org-time";
 
 // Own bucket (Plan 10 Decision 11). With the 20-user batch ceiling this caps
 // bulk sending at 600 invites an hour.
 export const bulkInviteLimiter = makeLimiter({
   name: "bulk-invite",
-  windowMs: 60 * 60 * 1000,
+  windowMs: MS_PER_HOUR,
   limit: 30,
 });
 

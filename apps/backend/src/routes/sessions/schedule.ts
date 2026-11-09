@@ -17,6 +17,7 @@ import {
   updateSessionRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { resolveSeriesTargets, sessionStartFrom, type SeriesAnchor } from "./series";
+import { notificationLink } from "../../lib/notification-target";
 
 export async function createSession(req: Request, res: Response) {
   const user = requireUser(req);
@@ -137,7 +138,7 @@ export async function updateSession(req: Request, res: Response) {
           // Org wall clock (C2), not the host's toLocaleString (v1).
           body: `New time: ${formatInOrgTime(newStart)}`,
           // X1: v1's exact link for this type.
-          link: "/student/calendar",
+          link: notificationLink.studentCalendar(),
         },
       ),
     );

@@ -6,9 +6,10 @@ import type { UserRole } from "@space/shared";
 import { db } from "../../db/client";
 import { config } from "../config";
 import { loadScopes } from "./scopes";
+import { MS_PER_DAY } from "../org-time";
 
 const ACCESS_TTL_SECONDS = 15 * 60;
-const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const REFRESH_TTL_MS = 30 * MS_PER_DAY;
 const AUDIENCE = "jpc-mobile";
 
 export interface SessionUser {

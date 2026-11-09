@@ -3,6 +3,7 @@ import { db } from "../db/client";
 import { bestEffort } from "./best-effort";
 import { createNotificationsBulk } from "./notifications";
 import { groupIdInSeason } from "./queries/enrollment";
+import { notificationLink } from "./notification-target";
 
 /**
  * Where SUBMISSION_RECEIVED points: the submission itself, by publicId.
@@ -15,7 +16,7 @@ import { groupIdInSeason } from "./queries/enrollment";
  * `submission` target.
  */
 export function submissionReceivedLink(publicId: string): string {
-  return `/leader/submissions/${publicId}`;
+  return notificationLink.leaderSubmission(publicId);
 }
 
 interface ReceivedSubmission {

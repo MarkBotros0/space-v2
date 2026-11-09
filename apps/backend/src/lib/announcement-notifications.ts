@@ -2,6 +2,7 @@ import { db } from "../db/client";
 import { ANNOUNCEMENT_PUSH_LENGTH } from "../../../../packages/shared/src/index";
 import { runInBackground } from "./background";
 import { createNotificationsBulk } from "./notifications";
+import { notificationLink } from "./notification-target";
 
 interface RecipientTarget {
   audience: "COMMUNITY" | "SEASON";
@@ -57,7 +58,7 @@ export function notifyAnnouncement(post: {
         title: "New announcement",
         // By code point: a slice would cut an emoji's surrogate pair in half.
         body: Array.from(post.body).slice(0, ANNOUNCEMENT_PUSH_LENGTH).join(""),
-        link: `/announcements/${post.id}`,
+        link: notificationLink.announcement(post.id),
       });
     })(),
   );

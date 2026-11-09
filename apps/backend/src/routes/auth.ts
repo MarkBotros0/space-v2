@@ -25,15 +25,14 @@ import { apiOk, apiError } from "../lib/api-response";
 import { runInBackground } from "../lib/background";
 import { config } from "../lib/config";
 
-const authLimiter = makeLimiter({ name: "auth", windowMs: 15 * 60 * 1000, limit: 20 });
-const refreshLimiter = makeLimiter({ name: "refresh", windowMs: 15 * 60 * 1000, limit: 60 });
+const authLimiter = makeLimiter({ name: "auth", limit: 20 });
+const refreshLimiter = makeLimiter({ name: "refresh", limit: 60 });
 
 // Same window and ceiling as authLimiter, but its OWN bucket: sharing the
 // login limiter would let a few failed sign-ins lock a person out of
 // activating, and vice versa.
 const acceptInviteLimiter = makeLimiter({
   name: "accept-invite",
-  windowMs: 15 * 60 * 1000,
   limit: 20,
 });
 
@@ -183,12 +182,10 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
 // login limiter would let failed sign-ins lock a person out of recovering.
 const forgotPasswordLimiter = makeLimiter({
   name: "forgot-password",
-  windowMs: 15 * 60 * 1000,
   limit: 10,
 });
 const resetPasswordLimiter = makeLimiter({
   name: "reset-password",
-  windowMs: 15 * 60 * 1000,
   limit: 20,
 });
 

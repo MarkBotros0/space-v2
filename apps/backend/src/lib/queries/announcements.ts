@@ -4,6 +4,7 @@ import type { SessionUser } from "../auth/tokens";
 import { isMentor, isSuper } from "../rbac";
 import { seasonParticipant } from "./season-participants";
 import { ANNOUNCEMENT_UNREAD_DAYS } from "../../../../../packages/shared/src/index";
+import { MS_PER_DAY } from "../org-time";
 
 export const ANNOUNCEMENT_PAGE_ORDER: Prisma.AnnouncementOrderByWithRelationInput[] = [
   { createdAt: "desc" },
@@ -77,7 +78,7 @@ export async function announcementUnreadFilter(
   userCreatedAt: Date,
   now: Date,
 ): Promise<Prisma.AnnouncementWhereInput> {
-  const windowStart = new Date(now.getTime() - ANNOUNCEMENT_UNREAD_DAYS * 24 * 60 * 60 * 1000);
+  const windowStart = new Date(now.getTime() - ANNOUNCEMENT_UNREAD_DAYS * MS_PER_DAY);
   const since = userCreatedAt > windowStart ? userCreatedAt : windowStart;
   const live = await liveSeasonIds(user);
   const addressed: Prisma.AnnouncementWhereInput[] = [{ audience: "COMMUNITY" }];

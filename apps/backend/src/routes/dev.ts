@@ -25,7 +25,7 @@ function switcherOn(_req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
-const devLimiter = makeLimiter({ name: "dev-switch", windowMs: 15 * 60 * 1000, limit: 120 });
+const devLimiter = makeLimiter({ name: "dev-switch", limit: 120 });
 
 devRouter.use(switcherOn);
 

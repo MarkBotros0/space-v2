@@ -2,6 +2,7 @@ import type { ClientRateLimitInfo, Options, Store } from "express-rate-limit";
 
 import { db } from "../../db/client";
 import { runInBackground } from "../background";
+import { MS_PER_MINUTE } from "../org-time";
 
 /** The slice of the Prisma client the store uses, so tests can pass a fake. */
 type RateLimitDb = Pick<typeof db, "$queryRaw" | "$executeRaw">;
@@ -35,7 +36,7 @@ export class PostgresStore implements Store {
   /** Counters are shared across instances, not local to this process. */
   readonly localKeys = false;
 
-  private windowMs = 60_000;
+  private windowMs = MS_PER_MINUTE;
   private readonly client: RateLimitDb;
   private readonly cleanupRate: number;
   private readonly random: () => number;

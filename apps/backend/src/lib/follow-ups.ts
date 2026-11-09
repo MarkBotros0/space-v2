@@ -3,13 +3,14 @@ import { timingSafeEqual } from "node:crypto";
 import { db } from "../db/client";
 import { FOLLOW_UP_DAYS, type FollowUp } from "../../../../packages/shared/src/index";
 import { createNotificationsBulk } from "./notifications";
+import { MS_PER_DAY } from "./org-time";
+import { notificationLink } from "./notification-target";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 /** How long a done follow-up stays on the list. */
 const DONE_SHOWN_DAYS = 30;
 
 function dueAtFor(createdAt: Date): Date {
-  return new Date(createdAt.getTime() + FOLLOW_UP_DAYS * DAY_MS);
+  return new Date(createdAt.getTime() + FOLLOW_UP_DAYS * MS_PER_DAY);
 }
 
 const SELECT = {
@@ -57,7 +58,7 @@ export async function listFollowUps(mentorUserId: number, now = new Date()): Pro
       select: SELECT,
     }),
     db.mentorFollowUp.findMany({
-      where: { ...live, doneAt: { gte: new Date(now.getTime() - DONE_SHOWN_DAYS * DAY_MS) } },
+      where: { ...live, doneAt: { gte: new Date(now.getTime() - DONE_SHOWN_DAYS * MS_PER_DAY) } },
       orderBy: [{ doneAt: "desc" }, { id: "desc" }],
       select: SELECT,
     }),
@@ -80,6 +81,9 @@ export async function createFollowUp(mentorUserId: number, studentUserId: number
   return toFollowUp(row);
 }
 
+/** The most reminders one cron run claims; the rest go out on the next run. */
+const REMINDER_BATCH = 200;
+
 /**
  * The daily reminder: one MENTOR_FOLLOWUP to the mentor who made each open
  * follow-up past its due date, never twice. Each row is claimed by stamping
@@ -97,7 +101,7 @@ export async function sendDueFollowUpReminders(now = new Date()): Promise<number
       studentUser: { deletedAt: null },
     },
     orderBy: { id: "asc" },
-    take: 200,
+    take: REMINDER_BATCH,
     select: {
       id: true,
       mentorUserId: true,
@@ -117,7 +121,7 @@ export async function sendDueFollowUpReminders(now = new Date()): Promise<number
       type: "MENTOR_FOLLOWUP",
       title: `Follow up with ${f.studentUser.name}`,
       body: f.reason ?? `You said you'd come back to them ${FOLLOW_UP_DAYS} days ago.`,
-      link: `/admin/students/${f.studentUserId}`,
+      link: notificationLink.adminStudent(f.studentUserId),
     });
     sent += 1;
   }

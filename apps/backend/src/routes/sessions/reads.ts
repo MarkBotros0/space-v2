@@ -3,7 +3,7 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { isCheckInOpen, isCheckInOpenForStudent } from "../../lib/check-in";
-import { addWeeksInOrgTime, orgDayKey, orgWallClockToInstant, orgWallTime } from "../../lib/org-time";
+import { MS_PER_DAY, addWeeksInOrgTime, orgDayKey, orgWallClockToInstant, orgWallTime } from "../../lib/org-time";
 import { parseId } from "../../lib/parse-id";
 import {
   attendanceScopeFor,
@@ -49,7 +49,7 @@ export async function listSessions(req: Request, res: Response) {
     to = addWeeksInOrgTime(from, SESSION_RANGE_DEFAULT_WEEKS);
   }
   const span = to.getTime() - from.getTime();
-  if (span <= 0 || span > SESSION_RANGE_MAX_DAYS * 86_400_000) {
+  if (span <= 0 || span > SESSION_RANGE_MAX_DAYS * MS_PER_DAY) {
     return apiError(res, "bad_request", `The window must be positive and at most ${SESSION_RANGE_MAX_DAYS} days.`, 400);
   }
 
