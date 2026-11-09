@@ -188,10 +188,10 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 - [x] 1.11 Button legacy variants: codemod the 55 call sites to the mapped names, delete the alias maps (FE-071 part 1) — AST codemod (scratchpad scan/button-codemod.js, <Button>/<ButtonV1> only, conditional literals included): 75 literals in 31 files. Sizes are now md | sm | icon (icon = the old icon/icon-sm/icon-xs: 44pt square, same classes); icon-lg had no user. ThemeToggle lost its no-op size prop. Alias maps and Legacy types deleted. Lint/typecheck clean, mobile unit 264 / 2304
 - [x] 1.12 Dependencies: DC-040 (`expo-linear-gradient`), DC-046 (`pg`, `@types/pg`) — removed pg + @types/pg (backend; @prisma/adapter-pg declares its own) and expo-linear-gradient (mobile; no import). Lockfile: 22 lines removed, nothing added. Typecheck, build, unit 329/536/2304 and a DB integration suite pass
 - [x] 1.13 Docs and leftovers: SH-006 (stale CLAUDE.md paragraph), `scripts/smoke.sh` if unused — SH-006: CLAUDE.md paragraph now says every wire contract is Zod and names the 3 nav-config interfaces left. scripts/smoke.sh KEPT: a working manual operator check (provisions and deletes a throwaway account, calls none of the removed routes), not dead code
-- [ ] 1.14 Kept on purpose, recorded here: DC-023 (`sentryEnabled` test seam), DC-031, DC-032, DC-058,
+- [x] 1.14 Kept on purpose, recorded here: DC-023 (`sentryEnabled` test seam), DC-031, DC-032, DC-058,
       DC-059, DC-063…066, FE-062. No action by design: BE-051, BE-053, BE-074, BE-075, BE-077, BE-078,
       FE-033, FE-053, FE-054, DB-011a, DB-029a. Covered under their duplicate IDs: BE-080
-      (= DC-020/022/023), FE-070 (= DC-001/003/011/025…030)
+      (= DC-020/022/023), FE-070 (= DC-001/003/011/025…030) — recorded as listed, plus apps/backend/scripts/smoke.sh (1.13) and the 17 shared type aliases kept as conservative in 1.6
 - [x] 1.15 Prettier, enforced (owner request 2026-11-09; done ahead of 1.7): one config
       (`prettier.config.js` → `packages/config/prettier`, the duplicate `.prettierrc` removed), `.prettierignore`
       (generated output, Markdown), printWidth **120** (D11), one formatting-only commit listed in
