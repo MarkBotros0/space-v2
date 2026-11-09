@@ -9,7 +9,7 @@ import { authRouter } from "./routes/auth";
 import { assignmentsRouter } from "./routes/assignments";
 import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
-import { devicesRouter } from "./routes/me-devices";
+import { devicesRouter } from "./routes/me/devices";
 import { usersRouter } from "./routes/users";
 import { seasonsRouter } from "./routes/seasons";
 import { sessionsRouter } from "./routes/sessions";

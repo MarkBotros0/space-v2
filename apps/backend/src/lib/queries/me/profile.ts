@@ -1,4 +1,5 @@
 import { db } from "../../../db/client";
+import { dayFromDate } from "../../org-time";
 import { currentSeasonEnrollmentSelect } from "../students/current-season";
 
 // ---------------------------------------------------------------------------
@@ -56,6 +57,6 @@ export async function loadMyProfile(userId: number): Promise<MyProfileRow | null
     // Account-level (User) since 2026-11-06.
     phone: row.phone,
     // A calendar date stored at UTC midnight (Plan 11 Decision 11).
-    dateOfBirth: row.dateOfBirth ? row.dateOfBirth.toISOString().slice(0, 10) : null,
+    dateOfBirth: dayFromDate(row.dateOfBirth),
   };
 }

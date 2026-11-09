@@ -200,3 +200,14 @@ export function formatDayInOrgTime(date: Date): string {
 export const MS_PER_MINUTE = 60_000;
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const MS_PER_DAY = 24 * MS_PER_HOUR;
+
+/** A calendar day stored at UTC midnight (Plan 11 Decision 11) → "YYYY-MM-DD". */
+export function dayFromDate(d: Date | null): string | null {
+  return d ? d.toISOString().slice(0, 10) : null;
+}
+
+/** "YYYY-MM-DD" → its UTC midnight; `undefined` (absent) passes through. */
+export function dateFromDay(day: string | null | undefined): Date | null | undefined {
+  if (day === undefined) return undefined;
+  return day === null ? null : new Date(`${day}T00:00:00.000Z`);
+}

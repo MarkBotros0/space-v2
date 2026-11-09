@@ -4,11 +4,11 @@ import {
   DEVICE_PLATFORM_TO_DB,
   deviceRegistrationSchema,
   deviceUnregistrationSchema,
-} from "../../../../packages/shared/src/index";
-import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
-import { makeLimiter } from "../lib/rate-limit";
-import { requireAuth, requireUser } from "../middleware/require-auth";
+} from "../../../../../packages/shared/src/index";
+import { db } from "../../db/client";
+import { apiOk, apiError } from "../../lib/api-response";
+import { makeLimiter } from "../../lib/rate-limit";
+import { requireAuth, requireUser } from "../../middleware/require-auth";
 
 /**
  * This device's Expo push token, mounted under /api/v1/me.
