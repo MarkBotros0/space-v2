@@ -2,7 +2,14 @@ import { useCallback, useEffect } from "react";
 import axios from "axios";
 import { meResponseSchema } from "@space/shared";
 
-import { apiClient, forgetDevice, login as loginRequest, logout as logoutRequest } from "../lib/api-client";
+import {
+  apiClient,
+  forgetDevice,
+  login as loginRequest,
+  loginWithGoogle,
+  logout as logoutRequest,
+} from "../lib/api-client";
+import { googleIdToken } from "../lib/google-sign-in";
 import { isRefreshIndeterminate } from "../lib/api-error";
 import { clearSession, loadAccessToken } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
@@ -129,30 +136,53 @@ export function useBootSession(): void {
  * does.
  */
 export function useLogin(): (email: string, password: string) => Promise<void> {
-  const setSession = useSessionStore((s) => s.setSession);
-  const clear = useSessionStore((s) => s.clear);
-
+  const finish = useFinishSignIn();
   return useCallback(
     async (email: string, password: string) => {
       await loginRequest(email, password);
-
-      try {
-        const res = await apiClient.get("/api/v1/me");
-        const me = meResponseSchema.parse(res.data.data);
-        if (!me.user) throw new Error("me returned no user after login");
-
-        setSession(me.user, me.scopes);
-        void syncPushRegistration();
-      } catch (err) {
-        // A half-finished login (tokens saved, session unpopulated) is worse
-        // than no login at all — don't leave stored tokens behind.
-        await clearSession();
-        clear();
-        throw err;
-      }
+      await finish();
     },
-    [setSession, clear],
+    [finish],
   );
+}
+
+/**
+ * Google sign-in: the same follow-up as `useLogin`, after the backend swaps
+ * Google's ID token for our own session. Resolves false when the person
+ * closed Google's sheet, so the screen can stay quiet.
+ */
+export function useGoogleLogin(): () => Promise<boolean> {
+  const finish = useFinishSignIn();
+  return useCallback(async () => {
+    const idToken = await googleIdToken();
+    if (!idToken) return false;
+    await loginWithGoogle(idToken);
+    await finish();
+    return true;
+  }, [finish]);
+}
+
+/** After tokens are stored: `/me` fills the session store, as boot does. */
+function useFinishSignIn(): () => Promise<void> {
+  const setSession = useSessionStore((s) => s.setSession);
+  const clear = useSessionStore((s) => s.clear);
+
+  return useCallback(async () => {
+    try {
+      const res = await apiClient.get("/api/v1/me");
+      const me = meResponseSchema.parse(res.data.data);
+      if (!me.user) throw new Error("me returned no user after login");
+
+      setSession(me.user, me.scopes);
+      void syncPushRegistration();
+    } catch (err) {
+      // A half-finished login (tokens saved, session unpopulated) is worse
+      // than no login at all — don't leave stored tokens behind.
+      await clearSession();
+      clear();
+      throw err;
+    }
+  }, [setSession, clear]);
 }
 
 export function useLogout(): () => Promise<void> {

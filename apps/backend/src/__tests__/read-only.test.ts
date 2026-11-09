@@ -8,7 +8,13 @@
  */
 jest.mock("../lib/config", () => {
   const actual: { config: Record<string, unknown> } = jest.requireActual("../lib/config");
-  return { config: { ...actual.config, readOnly: true } };
+  return {
+    config: {
+      ...actual.config,
+      readOnly: true,
+      googleClientIds: ["test.apps.googleusercontent.com"],
+    },
+  };
 });
 
 import request from "supertest";
@@ -51,7 +57,12 @@ describe("read-only mode", () => {
     expect(res.body.error.code).toBe("not_found");
   });
 
-  it.each(["/api/v1/auth/login", "/api/v1/auth/refresh", "/api/v1/auth/logout"])(
+  it.each([
+    "/api/v1/auth/login",
+    "/api/v1/auth/google",
+    "/api/v1/auth/refresh",
+    "/api/v1/auth/logout",
+  ])(
     "lets %s through (session bookkeeping only) — it fails on its own validation",
     async (path) => {
       const res = await request(app).post(path).send({});

@@ -127,16 +127,27 @@ export function AuthDivider({ label = "or" }: { label?: string }) {
 }
 
 /** v1's bordered error / success boxes on the signed-out pages. */
-export function AuthNotice({ tone, children }: { tone: "error" | "success"; children: ReactNode }) {
+const NOTICE_TONES = {
+  error: { box: "bg-bad-soft", text: "text-bad" },
+  success: { box: "bg-ok-soft", text: "text-ok" },
+  // A next step rather than a failure (Google sign-in with no account yet).
+  info: { box: "bg-info-soft", text: "text-foreground" },
+} as const;
+
+export function AuthNotice({
+  tone,
+  children,
+}: {
+  tone: keyof typeof NOTICE_TONES;
+  children: ReactNode;
+}) {
   return (
-    <View
-      className={cn("rounded-control px-3 py-2", tone === "error" ? "bg-bad-soft" : "bg-ok-soft")}
-    >
+    <View className={cn("rounded-control px-3 py-2", NOTICE_TONES[tone].box)}>
       <Text
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
         variant="subhead"
-        className={tone === "error" ? "text-bad" : "text-ok"}
+        className={NOTICE_TONES[tone].text}
       >
         {children}
       </Text>

@@ -39,6 +39,25 @@ jest.mock("@react-native-community/netinfo", () =>
   require("@react-native-community/netinfo/jest/netinfo-mock.js"),
 );
 
+// Google sign-in is a native module Jest can't load, and the package exports
+// no mock. These are the calls src/lib/google-sign-in.ts makes; its own test
+// replaces this with mocks it asserts on.
+jest.mock("@react-native-google-signin/google-signin", () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn().mockResolvedValue(true),
+    signIn: jest.fn().mockResolvedValue({ type: "cancelled", data: null }),
+    signOut: jest.fn().mockResolvedValue(null),
+  },
+  isErrorWithCode: (e: unknown) => typeof e === "object" && e !== null && "code" in e,
+  statusCodes: {
+    SIGN_IN_CANCELLED: "SIGN_IN_CANCELLED",
+    IN_PROGRESS: "IN_PROGRESS",
+    PLAY_SERVICES_NOT_AVAILABLE: "PLAY_SERVICES_NOT_AVAILABLE",
+    SIGN_IN_REQUIRED: "SIGN_IN_REQUIRED",
+  },
+}));
+
 // design/ui's ThemeToggle reads the saved theme; the library's own mock.
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),

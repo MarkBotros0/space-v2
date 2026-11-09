@@ -27,7 +27,7 @@ export const apiClient = axios.create({ baseURL, timeout: 15000 });
 // Paths whose own 401s must never trigger a refresh rotation (see below).
 // Checked with `endsWith` so this matches whether the request's `url` came
 // through relative to `baseURL` (the normal case) or as an absolute URL.
-const AUTH_ENDPOINT_PATHS = ["/api/v1/auth/login", "/api/v1/auth/refresh"];
+const AUTH_ENDPOINT_PATHS = ["/api/v1/auth/login", "/api/v1/auth/google", "/api/v1/auth/refresh"];
 
 function isAuthEndpoint(url: string | undefined): boolean {
   if (!url) return false;
@@ -209,6 +209,14 @@ apiClient.interceptors.response.use((response) => response, __handleResponseErro
 
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const res = await apiClient.post("/api/v1/auth/login", { email, password });
+  const data = loginResponseSchema.parse(res.data.data);
+  await saveSession(data);
+  return data;
+}
+
+/** Sign in with the ID token Google's sheet returned (`POST /api/v1/auth/google`). */
+export async function loginWithGoogle(idToken: string): Promise<LoginResponse> {
+  const res = await apiClient.post("/api/v1/auth/google", { idToken });
   const data = loginResponseSchema.parse(res.data.data);
   await saveSession(data);
   return data;

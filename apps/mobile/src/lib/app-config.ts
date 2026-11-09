@@ -1,5 +1,6 @@
 // apps/mobile/src/lib/app-config.ts
 import Constants from "expo-constants";
+import { Platform } from "react-native";
 
 /**
  * The EAS project id from app.json's `expo.extra.eas.projectId` (Task 10
@@ -39,4 +40,30 @@ export function sentryEnvironment(): string {
   const env = process.env.EXPO_PUBLIC_SENTRY_ENVIRONMENT;
   if (env) return env;
   return __DEV__ ? "development" : "production";
+}
+
+export interface GoogleSignInIds {
+  /** The Web OAuth client: Android asks Google for an ID token addressed to it. */
+  webClientId: string;
+  /** The iOS OAuth client; null on a build that has none. */
+  iosClientId: string | null;
+}
+
+/**
+ * Google sign-in client IDs (not secrets), or null when this build has none
+ * for its platform: then the login screen's Google button says it is not on
+ * yet. EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID / EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+ * win; otherwise app.json's `extra.googleWebClientId` / `extra.googleIosClientId`.
+ * iOS also needs the plugin's `iosUrlScheme` in app.json.
+ */
+export function googleSignInIds(os: string = Platform.OS): GoogleSignInIds | null {
+  const extra = Constants.expoConfig?.extra as
+    { googleWebClientId?: unknown; googleIosClientId?: unknown } | undefined;
+  const pick = (env: string | undefined, fallback: unknown): string | null =>
+    env ? env : typeof fallback === "string" && fallback.length > 0 ? fallback : null;
+  const webClientId = pick(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, extra?.googleWebClientId);
+  const iosClientId = pick(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, extra?.googleIosClientId);
+  if (!webClientId) return null;
+  if (os === "ios" && !iosClientId) return null;
+  return { webClientId, iosClientId };
 }

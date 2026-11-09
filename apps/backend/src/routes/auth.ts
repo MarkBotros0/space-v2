@@ -9,13 +9,15 @@ import bcrypt from "bcryptjs";
 import {
   acceptInviteRequestSchema,
   forgotPasswordRequestSchema,
+  googleSignInRequestSchema,
   loginRequestSchema,
   refreshRequestSchema,
   resetPasswordRequestSchema,
 } from "../../../../packages/shared/src/index";
 
 import { db } from "../db/client";
-import { verifyCredentials } from "../lib/auth/credentials";
+import { verifyCredentials, type VerifiedUser } from "../lib/auth/credentials";
+import { findGoogleUser, verifyGoogleIdToken } from "../lib/auth/google";
 import { completePasswordReset, requestPasswordReset } from "../lib/auth/password-reset";
 import { invalidateSessions } from "../lib/auth/session-validity";
 import {
@@ -29,6 +31,7 @@ import { makeLimiter } from "../lib/rate-limit";
 import { apiOk, apiError } from "../lib/api-response";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { runInBackground } from "../lib/background";
+import { config } from "../lib/config";
 
 const authLimiter = makeLimiter({ name: "auth", windowMs: 15 * 60 * 1000, limit: 20 });
 const refreshLimiter = makeLimiter({ name: "refresh", windowMs: 15 * 60 * 1000, limit: 60 });
@@ -60,15 +63,51 @@ authRouter.post("/login", authLimiter, async (req, res) => {
     return apiError(res, "invalid_credentials", "Incorrect email or password.", 401);
   }
 
-  return apiOk(res, {
+  return apiOk(res, sessionBody(issued, verified));
+});
+
+function sessionBody(
+  issued: NonNullable<Awaited<ReturnType<typeof issueSession>>>,
+  verified: VerifiedUser,
+) {
+  return {
     ...issued.session,
-    user: {
-      id: verified.id,
-      name: verified.name,
-      email: verified.email,
-      role: issued.user.role,
-    },
-  });
+    user: { id: verified.id, name: verified.name, email: verified.email, role: issued.user.role },
+  };
+}
+
+const NO_ACCOUNT_MESSAGE =
+  "To sign in with Google, first set up your account with the invite code from your email.";
+
+// Google sign-in (owner, 2026-11-09). Signs in an EXISTING account whose
+// address Google has verified; it never creates one. A 404 until
+// GOOGLE_CLIENT_IDS is set. Refusals are 400/403, never 401, so the app's
+// refresh-on-401 interceptor has nothing to do with them.
+authRouter.post("/google", authLimiter, async (req, res) => {
+  if (config.googleClientIds.length === 0) return apiError(res, "not_found", "Not found.", 404);
+
+  const parsed = googleSignInRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", "A Google ID token is required.", 400);
+
+  const identity = await verifyGoogleIdToken(parsed.data.idToken, config.googleClientIds);
+  if (!identity) {
+    return apiError(
+      res,
+      "invalid_google_token",
+      "Google couldn't confirm this sign-in. Try again.",
+      400,
+    );
+  }
+
+  // Worded as the next step, never as "you aren't invited" (owner,
+  // 2026-11-09): the app sends them to the invite-code screen.
+  const noAccount = () => apiError(res, "no_account", NO_ACCOUNT_MESSAGE, 403);
+  const verified = await findGoogleUser(identity.email);
+  if (!verified) return noAccount();
+  const issued = await issueSession(verified.id, req.get("user-agent"));
+  if (!issued) return noAccount();
+
+  return apiOk(res, sessionBody(issued, verified));
 });
 
 authRouter.post("/refresh", refreshLimiter, async (req, res) => {

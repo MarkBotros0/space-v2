@@ -118,6 +118,19 @@ const envSchema = z.object({
   // injects (VERCEL_GIT_COMMIT_SHA), so each deploy groups its own errors.
   SENTRY_RELEASE: z.string().optional(),
   VERCEL_GIT_COMMIT_SHA: z.string().optional(),
+  // Google sign-in (POST /api/v1/auth/google). Comma-separated OAuth client
+  // IDs whose ID tokens are accepted (the token's `aud`): the Web client the
+  // Android app requests tokens for, and the iOS client. Unset: the endpoint
+  // is a 404 and nobody signs in with Google. Client IDs are not secrets.
+  GOOGLE_CLIENT_IDS: z
+    .string()
+    .optional()
+    .transform((v) => (v ?? "").split(",").map((s) => s.trim()).filter((s) => s.length > 0))
+    .pipe(
+      z.array(
+        z.string().regex(/^[A-Za-z0-9-]+\.apps\.googleusercontent\.com$/, "must be Google OAuth client IDs"),
+      ),
+    ),
   // Dev user switcher (v1 parity: jpc-space's DEV_USER_SWITCHER). "1" turns on
   // /api/v1/dev/*, which signs the caller in as ANY active user with no
   // password. Testing aid only — never set it on a backend with real people's
@@ -169,6 +182,7 @@ export const config = {
   readOnly: parsed.data.READ_ONLY,
   mobileAppScheme: parsed.data.MOBILE_APP_SCHEME,
   devUserSwitcher: parsed.data.DEV_USER_SWITCHER === "1",
+  googleClientIds: parsed.data.GOOGLE_CLIENT_IDS as readonly string[],
   importBodyLimit: parsed.data.IMPORT_BODY_LIMIT,
   importPreviewRateLimit: parsed.data.IMPORT_PREVIEW_RATE_LIMIT,
   importCommitRateLimit: parsed.data.IMPORT_COMMIT_RATE_LIMIT,

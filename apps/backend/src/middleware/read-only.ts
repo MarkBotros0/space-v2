@@ -13,6 +13,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
  */
 export const READ_ONLY_ALLOWED_WRITES: ReadonlySet<string> = new Set([
   "POST /api/v1/auth/login",
+  "POST /api/v1/auth/google",
   "POST /api/v1/auth/refresh",
   "POST /api/v1/auth/logout",
 ]);

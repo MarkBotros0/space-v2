@@ -19,6 +19,12 @@
           "recordAudioAndroid": false
         }
       ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.334467367676-09f9lagimdcrgl7i4qa4qr7uaffjj6jt"
+        }
+      ],
       "expo-font",
       "expo-sharing",
       "expo-status-bar",
@@ -41,6 +47,8 @@
     },
     "extra": {
       "apiBaseUrl": "https://jpc-space-be.vercel.app",
+      "googleWebClientId": "334467367676-4blqjhdr17q2i2bqfspflh5o8ednffc5.apps.googleusercontent.com",
+      "googleIosClientId": "334467367676-09f9lagimdcrgl7i4qa4qr7uaffjj6jt.apps.googleusercontent.com",
       "eas": {
         "projectId": "633d9f9f-6744-45c9-854e-fa12c1025e52"
       }

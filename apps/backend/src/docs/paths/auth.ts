@@ -53,6 +53,53 @@ export const authPaths = {
       },
     },
   },
+  "/api/v1/auth/google": {
+    post: {
+      tags: ["Auth"],
+      summary: "Sign in with a Google ID token",
+      description:
+        "Signs in the existing account whose address Google has verified; never creates one. A 404 while `GOOGLE_CLIENT_IDS` is unset.",
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["idToken"],
+              properties: { idToken: { type: "string", minLength: 1, maxLength: 8192 } },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok(
+          {
+            allOf: [
+              { $ref: "#/components/schemas/Session" },
+              { type: "object", properties: { user: { $ref: "#/components/schemas/AuthUser" } } },
+            ],
+          },
+          "Authenticated.",
+        ),
+        400: {
+          description:
+            "`bad_request`, or `invalid_google_token` when Google's signature, issuer, audience, expiry or verified email doesn't hold.",
+          content: { "application/json": { schema: errorResponse } },
+        },
+        403: {
+          description:
+            "`no_account` — no live account uses this Google address. Its message points to the invite code and never says the address isn't invited.",
+          content: { "application/json": { schema: errorResponse } },
+        },
+        404: {
+          description: "Google sign-in is not configured.",
+          content: { "application/json": { schema: errorResponse } },
+        },
+        429: errRef("TooManyRequests"),
+      },
+    },
+  },
   "/api/v1/auth/refresh": {
     post: {
       tags: ["Auth"],

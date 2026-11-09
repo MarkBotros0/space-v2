@@ -9,6 +9,12 @@ export const loginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
+/** POST /auth/google: the ID token Google's sign-in sheet handed the app. */
+export const googleSignInRequestSchema = z.object({
+  idToken: z.string().min(1).max(8192),
+});
+export type GoogleSignInRequest = z.infer<typeof googleSignInRequestSchema>;
+
 export const refreshRequestSchema = z.object({
   refreshToken: z.string().min(1),
 });

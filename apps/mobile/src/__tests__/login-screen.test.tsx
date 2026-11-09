@@ -11,7 +11,20 @@ import { renderWithProviders } from "./helpers/render";
 // behavior: does it call the login function it's given, and does it react
 // correctly to success/failure.
 const mockLogin = jest.fn();
-jest.mock("../hooks/use-session", () => ({ useLogin: () => mockLogin }));
+const mockGoogleLogin = jest.fn();
+jest.mock("../hooks/use-session", () => ({
+  useLogin: () => mockLogin,
+  useGoogleLogin: () => mockGoogleLogin,
+}));
+
+const mockGoogle = { configured: false };
+jest.mock("../lib/google-sign-in", () => {
+  class GoogleSignInUnavailableError extends Error {}
+  return {
+    GoogleSignInUnavailableError,
+    isGoogleSignInConfigured: () => mockGoogle.configured,
+  };
+});
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
@@ -33,6 +46,7 @@ describe("LoginScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearchParams = {};
+    mockGoogle.configured = false;
   });
 
   it("navigates to /dashboard on a successful login", async () => {
@@ -120,14 +134,88 @@ describe("LoginScreen", () => {
   });
 });
 
-// Owner 2026-11-07: a Google button in place until it is wired, and the invite code made very clear.
+// Google sign-in (owner 2026-11-09), and the invite code made very clear (2026-11-07).
 describe("LoginScreen — other ways in", () => {
-  it("offers Continue with Google, which says it is coming", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParams = {};
+    mockGoogle.configured = false;
+  });
+
+  it("says Google is coming while this build has no Google client IDs", () => {
     const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
     renderWithProviders(<LoginScreen />);
     fireEvent.press(screen.getByLabelText("Continue with Google"));
     expect(alert).toHaveBeenCalledWith("Coming soon", expect.stringContaining("Google"));
+    expect(mockGoogleLogin).not.toHaveBeenCalled();
     alert.mockRestore();
+  });
+
+  it("signs in with Google and opens Home", async () => {
+    mockGoogle.configured = true;
+    mockGoogleLogin.mockResolvedValue(true);
+    renderWithProviders(<LoginScreen />);
+    fireEvent.press(screen.getByLabelText("Continue with Google"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/dashboard"));
+  });
+
+  it("stays put, saying nothing, when Google's sheet is closed", async () => {
+    mockGoogle.configured = true;
+    mockGoogleLogin.mockResolvedValue(false);
+    renderWithProviders(<LoginScreen />);
+    fireEvent.press(screen.getByLabelText("Continue with Google"));
+    await waitFor(() => expect(mockGoogleLogin).toHaveBeenCalled());
+    expect(mockReplace).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("points to the invite code, without saying they aren't invited, when Google finds no account", async () => {
+    mockGoogle.configured = true;
+    mockGoogleLogin.mockRejectedValue(
+      Object.assign(new Error("403"), {
+        isAxiosError: true,
+        response: { status: 403, data: { error: { code: "no_account", message: "server words" } } },
+      }),
+    );
+    renderWithProviders(<LoginScreen />);
+    fireEvent.press(screen.getByLabelText("Continue with Google"));
+
+    const notice = await screen.findByText(
+      "To sign in with Google, first set up your account with the invite code from your email.",
+    );
+    expect(notice.props.children).not.toMatch(/not invited|no account|isn't invited/i);
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByRole("link", { name: "Enter your invite code" }));
+    expect(mockPush).toHaveBeenCalledWith("/accept-invite");
+  });
+
+  it("clears the invite pointer when they then sign in with a password", async () => {
+    mockGoogle.configured = true;
+    mockGoogleLogin.mockRejectedValue(
+      Object.assign(new Error("403"), {
+        isAxiosError: true,
+        response: { status: 403, data: { error: { code: "no_account", message: "x" } } },
+      }),
+    );
+    mockLogin.mockReturnValue(new Promise(() => undefined));
+    renderWithProviders(<LoginScreen />);
+    fireEvent.press(screen.getByLabelText("Continue with Google"));
+    await screen.findByText(/invite code from your email/);
+
+    fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
+    fireEvent.changeText(screen.getByLabelText("Password"), "hunter2");
+    fireEvent.press(screen.getByText("Sign in"));
+    await waitFor(() => expect(mockLogin).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText(/first set up your account/)).toBeNull());
+  });
+
+  it("says Google sign-in didn't work when Google itself fails", async () => {
+    mockGoogle.configured = true;
+    mockGoogleLogin.mockRejectedValue(new Error("DEVELOPER_ERROR"));
+    renderWithProviders(<LoginScreen />);
+    fireEvent.press(screen.getByLabelText("Continue with Google"));
+    await waitFor(() => expect(screen.getByText(/Google sign-in didn't work/)).toBeTruthy());
   });
 
   it("gives the invite code a row of its own that says where the code comes from", () => {

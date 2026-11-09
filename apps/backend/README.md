@@ -12,6 +12,7 @@ All paths below are relative to the server root. Everything except
 | --- | --- | --- |
 | GET | `/health` | Liveness + database round-trip. No auth, no `/api/v1` prefix. |
 | POST | `/api/v1/auth/login` | |
+| POST | `/api/v1/auth/google` | |
 | POST | `/api/v1/auth/refresh` | |
 | POST | `/api/v1/auth/logout` | |
 | GET | `/api/v1/me` | |
@@ -80,13 +81,14 @@ read outside that file). See `.env.example` for the full list.
 | `LOCAL_UPLOADS_DIR` | No | `./uploads` | Only used when `STORAGE_DRIVER=local`. |
 | `MAX_UPLOAD_BYTES` | No | `26214400` (25 MB) | Hard ceiling multer enforces before the per-assignment `maxFileSizeMb` check runs. |
 | `ENABLE_UPLOADS` | No | **`false`** | Accept file uploads. Off while file handling moves to a CMS — see below. |
-| `READ_ONLY` | No | `false` | Cutover freeze: `true` refuses every non-GET request except `POST /api/v1/auth/login\|refresh\|logout` with `503 read_only` (`Retry-After: 600`). Applied only on a new deployment. |
+| `READ_ONLY` | No | `false` | Cutover freeze: `true` refuses every non-GET request except `POST /api/v1/auth/login\|google\|refresh\|logout` with `503 read_only` (`Retry-After: 600`). Applied only on a new deployment. |
 | `ENABLE_API_DOCS` | No | `true` | Serves Swagger UI at `/api/docs` and the OpenAPI document at `/api/docs.json`. Set `false` to withhold them. |
 | `IMPORT_BODY_LIMIT` | No | `2mb` | JSON body limit for the import routes only; every other route keeps the 100 KB default. |
 | `IMPORT_PREVIEW_RATE_LIMIT` | No | `30` | Import preview requests per 15 minutes per IP. |
 | `IMPORT_COMMIT_RATE_LIMIT` | No | `10` | Import commit requests per 15 minutes per IP. |
 | `RATE_LIMIT_STORE` | No | `postgres` (`memory` when `NODE_ENV=test`) | Where every rate limiter keeps its counters. `postgres` shares them across instances through the `RateLimitHit` table (migration `20261105130000_rate_limit_store` must be applied); `memory` is per process, which on serverless means per instance. |
 | `CRON_SECRET` | No | unset | The bearer secret Vercel Cron sends to `GET /api/v1/internal/follow-ups/remind` (daily, `vercel.json`). Unset: the endpoint is a 404 and no mentor follow-up reminder is sent. Set it in Vercel as a Sensitive variable named exactly `CRON_SECRET`; Vercel adds it to the cron request itself. |
+| `GOOGLE_CLIENT_IDS` | No | unset | Comma-separated Google OAuth client IDs whose ID tokens `POST /api/v1/auth/google` accepts (the Web client and the iOS client). Unset: that endpoint is a 404 and nobody signs in with Google. Google sign-in only signs in an existing account whose address Google has verified; it never creates one. Client IDs are not secrets. |
 | `SENTRY_DSN` | No | unset | Turns on Sentry error reporting. Unset means Sentry is never initialised. See "Turning on Sentry" below. |
 | `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag on each event. |
 | `SENTRY_TRACES_SAMPLE_RATE` | No | `0` | Share of requests traced for performance, `0`–`1`. `0` reports errors only. |

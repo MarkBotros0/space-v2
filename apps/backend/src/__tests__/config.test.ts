@@ -77,6 +77,21 @@ describe("config", () => {
     expect(() => loadConfig({ AUTH_SECRET: REQUIRED.AUTH_SECRET })).not.toThrow(/STORAGE_DRIVER/);
   });
 
+  it("GOOGLE_CLIENT_IDS defaults to none and splits a comma list", () => {
+    expect(loadConfig({ ...REQUIRED }).googleClientIds).toEqual([]);
+    expect(loadConfig({ ...REQUIRED, GOOGLE_CLIENT_IDS: "" }).googleClientIds).toEqual([]);
+    expect(
+      loadConfig({
+        ...REQUIRED,
+        GOOGLE_CLIENT_IDS: " 1-web.apps.googleusercontent.com, 1-ios.apps.googleusercontent.com ,",
+      }).googleClientIds,
+    ).toEqual(["1-web.apps.googleusercontent.com", "1-ios.apps.googleusercontent.com"]);
+  });
+
+  it("rejects a GOOGLE_CLIENT_IDS entry that isn't a Google client ID", () => {
+    expect(() => loadConfig({ ...REQUIRED, GOOGLE_CLIENT_IDS: "my-secret" })).toThrow(/GOOGLE_CLIENT_IDS/);
+  });
+
   it("rejects an empty DATABASE_URL the same as a missing one", () => {
     expect(() => loadConfig({ ...REQUIRED, DATABASE_URL: "" })).toThrow(/DATABASE_URL/);
   });

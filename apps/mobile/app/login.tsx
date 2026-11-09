@@ -15,8 +15,11 @@ import {
   InviteCodeCallout,
 } from "../src/design/layout/auth-card";
 import { Button, Input, PasswordInput, Text } from "../src/design/ui";
-import { useLogin } from "../src/hooks/use-session";
+import { useGoogleLogin, useLogin } from "../src/hooks/use-session";
+import { apiErrorCode } from "../src/lib/api-error";
 import { authErrorMessage } from "../src/lib/auth-error";
+import { reportError } from "../src/lib/sentry";
+import { GoogleSignInUnavailableError, isGoogleSignInConfigured } from "../src/lib/google-sign-in";
 import { returnHrefFor } from "../src/lib/return-to";
 
 /** v1 app/login/page.tsx + login-form.tsx. */
@@ -24,6 +27,11 @@ export default function LoginScreen() {
   const router = useRouter();
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const login = useLogin();
+  const googleLogin = useGoogleLogin();
+  const [googleBusy, setGoogleBusy] = useState(false);
+  // Google found no account for that address: point to the invite code
+  // instead of an error (owner, 2026-11-09; never "you aren't invited").
+  const [needsInvite, setNeedsInvite] = useState(false);
 
   // `useLogin` already does login -> /me -> setSession (Task 6); this screen
   // just drives the form and reacts to success/failure. It does not persist
@@ -42,9 +50,13 @@ export default function LoginScreen() {
   useEffect(() => {
     if (error) AccessibilityInfo.announceForAccessibility(error);
   }, [error]);
+  useEffect(() => {
+    if (needsInvite) AccessibilityInfo.announceForAccessibility(INVITE_FIRST_MESSAGE);
+  }, [needsInvite]);
 
   async function onSubmit(values: LoginRequest) {
     setError(null);
+    setNeedsInvite(false);
     try {
       await login(values.email, values.password);
       // Spec 04 R56: a check-in link that needed a login lands back on itself.
@@ -52,6 +64,27 @@ export default function LoginScreen() {
       router.replace(returnHrefFor(returnTo) ?? "/dashboard");
     } catch (err) {
       setError(authErrorMessage(err, "Invalid email or password."));
+    }
+  }
+
+  async function onGoogle() {
+    if (!isGoogleSignInConfigured()) {
+      Alert.alert(
+        "Coming soon",
+        "Signing in with Google isn't switched on yet. Use your email for now.",
+      );
+      return;
+    }
+    setError(null);
+    setNeedsInvite(false);
+    setGoogleBusy(true);
+    try {
+      if (await googleLogin()) router.replace(returnHrefFor(returnTo) ?? "/dashboard");
+    } catch (err) {
+      if (apiErrorCode(err) === "no_account") setNeedsInvite(true);
+      else setError(googleErrorMessage(err));
+    } finally {
+      setGoogleBusy(false);
     }
   }
 
@@ -102,6 +135,16 @@ export default function LoginScreen() {
         {/* The fields stay mounted with their values (RHF), so a wrong
             password needs no extra tap to get back to a fillable form. */}
         {error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
+        {needsInvite ? (
+          <View className="gap-1">
+            <AuthNotice tone="info">{INVITE_FIRST_MESSAGE}</AuthNotice>
+            <AuthLink
+              tone="accent"
+              label="Enter your invite code"
+              onPress={() => router.push("/accept-invite")}
+            />
+          </View>
+        ) : null}
         <Button
           size="lg"
           className="w-full"
@@ -111,15 +154,14 @@ export default function LoginScreen() {
           {formState.isSubmitting ? "Signing in…" : "Sign in"}
         </Button>
         <AuthDivider />
-        {/* Owner 2026-11-07: Google sign-in is coming; the button is in place until it is wired. */}
+        {/* Owner 2026-11-09: Google signs in an existing account; it never creates one. */}
         <Button
           variant="secondary"
           size="lg"
           className="w-full"
           accessibilityLabel="Continue with Google"
-          onPress={() =>
-            Alert.alert("Coming soon", "Signing in with Google isn't switched on yet. Use your email for now.")
-          }
+          disabled={googleBusy || formState.isSubmitting}
+          onPress={() => void onGoogle()}
         >
           <GoogleMark size={18} />
           <Text className="font-semibold text-foreground">Continue with Google</Text>
@@ -130,4 +172,20 @@ export default function LoginScreen() {
       </View>
     </AuthCard>
   );
+}
+
+const INVITE_FIRST_MESSAGE =
+  "To sign in with Google, first set up your account with the invite code from your email.";
+
+/** A failed Google sign-in in words: the server's own refusal, else what went wrong where. */
+function googleErrorMessage(err: unknown): string {
+  if (err instanceof GoogleSignInUnavailableError) return err.message;
+  if (apiErrorCode(err) === "not_found") {
+    return "Signing in with Google isn't switched on yet. Use your email for now.";
+  }
+  if (err instanceof Error && !("isAxiosError" in err)) {
+    reportError(err);
+    return "Google sign-in didn't work. Try again, or sign in with your email.";
+  }
+  return authErrorMessage(err, "Google couldn't confirm this sign-in. Try again.");
 }
