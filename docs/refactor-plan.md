@@ -6,10 +6,10 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-09)
 
-- **Current phase:** Wave 3 (schema expand) on `refactor/wave-3-schema-expand`, from `main` @ `d2a9ef88`.
-  Waves 0–2 are merged to `main` locally (fast-forward, no PR, at the owner's request); Waves 1–2 are
-  **not pushed**. Rulings D8 (fit the rules, skip what is
-  slow or complicated) and D9 (losing data is acceptable) apply.
+- **Current phase:** Wave 3 (schema expand) is **finished on `refactor/wave-3-schema-expand`** (from `main` @
+  `d2a9ef88`) and stopped for the owner's review. Waves 0–2 are merged to `main` locally (fast-forward, no
+  PR, at the owner's request); Waves 1–3 are **not pushed**. No Wave 3 migration has run anywhere but the
+  throwaway DB; deploying them needs `check:wave-3` on each environment first (see the Wave 3 summary).
 - Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
   again. Tests run only on the throwaway DB (see Working setup).
 - Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
@@ -271,13 +271,13 @@ snapshot updated, `schema.prisma` updated where expressible.
 - [x] 3.11 DB-031 option uniques — only if `applyUpdate`'s write order never holds a transient duplicate — **skipped, condition not met:** `applyUpdate` (poll-write.ts) moves kept options one `updateMany` at a time, so a swap of two positions or labels passes through a duplicate; a plain unique would refuse a valid edit. Needs a `DEFERRABLE` constraint (not expressible in Prisma) or a new write order (code, Wave 4)
 - [x] 3.12 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
       from audit §2.1, kept current from here on — header rewritten to the real conventions (DB-022); all 13 SQL-only objects noted on their models as `// SQL-only <kind> <name>: …`, and a new schema-snapshot test fails on an undocumented CHECK or partial index (DB-028; shown failing on a removed note); `docs/database/erd.md` is **generated** (`pnpm db:erd`, `scripts/erd/render.ts`, no dependencies) rather than copied from the audit, with a unit test that fails while it is stale or a model has no domain; CLAUDE.md migration rules updated
-- [ ] 3.13 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
+- [x] 3.13 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
 - Skipped (D8): DB-014 (CLAUDE.md: no migration may change `User.role`), DB-019 enrolment-coherence
   CHECKs (semantics), DB-019 `JpcEvent endDate >= date` (endDate is org midnight of the end day, date
   carries the start time: a valid same-day timed event violates it; a correct rule needs org-time days),
   DB-017 `QuizQuestion.correctIndex` CHECK (the publish route's R24 re-check and its test rely on the state
   existing; making it impossible is a Wave 4 call), DB-017 `recurrenceGroupId` → uuid (ids come from
-  `newPublicId()`, which is not a UUID), DB-018, IDX-3 (not needed after 3.8), DB-012 parity, DB-011b
+  `newPublicId()`, which is not a UUID), DB-018, IDX-3 (not needed after 3.8), DB-012 parity, DB-011b — verified (log ~/logs/space-v2-refactor-wave3.log); summary written; PR, push and deploy wait for the owner
 
 ### Wave 4 — backend per domain (`refactor/wave-4-backend`)
 
@@ -381,7 +381,7 @@ _(one paragraph per finished wave)_
   Button called by its own variant names, alias maps gone (class output identical); `pg`, `@types/pg`,
   `expo-linear-gradient` dropped. Verified: lint, typecheck, build, unit 329 / 536 / 2,304, integration
   133 / 1,582. No device UI sweep (no emulator here); the Button change was proven class-identical instead.
-- **Wave 2** (`refactor/wave-2-foundations`, 36 commits, not merged or pushed): size rules as ESLint warnings
+- **Wave 2** (merged to `main` @ `d2a9ef88`, 36 commits, not pushed): size rules as ESLint warnings
   and all 17 files over 400 lines split (OpenAPI document byte-identical, test titles unchanged); one
   finished/live season rule and `isAlumnusNotStudying` in `packages/shared`; shared request and response types;
   `import/` and `reports/` folders in shared; the error-code catalogue (`API_ERROR_CODES`, 112 codes) typing
@@ -397,3 +397,24 @@ _(one paragraph per finished wave)_
   season lookup, the irregular forms. Verified: lint (0 errors; 75 backend and 214 mobile size warnings),
   typecheck, build, unit 340 / 566 / 2,317, integration 137 / 1,582. No device UI sweep (no emulator here);
   copy was kept byte-identical (plain vs non-breaking spaces checked).
+- **Wave 3** (`refactor/wave-3-schema-expand`, 14 commits, not merged or pushed): 10 migrations, each with a
+  `rollback.sql` cycled apply → rollback → apply on the throwaway DB with schema-dump diffs (D6), and
+  `migrate diff` against `schema.prisma` empty after each. D10: Prisma 7 does not wrap a migration in a
+  transaction, so CONCURRENTLY works and everything else is wrapped in `BEGIN/COMMIT`. Indexes IDX-1, 2, 4
+  (partial), 5; the poll vote's composite FK onto `(id, pollId)` (IDX-8, DB-029); `createdAt`/`updatedAt`
+  on four tables, with defaults so the running build keeps inserting; every timestamp → `timestamptz(3)`
+  and `dateOfBirth` → `date`, values proven identical on seeded data; emails lowercased + CHECK; DB-019 /
+  IDX-6 / IDX-7 / DB-016 / DB-017 guards (11 CHECKs and uniques), each after its cleanup, shown working on
+  planted violations. Read-only `pnpm check:wave-3` (D7) for the owner to run on each real database first.
+  13 SQL-only objects noted on their models, with a test that fails on an unnoted one (DB-028); the header
+  states the real conventions (DB-022); `docs/database/erd.md` is generated (`pnpm db:erd`) and a unit test
+  keeps it current. Deviations from the audit: the group-name unique is exact, as the code compares (not
+  `lower(name)`). D8 skips: JpcEvent date CHECK (org-day semantics), QuizQuestion `correctIndex` CHECK (the
+  publish re-check relies on the state), `recurrenceGroupId` → uuid (the ids aren't UUIDs), DB-031 (the
+  edit passes through transient duplicates). Test fixtures that built states the API can't (mixed-case
+  emails, end before start, duplicate group names, scores that don't add up) now build valid ones.
+  Verified: lint (0 errors; warnings unchanged at 75 / 214), typecheck, build, unit 340 / 569 / 2,317,
+  integration 137 / 1,584.
+  **Deploy (owner):** run `pnpm --filter @space/backend check:wave-3` against each environment; deploy
+  only if nothing is BLOCKED (TimeZone must be UTC; no case-duplicate emails); then `db:migrate:deploy`
+  before any Wave 4 code. The timestamptz step rewrites every table under a lock: instant at today's size.
