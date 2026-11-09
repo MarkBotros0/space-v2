@@ -3,8 +3,9 @@ import { z } from "zod";
 import { seasonDetailSchema, seasonListItemSchema, type SeasonDetail, type SeasonListItem } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
+import { apiGet } from "../lib/api-request";
 import { queryKeys } from "../lib/query-keys";
-import { useSessionStore } from "../store/session";
+import { useSessionStore, useRole } from "../store/session";
 
 const seasonListSchema = z.array(seasonListItemSchema);
 
@@ -22,10 +23,7 @@ export function useSeasons(enabled = true): UseQueryResult<SeasonListItem[]> {
 export function useSeasonDetail(id: number | null): UseQueryResult<SeasonDetail> {
   return useQuery({
     queryKey: queryKeys.seasons.detail(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/seasons/${id}`);
-      return seasonDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/seasons/${id}`, seasonDetailSchema),
     enabled: id !== null,
   });
 }
@@ -69,7 +67,7 @@ export interface CurrentSeason {
  * query is disabled for students, so their path costs no request.
  */
 export function useCurrentSeasonId(): CurrentSeason {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const pinned = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const isStudent = role === "STUDENT";
   const seasons = useSeasons(role !== null && !isStudent);
@@ -95,8 +93,7 @@ export function useSeasonByCode(code: string | null): UseQueryResult<SeasonDetai
     queryKey: queryKeys.seasons.byCode(code),
     queryFn: async () => {
       if (code === null) throw new Error("useSeasonByCode ran without a code");
-      const res = await apiClient.get(`/api/v1/seasons/by-code/${encodeURIComponent(code)}`);
-      return seasonDetailSchema.parse(res.data.data);
+      return apiGet(`/api/v1/seasons/by-code/${encodeURIComponent(code)}`, seasonDetailSchema);
     },
     enabled: code !== null,
   });

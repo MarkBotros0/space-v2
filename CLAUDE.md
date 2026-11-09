@@ -232,7 +232,9 @@ degrades to `string` and checks nothing. Never silence a route error with
 **Data fetching follows `app/(app)/(tabs)/dashboard.tsx`** — the worked example. Query
 keys are hierarchical factories in `src/lib/query-keys.ts`; hooks live in
 `src/hooks/` and **parse responses with a Zod schema from `packages/shared`**
-rather than casting, so a backend drift fails at the boundary. Queries
+rather than casting, so a backend drift fails at the boundary. A hook calls `apiGet(url, schema)` / `apiSend(method, url, body, schema)`
+(`src/lib/api-request.ts`); an error is read with `apiErrorStatus` / `apiErrorCode` (`src/lib/api-error.ts`), and
+only the API plumbing (`api-client`, `api-error`, `auth-error`) imports axios. Queries
 depending on `scopes.activeSeasonId` (or any nullable id) must pass `enabled`
 — and guard manual `refetch()` too, since `enabled` only gates the automatic
 run. Map states to the primitives: `RouteSkeleton`, `RouteError` with `onRetry`

@@ -3,7 +3,7 @@ import type { z } from "zod";
 import { seasonDeletedResponseSchema, seasonRefResponseSchema } from "@space/shared";
 import type { DuplicateSeasonRequest, SeasonAdminPatch, seasonWriteRequestSchema } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
+import { apiSend } from "../lib/api-request";
 import { queryKeys } from "../lib/query-keys";
 
 type DuplicateSeasonInput = DuplicateSeasonRequest;
@@ -19,10 +19,7 @@ function useInvalidateSeasons() {
 export function useCreateSeason() {
   const invalidate = useInvalidateSeasons();
   return useMutation({
-    mutationFn: async (body: SeasonIdentityInput) => {
-      const res = await apiClient.post("/api/v1/seasons", body);
-      return seasonRefResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: SeasonIdentityInput) => apiSend("post", "/api/v1/seasons", body, seasonRefResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -30,10 +27,8 @@ export function useCreateSeason() {
 export function useDuplicateSeason(sourceId: number) {
   const invalidate = useInvalidateSeasons();
   return useMutation({
-    mutationFn: async (body: DuplicateSeasonInput) => {
-      const res = await apiClient.post(`/api/v1/seasons/${sourceId}/duplicate`, body);
-      return seasonRefResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: DuplicateSeasonInput) =>
+      apiSend("post", `/api/v1/seasons/${sourceId}/duplicate`, body, seasonRefResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -41,10 +36,7 @@ export function useDuplicateSeason(sourceId: number) {
 export function useUpdateSeason(id: number) {
   const invalidate = useInvalidateSeasons();
   return useMutation({
-    mutationFn: async (body: UpdateSeasonInput) => {
-      const res = await apiClient.patch(`/api/v1/seasons/${id}`, body);
-      return seasonRefResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: UpdateSeasonInput) => apiSend("patch", `/api/v1/seasons/${id}`, body, seasonRefResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -52,10 +44,7 @@ export function useUpdateSeason(id: number) {
 export function useDeleteSeason() {
   const invalidate = useInvalidateSeasons();
   return useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiClient.delete(`/api/v1/seasons/${id}`);
-      return seasonDeletedResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (id: number) => apiSend("delete", `/api/v1/seasons/${id}`, undefined, seasonDeletedResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -66,10 +55,7 @@ export type SeasonIdentityInput = z.input<typeof seasonWriteRequestSchema>;
 export function useUpdateSeasonAsSuper(id: number) {
   const invalidate = useInvalidateSeasons();
   return useMutation({
-    mutationFn: async (body: SeasonIdentityInput) => {
-      const res = await apiClient.patch(`/api/v1/seasons/${id}`, body);
-      return seasonRefResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: SeasonIdentityInput) => apiSend("patch", `/api/v1/seasons/${id}`, body, seasonRefResponseSchema),
     onSuccess: invalidate,
   });
 }
