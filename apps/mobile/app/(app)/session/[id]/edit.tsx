@@ -23,7 +23,7 @@ import { Button, EmptyState, Text } from "../../../../src/design/ui";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { useDeleteSession, useSessionSeries, useUpdateSession } from "../../../../src/hooks/use-session-writes";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
-import { firstErrorByField } from "../../../../src/lib/form-errors";
+import { useSchemaErrors } from "../../../../src/lib/form-errors";
 import { formatDayKey, formatWallTime } from "../../../../src/lib/format";
 import { parsePositiveInt } from "../../../../src/lib/params";
 
@@ -70,7 +70,7 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
   const [values, setValues] = useState<SessionFormValues>(initial);
   const isSeries = detail.recurrenceGroupId !== null;
   const [scope, setScope] = useState<RecurrenceScope>("one");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, validate } = useSchemaErrors(updateSessionRequestSchema);
   const [message, setMessage] = useState<string | null>(null);
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
@@ -98,12 +98,7 @@ function EditSessionForm({ detail }: { detail: SessionDetail }) {
     if (!dirty) return;
     setMessage(null);
     const body: UpdateSessionInput = { ...sessionWriteFields(values), scope };
-    const parsed = updateSessionRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      setErrors(firstErrorByField(parsed.error));
-      return;
-    }
-    setErrors({});
+    if (!validate(body)) return;
     update.mutate(body, {
       onSuccess: () => router.back(),
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't save the session.")),

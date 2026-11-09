@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { useState } from "react";
 import { View } from "react-native";
 import { duplicateSeasonRequestSchema, type SeasonDetail } from "@space/shared";
@@ -8,9 +7,10 @@ import { DatePicker, Input, Sheet, SheetSaveBar, Text } from "../../design/ui";
 import { FormField } from "../../design/ui/form-field";
 import { useDuplicateSeason } from "../../hooks/use-season-writes";
 import { apiErrorMessage } from "../../lib/api-error";
-import { firstErrorByField } from "../../lib/form-errors";
+import { useSchemaErrors } from "../../lib/form-errors";
 import { addYearsIso, autoSeasonCode } from "../../lib/season-defaults";
 import { dayToDate } from "./SeasonForm";
+import { dateToDay } from "../../lib/day-key";
 
 /**
  * v1 duplicate-season-dialog.tsx as a bottom sheet the caller opens (the
@@ -36,7 +36,7 @@ export function DuplicateSeasonDialog({
   const [codeTouched, setCodeTouched] = useState(false);
   const [startDay, setStartDay] = useState(addYearsIso(season.startDate, 1).slice(0, 10));
   const [endDay, setEndDay] = useState(addYearsIso(season.endDate, 1).slice(0, 10));
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, setErrors, validate } = useSchemaErrors(duplicateSeasonRequestSchema);
   const [message, setMessage] = useState<string | null>(null);
 
   // Sheet unmounts its children when closed, but this state lives above it:
@@ -60,12 +60,7 @@ export function DuplicateSeasonDialog({
       startDate: `${startDay}T00:00:00.000Z`,
       endDate: `${endDay}T00:00:00.000Z`,
     };
-    const parsed = duplicateSeasonRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      setErrors(firstErrorByField(parsed.error));
-      return;
-    }
-    setErrors({});
+    if (!validate(body)) return;
     duplicate.mutate(body, {
       onSuccess: (created) => {
         close();
@@ -115,14 +110,14 @@ export function DuplicateSeasonDialog({
           <DatePicker
             accessibilityLabel="Start date"
             value={dayToDate(startDay)}
-            onChange={(d) => setStartDay(format(d, "yyyy-MM-dd"))}
+            onChange={(d) => setStartDay(dateToDay(d))}
           />
         </FormField>
         <FormField label="End date" required error={errors.endDate}>
           <DatePicker
             accessibilityLabel="End date"
             value={dayToDate(endDay)}
-            onChange={(d) => setEndDay(format(d, "yyyy-MM-dd"))}
+            onChange={(d) => setEndDay(dateToDay(d))}
           />
         </FormField>
         <FormErrorBox message={message} />

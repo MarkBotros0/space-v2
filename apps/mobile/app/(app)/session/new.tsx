@@ -15,7 +15,7 @@ import { EmptyState, FormField, Input } from "../../../src/design/ui";
 import { useSeasonDetail } from "../../../src/hooks/use-seasons";
 import { useCreateSession } from "../../../src/hooks/use-session-writes";
 import { apiErrorMessage } from "../../../src/lib/api-error";
-import { firstErrorByField } from "../../../src/lib/form-errors";
+import { useSchemaErrors } from "../../../src/lib/form-errors";
 import { parsePositiveInt } from "../../../src/lib/params";
 
 /**
@@ -31,7 +31,7 @@ export default function NewSessionScreen() {
   const create = useCreateSession();
   const [values, setValues] = useState<SessionFormValues>(emptySessionValues);
   const [repeat, setRepeat] = useState("1");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, validate } = useSchemaErrors(createSessionRequestSchema);
   const [message, setMessage] = useState<string | null>(null);
 
   if (seasonId === null) {
@@ -49,12 +49,7 @@ export default function NewSessionScreen() {
       ...sessionWriteFields(values),
       repeatWeeks: Number(repeat),
     };
-    const parsed = createSessionRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      setErrors(firstErrorByField(parsed.error));
-      return;
-    }
-    setErrors({});
+    if (!validate(body)) return;
     create.mutate(body, {
       onSuccess: (created) => router.replace({ pathname: "/session/[id]", params: { id: String(created.id) } }),
       onError: (err) => setMessage(apiErrorMessage(err, "Couldn't create the session.")),
