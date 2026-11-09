@@ -9,7 +9,7 @@ import { ImportPasteStep } from "../../../src/screens/user-import/import-paste-s
 import { ImportPreviewStep } from "../../../src/screens/user-import/import-preview-step";
 import { ImportResultStep } from "../../../src/screens/user-import/import-result-step";
 import { useStudentImportFlow } from "../../../src/screens/user-import/use-student-import-flow";
-import { useSessionStore } from "../../../src/store/session";
+import { useRole } from "../../../src/store/session";
 
 /**
  * `/users/import` — v1 super/users/import ("Import profiles batch",
@@ -25,7 +25,7 @@ const frame = {
 
 export default function ImportScreen() {
   const router = useRouter();
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const isSuper = role === "SUPER";
 
   const flow = useStudentImportFlow();

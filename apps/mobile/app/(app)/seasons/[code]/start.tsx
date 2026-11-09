@@ -12,7 +12,7 @@ import { useRemoveSeasonPerson } from "../../../../src/hooks/use-season-people";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { IssueList } from "../../../../src/screens/season-start/issue-list";
-import { useSessionStore } from "../../../../src/store/session";
+import { useIsSuper } from "../../../../src/store/session";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -26,7 +26,7 @@ export default function StartSeasonScreen() {
   const router = useRouter();
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const season = useSeasonByCode(code);
   const seasonId = season.data?.id ?? null;
   const isDraft = season.data?.status === "DRAFT";

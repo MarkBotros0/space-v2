@@ -6,7 +6,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState } from "../../../../src/design/ui";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
-import { useSessionStore } from "../../../../src/store/session";
+import { useIsSuper } from "../../../../src/store/session";
 
 /**
  * A season's admins (owner, 2026-11-07: a card on the overview, first in
@@ -16,7 +16,7 @@ import { useSessionStore } from "../../../../src/store/session";
 export default function SeasonAdminsScreen() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const season = useSeasonByCode(code);
 
   let body: ReactNode;

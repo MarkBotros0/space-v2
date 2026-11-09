@@ -10,7 +10,7 @@ import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../h
 import { StudentFilterSheet, activeFilterCount } from "../screens/students-list/student-filter-sheet";
 import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "../screens/students-list/student-rows";
 import { useDebouncedSearch } from "../screens/students-list/use-debounced-search";
-import { useSessionStore } from "../store/session";
+import { useRole } from "../store/session";
 
 /** Who may open each list: the screen mirrors the endpoint's per-surface gate. */
 const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];
@@ -72,7 +72,7 @@ export function StudentList({
   embedded = false,
   absentLately = false,
 }: StudentListProps) {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const allowed = role !== null && allowedRoles.includes(role);
   const { search, q, setSearch, commit } = useDebouncedSearch();
   // The mentor sees nothing season-shaped (owner, 2026-11-07): rows, filters and copy.

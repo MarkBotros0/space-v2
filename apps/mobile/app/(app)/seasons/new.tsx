@@ -6,12 +6,12 @@ import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState } from "../../../src/design/ui";
 import { useCreateSeason } from "../../../src/hooks/use-season-writes";
 import { apiErrorMessage } from "../../../src/lib/api-error";
-import { useSessionStore } from "../../../src/store/session";
+import { useIsSuper } from "../../../src/store/session";
 
 /** v1 /super/seasons/new (B5-2): SUPER only, like POST /seasons. */
 export default function NewSeasonScreen() {
   const router = useRouter();
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const create = useCreateSeason();
   const [message, setMessage] = useState<string | null>(null);
 

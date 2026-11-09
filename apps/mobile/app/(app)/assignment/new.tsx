@@ -9,7 +9,7 @@ import { EmptyState } from "../../../src/design/ui";
 import { useCurrentSeasonId, useSeasonDetail } from "../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../src/hooks/use-sessions";
 import { apiErrorMessage } from "../../../src/lib/api-error";
-import { useSessionStore } from "../../../src/store/session";
+import { useRole } from "../../../src/store/session";
 
 /**
  * v1 /admin/season/[code]/assignments/new, for useCurrentSeasonId's season
@@ -73,7 +73,7 @@ function NewAssignment() {
 }
 
 export default function NewAssignmentScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   // Checked before any hook runs in NewAssignment, so other roles cost no request.
   if (role !== "ADMIN" && role !== "SUPER") {
     return (

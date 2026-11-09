@@ -23,7 +23,7 @@ import {
 import { useGroupImportCommit, useGroupImportPreview } from "../../../../../src/hooks/use-import";
 import { useSeasons } from "../../../../../src/hooks/use-seasons";
 import { importErrorMessage } from "../../../../../src/lib/import-error";
-import { useSessionStore } from "../../../../../src/store/session";
+import { useSessionStore, useRole } from "../../../../../src/store/session";
 
 iconWithClassName(CheckCircle2);
 
@@ -53,7 +53,7 @@ const STATUS_BADGE: Record<
  */
 export default function GroupImportScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const adminIds = useSessionStore((s) => s.scopes?.seasonAdminIds ?? []);
 
   const seasons = useSeasons(role === "SUPER" || role === "ADMIN");

@@ -33,7 +33,7 @@ import {
 import { apiErrorMessage } from "../lib/api-error";
 import { formatDate, formatTimeAgo } from "../lib/format";
 import { initialsOf } from "../lib/initials";
-import { useSessionStore } from "../store/session";
+import { useRole } from "../store/session";
 
 iconWithClassName(Send, Trash2);
 
@@ -283,7 +283,7 @@ function PostCard({
 
 /** v1 components/forum/forum-view.tsx, with v2's paging and own-post feedback. */
 export function ForumThread({ assignmentId }: { assignmentId: number }) {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const query = useForumThread(assignmentId, true);
 
   if (query.isPending) return <Skeleton className="h-40 rounded-group" />;

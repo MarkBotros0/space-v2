@@ -6,7 +6,7 @@
 import { AlertTriangle } from "lucide-react-native";
 import { View } from "react-native";
 
-import { useSessionStore } from "../../store/session";
+import { useRole } from "../../store/session";
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { Skeleton, SkeletonCard } from "../ui/skeleton";
@@ -28,7 +28,7 @@ export function RouteSkeleton() {
 }
 
 export function RouteError({ onRetry }: { onRetry: () => void }) {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const contact = role === null || role === "STUDENT" ? "your leader" : "an admin";
   return (
     <EmptyState

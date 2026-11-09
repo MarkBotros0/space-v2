@@ -6,6 +6,7 @@ import {
   type MeUser,
   type NavAudience,
   type RoleNav,
+  type UserRole,
 } from "@space/shared";
 
 import { isAdminOfSeasonForUi } from "../lib/season-admin";
@@ -69,6 +70,15 @@ export function useAlumnusNotStudying(): boolean {
     const audience = audienceOf(s);
     return audience !== null && isAlumnusNotStudying(audience);
   });
+}
+
+/** The signed-in person's role, or null when signed out. */
+export function useRole(): UserRole | null {
+  return useSessionStore((s) => s.user?.role ?? null);
+}
+
+export function useIsSuper(): boolean {
+  return useSessionStore((s) => s.user?.role === "SUPER");
 }
 
 export function useIsAdminOfSeason(seasonId: number): boolean {

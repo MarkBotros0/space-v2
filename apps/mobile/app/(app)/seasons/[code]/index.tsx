@@ -21,7 +21,7 @@ import { useSeasonPeople } from "../../../../src/hooks/use-season-people";
 import { seasonSuggestion } from "../../../../src/screens/season-people/source";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { countOf } from "../../../../src/lib/plural";
-import { useSessionStore } from "../../../../src/store/session";
+import { useSessionStore, useIsSuper } from "../../../../src/store/session";
 
 iconWithClassName(Pencil, Copy);
 
@@ -40,7 +40,7 @@ export default function SeasonDetailScreen() {
   const router = useRouter();
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const isAdmin = useSessionStore((s) => s.user?.role === "ADMIN");
   const [duplicating, setDuplicating] = useState(false);
   const detail = useSeasonByCode(code);

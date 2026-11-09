@@ -8,7 +8,7 @@ import { Button, Skeleton, Switch, Text } from "../design/ui";
 import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
 import { useNotificationPreferences, useUpdateNotificationPreferences } from "../hooks/use-notifications";
 import { enablePush, type PushStatus } from "../lib/push";
-import { useSessionStore } from "../store/session";
+import { useSessionStore, useRole } from "../store/session";
 
 type ShownKey = keyof Prefs;
 
@@ -108,7 +108,7 @@ const PUSH_COPY: Record<PushStatus | "idle", string> = {
 
 export function NotificationPreferences() {
   const pushToken = useSessionStore((s) => s.pushToken);
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const scopes = useSessionStore((s) => s.scopes);
   const keys = preferenceKeysFor(role, scopes);
   const [pushStatus, setPushStatus] = useState<PushStatus | null>(null);

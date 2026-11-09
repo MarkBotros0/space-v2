@@ -15,7 +15,7 @@ import { apiErrorMessage } from "../../../src/lib/api-error";
 import { firstErrorByField } from "../../../src/lib/form-errors";
 import { formatDayKey } from "../../../src/lib/format";
 import { parsePositiveInt } from "../../../src/lib/params";
-import { useSessionStore } from "../../../src/store/session";
+import { useRole } from "../../../src/store/session";
 
 /**
  * v1 create-quiz-form.tsx, as a screen. Creating is a season-admin power
@@ -167,7 +167,7 @@ function NewQuizFrame({ children }: { children: ReactNode }) {
 }
 
 export default function NewQuizScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   if (role === "ADMIN" || role === "SUPER") return <NewQuizForm />;
   return (
     <NewQuizFrame>

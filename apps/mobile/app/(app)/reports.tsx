@@ -7,10 +7,10 @@ import { EmptyState, SegmentedControl } from "../../src/design/ui";
 import { OrganisationSection } from "../../src/screens/reports/organisation-section";
 import { SeasonReport } from "../../src/screens/reports/season-report";
 import { useReportsScope } from "../../src/screens/reports/use-reports-scope";
-import { useSessionStore } from "../../src/store/session";
+import { useSessionStore, useRole } from "../../src/store/session";
 
 function StaffReports() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const seasonAdminIds = useSessionStore((s) => s.scopes?.seasonAdminIds);
   const [tab, setTab] = useState<"season" | "organisation">("season");
 

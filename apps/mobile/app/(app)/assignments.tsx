@@ -20,7 +20,7 @@ import { targetLabel } from "../../src/lib/assignment-labels";
 import { formatDayKey, formatDistanceOnly } from "../../src/lib/format";
 import { WorkScreen } from "../../src/screens/work/work-screen";
 import { useSeasonParamOrCurrent } from "../../src/hooks/use-season-param";
-import { useSessionStore } from "../../src/store/session";
+import { useRole } from "../../src/store/session";
 
 /** v1 assignments-list.tsx dueBadge, with the overdue flag from the server (C4) and the org day (X13). */
 function StaffDueBadge({ item }: { item: StaffAssignmentListItem }) {
@@ -132,7 +132,7 @@ function StaffAssignments({ canCreate }: { canCreate: boolean }) {
 }
 
 export default function AssignmentsScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   // D1: one route per destination; the role picks the branch. A student's work
   // is the Work tab; an old link shows it here on the stack, with its Back bar,
   // never a replace to a tab (P2-11).

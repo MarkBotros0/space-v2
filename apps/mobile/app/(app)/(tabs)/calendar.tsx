@@ -9,7 +9,7 @@ import {
   StudentCalendar,
   SuperCalendar,
 } from "../../../src/screens/calendar/season-calendars";
-import { useAlumnusNotStudying, useSessionStore } from "../../../src/store/session";
+import { useAlumnusNotStudying, useSessionStore, useRole } from "../../../src/store/session";
 
 /**
  * /calendar — one route, every role (Decision D1). STUDENT/ALUMNI keep
@@ -18,7 +18,7 @@ import { useAlumnusNotStudying, useSessionStore } from "../../../src/store/sessi
  * no calendar in its nav (spec 03 §9).
  */
 export default function CalendarScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   // navFor's rule (shared): a graduated student, unless studying. They get the
   // student calendar; /events already answers them with their alumni-only events.
   const alumnusNotStudying = useAlumnusNotStudying();

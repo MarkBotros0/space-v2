@@ -8,7 +8,7 @@ import { AlumniHistory } from "../../../src/screens/alumni/alumni-history";
 import { SeasonHistory } from "../../../src/design/students/season-history";
 import { EmptyState } from "../../../src/design/ui";
 import { useSeasonHistory } from "../../../src/hooks/use-self-service";
-import { useAlumnusNotStudying, useSessionStore } from "../../../src/store/session";
+import { useAlumnusNotStudying, useSessionStore, useRole } from "../../../src/store/session";
 
 /**
  * /history — STUDENT (sidebar) and ALUMNI (tab). One screen for v1's two
@@ -18,7 +18,7 @@ import { useAlumnusNotStudying, useSessionStore } from "../../../src/store/sessi
  * only, and its schema is strict, so nothing else can reach this screen.
  */
 export default function HistoryScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const isStudent = role === "STUDENT";
   const alumnusNotStudying = useAlumnusNotStudying();

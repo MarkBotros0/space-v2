@@ -10,7 +10,7 @@ import { EmptyState } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";
-import { useSessionStore } from "../../../../src/store/session";
+import { useIsSuper } from "../../../../src/store/session";
 
 /**
  * A season's sessions (owner, 2026-11-07: a Sessions card on the overview opens
@@ -21,7 +21,7 @@ export default function SeasonSessionsScreen() {
   const router = useRouter();
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const detail = useSeasonByCode(code);
   const sessions = useSeasonSessions(detail.data?.id ?? null);
   // A finished season's sessions are read, never changed (owner, 2026-11-07).

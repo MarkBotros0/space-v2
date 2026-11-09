@@ -9,7 +9,7 @@ import { FormField } from "../../design/ui/form-field";
 import { useSeasons } from "../../hooks/use-seasons";
 import { firstErrorByField } from "../../lib/form-errors";
 import { autoSeasonCode } from "../../lib/season-defaults";
-import { useSessionStore } from "../../store/session";
+import { useIsSuper } from "../../store/session";
 import type { SeasonIdentityInput } from "../../hooks/use-season-writes";
 import {
   allowedSeasonStatuses,
@@ -69,7 +69,7 @@ export function SeasonForm({
   // Who may join is settled before the season starts.
   const canSetRequired = mode === "create" || initial.status === "DRAFT";
   const seasons = useSeasons(canSetRequired);
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const seasonFinished = isSeasonFinished(initial.status);
   const canSetGraduating = isSuper && !seasonFinished;
   const canSetCommunity = isSuper && canSetRequired;

@@ -8,7 +8,7 @@ import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState, toast } from "../../../src/design/ui";
 import { useCreateUser } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
-import { useSessionStore } from "../../../src/store/session";
+import { useIsSuper } from "../../../src/store/session";
 
 /**
  * /users/new (spec 11 §9; v1 super/users/new + user-form.tsx). Over Plan 9's
@@ -19,7 +19,7 @@ import { useSessionStore } from "../../../src/store/session";
  */
 export default function NewUserScreen() {
   const router = useRouter();
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const createUser = useCreateUser();
   const [serverError, setServerError] = useState<string | null>(null);
 

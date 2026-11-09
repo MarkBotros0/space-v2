@@ -7,12 +7,12 @@ import { EmptyState } from "../../../../src/design/ui";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { StaffPreview } from "../../../../src/screens/quiz-detail/staff-quiz-preview";
 import { StudentRunner } from "../../../../src/screens/quiz-detail/student-quiz-runner";
-import { useSessionStore } from "../../../../src/store/session";
+import { useRole } from "../../../../src/store/session";
 
 export default function QuizDetailScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = parsePositiveInt(rawId);
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
 
   if (id === null) {
     return (

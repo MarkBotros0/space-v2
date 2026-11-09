@@ -8,7 +8,7 @@ import { useDeleteAssignment } from "../hooks/use-assignment-writes";
 import { useSeasonGroups } from "../hooks/use-groups";
 import { apiErrorMessage } from "../lib/api-error";
 import { configLabel, groupTrackerRows, targetLabel } from "../lib/assignment-labels";
-import { useSessionStore } from "../store/session";
+import { useRole } from "../store/session";
 import { FormErrorBox } from "../design/forms/form-parts";
 import { Eyebrow } from "../design/layout/page-title";
 import { RouteError } from "../design/layout/route-states";
@@ -153,7 +153,7 @@ function TrackerBlock({ assignmentId }: { assignmentId: number }) {
  * tracker. Edit and delete appear when the server says `canManage` (C4).
  */
 export function AssignmentStaffPanel({ detail }: { detail: AssignmentDetail }) {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   // Names for the scope badge — not needed when the whole season is targeted.
   const groups = useSeasonGroups(detail.isAllGroups ? null : detail.seasonId);
 

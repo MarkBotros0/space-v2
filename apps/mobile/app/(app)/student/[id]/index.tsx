@@ -10,7 +10,7 @@ import { AdminStudentDetail } from "../../../../src/screens/student-admin/admin-
 import { EmptyState } from "../../../../src/design/ui";
 import { useStudentDetail } from "../../../../src/hooks/use-students";
 import { queryKeys } from "../../../../src/lib/query-keys";
-import { useSessionStore } from "../../../../src/store/session";
+import { useRole } from "../../../../src/store/session";
 
 /**
  * LEADER and MENTOR — v1 app/leader/students/[id] (B3-15) and app/mentor/students/[id];
@@ -61,7 +61,7 @@ function GroupedStudentPage({ id, role }: { id: number; role: UserRole | null })
 }
 
 export default function StudentDetailScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const parsed = Number(rawId);
   const id = Number.isInteger(parsed) && parsed > 0 ? parsed : null;

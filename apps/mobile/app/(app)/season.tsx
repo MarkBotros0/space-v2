@@ -12,7 +12,7 @@ import { StudentSeason } from "../../src/components/season/StudentSeason";
 import { formatDate } from "../../src/lib/format";
 import { joinMeta } from "../../src/lib/join-meta";
 import { EmptyState, GroupedList, ListRow, StatusChip, statusChip, Text } from "../../src/design/ui";
-import { useSessionStore } from "../../src/store/session";
+import { useRole } from "../../src/store/session";
 
 /**
  * The season workspace (v1 /admin/season, /student/season). ADMIN is
@@ -21,7 +21,7 @@ import { useSessionStore } from "../../src/store/session";
  */
 function StaffSeason() {
   const router = useRouter();
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const current = useCurrentSeasonId();
   const detail = useSeasonDetail(current.seasonId);
   const canEdit = role === "SUPER";
@@ -129,7 +129,7 @@ function AdminSeason() {
 }
 
 export default function SeasonScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   // Two components rather than one with branches: the student half reads
   // GET /me/season and the staff half reads useCurrentSeasonId +
   // GET /seasons/:id — different hooks, so dispatch before any are called.

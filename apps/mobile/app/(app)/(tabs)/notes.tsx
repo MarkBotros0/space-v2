@@ -10,10 +10,10 @@ import { Button, EmptyState, GroupedList } from "../../../src/design/ui";
 import { flattenNotePages, useAuthoredNotes } from "../../../src/hooks/use-notes";
 import { MentorNotes } from "../../../src/screens/mentor/mentor-notes";
 import { NoteRow } from "../../../src/screens/staff-notes/note-row";
-import { useSessionStore } from "../../../src/store/session";
+import { useSessionStore, useRole } from "../../../src/store/session";
 
 export default function NotesScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const { range } = useLocalSearchParams<{ range?: string }>();
   // The mentor reads everyone's notes, not only their own (owner, 2026-11-07).
   if (role === "MENTOR") return <MentorNotes initialRange={range === "week" ? "week" : "all"} />;

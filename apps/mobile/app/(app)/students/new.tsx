@@ -7,7 +7,7 @@ import { useSeasons } from "../../../src/hooks/use-seasons";
 import { useCreateStudent } from "../../../src/hooks/use-students";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { emptyStudentForm, toCreateStudentBody } from "../../../src/lib/student-form";
-import { useSessionStore } from "../../../src/store/session";
+import { useIsSuper } from "../../../src/store/session";
 import { RouteError } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState, toast } from "../../../src/design/ui";
@@ -20,7 +20,7 @@ import { EmptyState, toast } from "../../../src/design/ui";
  */
 export default function NewStudentScreen() {
   const router = useRouter();
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const seasons = useSeasons(isSuper);
   const createStudent = useCreateStudent();
   const [serverError, setServerError] = useState<string | null>(null);

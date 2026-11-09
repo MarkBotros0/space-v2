@@ -2,7 +2,7 @@ import { Screen } from "../../../src/design/layout/screen";
 import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
 import { EmptyState } from "../../../src/design/ui";
 import { WorkScreen } from "../../../src/screens/work/work-screen";
-import { useSessionStore } from "../../../src/store/session";
+import { useRole } from "../../../src/store/session";
 
 /**
  * /work — the student's To do tab: open assignments and quizzes (P2-1, split 2026-11-06). A tab for no other
@@ -12,7 +12,7 @@ import { useSessionStore } from "../../../src/store/session";
  * studying in a community-wide season (isStudyingAlumnus) gets this tab like any student.
  */
 export default function WorkTab() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   if (role !== "STUDENT") {
     return (
       <Screen title="To do">

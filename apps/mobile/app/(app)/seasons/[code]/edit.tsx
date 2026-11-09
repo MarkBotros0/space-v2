@@ -14,7 +14,7 @@ import { ConfirmDialog } from "../../../../src/design/ui/confirm-dialog";
 import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { useDeleteSeason, useUpdateSeasonAsSuper } from "../../../../src/hooks/use-season-writes";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
-import { useSessionStore } from "../../../../src/store/session";
+import { useIsSuper } from "../../../../src/store/session";
 
 iconWithClassName(Trash2);
 
@@ -115,7 +115,7 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
 
 export default function SeasonEditScreen() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const code = isSuper && typeof raw === "string" && raw.length > 0 ? raw : null;
   const detail = useSeasonByCode(code);
 

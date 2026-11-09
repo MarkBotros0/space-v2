@@ -8,7 +8,7 @@ import { Screen } from "../../../../src/design/layout/screen";
 import { SeasonsList } from "../../../../src/design/seasons/seasons-list";
 import { Button, EmptyState, SegmentedControl } from "../../../../src/design/ui";
 import { useSeasons } from "../../../../src/hooks/use-seasons";
-import { useSessionStore } from "../../../../src/store/session";
+import { useRole } from "../../../../src/store/session";
 
 /**
  * SUPER's seasons list (v1 /super/seasons, B5-2): title, "New season" and the
@@ -41,7 +41,7 @@ function matchesStatus(status: string, filter: StatusFilter): boolean {
 
 export default function SeasonsScreen() {
   const router = useRouter();
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const isStaff = role !== null && STAFF_ROLES.has(role);
   const isSuper = role === "SUPER";
   const seasons = useSeasons(isStaff);

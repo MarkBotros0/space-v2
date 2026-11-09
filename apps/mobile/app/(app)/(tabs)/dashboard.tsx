@@ -7,7 +7,7 @@ import { ShellFrame } from "../../../src/design/layout/shell-frame";
 import { AdminToday } from "../../../src/screens/staff-today/admin-today";
 import { SuperToday } from "../../../src/screens/staff-today/super-today";
 import { StudentToday } from "../../../src/screens/today/student-today";
-import { useSessionStore } from "../../../src/store/session";
+import { useSessionStore, useRole } from "../../../src/store/session";
 
 /**
  * Home — one route, one branch per audience (spec 19 §9, Phase 0 D1). Each
@@ -18,7 +18,7 @@ import { useSessionStore } from "../../../src/store/session";
  * server's (spec 19 D15).
  */
 export default function DashboardScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
 

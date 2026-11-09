@@ -8,12 +8,12 @@ import { isNotFoundError } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { AdminSessionBody, LeaderSessionBody } from "../../../../src/screens/session-detail/staff-session-bodies";
 import { StudentSessionBody } from "../../../../src/screens/session-detail/student-session-body";
-import { useSessionStore } from "../../../../src/store/session";
+import { useSessionStore, useRole } from "../../../../src/store/session";
 
 export { LIVE_ROSTER_REFRESH_MS } from "../../../../src/screens/session-detail/check-in-cards";
 
 function SessionDetailBody({ id }: { id: number }) {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const seasonAdminIds = useSessionStore((s) => s.scopes?.seasonAdminIds);
   const { data, isPending, isError, error, refetch, isRefetching } = useSessionDetail(id);
 

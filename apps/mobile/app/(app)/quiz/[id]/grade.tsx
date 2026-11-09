@@ -27,7 +27,7 @@ import { parsePositiveInt } from "../../../../src/lib/params";
 import { AttemptSheet } from "../../../../src/screens/quiz-grade/attempt-sheet";
 import { ReleaseResultsCard } from "../../../../src/screens/quiz-grade/release-results";
 import { PaperGradeSheet, seedDraft, type PaperDraft } from "../../../../src/screens/quiz-grade/paper-grade-sheet";
-import { useSessionStore } from "../../../../src/store/session";
+import { useRole } from "../../../../src/store/session";
 
 function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
   const sheetQuery = useQuizGradeSheet(id, true);
@@ -262,7 +262,7 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
 export default function QuizGradeScreen() {
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const id = parsePositiveInt(rawId);
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const isStaff = role === "LEADER" || role === "ADMIN" || role === "SUPER";
   const detail = useQuizAuthoringDetail(id, isStaff);
 

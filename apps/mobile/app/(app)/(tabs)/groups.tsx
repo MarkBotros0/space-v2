@@ -10,7 +10,7 @@ import { Card, EmptyState, Text } from "../../../src/design/ui";
 import { MY_GROUPS_ROLES, useMyGroups } from "../../../src/hooks/use-groups";
 import { AdminGroups } from "../../../src/screens/groups-admin";
 import { LeaderGroups } from "../../../src/screens/leader-groups";
-import { useSessionStore } from "../../../src/store/session";
+import { useRole } from "../../../src/store/session";
 
 function GroupRow({ group, subtitle }: { group: GroupListItem; subtitle: string }) {
   const router = useRouter();
@@ -45,7 +45,7 @@ function MyGroups() {
 }
 
 export default function GroupsScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   if (role !== null && SEASON_GROUPS_ROLES.includes(role)) return <AdminGroups />;
   if (role === "LEADER") return <LeaderGroups />;
   if (role !== null && MY_GROUPS_ROLES.includes(role)) return <MyGroups />;

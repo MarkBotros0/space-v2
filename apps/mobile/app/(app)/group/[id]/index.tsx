@@ -8,7 +8,7 @@ import { Button, EmptyState } from "../../../../src/design/ui";
 import { GroupedList, ListRow } from "../../../../src/design/ui/grouped-list";
 import { StudentList } from "../../../../src/design/students/student-list";
 import { useGroupDetail } from "../../../../src/hooks/use-groups";
-import { useSessionStore } from "../../../../src/store/session";
+import { useRole } from "../../../../src/store/session";
 
 /** v1 admin/season/[code]/groups/[id]: a list per role, "name / email" rows. */
 function MemberList({
@@ -47,7 +47,7 @@ function MemberList({
 
 export default function GroupDetailScreen() {
   const router = useRouter();
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const { id: rawId } = useLocalSearchParams<{ id: string }>();
   const parsed = Number(rawId);
   const id = Number.isInteger(parsed) && parsed > 0 ? parsed : null;

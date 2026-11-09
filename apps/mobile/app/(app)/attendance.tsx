@@ -17,7 +17,7 @@ import {
 } from "../../src/design/ui";
 import { useMyAttendance } from "../../src/hooks/use-self-service";
 import { formatWallTime, formatWeekdayDayYear, formatMinutes } from "../../src/lib/format";
-import { useSessionStore } from "../../src/store/session";
+import { useSessionStore, useRole } from "../../src/store/session";
 
 /** The old ring's thresholds (70 warn, 100 error), as a word so it is never colour alone. */
 function budgetWarning(pct: number | undefined): ChipSpec | null {
@@ -57,7 +57,7 @@ function SessionRow({ row }: { row: MyAttendanceSession }) {
  * same query key, so the two can never disagree.
  */
 export default function AttendanceScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const isStudent = role === "STUDENT";
   const seasonId = isStudent ? activeSeasonId : null;

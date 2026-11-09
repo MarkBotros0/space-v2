@@ -25,7 +25,7 @@ import {
   communityFilterCount,
   type CommunityFilters,
 } from "../../../src/screens/community/community-filter-sheet";
-import { useSessionStore } from "../../../src/store/session";
+import { useRole } from "../../../src/store/session";
 
 function bulkSummary(r: BulkInviteResponse): string {
   return `Sent ${r.sent} · failed ${r.failed} · skipped ${r.skipped} · ${r.remaining} still pending.`;
@@ -79,7 +79,7 @@ function usePendingInvitesRow(enabled: boolean) {
 export default function CommunityScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ status?: string }>();
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const sendInvite = useSendInvite();
   // Searching on submit or after a pause keeps a typed name from issuing one
   // request per character.

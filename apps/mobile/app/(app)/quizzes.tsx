@@ -15,7 +15,7 @@ import { bySessionDate } from "../../src/lib/quiz-order";
 import { LeaderQuizzes } from "../../src/screens/leader-quizzes";
 import { WorkScreen } from "../../src/screens/work/work-screen";
 import { useSeasonParamOrCurrent } from "../../src/hooks/use-season-param";
-import { useSessionStore } from "../../src/store/session";
+import { useRole } from "../../src/store/session";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and
@@ -69,7 +69,7 @@ function StaffQuizzes() {
   const current = useSeasonParamOrCurrent();
   const seasonId = current.seasonId;
   const season = useSeasonDetail(seasonId);
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
   const canAuthor = role === "ADMIN" || role === "SUPER";
   const { data, isPending, isError, refetch, isRefetching } = useQuizList(seasonId);
   const items = data?.items ?? [];
@@ -140,7 +140,7 @@ function StaffQuizzes() {
 }
 
 export default function QuizzesScreen() {
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
 
   if (role === "STUDENT") return <WorkScreen />;
   if (role === "LEADER") return <LeaderQuizzes />;

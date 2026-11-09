@@ -12,7 +12,7 @@ import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { BlockersList } from "../../../../src/screens/season-end/blockers-list";
 import { ResultSheet, type ResultDraft } from "../../../../src/screens/season-end/result-sheet";
 import { ReviewList } from "../../../../src/screens/season-end/review-list";
-import { useSessionStore } from "../../../../src/store/session";
+import { useIsSuper } from "../../../../src/store/session";
 
 type Student = SeasonEndCheck["students"][number];
 
@@ -31,7 +31,7 @@ export default function EndSeasonScreen() {
   const router = useRouter();
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const season = useSeasonByCode(code);
   const seasonId = season.data?.id ?? null;
   const check = useSeasonEndCheck(seasonId);

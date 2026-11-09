@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import type { StudentListStatus } from "@space/shared";
 
 import { StudentList } from "../../../../src/components/StudentList";
-import { useSessionStore } from "../../../../src/store/session";
+import { useSessionStore, useIsSuper } from "../../../../src/store/session";
 import { Button } from "../../../../src/design/ui";
 
 /** `?show=alumni|dropped` opens the list on that filter (owner, 2026-11-07: they are filters, not pages). */
@@ -13,7 +13,7 @@ function parseShow(raw: unknown): StudentListStatus {
 export default function StudentsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ show?: string; absent?: string }>();
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   // A mentor's people are their Community of members, students and alumni alike (owner, 2026-11-07).
   const isMentor = useSessionStore((s) => s.user?.role === "MENTOR");
   // LEADER is included: their nav has no /students tab, but the endpoint

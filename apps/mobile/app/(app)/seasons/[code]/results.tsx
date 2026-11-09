@@ -10,7 +10,7 @@ import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { joinMeta } from "../../../../src/lib/join-meta";
 import { ResultSheet } from "../../../../src/screens/season-end/result-sheet";
-import { useSessionStore } from "../../../../src/store/session";
+import { useIsSuper } from "../../../../src/store/session";
 
 /**
  * Super admin: every student's result in a finished season, and corrections.
@@ -20,7 +20,7 @@ import { useSessionStore } from "../../../../src/store/session";
 export default function SeasonResultsScreen() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const season = useSeasonByCode(code);
   const seasonId = isSuper ? (season.data?.id ?? null) : null;
   const results = useSeasonResults(seasonId);

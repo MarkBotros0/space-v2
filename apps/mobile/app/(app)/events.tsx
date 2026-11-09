@@ -11,7 +11,7 @@ import { Button, EmptyState, GroupedList } from "../../src/design/ui";
 import { useCreateEvent, useEventPages } from "../../src/hooks/use-events";
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { EventListRow } from "../../src/screens/events/event-row";
-import { useSessionStore } from "../../src/store/session";
+import { useIsSuper } from "../../src/store/session";
 
 iconWithClassName(Plus);
 
@@ -24,7 +24,7 @@ iconWithClassName(Plus);
  * newest first, 25 at a time behind "Load more" (owner decision).
  */
 export default function EventsScreen() {
-  const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
+  const isSuper = useIsSuper();
   const events = useEventPages();
   const rows = events.data?.pages.flatMap((p) => p.events) ?? [];
   const create = useCreateEvent();

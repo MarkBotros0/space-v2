@@ -4,12 +4,12 @@ import { ShellFrame } from "../../../../src/design/layout/shell-frame";
 import { EmptyState } from "../../../../src/design/ui";
 import { QuizBuilder } from "../../../../src/screens/quiz-edit/quiz-builder";
 import { parsePositiveInt } from "../../../../src/lib/params";
-import { useSessionStore } from "../../../../src/store/session";
+import { useRole } from "../../../../src/store/session";
 
 export default function QuizEditScreen() {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const id = parsePositiveInt(raw);
-  const role = useSessionStore((s) => s.user?.role ?? null);
+  const role = useRole();
 
   // v1's builder route was requireRole(["ADMIN","SUPER"]) + canManageQuiz; the
   // role check here avoids a pointless fetch, and canManage (server-derived,
