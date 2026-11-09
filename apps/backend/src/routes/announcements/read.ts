@@ -30,7 +30,7 @@ async function unreadWhereFor(user: SessionUser): Promise<Prisma.AnnouncementWhe
   return announcementUnreadFilter(user, account.createdAt, new Date());
 }
 
-async function unreadIdsAmong(user: SessionUser, ids: number[]): Promise<Set<number>> {
+export async function unreadIdsAmong(user: SessionUser, ids: number[]): Promise<Set<number>> {
   if (ids.length === 0) return new Set();
   const rows = await db.announcement.findMany({
     where: { AND: [{ id: { in: ids } }, await unreadWhereFor(user)] },
