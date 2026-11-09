@@ -425,6 +425,7 @@ model SeasonEnrollment {
 
   @@unique([studentUserId, seasonId])
   @@index([seasonId, status])
+  @@index([groupId, status])
 }
 
 // ---------------------------------------------------------------------------

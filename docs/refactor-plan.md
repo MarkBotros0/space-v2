@@ -254,7 +254,7 @@ snapshot updated, `schema.prisma` updated where expressible.
 - [x] 3.0 Verify `CREATE INDEX CONCURRENTLY` under Prisma 7 `migrate deploy` (one statement per file);
       record the pattern as D10 (or the psql fallback, audit §2.11) — verified; D10 recorded (no transaction
       wrap: CONCURRENTLY works, other migrations use explicit `BEGIN/COMMIT`); no psql fallback
-- [ ] 3.1 IDX-1 `SeasonEnrollment(groupId, status)`
+- [x] 3.1 IDX-1 `SeasonEnrollment(groupId, status)` — `20261110010000_season_enrollment_group_status_idx`; cycle + drift (`migrate diff` empty) + snapshot (+1 index)
 - [ ] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14)
 - [ ] 3.3 IDX-4 open follow-ups partial index
 - [ ] 3.4 IDX-5 `Session(startsAt)` (cross-season calendar range)

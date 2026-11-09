@@ -582,6 +582,7 @@ exports[`database schema has exactly these indexes 1`] = `
   "CREATE INDEX "Season_status_idx" ON public."Season" USING btree (status)",
   "CREATE UNIQUE INDEX "SeasonAdmin_pkey" ON public."SeasonAdmin" USING btree ("seasonId", "userId")",
   "CREATE INDEX "SeasonAdmin_userId_idx" ON public."SeasonAdmin" USING btree ("userId")",
+  "CREATE INDEX "SeasonEnrollment_groupId_status_idx" ON public."SeasonEnrollment" USING btree ("groupId", status)",
   "CREATE UNIQUE INDEX "SeasonEnrollment_pkey" ON public."SeasonEnrollment" USING btree (id)",
   "CREATE INDEX "SeasonEnrollment_seasonId_status_idx" ON public."SeasonEnrollment" USING btree ("seasonId", status)",
   "CREATE UNIQUE INDEX "SeasonEnrollment_studentUserId_seasonId_key" ON public."SeasonEnrollment" USING btree ("studentUserId", "seasonId")",
