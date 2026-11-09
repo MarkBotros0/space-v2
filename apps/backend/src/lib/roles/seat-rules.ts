@@ -1,3 +1,4 @@
+import type { ApiErrorCode } from "@space/shared";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonStatus, UserRole } from "../../generated/prisma/enums";
 import { describeActiveRole, type ActiveRole } from "./active-role";
@@ -17,7 +18,7 @@ export type SeatPerson = {
   deletedAt: Date | null;
 };
 
-export type SeatRefusal = { code: string; message: string };
+export type SeatRefusal = { code: ApiErrorCode; message: string };
 
 const PERMANENT_ROLES: Partial<Record<UserRole, string>> = {
   SUPER: "a super admin",

@@ -1,3 +1,4 @@
+import type { ApiErrorCode } from "@space/shared";
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
@@ -32,7 +33,7 @@ export async function getSeasonEndCheck(req: Request, res: Response) {
 /** Thrown inside the End transaction to roll it back with a specific answer. */
 class EndRefused extends Error {
   constructor(
-    readonly code: string,
+    readonly code: ApiErrorCode,
     readonly status: number,
     message: string,
   ) {

@@ -64,7 +64,7 @@ export async function startSeason(req: Request, res: Response) {
       const people = await seasonPeopleIds(tx, id);
       await lockPeople(tx, people);
       const check = await loadSeasonStartCheck(season, tx);
-      if (!check.ready) return { code: "start_blocked", message: blockedMessage(check) };
+      if (!check.ready) return { code: "start_blocked", message: blockedMessage(check) } satisfies SeatRefusal;
 
       const started = await tx.season.update({
         where: { id },

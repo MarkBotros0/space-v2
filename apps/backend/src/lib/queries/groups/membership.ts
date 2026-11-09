@@ -1,3 +1,4 @@
+import type { ApiErrorCode } from "@space/shared";
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
 import { markSessionsStale } from "../../auth/session-validity";
@@ -15,7 +16,7 @@ export async function validateGroupWrite(
   seasonId: number,
   input: GroupWriteInput,
   excludeGroupId?: number,
-): Promise<{ code: string; message: string } | null> {
+): Promise<{ code: ApiErrorCode; message: string } | null> {
   // v1 has no uniqueness on group name within a season, and the CSV importer
   // matches groups *by name* — so two groups called "Tuesday" silently make the
   // import assign everyone to whichever one it found last. There is no unique

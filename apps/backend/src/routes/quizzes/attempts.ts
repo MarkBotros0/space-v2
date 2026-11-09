@@ -1,3 +1,4 @@
+import type { ApiErrorCode } from "@space/shared";
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
@@ -209,7 +210,7 @@ export async function saveAttemptAnswers(req: Request, res: Response) {
   return apiOk(res, { saved: parsed.data.answers.length });
 }
 
-type SubmitOutcome = { fail: [code: string, message: string, status: 409] } | { hasEssays: boolean };
+type SubmitOutcome = { fail: [code: ApiErrorCode, message: string, status: 409] } | { hasEssays: boolean };
 
 export async function submitAttempt(req: Request, res: Response) {
   const user = requireUser(req);

@@ -1,4 +1,5 @@
 import type { Response } from "express";
+import type { ApiErrorCode } from "@space/shared";
 
 export function apiOk<T>(res: Response, data: T, status = 200): Response {
   return res.status(status).json({ data });
@@ -10,7 +11,7 @@ export function apiOk<T>(res: Response, data: T, status = 200): Response {
  */
 export function apiError(
   res: Response,
-  code: string,
+  code: ApiErrorCode,
   message: string,
   status: number,
   extra?: Record<string, unknown>,

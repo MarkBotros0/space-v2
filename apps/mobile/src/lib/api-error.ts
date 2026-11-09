@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiErrorBodySchema, pollVotesLostSchema } from "@space/shared";
+import { API_ERROR_CODES, apiErrorBodySchema, pollVotesLostSchema, type ApiErrorCode } from "@space/shared";
 
 const REFRESH_INDETERMINATE = Symbol("refresh-indeterminate");
 
@@ -25,11 +25,20 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
   return parsed.success ? parsed.data.error.message : fallback;
 }
 
-/** The envelope's machine code (e.g. "has_student_records"), or null. Screens branch on this, never on message text. */
-export function apiErrorCode(err: unknown): string | null {
+const KNOWN_CODES: ReadonlySet<string> = new Set(API_ERROR_CODES);
+
+/**
+ * The envelope's machine code (e.g. "has_student_records"), or null. Screens
+ * branch on this, never on message text. Typed as the shared catalogue, so
+ * comparing it with a misspelt code fails the typecheck; a code the catalogue
+ * doesn't know reads as null.
+ */
+export function apiErrorCode(err: unknown): ApiErrorCode | null {
   if (!axios.isAxiosError(err)) return null;
   const parsed = apiErrorBodySchema.safeParse(err.response?.data);
-  return parsed.success ? parsed.data.error.code : null;
+  if (!parsed.success) return null;
+  const { code } = parsed.data.error;
+  return KNOWN_CODES.has(code) ? (code as ApiErrorCode) : null;
 }
 
 /** The API's `404 not_found` — "this does not exist for you", which no retry can change. */

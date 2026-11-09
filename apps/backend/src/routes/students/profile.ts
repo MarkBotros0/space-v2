@@ -13,6 +13,7 @@ import { requireUser } from "../../middleware/require-auth";
 import { createStudentRequestSchema, updateStudentRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
 import { isSeasonFinished } from "../../lib/seasons/status";
+import { EMAIL_EXISTS } from "../../lib/error-messages";
 
 /**
  * Per-role PATCH allowlists, checked against the RAW body keys before the
@@ -64,7 +65,7 @@ export async function createStudent(req: Request, res: Response) {
   // R19 stands: User.email is @unique at the database level, so a
   // soft-deleted student's address stays reserved.
   const clash = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
-  if (clash) return apiError(res, "email_taken", "A user with that email already exists.", 409);
+  if (clash) return apiError(res, "email_taken", EMAIL_EXISTS, 409);
 
   let created: { id: number; email: string };
   let invite: IssuedInvite;
@@ -116,7 +117,7 @@ export async function createStudent(req: Request, res: Response) {
     invite = result.issued;
   } catch (err) {
     if (isUniqueViolation(err)) {
-      return apiError(res, "email_taken", "A user with that email already exists.", 409);
+      return apiError(res, "email_taken", EMAIL_EXISTS, 409);
     }
     throw err;
   }
@@ -168,7 +169,7 @@ export async function updateStudent(req: Request, res: Response) {
   if (body.email !== undefined) {
     const clash = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
     if (clash && clash.id !== id) {
-      return apiError(res, "email_taken", "A user with that email already exists.", 409);
+      return apiError(res, "email_taken", EMAIL_EXISTS, 409);
     }
   }
 
@@ -213,7 +214,7 @@ export async function updateStudent(req: Request, res: Response) {
     });
   } catch (err) {
     if (isUniqueViolation(err)) {
-      return apiError(res, "email_taken", "A user with that email already exists.", 409);
+      return apiError(res, "email_taken", EMAIL_EXISTS, 409);
     }
     throw err;
   }

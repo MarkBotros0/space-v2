@@ -20,6 +20,7 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { requireSuper } from "./super-only";
 import { loadUserDetail } from "./views";
+import { EMAIL_IN_USE } from "../../lib/error-messages";
 
 const isSeasonRole = (role: unknown): role is "ADMIN" | "LEADER" => role === "ADMIN" || role === "LEADER";
 
@@ -269,7 +270,7 @@ export async function createUser(req: Request, res: Response) {
   // accounts count too, as they always did. The @unique constraint stays the
   // real guard, so a lost race is caught below rather than surfacing as a 500.
   const existing = await findExistingByEmail(db, [body.email]);
-  if (existing.size > 0) return apiError(res, "email_taken", "Email already in use.", 409);
+  if (existing.size > 0) return apiError(res, "email_taken", EMAIL_IN_USE, 409);
 
   let created: { id: number; raw: string; expiresAt: Date };
   try {
@@ -294,7 +295,7 @@ export async function createUser(req: Request, res: Response) {
   } catch (err) {
     // Unique-violation from the race the pre-check can lose.
     if (isUniqueViolation(err)) {
-      return apiError(res, "email_taken", "Email already in use.", 409);
+      return apiError(res, "email_taken", EMAIL_IN_USE, 409);
     }
     throw err;
   }

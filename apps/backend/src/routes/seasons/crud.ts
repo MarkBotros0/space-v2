@@ -11,7 +11,7 @@ import { isUniqueViolation } from "../../lib/prisma-errors";
 import { loadSeasonDetail } from "../../lib/queries/seasons";
 import { canAccessSeason } from "../../lib/permissions";
 import { isAdminOfSeason, isMentor, isSuper } from "../../lib/rbac";
-import { lockPeople, lockSeason } from "../../lib/roles";
+import { lockPeople, lockSeason, type SeatRefusal } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import {
   SEASON_ADMIN_EDITABLE_FIELDS,
@@ -166,7 +166,7 @@ export async function createSeason(req: Request, res: Response) {
  * to DRAFT, then COMPLETED) strands them ACTIVE in a finished season. A finished
  * season never reopens.
  */
-function statusChangeError(from: SeasonStatus, to: SeasonStatus) {
+function statusChangeError(from: SeasonStatus, to: SeasonStatus): SeatRefusal | null {
   if (from === to) return null;
   if (from === "DRAFT") {
     if (to === "ACTIVE") return { code: "use_start_season", message: "Start the season from its Start button." };

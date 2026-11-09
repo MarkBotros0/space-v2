@@ -174,8 +174,10 @@ export async function restoreEnrollment(req: Request, res: Response) {
 
   const outcome = await db.$transaction(async (tx) => {
     const season = await readSeatSeason(tx, seasonId);
-    if (!season) return { code: "not_found", message: "Season not found." };
-    if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
+    if (!season) return { code: "not_found", message: "Season not found." } satisfies SeatRefusal;
+    if (isSeasonFinished(season.status)) {
+      return { code: "season_finished", message: "This season has finished." } satisfies SeatRefusal;
+    }
     return restoreStudentSeat(tx, season, id, { id: user.userId, override: parsed.data.override ?? false });
   });
   if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
