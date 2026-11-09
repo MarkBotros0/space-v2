@@ -287,7 +287,7 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
     expect(again.status).toBe(404);
   });
 
-  it("a SUPER reactivation through /users clears BOTH stamps (Plan 9's reactivate, amended)", async () => {
+  it("a SUPER reactivation through /users clears the user's stamp (DB-010: the profile's is no longer kept)", async () => {
     const s = await createTestUser("delete-reactivate", "STUDENT");
     await db.studentProfile.create({ data: { userId: s.id } });
     await request(app).delete(`/api/v1/students/${s.id}`).set("authorization", `Bearer ${superToken}`);
@@ -297,11 +297,8 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
       .set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
 
-    const row = await db.user.findUnique({
-      where: { id: s.id },
-      select: { deletedAt: true, studentProfile: { select: { deletedAt: true } } },
-    });
-    expect(row).toEqual({ deletedAt: null, studentProfile: { deletedAt: null } });
+    const row = await db.user.findUnique({ where: { id: s.id }, select: { deletedAt: true } });
+    expect(row).toEqual({ deletedAt: null });
   });
 
   it("writes an audit line", async () => {

@@ -232,15 +232,9 @@ export async function reactivateUser(req: Request, res: Response) {
   const target = await db.user.findUnique({ where: { id }, select: { id: true } });
   if (!target) return apiError(res, "not_found", "User not found.", 404);
 
-  await db.$transaction([
-    db.user.update({ where: { id }, data: { deletedAt: null } }),
-    // A student deleted through DELETE /students/:id also carries a profile
-    // stamp (v1 parity, R86). Clearing only the user would leave the profile
-    // "deleted" to v1's readers — jpc-space/src/app/admin/quizzes/page.tsx:31
-    // counts profiles with deletedAt: null. updateMany: non-students have no
-    // profile row, and that is fine.
-    db.studentProfile.updateMany({ where: { userId: id }, data: { deletedAt: null } }),
-  ]);
+  // Only the user: StudentProfile.deletedAt is no longer read or kept in step
+  // (refactor DB-010; the column goes in Wave 6).
+  await db.user.update({ where: { id }, data: { deletedAt: null } });
   auditLog("user.reactivate", user.userId, id);
   return apiOk(res, { deletedAt: null });
 }

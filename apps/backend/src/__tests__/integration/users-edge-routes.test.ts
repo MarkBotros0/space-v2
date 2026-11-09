@@ -272,7 +272,7 @@ describe("POST /api/v1/users", () => {
 });
 
 describe("deactivate / reactivate", () => {
-  it("reactivating a deleted student also clears the profile's deletedAt", async () => {
+  it("reactivating a deleted student clears the user's deletedAt and leaves the profile alone (DB-010)", async () => {
     const s = await createTestUser("edge-reactivate", "STUDENT");
     const stamp = new Date();
     await db.studentProfile.create({ data: { userId: s.id, deletedAt: stamp } });
@@ -281,8 +281,9 @@ describe("deactivate / reactivate", () => {
     const res = await request(app).post(`/api/v1/users/${s.id}/reactivate`).set(bearer(superToken));
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ deletedAt: null });
+    expect(await db.user.findUnique({ where: { id: s.id }, select: { deletedAt: true } })).toEqual({ deletedAt: null });
     const profile = await db.studentProfile.findUnique({ where: { userId: s.id }, select: { deletedAt: true } });
-    expect(profile?.deletedAt).toBeNull();
+    expect(profile?.deletedAt).toEqual(stamp);
   });
 
   it("a deactivated user can no longer log in", async () => {
