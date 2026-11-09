@@ -91,7 +91,6 @@ export async function canDeleteForumComment(
   if (user.role === "STUDENT") {
     return comment.authorUserId === user.userId && (await hasActiveEnrollment(user, seasonId));
   }
-  if (comment.authorUserId === user.userId && isAdminOfSeason(user, seasonId)) return true;
   if (isAdminOfSeason(user, seasonId)) return true;
 
   if (user.role === "LEADER") {

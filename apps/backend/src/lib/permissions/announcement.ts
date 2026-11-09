@@ -1,16 +1,6 @@
 import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
-import { announcementVisibilityFilter } from "../queries/announcements";
 import { isAdminOfSeason, isSuper } from "../rbac";
-
-/** May this viewer read the post? A post they may not read looks like a missing one. */
-export async function canReadAnnouncement(user: SessionUser, id: number): Promise<boolean> {
-  const row = await db.announcement.findFirst({
-    where: { id, ...(await announcementVisibilityFilter(user)) },
-    select: { id: true },
-  });
-  return row !== null;
-}
 
 export interface AnnouncementFlags {
   canEdit: boolean;

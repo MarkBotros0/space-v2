@@ -49,9 +49,3 @@ export function canReadAllStudents(u: SessionUser): boolean {
 export function canManageUsers(u: SessionUser): boolean {
   return u.role === "SUPER";
 }
-
-/** May act as a season admin somewhere, e.g. read the leader picker for a group form. */
-export function isAdminOfAnySeason(u: SessionUser): boolean {
-  if (u.role === "SUPER") return true;
-  return u.role !== "MENTOR" && u.seasonAdminIds.length > 0;
-}

@@ -38,7 +38,6 @@ export {
   canDeleteAnnouncement,
   canEditAnnouncement,
   canPostTo,
-  canReadAnnouncement,
   postTargetsFor,
   type AnnouncementFlags,
   type AnnouncementRowForAuth,

@@ -1,7 +1,6 @@
 import {
   canManageUsers,
   canReadAllStudents,
-  isAdminOfAnySeason,
   isAdminOfSeason,
   isAlumnus,
   isLeaderOfGroup,
@@ -110,16 +109,5 @@ describe("canManageUsers", () => {
   it("is true for SUPER only", () => {
     expect(canManageUsers(user({ role: "SUPER" }))).toBe(true);
     expect(canManageUsers(user({ role: "ADMIN" }))).toBe(false);
-  });
-});
-
-describe("isAdminOfAnySeason (Plan 6 D-16.14)", () => {
-    it("is true for SUPER and for an ADMIN holding a season", () => {
-    expect(isAdminOfAnySeason(user({ role: "SUPER" }))).toBe(true);
-    expect(isAdminOfAnySeason(user({ role: "ADMIN", seasonAdminIds: [3] }))).toBe(true);
-  });
-  it("is false for an empty claim list and for a MENTOR", () => {
-    expect(isAdminOfAnySeason(user({ role: "ADMIN" }))).toBe(false);
-    expect(isAdminOfAnySeason(user({ role: "MENTOR", seasonAdminIds: [3] }))).toBe(false);
   });
 });
