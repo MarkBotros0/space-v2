@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
 
 import { useCurrentSeasonId, type CurrentSeason } from "./use-seasons";
+import { parsePositiveInt } from "../lib/params";
 
 /**
  * The season a staff list shows: the `seasonId` the link names (a season's
@@ -10,7 +11,7 @@ import { useCurrentSeasonId, type CurrentSeason } from "./use-seasons";
 export function useSeasonParamOrCurrent(): CurrentSeason {
   const params = useLocalSearchParams<{ seasonId?: string }>();
   const current = useCurrentSeasonId();
-  const raw = typeof params.seasonId === "string" ? Number(params.seasonId) : NaN;
-  if (Number.isInteger(raw) && raw > 0) return { ...current, seasonId: raw, isPending: false, isError: false };
+  const seasonId = parsePositiveInt(params.seasonId);
+  if (seasonId !== null) return { ...current, seasonId, isPending: false, isError: false };
   return current;
 }
