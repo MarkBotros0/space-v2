@@ -239,6 +239,9 @@ depending on `scopes.activeSeasonId` (or any nullable id) must pass `enabled`
 — and guard manual `refetch()` too, since `enabled` only gates the automatic
 run. Map states to the primitives: `RouteSkeleton`, `RouteError` with `onRetry`
 wired to `refetch` (`InlineError` for one card's query), `EmptyState`.
+`queryStateView(q)` / `<QueryGate query={q}>` (`design/layout/route-states.tsx`) give the first two. A
+`/seasons/[code]/…` route reads its season with `useSeasonRoute()` (`src/hooks/use-season-route.ts`) and shows
+`SeasonLinkNotFound` for a bad code; a list's next page is a `LoadMoreButton` with the screen's own label.
 
 **Domain contracts are Zod, not bare interfaces.** `session.ts`'s
 `sessionListItemSchema` is the source of truth and its type is `z.infer` of it.

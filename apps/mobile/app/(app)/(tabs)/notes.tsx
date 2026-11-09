@@ -3,14 +3,15 @@ import { Flag } from "lucide-react-native";
 import type { UserRole } from "@space/shared";
 import { View } from "react-native";
 
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { queryStateView } from "../../../src/design/layout/route-states";
 import { BACK_TO_PREVIOUS } from "../../../src/design/layout/large-title";
 import { Screen } from "../../../src/design/layout/screen";
-import { Button, EmptyState, GroupedList } from "../../../src/design/ui";
+import { EmptyState, GroupedList } from "../../../src/design/ui";
 import { flattenNotePages, useAuthoredNotes } from "../../../src/hooks/use-notes";
 import { MentorNotes } from "../../../src/screens/mentor/mentor-notes";
 import { NoteRow } from "../../../src/screens/staff-notes/note-row";
 import { useSessionStore, useRole } from "../../../src/store/session";
+import { LoadMoreButton } from "../../../src/design/ui/load-more-button";
 
 export default function NotesScreen() {
   const role = useRole();
@@ -41,10 +42,11 @@ function AuthoredNotesScreen({ role }: { role: UserRole | null }) {
     );
   }
 
-  if (isPending || isError) {
+  const gate = queryStateView({ isPending, isError, refetch });
+  if (gate) {
     return (
       <Screen title="My notes" back={back}>
-        {isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}
+        {gate}
       </Screen>
     );
   }
@@ -73,16 +75,7 @@ function AuthoredNotesScreen({ role }: { role: UserRole | null }) {
               <NoteRow key={item.id} item={item} />
             ))}
           </GroupedList>
-          {hasNextPage ? (
-            <Button
-              variant="secondary"
-              className="self-center"
-              disabled={isFetchingNextPage}
-              onPress={() => void fetchNextPage()}
-            >
-              Load more
-            </Button>
-          ) : null}
+          <LoadMoreButton query={{ hasNextPage, isFetchingNextPage, fetchNextPage }} className="self-center" />
         </View>
       )}
     </Screen>

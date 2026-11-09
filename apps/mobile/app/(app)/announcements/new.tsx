@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { queryStateView } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState } from "../../../src/design/ui";
 import { useAnnouncementTargets, useCreateAnnouncement } from "../../../src/hooks/use-announcements";
@@ -13,19 +13,8 @@ export default function NewAnnouncementScreen() {
   const targets = useAnnouncementTargets(true);
   const create = useCreateAnnouncement();
 
-  if (targets.isPending)
-    return (
-      <Screen title="New announcement">
-        <RouteSkeleton />
-      </Screen>
-    );
-  if (targets.isError) {
-    return (
-      <Screen title="New announcement">
-        <RouteError onRetry={() => void targets.refetch()} />
-      </Screen>
-    );
-  }
+  const gate = queryStateView(targets);
+  if (gate || !targets.data) return <Screen title="New announcement">{gate}</Screen>;
   if (!targets.data.community && targets.data.seasons.length === 0) {
     return (
       <Screen title="New announcement">
