@@ -2,10 +2,9 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
+
 import { newPublicId } from "../../lib/public-id";
-import { cleanupTestData, createTestUser, reviewedOf } from "./fixtures";
+import { cleanupTestData, createTestUser, reviewedOf, tokenFor } from "./fixtures";
 import { seedModuleWorld, type ModuleWorld } from "./module-world";
 
 jest.setTimeout(180000);
@@ -17,10 +16,6 @@ type Who = "super" | "admin" | "leaderA" | "mentor" | "studentA" | "studentB" | 
 const t = {} as Record<Who, string>;
 
 /** Tokens minted from real post-End scopes (login is rate limited in tests). */
-async function mint(userId: number) {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
 
 type Method = "get" | "post" | "patch" | "put" | "delete";
 async function call(method: Method, path: string, token: string, body?: object) {
@@ -217,10 +212,10 @@ beforeAll(async () => {
   expect(ended.status).toBe(200);
 
   for (const role of ["super", "admin", "leaderA", "mentor", "studentA", "studentB", "alumnus"] as const) {
-    t[role] = await mint(w.ids[role]);
+    t[role] = await tokenFor(w.ids[role]);
   }
-  t.dropped = await mint(droppedId);
-  t.active = await mint(activeId);
+  t.dropped = await tokenFor(droppedId);
+  t.active = await tokenFor(activeId);
 });
 
 afterAll(async () => {

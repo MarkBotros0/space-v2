@@ -5,18 +5,13 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
-import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+
+import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
 
 jest.setTimeout(120000);
 
 const app = createApp();
 
-async function mint(userId: number) {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
 const get = (path: string, t: string) => request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${t}`);
 
 beforeAll(cleanupTestData);
@@ -48,9 +43,9 @@ describe("a drop reason (C2)", () => {
       expect(res.body.data.enrollments).toHaveLength(1);
       return res.body.data.enrollments[0].dropReason;
     };
-    expect(await reason(await mint(student.id))).toBeNull();
-    expect(await reason(await mint(mentor.id))).toBeNull();
-    expect(await reason(await mint(sup.id))).toBe("Private staff reason");
+    expect(await reason(await tokenFor(student.id))).toBeNull();
+    expect(await reason(await tokenFor(mentor.id))).toBeNull();
+    expect(await reason(await tokenFor(sup.id))).toBe("Private staff reason");
   });
 });
 
@@ -71,7 +66,7 @@ describe("a draft season in a student's past (I6)", () => {
         },
       ],
     });
-    const t = await mint(student.id);
+    const t = await tokenFor(student.id);
 
     const history = await get("/me/season-history", t);
     expect(history.status).toBe(200);
@@ -89,7 +84,7 @@ describe("a former leader's seasons (I1)", () => {
     });
   };
   const seasonIdsSeenBy = async (userId: number) => {
-    const res = await get("/seasons", await mint(userId));
+    const res = await get("/seasons", await tokenFor(userId));
     expect(res.status).toBe(200);
     return res.body.data.seasons.map((s: { id: number }) => s.id);
   };
@@ -127,7 +122,7 @@ describe("a former leader's seasons (I1)", () => {
     await db.group.create({
       data: { seasonId: done.id, name: "own-only-g", leaders: { create: { userId: leader.id } } },
     });
-    const res = await get("/seasons", await mint(leader.id));
+    const res = await get("/seasons", await tokenFor(leader.id));
     expect(res.body.data.seasons).toEqual([]);
   });
 });
@@ -150,7 +145,7 @@ describe("a season admin's own record", () => {
       },
     });
 
-    const res = await get(`/students/${admin.id}`, await mint(admin.id));
+    const res = await get(`/students/${admin.id}`, await tokenFor(admin.id));
     expect(res.status).toBe(200);
     expect(JSON.stringify(res.body)).not.toContain("SECRET-");
     expect(res.body.data.profile).not.toHaveProperty("notes");
@@ -166,7 +161,7 @@ describe("a season admin's own record", () => {
     await db.user.update({ where: { id: admin.id }, data: { graduationYear: 2020 } });
     await db.seasonAdmin.create({ data: { seasonId: season.id, userId: admin.id } });
     await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: student.id, status: "ACTIVE" } });
-    const res = await get(`/students/${student.id}`, await mint(admin.id));
+    const res = await get(`/students/${student.id}`, await tokenFor(admin.id));
     expect(res.status).toBe(200);
     expect(res.body.data.profile).toHaveProperty("notes");
   });

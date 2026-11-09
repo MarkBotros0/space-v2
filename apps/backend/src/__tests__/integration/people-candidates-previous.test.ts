@@ -5,7 +5,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -14,7 +14,6 @@ let superToken: string;
 let n = 0;
 
 type Status = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
 /** A program name no other data uses, so "the last finished season" is ours. */
 const program = () => `PREV${Date.now().toString(36)}${++n}`;
 
@@ -51,7 +50,7 @@ const place = (
   result: "PASSED" | "NOT_PASSED" | null = null,
 ) => db.seasonEnrollment.create({ data: { seasonId, studentUserId, status, result } });
 const candidates = (seasonId: number) =>
-  request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(as(superToken));
+  request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(bearer(superToken));
 type Row = { id: number; places: { seasonId: number; outcome: string }[] };
 const outcomeIn = (res: request.Response, id: number, seasonId: number) => {
   const row = (res.body.data.people as Row[]).find((p) => p.id === id);
@@ -144,13 +143,13 @@ describe("people-candidates: source seasons", () => {
 
   it("lists people added to a draft on its roster, which the group form picks from", async () => {
     const draft = await season("DRAFT", program(), 2027);
-    const roster = () => request(app).get(`/api/v1/seasons/${draft.id}/roster`).set(as(superToken));
+    const roster = () => request(app).get(`/api/v1/seasons/${draft.id}/roster`).set(bearer(superToken));
     expect((await roster()).body.data.roster).toEqual([]);
 
     const a = await person("Rana Roster");
     const added = await request(app)
       .post(`/api/v1/seasons/${draft.id}/enrollments`)
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send({ userIds: [a.id] });
     expect(added.status).toBe(201);
     expect((await roster()).body.data.roster).toEqual([

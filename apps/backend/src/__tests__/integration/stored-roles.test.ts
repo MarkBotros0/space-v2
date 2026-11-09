@@ -4,15 +4,13 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { PASSWORD, cleanupTestData, createTestSeason, createTestUser, login, testEmail } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, login, PASSWORD, testEmail } from "./fixtures";
 
 jest.setTimeout(120000);
 
 const app = createApp();
 let superToken: string;
 let n = 0;
-
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 const alumnus = async (role: "STUDENT" | "ADMIN" | "LEADER" = "STUDENT") => {
   const user = await createTestUser(`stored-${++n}`, role);
@@ -22,7 +20,7 @@ const alumnus = async (role: "STUDENT" | "ADMIN" | "LEADER" = "STUDENT") => {
 const patch = (id: number, body: object) =>
   request(app)
     .patch(`/api/v1/users/${id}`)
-    .set(as(superToken))
+    .set(bearer(superToken))
     .send({ name: "Mina", graduationYear: 2020, ...body });
 const seatAdmin = (userId: number, seasonId: number) => db.seasonAdmin.create({ data: { userId, seasonId } });
 const seatLeader = async (userId: number, seasonId: number) => {
@@ -52,7 +50,7 @@ describe("POST /users", () => {
     const email = testEmail("stored-new");
     const res = await request(app)
       .post("/api/v1/users")
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send({ name: "New Person", email, role, graduationYear: 2020 });
     expect(res.status).toBe(400);
     expect(res.body.error).toEqual(ROLE_FROM_SEASONS);
@@ -62,7 +60,7 @@ describe("POST /users", () => {
   it("says the same with no graduation year, rather than asking for one", async () => {
     const res = await request(app)
       .post("/api/v1/users")
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send({ name: "New Person", email: testEmail("stored-new"), role: "LEADER" });
     expect(res.body.error).toEqual(ROLE_FROM_SEASONS);
   });
@@ -90,7 +88,7 @@ describe("PATCH /users/:id", () => {
     await seatAdmin(person.id, finished.id);
     await seatLeader(person.id, finished.id);
 
-    const shown = await request(app).get(`/api/v1/users/${person.id}`).set(as(superToken));
+    const shown = await request(app).get(`/api/v1/users/${person.id}`).set(bearer(superToken));
     expect(shown.body.data.role).toBe("STUDENT");
 
     const session = await request(app).post("/api/v1/auth/login").send({ email: person.email, password: PASSWORD });
@@ -132,7 +130,7 @@ describe("PATCH /users/:id", () => {
     await seat(person.id, (await createTestSeason()).id);
     const res = await request(app)
       .patch(`/api/v1/users/${person.id}`)
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send({ name: "Mina Two", graduationYear: 2020 });
     expect(res.status).toBe(200);
     expect(res.body.data.role).toBe(role);
@@ -144,7 +142,7 @@ describe("PATCH /users/:id", () => {
     await seatAdmin(person.id, (await createTestSeason()).id);
     const res = await request(app)
       .patch(`/api/v1/users/${person.id}`)
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send({ name: "Mina Two", graduationYear: null });
     expect(res.status).toBe(400);
     expect(res.body.error.message).toBe("Required for this role.");

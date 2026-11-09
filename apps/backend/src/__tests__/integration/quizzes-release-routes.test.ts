@@ -2,7 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData } from "./fixtures";
+import { bearer, cleanupTestData } from "./fixtures";
 import { buildPublishedQuizIn, quizGradedCountFor, seedQuizFixtures, type QuizFixtures } from "./quizzes-setup";
 
 jest.setTimeout(60000);
@@ -17,8 +17,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await cleanupTestData();
 });
-
-const bearer = (token: string) => ({ authorization: `Bearer ${token}` });
 
 /** The student answers the MCQ right and hands it in: graded on the spot, results held. */
 async function takeHeldQuiz() {

@@ -7,25 +7,20 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
-import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+
+import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
 
 jest.setTimeout(120000);
 
 const app = createApp();
 let superT: string;
 
-async function mint(userId: number) {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
 const patch = (groupId: number, body: object) =>
   request(app).patch(`/api/v1/groups/${groupId}`).set("authorization", `Bearer ${superT}`).send(body);
 
 beforeAll(async () => {
   await cleanupTestData();
-  superT = await mint((await createTestUser("rename-super", "SUPER")).id);
+  superT = await tokenFor((await createTestUser("rename-super", "SUPER")).id);
 });
 afterAll(async () => {
   await cleanupTestData();

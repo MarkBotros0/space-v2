@@ -6,21 +6,16 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
+
 import { buildSeasonWorkbook } from "../../lib/exports/season-workbook";
 import { listSeasonRoster } from "../../lib/queries/groups";
 import { newPublicId } from "../../lib/public-id";
-import { cleanupTestData, createTestSeason, createTestUser, reviewedOf } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, reviewedOf, tokenFor } from "./fixtures";
 
 jest.setTimeout(180000);
 
 const app = createApp();
 
-async function mint(userId: number) {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
 const get = (path: string, t: string) => request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${t}`);
 const post = (path: string, t: string, body: object) =>
   request(app).post(`/api/v1${path}`).set("authorization", `Bearer ${t}`).send(body);
@@ -138,15 +133,15 @@ beforeAll(async () => {
     data: { sessionId, atSeconds: 5, prompt: "Q", options: ["a", "b"], correctIndex: 0, points: 1 },
   });
 
-  const adminT = await mint(admin.id);
+  const adminT = await tokenFor(admin.id);
   const ended = await post(`/seasons/${seasonId}/end`, adminT, {
     notPassed: [{ userId: sara, reason: "Absent" }],
     reviewed: await reviewedOf(seasonId),
   });
   expect(ended.status).toBe(200);
   // Tokens from post-End scopes, the way a real refresh gets them.
-  superT = await mint(sup.id);
-  mentorT = await mint(mentor.id);
+  superT = await tokenFor(sup.id);
+  mentorT = await tokenFor(mentor.id);
 });
 
 afterAll(async () => {
@@ -346,7 +341,7 @@ describe("who counts, by season status", () => {
 
 describe("Former staff, after End", () => {
   it("get nothing back: a former admin is refused the roster", async () => {
-    const res = await get(`/seasons/${seasonId}/roster`, await mint(adminId));
+    const res = await get(`/seasons/${seasonId}/roster`, await tokenFor(adminId));
     expect(res.status).toBe(403);
   });
 });

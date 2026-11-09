@@ -3,8 +3,8 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
-import { cleanupTestData, createTestSeason, createTestUser, login, reviewedOf } from "./fixtures";
+
+import { bearer, cleanupTestData, createTestSeason, createTestUser, login, reviewedOf, tokenFor } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -21,22 +21,17 @@ let otherAdminId: number;
  * An access token from the user's current scopes, minted directly: the login
  * limiter would throttle a fixture that signs in once per season.
  */
-async function mint(userId: number): Promise<Tok> {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
-const auth = (t: Tok) => ({ authorization: `Bearer ${t}` });
 const post = (path: string, t: Tok, body: unknown) =>
   request(app)
     .post(`/api/v1${path}`)
-    .set(auth(t))
+    .set(bearer(t))
     .send(body as object);
 const patch = (path: string, t: Tok, body: unknown) =>
   request(app)
     .patch(`/api/v1${path}`)
-    .set(auth(t))
+    .set(bearer(t))
     .send(body as object);
-const get = (path: string, t: Tok) => request(app).get(`/api/v1${path}`).set(auth(t));
+const get = (path: string, t: Tok) => request(app).get(`/api/v1${path}`).set(bearer(t));
 
 /** A season with admin, a leading group, Peter, Sara and a withdrawn student. */
 async function setupSeason() {
@@ -61,8 +56,8 @@ async function setupSeason() {
   await enroll(peter.id, "ACTIVE");
   await enroll(sara.id, "ACTIVE");
   await enroll(wd.id, "WITHDRAWN");
-  const adminToken = await mint(admin.id);
-  const leaderToken = await mint(leader.id);
+  const adminToken = await tokenFor(admin.id);
+  const leaderToken = await tokenFor(leader.id);
   return {
     season,
     adminToken,
@@ -292,8 +287,8 @@ describe("season results", () => {
   it("GET lists each finished student's result, super only", async () => {
     const { season, peter, sara, wd, adminId, leaderId } = await ended();
     // Ending stamped the staff's sessions stale: sign in again (they now hold no grant).
-    const adminToken = await mint(adminId);
-    const leaderToken = await mint(leaderId);
+    const adminToken = await tokenFor(adminId);
+    const leaderToken = await tokenFor(leaderId);
     const res = await get(`/seasons/${season.id}/results`, superToken);
     expect(res.status).toBe(200);
     const rows: { userId: number; result: string | null; reason: string | null; groupName: string | null }[] =
@@ -329,7 +324,7 @@ describe("season results", () => {
 
   it("PATCH is 403 for the season's admin, 409 not_finished on an active season, 409 no_result on a withdrawn enrolment", async () => {
     const { season, sara, wd, adminId } = await ended();
-    const adminToken = await mint(adminId);
+    const adminToken = await tokenFor(adminId);
     expect(
       (await patch(`/seasons/${season.id}/results/${sara}`, adminToken, { result: "PASSED", reason: null })).status,
     ).toBe(403);
@@ -363,9 +358,9 @@ describe("GET /seasons/overdue", () => {
     await db.seasonAdmin.create({ data: { seasonId: future.id, userId: adminId } });
     await db.seasonAdmin.create({ data: { seasonId: notMine.id, userId: otherAdminId } });
     // Scopes are claims: re-login so the admin token carries the new grants.
-    const fresh = await mint(adminId);
+    const fresh = await tokenFor(adminId);
 
-    const leaderToken = await mint((await createTestUser("ovleader", "LEADER")).id);
+    const leaderToken = await tokenFor((await createTestUser("ovleader", "LEADER")).id);
     const ids = async (t: Tok) =>
       ((await get("/seasons/overdue", t)).body.data.seasons as { id: number }[]).map((s) => s.id);
     const all = await ids(superToken);

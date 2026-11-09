@@ -2,7 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, login, bearer } from "./fixtures";
 
 // Shared by the season-enrollments*.test.ts suites. Each calls these from its
 // own beforeAll and afterAll.
@@ -28,7 +28,7 @@ export async function teardownEnrollmentFixtures(): Promise<void> {
   await db.$disconnect();
 }
 
-export const as = (token: string) => ({ authorization: `Bearer ${token}` });
+export const as = bearer;
 
 export const person = async (name: string, graduationYear: number | null = null) => {
   const user = await createTestUser(`se-${++n}`, "STUDENT");

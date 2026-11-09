@@ -9,7 +9,7 @@ import {
   seedAnnouncementFixtures,
   type AnnouncementFixtures,
 } from "./announcements-setup";
-import { cleanupTestData } from "./fixtures";
+import { bearer, cleanupTestData } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -33,10 +33,8 @@ afterAll(async () => {
   await cleanupTestData();
 });
 
-const auth = (token: string) => ({ authorization: `Bearer ${token}` });
-
 async function detail(id: number, token: string) {
-  const res = await request(app).get(`/api/v1/announcements/${id}`).set(auth(token));
+  const res = await request(app).get(`/api/v1/announcements/${id}`).set(bearer(token));
   expect(res.status).toBe(200);
   return announcementDetailSchema.parse(res.body.data);
 }
@@ -125,7 +123,7 @@ describe("poll on the announcement detail", () => {
 
 describe("poll flags on the feed", () => {
   it("marks poll posts with hasPoll and pollClosed", async () => {
-    const res = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
+    const res = await request(app).get("/api/v1/announcements").set(bearer(f.tokens.student));
     expect(res.status).toBe(200);
     const byId = new Map(
       (res.body.data.items as { id: number; hasPoll: boolean; pollClosed: boolean | null }[]).map((i) => [i.id, i]),

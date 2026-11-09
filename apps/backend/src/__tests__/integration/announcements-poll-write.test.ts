@@ -18,7 +18,7 @@ import {
   seedAnnouncementFixtures,
   type AnnouncementFixtures,
 } from "./announcements-setup";
-import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -29,10 +29,10 @@ let draftAdminToken: string;
 /** Extra voters, so a test can hold several people's votes. */
 let voterIds: number[];
 
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
-const create = (token: string, body: object) => request(app).post("/api/v1/announcements").set(as(token)).send(body);
+const create = (token: string, body: object) =>
+  request(app).post("/api/v1/announcements").set(bearer(token)).send(body);
 const patch = (id: number, body: object) =>
-  request(app).patch(`/api/v1/announcements/${id}`).set(as(f.tokens.admin)).send(body);
+  request(app).patch(`/api/v1/announcements/${id}`).set(bearer(f.tokens.admin)).send(body);
 
 beforeAll(async () => {
   f = await seedAnnouncementFixtures(app);
@@ -293,7 +293,7 @@ describe("PATCH /announcements/:id with a poll", () => {
         }),
         request(app)
           .put(`/api/v1/announcements/${p.postId}/poll/vote`)
-          .set(as(f.tokens.student))
+          .set(bearer(f.tokens.student))
           .send({ version: 1, optionIds: [p.optionIds[0]] }),
       ]);
       expect(edit.status).toBe(200);

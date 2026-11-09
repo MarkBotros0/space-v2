@@ -4,26 +4,21 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
+
 import { hasActiveEnrollment } from "../../lib/permissions";
-import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
 
 jest.setTimeout(120000);
 
 const app = createApp();
 
-async function mint(userId: number) {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
 const call = (m: "get" | "post" | "put" | "delete", path: string, t: string) =>
   request(app)[m](`/api/v1${path}`).set("authorization", `Bearer ${t}`);
 
 let adminT: string;
 beforeAll(async () => {
   await cleanupTestData();
-  adminT = await mint((await createTestUser("draft-super", "SUPER")).id);
+  adminT = await tokenFor((await createTestUser("draft-super", "SUPER")).id);
 });
 afterAll(async () => {
   await cleanupTestData();
@@ -38,7 +33,7 @@ async function world(status: "DRAFT" | "ACTIVE", label: string) {
     data: { seasonId: season.id, title: "Set work", isAllGroups: true },
     select: { id: true },
   });
-  return { seasonId: season.id, studentId: student.id, assignmentId: assignment.id, token: await mint(student.id) };
+  return { seasonId: season.id, studentId: student.id, assignmentId: assignment.id, token: await tokenFor(student.id) };
 }
 const notices = (userId: number) => db.notification.count({ where: { userId } });
 

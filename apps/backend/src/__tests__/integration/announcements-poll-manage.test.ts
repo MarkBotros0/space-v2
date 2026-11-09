@@ -10,7 +10,7 @@ import {
   seedAnnouncementFixtures,
   type AnnouncementFixtures,
 } from "./announcements-setup";
-import { cleanupTestData, createTestUser } from "./fixtures";
+import { bearer, cleanupTestData, createTestUser } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -25,16 +25,14 @@ afterAll(async () => {
   await cleanupTestData();
 });
 
-const auth = (token: string) => ({ authorization: `Bearer ${token}` });
-
 async function poll(seasonId: number, opts: { closed?: boolean } = {}) {
   const postId = await insertPost({ audience: "SEASON", seasonId, authorId: f.userIds.admin });
   return { postId, ...(await insertPoll(postId, { allowsMultiple: true, labels: ["A", "B"], ...opts })) };
 }
 const post = (path: string, id: number, token: string) =>
-  request(app).post(`/api/v1/announcements/${id}/poll/${path}`).set(auth(token)).send({});
+  request(app).post(`/api/v1/announcements/${id}/poll/${path}`).set(bearer(token)).send({});
 const voters = (id: number, token: string) =>
-  request(app).get(`/api/v1/announcements/${id}/poll/voters`).set(auth(token));
+  request(app).get(`/api/v1/announcements/${id}/poll/voters`).set(bearer(token));
 
 describe("POST /announcements/:id/poll/close and reopen", () => {
   it("closes and reopens as the author, leaving editedAt and version, sending nothing", async () => {
@@ -128,7 +126,7 @@ describe("DELETE /announcements/:id with a poll", () => {
     const p = await poll(f.seasonId);
     await insertVote(p.pollId, p.optionIds[0]!, f.userIds.student);
     await insertVote(p.pollId, p.optionIds[1]!, f.userIds.student);
-    const res = await request(app).delete(`/api/v1/announcements/${p.postId}`).set(auth(f.tokens.admin));
+    const res = await request(app).delete(`/api/v1/announcements/${p.postId}`).set(bearer(f.tokens.admin));
     expect(res.status).toBe(204);
     expect(await db.announcement.count({ where: { id: p.postId } })).toBe(0);
     expect(await db.announcementPoll.count({ where: { id: p.pollId } })).toBe(0);

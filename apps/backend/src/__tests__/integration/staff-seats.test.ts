@@ -5,7 +5,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { PASSWORD, cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, login, PASSWORD } from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -14,8 +14,6 @@ let superToken: string;
 let n = 0;
 
 type Status = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
-
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 const person = async (name: string, graduationYear: number | null = 2020) => {
   const user = await createTestUser(`seats-${++n}`, "STUDENT");
@@ -40,14 +38,14 @@ const group = async (seasonId: number, leaderIds: number[] = []) =>
     })
   ).id;
 const addAdmin = (seasonId: number, userId: number, token = superToken) =>
-  request(app).post(`/api/v1/seasons/${seasonId}/admins`).set(as(token)).send({ userId });
+  request(app).post(`/api/v1/seasons/${seasonId}/admins`).set(bearer(token)).send({ userId });
 const createGroup = (seasonId: number, body: object, token = superToken) =>
   request(app)
     .post(`/api/v1/seasons/${seasonId}/groups`)
-    .set(as(token))
+    .set(bearer(token))
     .send({ name: `New ${++n}`, ...body });
 const patchGroup = (groupId: number, body: object, token = superToken) =>
-  request(app).patch(`/api/v1/groups/${groupId}`).set(as(token)).send(body);
+  request(app).patch(`/api/v1/groups/${groupId}`).set(bearer(token)).send(body);
 const stamp = async (id: number) =>
   (await db.user.findUniqueOrThrow({ where: { id }, select: { sessionsValidFrom: true } })).sessionsValidFrom;
 const refreshTokenOf = async (email: string) =>
@@ -127,7 +125,7 @@ describe("POST /seasons/:id/admins", () => {
     expect(await db.refreshToken.count({ where: { userId: alum.id, revokedAt: null } })).toBeGreaterThan(0);
 
     await new Promise((resolve) => setTimeout(resolve, 5));
-    const removed = await request(app).delete(`/api/v1/seasons/${seasonId}/admins/${alum.id}`).set(as(superToken));
+    const removed = await request(app).delete(`/api/v1/seasons/${seasonId}/admins/${alum.id}`).set(bearer(superToken));
     expect(removed.status).toBe(200);
     expect((await stamp(alum.id))!.getTime()).toBeGreaterThan(added!.getTime());
     expect(await canRefresh(refreshToken)).toBe(true);
@@ -216,7 +214,7 @@ describe("the group form's leaderIds", () => {
   it("deleting a group marks its leaders stale", async () => {
     const lead = await person("Deleted Group Lead");
     const groupId = await group(await season(), [lead.id]);
-    expect((await request(app).delete(`/api/v1/groups/${groupId}`).set(as(superToken))).status).toBe(200);
+    expect((await request(app).delete(`/api/v1/groups/${groupId}`).set(bearer(superToken))).status).toBe(200);
     expect(await stamp(lead.id)).not.toBeNull();
   });
 });
@@ -276,7 +274,7 @@ describe("PATCH /groups/:id, the parked fixes", () => {
 
 describe("GET /seasons/:id/staff-candidates", () => {
   const candidates = (seasonId: number, token = superToken) =>
-    request(app).get(`/api/v1/seasons/${seasonId}/staff-candidates`).set(as(token));
+    request(app).get(`/api/v1/seasons/${seasonId}/staff-candidates`).set(bearer(token));
 
   it("lists free alumni only, and a season admin gets name and last season and nothing else", async () => {
     const seasonId = await season("DRAFT");

@@ -6,18 +6,12 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { flagLowAttendance } from "../../lib/attendance-notifications";
 import { prepareSessionCancelledNotice } from "../../lib/session-notifications";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
-import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+
+import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
 
 jest.setTimeout(120000);
 
 const app = createApp();
-
-async function mint(userId: number) {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
 
 beforeAll(cleanupTestData);
 afterAll(async () => {
@@ -65,7 +59,7 @@ describe("a flagged note", () => {
     const mentor = await createTestUser(`m3-mentor-${status.toLowerCase()}`, "MENTOR");
     const res = await request(app)
       .post(`/api/v1/students/${w.student}/notes`)
-      .set("authorization", `Bearer ${await mint(mentor.id)}`)
+      .set("authorization", `Bearer ${await tokenFor(mentor.id)}`)
       .send({ body: "Worried", visibility: "ADMINS", followUpFlagged: true, seasonId: w.seasonId });
     expect(res.status).toBe(201);
     expect(await notified(w.admin, "MENTOR_FOLLOWUP")).toBe(expected);

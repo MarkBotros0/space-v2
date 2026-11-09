@@ -10,7 +10,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 import { insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 
 jest.setTimeout(60000);
@@ -20,8 +20,7 @@ let f: AnnouncementFixtures;
 let draftSeasonId: number;
 let draftAdminToken: string;
 
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
-const post = (token: string, body: object) => request(app).post("/api/v1/announcements").set(as(token)).send(body);
+const post = (token: string, body: object) => request(app).post("/api/v1/announcements").set(bearer(token)).send(body);
 const seasonBody = (seasonId: number, extra: object = {}) => ({
   audience: "SEASON",
   seasonId,
@@ -122,7 +121,7 @@ describe("PATCH and DELETE /announcements/:id", () => {
   it("author edits, editedAt set, audience unchanged", async () => {
     const res = await request(app)
       .patch(`/api/v1/announcements/${id}`)
-      .set(as(f.tokens.admin))
+      .set(bearer(f.tokens.admin))
       .send({ body: "Edited." });
     expect(res.status).toBe(200);
     expect(res.body.data.editedAt).not.toBeNull();
@@ -130,19 +129,19 @@ describe("PATCH and DELETE /announcements/:id", () => {
     expect(res.body.data.seasonId).toBe(f.seasonId);
     const bad = await request(app)
       .patch(`/api/v1/announcements/${id}`)
-      .set(as(f.tokens.admin))
+      .set(bearer(f.tokens.admin))
       .send({ audience: "COMMUNITY" });
     expect(bad.status).toBe(400);
   });
 
   it("student who can read it cannot edit or delete; unreadable is 404", async () => {
-    const e = await request(app).patch(`/api/v1/announcements/${id}`).set(as(f.tokens.student)).send({ body: "x" });
+    const e = await request(app).patch(`/api/v1/announcements/${id}`).set(bearer(f.tokens.student)).send({ body: "x" });
     expect(e.status).toBe(403);
-    const d = await request(app).delete(`/api/v1/announcements/${id}`).set(as(f.tokens.student));
+    const d = await request(app).delete(`/api/v1/announcements/${id}`).set(bearer(f.tokens.student));
     expect(d.status).toBe(403);
     const hidden = await request(app)
       .patch(`/api/v1/announcements/${id}`)
-      .set(as(f.tokens.otherStudent))
+      .set(bearer(f.tokens.otherStudent))
       .send({ body: "x" });
     expect(hidden.status).toBe(404);
   });
@@ -156,16 +155,16 @@ describe("PATCH and DELETE /announcements/:id", () => {
     await db.studentProfile.create({ data: { userId: author.id } });
     await db.seasonEnrollment.create({ data: { seasonId: f.seasonId, studentUserId: author.id, status: "ACTIVE" } });
     const t2 = await login(app, author.email);
-    const res = await request(app).patch(`/api/v1/announcements/${own}`).set(as(t2)).send({ body: "x" });
+    const res = await request(app).patch(`/api/v1/announcements/${own}`).set(bearer(t2)).send({ body: "x" });
     expect(res.status).toBe(403);
-    const detail = await request(app).get(`/api/v1/announcements/${own}`).set(as(t2));
+    const detail = await request(app).get(`/api/v1/announcements/${own}`).set(bearer(t2));
     expect(detail.body.data).toMatchObject({ canEdit: false, canDelete: false });
   });
 
   it("nobody edits a finished season's post, super included", async () => {
     const res = await request(app)
       .patch(`/api/v1/announcements/${f.finishedId}`)
-      .set(as(f.tokens.superUser))
+      .set(bearer(f.tokens.superUser))
       .send({ body: "x" });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("season_finished");
@@ -179,25 +178,25 @@ describe("PATCH and DELETE /announcements/:id", () => {
     });
     const authored = await insertPost({ audience: "SEASON", seasonId: f.finishedSeasonId, authorId: author.id });
     const t = await login(app, author.email);
-    const denied = await request(app).delete(`/api/v1/announcements/${authored}`).set(as(t));
+    const denied = await request(app).delete(`/api/v1/announcements/${authored}`).set(bearer(t));
     expect(denied.status).toBe(403);
-    const ok = await request(app).delete(`/api/v1/announcements/${authored}`).set(as(f.tokens.superUser));
+    const ok = await request(app).delete(`/api/v1/announcements/${authored}`).set(bearer(f.tokens.superUser));
     expect(ok.status).toBe(204);
     expect(await db.announcement.findUnique({ where: { id: authored } })).toBeNull();
   });
 
   it("author deletes own live post; the detail flags match", async () => {
-    const detail = await request(app).get(`/api/v1/announcements/${f.finishedId}`).set(as(f.tokens.superUser));
+    const detail = await request(app).get(`/api/v1/announcements/${f.finishedId}`).set(bearer(f.tokens.superUser));
     expect(detail.body.data).toMatchObject({ canEdit: false, canDelete: true, seasonFinished: true });
-    const res = await request(app).delete(`/api/v1/announcements/${id}`).set(as(f.tokens.admin));
+    const res = await request(app).delete(`/api/v1/announcements/${id}`).set(bearer(f.tokens.admin));
     expect(res.status).toBe(204);
-    expect((await request(app).delete(`/api/v1/announcements/${id}`).set(as(f.tokens.admin))).status).toBe(404);
+    expect((await request(app).delete(`/api/v1/announcements/${id}`).set(bearer(f.tokens.admin))).status).toBe(404);
   });
 });
 
 describe("GET /announcements/targets", () => {
   it("super sees community and active seasons, admin sees own season, student sees none", async () => {
-    const sup = await request(app).get("/api/v1/announcements/targets").set(as(f.tokens.superUser));
+    const sup = await request(app).get("/api/v1/announcements/targets").set(bearer(f.tokens.superUser));
     expect(sup.status).toBe(200);
     expect(sup.body.data.community).toBe(true);
     const ids = sup.body.data.seasons.map((s: { id: number }) => s.id);
@@ -216,12 +215,12 @@ describe("GET /announcements/targets", () => {
       await db.user.count({ where: { deletedAt: null, id: { not: f.userIds.superUser } } }),
     );
 
-    const adm = await request(app).get("/api/v1/announcements/targets").set(as(f.tokens.admin));
+    const adm = await request(app).get("/api/v1/announcements/targets").set(bearer(f.tokens.admin));
     expect(adm.body.data.community).toBe(false);
     expect(adm.body.data.communityReach).toBe(0);
     expect(adm.body.data.seasons.map((s: { id: number }) => s.id)).toEqual([f.seasonId]);
 
-    const stu = await request(app).get("/api/v1/announcements/targets").set(as(f.tokens.student));
+    const stu = await request(app).get("/api/v1/announcements/targets").set(bearer(f.tokens.student));
     expect(stu.body.data).toEqual({ community: false, communityReach: 0, seasons: [] });
   });
 });

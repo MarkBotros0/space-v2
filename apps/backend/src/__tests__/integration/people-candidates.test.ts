@@ -4,7 +4,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -13,8 +13,6 @@ let superToken: string;
 let n = 0;
 
 type Status = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
-
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 const person = async (name: string, graduationYear: number | null = null) => {
   const user = await createTestUser(`pc-${++n}`, "STUDENT");
@@ -47,7 +45,7 @@ const finished = (
     data: { seasonId, studentUserId, status, result, enrolledAt, completedAt: new Date(Date.UTC(2026, 5, 1)) },
   });
 const candidates = (seasonId: number, token = superToken) =>
-  request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(as(token));
+  request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(bearer(token));
 type Row = {
   id: number;
   name: string;

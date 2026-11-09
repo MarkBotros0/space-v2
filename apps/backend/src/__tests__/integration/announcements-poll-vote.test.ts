@@ -4,7 +4,7 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { announcementDetailSchema } from "../../../../../packages/shared/src/index";
 import { insertPoll, insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
-import { cleanupTestData } from "./fixtures";
+import { bearer, cleanupTestData } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -19,8 +19,6 @@ afterAll(async () => {
   await cleanupTestData();
 });
 
-const auth = (token: string) => ({ authorization: `Bearer ${token}` });
-
 /** A fresh season post (authored by the admin) with its own poll, so each test stands alone. */
 async function seasonPoll(allowsMultiple: boolean, labels = ["Sat", "Sun", "Mon"]) {
   const postId = await insertPost({
@@ -32,7 +30,7 @@ async function seasonPoll(allowsMultiple: boolean, labels = ["Sat", "Sun", "Mon"
 }
 
 function vote(postId: number, token: string, body: object) {
-  return request(app).put(`/api/v1/announcements/${postId}/poll/vote`).set(auth(token)).send(body);
+  return request(app).put(`/api/v1/announcements/${postId}/poll/vote`).set(bearer(token)).send(body);
 }
 
 async function votesOf(pollId: number, userId: number) {

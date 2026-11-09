@@ -2,11 +2,10 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
+
 import { newPublicId } from "../../lib/public-id";
 import { seasonHistoryResponseSchema, seasonRecordSchema } from "../../../../../packages/shared/src/index";
-import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
 
 jest.setTimeout(180000);
 
@@ -23,10 +22,6 @@ const seasons = {} as Record<
 >;
 let quizIds: { notTaken: number; progress: number; graded: number; submitted: number };
 
-async function mint(userId: number) {
-  const scopes = await loadScopes(userId);
-  return (await signAccessToken({ userId, ...scopes })).token;
-}
 const get = (path: string, token: string) => request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${token}`);
 
 beforeAll(async () => {
@@ -143,9 +138,9 @@ beforeAll(async () => {
   quizIds = { notTaken: q1.id, progress: q2.id, graded: q3.id, submitted: q4.id };
 
   tokens = {
-    student: await mint(s.id),
-    mentor: await mint(mentor.id),
-    stranger: await mint(stranger.id),
+    student: await tokenFor(s.id),
+    mentor: await tokenFor(mentor.id),
+    stranger: await tokenFor(stranger.id),
   };
 });
 

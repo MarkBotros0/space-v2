@@ -10,7 +10,7 @@ import {
   announcementUnreadResponseSchema,
 } from "../../../../../packages/shared/src/index";
 import { insertPost, seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
-import { TEST_PREFIX, cleanupTestData, createTestSeason, createTestUser, testUserFilter } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, TEST_PREFIX, testUserFilter } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -38,15 +38,13 @@ afterAll(async () => {
   await cleanupTestData();
 });
 
-const auth = (token: string) => ({ authorization: `Bearer ${token}` });
-
 interface Item {
   id: number;
   isRead: boolean;
 }
 
 async function feed(token: string): Promise<Item[]> {
-  const res = await request(app).get("/api/v1/announcements").set(auth(token));
+  const res = await request(app).get("/api/v1/announcements").set(bearer(token));
   expect(res.status).toBe(200);
   return res.body.data.items as Item[];
 }
@@ -56,13 +54,13 @@ async function feedIds(token: string): Promise<number[]> {
 }
 
 async function unreadCount(token: string): Promise<number> {
-  const res = await request(app).get("/api/v1/announcements/unread").set(auth(token));
+  const res = await request(app).get("/api/v1/announcements/unread").set(bearer(token));
   expect(res.status).toBe(200);
   return res.body.data.count as number;
 }
 
 async function detailStatus(token: string, id: number): Promise<number> {
-  const res = await request(app).get(`/api/v1/announcements/${id}`).set(auth(token));
+  const res = await request(app).get(`/api/v1/announcements/${id}`).set(bearer(token));
   return res.status;
 }
 
@@ -76,14 +74,14 @@ it("student reads community and own season, not other season", async () => {
 });
 
 it("responses parse against the shared contracts", async () => {
-  const page = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
+  const page = await request(app).get("/api/v1/announcements").set(bearer(f.tokens.student));
   expect(announcementPageResponseSchema.safeParse(page.body.data).success).toBe(true);
-  const unread = await request(app).get("/api/v1/announcements/unread").set(auth(f.tokens.student));
+  const unread = await request(app).get("/api/v1/announcements/unread").set(bearer(f.tokens.student));
   expect(announcementUnreadResponseSchema.safeParse(unread.body.data).success).toBe(true);
-  const detail = await request(app).get(`/api/v1/announcements/${f.liveId}`).set(auth(f.tokens.superUser));
+  const detail = await request(app).get(`/api/v1/announcements/${f.liveId}`).set(bearer(f.tokens.superUser));
   const parsed = announcementDetailSchema.parse(detail.body.data);
   expect(parsed).toMatchObject({ canEdit: true, canDelete: true, seasonFinished: false });
-  const old = await request(app).get(`/api/v1/announcements/${f.finishedId}`).set(auth(f.tokens.superUser));
+  const old = await request(app).get(`/api/v1/announcements/${f.finishedId}`).set(bearer(f.tokens.superUser));
   expect(old.body.data).toMatchObject({ canEdit: false, canDelete: true, seasonFinished: true });
 });
 
@@ -138,7 +136,7 @@ it("super reads everything but only community posts are unread", async () => {
   expect(items.map((i) => i.id).sort((a, b) => a - b)).toEqual(
     sorted(f.communityId, f.liveId, f.finishedId, f.otherId, orphan, seasonOrphan),
   );
-  const res = await request(app).get("/api/v1/announcements/unread").set(auth(f.tokens.superUser));
+  const res = await request(app).get("/api/v1/announcements/unread").set(bearer(f.tokens.superUser));
   expect(res.body.data.count).toBe(1); // the orphan community post only
   expect(res.body.data.latest.id).toBe(orphan);
   for (const id of [f.liveId, f.finishedId, f.otherId, seasonOrphan]) {
@@ -171,20 +169,20 @@ it("post older than 30 days or the account is not unread", async () => {
 it("POST /:id/read is idempotent and clears unread", async () => {
   const before = await unreadCount(f.tokens.student);
   for (let i = 0; i < 2; i++) {
-    const res = await request(app).post(`/api/v1/announcements/${f.communityId}/read`).set(auth(f.tokens.student));
+    const res = await request(app).post(`/api/v1/announcements/${f.communityId}/read`).set(bearer(f.tokens.student));
     expect(res.status).toBe(204);
     expect(res.text).toBe("");
   }
   expect(await unreadCount(f.tokens.student)).toBe(before - 1);
-  const res = await request(app).get(`/api/v1/announcements/${f.communityId}`).set(auth(f.tokens.student));
+  const res = await request(app).get(`/api/v1/announcements/${f.communityId}`).set(bearer(f.tokens.student));
   expect(res.body.data.isRead).toBe(true);
   // A post the caller may not read can't be marked.
-  const hidden = await request(app).post(`/api/v1/announcements/${f.otherId}/read`).set(auth(f.tokens.student));
+  const hidden = await request(app).post(`/api/v1/announcements/${f.otherId}/read`).set(bearer(f.tokens.student));
   expect(hidden.status).toBe(404);
 });
 
 it("GET /:id of a missing id is 404 not_found", async () => {
-  const res = await request(app).get("/api/v1/announcements/999999999").set(auth(f.tokens.student));
+  const res = await request(app).get("/api/v1/announcements/999999999").set(bearer(f.tokens.student));
   expect(res.status).toBe(404);
   expect(res.body.error.code).toBe("not_found");
 });
@@ -195,27 +193,27 @@ it("feed pages with nextCursor", async () => {
     ids.push(await insertPost({ audience: "COMMUNITY", authorId: f.userIds.superUser }));
   }
   extraPosts.push(...ids);
-  const first = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
+  const first = await request(app).get("/api/v1/announcements").set(bearer(f.tokens.student));
   expect(first.body.data.items).toHaveLength(ANNOUNCEMENT_PAGE_SIZE);
   expect(first.body.data.nextCursor).toEqual(expect.any(String));
   const second = await request(app)
     .get("/api/v1/announcements")
     .query({ cursor: first.body.data.nextCursor })
-    .set(auth(f.tokens.student));
+    .set(bearer(f.tokens.student));
   expect(second.status).toBe(200);
   const all = [...first.body.data.items, ...second.body.data.items].map((i: Item) => i.id);
   expect(new Set(all).size).toBe(all.length);
   expect(all).toHaveLength(2 + ANNOUNCEMENT_PAGE_SIZE + 1);
   expect(second.body.data.nextCursor).toBeNull();
-  const bad = await request(app).get("/api/v1/announcements").query({ cursor: "zzz" }).set(auth(f.tokens.student));
+  const bad = await request(app).get("/api/v1/announcements").query({ cursor: "zzz" }).set(bearer(f.tokens.student));
   expect(bad.status).toBe(400);
 });
 
 it("a non-numeric id is 400 in the error envelope", async () => {
-  const get = await request(app).get("/api/v1/announcements/abc").set(auth(f.tokens.student));
+  const get = await request(app).get("/api/v1/announcements/abc").set(bearer(f.tokens.student));
   expect(get.status).toBe(400);
   expect(get.body.error.code).toBe("bad_request");
-  const post = await request(app).post("/api/v1/announcements/abc/read").set(auth(f.tokens.student));
+  const post = await request(app).post("/api/v1/announcements/abc/read").set(bearer(f.tokens.student));
   expect(post.status).toBe(400);
   expect(post.body.error.code).toBe("bad_request");
 });
@@ -235,7 +233,7 @@ it("cursor tie-break: posts sharing one createdAt page with no duplicate or gap"
     const res: request.Response = await request(app)
       .get("/api/v1/announcements")
       .query(cursor ? { cursor } : {})
-      .set(auth(f.tokens.student));
+      .set(bearer(f.tokens.student));
     expect(res.status).toBe(200);
     seen.push(...res.body.data.items.map((i: Item) => i.id));
     cursor = res.body.data.nextCursor;
@@ -272,8 +270,8 @@ it("shows a soft-deleted author as no author (Former member), live authors by na
   const postId = await insertPost({ audience: "COMMUNITY", authorId: author.id });
   extraPosts.push(postId);
   const authorOf = async () => {
-    const list = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
-    const detail = await request(app).get(`/api/v1/announcements/${postId}`).set(auth(f.tokens.student));
+    const list = await request(app).get("/api/v1/announcements").set(bearer(f.tokens.student));
+    const detail = await request(app).get(`/api/v1/announcements/${postId}`).set(bearer(f.tokens.student));
     const item = list.body.data.items.find((i: Item) => i.id === postId);
     return [item.authorName, detail.body.data.authorName];
   };
@@ -291,7 +289,7 @@ it("cuts the excerpt by code point: an emoji at the limit stays whole", async ()
     where: { id: postId },
     data: { body: `${"a".repeat(278)}\u{1F600}${"b".repeat(10)}` },
   });
-  const list = await request(app).get("/api/v1/announcements").set(auth(f.tokens.student));
+  const list = await request(app).get("/api/v1/announcements").set(bearer(f.tokens.student));
   const item = list.body.data.items.find((i: Item) => i.id === postId);
   expect(item.excerpt).toBe(`${"a".repeat(278)}\u{1F600}…`);
   expect(item.excerpt).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/);

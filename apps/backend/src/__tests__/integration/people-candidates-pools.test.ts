@@ -4,7 +4,15 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login, testEmail, testSeasonCode } from "./fixtures";
+import {
+  bearer,
+  cleanupTestData,
+  createTestSeason,
+  createTestUser,
+  login,
+  testEmail,
+  testSeasonCode,
+} from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -13,8 +21,6 @@ let superToken: string;
 let n = 0;
 
 type Status = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
-
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 const person = async (name: string, graduationYear: number | null = null) => {
   const user = await createTestUser(`pc-${++n}`, "STUDENT");
@@ -47,7 +53,7 @@ const finished = (
     data: { seasonId, studentUserId, status, result, enrolledAt, completedAt: new Date(Date.UTC(2026, 5, 1)) },
   });
 const candidates = (seasonId: number, token = superToken) =>
-  request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(as(token));
+  request(app).get(`/api/v1/seasons/${seasonId}/people-candidates`).set(bearer(token));
 type Row = {
   id: number;
   name: string;
@@ -164,7 +170,7 @@ describe("community-wide seasons: the pool", () => {
     const started = Date.now();
     const res = await request(app)
       .post(`/api/v1/seasons/${target}/enrollments`)
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send({ userIds: ids });
     const ms = Date.now() - started;
     expect(res.status).toBe(201);
@@ -187,7 +193,7 @@ describe("requiredProgram on a season", () => {
   it("is set on create and changed by SUPER while the season is a draft", async () => {
     const created = await request(app)
       .post("/api/v1/seasons")
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send(body({ requiredProgram: "GBV" }));
     expect(created.status).toBe(201);
     const id = created.body.data.id as number;
@@ -197,7 +203,7 @@ describe("requiredProgram on a season", () => {
     const patch = (over: object) =>
       request(app)
         .patch(`/api/v1/seasons/${id}`)
-        .set(as(superToken))
+        .set(bearer(superToken))
         .send(body({ code, ...over }));
     const changed = await patch({ requiredProgram: "ABC" });
     expect(changed.status).toBe(200);
@@ -215,7 +221,7 @@ describe("requiredProgram on a season", () => {
   it("refuses a season requiring its own program, on create and on a program change", async () => {
     const own = await request(app)
       .post("/api/v1/seasons")
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send(body({ requiredProgram: "LEAD" }));
     expect(own.status).toBe(400);
 
@@ -223,7 +229,7 @@ describe("requiredProgram on a season", () => {
     const code = (await db.season.findUniqueOrThrow({ where: { id } })).code;
     const clash = await request(app)
       .patch(`/api/v1/seasons/${id}`)
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send(body({ code, program: "LEAD", year: 2030 }));
     expect(clash.status).toBe(400);
   });
@@ -233,7 +239,7 @@ describe("requiredProgram on a season", () => {
     const code = (await db.season.findUniqueOrThrow({ where: { id } })).code;
     const change = await request(app)
       .patch(`/api/v1/seasons/${id}`)
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send(body({ code, year: 2031, status: "ACTIVE", requiredProgram: "ABC" }));
     expect(change.status).toBe(409);
     expect(change.body.error.code).toBe("season_not_draft");
@@ -241,7 +247,7 @@ describe("requiredProgram on a season", () => {
 
     const same = await request(app)
       .patch(`/api/v1/seasons/${id}`)
-      .set(as(superToken))
+      .set(bearer(superToken))
       .send(body({ code, year: 2031, status: "ACTIVE", requiredProgram: "GBV" }));
     expect(same.status).toBe(200);
   });
@@ -251,7 +257,7 @@ describe("requiredProgram on a season", () => {
     const admin = await createTestUser("pc-admin2", "ADMIN");
     await db.seasonAdmin.create({ data: { seasonId: id, userId: admin.id } });
     const token = await login(app, admin.email);
-    const res = await request(app).patch(`/api/v1/seasons/${id}`).set(as(token)).send({ requiredProgram: "GBV" });
+    const res = await request(app).patch(`/api/v1/seasons/${id}`).set(bearer(token)).send({ requiredProgram: "GBV" });
     expect(res.status).toBe(403);
     expect((await db.season.findUniqueOrThrow({ where: { id } })).requiredProgram).toBeNull();
   });

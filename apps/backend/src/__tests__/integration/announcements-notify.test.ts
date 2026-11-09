@@ -10,7 +10,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestUser, login } from "./fixtures";
+import { bearer, cleanupTestData, createTestUser, login } from "./fixtures";
 import { seedAnnouncementFixtures, type AnnouncementFixtures } from "./announcements-setup";
 
 jest.setTimeout(60000);
@@ -22,8 +22,6 @@ let leaderId: number;
 let droppedId: number;
 let finishedStudentId: number;
 let studentIds: number[];
-
-const as = (token: string) => ({ authorization: `Bearer ${token}` });
 
 const rowsFor = (userId: number, postId: number) =>
   db.notification.count({ where: { userId, type: "ANNOUNCEMENT", link: `/announcements/${postId}` } });
@@ -41,7 +39,7 @@ async function waitForRows(userId: number, postId: number, want: number) {
 const settle = () => new Promise((r) => setTimeout(r, 400));
 
 async function publish(token: string, body: object): Promise<number> {
-  const res = await request(app).post("/api/v1/announcements").set(as(token)).send(body);
+  const res = await request(app).post("/api/v1/announcements").set(bearer(token)).send(body);
   expect(res.status).toBe(201);
   return res.body.data.id;
 }
@@ -124,7 +122,7 @@ describe("announcement notifications", () => {
     const before = await db.notification.count({ where: { link: `/announcements/${id}` } });
     const res = await request(app)
       .patch(`/api/v1/announcements/${id}`)
-      .set(as(f.tokens.superUser))
+      .set(bearer(f.tokens.superUser))
       .send({ body: "Twice." });
     expect(res.status).toBe(200);
     await settle();
@@ -134,7 +132,7 @@ describe("announcement notifications", () => {
   it("notification target parses to announcement id", async () => {
     const id = await publish(f.tokens.superUser, { audience: "SEASON", seasonId: f.seasonId, body: "Look." });
     await waitForRows(studentIds[0]!, id, 1);
-    const res = await request(app).get("/api/v1/notifications").set(as(f.tokens.student));
+    const res = await request(app).get("/api/v1/notifications").set(bearer(f.tokens.student));
     expect(res.status).toBe(200);
     const item = res.body.data.items.find((n: { link: string }) => n.link === `/announcements/${id}`);
     expect(item.target).toEqual({ entityType: "announcement", entityId: id });

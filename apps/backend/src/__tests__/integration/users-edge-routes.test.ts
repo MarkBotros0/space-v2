@@ -18,6 +18,7 @@ jest.mock("../../lib/email", () => ({
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import {
+  bearer,
   cleanupTestData,
   createTestSeason,
   createTestUser,
@@ -33,8 +34,6 @@ const app = createApp();
 let superToken: string;
 let superId: number;
 const tokens: Record<string, string> = {};
-
-const auth = (t: string) => ({ authorization: `Bearer ${t}` });
 
 beforeAll(async () => {
   await cleanupTestData();
@@ -66,7 +65,7 @@ describe("role matrix: every /users route refuses non-SUPER roles", () => {
 
   it.each(["ADMIN", "LEADER", "STUDENT", "MENTOR"])("%s gets 403 forbidden on all of them", async (role) => {
     for (const [method, path, body] of routes) {
-      const r = request(app)[method as "get"](path).set(auth(tokens[role]!));
+      const r = request(app)[method as "get"](path).set(bearer(tokens[role]!));
       const res = body ? await r.send(body) : await r;
       expect([path, res.status, res.body.error?.code]).toEqual([path, 403, "forbidden"]);
     }
@@ -88,7 +87,7 @@ describe("malformed ids are 400 bad_request, not 404 or 500", () => {
     ["post", "/api/v1/users/abc/reactivate"],
     ["post", "/api/v1/users/abc/invite"],
   ])("%s %s", async (method, path) => {
-    const res = await request(app)[method as "get"](path).set(auth(superToken));
+    const res = await request(app)[method as "get"](path).set(bearer(superToken));
     expect(res.status).toBe(400);
     expect(res.body.error).toEqual({ code: "bad_request", message: "Invalid user id." });
   });
@@ -102,7 +101,7 @@ describe("unknown ids are 404 not_found", () => {
     ["post", `/api/v1/users/${missing}/reactivate`, undefined],
     ["post", `/api/v1/users/${missing}/invite`, undefined],
   ])("%s %s", async (method, path, body) => {
-    const r = request(app)[method as "get"](path).set(auth(superToken));
+    const r = request(app)[method as "get"](path).set(bearer(superToken));
     const res = body ? await r.send(body) : await r;
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("not_found");
@@ -116,7 +115,7 @@ describe("GET /api/v1/users filters", () => {
       ["status=sleeping", "Invalid status filter."],
       ["cursor=abc", "Invalid cursor."],
     ]) {
-      const res = await request(app).get(`/api/v1/users?${qs}`).set(auth(superToken));
+      const res = await request(app).get(`/api/v1/users?${qs}`).set(bearer(superToken));
       expect(res.status).toBe(400);
       expect(res.body.error).toEqual({ code: "bad_request", message });
     }
@@ -125,7 +124,7 @@ describe("GET /api/v1/users filters", () => {
   it("filters by role", async () => {
     const res = await request(app)
       .get("/api/v1/users?q=space-v2-test-edge&role=MENTOR&limit=100")
-      .set(auth(superToken));
+      .set(bearer(superToken));
     expect(res.status).toBe(200);
     expect(res.body.data.users.length).toBeGreaterThan(0);
     expect(res.body.data.users.every((u: { role: string }) => u.role === "MENTOR")).toBe(true);
@@ -136,15 +135,15 @@ describe("GET /api/v1/users filters", () => {
     const gone = await createTestUser("edge-filter-gone", "STUDENT");
     await db.user.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
 
-    const p = await request(app).get("/api/v1/users?q=edge-filter&status=pending").set(auth(superToken));
+    const p = await request(app).get("/api/v1/users?q=edge-filter&status=pending").set(bearer(superToken));
     expect(p.body.data.users.map((u: { id: number }) => u.id)).toEqual([pending.id]);
 
-    const i = await request(app).get("/api/v1/users?q=edge-filter&status=inactive").set(auth(superToken));
+    const i = await request(app).get("/api/v1/users?q=edge-filter&status=inactive").set(bearer(superToken));
     expect(i.body.data.users.map((u: { id: number }) => u.id)).toEqual([gone.id]);
   });
 
   it.each(["0", "101", "1.5", "abc"])("falls back to a page of 50 for limit=%s", async (limit) => {
-    const res = await request(app).get(`/api/v1/users?limit=${limit}`).set(auth(superToken));
+    const res = await request(app).get(`/api/v1/users?limit=${limit}`).set(bearer(superToken));
     expect(res.status).toBe(200);
     expect(res.body.data.users.length).toBeLessThanOrEqual(50);
   });
@@ -155,7 +154,7 @@ describe("PATCH /api/v1/users/:id", () => {
     const u = await createTestUser("edge-patch-bad", "STUDENT");
     const res = await request(app)
       .patch(`/api/v1/users/${u.id}`)
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "x", role: "STUDENT", graduationYear: null });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
@@ -166,7 +165,7 @@ describe("PATCH /api/v1/users/:id", () => {
     const u = await createTestUser("edge-patch-email", "STUDENT");
     const res = await request(app)
       .patch(`/api/v1/users/${u.id}`)
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "Renamed", role: "STUDENT", graduationYear: null, email: testEmail("hijack") });
     expect(res.status).toBe(400);
   });
@@ -182,7 +181,7 @@ describe("PATCH /api/v1/users/:id", () => {
 
     const res = await request(app)
       .patch(`/api/v1/users/${admin.id}`)
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "Renamed Admin", graduationYear: 2015 });
     expect(res.status).toBe(200);
     expect(res.body.data.name).toBe("Renamed Admin");
@@ -196,7 +195,7 @@ describe("PATCH /api/v1/users/:id", () => {
     const u = await createTestUser("edge-grant-super", "MENTOR");
     const res = await request(app)
       .patch(`/api/v1/users/${u.id}`)
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "Test edge-grant-super", role: "SUPER", graduationYear: null, confirmSuper: true });
     expect(res.status).toBe(200);
     expect(res.body.data.role).toBe("SUPER");
@@ -207,7 +206,7 @@ describe("POST /api/v1/users", () => {
   it("rejects an invalid body", async () => {
     const res = await request(app)
       .post("/api/v1/users")
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "Valid Name", email: "not-an-email", role: "STUDENT" });
     expect(res.status).toBe(400);
     expect(res.body.error).toEqual({ code: "bad_request", message: "Must be a valid email." });
@@ -221,7 +220,7 @@ describe("POST /api/v1/users", () => {
     ] as const) {
       const res = await request(app)
         .post("/api/v1/users")
-        .set(auth(superToken))
+        .set(bearer(superToken))
         .send({ name: "Valid Name", email: testEmail("edge-year"), ...body });
       expect(res.status).toBe(400);
       expect(res.body.error.message).toContain(message);
@@ -232,7 +231,7 @@ describe("POST /api/v1/users", () => {
     const email = testEmail("edge-new-super");
     const refused = await request(app)
       .post("/api/v1/users")
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "New Super", email, role: "SUPER" });
     expect(refused.status).toBe(400);
     expect(refused.body.error.code).toBe("confirm_super_required");
@@ -240,7 +239,7 @@ describe("POST /api/v1/users", () => {
 
     const ok = await request(app)
       .post("/api/v1/users")
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "New Super", email, role: "SUPER", confirmSuper: true });
     expect(ok.status).toBe(201);
   });
@@ -249,7 +248,7 @@ describe("POST /api/v1/users", () => {
     const email = testEmail("edge-new-student");
     const res = await request(app)
       .post("/api/v1/users")
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "New Student", email, role: "STUDENT", graduationYear: 2020 });
     expect(res.status).toBe(201);
     const id = res.body.data.userId as number;
@@ -265,7 +264,7 @@ describe("POST /api/v1/users", () => {
   it("creates a non-student without a student profile", async () => {
     const res = await request(app)
       .post("/api/v1/users")
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ name: "New Mentor", email: testEmail("edge-new-mentor"), role: "MENTOR", graduationYear: 2015 });
     expect(res.status).toBe(201);
     expect(await db.studentProfile.count({ where: { userId: res.body.data.userId } })).toBe(0);
@@ -279,7 +278,7 @@ describe("deactivate / reactivate", () => {
     await db.studentProfile.create({ data: { userId: s.id, deletedAt: stamp } });
     await db.user.update({ where: { id: s.id }, data: { deletedAt: stamp } });
 
-    const res = await request(app).post(`/api/v1/users/${s.id}/reactivate`).set(auth(superToken));
+    const res = await request(app).post(`/api/v1/users/${s.id}/reactivate`).set(bearer(superToken));
     expect(res.status).toBe(200);
     expect(res.body.data).toEqual({ deletedAt: null });
     const profile = await db.studentProfile.findUnique({ where: { userId: s.id }, select: { deletedAt: true } });
@@ -288,7 +287,7 @@ describe("deactivate / reactivate", () => {
 
   it("a deactivated user can no longer log in", async () => {
     const s = await createTestUser("edge-deactivate-login", "STUDENT");
-    const res = await request(app).post(`/api/v1/users/${s.id}/deactivate`).set(auth(superToken));
+    const res = await request(app).post(`/api/v1/users/${s.id}/deactivate`).set(bearer(superToken));
     expect(res.status).toBe(200);
     const loginRes = await request(app)
       .post("/api/v1/auth/login")
@@ -299,7 +298,7 @@ describe("deactivate / reactivate", () => {
 
   it("deactivating a SUPER while another remains succeeds", async () => {
     const other = await createTestUser("edge-other-super", "SUPER");
-    const res = await request(app).post(`/api/v1/users/${other.id}/deactivate`).set(auth(superToken));
+    const res = await request(app).post(`/api/v1/users/${other.id}/deactivate`).set(bearer(superToken));
     expect(res.status).toBe(200);
   });
 });
@@ -308,7 +307,7 @@ describe("POST /api/v1/users/:id/invite (resend)", () => {
   it("refuses a deactivated account with 409 user_deleted", async () => {
     const u = await createUnactivatedTestUser("edge-resend-deleted", "STUDENT");
     await db.user.update({ where: { id: u.id }, data: { deletedAt: new Date() } });
-    const res = await request(app).post(`/api/v1/users/${u.id}/invite`).set(auth(superToken));
+    const res = await request(app).post(`/api/v1/users/${u.id}/invite`).set(bearer(superToken));
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("user_deleted");
   });
@@ -316,14 +315,14 @@ describe("POST /api/v1/users/:id/invite (resend)", () => {
   it("refuses an account that has logged in even without a password", async () => {
     const u = await createUnactivatedTestUser("edge-resend-loggedin", "STUDENT");
     await db.user.update({ where: { id: u.id }, data: { lastLoginAt: new Date() } });
-    const res = await request(app).post(`/api/v1/users/${u.id}/invite`).set(auth(superToken));
+    const res = await request(app).post(`/api/v1/users/${u.id}/invite`).set(bearer(superToken));
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("already_activated");
   });
 
   it("issues a fresh invite to an unactivated account and returns the panel", async () => {
     const u = await createUnactivatedTestUser("edge-resend-ok", "STUDENT");
-    const res = await request(app).post(`/api/v1/users/${u.id}/invite`).set(auth(superToken));
+    const res = await request(app).post(`/api/v1/users/${u.id}/invite`).set(bearer(superToken));
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ expiresAt: expect.any(String) });
     expect(JSON.stringify(res.body)).not.toMatch(/[0-9a-f]{64}/);

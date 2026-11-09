@@ -5,6 +5,8 @@ import request from "supertest";
 import type { Express } from "express";
 
 import { db } from "../../db/client";
+import { loadScopes } from "../../lib/auth/scopes";
+import { signAccessToken } from "../../lib/auth/tokens";
 
 /**
  * Every row these helpers create carries this prefix in a unique, queryable
@@ -208,3 +210,12 @@ export async function reviewedOf(seasonId: number): Promise<{ graduatesOnPass: b
   });
   return { graduatesOnPass: season.graduatesOnPass, userIds: rows.map((r) => r.studentUserId) };
 }
+
+/** An access token for this user with their live scopes, minted directly (no login round trip). */
+export async function tokenFor(userId: number): Promise<string> {
+  const scopes = await loadScopes(userId);
+  return (await signAccessToken({ userId, ...scopes })).token;
+}
+
+/** The Authorization header for a token, for supertest's `.set(...)`. */
+export const bearer = (token: string) => ({ authorization: `Bearer ${token}` });

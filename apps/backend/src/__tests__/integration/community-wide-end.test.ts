@@ -4,20 +4,18 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
-import { signAccessToken } from "../../lib/auth/tokens";
-import { cleanupTestData, createTestSeason, createTestUser, reviewedOf } from "./fixtures";
+
+import { bearer, cleanupTestData, createTestSeason, createTestUser, reviewedOf, tokenFor } from "./fixtures";
 
 jest.setTimeout(60000);
 const app = createApp();
 
-const auth = (t: string) => ({ authorization: `Bearer ${t}` });
-const mint = async (userId: number) => (await signAccessToken({ userId, ...(await loadScopes(userId)) })).token;
 const post = (path: string, t: string, body: unknown) =>
   request(app)
     .post(`/api/v1${path}`)
-    .set(auth(t))
+    .set(bearer(t))
     .send(body as object);
-const get = (path: string, t: string) => request(app).get(`/api/v1${path}`).set(auth(t));
+const get = (path: string, t: string) => request(app).get(`/api/v1${path}`).set(bearer(t));
 
 let seasonId: number;
 let superToken: string;
@@ -31,7 +29,7 @@ beforeAll(async () => {
   seasonId = s.id;
   await db.season.update({ where: { id: seasonId }, data: { isCommunityWide: true } });
   const admin = await createTestUser("cwe-super", "SUPER");
-  superToken = await mint(admin.id);
+  superToken = await tokenFor(admin.id);
   alumnus = await createTestUser("cwe-alumnus", "STUDENT");
   failed = await createTestUser("cwe-failed", "STUDENT");
   plain = await createTestUser("cwe-plain", "STUDENT");
@@ -87,12 +85,12 @@ describe("ending a community-wide season", () => {
   it("correcting a result graduates nobody", async () => {
     const res = await request(app)
       .patch(`/api/v1/seasons/${seasonId}/results/${plain.id}`)
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ result: "NOT_PASSED", reason: null });
     expect(res.status).toBe(200);
     const back = await request(app)
       .patch(`/api/v1/seasons/${seasonId}/results/${plain.id}`)
-      .set(auth(superToken))
+      .set(bearer(superToken))
       .send({ result: "PASSED", reason: null });
     expect(back.status).toBe(200);
     expect(back.body.data.graduated).toBe(false);
