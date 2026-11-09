@@ -46,18 +46,6 @@ import { forbidden } from "./respond";
  */
 
 /**
- * Flipped to `true` when .xlsx/CSV file intake lands with the CMS. Until then
- * the client is TOLD there is no picker rather than left to infer it from an
- * absent button (D-16.3).
- *
- * When it flips: the .xlsx reader must take each cell's FORMATTED TEXT, never
- * its value, or spec D7 comes straight back — a phone number typed into Excel
- * becomes a number and loses the leading "+" the CSV path went out of its way
- * to protect.
- */
-const IMPORT_FILE_UPLOAD_SUPPORTED = false;
-
-/**
  * Spec D18/R84: neither importer is rate-limited in v1, where the
  * server-action transport makes that hard to notice. As HTTP endpoints taking
  * a 256 KB paste and a 2000-row commit, both want one.
@@ -304,5 +292,3 @@ seasonImportsRouter.post(
     }
   },
 );
-
-export { IMPORT_FILE_UPLOAD_SUPPORTED };

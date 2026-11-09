@@ -1,9 +1,6 @@
 import type { Readable } from "node:stream";
 
-import { config } from "../config";
-
 import { LocalFsStorage } from "./local";
-import { S3Storage } from "./s3";
 
 export interface PutMeta {
   mime: string;
@@ -16,8 +13,7 @@ export interface PutResult {
 /**
  * Trimmed from v1's interface: url() is omitted because nothing serves a
  * redirect or a signed link — callers stream bytes through
- * GET /api/v1/submissions/:publicId/files/:fileId instead. Add it if and when
- * an S3 deployment wants presigned URLs.
+ * GET /api/v1/submissions/:publicId/files/:fileId instead.
  *
  * get() rejects with FileNotFoundError when the blob is absent, so a dangling
  * database row surfaces as a 404 rather than an unhandled stream error.
@@ -40,7 +36,7 @@ let cached: Storage | undefined;
 
 export function getStorage(): Storage {
   if (cached) return cached;
-  cached = config.storageDriver === "s3" ? new S3Storage() : new LocalFsStorage();
+  cached = new LocalFsStorage();
   return cached;
 }
 

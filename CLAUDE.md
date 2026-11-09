@@ -178,8 +178,8 @@ while file/image handling moves to a CMS. The guard is mounted **in front of**
 per-assignment size check possible, so a guard behind it would still pay the
 full `MAX_UPLOAD_BYTES` memory cost for a request it was always going to
 refuse. Do not reorder it. Only uploading is gated — reading and deleting
-recorded files still work. A CMS becomes a third `Storage` driver beside
-`LocalFsStorage` and `S3Storage`; no route changes.
+recorded files still work. A CMS becomes a second `Storage` driver beside
+`LocalFsStorage` (a new `STORAGE_DRIVER` value); no route changes.
 
 Swagger UI is at `/api/docs`, the raw OpenAPI 3.1 document at `/api/docs.json`
 (`ENABLE_API_DOCS=false` withholds both). It is hand-authored in

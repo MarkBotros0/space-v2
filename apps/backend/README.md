@@ -77,11 +77,10 @@ read outside that file). See `.env.example` for the full list.
 | `GMAIL_APP_PASSWORD` | No | unset | |
 | `APP_STORE_URL` | No | unset | The app's App Store page. Once set, every email ends with "Don't have the app yet?" and a button to it. Leave unset until the app is published. |
 | `PLAY_STORE_URL` | No | unset | The app's Google Play page, shown beside the App Store button the same way. |
-| `STORAGE_DRIVER` | No | `local` | `"local"` writes to `LOCAL_UPLOADS_DIR`; `"s3"` is a throwing stub, as in v1. |
+| `STORAGE_DRIVER` | No | `local` | `"local"` writes to `LOCAL_UPLOADS_DIR`; the only driver today. |
 | `LOCAL_UPLOADS_DIR` | No | `./uploads` | Only used when `STORAGE_DRIVER=local`. |
 | `MAX_UPLOAD_BYTES` | No | `26214400` (25 MB) | Hard ceiling multer enforces before the per-assignment `maxFileSizeMb` check runs. |
 | `ENABLE_UPLOADS` | No | **`false`** | Accept file uploads. Off while file handling moves to a CMS — see below. |
-| `READ_ONLY` | No | `false` | Cutover freeze: `true` refuses every non-GET request except `POST /api/v1/auth/login\|google\|refresh\|logout` with `503 read_only` (`Retry-After: 600`). Applied only on a new deployment. |
 | `ENABLE_API_DOCS` | No | `true` | Serves Swagger UI at `/api/docs` and the OpenAPI document at `/api/docs.json`. Set `false` to withhold them. |
 | `IMPORT_BODY_LIMIT` | No | `2mb` | JSON body limit for the import routes only; every other route keeps the 100 KB default. |
 | `IMPORT_PREVIEW_RATE_LIMIT` | No | `30` | Import preview requests per 15 minutes per IP. |
@@ -167,9 +166,9 @@ covers the disabled path; the integration suite forces `ENABLE_UPLOADS=true`
 
 ### When the CMS lands
 
-`getStorage()` switches on `STORAGE_DRIVER` and returns a `Storage`
-(`put` / `get` / `delete`). A CMS is a third driver beside `LocalFsStorage`
-and the `S3Storage` stub — one new file, no route changes.
+`getStorage()` returns a `Storage` (`put` / `get` / `delete`); today that is
+always `LocalFsStorage`. A CMS is a second driver selected by a new
+`STORAGE_DRIVER` value — one new file, no route changes.
 
 ## File download deliberately diverges from v1
 

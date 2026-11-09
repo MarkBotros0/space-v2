@@ -29,8 +29,8 @@ const envSchema = z.object({
   // show a store's button only once its URL is set.
   APP_STORE_URL: z.string().url().optional(),
   PLAY_STORE_URL: z.string().url().optional(),
-  // "local" writes to LOCAL_UPLOADS_DIR; "s3" is stubbed and throws on use.
-  STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+  // "local" writes to LOCAL_UPLOADS_DIR; the only driver until the CMS one lands.
+  STORAGE_DRIVER: z.enum(["local"]).default("local"),
   LOCAL_UPLOADS_DIR: z.string().default("./uploads"),
   // Hard ceiling on a single upload. multer buffers the whole file in memory
   // before the per-assignment maxFileSizeMb check can run, so this bounds what
@@ -62,15 +62,6 @@ const envSchema = z.object({
   ENABLE_API_DOCS: z
     .enum(["true", "false"])
     .default("true")
-    .transform((v) => v === "true"),
-  // Cutover freeze (Plan 18, R5 -> R15). When "true", every non-GET/HEAD/OPTIONS
-  // request is refused with 503 read_only before its body is read, except the
-  // three auth endpoints that only write session bookkeeping. Defaults OFF.
-  // Hosting applies an env change only on a new deployment - flipping it is a
-  // redeploy, and the runbook says so.
-  READ_ONLY: z
-    .enum(["true", "false"])
-    .default("false")
     .transform((v) => v === "true"),
   // URL scheme the mobile app registers (apps/mobile/app.json "scheme").
   // Password-reset emails link to <scheme>://reset-password?token=… (Plan 10
@@ -184,7 +175,6 @@ export const config = {
   enableUploads: parsed.data.ENABLE_UPLOADS,
   inviteTokenTtlHours: parsed.data.INVITE_TOKEN_TTL_HOURS,
   enableApiDocs: parsed.data.ENABLE_API_DOCS,
-  readOnly: parsed.data.READ_ONLY,
   mobileAppScheme: parsed.data.MOBILE_APP_SCHEME,
   devUserSwitcher: parsed.data.DEV_USER_SWITCHER === "1",
   googleClientIds: parsed.data.GOOGLE_CLIENT_IDS as readonly string[],

@@ -64,7 +64,6 @@
         "PLAY_STORE_URL",
         "PORT",
         "RATE_LIMIT_STORE",
-        "READ_ONLY",
         "SENTRY_DSN",
         "SENTRY_ENVIRONMENT",
         "SENTRY_RELEASE",
