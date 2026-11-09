@@ -87,7 +87,6 @@ export const reportScopeQuerySchema = z.object({
   /** Most-recent-N sessions inside the window. 26 ≈ one point per week for a two-term season. */
   trendLimit: z.coerce.number().int().min(1).max(200).default(26),
 });
-export type ReportScopeQuery = z.output<typeof reportScopeQuerySchema>;
 
 export const resolvedScopeSchema = z.object({
   /** The intersection actually queried — never the request (ruling C8, spec D6 #1). */
@@ -245,7 +244,6 @@ export const engagementStudentPageSchema = z.object({
   nextCursor: z.string().nullable(),
   total: z.number().int().min(0),
 });
-export type EngagementStudentPage = z.infer<typeof engagementStudentPageSchema>;
 
 // ---------------------------------------------------------------------------
 // The organisation roll-up

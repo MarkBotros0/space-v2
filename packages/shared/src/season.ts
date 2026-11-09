@@ -24,7 +24,6 @@ export const seasonDetailGroupSchema = z.object({
   id: z.number(), name: z.string(), studentCount: z.number(),
   leaderNames: z.array(z.string()),
 });
-export type SeasonDetailGroup = z.infer<typeof seasonDetailGroupSchema>;
 
 export const seasonDetailSchema = seasonListItemSchema.extend({
   /** Only super and this season's staff are sent it; absent for everyone else, null when none is set. */
@@ -123,7 +122,6 @@ export const seasonAdminPatchSchema = z
   })
   .partial()
   .strict();
-export type SeasonAdminPatchBody = z.output<typeof seasonAdminPatchSchema>;
 
 /**
  * Duplicate. `code` stays raw here: its default is "<source.program> <year>"
@@ -140,11 +138,9 @@ export const duplicateSeasonRequestSchema = z
   .refine((v) => new Date(v.endDate).getTime() >= new Date(v.startDate).getTime(), {
     path: ["endDate"], message: DATE_ORDER_MESSAGE,
   });
-export type DuplicateSeasonBody = z.output<typeof duplicateSeasonRequestSchema>;
 
 /** POST /seasons, POST /seasons/:id/duplicate and PATCH /seasons/:id all answer this. */
 export const seasonRefResponseSchema = z.object({ id: z.number(), code: z.string() });
-export type SeasonRefResponse = z.infer<typeof seasonRefResponseSchema>;
 
 export const seasonDeletedResponseSchema = z.object({ deleted: z.literal(true) });
 

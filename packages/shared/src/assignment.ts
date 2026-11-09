@@ -78,17 +78,6 @@ export const studentAssignmentListItemSchema = z.object({
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 
-/**
- * The union the list endpoint returns. A hook cannot parse against this
- * blindly — pick the arm by the caller's own role and parse against that,
- * rather than letting a union quietly accept the wrong shape.
- */
-export const assignmentListItemSchema = z.union([
-  staffAssignmentListItemSchema,
-  studentAssignmentListItemSchema,
-]);
-export type AssignmentListItem = z.infer<typeof assignmentListItemSchema>;
-
 export const mySubmissionSummarySchema = z.object({
   publicId: z.string(),
   status: submissionStatusSchema,
@@ -101,7 +90,6 @@ export const mySubmissionSummarySchema = z.object({
    */
   isLate: z.boolean(),
 });
-export type MySubmissionSummary = z.infer<typeof mySubmissionSummarySchema>;
 
 export const assignmentDetailSchema = z.object({
   id: z.number(),
@@ -268,14 +256,9 @@ export type AssignmentWriteBody = z.output<typeof assignmentWriteRequestSchema>;
 
 export const createAssignmentRequestSchema = assignmentWriteRequestSchema;
 export const updateAssignmentRequestSchema = assignmentWriteRequestSchema;
-export type CreateAssignmentRequest = AssignmentWriteRequest;
-export type CreateAssignmentBody = AssignmentWriteBody;
-export type UpdateAssignmentRequest = AssignmentWriteRequest;
-export type UpdateAssignmentBody = AssignmentWriteBody;
 
 /** `DELETE /assignments/:id`. */
 export const assignmentDeletedResponseSchema = z.object({ deleted: z.literal(true) });
-export type AssignmentDeletedResponse = z.infer<typeof assignmentDeletedResponseSchema>;
 
 /**
  * Outstanding = not yet handed in: PENDING or DRAFT. The exact complement of

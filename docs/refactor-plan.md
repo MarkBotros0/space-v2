@@ -174,7 +174,7 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 - [x] 1.2 Mobile dead symbols: DC-006, DC-007, DC-008, DC-009, DC-010, DC-011 — tsc + lint clean, 171 related suites pass (also removed the orphaned withPress helper and DayGroup type)
 - [x] 1.3 Mobile test-only production code with its tests: DC-025, DC-026, DC-027, DC-028, DC-029, DC-030 — tsc + lint clean, 149 related suites pass; work-model.ts 323 → 275 lines; FE-041's AttendancePill part is moot
 - [x] 1.4 Backend: DC-012 (`canReadAnnouncement`), DC-014, DC-020 (`isAdminOfAnySeason`), BE-054 — tsc + lint clean; rbac/route/poll unit tests + 14 forum/announcement/import integration suites (164 tests) pass
-- [ ] 1.5 Shared: SH-007 (`dashboardSchema`, `assignmentListItemSchema`), DC-024, DC-016 (unused type aliases)
+- [x] 1.5 Shared: SH-007 (`dashboardSchema`, `assignmentListItemSchema`), DC-024, DC-016 (unused type aliases) — 85 of DC-016's 103 aliases still dead and removed; 17 kept because a same-named symbol is used (conservative); 2 SH-007 schemas + Dashboard/AssignmentListItem removed; mentor feed cap test kept on mentorDashboardSchema; typecheck/lint all packages + shared 330 tests pass. Note for Wave 7: 10 files touched here were already not Prettier-formatted (nothing enforces Prettier)
 - [ ] 1.6 Drop `export` from file-local symbols: DC-017 / BE-081
 - [ ] 1.7 Config: DC-050 (`AUTH_URL`), DC-051 (turbo env synced), FE-052 (`LIVE_CHECK`)
 - [ ] 1.8 Dormant switches: DC-013/055, DC-056 (`s3` driver), DC-057 (`READ_ONLY`) — with openapi + README

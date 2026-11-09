@@ -3,7 +3,7 @@ import {
   updateAnnouncementRequestSchema,
   pollInputSchema,
   pollVoteRequestSchema,
-  NOTIFICATION_PREFERENCE_KEYS,
+  NOTIFICATION_PREFERENCE_KEY_BY_TYPE,
   shouldPush,
 } from "../index";
 
@@ -38,7 +38,7 @@ describe("announcement contracts", () => {
   });
 
   it("registers the announcement preference and push", () => {
-    expect(NOTIFICATION_PREFERENCE_KEYS).toContain("announcement");
+    expect(NOTIFICATION_PREFERENCE_KEY_BY_TYPE.ANNOUNCEMENT).toBe("announcement");
     expect(shouldPush("ANNOUNCEMENT")).toBe(true);
   });
 });

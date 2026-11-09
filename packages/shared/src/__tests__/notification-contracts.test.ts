@@ -2,7 +2,6 @@
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   DEVICE_PLATFORM_TO_DB,
-  NOTIFICATION_PREFERENCE_KEYS,
   NOTIFICATION_PREFERENCE_KEY_BY_TYPE,
   PUSH_NOTIFICATION_TYPES,
   deviceRegistrationSchema,
@@ -42,8 +41,8 @@ describe("notificationPreferencesSchema", () => {
         .map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t])
         .sort(),
     );
-    expect(NOTIFICATION_PREFERENCE_KEYS).toHaveLength(10);
-    expect(NOTIFICATION_PREFERENCE_KEYS).toContain("quizGraded");
+    expect(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).toHaveLength(10);
+    expect(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).toContain("quizGraded");
   });
 
   it("maps each of the three new types to its own column", () => {

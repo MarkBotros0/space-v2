@@ -296,7 +296,6 @@ export const pastedSheetInputSchema = z.object({
   text: z.string().min(1).max(IMPORT_MAX_PASTE_CHARS),
   delimiter: z.enum(["comma", "tab", "auto"]).default("auto"),
 });
-export type PastedSheetInput = z.output<typeof pastedSheetInputSchema>;
 
 export const importColumnSpecSchema = z.object({
   label: z.string(),

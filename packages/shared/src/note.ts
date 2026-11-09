@@ -76,13 +76,11 @@ export const createNoteRequestSchema = z.object({
   followUpFlagged: z.boolean().default(false),
   seasonId: z.number().int().positive().optional(),
 });
-export type CreateNoteBody = z.output<typeof createNoteRequestSchema>;
 
 /** Body only (R24 — visibility, flag and season are immutable after creation). */
 export const updateNoteRequestSchema = z.object({
   body: z.string().min(NOTE_BODY_MIN).max(NOTE_BODY_MAX),
 });
-export type UpdateNoteBody = z.output<typeof updateNoteRequestSchema>;
 
 /**
  * Cursor pagination replaces v1's silent 100-row cap (R41), under which a

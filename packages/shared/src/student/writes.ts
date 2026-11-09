@@ -57,7 +57,6 @@ export const createEnrollmentRequestSchema = z.object({
   // No groupId: group membership is written by the groups endpoints
   // (PATCH /groups/:id → setGroupStudents), never here. One writer per fact.
 });
-export type CreateEnrollmentBody = z.output<typeof createEnrollmentRequestSchema>;
 
 export const updateEnrollmentRequestSchema = z
   .object({
@@ -74,8 +73,6 @@ export const updateEnrollmentRequestSchema = z
     path: ["dropReason"],
     message: "A drop reason only accompanies a withdrawal.",
   });
-export type UpdateEnrollmentBody = z.output<typeof updateEnrollmentRequestSchema>;
 
 /** `POST /students/:id/enrollments/:seasonId/restore`: `override` lets a blocked person back. */
 export const restoreEnrollmentRequestSchema = z.object({ override: z.boolean().optional() }).strict();
-export type RestoreEnrollmentBody = z.infer<typeof restoreEnrollmentRequestSchema>;

@@ -27,7 +27,6 @@ export type SeasonAdminItem = z.infer<typeof seasonAdminItemSchema>;
 export const seasonAdminListResponseSchema = z.object({
   admins: z.array(seasonAdminItemSchema),
 });
-export type SeasonAdminListResponse = z.infer<typeof seasonAdminListResponseSchema>;
 
 /**
  * `POST /seasons/:id/admins`. Only an alumnus can serve; the rest of the rule
@@ -36,7 +35,6 @@ export type SeasonAdminListResponse = z.infer<typeof seasonAdminListResponseSche
 export const addSeasonAdminRequestSchema = z.object({
   userId: z.number().int().positive(),
 });
-export type AddSeasonAdminBody = z.infer<typeof addSeasonAdminRequestSchema>;
 
 /**
  * `GET /seasons/:id/staff-candidates`: alumni with no active role, name order.
@@ -51,4 +49,3 @@ export const staffCandidateSchema = z.object({
 export type StaffCandidate = z.infer<typeof staffCandidateSchema>;
 
 export const staffCandidatesResponseSchema = z.object({ people: z.array(staffCandidateSchema) });
-export type StaffCandidatesResponse = z.infer<typeof staffCandidatesResponseSchema>;

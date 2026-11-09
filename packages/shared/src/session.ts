@@ -91,7 +91,6 @@ export const attendanceRosterRowSchema = z.object({
 export type AttendanceRosterRow = z.infer<typeof attendanceRosterRowSchema>;
 
 export const checkInRequestSchema = z.object({ token: z.string().min(1) });
-export type CheckInRequest = z.infer<typeof checkInRequestSchema>;
 
 export const recurrenceScopeSchema = z.enum(["one", "future", "all"]);
 export type RecurrenceScope = z.infer<typeof recurrenceScopeSchema>;
@@ -143,13 +142,11 @@ export const createSessionRequestSchema = sessionWriteBase
     repeatWeeks: z.number().int().min(1).max(26).default(1),
   })
   .superRefine(exactlyOneStart);
-export type CreateSessionBody = z.output<typeof createSessionRequestSchema>;
 export type CreateSessionInput = z.input<typeof createSessionRequestSchema>;
 
 export const updateSessionRequestSchema = sessionWriteBase
   .extend({ scope: recurrenceScopeSchema })
   .superRefine(exactlyOneStart);
-export type UpdateSessionBody = z.output<typeof updateSessionRequestSchema>;
 export type UpdateSessionInput = z.input<typeof updateSessionRequestSchema>;
 
 export const deleteSessionRequestSchema = z.object({
@@ -161,7 +158,6 @@ export const deleteSessionRequestSchema = z.object({
    */
   force: z.boolean().default(false),
 });
-export type DeleteSessionBody = z.output<typeof deleteSessionRequestSchema>;
 
 /** POST /sessions (Plan 3). `id` is the first session of the series. */
 export const sessionCreatedResponseSchema = z.object({
@@ -183,7 +179,6 @@ export const sessionSeriesItemSchema = z.object({
   isAnchor: z.boolean(),
   attendanceCount: z.number().int().nonnegative(),
 });
-export type SessionSeriesItem = z.infer<typeof sessionSeriesItemSchema>;
 
 export const sessionSeriesResponseSchema = z.object({
   scope: recurrenceScopeSchema,
@@ -214,7 +209,6 @@ export const sessionRangeResponseSchema = z.object({
   fromDayKey: isoDaySchema,
   toDayKey: isoDaySchema,
 });
-export type SessionRange = z.infer<typeof sessionRangeResponseSchema>;
 
 export const checkInStateValueSchema = z.enum(["not_open", "open", "expired", "closed"]);
 

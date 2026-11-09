@@ -14,7 +14,6 @@ export const updateSubmissionRequestSchema = z.object({
   /** Omitted or false saves a draft; true submits and stamps submittedAt. */
   submit: z.boolean().optional(),
 });
-export type UpdateSubmissionRequest = z.infer<typeof updateSubmissionRequestSchema>;
 
 /**
  * A reviewer's verdict.
@@ -30,7 +29,6 @@ export const reviewSubmissionRequestSchema = z.object({
   feedback: z.string().max(20000),
   returnForRevision: z.boolean().optional(),
 });
-export type ReviewSubmissionRequest = z.infer<typeof reviewSubmissionRequestSchema>;
 
 export const submissionFileSummarySchema = z.object({
   id: z.number(),
@@ -38,7 +36,6 @@ export const submissionFileSummarySchema = z.object({
   mimeType: z.string(),
   sizeBytes: z.number(),
 });
-export type SubmissionFileSummary = z.infer<typeof submissionFileSummarySchema>;
 
 export const submissionDetailSchema = z.object({
   id: z.number(),
@@ -118,7 +115,6 @@ export const submissionQueueCountsSchema = z.object({
   /** Submitted after the assignment's due date. */
   late: z.number().int().nonnegative(),
 });
-export type SubmissionQueueCounts = z.infer<typeof submissionQueueCountsSchema>;
 
 export const submissionQueueSchema = z.object({
   items: z.array(submissionQueueItemSchema),
@@ -143,25 +139,21 @@ export const submissionQueueQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
-export type SubmissionQueueQuery = z.infer<typeof submissionQueueQuerySchema>;
 
 /** `PUT /submissions/by-assignment/:assignmentId` — idempotent create-or-fetch. */
 export const ensureSubmissionResponseSchema = z.object({
   publicId: z.string(),
   status: submissionStatusSchema,
 });
-export type EnsureSubmissionResponse = z.infer<typeof ensureSubmissionResponseSchema>;
 
 /** `PATCH /submissions/:publicId`. `saved` is always true on success. */
 export const saveSubmissionResponseSchema = z.object({
   saved: z.literal(true),
   submitted: z.boolean(),
 });
-export type SaveSubmissionResponse = z.infer<typeof saveSubmissionResponseSchema>;
 
 /** `POST /submissions/:publicId/review` success payload. */
 export const reviewSubmissionResponseSchema = z.object({
   reviewed: z.literal(true),
   returnedForRevision: z.boolean(),
 });
-export type ReviewSubmissionResponse = z.infer<typeof reviewSubmissionResponseSchema>;

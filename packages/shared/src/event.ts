@@ -188,7 +188,6 @@ export const eventListQuerySchema = z
     message: "Use pageSize, not limit, with paged=true.",
     path: ["limit"],
   });
-export type EventListQuery = z.output<typeof eventListQuerySchema>;
 
 /**
  * `GET /events`. `total` is the number of visible events in the window

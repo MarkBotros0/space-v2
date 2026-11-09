@@ -160,4 +160,3 @@ export const studentQuizListPageSchema = z.object({
   items: z.array(studentQuizResultSchema),
   nextCursor: z.null(),
 });
-export type StudentQuizListPage = z.infer<typeof studentQuizListPageSchema>;

@@ -137,7 +137,6 @@ export const videoQuizResultRowSchema = z.object({
   totalPoints: z.number(),
   completedAt: z.string().nullable(),
 });
-export type VideoQuizResultRow = z.infer<typeof videoQuizResultRowSchema>;
 
 export const videoQuizResultsSchema = z.object({
   questionCount: z.number(),
@@ -158,10 +157,8 @@ export const updateVideoQuestionResponseSchema = z.object({
   regradedCount: z.number().int().min(0),
   pointsChanged: z.boolean(),
 });
-export type UpdateVideoQuestionResponse = z.infer<typeof updateVideoQuestionResponseSchema>;
 
 export const deleteVideoQuestionResponseSchema = z.object({
   deleted: z.literal(true),
   responsesRemoved: z.number().int().min(0),
 });
-export type DeleteVideoQuestionResponse = z.infer<typeof deleteVideoQuestionResponseSchema>;

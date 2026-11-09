@@ -115,13 +115,11 @@ export const forumFeedQuerySchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(10),
 });
-export type ForumFeedQuery = z.output<typeof forumFeedQuerySchema>;
 
 export const forumCommentsQuerySchema = z.object({
   cursor: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
-export type ForumCommentsQuery = z.output<typeof forumCommentsQuerySchema>;
 
 /** `GET .../posts/:publicId/comments` — one page, oldest first. */
 export const forumCommentsPageSchema = z.object({

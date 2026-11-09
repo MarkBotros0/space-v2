@@ -63,7 +63,6 @@ export const OWN_PROFILE_FIELDS = [
   "phone",
   "dateOfBirth",
 ] as const;
-export type OwnProfileField = (typeof OWN_PROFILE_FIELDS)[number];
 
 /**
  * PATCH semantics: absent = untouched, "" or null = cleared (R26). `.strict()`

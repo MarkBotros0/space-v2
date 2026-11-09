@@ -45,7 +45,6 @@ export const graduateStudentRequestSchema = z
       });
     }
   });
-export type GraduateStudentBody = z.infer<typeof graduateStudentRequestSchema>;
 
 export const graduateStudentResponseSchema = z.object({
   id: z.number().int(),

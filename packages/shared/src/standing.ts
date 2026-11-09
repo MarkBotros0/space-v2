@@ -137,4 +137,3 @@ export type AddSeasonEnrollmentsBody = z.infer<typeof addSeasonEnrollmentsReques
 
 /** `POST /seasons/:id/enrollments` response. */
 export const addSeasonEnrollmentsResponseSchema = z.object({ added: z.number().int().min(0) });
-export type AddSeasonEnrollmentsResponse = z.infer<typeof addSeasonEnrollmentsResponseSchema>;

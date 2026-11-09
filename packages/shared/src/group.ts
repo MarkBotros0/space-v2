@@ -50,7 +50,6 @@ export const groupUpdateRequestSchema = groupWriteRequestSchema.extend({
   leaderIds: z.array(z.number().int().positive()).max(20).optional(),
   studentIds: z.array(z.number().int().positive()).max(500).optional(),
 });
-export type GroupUpdateRequest = z.infer<typeof groupUpdateRequestSchema>;
 
 export const groupMemberSchema = z.object({
   id: z.number(),
@@ -135,4 +134,3 @@ export const groupAssignmentsResponseSchema = z.object({
   unassigned: z.number().int().nonnegative(),
   skippedStudentIds: z.array(z.number()),
 });
-export type GroupAssignmentsResult = z.infer<typeof groupAssignmentsResponseSchema>;

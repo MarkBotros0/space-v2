@@ -13,12 +13,10 @@ export type LoginRequest = z.infer<typeof loginRequestSchema>;
 export const googleSignInRequestSchema = z.object({
   idToken: z.string().min(1).max(8192),
 });
-export type GoogleSignInRequest = z.infer<typeof googleSignInRequestSchema>;
 
 export const refreshRequestSchema = z.object({
   refreshToken: z.string().min(1),
 });
-export type RefreshRequest = z.infer<typeof refreshRequestSchema>;
 
 export const authUserSchema = z.object({
   id: z.number().int().positive(),
@@ -75,4 +73,3 @@ export const meResponseSchema = z.object({
   user: meUserSchema.nullable(),
   scopes: meScopesSchema,
 });
-export type MeResponse = z.infer<typeof meResponseSchema>;

@@ -4,9 +4,9 @@ import {
   DUE_SOON_LIMIT,
   RECENT_ACTIVITY_LIMIT,
   UPCOMING_EVENTS_LIMIT,
-  dashboardSchema,
   leaderSessionCheckInSchema,
   meanAttendancePct,
+  mentorDashboardSchema,
   staffSeasonDashboardSchema,
   studentDashboardSchema,
 } from "../index";
@@ -50,12 +50,7 @@ describe("studentDashboardSchema (ruling C8 #2)", () => {
   });
 });
 
-describe("dashboardSchema", () => {
-  it("discriminates on variant", () => {
-    expect(dashboardSchema.parse({ variant: "MENTOR", recentActivity: [] }).variant).toBe("MENTOR");
-    expect(dashboardSchema.safeParse({ variant: "ALUMNI" }).success).toBe(false);
-  });
-
+describe("mentorDashboardSchema", () => {
   it("caps the mentor feed at RECENT_ACTIVITY_LIMIT", () => {
     const item = {
       key: "att:1",
@@ -68,7 +63,7 @@ describe("dashboardSchema", () => {
       submissionPublicId: null,
     };
     const nine = Array.from({ length: 9 }, (_, i) => ({ ...item, key: `att:${i}` }));
-    expect(dashboardSchema.safeParse({ variant: "MENTOR", recentActivity: nine }).success).toBe(false);
+    expect(mentorDashboardSchema.safeParse({ variant: "MENTOR", recentActivity: nine }).success).toBe(false);
   });
 });
 

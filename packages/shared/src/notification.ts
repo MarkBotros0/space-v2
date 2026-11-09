@@ -77,7 +77,6 @@ export const notificationListQuerySchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 });
-export type NotificationListQuery = z.infer<typeof notificationListQuerySchema>;
 
 export const notificationListResponseSchema = z.object({
   items: z.array(notificationSchema),
@@ -104,7 +103,6 @@ export const markReadRequestSchema = z.union([
   z.object({ ids: z.array(z.number().int().positive()).min(1).max(200) }).strict(),
   z.object({ all: z.literal(true) }).strict(),
 ]);
-export type MarkReadRequest = z.infer<typeof markReadRequestSchema>;
 
 export const markReadResponseSchema = z.object({
   /** The number v1's markRead discarded (§6). */
@@ -131,9 +129,6 @@ export const NOTIFICATION_PREFERENCE_KEY_BY_TYPE = {
 
 export type NotificationPreferenceKey =
   (typeof NOTIFICATION_PREFERENCE_KEY_BY_TYPE)[NotificationType];
-
-export const NOTIFICATION_PREFERENCE_KEYS: readonly NotificationPreferenceKey[] =
-  notificationTypeSchema.options.map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t]);
 
 /**
  * Every key, required. The `satisfies` below is the structural fix for
@@ -246,4 +241,3 @@ export type DeviceRegistration = z.infer<typeof deviceRegistrationSchema>;
 
 /** `DELETE /me/devices`: the token in the body (a credential — never in a path). */
 export const deviceUnregistrationSchema = z.object({ token: z.string().min(1).max(200) }).strict();
-export type DeviceUnregistration = z.infer<typeof deviceUnregistrationSchema>;

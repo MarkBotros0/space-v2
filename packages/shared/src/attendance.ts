@@ -16,7 +16,6 @@ export type AttendanceEntry = z.infer<typeof attendanceEntrySchema>;
 export const saveAttendanceRequestSchema = z.object({
   entries: z.array(attendanceEntrySchema),
 });
-export type SaveAttendanceRequest = z.infer<typeof saveAttendanceRequestSchema>;
 
 /**
  * `POST /sessions/:id/attendance` success payload. `saved` is the number of
@@ -25,7 +24,6 @@ export type SaveAttendanceRequest = z.infer<typeof saveAttendanceRequestSchema>;
 export const saveAttendanceResponseSchema = z.object({
   saved: z.number().int().nonnegative(),
 });
-export type SaveAttendanceResponse = z.infer<typeof saveAttendanceResponseSchema>;
 
 // ---------------------------------------------------------------------------
 // Student self-service — Plan 11

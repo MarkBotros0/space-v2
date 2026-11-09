@@ -117,7 +117,6 @@ export const endSeasonResponseSchema = z.object({
   /** How many became alumni just now; anyone who already was doesn't count. */
   graduated: z.number().int().nonnegative(),
 });
-export type EndSeasonResponse = z.infer<typeof endSeasonResponseSchema>;
 
 export const seasonResultRowSchema = z.object({
   userId: z.number(),

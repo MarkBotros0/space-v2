@@ -49,7 +49,6 @@ export const seasonProgressSchema = z
     pct: z.number().int().min(0).max(100).nullable(),
   })
   .strict();
-export type SeasonProgress = z.infer<typeof seasonProgressSchema>;
 
 /** The session in progress, else the next one (D13). Day and time are org wall-clock (X13). */
 export const dashboardSessionSchema = z
@@ -72,7 +71,6 @@ export type DashboardSession = z.infer<typeof dashboardSessionSchema>;
 export const dashboardSeasonSchema = z
   .object({ id: z.number().int(), code: z.string(), title: z.string(), status: seasonStatusSchema })
   .strict();
-export type DashboardSeason = z.infer<typeof dashboardSeasonSchema>;
 
 export const staffCohortSummarySchema = z
   .object({
@@ -84,7 +82,6 @@ export const staffCohortSummarySchema = z
     atRisk: z.array(engagementRowSchema).max(DASHBOARD_AT_RISK_PREVIEW),
   })
   .strict();
-export type StaffCohortSummary = z.infer<typeof staffCohortSummarySchema>;
 
 /** The review queue's own scope (D11): SUBMITTED, and REVIEWED | RETURNED. */
 export const reviewCountsSchema = z.object({ pendingReview: count, reviewed: count }).strict();
@@ -93,7 +90,6 @@ export const reviewCountsSchema = z.object({ pendingReview: count, reviewed: cou
 export const quizRollupSchema = z
   .object({ total: count, pending: count, fullyGraded: count, drafts: count })
   .strict();
-export type QuizRollup = z.infer<typeof quizRollupSchema>;
 
 /**
  * The leader's own groups checked in for the next session (read-only). `total`
@@ -155,7 +151,6 @@ export const studentAssignmentSummarySchema = z
     open: z.array(dashboardDueItemSchema),
   })
   .strict();
-export type StudentAssignmentSummary = z.infer<typeof studentAssignmentSummarySchema>;
 
 /**
  * The student's own figures and nothing else (C8 #2). `.strict()` so a server
@@ -191,7 +186,6 @@ export const activityItemSchema = z
     submissionPublicId: z.string().nullable(),
   })
   .strict();
-export type ActivityItem = z.infer<typeof activityItemSchema>;
 
 export const mentorDashboardSchema = z
   .object({
@@ -200,11 +194,3 @@ export const mentorDashboardSchema = z
   })
   .strict();
 export type MentorDashboard = z.infer<typeof mentorDashboardSchema>;
-
-/** `GET /api/v1/me/dashboard`. An alumnus gets 403 and composes `/me` + `/events` instead, unless studying in a community-wide season: then the student variant. */
-export const dashboardSchema = z.discriminatedUnion("variant", [
-  staffSeasonDashboardSchema,
-  studentDashboardSchema,
-  mentorDashboardSchema,
-]);
-export type Dashboard = z.infer<typeof dashboardSchema>;

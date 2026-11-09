@@ -22,7 +22,6 @@ export type FollowUp = z.infer<typeof followUpSchema>;
 
 /** `GET /follow-ups`: open ones by `dueAt`, then those done in the last 30 days, newest first. */
 export const followUpListSchema = z.object({ followUps: z.array(followUpSchema) });
-export type FollowUpList = z.infer<typeof followUpListSchema>;
 
 /** `POST /students/:id/follow-ups`. An empty reason is stored as none. */
 export const createFollowUpRequestSchema = z.object({

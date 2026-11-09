@@ -30,7 +30,6 @@ export const createQuizRequestSchema = z
     path: ["maxScore"],
     message: "An online quiz derives its max score from its questions.",
   });
-export type CreateQuizBody = z.output<typeof createQuizRequestSchema>;
 
 /**
  * `kind` is absent by design: v1 writes it once at create and never again, and
@@ -43,7 +42,6 @@ export const updateQuizRequestSchema = z
     sessionId: z.number().int().positive().nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update." });
-export type UpdateQuizBody = z.output<typeof updateQuizRequestSchema>;
 
 /**
  * v1 validated, then normalised in a separate `normalizeQuestion` helper that
@@ -69,7 +67,6 @@ export const quizQuestionRequestSchema = z
   .transform((d) =>
     d.type === "ESSAY" ? { ...d, options: [] as string[], correctIndex: null } : d,
   );
-export type QuizQuestionBody = z.output<typeof quizQuestionRequestSchema>;
 /** What a client form sends (before the schema's defaults and transform run). */
 export type QuizQuestionInput = z.input<typeof quizQuestionRequestSchema>;
 
@@ -77,10 +74,8 @@ export type QuizQuestionInput = z.input<typeof quizQuestionRequestSchema>;
 export const reorderQuestionsRequestSchema = z.object({
   questionIds: z.array(z.number().int().positive()).min(1),
 });
-export type ReorderQuestionsBody = z.infer<typeof reorderQuestionsRequestSchema>;
 
 export const publishQuizRequestSchema = z.object({ publish: z.boolean() });
-export type PublishQuizBody = z.infer<typeof publishQuizRequestSchema>;
 
 /**
  * A batch, unlike v1's one-answer-per-call. The runner debounces and flushes
@@ -100,7 +95,6 @@ export const saveQuizAnswersRequestSchema = z.object({
     .min(1)
     .max(100),
 });
-export type SaveQuizAnswersBody = z.output<typeof saveQuizAnswersRequestSchema>;
 
 /**
  * `score: null` CLEARS the grade row.
@@ -124,7 +118,6 @@ export const saveQuizGradesRequestSchema = z.object({
     .min(1)
     .max(200),
 });
-export type SaveQuizGradesBody = z.output<typeof saveQuizGradesRequestSchema>;
 
 /**
  * Every ESSAY question of the quiz must appear. v1 recomputed manualScore from
@@ -136,12 +129,10 @@ export const gradeEssayAnswersRequestSchema = z.object({
     .array(z.object({ questionId: z.number().int().positive(), points: z.number().int().min(0) }))
     .min(1),
 });
-export type GradeEssayAnswersBody = z.infer<typeof gradeEssayAnswersRequestSchema>;
 
 export const reopenAttemptRequestSchema = z.object({
   studentUserId: z.number().int().positive(),
 });
-export type ReopenAttemptBody = z.infer<typeof reopenAttemptRequestSchema>;
 
 export const quizListQuerySchema = z.object({
   seasonId: z.coerce.number().int().positive().optional(),
@@ -149,10 +140,8 @@ export const quizListQuerySchema = z.object({
   cursor: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
 });
-export type QuizListQuery = z.infer<typeof quizListQuerySchema>;
 
 export const quizAttemptsQuerySchema = z.object({
   cursor: z.coerce.number().int().positive().optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
-export type QuizAttemptsQuery = z.infer<typeof quizAttemptsQuerySchema>;

@@ -12,8 +12,6 @@ export const superAdminInputSchema = z.object({
   password: passwordSchema,
 });
 
-export type SuperAdminInput = z.infer<typeof superAdminInputSchema>;
-
 export type CreateSuperAdminResult =
   | { ok: true; id: number; email: string }
   | { ok: false; error: string };

@@ -62,7 +62,6 @@ export const userAdminSeasonSchema = z.object({
   code: z.string(),
   title: z.string(),
 });
-export type UserAdminSeason = z.infer<typeof userAdminSeasonSchema>;
 
 export const userDetailSchema = userListItemSchema.extend({
   invite: inviteStateSchema.nullable(),
@@ -84,7 +83,6 @@ export type UserDetail = z.infer<typeof userDetailSchema>;
  * nothing writes them to `User.role`; read schemas keep all five.
  */
 export const userWriteRoleSchema = z.enum(["SUPER", "MENTOR", "STUDENT"]);
-export type UserWriteRole = z.infer<typeof userWriteRoleSchema>;
 
 const MAX_CLASS_YEAR = 2100;
 
@@ -204,18 +202,15 @@ export const changePasswordRequestSchema = z
     refreshToken: z.string().min(1).optional(),
   })
   .strict();
-export type ChangePasswordBody = z.infer<typeof changePasswordRequestSchema>;
 
 export const changePasswordResponseSchema = z.object({
   ok: z.literal(true),
   sessionsRevoked: z.number().int().nonnegative(),
 });
-export type ChangePasswordResponse = z.infer<typeof changePasswordResponseSchema>;
 
 export const logoutAllResponseSchema = z.object({
   revoked: z.number().int().nonnegative(),
 });
-export type LogoutAllResponse = z.infer<typeof logoutAllResponseSchema>;
 
 /** DELETE /me — the account holder deletes their own account. */
 export const deleteAccountResponseSchema = z.object({
@@ -245,7 +240,6 @@ export const BULK_INVITE_BATCH_SIZE = 20;
 export const pendingInvitesResponseSchema = z.object({
   pending: z.number().int().nonnegative(),
 });
-export type PendingInvitesResponse = z.infer<typeof pendingInvitesResponseSchema>;
 
 /**
  * POST /users/invites/pending. `skipped` is spec 11 R16's missing third
@@ -264,7 +258,6 @@ export type BulkInviteResponse = z.infer<typeof bulkInviteResponseSchema>;
 export const devSwitchRequestSchema = z.object({
   userId: z.number().int().positive(),
 });
-export type DevSwitchRequest = z.infer<typeof devSwitchRequestSchema>;
 
 export const devSwitchUserSchema = z.object({
   id: z.number().int(),
