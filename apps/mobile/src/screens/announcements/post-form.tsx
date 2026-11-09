@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import {
   ANNOUNCEMENT_BODY_MAX,
@@ -94,8 +94,12 @@ export function PostForm(props: Props) {
   const community = targets?.community ?? false;
   const seasons = targets?.seasons ?? [];
   const canChoose = community && seasons.length > 0;
-  const [audience, setAudience] = useState<"COMMUNITY" | "SEASON">(community ? "COMMUNITY" : "SEASON");
-  const [seasonId, setSeasonId] = useState<number | null>(seasons.length === 1 ? seasons[0]!.id : null);
+  const [audience, setAudience] = useState<"COMMUNITY" | "SEASON">(
+    community ? "COMMUNITY" : "SEASON",
+  );
+  const [seasonId, setSeasonId] = useState<number | null>(
+    seasons.length === 1 ? seasons[0]!.id : null,
+  );
   const toSeason = targets !== null && (canChoose ? audience === "SEASON" : !community);
   const chosen = toSeason ? (seasons.find((s) => s.id === seasonId) ?? null) : null;
   const pickSeason = toSeason && seasons.length > 1;
@@ -104,21 +108,35 @@ export function PostForm(props: Props) {
   const serverLost = props.mode === "edit" ? (props.serverLostVotes ?? null) : null;
   // Kept after the retry starts, so the sheet's words don't flip back while it saves.
   const [lostSeen, setLostSeen] = useState<number | null>(null);
+  // The vote total the user confirmed in the sheet; a 409 with this same count resends at once.
+  const confirmedLoss = useRef<number | null>(null);
   useEffect(() => {
     if (serverLost !== null) {
+      if (props.mode === "edit" && confirmedLoss.current === serverLost) {
+        confirmedLoss.current = null;
+        const update = buildUpdate();
+        if (update !== null) props.onSubmit({ ...update, confirmVoteLoss: true });
+        return;
+      }
       setConfirming(true);
       setLostSeen(serverLost);
+    } else if (error) {
+      setConfirming(false);
+      setLostSeen(null);
     }
-    else if (error) setConfirming(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, serverLost]);
 
-  const toLabel = props.mode === "edit" ? props.toLabel : toSeason ? (chosen?.title ?? "") : "Everyone";
+  const toLabel =
+    props.mode === "edit" ? props.toLabel : toSeason ? (chosen?.title ?? "") : "Everyone";
   const reach = toSeason ? (chosen?.reach ?? 0) : (targets?.communityReach ?? 0);
 
   function buildRequest(): CreateAnnouncementRequest | null {
     const base = { body, ...(poll ? { poll } : {}) };
     const parsed = createAnnouncementRequestSchema.safeParse(
-      toSeason ? { audience: "SEASON", seasonId: seasonId ?? 0, ...base } : { audience: "COMMUNITY", ...base },
+      toSeason
+        ? { audience: "SEASON", seasonId: seasonId ?? 0, ...base }
+        : { audience: "COMMUNITY", ...base },
     );
     const errs = parsed.success ? {} : fieldErrors(parsed.error.issues);
     if (toSeason && chosen === null) errs.season = "Choose a season.";
@@ -154,11 +172,23 @@ export function PostForm(props: Props) {
   return (
     <Screen
       title={screenTitle}
-      footer={<SaveBar label={saveLabel} onPress={submit} loading={pending && !confirming} disabled={pending} />}
+      footer={
+        <SaveBar
+          label={saveLabel}
+          onPress={submit}
+          loading={pending && !confirming}
+          disabled={pending}
+        />
+      }
     >
       <View className="flex-col gap-4">
         {error ? (
-          <View accessible accessibilityRole="alert" accessibilityLiveRegion="polite" className="rounded-control bg-bad-soft px-3 py-2">
+          <View
+            accessible
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+            className="rounded-control bg-bad-soft px-3 py-2"
+          >
             <Text variant="subhead" className="text-bad">
               {error}
             </Text>
@@ -211,9 +241,18 @@ export function PostForm(props: Props) {
         </FormField>
 
         {poll ? (
-          <PollEditor value={poll} onChange={setPoll} errors={errors.poll ?? {}} onRemove={() => setPoll(null)} />
+          <PollEditor
+            value={poll}
+            onChange={setPoll}
+            errors={errors.poll ?? {}}
+            onRemove={() => setPoll(null)}
+          />
         ) : (
-          <PillButton label="Add a poll" onPress={() => setPoll(EMPTY_POLL)} className="self-start" />
+          <PillButton
+            label="Add a poll"
+            onPress={() => setPoll(EMPTY_POLL)}
+            className="self-start"
+          />
         )}
       </View>
 
@@ -226,13 +265,19 @@ export function PostForm(props: Props) {
           onClose={() => {
             setConfirming(false);
             setLostSeen(null);
+            confirmedLoss.current = null;
             props.onDismissVoteLoss?.();
           }}
           onConfirm={() => {
             const update = buildUpdate();
             if (update === null) return;
-            const confirm = serverLost !== null || lostSeen !== null || warnings?.losesVotes === true;
-            props.onSubmit(confirm ? { ...update, confirmVoteLoss: true } : update);
+            // Only a count the server itself reported unlocks the flag; the first save never sends it.
+            if (serverLost !== null || lostSeen !== null) {
+              props.onSubmit({ ...update, confirmVoteLoss: true });
+              return;
+            }
+            confirmedLoss.current = warnings?.losesVotes ? warnings.lostVotes : null;
+            props.onSubmit(update);
           }}
         />
       ) : null}

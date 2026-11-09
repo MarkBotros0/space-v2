@@ -11,18 +11,21 @@ const people = (n: number) => (n === 1 ? "1 person" : `${n} people`);
 export function editWarnings(
   current: AnnouncementPoll | null,
   next: PollInput | null,
-): { lines: string[]; losesVotes: boolean } {
+): { lines: string[]; losesVotes: boolean; lostVotes: number | null } {
   const lines: string[] = [];
   let losesVotes = false;
-  if (current === null) return { lines, losesVotes };
+  /** Votes the lossy lines name; null once a line only knows people (several to one). */
+  let lostVotes: number | null = 0;
+  if (current === null) return { lines, losesVotes, lostVotes };
 
   if (next === null) {
     const total = current.options.reduce((sum, o) => sum + (o.votes ?? 0), 0);
     if (total > 0) {
       lines.push(`Removes the poll and its ${votes(total)}`);
       losesVotes = true;
+      lostVotes = total;
     }
-    return { lines, losesVotes };
+    return { lines, losesVotes, lostVotes };
   }
 
   const kept = new Map<number, string>();
@@ -35,6 +38,7 @@ export function editWarnings(
     if (label === undefined) {
       lines.push(`Removing ‘${o.label}’ deletes its ${votes(n)}`);
       losesVotes = true;
+      if (lostVotes !== null) lostVotes += n;
     } else if (label !== o.label.trim()) {
       lines.push(`Votes stay with the new wording: ‘${o.label}’ → ‘${label}’ (${votes(n)})`);
     }
@@ -44,6 +48,7 @@ export function editWarnings(
   if (current.allowsMultiple && !next.allowsMultiple && multi > 0) {
     lines.push(`${people(multi)} who picked more than one answer will need to vote again`);
     losesVotes = true;
+    lostVotes = null;
   }
-  return { lines, losesVotes };
+  return { lines, losesVotes, lostVotes };
 }

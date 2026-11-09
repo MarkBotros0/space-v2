@@ -24,9 +24,18 @@ export default function EditAnnouncementScreen() {
     </Screen>
   );
   if (id === null) return cannotEdit;
-  if (post.isPending) return <Screen title="Edit announcement"><RouteSkeleton /></Screen>;
+  if (post.isPending)
+    return (
+      <Screen title="Edit announcement">
+        <RouteSkeleton />
+      </Screen>
+    );
   if (post.isError) {
-    return <Screen title="Edit announcement"><RouteError onRetry={() => void post.refetch()} /></Screen>;
+    return (
+      <Screen title="Edit announcement">
+        <RouteError onRetry={() => void post.refetch()} />
+      </Screen>
+    );
   }
   const data = post.data;
   if ("removed" in data || !data.canEdit) return cannotEdit;
@@ -40,14 +49,23 @@ export default function EditAnnouncementScreen() {
       initial={{
         body: data.body,
         poll: data.poll
-          ? { allowsMultiple: data.poll.allowsMultiple, options: data.poll.options.map((o) => ({ id: o.id, label: o.label })) }
+          ? {
+              allowsMultiple: data.poll.allowsMultiple,
+              options: data.poll.options.map((o) => ({ id: o.id, label: o.label })),
+            }
           : null,
       }}
       currentPoll={data.poll}
       serverLostVotes={lost}
-      onDismissVoteLoss={() => update.reset()}
+      onDismissVoteLoss={() => {
+        update.reset();
+      }}
       pending={update.isPending}
-      error={update.isError && lost === null ? apiErrorMessage(update.error, "Couldn't save. Try again.") : null}
+      error={
+        update.isError && lost === null
+          ? apiErrorMessage(update.error, "Couldn't save. Try again.")
+          : null
+      }
       onSubmit={(request) => update.mutate(request, { onSuccess: () => router.back() })}
     />
   );
