@@ -40,6 +40,8 @@ export const queryKeys = {
     all: ["notes"] as const,
     lists: () => [...queryKeys.notes.all, "list"] as const,
     authored: () => [...queryKeys.notes.lists(), "authored"] as const,
+    /** Every page of /me/visible-notes (a prefix of `visible`). */
+    allVisible: () => [...queryKeys.notes.lists(), "visible"] as const,
     visible: (limit: number, withinDays: number | null = null) =>
       [...queryKeys.notes.lists(), "visible", { limit, withinDays }] as const,
     // Nullable per this file's header convention — no -1 sentinel.
@@ -184,10 +186,14 @@ export const queryKeys = {
     all: ["quizzes"] as const,
     lists: () => [...queryKeys.quizzes.all, "list"] as const,
     bySeason: (seasonId: number | null) => [...queryKeys.quizzes.lists(), { seasonId }] as const,
+    staffBySeason: (seasonId: number | null) => [...queryKeys.quizzes.bySeason(seasonId), "staff"] as const,
+    studentBySeason: (seasonId: number | null) => [...queryKeys.quizzes.bySeason(seasonId), "student"] as const,
     details: () => [...queryKeys.quizzes.all, "detail"] as const,
     // number | null, like sessions.bySeason: a null key never collides with a
     // real quiz's cache entry, so no -1 sentinel anywhere.
     detail: (id: number | null) => [...queryKeys.quizzes.details(), { id }] as const,
+    staffDetail: (id: number | null) => [...queryKeys.quizzes.detail(id), "staff"] as const,
+    studentDetail: (id: number | null) => [...queryKeys.quizzes.detail(id), "student"] as const,
     attempts: (id: number | null) => [...queryKeys.quizzes.detail(id), "attempts"] as const,
     grades: (id: number | null) => [...queryKeys.quizzes.detail(id), "grades"] as const,
   },
@@ -215,6 +221,8 @@ export const queryKeys = {
   forum: {
     all: ["forum"] as const,
     thread: (assignmentId: number) => [...queryKeys.forum.all, "thread", assignmentId] as const,
+    /** Every expanded comment list of one assignment's thread (a prefix of `comments`). */
+    allComments: (assignmentId: number) => [...queryKeys.forum.all, "comments", assignmentId] as const,
     comments: (assignmentId: number, postPublicId: string) =>
       [...queryKeys.forum.all, "comments", assignmentId, postPublicId] as const,
   },
@@ -248,3 +256,8 @@ export const queryKeys = {
     detail: (id: number) => [...queryKeys.events.all, "detail", id] as const,
   },
 } as const;
+
+/** Is this a season's start-check or end-check query (`seasons.startCheck` / `seasons.endCheck`)? */
+export function isSeasonCheckKey(queryKey: readonly unknown[], check: "start-check" | "end-check"): boolean {
+  return queryKey[0] === queryKeys.seasons.all[0] && queryKey[1] === check;
+}

@@ -69,7 +69,7 @@ function useInvalidateThread(assignmentId: number) {
     // Expanded comment lists live under forum.comments(...); a new or removed
     // comment must refresh them too. Prefix-match on the forum subtree.
     void queryClient.invalidateQueries({
-      queryKey: [...queryKeys.forum.all, "comments", assignmentId],
+      queryKey: queryKeys.forum.allComments(assignmentId),
     });
     // The post flips the submission's status, which the assignment detail also
     // reports — invalidate it too or the header keeps saying "Not started".

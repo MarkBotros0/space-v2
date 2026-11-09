@@ -3,7 +3,7 @@ import { seasonStartCheckSchema, startSeasonResponseSchema, type SeasonStartChec
 
 import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
-import { queryKeys } from "../lib/query-keys";
+import { isSeasonCheckKey, queryKeys } from "../lib/query-keys";
 
 /** GET /seasons/:id/start-check (SUPER): who stops a draft from starting. */
 export function useSeasonStartCheck(id: number | null): UseQueryResult<SeasonStartCheck> {
@@ -34,7 +34,7 @@ export function useStartSeason(id: number) {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.seasons.all,
-        predicate: (q) => q.queryKey[1] !== "start-check",
+        predicate: (q) => !isSeasonCheckKey(q.queryKey, "start-check"),
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });

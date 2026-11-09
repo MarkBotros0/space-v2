@@ -122,7 +122,7 @@ export function useCreateNote(studentId: number) {
       // The author's own list gained a row too.
       void queryClient.invalidateQueries({ queryKey: queryKeys.notes.authored() });
       // And a mentor's Recent notes feed (Today), which sits under notes.lists().
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.notes.lists(), "visible"] });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notes.allVisible() });
     },
   });
 }

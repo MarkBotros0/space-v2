@@ -14,7 +14,7 @@ import { z } from "zod";
 
 import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
-import { queryKeys } from "../lib/query-keys";
+import { isSeasonCheckKey, queryKeys } from "../lib/query-keys";
 
 const resultsSchema = z.array(seasonResultRowSchema);
 
@@ -50,7 +50,7 @@ export function useEndSeason(id: number) {
       // before the screen navigates away.
       void queryClient.invalidateQueries({
         queryKey: queryKeys.seasons.all,
-        predicate: (q) => q.queryKey[1] !== "end-check",
+        predicate: (q) => !isSeasonCheckKey(q.queryKey, "end-check"),
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.groups.all });

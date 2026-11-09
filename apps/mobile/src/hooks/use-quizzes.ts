@@ -47,7 +47,7 @@ const QUIZ_LIST_MAX_PAGES = 50;
  */
 export function useQuizList(seasonId: number | null): UseQueryResult<QuizListPage> {
   return useQuery({
-    queryKey: [...queryKeys.quizzes.bySeason(seasonId), "staff"] as const,
+    queryKey: queryKeys.quizzes.staffBySeason(seasonId),
     queryFn: async () => {
       const items: QuizListPage["items"] = [];
       let cursor: number | null = null;
@@ -75,7 +75,7 @@ export function useQuizList(seasonId: number | null): UseQueryResult<QuizListPag
  */
 export function useStudentQuizList(seasonId: number | null): UseQueryResult<StudentQuizResult[]> {
   return useQuery({
-    queryKey: [...queryKeys.quizzes.bySeason(seasonId), "student"] as const,
+    queryKey: queryKeys.quizzes.studentBySeason(seasonId),
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/quizzes?seasonId=${seasonId}`);
       return studentQuizListPageSchema.parse(res.data.data).items;
@@ -86,7 +86,7 @@ export function useStudentQuizList(seasonId: number | null): UseQueryResult<Stud
 
 export function useStudentQuizDetail(id: number | null): UseQueryResult<StudentQuizDetail> {
   return useQuery({
-    queryKey: [...queryKeys.quizzes.detail(id), "student"] as const,
+    queryKey: queryKeys.quizzes.studentDetail(id),
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/quizzes/${id}`);
       return studentQuizDetailSchema.parse(res.data.data);
@@ -104,7 +104,7 @@ export function useStudentQuizDetail(id: number | null): UseQueryResult<StudentQ
  */
 export function useQuizAuthoringDetail(id: number | null, enabled: boolean): UseQueryResult<QuizAuthoringDetail> {
   return useQuery({
-    queryKey: [...queryKeys.quizzes.detail(id), "staff"] as const,
+    queryKey: queryKeys.quizzes.staffDetail(id),
     queryFn: async () => {
       const res = await apiClient.get(`/api/v1/quizzes/${id}`);
       return quizAuthoringDetailSchema.parse(res.data.data);
@@ -122,7 +122,7 @@ export function useStartAttempt(id: number) {
       return studentQuizDetailSchema.parse(res.data.data);
     },
     onSuccess: (detail) => {
-      queryClient.setQueryData([...queryKeys.quizzes.detail(id), "student"], detail);
+      queryClient.setQueryData(queryKeys.quizzes.studentDetail(id), detail);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
   });
@@ -160,7 +160,7 @@ export function useSaveAnswers(id: number) {
     // leaves and re-opens the quiz inside staleTime sees their saved answers
     // as blank. Hook-level, so it still runs for a flush fired on unmount.
     onSuccess: (_result, answers) => {
-      queryClient.setQueryData<StudentQuizDetail>([...queryKeys.quizzes.detail(id), "student"], (old) =>
+      queryClient.setQueryData<StudentQuizDetail>(queryKeys.quizzes.studentDetail(id), (old) =>
         mergeSavedAnswers(old, answers),
       );
     },
@@ -180,7 +180,7 @@ export function useSubmitAttempt(id: number) {
       return studentQuizDetailSchema.parse(res.data.data);
     },
     onSuccess: (detail) => {
-      queryClient.setQueryData([...queryKeys.quizzes.detail(id), "student"], detail);
+      queryClient.setQueryData(queryKeys.quizzes.studentDetail(id), detail);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
   });
