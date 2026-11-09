@@ -268,7 +268,7 @@ snapshot updated, `schema.prisma` updated where expressible.
 - [x] 3.10 DB-016 `totalScore` CHECK (recomputed first); DB-017 mime-category CHECK (unknown values removed),
       `correctIndex` CHECK (out-of-range questions fixed or deleted), `Session.recurrenceGroupId` → uuid
       (non-uuid values nulled) — `20261110100000_value_guards`: `totalScore` CHECK (mismatches recomputed), mime-category CHECK (unknown values removed), video `correctIndex` CHECK (out of range → 0), each shown on seeded violations; NOT VALID → VALIDATE. **Skipped (D8):** QuizQuestion `correctIndex` CHECK and `recurrenceGroupId` → uuid (below). Four test fixtures wrote a `totalScore` that isn't auto + manual; they now add up. Full integration 137/1,583 green
-- [ ] 3.11 DB-031 option uniques — only if `applyUpdate`'s write order never holds a transient duplicate
+- [x] 3.11 DB-031 option uniques — only if `applyUpdate`'s write order never holds a transient duplicate — **skipped, condition not met:** `applyUpdate` (poll-write.ts) moves kept options one `updateMany` at a time, so a swap of two positions or labels passes through a duplicate; a plain unique would refuse a valid edit. Needs a `DEFERRABLE` constraint (not expressible in Prisma) or a new write order (code, Wave 4)
 - [ ] 3.12 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
       from audit §2.1, kept current from here on
 - [ ] 3.13 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
