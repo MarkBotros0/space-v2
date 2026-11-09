@@ -2,14 +2,12 @@
  * Port of v1 src/components/ui/avatar.tsx (Base UI Avatar).
  * Native differences: Base UI's load tracking is a small context — the
  * fallback shows until AvatarImage reports onLoad, and again on onError;
- * text size classes move from the root to the fallback Text;
- * AvatarGroup ring-2 ring-white → border-2 border-background (the page, in
- * either theme), -space-x-2 → -ml-2.
+ * text size classes move from the root to the fallback Text.
  * Dark mode: a deep teal disc (teal-900) with teal-50 initials, 8.3:1; v1's
  * pale mint disc stayed a hard-coded light surface on the dark page.
  */
 import { cva, type VariantProps } from "class-variance-authority";
-import { Children, createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 import { Image, type ImageSourcePropType, View } from "react-native";
 
 import { cn } from "../lib/cn";
@@ -95,34 +93,4 @@ function AvatarFallback({ className, children }: { className?: string; children?
   );
 }
 
-function AvatarGroup({
-  className,
-  children,
-  max,
-}: {
-  className?: string;
-  children?: ReactNode;
-  max?: number;
-}) {
-  const all = Children.toArray(children);
-  const visible = max ? all.slice(0, max) : all;
-  const overflow = max ? all.length - visible.length : 0;
-  return (
-    <View className={cn("flex-row", className)}>
-      {visible.map((child, i) => (
-        <View key={i} className={cn("rounded-full border-2 border-background", i > 0 && "-ml-2")}>
-          {child}
-        </View>
-      ))}
-      {overflow > 0 ? (
-        <View className="-ml-2 rounded-full border-2 border-background">
-          <Avatar size="md">
-            <AvatarFallback>+{overflow}</AvatarFallback>
-          </Avatar>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-export { Avatar, AvatarImage, AvatarFallback, AvatarGroup, avatarVariants };
+export { Avatar, AvatarImage, AvatarFallback, avatarVariants };

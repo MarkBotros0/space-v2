@@ -5,17 +5,12 @@
  * `subhead`. It slides up over DURATION.slow; under reduced motion it appears
  * in place (the RN Modal's own fade remains). RN Modal + core Animated (not
  * Reanimated), so the class rules for Animated.* do not apply here. The sheet
- * adds the bottom safe-area inset under p-4; ModalTrigger/ModalClose take one
- * child and add onPress to it (Base UI's render-prop trigger).
+ * adds the bottom safe-area inset under p-4.
  * Plans 02–05 move the call sites to Sheet and delete this file.
  */
 import { X } from "lucide-react-native";
 import {
-  Children,
-  cloneElement,
   createContext,
-  isValidElement,
-  type ReactElement,
   type ReactNode,
   useContext,
   useEffect,
@@ -53,28 +48,6 @@ function Modal({
     onOpenChange?.(next);
   };
   return <ModalContext.Provider value={{ open, setOpen }}>{children}</ModalContext.Provider>;
-}
-
-function withPress(children: ReactNode, onPress: () => void) {
-  const child = Children.only(children);
-  if (!isValidElement(child)) return child;
-  const el = child as ReactElement<{ onPress?: () => void }>;
-  return cloneElement(el, {
-    onPress: () => {
-      el.props.onPress?.();
-      onPress();
-    },
-  });
-}
-
-function ModalTrigger({ children }: { children: ReactElement }) {
-  const { setOpen } = useContext(ModalContext);
-  return withPress(children, () => setOpen(true));
-}
-
-function ModalClose({ children }: { children: ReactElement }) {
-  const { setOpen } = useContext(ModalContext);
-  return withPress(children, () => setOpen(false));
 }
 
 /**
@@ -167,4 +140,4 @@ function ModalFooter({ className, children }: { className?: string; children?: R
   return <View className={cn("flex-col-reverse gap-2", className)}>{children}</View>;
 }
 
-export { Modal, ModalTrigger, ModalClose, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalFooter };
+export { Modal, ModalContent, ModalHeader, ModalTitle, ModalDescription, ModalFooter };

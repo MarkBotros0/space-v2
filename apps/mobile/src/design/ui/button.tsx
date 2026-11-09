@@ -133,19 +133,6 @@ function muteIcons(children: ReactNode): ReactNode {
   });
 }
 
-/** Icon size for children icons (v1 forced these through [&_svg]). */
-const BUTTON_ICON_SIZE: Record<SizeInput, number> = {
-  md: 16,
-  sm: 16,
-  default: 16,
-  xs: 12,
-  lg: 16,
-  icon: 16,
-  "icon-xs": 12,
-  "icon-sm": 16,
-  "icon-lg": 16,
-};
-
 type ButtonProps = Omit<PressableProps, "children"> &
   Opts & {
     className?: string;
@@ -220,4 +207,4 @@ function Button({
   );
 }
 
-export { Button, buttonVariants, buttonTextVariants, BUTTON_ICON_SIZE };
+export { Button, buttonVariants, buttonTextVariants };

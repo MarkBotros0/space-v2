@@ -48,20 +48,8 @@ function CardTitle({ className, children }: { className?: string; children?: Rea
   );
 }
 
-function CardDescription({ className, children }: { className?: string; children?: ReactNode }) {
-  return (
-    <Text variant="subhead" className={cn("text-muted-foreground", className)}>
-      {children}
-    </Text>
-  );
-}
-
 function CardContent({ className, ...props }: Box) {
   return <View className={cn("p-4 pt-0", className)} {...props} />;
 }
 
-function CardFooter({ className, ...props }: Box) {
-  return <View className={cn("flex-row items-center gap-2 border-t border-separator p-4", className)} {...props} />;
-}
-
-export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter };
+export { Card, CardHeader, CardTitle, CardContent };
