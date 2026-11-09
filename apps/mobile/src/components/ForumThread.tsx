@@ -34,6 +34,7 @@ import { apiErrorMessage } from "../lib/api-error";
 import { formatDate, formatTimeAgo } from "../lib/format";
 import { initialsOf } from "../lib/initials";
 import { useRole } from "../store/session";
+import { LoadMoreButton } from "../design/ui/load-more-button";
 
 iconWithClassName(Send, Trash2);
 
@@ -239,16 +240,8 @@ function PostCard({
               </View>
             ) : null}
             {expanded && comments.isPending ? <Skeleton className="h-10" /> : null}
-            {expanded && comments.hasNextPage ? (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="self-start"
-                disabled={comments.isFetchingNextPage}
-                onPress={() => void comments.fetchNextPage()}
-              >
-                More comments
-              </Button>
+            {expanded ? (
+              <LoadMoreButton query={comments} label="More comments" size="sm" className="self-start" />
             ) : null}
             {post.canComment ? (
               <View className="flex-row items-end gap-2">
@@ -329,16 +322,7 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
               allowComments={view.allowComments}
             />
           ))}
-          {query.hasNextPage ? (
-            <Button
-              variant="secondary"
-              className="self-start"
-              disabled={query.isFetchingNextPage}
-              onPress={() => void query.fetchNextPage()}
-            >
-              Load more
-            </Button>
-          ) : null}
+          <LoadMoreButton query={query} className="self-start" />
         </View>
       )}
 

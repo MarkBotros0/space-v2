@@ -10,6 +10,7 @@ import { Button, EmptyState } from "../../../src/design/ui";
 import { useAnnouncementFeed, useAnnouncementTargets } from "../../../src/hooks/use-announcements";
 import { usePullRefresh } from "../../../src/hooks/use-pull-refresh";
 import { PostCard } from "../../../src/screens/announcements/post-card";
+import { LoadMoreButton } from "../../../src/design/ui/load-more-button";
 
 iconWithClassName(Plus);
 
@@ -44,16 +45,7 @@ export default function AnnouncementsScreen() {
             onPress={() => router.push({ pathname: "/announcements/[id]", params: { id: String(post.id) } })}
           />
         ))}
-        {feed.hasNextPage ? (
-          <Button
-            variant="secondary"
-            className="self-center"
-            disabled={feed.isFetchingNextPage}
-            onPress={() => void feed.fetchNextPage()}
-          >
-            {feed.isFetchingNextPage ? "Loading…" : "Load more"}
-          </Button>
-        ) : null}
+        <LoadMoreButton query={feed} loadingLabel="Loading…" className="self-center" />
       </View>
     );
 

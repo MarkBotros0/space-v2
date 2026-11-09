@@ -4,9 +4,10 @@ import { View } from "react-native";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { Button, EmptyState, GroupedList, SegmentedControl } from "../../design/ui";
+import { EmptyState, GroupedList, SegmentedControl } from "../../design/ui";
 import { flattenNotePages, useVisibleNotePages } from "../../hooks/use-notes";
 import { NoteRow } from "../staff-notes/note-row";
+import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 type Range = "all" | "week";
 const WEEK_DAYS = 7;
@@ -44,16 +45,7 @@ export function MentorNotes({ initialRange }: { initialRange: Range }) {
             <NoteRow key={item.id} item={item} byAuthor />
           ))}
         </GroupedList>
-        {hasNextPage ? (
-          <Button
-            variant="secondary"
-            className="self-center"
-            disabled={isFetchingNextPage}
-            onPress={() => void fetchNextPage()}
-          >
-            Load more
-          </Button>
-        ) : null}
+        <LoadMoreButton query={{ hasNextPage, isFetchingNextPage, fetchNextPage }} className="self-center" />
       </View>
     );
 

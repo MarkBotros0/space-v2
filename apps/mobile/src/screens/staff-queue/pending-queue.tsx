@@ -5,9 +5,10 @@ import type { SubmissionQueueItem } from "@space/shared";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { Button, EmptyState, GroupedList, ListRow, StatusChip, statusChip } from "../../design/ui";
+import { EmptyState, GroupedList, ListRow, StatusChip, statusChip } from "../../design/ui";
 import { useSubmissionQueue } from "../../hooks/use-submission-queue";
 import { joinMeta } from "../../lib/join-meta";
+import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 function Row({ item }: { item: SubmissionQueueItem }) {
   const router = useRouter();
@@ -55,11 +56,7 @@ export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }
             <Row key={item.publicId} item={item} />
           ))}
         </GroupedList>
-        {q.hasNextPage ? (
-          <Button variant="secondary" disabled={q.isFetchingNextPage} onPress={() => void q.fetchNextPage()}>
-            Load more
-          </Button>
-        ) : null}
+        <LoadMoreButton query={q} />
       </View>
     );
 

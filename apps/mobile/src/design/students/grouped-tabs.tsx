@@ -21,6 +21,7 @@ import { GroupedList, ListRow } from "../ui/grouped-list";
 import { StatusChip, statusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
 import { USER_ROLE_LABELS } from "../../lib/user-role-labels";
+import { LoadMoreButton } from "../ui/load-more-button";
 
 function Loading() {
   return (
@@ -207,16 +208,7 @@ export function GroupedNotesTab({
             ))}
           </GroupedList>
           {/* Older notes stay reachable (R41); v1 capped the list. */}
-          {q.hasNextPage ? (
-            <Button
-              variant="secondary"
-              className="self-start"
-              disabled={q.isFetchingNextPage}
-              onPress={() => void q.fetchNextPage()}
-            >
-              Load more
-            </Button>
-          ) : null}
+          <LoadMoreButton query={q} className="self-start" />
         </>
       )}
     </View>

@@ -12,6 +12,7 @@ import { useCreateEvent, useEventPages } from "../../src/hooks/use-events";
 import { apiErrorMessage } from "../../src/lib/api-error";
 import { EventListRow } from "../../src/screens/events/event-row";
 import { useIsSuper } from "../../src/store/session";
+import { LoadMoreButton } from "../../src/design/ui/load-more-button";
 
 iconWithClassName(Plus);
 
@@ -54,16 +55,7 @@ export default function EventsScreen() {
           ))}
         </GroupedList>
         {/* Paging is v2's (owner decision); v1 loaded every event. */}
-        {events.hasNextPage ? (
-          <Button
-            variant="secondary"
-            className="self-center"
-            disabled={events.isFetchingNextPage}
-            onPress={() => void events.fetchNextPage()}
-          >
-            {events.isFetchingNextPage ? "Loading…" : "Load more"}
-          </Button>
-        ) : null}
+        <LoadMoreButton query={events} loadingLabel="Loading…" className="self-center" />
       </View>
     );
 

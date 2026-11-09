@@ -8,7 +8,7 @@ import { NAV_ICONS } from "../../../../src/design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { haptic } from "../../../../src/design/motion";
-import { Button, EmptyState, Text, toast } from "../../../../src/design/ui";
+import { EmptyState, Text, toast } from "../../../../src/design/ui";
 import { StudentList } from "../../../../src/design/students/student-list";
 import { GroupedList, ListRow } from "../../../../src/design/ui/grouped-list";
 import { StatusChip, statusChip } from "../../../../src/design/ui/status-chip";
@@ -28,6 +28,7 @@ import { AttemptSheet } from "../../../../src/screens/quiz-grade/attempt-sheet";
 import { ReleaseResultsCard } from "../../../../src/screens/quiz-grade/release-results";
 import { PaperGradeSheet, seedDraft, type PaperDraft } from "../../../../src/screens/quiz-grade/paper-grade-sheet";
 import { useRole } from "../../../../src/store/session";
+import { LoadMoreButton } from "../../../../src/design/ui/load-more-button";
 
 function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
   const sheetQuery = useQuizGradeSheet(id, true);
@@ -228,16 +229,11 @@ function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail
             ))}
           </GroupedList>
         ) : null}
-        {hasNextPage ? (
-          <Button
-            variant="secondary"
-            className="self-center"
-            disabled={isFetchingNextPage}
-            onPress={() => void fetchNextPage()}
-          >
-            {isFetchingNextPage ? "Loading…" : "Load more"}
-          </Button>
-        ) : null}
+        <LoadMoreButton
+          query={{ hasNextPage, isFetchingNextPage, fetchNextPage }}
+          loadingLabel="Loading…"
+          className="self-center"
+        />
       </View>
     );
   }

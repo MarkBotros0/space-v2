@@ -5,12 +5,13 @@ import type { StudentListItem, StudentListStatus, UserRole } from "@space/shared
 import { NAV_ICONS } from "../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { Screen } from "../design/layout/screen";
-import { Button, EmptyState, FilterButton, GroupedList, SearchField } from "../design/ui";
+import { EmptyState, FilterButton, GroupedList, SearchField } from "../design/ui";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
 import { StudentFilterSheet, activeFilterCount } from "../screens/students-list/student-filter-sheet";
 import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "../screens/students-list/student-rows";
 import { useDebouncedSearch } from "../screens/students-list/use-debounced-search";
 import { useRole } from "../store/session";
+import { LoadMoreButton } from "../design/ui/load-more-button";
 
 /** Who may open each list: the screen mirrors the endpoint's per-surface gate. */
 const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];
@@ -147,11 +148,7 @@ export function StudentList({
             />
           ))}
         </GroupedList>
-        {hasNextPage ? (
-          <Button variant="secondary" disabled={isFetchingNextPage} onPress={() => void fetchNextPage()}>
-            {isFetchingNextPage ? "Loading…" : "Load more"}
-          </Button>
-        ) : null}
+        <LoadMoreButton query={{ hasNextPage, isFetchingNextPage, fetchNextPage }} loadingLabel="Loading…" />
       </>
     );
 

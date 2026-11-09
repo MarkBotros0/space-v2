@@ -4,9 +4,10 @@ import { View } from "react-native";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { Button, EmptyState, GroupedList, ListRow } from "../../design/ui";
+import { EmptyState, GroupedList, ListRow } from "../../design/ui";
 import { useEngagementStudents } from "../../hooks/use-reports";
 import { joinMeta } from "../../lib/join-meta";
+import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 /**
  * The list behind Today's "N students at risk": the AT_RISK band of the same
@@ -47,11 +48,7 @@ export function StudentsAtRisk({ seasonId }: { seasonId: number | undefined }) {
             />
           ))}
         </GroupedList>
-        {q.hasNextPage ? (
-          <Button variant="secondary" disabled={q.isFetchingNextPage} onPress={() => void q.fetchNextPage()}>
-            Load more
-          </Button>
-        ) : null}
+        <LoadMoreButton query={q} />
       </View>
     );
 

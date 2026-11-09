@@ -26,6 +26,7 @@ import {
   type CommunityFilters,
 } from "../../../src/screens/community/community-filter-sheet";
 import { useRole } from "../../../src/store/session";
+import { LoadMoreButton } from "../../../src/design/ui/load-more-button";
 
 function bulkSummary(r: BulkInviteResponse): string {
   return `Sent ${r.sent} · failed ${r.failed} · skipped ${r.skipped} · ${r.remaining} still pending.`;
@@ -194,15 +195,7 @@ export default function CommunityScreen() {
                 ) : null
               }
             />
-            {users$.hasNextPage ? (
-              <Button
-                variant="secondary"
-                disabled={users$.isFetchingNextPage}
-                onPress={() => void users$.fetchNextPage()}
-              >
-                {users$.isFetchingNextPage ? "Loading…" : "Show more"}
-              </Button>
-            ) : null}
+            <LoadMoreButton query={users$} label="Show more" loadingLabel="Loading…" />
           </>
         )}
       </View>

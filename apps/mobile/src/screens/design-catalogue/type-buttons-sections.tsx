@@ -1,6 +1,7 @@
 import { View } from "react-native";
 
 import { Button } from "../../design/ui/button";
+import { LoadMoreButton } from "../../design/ui/load-more-button";
 import { PillButton } from "../../design/ui/pill-button";
 import { Text } from "../../design/ui/text";
 import { CatalogueSection } from "./section";
@@ -56,6 +57,13 @@ export function ButtonsSection() {
         <PillButton label="See all" onPress={() => {}} />
         <PillButton label="Clear due date" onPress={() => {}} />
         <PillButton destructive label="Remove poll" onPress={() => {}} />
+      </View>
+      <View className="flex-row flex-wrap items-center gap-2">
+        <LoadMoreButton query={{ hasNextPage: true, isFetchingNextPage: false, fetchNextPage: () => {} }} />
+        <LoadMoreButton
+          query={{ hasNextPage: true, isFetchingNextPage: true, fetchNextPage: () => {} }}
+          loadingLabel="Loading…"
+        />
       </View>
     </CatalogueSection>
   );

@@ -15,6 +15,7 @@ import { useSubmissionQueue } from "../../hooks/use-submission-queue";
 import { formatShortDateTime, unbreakable } from "../../lib/format";
 import { seasonParam } from "../../lib/season-param";
 import { queueSections } from "./queue-sections";
+import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 // v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
 const ALL = { pendingOnly: false } as const;
@@ -107,16 +108,7 @@ export function LeaderQueue() {
             </>
           )}
           {/* Paging is v2's (spec 08 D12); v1 loaded every row. */}
-          {hasNextPage ? (
-            <Button
-              variant="secondary"
-              className="self-center"
-              disabled={isFetchingNextPage}
-              onPress={() => void fetchNextPage()}
-            >
-              Load more
-            </Button>
-          ) : null}
+          <LoadMoreButton query={{ hasNextPage, isFetchingNextPage, fetchNextPage }} className="self-center" />
         </View>
       )}
     </Screen>
