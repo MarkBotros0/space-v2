@@ -28,3 +28,20 @@ export const detailItem = (id: number, over: Record<string, unknown> = {}) => {
 };
 
 export const ok = (data: unknown) => Promise.resolve({ data: { data } });
+
+/** An open one-answer poll the reader may vote on and hasn't; counts hidden until they do. */
+export const pollItem = (over: Record<string, unknown> = {}) => ({
+  version: 1,
+  allowsMultiple: false,
+  closed: false,
+  canVote: true,
+  canManage: false,
+  myOptionIds: [] as number[],
+  voterCount: null as number | null,
+  multiPickVoters: null as number | null,
+  options: [
+    { id: 1, label: "Saturday", votes: null as number | null },
+    { id: 2, label: "Sunday", votes: null as number | null },
+  ],
+  ...over,
+});

@@ -153,13 +153,17 @@ export function useDeleteAnnouncement() {
   });
 }
 
-/** Writes a poll action's returned detail into the post's own query, so the screen updates without a refetch. */
+/**
+ * Writes a poll action's returned detail into the post's own query, so the screen updates without a refetch,
+ * and drops the voters list, so the next open of "See who voted" never shows names from before the write.
+ */
 function usePollDetailWrite(postId: number) {
   const queryClient = useQueryClient();
   return (data: unknown): AnnouncementDetail => {
     const next = announcementDetailSchema.parse(data);
     queryClient.setQueryData(queryKeys.announcements.detail(postId), next);
     void queryClient.invalidateQueries({ queryKey: queryKeys.announcements.feed() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.announcements.voters(postId) });
     return next;
   };
 }
