@@ -6,10 +6,10 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-09)
 
-- **Current phase:** Wave 2 (shared foundations) on `refactor/wave-2-foundations`, from `main` @ `f595762e`.
-  Waves 0 and 1 are merged to `main` locally (fast-forward, no PR, at the owner's request); **nothing is
-  pushed**. Rulings D8 (fit the rules, skip what is slow or complicated) and D9 (losing data is acceptable)
-  apply.
+- **Current phase:** Wave 2 (shared foundations) is **finished on `refactor/wave-2-foundations`** (from
+  `main` @ `f595762e`) and stopped for the owner's review. Waves 0 and 1 are merged to `main` locally
+  (fast-forward, no PR, at the owner's request); **nothing is pushed**. Rulings D8 (fit the rules, skip what is
+  slow or complicated) and D9 (losing data is acceptable) apply.
 - Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
   again. Tests run only on the throwaway DB (see Working setup).
 - Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
@@ -234,7 +234,7 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 - [x] 2.17 Mobile helpers: FE-030, FE-024, FE-025 (per-site trim kept), FE-023, FE-022, FE-026, FE-027 — FE-026 formatKb (3 sites) + formatBytes (ExportMenu) in lib/format.ts. FE-022 seasonParam and useSeasonParamOrCurrent call parsePositiveInt (stricter on junk like '1e2'). FE-027 useDebouncedSearch moved to src/hooks, the dev switcher uses it (250 ms). FE-024 src/lib/day-key.ts (strict dayToDate, dateToDay, timeToParts with the caller's fallback, partsToTime): 6 copies and 9 inline formats gone. FE-025 blankToNull(s, {trim}) in lib/form-values.ts on 15 sites, the 4 description sites keep trim:false. FE-023 plural(n, one, many?) and people(n) (plain space; countOf keeps its NBSP) replace the 9 local helpers; inline ternaries left. FE-030 useSchemaErrors (validate → boolean, the form still sends its own body) on session new/edit and Duplicate season; EventForm sends parsed.data and the other 6 have irregular shapes — rollout Waves 4/5 (D5). Unit 340/566/2316.
 - [x] 2.18 FE-031: login on `useSchemaErrors`; drop `react-hook-form` + `@hookform/resolvers`
       (needs 2.17 — the reason it isn't in Wave 1) — Login on useSchemaErrors with its own values/submitting state; after a failed Sign in each edit re-validates, as RHF's reValidateMode did (new test pins it). form.test's harness uses useSchemaErrors. react-hook-form and @hookform/resolvers removed from apps/mobile (lockfile only shrinks). login-screen 14, form 2 pass.
-- [ ] 2.19 Full verification + wave summary + PR → **STOP**
+- [x] 2.19 Full verification + wave summary + PR → **STOP** — verified (log ~/logs/space-v2-refactor-wave2.log); summary written; PR and push wait for the owner
 
 ### Wave 3 — schema expand (`refactor/wave-3-schema-expand`)
 
@@ -366,3 +366,19 @@ _(one paragraph per finished wave)_
   Button called by its own variant names, alias maps gone (class output identical); `pg`, `@types/pg`,
   `expo-linear-gradient` dropped. Verified: lint, typecheck, build, unit 329 / 536 / 2,304, integration
   133 / 1,582. No device UI sweep (no emulator here); the Button change was proven class-identical instead.
+- **Wave 2** (`refactor/wave-2-foundations`, 36 commits, not merged or pushed): size rules as ESLint warnings
+  and all 17 files over 400 lines split (OpenAPI document byte-identical, test titles unchanged); one
+  finished/live season rule and `isAlumnusNotStudying` in `packages/shared`; shared request and response types;
+  `import/` and `reports/` folders in shared; the error-code catalogue (`API_ERROR_CODES`, 112 codes) typing
+  `apiError` and the mobile `apiErrorCode`; `ApiError` with `toApiError`, `forbidden()` in `lib/api-response`;
+  backend helpers (`idParam`, `notFound`, `parseOr400`, `pageOf`, `requireRole` on 18 sites, `lib/db/live`,
+  time and link constants, `tokenFor`/`bearer` test fixtures, `scripts/lib/db-host`, the storage cycle broken);
+  mobile `apiErrorStatus` (axios only in the API plumbing), named query keys (identities unchanged), `useRole` /
+  `useIsSuper` (49 sites), `apiGet`/`apiSend`, `useSeasonRoute` on the 10 season routes, `LoadMoreButton`
+  (13, labels kept), `QueryGate`, `day-key`, `blankToNull` (per-site trim kept), `plural`/`people`,
+  `useSchemaErrors`; login off react-hook-form and both packages dropped. Worked examples only, rollout in
+  Waves 4/5 (D5): `apiGet`/`apiSend`, `QueryGate`, `useSchemaErrors`, `ApiError`. D8 skips: the shared
+  season-admin predicate (FE-015, the client rule is stricter), non-adjacent role checks, `roster/import`'s
+  season lookup, the irregular forms. Verified: lint (0 errors; 75 backend and 214 mobile size warnings),
+  typecheck, build, unit 340 / 566 / 2,317, integration 137 / 1,582. No device UI sweep (no emulator here);
+  copy was kept byte-identical (plain vs non-breaking spaces checked).
