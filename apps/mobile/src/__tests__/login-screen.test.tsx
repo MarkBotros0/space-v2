@@ -65,6 +65,19 @@ describe("LoginScreen", () => {
     expect(mockLogin).toHaveBeenCalledWith("sara@jpc.test", "hunter2");
   });
 
+  it("blocks a malformed email, then clears its error as it is fixed", async () => {
+    renderWithProviders(<LoginScreen />);
+    fireEvent.changeText(screen.getByLabelText("Email"), "not-an-email");
+    fireEvent.changeText(screen.getByLabelText("Password"), "hunter2");
+    fireEvent.press(screen.getByText("Sign in"));
+
+    await waitFor(() => expect(screen.getByLabelText("Email").props.accessibilityHint).toBeTruthy());
+    expect(mockLogin).not.toHaveBeenCalled();
+
+    fireEvent.changeText(screen.getByLabelText("Email"), "sara@jpc.test");
+    await waitFor(() => expect(screen.getByLabelText("Email").props.accessibilityHint).toBeFalsy());
+  });
+
   it("shows an error message when login fails", async () => {
     mockLogin.mockRejectedValue(axiosFailure(401));
 

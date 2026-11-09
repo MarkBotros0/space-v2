@@ -1,7 +1,5 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { AccessibilityInfo, Alert, View } from "react-native";
 import { loginRequestSchema, type LoginRequest } from "@space/shared";
 
@@ -17,6 +15,7 @@ import {
 import { Button, Input, PasswordInput, Text } from "../src/design/ui";
 import { useGoogleLogin, useLogin } from "../src/hooks/use-session";
 import { apiErrorCode } from "../src/lib/api-error";
+import { useSchemaErrors } from "../src/lib/form-errors";
 import { authErrorMessage } from "../src/lib/auth-error";
 import { reportError } from "../src/lib/sentry";
 import { GoogleSignInUnavailableError, isGoogleSignInConfigured } from "../src/lib/google-sign-in";
@@ -38,10 +37,17 @@ export default function LoginScreen() {
   // tokens itself — that happens inside `login()` in `lib/api-client.ts`.
   const [error, setError] = useState<string | null>(null);
 
-  const { control, handleSubmit, formState } = useForm<LoginRequest>({
-    resolver: zodResolver(loginRequestSchema),
-    defaultValues: { email: "", password: "" },
-  });
+  const [values, setValues] = useState<LoginRequest>({ email: "", password: "" });
+  const [submitting, setSubmitting] = useState(false);
+  // After a failed Sign in, each edit re-checks the form, so a fixed field's
+  // error clears as you type (what react-hook-form's reValidateMode did).
+  const [triedSubmit, setTriedSubmit] = useState(false);
+  const { errors, validate } = useSchemaErrors(loginRequestSchema);
+  const setField = (key: keyof LoginRequest) => (text: string) => {
+    const next = { ...values, [key]: text };
+    setValues(next);
+    if (triedSubmit) validate(next);
+  };
 
   // `accessibilityRole="alert"` and `accessibilityLiveRegion="assertive"`
   // help on Android and cost nothing on iOS, but iOS only reliably announces
@@ -54,9 +60,12 @@ export default function LoginScreen() {
     if (needsInvite) AccessibilityInfo.announceForAccessibility(INVITE_FIRST_MESSAGE);
   }, [needsInvite]);
 
-  async function onSubmit(values: LoginRequest) {
+  async function onSubmit() {
+    setTriedSubmit(true);
+    if (!validate(values)) return;
     setError(null);
     setNeedsInvite(false);
+    setSubmitting(true);
     try {
       await login(values.email, values.password);
       // Spec 04 R56: a check-in link that needed a login lands back on itself.
@@ -64,6 +73,8 @@ export default function LoginScreen() {
       router.replace(returnHrefFor(returnTo) ?? "/dashboard");
     } catch (err) {
       setError(authErrorMessage(err, "Invalid email or password."));
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -88,48 +99,34 @@ export default function LoginScreen() {
   return (
     <AuthCard title="Welcome back" description="Sign in to JPC Space to continue.">
       <View className="flex-col gap-4">
-        <Controller
-          control={control}
-          name="email"
-          render={({ field, fieldState }) => (
-            <AuthField label="Email" error={fieldState.error?.message}>
-              <Input
-                size="lg"
-                accessibilityLabel="Email"
-                testID="login-email"
-                autoCapitalize="none"
-                autoComplete="email"
-                keyboardType="email-address"
-                placeholder="you@example.com"
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-              />
-            </AuthField>
-          )}
-        />
-        <Controller
-          control={control}
-          name="password"
-          render={({ field, fieldState }) => (
-            <AuthField label="Password" error={fieldState.error?.message}>
-              <PasswordInput
-                size="lg"
-                accessibilityLabel="Password"
-                testID="login-password"
-                autoComplete="current-password"
-                value={field.value}
-                onChangeText={field.onChange}
-                onBlur={field.onBlur}
-              />
-            </AuthField>
-          )}
-        />
+        <AuthField label="Email" error={errors.email}>
+          <Input
+            size="lg"
+            accessibilityLabel="Email"
+            testID="login-email"
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            placeholder="you@example.com"
+            value={values.email}
+            onChangeText={setField("email")}
+          />
+        </AuthField>
+        <AuthField label="Password" error={errors.password}>
+          <PasswordInput
+            size="lg"
+            accessibilityLabel="Password"
+            testID="login-password"
+            autoComplete="current-password"
+            value={values.password}
+            onChangeText={setField("password")}
+          />
+        </AuthField>
         {/* Owner 2026-11-07: Forgot password sits under its field. */}
         <View className="-mt-2">
           <AuthLink align="end" label="Forgot password?" onPress={() => router.push("/forgot-password")} />
         </View>
-        {/* The fields stay mounted with their values (RHF), so a wrong
+        {/* The fields stay mounted with their values, so a wrong
             password needs no extra tap to get back to a fillable form. */}
         {error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
         {needsInvite ? (
@@ -138,13 +135,8 @@ export default function LoginScreen() {
             <AuthLink tone="accent" label="Enter your invite code" onPress={() => router.push("/accept-invite")} />
           </View>
         ) : null}
-        <Button
-          size="md"
-          className="w-full"
-          disabled={formState.isSubmitting}
-          onPress={() => void handleSubmit(onSubmit)()}
-        >
-          {formState.isSubmitting ? "Signing in…" : "Sign in"}
+        <Button size="md" className="w-full" disabled={submitting} onPress={() => void onSubmit()}>
+          {submitting ? "Signing in…" : "Sign in"}
         </Button>
         <AuthDivider />
         {/* Owner 2026-11-09: Google signs in an existing account; it never creates one. */}
@@ -153,7 +145,7 @@ export default function LoginScreen() {
           size="md"
           className="w-full"
           accessibilityLabel="Continue with Google"
-          disabled={googleBusy || formState.isSubmitting}
+          disabled={googleBusy || submitting}
           onPress={() => void onGoogle()}
         >
           <GoogleMark size={18} />
