@@ -175,6 +175,39 @@ describe("PollCard", () => {
   });
 });
 
+describe("PollCard retry after a failed vote", () => {
+  const serverError = () =>
+    new AxiosError("500", "ERR_BAD_RESPONSE", undefined, undefined, {
+      status: 500,
+      data: { error: { code: "internal_error", message: "Something went wrong" } },
+    } as AxiosResponse);
+
+  it("changing the pick clears the error, and Vote sends the new pick", async () => {
+    api.put.mockRejectedValueOnce(serverError());
+    render();
+    fireEvent.press(screen.getByLabelText("Saturday"));
+    fireEvent.press(screen.getByRole("button", { name: "Vote" }));
+    expect(await screen.findByText("Something went wrong")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Sunday"));
+    expect(screen.queryByText("Something went wrong")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    api.put.mockReturnValue(ok(detailItem(7, { poll: pollItem({ myOptionIds: [2] }) })));
+    fireEvent.press(screen.getByRole("button", { name: "Vote" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledTimes(2));
+    expect(api.put).toHaveBeenLastCalledWith("/api/v1/announcements/7/poll/vote", { version: 1, optionIds: [2] });
+  });
+
+  it("Try again sends the picks on screen at the time it is pressed", async () => {
+    api.put.mockRejectedValueOnce(serverError());
+    render({ allowsMultiple: true });
+    fireEvent.press(screen.getByLabelText("Saturday"));
+    fireEvent.press(screen.getByRole("button", { name: "Vote" }));
+    fireEvent.press(await screen.findByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledTimes(2));
+    expect(api.put).toHaveBeenLastCalledWith("/api/v1/announcements/7/poll/vote", { version: 1, optionIds: [1] });
+  });
+});
+
 function opt(id: number, label: string, votes: number | null) {
   return { id, label, votes };
 }

@@ -14,8 +14,11 @@ import { VotersSheet } from "./voters-sheet";
 
 type Mode = "choose" | "results";
 
-/** What failed last, so Try again repeats exactly that. */
-type Failure = { message: string; retry: () => void };
+/**
+ * What failed last. Only the kind is kept, never a closure: Try again runs that
+ * action as this render sees it, so it sends the picks on screen, not a stale set.
+ */
+type Failure = { message: string; action: "vote" | "close" | "reopen" };
 
 /**
  * The poll under a post. A reader who may vote and hasn't (and isn't a manager)
@@ -46,6 +49,8 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
   }
 
   function toggle(optionId: number) {
+    // Changing the picks answers the old error: Vote is the way forward now.
+    setFailure(null);
     setPicked((current) => {
       if (!poll.allowsMultiple) return [optionId];
       return current.includes(optionId) ? current.filter((id) => id !== optionId) : [...current, optionId];
@@ -65,7 +70,7 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
           setMode("choose");
           return;
         }
-        setFailure({ message: apiErrorMessage(err, POLL_COPY.voteFailed), retry: castVote });
+        setFailure({ message: apiErrorMessage(err, POLL_COPY.voteFailed), action: "vote" });
       },
     });
   }
@@ -77,7 +82,7 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
     mutation.mutate(undefined, {
       onSuccess: () => setMode("results"),
       onError: (err) =>
-        setFailure({ message: apiErrorMessage(err, fallback), retry: () => closeOrReopen(which) }),
+        setFailure({ message: apiErrorMessage(err, fallback), action: which }),
     });
   }
 
@@ -102,7 +107,12 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
         <PollResults poll={poll} />
       )}
 
-      {failure ? <InlineError message={failure.message} onRetry={failure.retry} /> : null}
+      {failure ? (
+        <InlineError
+          message={failure.message}
+          onRetry={() => (failure.action === "vote" ? castVote() : closeOrReopen(failure.action))}
+        />
+      ) : null}
 
       {canOpenChoices || poll.canManage ? (
         <View className="flex-row flex-wrap gap-2">
