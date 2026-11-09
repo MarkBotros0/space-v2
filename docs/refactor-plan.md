@@ -6,8 +6,9 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-09)
 
-- **Current phase:** Phase 1 approved by the owner with rulings D8 (fit the rules to the repo, skip
-  what is slow or complicated) and D9 (losing data is acceptable); Q1–Q27 answered below. **Next: finish Wave 0 (0.9–0.11), then Wave 1.**
+- **Current phase:** Wave 1 (dead code) on `refactor/wave-1-dead-code`, from `main` @ `dc3793dc`.
+  Wave 0 is merged to `main`. Rulings D8 (fit the rules, skip what is slow or complicated) and D9
+  (losing data is acceptable) apply.
 - `main` @ `edc1fad0` (announcement polls) was merged into `refactor/wave-0-safety-net` at the
   owner's request (`bcb79a93`); the route-inventory snapshot now includes the 4 poll routes (`cea0568e`).
 - Both databases migrated on the owner's instruction (Q28, 2026-11-09): the throwaway DB got
@@ -74,7 +75,8 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
       += exactly the 3 poll tables (15 columns, 3 PKs, 3 indexes, 6 FKs) — `a7fb7d19`
 - [x] 0.10 Full integration suite on the merged tree: 133 suites / 1,598 tests / 4 snapshots pass
       (`~/logs/space-v2-refactor-integration.log`)
-- [ ] 0.11 Push + open the Wave 0 PR once the owner approves Phase 1
+- [x] 0.11 Owner: "merge to main and continue" — fast-forwarded `main` to `dc3793dc` and pushed to `jpc`
+      (Vercel deploy: tests + docs only) and `origin`; no PR (owner's choice for this wave)
 
 ## Phase 1 — audit (read-only)
 
