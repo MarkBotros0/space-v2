@@ -19,7 +19,7 @@ and ask before attempting it.
 | App Store Connect app (Apple ID) | `6822659075`, SKU `EX1791968610038` — set as `submit.production.ios.ascAppId` in `eas.json` |
 | Apple team | `932V894DYN` (Mark Botros, Individual) |
 | ASC API key | stored on EAS servers (Key ID `CRK9566Q82`), picked up automatically |
-| Versioning | `appVersionSource: remote` + `autoIncrement` — EAS bumps the build number; marketing version is `expo.version` in `app.json` |
+| Versioning | **Owner 2026-11-09: version and build number move together.** Version `1.0.N` ships as iOS `buildNumber` `"N"` and Android `versionCode` `N`, all three in `app.json`. `appVersionSource: local`, no `autoIncrement` — EAS never picks the number. Raise all three with `pnpm --filter @space/mobile version:bump` (refuses if they are out of step); `app-version-lockstep.test.ts` guards it. 1.0.14 / 14 was the first under this rule |
 
 Never print the token's value or commit it; read it from the file at run time.
 
@@ -30,7 +30,11 @@ Never print the token's value or commit it; read it from the file at run time.
    git status --short && git log -1 --oneline
    pnpm --filter @space/mobile typecheck && pnpm --filter @space/mobile lint
    ```
-   Ask whether to bump `expo.version` in `apps/mobile/app.json` if the user hasn't said.
+   Then bump, unless the committed `app.json` version has never been built
+   (check `eas build:list`): `pnpm --filter @space/mobile version:bump`, and
+   commit it as `chore(mobile): version 1.0.N (build N)` before building, so
+   the shipped commit carries its own number. Never edit one of the three
+   fields alone, and never let EAS auto-increment.
 
 2. **Build + auto-submit** in tmux (takes ~10–20 min):
    ```bash

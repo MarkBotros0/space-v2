@@ -11,7 +11,8 @@
     "routes:generate": "expo customize tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test:unit": "jest",
-    "design:tokens": "node scripts/generate-design-tokens.mjs"
+    "design:tokens": "node scripts/generate-design-tokens.mjs",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {
     "@10play/tentap-editor": "1.0.1",
