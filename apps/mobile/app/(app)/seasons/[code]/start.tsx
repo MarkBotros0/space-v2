@@ -1,15 +1,15 @@
 import { useState, type ReactNode } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import type { StartIssue } from "@space/shared";
 
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { SaveBar } from "../../../../src/design/layout/save-bar";
 import { Screen } from "../../../../src/design/layout/screen";
 import { ConfirmDialog, EmptyState, Text, toast } from "../../../../src/design/ui";
 import { useRemoveSeasonAdmin } from "../../../../src/hooks/use-season-admins";
 import { useOverrideEnrollment, useSeasonStartCheck, useStartSeason } from "../../../../src/hooks/use-season-start";
 import { useRemoveSeasonPerson } from "../../../../src/hooks/use-season-people";
-import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { IssueList } from "../../../../src/screens/season-start/issue-list";
 import { useIsSuper } from "../../../../src/store/session";
@@ -24,10 +24,8 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  */
 export default function StartSeasonScreen() {
   const router = useRouter();
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
-  const code = typeof raw === "string" && raw.length > 0 ? raw : null;
+  const { code, season } = useSeasonRoute();
   const isSuper = useIsSuper();
-  const season = useSeasonByCode(code);
   const seasonId = season.data?.id ?? null;
   const isDraft = season.data?.status === "DRAFT";
   const check = useSeasonStartCheck(isSuper && isDraft ? seasonId : null);
@@ -93,7 +91,7 @@ export default function StartSeasonScreen() {
   let body: ReactNode;
   let footer: ReactNode = undefined;
   if (code === null) {
-    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+    body = <SeasonLinkNotFound />;
   } else if (!isSuper) {
     body = <EmptyState title="Not available" description="Only a super admin can start a season." />;
   } else if (season.isError) {

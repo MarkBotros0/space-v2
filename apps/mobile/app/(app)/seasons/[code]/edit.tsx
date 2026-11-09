@@ -1,17 +1,17 @@
 import { useState, type ReactNode } from "react";
 import { Alert } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import type { SeasonDetail } from "@space/shared";
 
 import { SeasonForm, type SeasonFormValues } from "../../../../src/components/season/SeasonForm";
 import { FormSection } from "../../../../src/design/forms/form-section";
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../../src/design/lib/icon";
 import { Button, EmptyState } from "../../../../src/design/ui";
 import { ConfirmDialog } from "../../../../src/design/ui/confirm-dialog";
-import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { useDeleteSeason, useUpdateSeasonAsSuper } from "../../../../src/hooks/use-season-writes";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { useIsSuper } from "../../../../src/store/session";
@@ -114,10 +114,8 @@ function SeasonEdit({ season }: { season: SeasonDetail }) {
 }
 
 export default function SeasonEditScreen() {
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
   const isSuper = useIsSuper();
-  const code = isSuper && typeof raw === "string" && raw.length > 0 ? raw : null;
-  const detail = useSeasonByCode(code);
+  const { code, season: detail } = useSeasonRoute({ enabled: isSuper });
 
   if (isSuper && code !== null && detail.isSuccess) {
     // key: a refetch after save must not keep the old form state.
@@ -128,7 +126,7 @@ export default function SeasonEditScreen() {
   if (!isSuper) {
     body = <EmptyState title="Not available" description="Only a super admin can edit a season's identity." />;
   } else if (code === null) {
-    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+    body = <SeasonLinkNotFound />;
   } else if (detail.isError) {
     body = <RouteError onRetry={() => void detail.refetch()} />;
   } else {

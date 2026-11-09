@@ -1,11 +1,11 @@
 import { isSeasonFinished } from "@space/shared";
 import { useState, type ReactNode } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import { Award, CalendarDays, ClipboardList, Copy, FileQuestion, Flag, Pencil } from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
 import { EditSeason } from "../../../../src/components/season/EditSeason";
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../../src/design/lib/icon";
 import { NextStepCard } from "../../../../src/design/seasons/next-step-card";
@@ -13,13 +13,13 @@ import { PeopleCard, type PeopleCardAdmins } from "../../../../src/design/season
 import { SeasonDetailView, type SeasonAction } from "../../../../src/design/seasons/season-detail";
 import { SeasonNeeds } from "../../../../src/screens/season/season-needs";
 import { phoneDayKey } from "../../../../src/design/seasons/season-timeline";
-import { Button, EmptyState } from "../../../../src/design/ui";
+import { Button } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonRoster } from "../../../../src/hooks/use-group-admin";
 import { useSeasonAdmins } from "../../../../src/hooks/use-season-admins";
 import { useSeasonPeople } from "../../../../src/hooks/use-season-people";
 import { seasonSuggestion } from "../../../../src/screens/season-people/source";
-import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { countOf } from "../../../../src/lib/plural";
 import { useSessionStore, useIsSuper } from "../../../../src/store/session";
 
@@ -38,12 +38,10 @@ iconWithClassName(Pencil, Copy);
  */
 export default function SeasonDetailScreen() {
   const router = useRouter();
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
-  const code = typeof raw === "string" && raw.length > 0 ? raw : null;
+  const { code, season: detail } = useSeasonRoute();
   const isSuper = useIsSuper();
   const isAdmin = useSessionStore((s) => s.user?.role === "ADMIN");
   const [duplicating, setDuplicating] = useState(false);
-  const detail = useSeasonByCode(code);
   const seasonId = detail.data?.id ?? null;
   // Nobody but a Super reads or changes admins.
   const admins = useSeasonAdmins(seasonId, { enabled: isSuper && seasonId !== null });
@@ -66,7 +64,7 @@ export default function SeasonDetailScreen() {
 
   let body: ReactNode;
   if (code === null) {
-    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+    body = <SeasonLinkNotFound />;
   } else if (detail.isPending) {
     body = <RouteSkeleton />;
   } else if (detail.isError) {

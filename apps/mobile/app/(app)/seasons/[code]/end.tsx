@@ -1,13 +1,13 @@
 import { useState, type ReactNode } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import type { SeasonEndCheck } from "@space/shared";
 
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { SaveBar } from "../../../../src/design/layout/save-bar";
 import { Screen } from "../../../../src/design/layout/screen";
 import { Button, ConfirmDialog, EmptyState, toast } from "../../../../src/design/ui";
 import { useEndSeason, useSeasonEndCheck } from "../../../../src/hooks/use-season-end";
-import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { BlockersList } from "../../../../src/screens/season-end/blockers-list";
 import { ResultSheet, type ResultDraft } from "../../../../src/screens/season-end/result-sheet";
@@ -29,10 +29,8 @@ const PASSED: ResultDraft = { result: "PASSED", reason: "" };
  */
 export default function EndSeasonScreen() {
   const router = useRouter();
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
-  const code = typeof raw === "string" && raw.length > 0 ? raw : null;
+  const { code, season } = useSeasonRoute();
   const isSuper = useIsSuper();
-  const season = useSeasonByCode(code);
   const seasonId = season.data?.id ?? null;
   const check = useSeasonEndCheck(seasonId);
   const end = useEndSeason(seasonId ?? 0);
@@ -92,7 +90,7 @@ export default function EndSeasonScreen() {
   let footer: ReactNode = undefined;
   const failedCode = check.isError ? apiErrorCode(check.error) : null;
   if (code === null) {
-    body = <EmptyState title="Not found" description="That season link isn't valid." />;
+    body = <SeasonLinkNotFound />;
   } else if (alreadyEnded || failedCode === "season_not_active") {
     body = (
       <EmptyState

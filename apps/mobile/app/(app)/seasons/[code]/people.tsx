@@ -2,10 +2,10 @@ import { isSeasonLive } from "@space/shared";
 import type { ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState } from "../../../../src/design/ui";
-import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { PeopleList } from "../../../../src/screens/season-people/people-list";
 
@@ -18,9 +18,8 @@ import { PeopleList } from "../../../../src/screens/season-people/people-list";
  */
 export default function SeasonPeopleScreen() {
   const router = useRouter();
-  const { code: raw, from: rawFrom } = useLocalSearchParams<{ code: string; from?: string }>();
-  const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const season = useSeasonByCode(code);
+  const { from: rawFrom } = useLocalSearchParams<{ from?: string }>();
+  const { code, season } = useSeasonRoute();
 
   if (code !== null && season.isSuccess && season.data.canAdminister) {
     const { code: seasonCode, status } = season.data;
@@ -40,7 +39,7 @@ export default function SeasonPeopleScreen() {
   }
 
   let body: ReactNode;
-  if (code === null) body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  if (code === null) body = <SeasonLinkNotFound />;
   else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
   else if (season.isPending) body = <RouteSkeleton />;
   else body = <EmptyState title="Not available" description="Only this season's admins can add people to it." />;

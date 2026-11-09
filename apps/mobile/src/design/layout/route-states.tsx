@@ -65,3 +65,8 @@ export function InlineError({
     </View>
   );
 }
+
+/** A `/seasons/[code]/…` link with no usable code. */
+export function SeasonLinkNotFound() {
+  return <EmptyState title="Not found" description="That season link isn't valid." />;
+}

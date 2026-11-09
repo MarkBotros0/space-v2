@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { useLocalSearchParams } from "expo-router";
+
 import type { SeasonResultRow } from "@space/shared";
 
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState, GroupedList, ListRow, StatusChip, toast } from "../../../../src/design/ui";
 import { useSeasonResults, useUpdateSeasonResult } from "../../../../src/hooks/use-season-end";
-import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { joinMeta } from "../../../../src/lib/join-meta";
 import { ResultSheet } from "../../../../src/screens/season-end/result-sheet";
@@ -18,10 +18,8 @@ import { useIsSuper } from "../../../../src/store/session";
  * result" and can be given one here.
  */
 export default function SeasonResultsScreen() {
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
-  const code = typeof raw === "string" && raw.length > 0 ? raw : null;
+  const { code, season } = useSeasonRoute();
   const isSuper = useIsSuper();
-  const season = useSeasonByCode(code);
   const seasonId = isSuper ? (season.data?.id ?? null) : null;
   const results = useSeasonResults(seasonId);
   const update = useUpdateSeasonResult(seasonId ?? 0);
@@ -49,7 +47,7 @@ export default function SeasonResultsScreen() {
   };
 
   let body: ReactNode;
-  if (code === null) body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  if (code === null) body = <SeasonLinkNotFound />;
   else if (!isSuper)
     body = <EmptyState title="Not available" description="Only a super admin can see and correct results." />;
   else if (season.isError || results.isError)

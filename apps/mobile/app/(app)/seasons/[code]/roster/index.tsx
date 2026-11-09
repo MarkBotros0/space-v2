@@ -1,18 +1,16 @@
 import type { ReactNode } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 
-import { RouteError, RouteSkeleton } from "../../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../../src/design/layout/route-states";
 import { Screen } from "../../../../../src/design/layout/screen";
 import { Button, EmptyState } from "../../../../../src/design/ui";
-import { useSeasonByCode } from "../../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../../src/hooks/use-season-route";
 import { RosterList } from "../../../../../src/screens/season-roster/roster-list";
 
 /** v1 admin/season/[code]/roster — `roster/import.tsx` (Plan 17) hangs off the "Import assignments" button. */
 export default function SeasonRosterScreen() {
   const router = useRouter();
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
-  const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const season = useSeasonByCode(code);
+  const { code, season } = useSeasonRoute();
 
   if (code !== null && season.isSuccess && season.data.canAdminister) {
     return (
@@ -36,7 +34,7 @@ export default function SeasonRosterScreen() {
   }
 
   let body: ReactNode;
-  if (code === null) body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  if (code === null) body = <SeasonLinkNotFound />;
   else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
   else if (season.isPending) body = <RouteSkeleton />;
   else body = <EmptyState title="Not available" description="Only this season's admins can manage its roster." />;

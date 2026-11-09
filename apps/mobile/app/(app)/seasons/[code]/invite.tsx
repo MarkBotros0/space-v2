@@ -2,13 +2,13 @@ import { isSeasonLive } from "@space/shared";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { View } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 
 import { StudentForm } from "../../../../src/components/StudentForm";
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState, PillButton, Text, toast } from "../../../../src/design/ui";
-import { useSeasonByCode } from "../../../../src/hooks/use-seasons";
+import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { useCreateStudent } from "../../../../src/hooks/use-students";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { emptyStudentForm, toCreateStudentBody } from "../../../../src/lib/student-form";
@@ -22,9 +22,7 @@ import { emptyStudentForm, toCreateStudentBody } from "../../../../src/lib/stude
  */
 export default function InviteToSeasonScreen() {
   const router = useRouter();
-  const { code: raw } = useLocalSearchParams<{ code: string }>();
-  const code = typeof raw === "string" && raw.length > 0 ? raw : null;
-  const season = useSeasonByCode(code);
+  const { code, season } = useSeasonRoute();
   const createStudent = useCreateStudent();
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -78,7 +76,7 @@ export default function InviteToSeasonScreen() {
   }
 
   let body: ReactNode;
-  if (code === null) body = <EmptyState title="Not found" description="That season link isn't valid." />;
+  if (code === null) body = <SeasonLinkNotFound />;
   else if (season.isError) body = <RouteError onRetry={() => void season.refetch()} />;
   else if (season.isPending) body = <RouteSkeleton />;
   else if (!open) body = <EmptyState title="This season has finished" description="Nobody new can join it." />;
