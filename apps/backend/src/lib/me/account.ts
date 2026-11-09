@@ -7,8 +7,9 @@ import { isLastActiveSuper, lockActiveSuperIds } from "../super-guard";
 
 /**
  * The account holder deletes their own account: the same soft delete as a
- * SUPER's deactivation (deletedAt on the user and on a student profile, every
- * session revoked) plus this account's push devices. Throws 404 for an account
+ * SUPER's deactivation (deletedAt on the user, every session revoked) plus this
+ * account's push devices. StudentProfile.deletedAt is no longer written: nothing
+ * reads it, User.deletedAt is the one flag (DB-010; the column goes in Wave 6). Throws 404 for an account
  * already gone and 409 `last_super` for the last active SUPER; nothing is
  * written then.
  */
@@ -23,7 +24,6 @@ export async function deleteOwnAccount(userId: number, deletedAt: Date): Promise
       }
     }
     await tx.user.update({ where: { id: userId }, data: { deletedAt } });
-    await tx.studentProfile.updateMany({ where: { userId }, data: { deletedAt } });
     await tx.deviceToken.deleteMany({ where: { userId } });
     await revokeAllRefreshTokensForUser(tx, userId);
     await invalidateSessions(tx, userId);

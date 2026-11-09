@@ -4,7 +4,8 @@
  * Pins how deleting an account behaves today, end to end, so moving soft
  * delete to one central mechanism (Wave 2) and widening it to more tables
  * (Wave 3) can be checked against it:
- * - the user row stays and gets `deletedAt`; the student profile too;
+ * - the user row stays and gets `deletedAt`; the student profile's own
+ *   `deletedAt` is no longer written (refactor DB-010, Wave 4: nothing reads it);
  * - push devices are hard-deleted; sessions end (refresh and login refused);
  * - the account is listed only under the Super's `inactive` filter;
  * - a Super's reactivate (the restore path) clears both `deletedAt`s.
@@ -64,7 +65,8 @@ describe("deleting your own account (DELETE /api/v1/me)", () => {
     expect(user).not.toBeNull();
     expect(user!.deletedAt).not.toBeNull();
     const profile = await db.studentProfile.findUnique({ where: { userId: student.id } });
-    expect(profile!.deletedAt).not.toBeNull();
+    expect(profile).not.toBeNull();
+    expect(profile!.deletedAt).toBeNull();
     expect(await db.deviceToken.count({ where: { userId: student.id } })).toBe(0);
   });
 
