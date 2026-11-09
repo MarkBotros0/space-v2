@@ -240,8 +240,9 @@ wired to `refetch` (`InlineError` for one card's query), `EmptyState`.
 
 **Domain contracts are Zod, not bare interfaces.** `session.ts`'s
 `sessionListItemSchema` is the source of truth and its type is `z.infer` of it.
-The remaining interfaces in `packages/shared` predate this and should convert
-as each domain lands.
+Every wire contract in `packages/shared` follows this; the only interfaces left
+are navigation config (`NavItem`, `RoleNav`, `NavAudience`), which never cross
+the wire.
 
 **The redesign spec is the UI reference** (owner lifted "match v1" on 2026-11-04;
 `docs/superpowers/specs/2026-11-04-mobile-redesign-design.md`). jpc-space stays the source
