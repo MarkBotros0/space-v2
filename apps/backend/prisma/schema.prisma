@@ -332,6 +332,7 @@ model Season {
 
   @@index([status])
   @@index([startDate])
+  // SQL-only CHECKs: endDate >= startDate; absenceBudgetMinutes >= 0 AND absenceWeightMinutes > 0.
   @@index([program, year])
 }
 
@@ -368,6 +369,8 @@ model Group {
 
   // Target of GroupStudent's composite foreign key (Plan 18 M1).
   @@unique([id, seasonId])
+  // Exact match, as validateGroupWrite compares (migration 20261110090000).
+  @@unique([seasonId, name])
   @@index([seasonId])
 }
 
@@ -463,6 +466,7 @@ model Session {
   @@index([seasonId, startsAt])
   @@index([startsAt])
   @@index([recurrenceGroupId])
+  // SQL-only CHECK: durationMinutes > 0.
 }
 
 // Interactive video quizzes: admin places timed MCQ questions on a session's
@@ -484,6 +488,7 @@ model SessionVideoQuestion {
   responses SessionVideoQuestionResponse[]
 
   @@index([sessionId, atSeconds])
+  // SQL-only CHECK: points >= 0.
 }
 
 model SessionVideoQuestionResponse {
@@ -813,6 +818,7 @@ model QuizQuestion {
   answers QuizAnswer[]
 
   @@index([quizId, order])
+  // SQL-only CHECK: points >= 0.
 }
 
 // A student's run at an ONLINE quiz. One active attempt per student; an admin
@@ -840,6 +846,8 @@ model QuizAttempt {
   @@unique([quizId, studentUserId, attemptNumber])
   @@index([studentUserId])
   @@index([quizId, status])
+  // SQL-only: partial unique QuizAttempt_one_in_progress_key on (quizId, studentUserId)
+  // WHERE status = 'IN_PROGRESS' (migration 20261110090000).
 }
 
 model QuizAnswer {

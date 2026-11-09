@@ -262,9 +262,9 @@ snapshot updated, `schema.prisma` updated where expressible.
 - [x] 3.6 Missing base columns DB-021 / DB-030 (MentorFollowUp, SessionVideoProgress, AnnouncementPoll, AnnouncementPollOption) — `20261110060000_base_columns`: 5 columns, all `NOT NULL DEFAULT CURRENT_TIMESTAMP` (`updatedAt` is `@default(now()) @updatedAt`, so the running build's inserts still work); every read on these tables already `select`s, so no response changes; cycle + drift empty + snapshot (+5 columns)
 - [x] 3.7 DB-015: every `DateTime` → `timestamptz(3)` (`USING … AT TIME ZONE 'UTC'`), `User.dateOfBirth` → `date` — `20261110070000_timestamptz`: 106 columns → `timestamptz(3)` (`USING … AT TIME ZONE 'UTC'`), `User.dateOfBirth` → `date`, one `ALTER TABLE` per table (38) in one transaction; values proven preserved on seeded data (count + epoch sum of all 108 date columns identical after apply, rollback, re-apply; Prisma reads the same instants); **deploy only where `pnpm check:wave-3` reports TimeZone UTC** (the pg adapter sends Dates without an offset) — new read-only `scripts/refactor-checks/wave-3.ts` (D7); full integration 137/1,583 green
 - [x] 3.8 DB-004 (D9): `UPDATE "User" SET email = lower(trim(email))`, then `CHECK (email = lower(email))` — `20261110080000_user_email_lowercase`: `UPDATE … lower(trim(email))` then `CHECK (email = lower(email))` in one transaction; every write path already lowercases; a case-duplicate pair makes it fail and change nothing (shown on the throwaway DB; `check:wave-3` reports it as BLOCKED); cycle + drift empty + snapshot (+1 CHECK)
-- [ ] 3.9 DB-019 (D9), each constraint after its cleanup in the same migration: IDX-6 (older duplicate
+- [x] 3.9 DB-019 (D9), each constraint after its cleanup in the same migration: IDX-6 (older duplicate
       IN_PROGRESS attempts deleted, newest kept), IDX-7 (duplicate group names get a " (2)" suffix),
-      `Season endDate >= startDate`, `JpcEvent endDate IS NULL OR >= date`, positive durations, budgets, points
+      `Season endDate >= startDate`, `JpcEvent endDate IS NULL OR >= date`, positive durations, budgets, points — `20261110090000_integrity_guards`: cleanups + 5 CHECKs `NOT VALID` in one transaction, then `VALIDATE` and 2 unique indexes `CONCURRENTLY`. **Deviations:** IDX-7 is `UNIQUE (seasonId, name)` exact, not `lower(name)` — validateGroupWrite compares exactly, so lower() would refuse names the API accepts; JpcEvent date CHECK skipped (D8, below). Each cleanup shown on seeded violations; three test fixtures built states the API can't (`endDate` before `startDate`, two "G" groups in a season) and were fixed; `check:wave-3` counts the rows; full integration 137/1,583 green
 - [ ] 3.10 DB-016 `totalScore` CHECK (recomputed first); DB-017 mime-category CHECK (unknown values removed),
       `correctIndex` CHECK (out-of-range questions fixed or deleted), `Session.recurrenceGroupId` → uuid
       (non-uuid values nulled)
@@ -273,7 +273,8 @@ snapshot updated, `schema.prisma` updated where expressible.
       from audit §2.1, kept current from here on
 - [ ] 3.13 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
 - Skipped (D8): DB-014 (CLAUDE.md: no migration may change `User.role`), DB-019 enrolment-coherence
-  CHECKs (semantics), DB-018, IDX-3 (not needed after 3.8), DB-012 parity, DB-011b
+  CHECKs (semantics), DB-019 `JpcEvent endDate >= date` (endDate is org midnight of the end day, date
+  carries the start time: a valid same-day timed event violates it; a correct rule needs org-time days), DB-018, IDX-3 (not needed after 3.8), DB-012 parity, DB-011b
 
 ### Wave 4 — backend per domain (`refactor/wave-4-backend`)
 

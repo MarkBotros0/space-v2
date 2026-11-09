@@ -28,7 +28,8 @@ const alumnus = async (label: string, role: "STUDENT" | "ADMIN" | "LEADER" = "ST
   return person;
 };
 const makeAdmin = (userId: number, seasonId: number) => db.seasonAdmin.create({ data: { userId, seasonId } });
-const makeLeader = async (userId: number, seasonId: number, name = "G") => {
+// Group names are unique per season (Group_seasonId_name_key), so each default is its own.
+const makeLeader = async (userId: number, seasonId: number, name = `G-${userId}`) => {
   const group = await db.group.create({ data: { seasonId, name } });
   await db.groupLeader.create({ data: { userId, groupId: group.id } });
   return group.id;

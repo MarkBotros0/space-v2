@@ -67,6 +67,31 @@ export const CHECKS: Check[] = [
       return { ok: true, detail: `${n} row(s)` };
     },
   },
+  {
+    step: "3.9",
+    title:
+      "rows the integrity guards clean up first (older duplicate IN_PROGRESS attempts deleted, duplicate group names suffixed, out-of-range values reset)",
+    run: async () => {
+      const [attempts, groups, seasons, sessions, questions] = await Promise.all([
+        count`SELECT count(*) AS n FROM (
+                SELECT "quizId", "studentUserId", count(*) - 1 AS extra FROM "QuizAttempt"
+                WHERE "status" = 'IN_PROGRESS' GROUP BY 1, 2 HAVING count(*) > 1) d`,
+        count`SELECT coalesce(sum(c - 1), 0) AS n FROM (
+                SELECT count(*) AS c FROM "Group" GROUP BY "seasonId", "name" HAVING count(*) > 1) d`,
+        count`SELECT count(*) AS n FROM "Season"
+              WHERE "endDate" < "startDate" OR "absenceBudgetMinutes" < 0 OR "absenceWeightMinutes" <= 0`,
+        count`SELECT count(*) AS n FROM "Session" WHERE "durationMinutes" <= 0`,
+        count`SELECT (SELECT count(*) FROM "QuizQuestion" WHERE "points" < 0)
+                   + (SELECT count(*) FROM "SessionVideoQuestion" WHERE "points" < 0) AS n`,
+      ]);
+      return {
+        ok: true,
+        detail:
+          `${attempts} quiz/student pair(s) with several IN_PROGRESS attempts, ${groups} group name(s), ` +
+          `${seasons} season(s), ${sessions} session(s), ${questions} question(s)`,
+      };
+    },
+  },
 ];
 
 async function main(): Promise<void> {

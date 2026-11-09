@@ -19,7 +19,9 @@ export const seasonOf = async (
   year = THIS_YEAR,
 ) => {
   const row = await createTestSeason({ status, year });
-  await db.season.update({ where: { id: row.id }, data: { graduatesOnPass, ...(endDate ? { endDate } : {}) } });
+  // A season ends on or after it starts (Season_endDate_check), so a given end moves the start a month before it.
+  const dates = endDate ? { startDate: new Date(endDate.getTime() - 30 * 86_400_000), endDate } : {};
+  await db.season.update({ where: { id: row.id }, data: { graduatesOnPass, ...dates } });
   return row.id;
 };
 export const enrol = (seasonId: number, studentUserId: number, status: "ACTIVE" | "WITHDRAWN" = "ACTIVE") =>

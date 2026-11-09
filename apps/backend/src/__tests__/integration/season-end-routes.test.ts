@@ -352,7 +352,10 @@ describe("GET /seasons/overdue", () => {
     const future = await createTestSeason();
     const draft = await createTestSeason({ status: "DRAFT" });
     const past = new Date(Date.now() - 86_400_000);
-    await db.season.updateMany({ where: { id: { in: [mine.id, notMine.id, draft.id] } }, data: { endDate: past } });
+    await db.season.updateMany({
+      where: { id: { in: [mine.id, notMine.id, draft.id] } },
+      data: { startDate: new Date(past.getTime() - 30 * 86_400_000), endDate: past },
+    });
     await db.seasonAdmin.create({ data: { seasonId: mine.id, userId: adminId } });
     await db.seasonAdmin.create({ data: { seasonId: draft.id, userId: adminId } });
     await db.seasonAdmin.create({ data: { seasonId: future.id, userId: adminId } });
