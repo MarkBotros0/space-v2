@@ -6,18 +6,14 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-09)
 
-- **Current phase:** Wave 1 (dead code) on `refactor/wave-1-dead-code`, from `main` @ `dc3793dc`.
-  Wave 0 is merged to `main`. Rulings D8 (fit the rules, skip what is slow or complicated) and D9
-  (losing data is acceptable) apply.
-- `main` @ `edc1fad0` (announcement polls) was merged into `refactor/wave-0-safety-net` at the
-  owner's request (`bcb79a93`); the route-inventory snapshot now includes the 4 poll routes (`cea0568e`).
-- Both databases migrated on the owner's instruction (Q28, 2026-11-09): the throwaway DB got
-  `20261109090000_announcement_polls`; staging (`STG_DATABASE_URL`, `db.prisma.io`) was already up to
-  date, so `migrate deploy` applied nothing there. Integration on the merged tree: **133 suites / 1,598
-  tests pass**. **Next: push + Wave 0 PR (needs the owner's go-ahead), then Wave 1.**
+- **Current phase:** Wave 2 (shared foundations) on `refactor/wave-2-foundations`, from `main` @ `f595762e`.
+  Waves 0 and 1 are merged to `main` locally (fast-forward, no PR, at the owner's request); **nothing is
+  pushed**. Rulings D8 (fit the rules, skip what is slow or complicated) and D9 (losing data is acceptable)
+  apply.
+- Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
+  again. Tests run only on the throwaway DB (see Working setup).
 - Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
   into the session output; the owner was asked to rotate both.
-- No code outside tests has changed. Nothing has been pushed; no PR opened yet.
 
 ## Working setup
 
@@ -359,3 +355,14 @@ a backup first is optional. A rollback restores columns, not data.**
 ## Wave summaries
 
 _(one paragraph per finished wave)_
+
+- **Wave 0** (merged to `main` @ `dc3793dc`): characterization snapshots (route inventory, schema, soft
+  delete), the audit and this plan; no app code changed.
+- **Wave 1** (merged to `main` @ `f595762e`, 22 commits): dead mobile files, kit exports, helpers and hooks
+  (DC-001…011, DC-025…030); dead backend/shared exports and 85 type aliases; 282 file-local `export`s dropped;
+  Prettier enforced at width 120 (one format commit in `.git-blame-ignore-revs`); turbo env synced, S3 driver
+  and `READ_ONLY` removed; three uncalled routes removed (`POST /auth/logout-all`, `POST /me/password`,
+  `GET /seasons/:id/engagement`); `checkStudentSeat` and `canViewNote` removed (neither a missing guard);
+  Button called by its own variant names, alias maps gone (class output identical); `pg`, `@types/pg`,
+  `expo-linear-gradient` dropped. Verified: lint, typecheck, build, unit 329 / 536 / 2,304, integration
+  133 / 1,582. No device UI sweep (no emulator here); the Button change was proven class-identical instead.
