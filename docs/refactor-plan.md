@@ -285,7 +285,20 @@ Every domain step also does, for that domain: `ApiError` conversions (BE-030), `
 `parseOr400` / `pageOf` call sites (BE-020, BE-021, BE-02A, BE-023), soft-delete fragments (DB-024),
 transactions out of handlers into `lib/<domain>/` (BE-035), files kept under 300 lines.
 
-- [ ] 4.1 Announcements & polls (reference domain first, to settle the pattern): BE-090, BE-091
+**Pattern (settled in 4.1; each domain step follows it, one commit per concern):**
+1. Pure logic with no HTTP moves `routes/<domain>/` → `lib/<domain>/` unchanged.
+2. Reads: the shared `select` and a named loader (`findReadable<Thing>(user, id)`) live in
+   `lib/queries/<domain>.ts`; serializers stay in routes.
+3. Services: every `$transaction` moves to `lib/<domain>/<service>.ts`; a refusal that was a returned
+   outcome becomes a thrown `ApiError` with the same code, message, status and extra (only where nothing
+   was written before it, so the rollback changes nothing). Audit, notifications and the response stay
+   in the handler, after the commit.
+4. Call sites: `idParam` / `notFound` / `parseOr400` / `pageOf` where the message is the helper's exact
+   string; `deletedAt: null` → the `lib/db/live.ts` fragments. Domain refusals (`season_finished`, …)
+   stay inline `apiError` calls.
+Each commit: the domain's integration suites + backend unit tests + typecheck + lint.
+
+- [x] 4.1 Announcements & polls (reference domain first, to settle the pattern): BE-090, BE-091 — 4 commits: planner → `lib/announcements/poll-edit-plan.ts` (BE-091); `findReadableAnnouncement` + `ANNOUNCEMENT_SELECT` in `lib/queries`; services `posts`, `poll-vote`, `poll-close`, `poll-write` in `lib/announcements/` (BE-090, no `$transaction` left in routes); helper call sites + live fragments. Announcement + notification suites 16/152, backend unit 569
 - [ ] 4.2 Auth & me: BE-010 (`routes/me/` split), DB-020 (`tokenHash` via `@map`), DB-010 stop writing
       `StudentProfile.deletedAt`, DB-006 stop writing `userAgent`, DB-007 + DB-006 purge (tokens, stale devices, old notifications; internal
       cron route + test), DB-004 single exact-match email lookup (ILIKE fallback and raw `lower()` removed)
