@@ -202,9 +202,9 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 
 ### Wave 2 — shared foundations (`refactor/wave-2-foundations`)
 
-- [ ] 2.1 ESLint size rules in **warning** mode in `packages/config` (built-in rules, no deps):
+- [x] 2.1 ESLint size rules in **warning** mode in `packages/config` (built-in rules, no deps):
       `max-lines` 400 (all lines), `max-lines-per-function` 50 (target 40), `max-depth` 3, `complexity` 15;
-      exclude `src/generated`, `prisma/migrations`, `src/docs` data. Record the warning count here
+      exclude `src/generated`, `prisma/migrations`, `src/docs` data. Record the warning count here — warnings, no errors (pnpm lint passes): max-lines 17 (9 backend: 4 tests + 5 OpenAPI data; 8 mobile tests), max-lines-per-function 237 (backend 59, mobile 178), complexity 56 (14 / 41 / shared 1), max-depth 2 (backend). Per-function rules skip __tests__ and src/docs; all four skip src/generated and prisma/migrations
 - [ ] 2.2 Split every file over 400 lines, so `max-lines` warns on nothing. After the Prettier format (1.15)
       that is 17, none of them app source: 12 tests (`imports-students-commit-routes` 636, `session-detail` 537,
       `season-people` 508, `quiz-runner` 492, `season-lock-routes` 465, `student-today` 462, `dashboard-routes` 460,
