@@ -14,6 +14,7 @@
  */
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
+import { databaseHostType } from "./lib/db-host";
 
 interface PersonRow {
   id: number;
@@ -81,18 +82,6 @@ export async function applyConversion(): Promise<{ converted: number }> {
     },
     { timeout: 120_000 },
   );
-}
-
-/**
- * Direct or pooled, never the host or URL. A malformed URL answers "unknown":
- * letting `new URL` throw would print the input, credentials included.
- */
-export function databaseHostType(databaseUrl: string): "direct" | "pooled" | "unknown" {
-  try {
-    return /pooled|pooler/.test(new URL(databaseUrl).hostname) ? "pooled" : "direct";
-  } catch {
-    return "unknown";
-  }
 }
 
 async function main(): Promise<void> {

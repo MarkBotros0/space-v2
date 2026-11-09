@@ -13,6 +13,7 @@ import { createInterface, type Interface } from "node:readline";
 
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
+import { databaseHost } from "./lib/db-host";
 import { createSuperAdmin } from "./create-super-admin/create";
 
 type MutableInterface = Interface & { _writeToOutput?: (s: string) => void };
@@ -40,7 +41,7 @@ async function main(): Promise<void> {
   }
   const rl: MutableInterface = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const host = new URL(config.databaseUrl).hostname;
+    const host = databaseHost(config.databaseUrl);
     console.log(`Database: ${host}`);
 
     const email = await ask(rl, "Email: ");

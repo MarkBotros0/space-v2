@@ -6,7 +6,8 @@ jest.mock("../db/client", () => ({
   db: { $transaction: (fn: (tx: typeof mockTx) => unknown) => fn(mockTx) },
 }));
 
-import { applyConversion, databaseHostType, planConversion } from "../../scripts/convert-stored-roles";
+import { applyConversion, planConversion } from "../../scripts/convert-stored-roles";
+import { databaseHostType } from "../../scripts/lib/db-host";
 
 const person = (id: number, role: string, graduationYear: number | null, deletedAt: Date | null = null) => ({
   id,

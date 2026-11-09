@@ -9,6 +9,7 @@
  */
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
+import { databaseHost } from "./lib/db-host";
 import { printReviewLists } from "./community-preflight-review";
 import { findCommunityWideNotAlone, type CommunityWideNotAlone } from "./community-preflight-wide";
 
@@ -230,7 +231,7 @@ export async function backfillResults(
 
 async function main(): Promise<void> {
   const apply = process.argv.includes("--apply");
-  console.log(`Database host: ${new URL(config.databaseUrl).hostname}`);
+  console.log(`Database host: ${databaseHost(config.databaseUrl)}`);
 
   if (!apply) {
     await readOnlyReport(console.log);

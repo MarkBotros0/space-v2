@@ -19,6 +19,7 @@ import { writeFileSync } from "node:fs";
 
 import { db } from "../src/db/client";
 import { config } from "../src/lib/config";
+import { databaseHost } from "./lib/db-host";
 import { seedAnnouncementScenario } from "./seed-sweep/announcements";
 import { seedActivity } from "./seed-sweep/activity";
 import { seedCommunityScenario } from "./seed-sweep/community";
@@ -29,7 +30,7 @@ import { seedAdminScenario, seedLeaderScenario, seedStudentScenario } from "./se
 export { SWEEP_PASSWORD } from "./seed-sweep/shared";
 
 function assertLocalDatabase(): void {
-  const host = new URL(config.databaseUrl).hostname;
+  const host = databaseHost(config.databaseUrl);
   if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(host)) {
     throw new Error(
       `seed:sweep refuses to run against "${host}": it only seeds a local database, ` +
