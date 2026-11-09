@@ -6,10 +6,10 @@ import { updateProfileRequestSchema } from "../../../../../packages/shared/src/i
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { invalidateSessions } from "../../lib/auth/session-validity";
-import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
+
 import { dateFromDay, dayFromDate } from "../../lib/org-time";
-import { isLastActiveSuper, lockActiveSuperIds } from "../../lib/super-guard";
+
+import { deleteOwnAccount } from "../../lib/me/account";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
 
 export const meAccountRouter = Router();
@@ -118,28 +118,7 @@ meAccountRouter.delete("/", requireAuth, async (req, res) => {
   const user = requireUser(req);
   const deletedAt = new Date();
 
-  const outcome = await db.$transaction(async (tx) => {
-    const row = await tx.user.findUnique({
-      where: { id: user.userId },
-      select: { role: true, deletedAt: true },
-    });
-    if (!row || row.deletedAt) return "gone" as const;
-    if (row.role === "SUPER") {
-      const activeSuperIds = await lockActiveSuperIds(tx);
-      if (isLastActiveSuper(activeSuperIds, user.userId)) return "last_super" as const;
-    }
-    await tx.user.update({ where: { id: user.userId }, data: { deletedAt } });
-    await tx.studentProfile.updateMany({ where: { userId: user.userId }, data: { deletedAt } });
-    await tx.deviceToken.deleteMany({ where: { userId: user.userId } });
-    await revokeAllRefreshTokensForUser(tx, user.userId);
-    await invalidateSessions(tx, user.userId);
-    return "ok" as const;
-  });
-
-  if (outcome === "gone") return apiError(res, "not_found", "Account not found.", 404);
-  if (outcome === "last_super") {
-    return apiError(res, "last_super", "You're the only active SUPER account, so it can't be deleted.", 409);
-  }
+  await deleteOwnAccount(user.userId, deletedAt);
   auditLog("user.self_delete", user.userId, user.userId);
   return apiOk(res, { deletedAt: deletedAt.toISOString() });
 });

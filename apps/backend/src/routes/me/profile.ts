@@ -2,11 +2,11 @@ import { Router } from "express";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import { OWN_PROFILE_FIELDS, updateOwnProfileInputSchema } from "../../../../../packages/shared/src/index";
 
-import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
-import { dateFromDay } from "../../lib/org-time";
+
 import { loadMyProfile } from "../../lib/queries/me";
 import { isAlumnusNotStudying } from "../../lib/rbac";
+import { saveOwnProfile } from "../../lib/me/account";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
 
 export const meProfileRouter = Router();
@@ -58,26 +58,7 @@ meProfileRouter.patch("/profile", requireAuth, async (req, res) => {
   }
   if (!(await loadMyProfile(user.userId))) return apiError(res, "not_found", "Profile not found.", 404);
 
-  const body = parsed.data;
-  // Prisma reads `undefined` as "leave the column alone" — exactly PATCH.
-  const data = {
-    university: body.university,
-    faculty: body.faculty,
-    universityGraduationYear: body.universityGraduationYear,
-  };
-  await db.$transaction(async (tx) => {
-    await tx.user.update({
-      where: { id: user.userId },
-      data: { phone: body.phone, dateOfBirth: dateFromDay(body.dateOfBirth) },
-    });
-    // Upsert, as Plan 7 does: v1's unconditional update threw for a STUDENT
-    // with no profile row (spec 06 §2).
-    await tx.studentProfile.upsert({
-      where: { userId: user.userId },
-      create: { userId: user.userId, ...data },
-      update: data,
-    });
-  });
+  await saveOwnProfile(user.userId, parsed.data);
 
   const profile = await loadMyProfile(user.userId);
   if (!profile) return apiError(res, "not_found", "Profile not found.", 404);
