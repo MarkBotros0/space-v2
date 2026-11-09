@@ -2,9 +2,9 @@ import { db } from "../../src/db/client";
 import type { SweepPeople } from "./people";
 
 /**
- * Two announcements for the Announcements sweep flows (super-scenarios/s56,
- * student-scenarios/s57): one to the community, one to the current season from
- * its admin.
+ * Three announcements for the Announcements sweep flows (super-scenarios/s56,
+ * student-scenarios/s57): one to the community, two to the current season from
+ * its admin (one with a poll).
  *
  * A post counts as unread only if it is newer than the reader's account and
  * not their own (`announcementUnreadFilter`). So both are dated a second ahead, after
@@ -16,7 +16,7 @@ import type { SweepPeople } from "./people";
  * Bodies start "[Sweep]" to say they are sweep data. No notifications are written: the flows only
  * open the feed, a post and the form.
  */
-export async function seedAnnouncementScenario({ user, admin, season }: SweepPeople): Promise<void> {
+export async function seedAnnouncementScenario({ user, admin, season, classmate, leader }: SweepPeople): Promise<void> {
   const announcer = await user("announcer", "Nour Announcer", "SUPER");
   // A second past the newest user, so the strict `createdAt > account` test cannot tie on a millisecond.
   const createdAt = new Date(Date.now() + 1000);
@@ -35,6 +35,34 @@ export async function seedAnnouncementScenario({ user, admin, season }: SweepPeo
         authorId: admin.id,
         createdAt,
       },
+    ],
+  });
+
+  // A third post carries a poll: open, three options, several answers. The sweep student
+  // (Samir) has not voted, so the poll opens on its choices; two other seeded people have,
+  // so the counts are not all zero once he does (the flows never vote).
+  const pollPost = await db.announcement.create({
+    data: {
+      audience: "SEASON",
+      seasonId: season.id,
+      body: "[Sweep] Which evening suits the retreat?",
+      authorId: admin.id,
+      createdAt,
+    },
+  });
+  const poll = await db.announcementPoll.create({
+    data: { announcementId: pollPost.id, allowsMultiple: true },
+  });
+  const labels = ["Thursday", "Friday", "Saturday"];
+  const [thursday, friday] = await Promise.all(
+    labels.map((label, position) => db.announcementPollOption.create({ data: { pollId: poll.id, label, position } })),
+  );
+  if (!thursday || !friday) throw new Error("seed:sweep: the poll's options were not created.");
+  await db.announcementPollVote.createMany({
+    data: [
+      { pollId: poll.id, optionId: thursday.id, userId: classmate.id },
+      { pollId: poll.id, optionId: friday.id, userId: classmate.id },
+      { pollId: poll.id, optionId: friday.id, userId: leader.id },
     ],
   });
 

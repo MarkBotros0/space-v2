@@ -62,3 +62,15 @@ it("shows ListRow footer chips and the disabled save bar (final review M8)", () 
   expect(bar.getByText("Nothing to save yet.")).toBeTruthy();
   expect(bar.getByRole("button", { name: "Save changes" })).toBeDisabled();
 });
+
+it("shows the poll sheets with fixed data: who voted, the edit lines, and New votes came in", async () => {
+  mockSweep = true;
+  renderWithProviders(<DesignCatalogue />);
+  fireEvent.press(screen.getByTestId("catalogue-open-voters"));
+  expect(await screen.findByText("Former member")).toBeTruthy();
+  expect(screen.getByText("Karim Fawzy")).toBeTruthy();
+  fireEvent.press(screen.getByTestId("catalogue-open-edit-warning"));
+  expect(await screen.findByText("Removing ‘Saturday’ deletes its 1 vote")).toBeTruthy();
+  fireEvent.press(screen.getByTestId("catalogue-open-edit-new-votes"));
+  expect(await screen.findByText("New votes came in: this change now deletes 4 votes.")).toBeTruthy();
+});

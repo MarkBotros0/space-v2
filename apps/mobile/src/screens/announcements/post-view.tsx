@@ -13,6 +13,7 @@ import { AudienceChip } from "./audience-chip";
 import { DeletePostSheet } from "./delete-post-sheet";
 import { LinkifiedText } from "./linkified-text";
 import { announcementMeta } from "./meta";
+import { PollCard } from "./poll/poll-card";
 
 iconWithClassName(Pencil, Trash2);
 
@@ -38,6 +39,7 @@ export function PostView({ post }: { post: AnnouncementDetail }) {
         {announcementMeta(post, true)}
       </Text>
       <LinkifiedText text={post.body} />
+      {post.poll ? <PollCard postId={id} poll={post.poll} /> : null}
       {post.canEdit || post.canDelete ? (
         <View className="flex-row flex-wrap gap-2">
           {post.canEdit ? (

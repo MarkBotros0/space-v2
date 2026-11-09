@@ -15,7 +15,7 @@ jest.mock("expo-router", () => ({
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { renderWithProviders } from "./helpers/render";
-import { detailItem, ok } from "./helpers/announcements";
+import { detailItem, ok, pollItem } from "./helpers/announcements";
 
 import AnnouncementScreen from "../../app/(app)/announcements/[id]/index";
 
@@ -36,6 +36,19 @@ describe("AnnouncementScreen", () => {
     expect(await screen.findByText("Spring 2026")).toBeTruthy();
     expect(screen.getByText(/^Sam Author · 3 Nov 2026, \d{2}:\d{2}$/)).toBeTruthy();
     expect(screen.getByRole("link")).toBeTruthy();
+  });
+
+  it("renders the poll card under the message only when the post has a poll", async () => {
+    get.mockReturnValue(ok(detailItem(7)));
+    const first = renderWithProviders(<AnnouncementScreen />);
+    await screen.findByText(/^Sam Author/);
+    expect(screen.queryByTestId("poll-card")).toBeNull();
+    first.unmount();
+
+    get.mockReturnValue(ok(detailItem(7, { poll: pollItem() })));
+    renderWithProviders(<AnnouncementScreen />);
+    expect(await screen.findByTestId("poll-card")).toBeTruthy();
+    expect(screen.getByText("Poll · Pick one")).toBeTruthy();
   });
 
   it("marks an unread post read once, and a read post not at all", async () => {

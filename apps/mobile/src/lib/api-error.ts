@@ -1,5 +1,5 @@
 import axios from "axios";
-import { apiErrorBodySchema } from "@space/shared";
+import { apiErrorBodySchema, pollVotesLostSchema } from "@space/shared";
 
 const REFRESH_INDETERMINATE = Symbol("refresh-indeterminate");
 
@@ -35,4 +35,12 @@ export function apiErrorCode(err: unknown): string | null {
 /** The API's `404 not_found` — "this does not exist for you", which no retry can change. */
 export function isNotFoundError(err: unknown): boolean {
   return axios.isAxiosError(err) && err.response?.status === 404 && apiErrorCode(err) === "not_found";
+}
+
+/** How many votes an edit would erase, read off a 409 `poll_votes_lost` (its `votes` field); null for any other error. */
+export function pollVotesLost(err: unknown): number | null {
+  if (!axios.isAxiosError(err) || err.response?.status !== 409) return null;
+  if (apiErrorCode(err) !== "poll_votes_lost") return null;
+  const parsed = pollVotesLostSchema.safeParse(err.response?.data);
+  return parsed.success ? parsed.data.votes : null;
 }

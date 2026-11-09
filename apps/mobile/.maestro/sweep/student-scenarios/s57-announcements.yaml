@@ -1,5 +1,6 @@
 # UI sweep s57 — Announcements as a student: Home's card, More's row, the feed (no New post button
 # for a student) and a post. Needs the seeded posts (apps/backend/scripts/seed-sweep/announcements.ts).
+# Also opens the poll post and shoots it before voting; Vote is never tapped.
 # Read-only: nothing is saved. Opening a post marks it read, so the Home shot comes first.
 appId: com.jpc.space
 ---
@@ -59,3 +60,20 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s57-05-post
+# The poll post: back to the feed, open it, shoot the choices. No Vote tap.
+- openLink: spacev2://announcements
+- extendedWaitUntil:
+    visible: 'Which evening suits the retreat.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Which evening suits the retreat.*'
+- extendedWaitUntil:
+    visible: 'Poll · Pick any'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s57-06-poll

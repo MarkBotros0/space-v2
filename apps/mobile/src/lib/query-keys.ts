@@ -249,6 +249,7 @@ export const queryKeys = {
     // Nullable per this file's header convention — no -1 sentinel.
     detail: (id: number | null) => [...queryKeys.announcements.all, "detail", { id }] as const,
     targets: () => [...queryKeys.announcements.all, "targets"] as const,
+    voters: (id: number) => [...queryKeys.announcements.all, "voters", id] as const,
   },
   events: {
     all: ["events"] as const,

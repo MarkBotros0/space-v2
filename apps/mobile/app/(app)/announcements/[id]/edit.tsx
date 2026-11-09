@@ -4,7 +4,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState } from "../../../../src/design/ui";
 import { useAnnouncement, useUpdateAnnouncement } from "../../../../src/hooks/use-announcements";
-import { apiErrorMessage } from "../../../../src/lib/api-error";
+import { apiErrorMessage, pollVotesLost } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { PostForm } from "../../../../src/screens/announcements/post-form";
 
@@ -16,15 +16,26 @@ export default function EditAnnouncementScreen() {
   const post = useAnnouncement(id);
   const update = useUpdateAnnouncement(id ?? 0);
 
+  const lost = update.isError ? pollVotesLost(update.error) : null;
+
   const cannotEdit = (
     <Screen title="Edit announcement">
       <EmptyState title="This announcement can't be edited" />
     </Screen>
   );
   if (id === null) return cannotEdit;
-  if (post.isPending) return <Screen title="Edit announcement"><RouteSkeleton /></Screen>;
+  if (post.isPending)
+    return (
+      <Screen title="Edit announcement">
+        <RouteSkeleton />
+      </Screen>
+    );
   if (post.isError) {
-    return <Screen title="Edit announcement"><RouteError onRetry={() => void post.refetch()} /></Screen>;
+    return (
+      <Screen title="Edit announcement">
+        <RouteError onRetry={() => void post.refetch()} />
+      </Screen>
+    );
   }
   const data = post.data;
   if ("removed" in data || !data.canEdit) return cannotEdit;
@@ -35,10 +46,27 @@ export default function EditAnnouncementScreen() {
       screenTitle="Edit announcement"
       saveLabel="Save"
       toLabel={data.audience === "SEASON" ? (data.seasonTitle ?? "A season") : "Everyone"}
-      initial={{ body: data.body }}
+      initial={{
+        body: data.body,
+        poll: data.poll
+          ? {
+              allowsMultiple: data.poll.allowsMultiple,
+              options: data.poll.options.map((o) => ({ id: o.id, label: o.label })),
+            }
+          : null,
+      }}
+      currentPoll={data.poll}
+      serverLostVotes={lost}
+      onDismissVoteLoss={() => {
+        update.reset();
+      }}
       pending={update.isPending}
-      error={update.isError ? apiErrorMessage(update.error, "Couldn't save. Try again.") : null}
-      onSubmit={(values) => update.mutate(values, { onSuccess: () => router.back() })}
+      error={
+        update.isError && lost === null
+          ? apiErrorMessage(update.error, "Couldn't save. Try again.")
+          : null
+      }
+      onSubmit={(request) => update.mutate(request, { onSuccess: () => router.back() })}
     />
   );
 }
