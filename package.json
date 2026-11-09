@@ -14,8 +14,9 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test:unit test:integration",
     "test:unit": "turbo run test:unit",
-    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
-    "clean": "turbo run clean"
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json}\"",
+    "clean": "turbo run clean",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json}\""
   },
   "devDependencies": {
     "prettier": "^3.2.5",

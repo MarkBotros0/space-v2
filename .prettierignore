@@ -1,0 +1,14 @@
+# Generated or vendored output: formatting it would fight the generator.
+**/node_modules/
+**/dist/
+**/coverage/
+**/.turbo/
+**/.expo/
+**/src/generated/
+apps/mobile/src/design/theme/tailwind-theme.js
+apps/mobile/global.css
+pnpm-lock.yaml
+tools/ui-reference/node_modules/
+
+# Markdown is hand-written prose and tables; it is not formatted.
+*.md
