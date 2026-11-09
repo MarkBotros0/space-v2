@@ -7,6 +7,10 @@
 **/src/generated/
 apps/mobile/src/design/theme/tailwind-theme.js
 apps/mobile/global.css
+# Ignored by apps/mobile/.gitignore, which Prettier does not read: Expo writes them.
+apps/mobile/expo-env.d.ts
+apps/mobile/android/
+apps/mobile/ios/
 pnpm-lock.yaml
 tools/ui-reference/node_modules/
 

@@ -80,6 +80,12 @@ pnpm dev / build / lint / typecheck / test / test:unit
 pnpm --filter @space/backend db:generate
 ```
 
+**Formatting is Prettier, enforced.** `pnpm lint` runs `pnpm format:check` (ts, tsx, js, mjs,
+cjs, json) before ESLint, so unformatted code fails lint and CI. Run `pnpm format` before
+committing. The one config is `packages/config/prettier` (printWidth 120), loaded by the root
+`prettier.config.js`; `.prettierignore` skips generated output and Markdown. The repo-wide
+format commit is in `.git-blame-ignore-revs`.
+
 `test` runs the Turbo tasks `test:unit` then `test:integration` (there is no
 `test` Turbo task itself — it's a root `package.json` script). `test:integration`
 is uncached (`cache: false` in `turbo.json`) and hits the database `.env` names

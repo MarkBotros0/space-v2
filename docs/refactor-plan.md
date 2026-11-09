@@ -122,6 +122,10 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
   rewrites a subtle rule across many call sites. Skipped findings stay in the audit as known gaps
   and are listed under "Skipped (D8)" at the end of each wave; nothing skipped is half-done.
 
+- D11. **Prettier printWidth is 120, not the configured-but-never-applied 100.** Measured on the unformatted
+  tree (~163k lines): width 100 → ~179k lines and 33 files over 400 (one of them app source, `routes/me.ts`);
+  120 → ~167k and 17 (tests and OpenAPI data only); 140 → ~161k and 12. 120 matches how the code is written
+  and keeps every source file under the cap; Markdown is not formatted (it would realign hand-written tables).
 - D9. **Owner ruling (2026-11-09): losing data is acceptable** — "I am still in testing phase, I didn't
   release". So a Wave 3 constraint may clean up or delete the rows that would violate it, in the same
   migration, instead of waiting for a real-data check; no archive is needed before Wave 6 (a backup is
@@ -188,14 +192,24 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
       DC-059, DC-063…066, FE-062. No action by design: BE-051, BE-053, BE-074, BE-075, BE-077, BE-078,
       FE-033, FE-053, FE-054, DB-011a, DB-029a. Covered under their duplicate IDs: BE-080
       (= DC-020/022/023), FE-070 (= DC-001/003/011/025…030)
-- [ ] 1.15 Full verification + UI sweep spot-check (button variants) + wave summary + PR → **STOP**
+- [x] 1.15 Prettier, enforced (owner request 2026-11-09; done ahead of 1.7): one config
+      (`prettier.config.js` → `packages/config/prettier`, the duplicate `.prettierrc` removed), `.prettierignore`
+      (generated output, Markdown), printWidth **120** (D11), one formatting-only commit listed in
+      `.git-blame-ignore-revs`, and `pnpm lint` runs `prettier --check` first — 5f883938 config, 750d3714 width 120, dcfd39e6 format (874 files; lint, typecheck, unit 3,185, build, integration 1,598 all pass), then lint enforcement + blame-ignore + CLAUDE.md
+- [ ] 1.16 Full verification + UI sweep spot-check (button variants) + wave summary + PR → **STOP**
 
 ### Wave 2 — shared foundations (`refactor/wave-2-foundations`)
 
 - [ ] 2.1 ESLint size rules in **warning** mode in `packages/config` (built-in rules, no deps):
       `max-lines` 400 (all lines), `max-lines-per-function` 50 (target 40), `max-depth` 3, `complexity` 15;
       exclude `src/generated`, `prisma/migrations`, `src/docs` data. Record the warning count here
-- [ ] 2.2 Split the 4 test files over 400 lines (audit §1.1), so `max-lines` warns on nothing
+- [ ] 2.2 Split every file over 400 lines, so `max-lines` warns on nothing. After the Prettier format (1.15)
+      that is 17, none of them app source: 12 tests (`imports-students-commit-routes` 636, `session-detail` 537,
+      `season-people` 508, `quiz-runner` 492, `season-lock-routes` 465, `student-today` 462, `dashboard-routes` 460,
+      `people-candidates` 457, `quiz-runner-saves` 428, `student-detail` 419, `students-list` 413,
+      `assignment-detail` 407) and 5 OpenAPI data files under `apps/backend/src/docs/` (`paths/me` 451,
+      `components/people` 451, `paths/students` 441, `paths/notes-notifications` 436, `paths/seasons` 402),
+      split by path group / schema group
 - [ ] 2.3 Shared season status: BE-022 / SH-002 / FE-014 / BE-043 — all inline copies replaced (D5)
 - [ ] 2.4 Shared audience and admin predicates: SH-003 / FE-016, FE-015 / SH-004 — all sites
 - [ ] 2.5 Shared types: FE-040, FE-041, FE-042 (`startSeasonResponseSchema`), SH-005 — all sites

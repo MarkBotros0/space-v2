@@ -10,7 +10,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "turbo run lint",
+    "lint": "pnpm format:check && turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test:unit test:integration",
     "test:unit": "turbo run test:unit",
