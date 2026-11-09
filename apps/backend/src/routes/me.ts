@@ -10,7 +10,7 @@ import {
 } from "../../../../packages/shared/src/index";
 
 import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
+import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { auditLog } from "../lib/audit";
 import { invalidateSessions } from "../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
@@ -24,7 +24,6 @@ import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { meDevicesRouter } from "./me-devices";
 import { meSeasonReadsRouter } from "./me-season-reads";
-import { forbidden } from "./respond";
 
 export const meRouter = Router();
 meRouter.use(meDevicesRouter);

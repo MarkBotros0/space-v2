@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
+import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import { canEditNote, canViewStudent, canWriteNote, staffRosterWhere } from "../lib/permissions";
 import {
@@ -21,7 +21,6 @@ import {
   plainTextToHtml,
   updateNoteRequestSchema,
 } from "../../../../packages/shared/src/index";
-import { forbidden } from "./respond";
 
 /**
  * Notes are mounted as three routers from one file rather than as routes added

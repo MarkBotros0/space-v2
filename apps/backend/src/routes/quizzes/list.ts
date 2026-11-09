@@ -1,13 +1,12 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { canAccessSeason } from "../../lib/permissions";
 import { studentAttemptStatus } from "../../lib/quiz-results";
 import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
 import { quizListQuerySchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /**
  * The student's own results — v1's listQuizResultsForStudent, ported.

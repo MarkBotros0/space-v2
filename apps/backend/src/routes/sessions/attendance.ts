@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { AttendanceStatus } from "../../generated/prisma/enums";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { flagLowAttendance } from "../../lib/attendance-notifications";
 import { bestEffort } from "../../lib/best-effort";
 import { parseId } from "../../lib/parse-id";
@@ -10,7 +10,6 @@ import { attendanceScopeFor } from "../../lib/permissions";
 import { loadAttendanceRoster } from "../../lib/queries/sessions";
 import { requireUser } from "../../middleware/require-auth";
 import { saveAttendanceRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 export async function getAttendance(req: Request, res: Response) {
   const user = requireUser(req);

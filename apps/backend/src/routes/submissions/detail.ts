@@ -1,13 +1,12 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { config } from "../../lib/config";
 import { canReviewSubmission, canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
 import { htmlToPlainText } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 async function loadSubmissionForApi(publicId: string) {
   return db.submission.findUnique({

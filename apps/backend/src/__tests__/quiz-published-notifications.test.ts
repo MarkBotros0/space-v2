@@ -22,7 +22,7 @@ import type { Request, Response } from "express";
 
 import type { SessionUser } from "../lib/auth/tokens";
 import { parseNotificationLink } from "../lib/notification-target";
-import { notifyQuizPublished } from "../routes/quizzes/notify";
+import { notifyQuizPublished } from "../lib/quizzes/notify";
 import { publishQuiz } from "../routes/quizzes/questions";
 
 const admin: SessionUser = {

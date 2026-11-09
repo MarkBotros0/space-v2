@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import type { SessionUser } from "../../lib/auth/tokens";
 import { parseId } from "../../lib/parse-id";
 import { canViewStudent } from "../../lib/permissions";
@@ -15,7 +15,6 @@ import {
 import { isSuper } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { studentListQuerySchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /**
  * One endpoint, three list surfaces: ?status=active|alumni|dropped. This is

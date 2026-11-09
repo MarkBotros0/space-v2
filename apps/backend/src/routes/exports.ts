@@ -11,7 +11,7 @@ import {
   reportScopeQuerySchema,
 } from "../../../../packages/shared/src/index";
 
-import { apiError, apiOk } from "../lib/api-response";
+import { apiError, apiOk, forbidden } from "../lib/api-response";
 import { logExport } from "../lib/exports/audit";
 import { buildEngagementWorkbook } from "../lib/exports/engagement-workbook";
 import { buildSeasonWorkbook, summariseSeasonWorkbook } from "../lib/exports/season-workbook";
@@ -21,7 +21,6 @@ import { canExportSeasonWorkbook, reportScopeFor } from "../lib/permissions";
 import { listEngagementRows, resolveReportScope } from "../lib/queries/reports";
 import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { forbidden } from "./respond";
 
 export const reportExportsRouter = Router();
 export const seasonExportsRouter = Router();

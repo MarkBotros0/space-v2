@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
 import { addWeeksInOrgTime, formatInOrgTime, orgDayKey, orgWallTime } from "../../lib/org-time";
@@ -16,7 +16,6 @@ import {
   recurrenceScopeSchema,
   updateSessionRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 import { resolveSeriesTargets, sessionStartFrom, type SeriesAnchor } from "./series";
 
 export async function createSession(req: Request, res: Response) {

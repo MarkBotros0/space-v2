@@ -2,12 +2,11 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { submissionQueueScopeFor } from "../../lib/permissions";
 import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
 import { submissionQueueQuerySchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 import { countQueue } from "./queue-counts";
 
 /**

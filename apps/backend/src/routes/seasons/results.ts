@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { loadSeasonResults } from "../../lib/queries/season-results";
@@ -10,7 +10,6 @@ import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import { updateSeasonResultRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 import { isSeasonFinished } from "../../lib/seasons/status";
 
 /** Each finished student's pass result for a season. SUPER only. */

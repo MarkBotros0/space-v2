@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import {
   assignStudentsToGroups,
@@ -12,7 +12,6 @@ import {
 import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { groupAssignmentsRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /** Season-admin only (spec 05 §4 — v1's roster page required canEditSeason). */
 async function requireLiveSeasonAdmin(req: Request, res: Response): Promise<number | null> {

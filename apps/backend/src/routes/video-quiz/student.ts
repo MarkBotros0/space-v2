@@ -1,14 +1,13 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiError, apiOk } from "../../lib/api-response";
+import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { hasActiveEnrollment } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { loadStudentVideoQuiz } from "../../lib/queries/video-quiz";
 import { requireUser } from "../../middleware/require-auth";
 import { submitVideoAnswerRequestSchema, videoProgressRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /**
  * The student gate, in one place: STUDENT role, session exists, ACTIVE

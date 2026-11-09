@@ -3,7 +3,7 @@ import type { PeopleCandidate } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { findPreviousSeasonId, listSourceSeasons } from "../../lib/queries/previous-season";
 import { attendancePctForEnrollments } from "../../lib/queries/students/history";
@@ -17,7 +17,6 @@ import {
   type HistoryEntry,
 } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
-import { forbidden } from "../respond";
 
 /**
  * Who a season's people picker lists: non-alumni student accounts, or in a

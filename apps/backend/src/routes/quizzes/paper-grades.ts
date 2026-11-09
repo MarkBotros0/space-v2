@@ -1,14 +1,13 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canGradeQuiz } from "../../lib/permissions";
 import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
 import { saveQuizGradesRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
-import { notifyQuizGraded } from "./notify";
+import { notifyQuizGraded } from "../../lib/quizzes/notify";
 
 /** Build the sheet for a scope. Shared by the GET and by the POST's response. */
 async function buildGradeSheet(quizId: number, studentIds: number[]) {

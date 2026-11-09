@@ -1,11 +1,10 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canAccessSeason, canGradeQuiz, canManageQuiz, hasActiveEnrollment } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
-import { forbidden } from "../respond";
 import { canReleaseQuizResults } from "./release";
 import { loadStudentQuizDetail } from "./student-detail";
 

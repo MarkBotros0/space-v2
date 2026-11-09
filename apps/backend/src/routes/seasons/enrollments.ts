@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
@@ -13,7 +13,6 @@ import { refusalStatus } from "../../lib/api-error";
 import { requireUser } from "../../middleware/require-auth";
 // Value import: relative path is mandatory here (CLAUDE.md's rootDir emit trap).
 import { addSeasonEnrollmentsRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 import { isSeasonFinished } from "../../lib/seasons/status";
 
 export const SEASON_NOT_FOUND: SeatRefusal = { code: "not_found", message: "Season not found." };

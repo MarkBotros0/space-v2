@@ -2,7 +2,7 @@ import type { ApiErrorCode } from "@space/shared";
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { seasonPeopleIds } from "../../lib/auth/season-people";
 import { markSessionsStale } from "../../lib/auth/session-validity";
@@ -13,7 +13,6 @@ import { isAdminOfSeason } from "../../lib/rbac";
 import { lockPeople, lockSeason } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import { endSeasonRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /** What blocks the season from ending, and who it would end for. */
 export async function getSeasonEndCheck(req: Request, res: Response) {

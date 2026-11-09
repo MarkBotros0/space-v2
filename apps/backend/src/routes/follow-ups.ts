@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
+import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { config } from "../lib/config";
 import {
   createFollowUp,
@@ -14,7 +14,6 @@ import { parseId } from "../lib/parse-id";
 import { isUniqueViolation as isPrismaUniqueViolation } from "../lib/prisma-errors";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { createFollowUpRequestSchema } from "../../../../packages/shared/src/index";
-import { forbidden } from "./respond";
 
 /**
  * A mentor's follow-ups (owner, 2026-11-07). Three routers on three prefixes,

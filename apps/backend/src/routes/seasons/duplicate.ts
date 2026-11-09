@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { newPublicId } from "../../lib/public-id";
@@ -12,7 +12,6 @@ import {
   isValidSeasonCode,
   slugifySeasonCode,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 import { codeTaken } from "./crud";
 
 export async function duplicateSeason(req: Request, res: Response) {

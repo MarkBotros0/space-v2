@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 
 import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
+import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { markSessionsStale } from "../lib/auth/session-validity";
 import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
@@ -19,7 +19,6 @@ import { lockPeople, lockSeason } from "../lib/roles";
 import { refusalStatus } from "../lib/api-error";
 import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { forbidden } from "./respond";
 
 export const groupsRouter = Router();
 

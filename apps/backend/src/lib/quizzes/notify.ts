@@ -1,6 +1,6 @@
 import { db } from "../../db/client";
-import { bestEffort } from "../../lib/best-effort";
-import { createNotificationsBulk } from "../../lib/notifications";
+import { bestEffort } from "../best-effort";
+import { createNotificationsBulk } from "../notifications";
 
 /**
  * v1's exact link for every QUIZ_GRADED row — `quiz-actions.ts:167,483,554`

@@ -8,13 +8,12 @@ import { Router } from "express";
 // Four levels up from src/routes/.
 import { engagementStudentsQuerySchema, reportScopeQuerySchema } from "../../../../packages/shared/src/index";
 
-import { apiError, apiOk } from "../lib/api-response";
+import { apiError, apiOk, forbidden } from "../lib/api-response";
 import { reportScopeFor } from "../lib/permissions";
 import { buildOrganisationReport } from "../lib/queries/organisation-report";
 import { buildEngagementSummary, listEngagementRows, resolveReportScope } from "../lib/queries/reports";
 import { isSuper } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { forbidden } from "./respond";
 
 export const reportsRouter = Router();
 

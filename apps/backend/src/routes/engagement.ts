@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
+import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import type { SessionUser } from "../lib/auth/tokens";
 import { canViewStudent, staffScopeForSeason } from "../lib/permissions";
@@ -9,7 +9,6 @@ import { computeEngagementForSeason } from "../lib/queries/engagement";
 import { quizParticipation } from "../lib/queries/quiz-participation";
 import { canReadAllStudents } from "../lib/rbac";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { forbidden } from "./respond";
 
 export const studentEngagementRouter = Router();
 

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
@@ -16,7 +16,6 @@ import {
   restoreEnrollmentRequestSchema,
   updateEnrollmentRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 import { isSeasonFinished } from "../../lib/seasons/status";
 
 /**

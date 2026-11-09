@@ -1,8 +1,9 @@
 import { db } from "../../db/client";
-import type { Prisma } from "../../generated/prisma/client";
+import type { Prisma, SubmissionStatus } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { groupIdInSeason } from "../queries/enrollment";
 import { isAdminOfSeason, isLeaderOfGroup, isMentor, isSuper } from "../rbac";
+import { hasActiveEnrollment } from "./season";
 
 /**
  * Does this LEADER lead the group the student is enrolled in *for this season*?
@@ -123,4 +124,38 @@ export async function submissionQueueScopeFor(user: SessionUser): Promise<Prisma
       assignment: { seasonId: e.seasonId },
     })),
   };
+}
+
+/**
+ * The states in which a student may still change their own submission.
+ *
+ * Mirrors the mobile editor exactly (`assignment/[id]/index.tsx`: editable is
+ * DRAFT or RETURNED). Once submitted the work is the reviewer's to judge, and
+ * once reviewed the feedback refers to this text — a write after either would
+ * leave a verdict on words the reviewer never saw, and `{submit:true}` on a
+ * REVIEWED row would silently pull it back into the queue. The way back to
+ * editable is a reviewer's returnForRevision, never a student write.
+ */
+export const EDITABLE_STATUSES: readonly SubmissionStatus[] = ["DRAFT", "RETURNED"];
+
+function isEditableStatus(status: SubmissionStatus): boolean {
+  return EDITABLE_STATUSES.includes(status);
+}
+
+/**
+ * Why a student's write to their own submission must be refused, or null when
+ * it may proceed. The caller has already established authorship.
+ *
+ * Active enrolment, not `canAccessSeason`: that predicate's student branch
+ * accepts any enrolment row whatever its status, so a dropped, completed or
+ * alumni student could otherwise keep writing into a past season.
+ */
+export async function studentWriteRefusal(
+  user: SessionUser,
+  seasonId: number,
+  status: SubmissionStatus,
+): Promise<"forbidden" | "not_editable" | null> {
+  if (!(await hasActiveEnrollment(user, seasonId))) return "forbidden";
+  if (!isEditableStatus(status)) return "not_editable";
+  return null;
 }

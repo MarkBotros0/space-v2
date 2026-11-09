@@ -1,14 +1,13 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk } from "../lib/api-response";
+import { apiOk, forbidden } from "../lib/api-response";
 import { countDueFollowUps } from "../lib/follow-ups";
 import { noteVisibilityWhere } from "../lib/permissions";
 import { writtenWithin } from "../lib/queries/notes";
 import { listStudents } from "../lib/queries/students";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { studentListQuerySchema, type MentorSummary } from "../../../../packages/shared/src/index";
-import { forbidden } from "./respond";
 
 /** "This week" on the mentor's Home is the last seven days. */
 const NOTES_WINDOW_DAYS = 7;

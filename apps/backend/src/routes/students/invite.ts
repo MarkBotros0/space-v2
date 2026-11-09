@@ -1,11 +1,10 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiError } from "../../lib/api-response";
+import { apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canEditStudent } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
-import { forbidden } from "../respond";
 import { answerResend } from "../users/invites";
 
 /**

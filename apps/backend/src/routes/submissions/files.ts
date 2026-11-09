@@ -2,7 +2,7 @@ import type { Request, RequestHandler, Response } from "express";
 import multer from "multer";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { ForbiddenError } from "../../lib/auth/errors";
 import { config } from "../../lib/config";
 import { parseId } from "../../lib/parse-id";
@@ -10,8 +10,8 @@ import { canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
 import { FileNotFoundError, buildStorageKey, getStorage } from "../../lib/storage";
 import { requireUser } from "../../middleware/require-auth";
-import { forbidden } from "../respond";
-import { studentWriteRefusal, submissionLocked } from "./editable";
+import { studentWriteRefusal } from "../../lib/permissions";
+import { submissionLocked } from "./editable";
 
 // memoryStorage: the per-assignment size and MIME rules live in the database,
 // so the file has to be in hand before they can be applied. limits.fileSize is

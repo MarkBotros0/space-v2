@@ -18,7 +18,14 @@ export {
 } from "./season";
 export { canAccessGroup } from "./group";
 export { canGradeQuiz, canManageQuiz } from "./quiz";
-export { canReviewSubmission, canViewSubmission, isHiddenDraft, submissionQueueScopeFor } from "./submission";
+export {
+  canReviewSubmission,
+  canViewSubmission,
+  EDITABLE_STATUSES,
+  isHiddenDraft,
+  studentWriteRefusal,
+  submissionQueueScopeFor,
+} from "./submission";
 export { canEditStudent, canViewStudent, staffRosterWhere, type StaffRoster } from "./student";
 export { canEditNote, canWriteNote, noteSeasonWhere, noteVisibilityWhere } from "./note";
 export { canCommentOnForumSubmission, canDeleteForumComment, forumAudienceFor, type ForumAudience } from "./forum";

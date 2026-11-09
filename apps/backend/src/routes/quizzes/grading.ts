@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canGradeQuiz } from "../../lib/permissions";
 import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
@@ -11,8 +11,7 @@ import {
   quizAttemptsQuerySchema,
   reopenAttemptRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
-import { notifyQuizGraded } from "./notify";
+import { notifyQuizGraded } from "../../lib/quizzes/notify";
 
 export async function listAttempts(req: Request, res: Response) {
   const user = requireUser(req);

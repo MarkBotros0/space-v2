@@ -1,13 +1,12 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiError, apiOk } from "../../lib/api-response";
+import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canManageSessionVideo, staffScopeForSeason } from "../../lib/permissions";
 import { loadVideoQuizResults } from "../../lib/queries/video-quiz";
 import { requireUser } from "../../middleware/require-auth";
 import { videoQuestionInputSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /** The admin row shape — the only place `correctIndex` may be selected. */
 const ADMIN_SELECT = {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiError, apiOk } from "../lib/api-response";
+import { apiError, apiOk, forbidden } from "../lib/api-response";
 import { newPublicId } from "../lib/public-id";
 import { parseId } from "../lib/parse-id";
 import { canCommentOnForumSubmission, canDeleteForumComment, forumAudienceFor } from "../lib/permissions";
@@ -22,7 +22,6 @@ import {
   plainTextToHtml,
   submitForumResponseRequestSchema,
 } from "../../../../packages/shared/src/index";
-import { forbidden } from "./respond";
 
 /**
  * Domain 14. Mounted at /api/v1 because the thread hangs off an assignment

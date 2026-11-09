@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import {
   assignmentColumns,
   bodyErrorMessage,
@@ -29,7 +29,6 @@ import { isAdminOfSeason } from "../../lib/rbac";
 import { refusalStatus } from "../../lib/api-error";
 import { requireUser } from "../../middleware/require-auth";
 import { createAssignmentRequestSchema, groupWriteRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /*
  * A season's child collections: its groups, sessions and assignments, read and

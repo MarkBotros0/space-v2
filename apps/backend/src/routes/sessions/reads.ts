@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { isCheckInOpen, isCheckInOpenForStudent } from "../../lib/check-in";
 import { addWeeksInOrgTime, orgDayKey, orgWallClockToInstant, orgWallTime } from "../../lib/org-time";
 import { parseId } from "../../lib/parse-id";
@@ -20,7 +20,6 @@ import {
   SESSION_RANGE_MAX_DAYS,
   sessionRangeQuerySchema,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 /**
  * The multi-season calendar (Plan 6 D-16.7, G17). The season set comes from

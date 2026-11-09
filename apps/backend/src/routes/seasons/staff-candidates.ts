@@ -1,12 +1,11 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { freeAlumni } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
-import { forbidden } from "../respond";
 
 /** A season someone was part of: started, whatever came of it. */
 const PAST_OR_CURRENT = { deletedAt: null, status: { not: "DRAFT" } } as const;

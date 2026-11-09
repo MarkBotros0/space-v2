@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen, isStudentCheckInWindow } from "../../lib/check-in";
 import { orgWallTime } from "../../lib/org-time";
 import { parseId } from "../../lib/parse-id";
@@ -9,7 +9,6 @@ import { newPublicId } from "../../lib/public-id";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { checkInRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 
 export async function studentCheckIn(req: Request, res: Response) {
   const user = requireUser(req);

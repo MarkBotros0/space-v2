@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { ForbiddenError } from "../../lib/auth/errors";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
@@ -16,8 +16,8 @@ import {
   reviewSubmissionRequestSchema,
   updateSubmissionRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
-import { EDITABLE_STATUSES, studentWriteRefusal, submissionLocked } from "./editable";
+import { EDITABLE_STATUSES, studentWriteRefusal } from "../../lib/permissions";
+import { submissionLocked } from "./editable";
 
 export async function updateSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);

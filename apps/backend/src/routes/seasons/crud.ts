@@ -3,7 +3,7 @@ import type { SeasonStatus, SeasonWriteBody } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { seasonPeopleIds } from "../../lib/auth/season-people";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
@@ -20,7 +20,6 @@ import {
   seasonAdminPatchSchema,
   seasonWriteRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
 import { isSeasonFinished, liveSeasonStatus } from "../../lib/seasons/status";
 
 export async function listSeasons(req: Request, res: Response) {

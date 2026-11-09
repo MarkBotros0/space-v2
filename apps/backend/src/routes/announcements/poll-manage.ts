@@ -2,13 +2,12 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { lockPoll } from "../../lib/announcement-poll-lock";
-import { apiError, apiOk } from "../../lib/api-response";
+import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags, canManagePoll, canSeePollNames } from "../../lib/permissions";
 import { announcementVisibilityFilter } from "../../lib/queries/announcements";
 import { requireUser } from "../../middleware/require-auth";
-import { forbidden } from "../respond";
 import type { PollVotersResponse } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
 import { unreadIdsAmong } from "./read";

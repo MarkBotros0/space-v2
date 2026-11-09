@@ -140,7 +140,7 @@ registration order — and whose sibling files hold the handlers. Register new
 paths in the `index.ts`, keeping order (`/:id/foo` before `/:id`). A value
 import of `packages/shared` from inside a route folder needs one more `../`
 than from `routes/auth.ts` (see the hard constraint above). The 403 envelope
-is `forbidden(res)` from `routes/respond.ts`.
+is `forbidden(res)` from `lib/api-response.ts`; a refusal thrown below a route is an `ApiError` (`lib/api-error.ts`).
 Authorization runs through two layers: `lib/rbac.ts` holds pure predicates
 over a decoded token's claims (role, `seasonAdminIds`, `groupLeaderIds`), and
 `lib/permissions/` (one file per domain, re-exported from its `index.ts`)

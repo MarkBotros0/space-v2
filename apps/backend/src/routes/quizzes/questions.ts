@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canManageQuiz } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
@@ -11,8 +11,7 @@ import {
   quizQuestionRequestSchema,
   reorderQuestionsRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
-import { notifyQuizPublished } from "./notify";
+import { notifyQuizPublished } from "../../lib/quizzes/notify";
 
 /** The authoring view of a question — the answer key included. */
 const AUTHORING_QUESTION_SELECT = {

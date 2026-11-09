@@ -3,7 +3,7 @@ import express, { Router } from "express";
 
 import { db } from "../db/client";
 import { isUniqueViolation } from "../lib/prisma-errors";
-import { apiError, apiOk } from "../lib/api-response";
+import { apiError, apiOk, forbidden } from "../lib/api-response";
 import { config } from "../lib/config";
 import { ImportParseError, parseDelimited } from "../lib/imports/delimited";
 import { withImpliedHeader, withoutImpliedHeaderLine } from "../lib/imports/students/implied-header";
@@ -30,7 +30,6 @@ import {
   studentImportCommitInputSchema,
 } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
-import { forbidden } from "./respond";
 import { isSeasonFinished } from "../lib/seasons/status";
 
 /**

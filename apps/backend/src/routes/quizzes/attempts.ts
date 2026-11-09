@@ -3,15 +3,14 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import type { SessionUser } from "../../lib/auth/tokens";
 import { hasActiveEnrollment } from "../../lib/permissions";
 import { isAlumnusNotStudying } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { saveQuizAnswersRequestSchema } from "../../../../../packages/shared/src/index";
-import { forbidden } from "../respond";
-import { notifyQuizGraded } from "./notify";
+import { notifyQuizGraded } from "../../lib/quizzes/notify";
 import { loadStudentQuizDetail } from "./student-detail";
 
 /**

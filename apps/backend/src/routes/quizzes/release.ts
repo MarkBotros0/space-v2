@@ -1,12 +1,11 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiError, apiOk } from "../../lib/api-response";
+import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
-import { forbidden } from "../respond";
-import { notifyQuizResultsReleased } from "./notify";
+import { notifyQuizResultsReleased } from "../../lib/quizzes/notify";
 
 /** The season's admin, or a super: the only people who release results (owner, 2026-11-07). */
 export function canReleaseQuizResults(user: Parameters<typeof isSuper>[0], seasonId: number): boolean {

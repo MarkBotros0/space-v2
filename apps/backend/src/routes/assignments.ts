@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
+import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import {
   assignmentColumns,
@@ -20,7 +20,6 @@ import {
 } from "../lib/queries/assignments";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { updateAssignmentRequestSchema } from "../../../../packages/shared/src/index";
-import { forbidden } from "./respond";
 
 export const assignmentsRouter = Router();
 
