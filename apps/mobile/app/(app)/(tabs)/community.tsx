@@ -18,7 +18,7 @@ import {
 } from "../../../src/design/ui";
 import { usePendingInviteCount, useSendInvite, useSendPendingInvites, useUsers } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
-import { useDebouncedSearch } from "../../../src/screens/students-list/use-debounced-search";
+import { useDebouncedSearch } from "../../../src/hooks/use-debounced-search";
 import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
 import {
   CommunityFilterSheet,

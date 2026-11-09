@@ -9,7 +9,7 @@ import { EmptyState, FilterButton, GroupedList, SearchField } from "../design/ui
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
 import { StudentFilterSheet, activeFilterCount } from "../screens/students-list/student-filter-sheet";
 import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "../screens/students-list/student-rows";
-import { useDebouncedSearch } from "../screens/students-list/use-debounced-search";
+import { useDebouncedSearch } from "../hooks/use-debounced-search";
 import { useRole } from "../store/session";
 import { LoadMoreButton } from "../design/ui/load-more-button";
 

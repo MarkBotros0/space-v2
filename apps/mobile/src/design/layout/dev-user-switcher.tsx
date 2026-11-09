@@ -13,7 +13,7 @@
 import type { DevSwitchUser, UserRole } from "@space/shared";
 import { useRouter } from "expo-router";
 import { UserCog } from "lucide-react-native";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 
 import { useDevSwitch, useDevUsers } from "../../hooks/use-dev-switch";
@@ -27,6 +27,7 @@ import { Sheet } from "../ui/sheet";
 import { Skeleton } from "../ui/skeleton";
 import { Text } from "../ui/text";
 import { toast } from "../ui/toaster";
+import { useDebouncedSearch } from "../../hooks/use-debounced-search";
 
 iconWithClassName(UserCog);
 
@@ -63,12 +64,7 @@ export function DevUserSwitcher() {
 function SwitcherBody({ onDone }: { onDone: () => void }) {
   const router = useRouter();
   const currentId = useSessionStore((s) => s.user?.id ?? null);
-  const [text, setText] = useState("");
-  const [q, setQ] = useState("");
-  useEffect(() => {
-    const t = setTimeout(() => setQ(text.trim()), 250);
-    return () => clearTimeout(t);
-  }, [text]);
+  const { search: text, q, setSearch: setText } = useDebouncedSearch(250);
   const users = useDevUsers(q);
   const switchUser = useDevSwitch();
   const colors = useThemeColors();
