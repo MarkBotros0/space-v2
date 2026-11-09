@@ -25,10 +25,11 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s23-02-groups-bottom
+# The row's label is "Group A, 2 students · Lina Leader", hence the wildcard.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Group A'
+      TARGET: 'Group A.*'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:

@@ -7,10 +7,11 @@ appId: com.jpc.space
     env:
       EMAIL: ${ADMIN_EMAIL}
 - openLink: spacev2://season
-# Only Home has the user menu now (R13). /season shows the admin's season by
-# name ("GBV 2026"), never the words "My Season"; its code line is stable.
+# /season goes straight into the season only when the admin runs exactly one. The seed makes
+# admin@ the admin of two ACTIVE seasons (GBV <year> and Spring Intensive <year>, community.ts),
+# so it lists them under "My Season" instead. A row's label is "<title>, <code> · <dates>, <status>".
 - extendedWaitUntil:
-    visible: 'Code: .*'
+    visible: 'GBV \d{4}.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

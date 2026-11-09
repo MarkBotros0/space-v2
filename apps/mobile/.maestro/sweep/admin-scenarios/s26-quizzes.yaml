@@ -66,15 +66,21 @@ appId: com.jpc.space
 - takeScreenshot: s26-08-quiz-online-bottom
 - openLink: spacev2://quiz/2/edit
 - extendedWaitUntil:
-    visible: 'Quiz title'
+    visible: 'Edit quiz details'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s26-09-quiz-edit
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Quiz title'
+# The builder shows a summary card; the title and settings open from its Edit pill (a sheet, never saved here).
+- tapOn: 'Edit quiz details'
+- extendedWaitUntil:
+    visible: 'Quiz title'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-09a-quiz-details-sheet
+# Already on screen in the sheet: _tap's scroll closed the sheet (it scrolled the page behind it).
+- tapOn: 'Quiz title'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:

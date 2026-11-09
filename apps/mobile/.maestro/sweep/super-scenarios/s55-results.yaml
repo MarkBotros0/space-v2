@@ -38,11 +38,15 @@ appId: com.jpc.space
 - hideKeyboard
 - openLink: spacev2://dashboard
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Profile'
     timeout: 40000
+# Super Home (owner, 2026-11-08): Community tiles, season rings, announcements, then the overdue
+# callout, so it is below the fold: scroll down to it.
 - scrollUntilVisible:
     element: '.* has ended'
-    direction: UP
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
     optional: true
 - waitForAnimationToEnd:
     timeout: 5000

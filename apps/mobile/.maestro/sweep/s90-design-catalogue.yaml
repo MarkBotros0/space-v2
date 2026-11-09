@@ -39,6 +39,12 @@ appId: com.jpc.space
 - runFlow:
     file: _catalogue-section.yaml
     env:
+      SECTION: switch
+- takeScreenshot: s90-03b-switch
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
       SECTION: list
 - takeScreenshot: s90-04-list
 
@@ -156,10 +162,25 @@ appId: com.jpc.space
 # the catalogue Screen's footer. The field must scroll clear of the bar; with
 # the keyboard up, the bar rides on it and the focused
 # field sits above both.
-- runFlow:
-    file: _tap-id.yaml
-    env:
-      TARGET_ID: catalogue-toggle-save-bar
+# Closing the sheet leaves the page just past this button (it sits above the top edge), so look up
+# first, then down.
+- scrollUntilVisible:
+    element:
+      id: catalogue-toggle-save-bar
+    direction: UP
+    centerElement: true
+    timeout: 20000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: catalogue-toggle-save-bar
+    direction: DOWN
+    centerElement: true
+    speed: 60
+    timeout: 60000
+    optional: true
+- tapOn:
+    id: catalogue-toggle-save-bar
 - extendedWaitUntil:
     visible: 'Save changes'
     timeout: 10000
@@ -185,6 +206,35 @@ appId: com.jpc.space
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 3000
+# hideKeyboard sometimes acts as Back on the emulator and leaves the catalogue (seen on small-1.0-3btn-light):
+# reopen it. The sections below only scroll down, so starting from the top is fine.
+- runFlow:
+    when:
+      notVisible: '(Design catalogue|Every component in every state\.)'
+    commands:
+      - openLink: spacev2://design-catalogue
+      - extendedWaitUntil:
+          visible: 'Every component in every state\.'
+          timeout: 40000
+
+# The sections added on 2026-11-07/08, in page order: people rows, season parts, Home parts.
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: people-rows
+- takeScreenshot: s90-15b-people-rows
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: season-parts
+- takeScreenshot: s90-15c-season-parts
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: home-parts
+- takeScreenshot: s90-15d-home-parts
 
 # Announcements: the audience chips, the post card (unread, read) and Home's card, all fixed data.
 - runFlow:
@@ -196,3 +246,22 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s90-17-announcements-home-card
+
+# The last sections: the staff picker, the leader's Today parts and Start's issues.
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: staff-picker
+- takeScreenshot: s90-18-staff-picker
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: leader-today
+- takeScreenshot: s90-19-leader-today
+
+- runFlow:
+    file: _catalogue-section.yaml
+    env:
+      SECTION: start-issues
+- takeScreenshot: s90-20-start-issues

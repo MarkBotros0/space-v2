@@ -12,7 +12,7 @@ appId: com.jpc.space
     timeout: 40000
 # Today's body has landed: the To do header, or the not-enrolled state.
 - extendedWaitUntil:
-    visible: 'TO DO|Not enrolled yet'
+    visible: 'Sessions held.*|Not enrolled yet'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -31,9 +31,13 @@ appId: com.jpc.space
 # Scrolled down: the in-content bell and user menu are gone, the compact header
 # (titled "Home", R31) carries them once it has faded in.
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Profile'
     timeout: 10000
-- tapOn: 'User menu'
+- tapOn: 'Profile'
+# The avatar opens Profile (owner, 2026-11-07), not a menu.
+- extendedWaitUntil:
+    visible: 'Edit profile'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s03-04-user-menu
+- takeScreenshot: s03-04-profile

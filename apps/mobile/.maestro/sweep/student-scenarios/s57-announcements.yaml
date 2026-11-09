@@ -11,14 +11,21 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: 'Hi, .*'
     timeout: 40000
+# Opening the post below marks it read, so after the first cell of a run (shared sweep database)
+# nothing is unread and Home rightly shows no card: the card shot is taken only when it is there.
 - scrollUntilVisible:
     element: '(?s)\[Sweep\] This is fake text.*'
     direction: DOWN
     centerElement: true
     timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s57-01-home-card
+    optional: true
+- runFlow:
+    when:
+      visible: '(?s)\[Sweep\] This is fake text.*'
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - takeScreenshot: s57-01-home-card
 - openLink: spacev2://more
 - extendedWaitUntil:
     visible: 'Account, settings, and more places to go.'
@@ -47,7 +54,7 @@ appId: com.jpc.space
     env:
       TARGET: '(?s)\[Sweep\] .*everyone in the community.*'
 - extendedWaitUntil:
-    visible: 'This is fake text for the UI sweep.*'
+    visible: '(?s)\[Sweep\] This is fake text.*to check line breaks\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

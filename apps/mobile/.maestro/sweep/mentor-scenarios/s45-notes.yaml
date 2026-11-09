@@ -1,14 +1,20 @@
-# UI sweep s45 — Notes as a mentor. Read-only: nothing is saved, the flow only
-# opens, scrolls, types and looks.
+# UI sweep s45 — Notes as a mentor: every note they may read, All and This week. Read-only: nothing is
+# saved, the flow only opens, scrolls and looks.
 appId: com.jpc.space
 ---
 - runFlow:
     file: ../_sign-in.yaml
     env:
       EMAIL: ${MENTOR_EMAIL}
+# The mentor's Notes (owner, 2026-11-07) has no "you've authored" count: an All / This week control,
+# then each note with its author where other staff see the season. Their own notes are the newest
+# in the seed, so a row naming Mina Mentor is on screen first.
 - openLink: spacev2://notes
 - extendedWaitUntil:
-    visible: '.*notes? you.ve authored'
+    visible: 'This week'
+    timeout: 40000
+- extendedWaitUntil:
+    visible: '.*Mina Mentor.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -20,3 +26,15 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s45-02-notes-bottom
+# This week only filters the list (Home's "Notes this week" opens it); nothing is written.
+- scrollUntilVisible:
+    element: 'This week'
+    direction: UP
+    timeout: 20000
+- tapOn: 'This week'
+- extendedWaitUntil:
+    visible: '.*Mina Mentor.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s45-03-notes-this-week

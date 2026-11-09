@@ -21,15 +21,19 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s27-02-notes-bottom
+# Reports open on one season (the running one), in a card at the top with History beside it;
+# the figures under it carry "Students: N" as their label. Students at risk sits below them,
+# off screen on the small phone.
 - openLink: spacev2://reports
 - extendedWaitUntil:
-    visible: '(Scoped to|Showing) .+\.'
+    visible:
+      id: 'report-season'
+    timeout: 40000
+- extendedWaitUntil:
+    visible: 'Students: \d+|Nothing to report yet'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- extendedWaitUntil:
-    visible: 'Students at risk.*|No data in this scope'
-    timeout: 40000
 - takeScreenshot: s27-03-reports
 - scroll
 - waitForAnimationToEnd:
@@ -59,7 +63,7 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Sweep kickoff event'
+      TARGET: 'Sweep kickoff event.*'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:

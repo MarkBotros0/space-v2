@@ -36,11 +36,12 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s14-03-session-past
-# The check-in roster's Edit opens the Override attendance sheet. Never save it.
+# The whole roster row opens the Override attendance sheet (owner, 2026-11-07: no Edit
+# button per row). Its label is "Salma Student, <status>". Never save it.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Edit attendance for Salma Student'
+      TARGET: 'Salma Student.*'
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:

@@ -53,8 +53,10 @@ appId: com.jpc.space
     file: ../_tap.yaml
     env:
       TARGET: 'Notification settings'
+# The gear on Notifications carries the same words as the next screen's title, so wait on the
+# settings screen's own text (section headers are upper-cased, so not "Push notifications").
 - extendedWaitUntil:
-    visible: 'Notification settings'
+    visible: 'Alerts on this device\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

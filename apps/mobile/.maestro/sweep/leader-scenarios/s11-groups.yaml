@@ -6,9 +6,11 @@ appId: com.jpc.space
     file: ../_sign-in.yaml
     env:
       EMAIL: ${LEADER_EMAIL}
+# The leader's tab is "My group" (owner, 2026-11-07), which is also the tab label: wait
+# on the group's own row ("Group A, GBV <year> · 2 students") instead.
 - openLink: spacev2://groups
 - extendedWaitUntil:
-    visible: 'Groups'
+    visible: 'Group A.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -23,9 +25,10 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s11-02-groups-bottom
 # The group's own page (seed: Group A is group 1).
+# Waits on the group's description (its subtitle): "Group A" is on the list too.
 - openLink: spacev2://group/1
 - extendedWaitUntil:
-    visible: 'Group A'
+    visible: 'Tuesday evening group'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

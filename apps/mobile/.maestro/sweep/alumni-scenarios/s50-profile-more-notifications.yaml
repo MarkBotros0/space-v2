@@ -1,4 +1,4 @@
-# UI sweep s50 — Profile, More, notifications and Settings as an alumnus. Read-only: nothing is saved, the flow only
+# UI sweep s50 — Profile, Edit profile, More, notifications and Notification settings as an alumnus. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
@@ -7,8 +7,10 @@ appId: com.jpc.space
     env:
       EMAIL: ${ALUMNI_EMAIL}
 - openLink: spacev2://profile
+# One Profile page (owner, 2026-11-07): read-only, the academic record with "School of N"
+# (maybe below the fold), and its Edit opens /edit-profile. Edit renders once the profile loads.
 - extendedWaitUntil:
-    visible: 'Your alumni record'
+    visible: 'Edit profile'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -49,13 +51,34 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s50-06-notifications-bottom
-- openLink: spacev2://settings
+# Notification settings open from the gear on Notifications (no Settings page any more).
+# The gear sits above the list, so it is still on screen after the scroll.
+- tapOn: 'Notification settings'
+# The push section's description is on no other screen. Enable push is never tapped.
 - extendedWaitUntil:
-    visible: 'Profile, password, and notification preferences\.'
+    visible: 'Alerts on this device\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s50-07-settings
+- takeScreenshot: s50-07-notification-settings
+# Last item has to clear the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s50-08-notification-settings-bottom
+# Edit profile: an alumnus edits their details only; the academic record stays read-only.
+# Save changes is never tapped.
+# Opened by link: Profile is an alumni tab and keeps its scroll, so its Edit may be off screen.
+- openLink: spacev2://edit-profile
+# Only the edit form has the email's description; "Your details" is on Profile too.
+- extendedWaitUntil:
+    visible: 'To change your email, contact the JPC team\.'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s50-09-edit-profile
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -64,12 +87,12 @@ appId: com.jpc.space
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s50-08-settings-name-kbd
+- takeScreenshot: s50-10-edit-profile-name-kbd
 - hideKeyboard
-# Last item has to clear the floating tab bar and the system bar.
+# Last field has to clear the pinned Save bar and the system bar.
 - scroll
 - scroll
 - scroll
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s50-09-settings-bottom
+- takeScreenshot: s50-11-edit-profile-bottom

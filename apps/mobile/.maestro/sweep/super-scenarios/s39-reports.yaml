@@ -1,5 +1,6 @@
-# UI sweep s39 — Reports (title row Export, tiles, grouped rows) as a super admin, all seasons and one. Read-only: nothing is saved, the flow only
-# opens, scrolls, types and looks.
+# UI sweep s39 — Reports as a super admin: the Season view (it opens on a current season, History
+# for the others and All seasons; owner 2026-11-07), then the Organisation view. Read-only:
+# nothing is saved, the flow only opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
 - runFlow:
@@ -7,17 +8,17 @@ appId: com.jpc.space
     env:
       EMAIL: ${SUPER_EMAIL}
 - openLink: spacev2://reports
+# The season card's History pill sits at the top and stays put.
 - extendedWaitUntil:
-    visible: '(Scoped to|Showing) .*'
+    visible: 'Choose another season'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s39-01-reports
-# A super admin's Organisation tiles and cards come first, so the at-risk heading (or the
-# empty state) is below the fold on a small phone: scroll to it. Not optional, so a screen
-# that renders neither still fails here.
+# The figures come first, so the at-risk card (or the empty state) is below the fold on a small
+# phone: scroll to it. Not optional, so a screen that renders neither still fails here.
 - scrollUntilVisible:
-    element: 'Students at risk.*|No data in this scope'
+    element: 'Students at risk.*|Nothing to report yet'
     direction: DOWN
     timeout: 40000
 - waitForAnimationToEnd:
@@ -27,17 +28,38 @@ appId: com.jpc.space
 - runFlow:
     file: ../_scroll-end.yaml
 - takeScreenshot: s39-03-reports-bottom
-# A season filter is a read. Export buttons are never tapped (they open the share sheet).
-- evalScript: ${output.year = new Date().getFullYear()}
+# Picking a season is a read. Export is never tapped (it opens the share sheet).
 - scrollUntilVisible:
-    element: 'Season filter: GBV ${output.year}'
+    element: 'Choose another season'
     direction: UP
     timeout: 60000
-- tapOn: 'Season filter: GBV ${output.year}'
+- tapOn: 'Choose another season'
+- extendedWaitUntil:
+    visible: 'Every season together'
+    timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s39-04-reports-season
+- takeScreenshot: s39-04-reports-history
+- tapOn: 'All seasons'
+- extendedWaitUntil:
+    visible: 'Every season together \(\d+\)'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s39-05-reports-all-seasons
 # Last item has to clear the floating tab bar and the system bar.
 - runFlow:
     file: ../_scroll-end.yaml
-- takeScreenshot: s39-05-reports-season-bottom
+- takeScreenshot: s39-06-reports-all-seasons-bottom
+- scrollUntilVisible:
+    element: 'Organisation'
+    direction: UP
+    timeout: 60000
+- tapOn: 'Organisation'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s39-07-reports-organisation
+# Last item has to clear the floating tab bar and the system bar.
+- runFlow:
+    file: ../_scroll-end.yaml
+- takeScreenshot: s39-08-reports-organisation-bottom

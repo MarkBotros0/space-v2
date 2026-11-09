@@ -12,6 +12,8 @@ appId: com.jpc.space
     direction: DOWN
     centerElement: true
     visibilityPercentage: 100
-    timeout: 60000
+    # Long: when hideKeyboard leaves the catalogue, s90 reopens it at the top and the later
+    # sections are a long way down at font 1.3 (whole-app sweep, Nov 2026).
+    timeout: 180000
 - waitForAnimationToEnd:
     timeout: 3000

@@ -56,7 +56,11 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s01-06-forgot-email-kbd
-- hideKeyboard
+# Not hideKeyboard: on the small gesture-nav cells it opens Gboard's clipboard panel over the form
+# (an emulator quirk, not the app). The keyboard is open for the shot above, so Back just closes it.
+- pressKey: back
+- waitForAnimationToEnd:
+    timeout: 3000
 
 # ── Reset password ──
 - runFlow:
@@ -98,7 +102,7 @@ appId: com.jpc.space
     env:
       TARGET: 'I have an invite code'
 - extendedWaitUntil:
-    visible: 'Activate account'
+    visible: 'Activate your account'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 3000

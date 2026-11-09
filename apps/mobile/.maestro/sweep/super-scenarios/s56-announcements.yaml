@@ -13,14 +13,23 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: '(?i)community'
     timeout: 40000
+# Home's card is one compact row (owner, 2026-11-08) under the Community tiles and the season
+# rings: "New announcement" and the latest post's first line. Its label starts with the heading.
+# Opening the post below marks it read, so after the first cell of a run (shared sweep database)
+# nothing is unread and Home rightly shows no card: the card shot is taken only when it is there.
 - scrollUntilVisible:
-    element: '(?s)\[Sweep\] .*everyone in the community.*'
+    element: '(?s).*\[Sweep\] .*everyone in the community.*'
     direction: DOWN
     centerElement: true
     timeout: 20000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s56-01-home-card
+    optional: true
+- runFlow:
+    when:
+      visible: '(?s).*\[Sweep\] .*everyone in the community.*'
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - takeScreenshot: s56-01-home-card
 - openLink: spacev2://more
 - extendedWaitUntil:
     visible: 'Account, settings, and more places to go.'
@@ -48,8 +57,10 @@ appId: com.jpc.space
     file: ../_tap.yaml
     env:
       TARGET: '(?s)\[Sweep\] .*everyone in the community.*'
+# Posts have no title (owner, 2026-11-08) and the feed row already holds the whole body, so
+# wait on the post page's own Delete button (a Super may always delete; never tapped).
 - extendedWaitUntil:
-    visible: 'This is fake text for the UI sweep.*'
+    visible: 'Delete announcement'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

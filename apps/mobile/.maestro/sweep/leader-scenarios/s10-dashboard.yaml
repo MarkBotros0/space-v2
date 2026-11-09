@@ -7,15 +7,16 @@ appId: com.jpc.space
     env:
       EMAIL: ${LEADER_EMAIL}
 - extendedWaitUntil:
-    # The tab label "Home" shows before the data loads, so wait on the session card.
-    visible: '(?i)(next session|happening now)'
+    # The tab label "Home" shows before the data loads, so wait on the season ring that
+    # leads Home now (owner, 2026-11-08); the session sits below it, maybe below the fold.
+    visible: 'Sessions held.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s10-01-dashboard
-# To review, 'Your students at risk', the figures and the events sit below the fold.
+# The session, 'Waiting for you', 'Students at risk' and the events sit below the fold.
 # Last item has to clear the floating tab bar and the system bar.
 - scroll
 - scroll
@@ -23,20 +24,4 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s10-02-dashboard-bottom
-# The session block in its day-of state (Not checked in list), from the catalogue.
-- openLink: spacev2://design-catalogue
-- waitForAnimationToEnd:
-    timeout: 5000
-# Own scroll, faster than _catalogue-section: this section is near the catalogue's end, too far
-# for the slow scroll on the small phone at font 1.3. Not speed 100: Maestro turns that into a
-# 1ms swipe, which does not scroll at all.
-- scrollUntilVisible:
-    element:
-      id: catalogue-leader-today-title
-    direction: DOWN
-    centerElement: true
-    speed: 60
-    timeout: 180000
-- waitForAnimationToEnd:
-    timeout: 3000
-- takeScreenshot: s10-03-leader-today-catalogue
+# The leader-today catalogue section is shot by s90 (it is near the catalogue's end; scrolling to it here timed out at font 1.3).

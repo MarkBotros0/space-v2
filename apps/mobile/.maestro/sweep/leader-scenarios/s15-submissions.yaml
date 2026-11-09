@@ -31,7 +31,8 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:
-    visible: 'ASSIGNMENT PROMPT'
+    # Section headers are upper-cased by style; match either case.
+    visible: '(?i)assignment prompt'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

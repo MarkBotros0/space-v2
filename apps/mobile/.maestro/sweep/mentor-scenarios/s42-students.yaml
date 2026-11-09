@@ -1,4 +1,4 @@
-# UI sweep s42 — Students and alumni as a mentor. Read-only: nothing is saved, the flow only
+# UI sweep s42 — Community (members) and alumni as a mentor. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
@@ -6,9 +6,10 @@ appId: com.jpc.space
     file: ../_sign-in.yaml
     env:
       EMAIL: ${MENTOR_EMAIL}
+# The mentor's /students is their Community: title "Community", count line "N members" (owner, 2026-11-07).
 - openLink: spacev2://students
 - extendedWaitUntil:
-    visible: '\d+ students? in your seasons'
+    visible: '\d+ members?'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -21,16 +22,17 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s42-02-students-bottom
 - scrollUntilVisible:
-    element: 'Search students'
+    element: 'Search members'
     direction: UP
     timeout: 20000
-# The filter sheet: looked at only, Done and its rows are never tapped.
+# The filter sheet: looked at only, Done and its rows are never tapped. Its "Who" choice
+# (Everyone / Absent lately) is the mentor's own.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Filter'
+      TARGET: 'Filter.*'
 - extendedWaitUntil:
-    visible: 'Filter students'
+    visible: '.*Missed their last two sessions.*'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -38,7 +40,7 @@ appId: com.jpc.space
 - back
 - waitForAnimationToEnd:
     timeout: 5000
-- tapOn: 'Search students'
+- tapOn: 'Search members'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
@@ -50,15 +52,21 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s42-04-students-search-typed
 - extendedWaitUntil:
-    visible: 'No students match your search\.'
+    visible: 'No members match your search\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s42-05-students-search-empty
-# A mentor reaches Alumni from the row at the top of Students (no nav entry).
-- openLink: spacev2://students/alumni
+# Alumni is a Show choice in the filter sheet, not a page (owner, 2026-11-07); ?show=alumni opens
+# it on the same screen, which keeps the search typed above, so clear it first.
+- tapOn: 'Search members'
+- eraseText: 10
+- hideKeyboard
+- openLink: spacev2://students?show=alumni
+# The mentor's count line says "N members" on every list, so wait for an alumnus row: only
+# those say "School of <year>".
 - extendedWaitUntil:
-    visible: '\d+ graduated students? from your seasons'
+    visible: 'Aya Alumni, School of \d{4}.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

@@ -38,9 +38,15 @@ appId: com.jpc.space
 - tapOn: 'Upcoming'
 - waitForAnimationToEnd:
     timeout: 5000
-- tapOn:
-    text: 'Week 2: Calling'
-    optional: true
+# A row's label is "title, subtitle", so match the title as a prefix. Not optional any
+# more: an optional tap that missed shot the calendar again under the detail's name.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Week 2: Calling.*'
+- extendedWaitUntil:
+    visible: 'Mark attendance'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s13-04-session-detail

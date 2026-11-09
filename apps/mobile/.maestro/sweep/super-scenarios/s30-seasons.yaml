@@ -37,33 +37,45 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s30-04-season-overview-bottom
-# The Admins section, then its picker opened. Nothing is added: the flow leaves without Add admin.
+# The People card (owner, 2026-11-07): admins, students, groups, all on the overview. Its
+# Admins level carries Manage, which opens /seasons/[code]/admins; Add admin opens the
+# picker sheet. Nothing is added: the flow leaves the sheet without picking anyone.
 - scrollUntilVisible:
-    element: 'Choose an admin.*'
-    direction: DOWN
+    element: 'Manage admins'
+    direction: UP
+    centerElement: true
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s30-04a-season-admins
-- tapOn: 'Choose an admin.*'
+- takeScreenshot: s30-04a-season-people
+- tapOn: 'Manage admins'
+- extendedWaitUntil:
+    visible: 'Add admin'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s30-04b-admin-picker
+- takeScreenshot: s30-04b-season-admins
+- tapOn: 'Add admin'
+- extendedWaitUntil:
+    visible: 'Search people'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s30-04c-admin-picker
+# Back closes the sheet, Back again returns to the season.
 - pressKey: back
 - waitForAnimationToEnd:
     timeout: 5000
-- scrollUntilVisible:
-    element: 'Groups'
-    direction: UP
-    timeout: 20000
-- tapOn: 'Groups'
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s30-05-season-groups
+- pressKey: back
+- extendedWaitUntil:
+    visible: 'Code: gbv-${output.year}'
+    timeout: 40000
+# Groups are branches inside the People card; a branch is one button labelled with the
+# group's name, its leader and its count.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Group A'
+      TARGET: 'Group A, .*'
 - extendedWaitUntil:
     visible: 'Tuesday evening group'
     timeout: 40000
@@ -77,22 +89,15 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s30-07-group-detail-bottom
-# Back to the season: the link may land on the screen already mounted, scrolled. Wait until
-# the group page has gone, then scroll up until the season's own 'Code:' line shows (it is
-# found at once when the screen opens at the top), then on to the tabs.
-- openLink: spacev2://seasons/gbv-${output.year}
+# Sessions is a Manage tile now, opening /seasons/[code]/sessions. Opened by its link: the
+# word "Sessions" is also the figures card's label, so a tap by text could land on the figure.
+- openLink: spacev2://seasons/gbv-${output.year}/sessions
 - extendedWaitUntil:
     notVisible: 'Tuesday evening group'
     timeout: 40000
-- scrollUntilVisible:
-    element: 'Code: gbv-${output.year}'
-    direction: UP
+- extendedWaitUntil:
+    visible: 'Sessions'
     timeout: 40000
-- scrollUntilVisible:
-    element: 'Sessions'
-    direction: UP
-    timeout: 20000
-- tapOn: 'Sessions'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s30-08-season-sessions

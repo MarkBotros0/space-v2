@@ -71,9 +71,9 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-09-student-detail-bottom
-# Sections. The section chips sit above the Profile fields, so scrolling up to "University"
-# stops with them off screen: scroll up to the Seasons chip itself. A pushed student page has
-# no tab bar, so the Seasons tab can't be confused with the chip.
+# Sections are a segmented control (Submissions, Attendance, Notes, Seasons; owner 2026-11-07):
+# scroll up to its Seasons segment. A pushed student page has no tab bar, so the Seasons tab
+# can't be confused with the segment.
 - scrollUntilVisible:
     element: 'Seasons'
     direction: UP
@@ -90,7 +90,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s35-12-student-tab-submissions
-# The sections are wrapping chips: Notes is on screen, no swiping.
+# One segmented control: Notes is on screen, no swiping.
 - tapOn: 'Notes'
 - waitForAnimationToEnd:
     timeout: 5000

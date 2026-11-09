@@ -10,7 +10,7 @@ appId: com.jpc.space
       EMAIL: ${EMAIL}
       PASSWORD: ${PASSWORD}
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Profile'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

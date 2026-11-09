@@ -14,14 +14,23 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s52-01-today-dropped
 - openLink: spacev2://calendar
+- extendedWaitUntil:
+    visible: 'Calendar'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s52-02-calendar-between
 - openLink: spacev2://history
+- extendedWaitUntil:
+    visible: 'Seasons you.*'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s52-03-history-between
 - openLink: spacev2://more
+- extendedWaitUntil:
+    visible: 'Account, settings, and more places to go\.'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s52-04-more-between

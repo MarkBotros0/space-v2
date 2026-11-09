@@ -7,8 +7,13 @@ appId: com.jpc.space
     env:
       EMAIL: ${ALUMNI_EMAIL}
 - openLink: spacev2://dashboard
+# "Hi, <name>" is the title from the first frame; the last-season card ("GBV <year> finished")
+# means the history has loaded. Alumni Home leads with the announcements row, then that card.
 - extendedWaitUntil:
     visible: 'Hi, .*'
+    timeout: 40000
+- extendedWaitUntil:
+    visible: '.*GBV \d+ finished.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

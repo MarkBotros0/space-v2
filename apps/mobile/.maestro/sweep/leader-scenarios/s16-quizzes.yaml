@@ -65,9 +65,11 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s16-07-paper-grade-dismissed
+# Waits on the subtitle: the Results card (held / released) now sits above the
+# attempts, so the attempt row may start below the fold on the small phone.
 - openLink: spacev2://quiz/2/grade
 - extendedWaitUntil:
-    visible: '.*Awaiting grading.*'
+    visible: 'Max score: \d+'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -84,7 +86,7 @@ appId: com.jpc.space
 # Reopen the screen so the rows are back at the top.
 - openLink: spacev2://quiz/2/grade
 - extendedWaitUntil:
-    visible: '.*Awaiting grading.*'
+    visible: 'Max score: \d+'
     timeout: 40000
 - runFlow:
     file: ../_tap.yaml

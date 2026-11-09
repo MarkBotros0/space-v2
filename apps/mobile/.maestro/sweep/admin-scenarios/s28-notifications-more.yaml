@@ -1,4 +1,4 @@
-# UI sweep s28 — Notifications, More and Settings as a season admin. Read-only: nothing is saved, the flow only
+# UI sweep s28 — Notifications, More and Notification settings as a season admin. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 # Only Home has the user menu (R13): each screen is waited on by its own text.
@@ -36,14 +36,16 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s28-04-more-bottom
-- openLink: spacev2://settings
+# There is no Settings page any more: Profile is /profile (s20), the theme and Sign out are on
+# More, and Notification settings open from the gear on Notifications. Switches are never tapped.
+- openLink: spacev2://settings/notifications
 - extendedWaitUntil:
-    visible: 'Profile, password, and notification preferences\.'
+    visible: 'Alerts on this device\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s28-05-settings
-# Last item has to clear the floating tab bar and the system bar.
+- takeScreenshot: s28-05-notification-settings
+# Last switch has to clear the system bar.
 - runFlow:
     file: ../_scroll-end.yaml
-- takeScreenshot: s28-06-settings-bottom
+- takeScreenshot: s28-06-notification-settings-bottom
