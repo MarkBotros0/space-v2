@@ -121,10 +121,13 @@ vote is not audited. Neither option text nor names go into a log or a Sentry eve
 ## Contract (`packages/shared/src/announcement.ts`)
 
 - List item gains `hasPoll: boolean` and `pollClosed: boolean | null`, for the feed's "Poll" chip.
-- Detail gains `poll: null | { version, allowsMultiple, closed, canVote, canManage, myOptionIds,
-  voterCount, multiPickVoters: number | null, options: [{ id, label, votes: number | null }] }`.
+- Detail gains `poll: null | { version, allowsMultiple, closed, canVote, canManage, canSeeNames,
+  myOptionIds, voterCount, multiPickVoters: number | null, multiPickVotes: number | null,
+  options: [{ id, label, votes: number | null }] }`. `canSeeNames` (managers, and a Super on a
+  finished season) gates "See who voted"; `canManage` gates Close / Reopen.
   `multiPickVoters` (people who picked more than one) is for managers only, so the warning sheet
-  can say how many a several → one change affects. `votes` is null when the viewer may not see
+  can say how many a several → one change affects; `multiPickVotes` (their vote rows, managers
+  only) is what that change deletes, so the app can match the server's `poll_votes_lost` count. `votes` is null when the viewer may not see
   counts yet; `voterCount` (people, not votes) likewise.
 - Create and update request schemas gain the `poll` field above; update gains `confirmVoteLoss`.
 - New: vote request, voters response.

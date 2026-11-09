@@ -94,7 +94,7 @@ appId: com.jpc.space
     env:
       TARGET: 'Which evening suits the retreat.*'
 - extendedWaitUntil:
-    visible: 'Poll.*'
+    visible: 'Poll · Pick any'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
