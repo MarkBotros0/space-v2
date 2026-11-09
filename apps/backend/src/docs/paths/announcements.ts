@@ -134,7 +134,7 @@ export const announcementPaths = {
       tags: ["Announcements"],
       summary: "Vote in a poll",
       description:
-        "Replaces the caller's whole vote and answers the post with its fresh poll. A post the caller may not read, or without a poll, is 404. `version` must match the poll's current version (409 `poll_changed` otherwise: reload and vote again). A closed poll is 409 `poll_closed`, a finished season 409 `season_finished`. Unknown, duplicate or too many `optionIds`, or a malformed body, is 400. Callers who may not vote (for example the author) get 403.",
+        "Replaces the caller's whole vote and answers the post with its fresh poll. A post the caller may not read, or without a poll, is 404. `version` must match the poll's current version (409 `poll_changed` otherwise: reload and vote again). A closed poll is 409 `poll_closed`, a finished season 409 `season_finished`. Unknown, duplicate or too many `optionIds`, or a malformed body, is 400. A Super voting on a season post gets 403: they read it as an overseer, not as its audience.",
       parameters: [idParam],
       requestBody: {
         required: true,

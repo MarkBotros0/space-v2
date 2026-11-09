@@ -52,16 +52,18 @@ export const announcementSchemas = {
   },
   AnnouncementPoll: {
     type: "object",
-    required: ["version", "allowsMultiple", "closed", "canVote", "canManage", "myOptionIds", "voterCount", "multiPickVoters", "options"],
+    required: ["version", "allowsMultiple", "closed", "canVote", "canManage", "canSeeNames", "myOptionIds", "voterCount", "multiPickVoters", "multiPickVotes", "options"],
     properties: {
       version: { type: "integer", minimum: 1, description: "Bumped when the options change; send it back with a vote." },
       allowsMultiple: { type: "boolean" },
       closed: { type: "boolean" },
       canVote: { type: "boolean" },
       canManage: { type: "boolean" },
+      canSeeNames: { type: "boolean", description: "May open who voted for what: managers, and a Super once the season has finished." },
       myOptionIds: { type: "array", items: { type: "integer" } },
       voterCount: { type: ["integer", "null"], description: "Null while the caller may not see counts (before they vote, unless a manager)." },
-      multiPickVoters: { type: ["integer", "null"] },
+      multiPickVoters: { type: ["integer", "null"], description: "Managers only: people with more than one pick. Null otherwise." },
+      multiPickVotes: { type: ["integer", "null"], description: "Managers only: the vote rows of those people, which a several -> one edit removes. Null otherwise." },
       options: {
         type: "array",
         items: {

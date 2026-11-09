@@ -1,6 +1,6 @@
 import { db } from "../../db/client";
 import type { SessionUser } from "../../lib/auth/tokens";
-import { canManagePoll, canVotePoll, isPollClosed } from "../../lib/permissions";
+import { canManagePoll, canSeePollNames, canVotePoll, isPollClosed } from "../../lib/permissions";
 import type { AnnouncementPoll } from "../../../../../packages/shared/src/index";
 import type { AnnouncementRow } from "./serialize";
 
@@ -49,6 +49,7 @@ export async function loadPollView(
   const myOptionIds = mine.map((v) => v.optionId);
   const showCounts = canManage || myOptionIds.length > 0 || closed;
   const counts = new Map(perOption.map((c) => [c.optionId, c._count._all]));
+  const multiPickers = perUser.filter((u) => u._count._all > 1);
 
   return {
     version: poll.version,
@@ -56,9 +57,11 @@ export async function loadPollView(
     closed,
     canVote: canVotePoll(user, row, closed),
     canManage,
+    canSeeNames: canSeePollNames(user, row),
     myOptionIds,
     voterCount: showCounts ? perUser.length : null,
-    multiPickVoters: canManage ? perUser.filter((u) => u._count._all > 1).length : null,
+    multiPickVoters: canManage ? multiPickers.length : null,
+    multiPickVotes: canManage ? multiPickers.reduce((sum, u) => sum + u._count._all, 0) : null,
     options: poll.options.map((o) => ({
       id: o.id,
       label: o.label,

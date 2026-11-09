@@ -125,3 +125,17 @@ describe("GET /announcements/:id/poll/voters", () => {
     expect(res.body.data.options[0].voters).toHaveLength(1);
   });
 });
+
+describe("DELETE /announcements/:id with a poll", () => {
+  it("removes the poll, its options and its votes with the post", async () => {
+    const p = await poll(f.seasonId);
+    await insertVote(p.pollId, p.optionIds[0]!, f.userIds.student);
+    await insertVote(p.pollId, p.optionIds[1]!, f.userIds.student);
+    const res = await request(app).delete(`/api/v1/announcements/${p.postId}`).set(auth(f.tokens.admin));
+    expect(res.status).toBe(204);
+    expect(await db.announcement.count({ where: { id: p.postId } })).toBe(0);
+    expect(await db.announcementPoll.count({ where: { id: p.pollId } })).toBe(0);
+    expect(await db.announcementPollOption.count({ where: { pollId: p.pollId } })).toBe(0);
+    expect(await db.announcementPollVote.count({ where: { pollId: p.pollId } })).toBe(0);
+  });
+});

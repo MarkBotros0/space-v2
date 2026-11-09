@@ -48,6 +48,8 @@ describe("poll on the announcement detail", () => {
     expect(before.canManage).toBe(false);
     expect(before.voterCount).toBeNull();
     expect(before.multiPickVoters).toBeNull();
+    expect(before.multiPickVotes).toBeNull();
+    expect(before.canSeeNames).toBe(false);
     expect(before.options.map((o) => o.votes)).toEqual([null, null, null]);
 
     await insertVote(adminPoll.pollId, adminPoll.optionIds[0]!, f.userIds.student);
@@ -56,6 +58,7 @@ describe("poll on the announcement detail", () => {
     expect(after.voterCount).toBe(1);
     expect(after.options.map((o) => o.votes)).toEqual([1, 0, 0]);
     expect(after.multiPickVoters).toBeNull();
+    expect(after.multiPickVotes).toBeNull();
   });
 
   it("gives the admin author counts and multiPickVoters without voting", async () => {
@@ -66,6 +69,9 @@ describe("poll on the announcement detail", () => {
     expect(poll.myOptionIds).toEqual([]);
     expect(poll.voterCount).toBe(1);
     expect(poll.multiPickVoters).toBe(1);
+    // The one multi-picker's two vote rows: what a several -> one edit removes.
+    expect(poll.multiPickVotes).toBe(2);
+    expect(poll.canSeeNames).toBe(true);
     expect(poll.options.map((o) => o.votes)).toEqual([1, 1, 0]);
   });
 
@@ -104,6 +110,10 @@ describe("poll on the announcement detail", () => {
     expect(poll.voterCount).toBe(0);
     const asSuper = (await detail(f.finishedId, f.tokens.superUser)).poll!;
     expect(asSuper.canManage).toBe(false);
+    expect(asSuper.multiPickVotes).toBeNull();
+    // Spec: a finished season's poll, Supers see names; nobody else does.
+    expect(asSuper.canSeeNames).toBe(true);
+    expect(poll.canSeeNames).toBe(false);
   });
 
   it("gives a post without a poll poll: null", async () => {

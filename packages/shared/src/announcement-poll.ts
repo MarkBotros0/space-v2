@@ -48,10 +48,15 @@ export const announcementPollSchema = z.object({
   closed: z.boolean(),
   canVote: z.boolean(),
   canManage: z.boolean(),
+  /** Who voted for what: managers, and a Super once the season has finished. */
+  canSeeNames: z.boolean(),
   myOptionIds: z.array(z.number().int()),
   /** Null while the caller may not see counts (before they vote, unless a manager). */
   voterCount: z.number().int().nullable(),
+  /** Managers only: people with more than one pick. */
   multiPickVoters: z.number().int().nullable(),
+  /** Managers only: the vote rows of those people, what a several -> one edit removes. */
+  multiPickVotes: z.number().int().nullable(),
   options: z.array(
     z.object({
       id: z.number().int(),
