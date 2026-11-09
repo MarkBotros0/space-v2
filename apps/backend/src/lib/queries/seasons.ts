@@ -2,6 +2,7 @@ import type { SeasonStatus } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
+import { liveSeason } from "../db/live";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason } from "../rbac";
 
@@ -109,5 +110,5 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
  * (each route needs different columns, on purpose), or null.
  */
 export function findLiveSeason<S extends Prisma.SeasonSelect>(id: number, select: S) {
-  return db.season.findFirst({ where: { id, deletedAt: null }, select });
+  return db.season.findFirst({ where: { id, ...liveSeason }, select });
 }
