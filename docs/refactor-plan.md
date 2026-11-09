@@ -169,8 +169,8 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 
 ### Wave 1 — dead code removal (`refactor/wave-1-dead-code`)
 
-- [ ] 1.0 Branch from Wave 0; merge current `main`; re-run the dead-code and length scans on the merged tree
-- [ ] 1.1 Mobile dead files: DC-001, DC-002, DC-003, DC-004, DC-005 (+ barrel lines)
+- [x] 1.0 Branch from Wave 0; merge current `main`; re-run the dead-code and length scans on the merged tree — base is main @ dc3793dc, nothing to merge; candidates re-verified per step
+- [x] 1.1 Mobile dead files: DC-001, DC-002, DC-003, DC-004, DC-005 (+ barrel lines) — a627affc; tsc ok, 134 related suites pass
 - [ ] 1.2 Mobile dead symbols: DC-006, DC-007, DC-008, DC-009, DC-010, DC-011
 - [ ] 1.3 Mobile test-only production code with its tests: DC-025, DC-026, DC-027, DC-028, DC-029, DC-030
 - [ ] 1.4 Backend: DC-012 (`canReadAnnouncement`), DC-014, DC-020 (`isAdminOfAnySeason`), BE-054
