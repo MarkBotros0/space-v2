@@ -3,7 +3,6 @@ import {
   configLabel,
   groupTrackerRows,
   targetLabel,
-  trackerStatusLabel,
 } from "../lib/assignment-labels";
 
 const groups = [
@@ -21,16 +20,6 @@ describe("targetLabel", () => {
     expect(targetLabel(false, [3, 9], groups)).toBe("Group A + 1 more");
     expect(targetLabel(false, [3, 4], undefined)).toBe("2 groups");
     expect(targetLabel(false, [9], [])).toBe("1 group");
-  });
-});
-
-describe("trackerStatusLabel", () => {
-  it("covers the PENDING sentinel and every submission status", () => {
-    expect(trackerStatusLabel("PENDING")).toBe("Not started");
-    expect(trackerStatusLabel("DRAFT")).toBe("Draft");
-    expect(trackerStatusLabel("SUBMITTED")).toBe("Submitted");
-    expect(trackerStatusLabel("REVIEWED")).toBe("Reviewed");
-    expect(trackerStatusLabel("RETURNED")).toBe("Returned");
   });
 });
 

@@ -1,7 +1,6 @@
 // Assignment wording shared by the staff list, detail and tracker (Plan 5).
 import type {
   AssignmentDetail,
-  AssignmentStudentStatus,
   AssignmentTrackerRow,
   MimeCategory,
 } from "@space/shared";
@@ -35,22 +34,6 @@ export function targetLabel(
   if (names.length === 0) return `${groupIds.length} group${groupIds.length === 1 ? "" : "s"}`;
   const unnamed = groupIds.length - names.length;
   return unnamed > 0 ? `${names.join(", ")} + ${unnamed} more` : names.join(", ");
-}
-
-/** A tracker row's state. PENDING is the wire-only "no submission row" sentinel. */
-export function trackerStatusLabel(status: AssignmentStudentStatus): string {
-  switch (status) {
-    case "PENDING":
-      return "Not started";
-    case "DRAFT":
-      return "Draft";
-    case "SUBMITTED":
-      return "Submitted";
-    case "REVIEWED":
-      return "Reviewed";
-    case "RETURNED":
-      return "Returned";
-  }
 }
 
 /** The type-specific settings in one line (v1 showed them only inside the form). */

@@ -159,53 +159,6 @@ export function todayWork(
   ];
 }
 
-export type WorkSections = {
-  todo: WorkRow[];
-  doneAssignments: WorkRow[];
-  doneQuizzes: WorkRow[];
-  stats: { submitted: number; pending: number; reviewed: number; quizAverage: number | null };
-};
-
-/** Scored rows only, so an unattempted quiz cannot drag the average down. */
-function quizAverage(quizzes: StudentQuizResult[]): number | null {
-  const scored = quizzes.filter((q) => q.score !== null && q.maxScore > 0);
-  if (scored.length === 0) return null;
-  const total = scored.reduce((sum, q) => sum + (q.score as number) / q.maxScore, 0);
-  return Math.round((total / scored.length) * 100);
-}
-
-/**
- * The Work tab. To do opens with Today's list (P2-5), then the open assignments
- * Today leaves behind "See all", later and undated, in the server's order (due
- * date, undated last). RETURNED counts in none of the three figures, as in v1.
- */
-export function workSections(
-  assignments: StudentAssignmentListItem[],
-  quizzes: StudentQuizResult[],
-  todayOrgDay: string,
-): WorkSections {
-  const open = assignments.filter(
-    (a) => a.status === "PENDING" || a.status === "DRAFT" || a.status === "RETURNED",
-  );
-  const handedIn = assignments.filter((a) => a.status === "SUBMITTED" || a.status === "REVIEWED");
-  const first = todayWork(open, quizzes, todayOrgDay);
-  const listed = new Set(first.map((row) => row.key));
-  return {
-    todo: [
-      ...first,
-      ...open.map((a) => assignmentRow(a, todayOrgDay)).filter((row) => !listed.has(row.key)),
-    ],
-    doneAssignments: handedIn.map((a) => assignmentRow(a, todayOrgDay)),
-    doneQuizzes: quizzes.filter((q) => !isOpenQuiz(q)).map(quizRow),
-    stats: {
-      submitted: handedIn.length,
-      pending: assignments.filter((a) => a.status === "PENDING" || a.status === "DRAFT").length,
-      reviewed: assignments.filter((a) => a.status === "REVIEWED").length,
-      quizAverage: quizAverage(quizzes),
-    },
-  };
-}
-
 /** A labelled group of rows; an empty group is not shown. */
 export type WorkGroup = { key: string; header: string; rows: WorkRow[] };
 

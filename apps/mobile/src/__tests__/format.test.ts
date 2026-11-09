@@ -3,7 +3,6 @@ import {
   unbreakable,
   formatShortDateTime,
   addMinutesToWallTime,
-  formatShortDate,
   formatDistanceOnly,
   formatEventWhenShort,
   formatLongDay,
@@ -12,12 +11,10 @@ import {
   formatStampAgo,
   notificationTypeLabel,
   formatWeekdayDayYear,
-  splitWallTime,
   firstName,
   formatEventWhen,
   formatDate,
   formatDayKey,
-  formatDueDate,
   formatOrgDue,
   formatSessionTime,
   formatWallTime,
@@ -30,10 +27,6 @@ describe("format", () => {
     expect(formatSessionTime("2026-03-01T18:00:00.000Z")).toEqual(expect.any(String));
   });
 
-  it("renders a due date as a calendar day", () => {
-    expect(formatDueDate("2026-04-01T00:00:00.000Z")).toContain("2026");
-  });
-
   it("returns a placeholder for a null timestamp rather than throwing", () => {
     // dueAt, submittedAt, reviewedAt and checkedInAt are all nullable.
     expect(formatDate(null)).toBe("—");
@@ -41,10 +34,6 @@ describe("format", () => {
 
   it("returns a placeholder for a null session time rather than throwing", () => {
     expect(formatSessionTime(null)).toBe("—");
-  });
-
-  it("returns a placeholder for a null due date rather than throwing", () => {
-    expect(formatDueDate(null)).toBe("—");
   });
 
   // `formatIso` documents this as placeholder behaviour for a string that
@@ -125,10 +114,7 @@ describe("batch-2 formatters", () => {
     expect(formatLongDay("nope")).toBe("—");
   });
 
-  it("splits and adds to wall-clock times as text", () => {
-    expect(splitWallTime("20:00")).toEqual({ clock: "8:00", meridiem: "PM" });
-    expect(splitWallTime("00:05")).toEqual({ clock: "12:05", meridiem: "AM" });
-    expect(splitWallTime(null)).toEqual({ clock: "—", meridiem: "" });
+  it("adds to wall-clock times as text", () => {
     expect(addMinutesToWallTime("20:00", 90)).toBe("21:30");
     expect(addMinutesToWallTime("23:30", 45)).toBe("00:15");
     expect(addMinutesToWallTime(null, 30)).toBeNull();
@@ -138,11 +124,6 @@ describe("batch-2 formatters", () => {
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: null, time: "18:30" })).toBe("Mar 5 · 6:30\u00A0PM");
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-07", time: null })).toBe("Mar 5 – Mar 7");
     expect(formatEventWhenShort({ dayKey: "2099-03-05", endDayKey: "2099-03-05", time: null })).toBe("Mar 5");
-  });
-
-  it("formats an instant's short date", () => {
-    expect(formatShortDate("2099-04-01T12:00:00.000Z")).toBe("Apr 1");
-    expect(formatShortDate(null)).toBe("—");
   });
 
   it("formats distances and stamps", () => {
@@ -178,7 +159,6 @@ describe("times never break across lines", () => {
       formatStampAgo("2099-03-01T09:05:00"),
     ];
     for (const out of outs) expect(out).toMatch(/\d:\d{2}\u00A0(AM|PM)/);
-    expect(splitWallTime("21:05")).toEqual({ clock: "9:05", meridiem: "PM" });
   });
 });
 

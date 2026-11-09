@@ -1,7 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import {
-  AttendancePill,
   Avatar,
   AvatarFallback,
   Badge,
@@ -114,15 +113,6 @@ describe("status components", () => {
     ["RETURNED", "Returned"],
   ] as const)("SubmissionStatusBadge %s reads %s (v1 map)", (status, label) => {
     render(<SubmissionStatusBadge status={status} />);
-    expect(screen.getByText(label)).toBeTruthy();
-  });
-
-  it.each([
-    ["PRESENT", "Present"],
-    ["ABSENT", "Absent"],
-    ["LATE", "Late"],
-  ] as const)("AttendancePill %s reads %s (v1 map)", (status, label) => {
-    render(<AttendancePill status={status} />);
     expect(screen.getByText(label)).toBeTruthy();
   });
 

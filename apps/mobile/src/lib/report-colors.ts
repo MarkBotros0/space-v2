@@ -18,7 +18,7 @@ import { palette } from "../design/theme/palette";
  * The band colours are mid-ramp steps that read on both themes, as v1's do
  * (v1's charts use one palette in light and dark).
  *
- * Note the trap v1 left next door (R96): AttendancePill reads green / red /
+ * Note the trap v1 left next door (R96): attendance reads green / red /
  * amber for Present / Absent / Late while the palette's indices 0-2 are green /
  * TEAL / amber, so colouring an attendance chart from the palette by index
  * paints ABSENT teal. Nothing here is coloured by attendance status; anything

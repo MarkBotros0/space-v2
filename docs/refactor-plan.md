@@ -172,7 +172,7 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 - [x] 1.0 Branch from Wave 0; merge current `main`; re-run the dead-code and length scans on the merged tree — base is main @ dc3793dc, nothing to merge; candidates re-verified per step
 - [x] 1.1 Mobile dead files: DC-001, DC-002, DC-003, DC-004, DC-005 (+ barrel lines) — a627affc; tsc ok, 134 related suites pass
 - [x] 1.2 Mobile dead symbols: DC-006, DC-007, DC-008, DC-009, DC-010, DC-011 — tsc + lint clean, 171 related suites pass (also removed the orphaned withPress helper and DayGroup type)
-- [ ] 1.3 Mobile test-only production code with its tests: DC-025, DC-026, DC-027, DC-028, DC-029, DC-030
+- [x] 1.3 Mobile test-only production code with its tests: DC-025, DC-026, DC-027, DC-028, DC-029, DC-030 — tsc + lint clean, 149 related suites pass; work-model.ts 323 → 275 lines; FE-041's AttendancePill part is moot
 - [ ] 1.4 Backend: DC-012 (`canReadAnnouncement`), DC-014, DC-020 (`isAdminOfAnySeason`), BE-054
 - [ ] 1.5 Shared: SH-007 (`dashboardSchema`, `assignmentListItemSchema`), DC-024, DC-016 (unused type aliases)
 - [ ] 1.6 Drop `export` from file-local symbols: DC-017 / BE-081

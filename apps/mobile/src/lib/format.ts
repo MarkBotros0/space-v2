@@ -32,11 +32,6 @@ export function formatDateTime(iso: string | null): string {
   return formatIso(iso, "EEE, MMM d, yyyy · h:mm\u00A0a");
 }
 
-/** e.g. "Apr 1, 2026" — an assignment's due date, rendered as a calendar day (no time). */
-export function formatDueDate(iso: string | null): string {
-  return formatIso(iso, "MMM d, yyyy");
-}
-
 /**
  * e.g. "Mar 1, 2099" — an org-calendar day key ("2099-03-01") from the server.
  *
@@ -146,14 +141,6 @@ export function formatWeekdayDayYear(dayKey: string | null): string {
   return formatDayKeyAs(dayKey, "EEE, MMM d, yyyy");
 }
 
-/** "20:00" → { clock: "8:00", meridiem: "PM" } — v1's agenda time rail, as text (X13). */
-export function splitWallTime(time: string | null): { clock: string; meridiem: string } {
-  const whole = formatWallTime(time);
-  if (whole === PLACEHOLDER) return { clock: PLACEHOLDER, meridiem: "" };
-  const [clock = PLACEHOLDER, meridiem = ""] = whole.split("\u00A0");
-  return { clock, meridiem };
-}
-
 /** "20:00" + 90 → "21:30"; wraps past midnight. Text arithmetic on the org clock. */
 export function addMinutesToWallTime(time: string | null, minutes: number): string | null {
   if (time == null) return null;
@@ -191,11 +178,6 @@ export function formatStampAgo(iso: string | null): string {
   const date = parseISO(iso);
   if (!isValid(date)) return PLACEHOLDER;
   return `${format(date, "MMM\u00A0d,\u00A0yyyy · h:mm\u00A0a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
-}
-
-/** e.g. "Apr 1" — v1's short badge date for an instant with no org day key (device zone, gap note). */
-export function formatShortDate(iso: string | null): string {
-  return formatIso(iso, "MMM d");
 }
 
 /** e.g. "Jul 1, 6:13 PM" — v1's submissions stamp for an instant (device zone; no org fields on those payloads). */
