@@ -11,6 +11,8 @@
  */
 import type { Express } from "express";
 
+import type * as AppModule from "../app";
+
 type Layer = {
   route?: { path: string; methods: Record<string, boolean> };
   handle: unknown;
@@ -22,7 +24,6 @@ const MOUNT_PATH = "__mountPath";
 
 function patchRouterUse(): void {
   const routerPath = require.resolve("router", { paths: [require.resolve("express")] });
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const Router = require(routerPath) as { prototype: Record<string, unknown> };
   const originalUse = Router.prototype.use as (this: RouterLike, ...args: unknown[]) => unknown;
   Router.prototype.use = function patchedUse(this: RouterLike, ...args: unknown[]) {
@@ -65,8 +66,7 @@ describe("route inventory", () => {
     let app: Express | undefined;
     jest.isolateModules(() => {
       patchRouterUse();
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { createApp } = require("../app") as typeof import("../app");
+      const { createApp } = require("../app") as typeof AppModule;
       app = createApp();
     });
     const routes = listRoutes((app as unknown as { router: RouterLike }).router);
