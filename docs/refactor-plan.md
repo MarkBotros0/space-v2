@@ -47,7 +47,7 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 | e2e | none automated; the Maestro UI sweep (`ui-sweep` skill) is the mobile e2e — not run |
 | CI | `.github/workflows/unit-tests.yml` and `integration-tests.yml`, both `workflow_dispatch` only |
 | Files > 400 lines | 4, all tests: `mobile/src/__tests__/season-people.test.tsx` 475, `student-today.test.tsx` 462, `session-detail.test.tsx` 432, `backend/src/__tests__/integration/people-candidates.test.ts` 423 |
-| Size | 1,313 TS/TSX files (521 tests), ~163k lines; 36 Prisma models, 15 enums, 36 migrations |
+| Size | 1,313 TS/TSX files (521 tests), ~163k lines; 36 Prisma models, 15 enums, 35 migrations |
 
 **After the polls merge (`bcb79a93` + `cea0568e`):** 39 models, 36 migration folders, still 4 files > 400
 (the same tests). Lint/typecheck/unit/build: see Wave 0 step 0.8. Integration: 133 / 1,598 pass (0.10).

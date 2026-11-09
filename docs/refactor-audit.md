@@ -346,7 +346,7 @@ inside loops (13 in seed scripts, ignored).
 
 ## 2. Database
 
-39 Prisma models after the polls merge (36 audited in Appendix D + 3 poll tables here), 15 enums, 37 migrations; all
+39 Prisma models after the polls merge (36 audited in Appendix D + 3 poll tables here), 15 enums, 36 migrations (35 before it); all
 `Int` autoincrement PKs (`serial4`), 5 composite-PK link tables, one `text` PK (`RateLimitHit.key`).
 **No UUID primary keys** — so the brief's "UUID exceptions" list is empty; the exception that applies
 instead is Int-not-BIGINT (§2.13, Q1).
