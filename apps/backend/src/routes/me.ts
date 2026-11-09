@@ -19,7 +19,7 @@ import { staffScopeForSeason } from "../lib/permissions";
 import { loadMentorDashboard, loadSeasonStaffDashboard, loadStudentDashboard } from "../lib/queries/dashboard";
 import { loadMyProfile } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
-import { isAlumnus, isStudyingAlumnus } from "../lib/rbac";
+import { isAlumnusNotStudying } from "../lib/rbac";
 import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { meDevicesRouter } from "./me-devices";
@@ -196,7 +196,7 @@ meRouter.get("/profile", requireAuth, async (req, res) => {
 meRouter.patch("/profile", requireAuth, async (req, res) => {
   const user = requireUser(req);
   if (user.role !== "STUDENT") return apiError(res, "forbidden", STUDENTS_ONLY, 403);
-  if (isAlumnus(user) && !isStudyingAlumnus(user)) {
+  if (isAlumnusNotStudying(user)) {
     return apiError(
       res,
       "forbidden",
@@ -316,7 +316,7 @@ meRouter.get("/dashboard", requireAuth, async (req, res) => {
 
   // An alumnus's Home is /me + /events; this endpoint has nothing for them,
   // unless they're studying: then their Home is a student's.
-  if (isAlumnus(user) && !isStudyingAlumnus(user)) return forbidden(res);
+  if (isAlumnusNotStudying(user)) return forbidden(res);
   // A student's season is their token's, never a parameter (D22, C8).
   if (user.role === "STUDENT") return apiOk(res, await loadStudentDashboard(user, now));
   if (user.role === "MENTOR") return apiOk(res, await loadMentorDashboard());

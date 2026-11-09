@@ -1,4 +1,3 @@
-import { isAlumnus, isStudyingAlumnus } from "@space/shared";
 import { Redirect, Stack, useSegments } from "expo-router";
 import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,7 +7,7 @@ import { TabBarPresenceContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { PUSHED_NAV_ROUTE_NAMES } from "../../src/lib/route-names";
 import { TABS_ROUTE, singularTabsRouter } from "../../src/lib/tabs-stack-router";
-import { useSessionStore } from "../../src/store/session";
+import { useAlumnusNotStudying, useSessionStore } from "../../src/store/session";
 
 /** A detail screen that throws while rendering shows a retry, not a crashed app. */
 export const ErrorBoundary = ScreenErrorBoundary;
@@ -110,15 +109,7 @@ const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
  */
 export default function AppLayout() {
   const status = useSessionStore((s) => s.status);
-  const alumnusNotStudying = useSessionStore((s) => {
-    if (s.user == null) return false;
-    const audience = {
-      role: s.user.role,
-      graduationYear: s.scopes?.graduationYear ?? null,
-      activeSeasonId: s.scopes?.activeSeasonId ?? null,
-    };
-    return isAlumnus(audience) && !isStudyingAlumnus(audience);
-  });
+  const alumnusNotStudying = useAlumnusNotStudying();
   const segments = useSegments();
 
   // The boot gate (Task 6, app/_layout.tsx) has already resolved "idle" and

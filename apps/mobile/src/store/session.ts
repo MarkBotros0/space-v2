@@ -1,5 +1,14 @@
 import { create } from "zustand";
-import { navFor, type MeScopes, type MeUser, type RoleNav } from "@space/shared";
+import {
+  isAlumnusNotStudying,
+  navFor,
+  type MeScopes,
+  type MeUser,
+  type NavAudience,
+  type RoleNav,
+} from "@space/shared";
+
+import { isAdminOfSeasonForUi } from "../lib/season-admin";
 
 /**
  * `idle` means the app has not yet looked for a stored session; `anonymous`
@@ -43,3 +52,25 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     return navFor({ role: user.role, graduationYear: scopes.graduationYear, activeSeasonId: scopes.activeSeasonId });
   },
 }));
+
+/** The signed-in person as the shared audience rules read them; null when signed out. */
+export function audienceOf(state: Pick<SessionState, "user" | "scopes">): NavAudience | null {
+  if (state.user == null) return null;
+  return {
+    role: state.user.role,
+    graduationYear: state.scopes?.graduationYear ?? null,
+    activeSeasonId: state.scopes?.activeSeasonId ?? null,
+  };
+}
+
+/** navFor's rule (shared): a graduated student, unless studying. False when signed out. */
+export function useAlumnusNotStudying(): boolean {
+  return useSessionStore((s) => {
+    const audience = audienceOf(s);
+    return audience !== null && isAlumnusNotStudying(audience);
+  });
+}
+
+export function useIsAdminOfSeason(seasonId: number): boolean {
+  return useSessionStore((s) => isAdminOfSeasonForUi(s.user, s.scopes, seasonId));
+}

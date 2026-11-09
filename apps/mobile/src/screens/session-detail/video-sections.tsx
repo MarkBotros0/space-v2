@@ -5,7 +5,7 @@ import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../components/Vi
 import { InlineError } from "../../design/layout/route-states";
 import { Badge, Card as CardV1, CardContent, CardHeader, CardTitle, DataTable, Text as TextV1 } from "../../design/ui";
 import { useVideoQuizResults } from "../../hooks/use-video-quiz";
-import { useSessionStore } from "../../store/session";
+import { useIsAdminOfSeason, useSessionStore } from "../../store/session";
 
 /**
  * The session's interactive video (Plan 14), staff side — students get the player in StudentSessionBody. A season
@@ -15,13 +15,11 @@ import { useSessionStore } from "../../store/session";
  */
 export function VideoSection({ detail }: { detail: SessionDetail }) {
   const user = useSessionStore((s) => s.user);
-  const scopes = useSessionStore((s) => s.scopes);
   // Mirrors canManageSessionVideo exactly: SUPER, or an ADMIN of this season.
   // NOT `canMarkAttendance` — that flag admits a group LEADER, who may not
   // author questions. The server enforces the gate regardless; this only decides
   // whether the editor (and its answer-key read) is ever mounted.
-  const canAuthorVideo =
-    user?.role === "SUPER" || (user?.role === "ADMIN" && (scopes?.seasonAdminIds ?? []).includes(detail.seasonId));
+  const canAuthorVideo = useIsAdminOfSeason(detail.seasonId);
   // Results: authors, plus a LEADER (the server narrows a leader to their groups).
   const canSeeResults = canAuthorVideo || user?.role === "LEADER";
 

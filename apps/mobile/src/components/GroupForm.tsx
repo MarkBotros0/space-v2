@@ -13,7 +13,7 @@ import { useSeasonAdmins, useStaffCandidates } from "../hooks/use-season-admins"
 import { firstErrorByField } from "../lib/form-errors";
 import { MembersField } from "../screens/group-form/members-field";
 import { StaffPickerSheet } from "../screens/season-people/staff-picker-sheet";
-import { useSessionStore } from "../store/session";
+import { useIsAdminOfSeason, useSessionStore } from "../store/session";
 
 iconWithClassName(Trash2, UserPlus);
 
@@ -73,7 +73,7 @@ export function GroupForm({
   const leaders = useStaffCandidates(seasonId, { enabled: true });
   const [pickingLeader, setPickingLeader] = useState(false);
   const me = useSessionStore((st) => st.user);
-  const scopes = useSessionStore((st) => st.scopes);
+  const isAdminOfThisSeason = useIsAdminOfSeason(seasonId);
   const seasonAdmins = useSeasonAdmins(seasonId, { enabled: me?.role === "SUPER" });
   const roster = useSeasonRoster(seasonId);
   const season = useSeasonDetail(seasonId);
@@ -106,7 +106,7 @@ export function GroupForm({
     currentLeaders,
     me?.role === "SUPER"
       ? (seasonAdmins.data ?? []).map((a) => ({ id: a.userId, name: a.name }))
-      : me?.role === "ADMIN" && scopes?.seasonAdminIds.includes(seasonId)
+      : me && isAdminOfThisSeason
         ? [{ id: me.id, name: me.name }]
         : [],
   );

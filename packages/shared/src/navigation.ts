@@ -242,6 +242,14 @@ export function isStudyingAlumnus(user: NavAudience): boolean {
   return isAlumnus(user) && user.activeSeasonId != null;
 }
 
+/**
+ * A graduated student who isn't back in a student seat: the alumni experience
+ * (their own nav and Home, and refused the student pages).
+ */
+export function isAlumnusNotStudying(user: NavAudience): boolean {
+  return isAlumnus(user) && !isStudyingAlumnus(user);
+}
+
 /** Alumni get their own nav (isAlumnus), unless studying; everyone else their role's. */
 export function navFor(user: NavAudience): RoleNav {
   if (isStudyingAlumnus(user)) return STUDENT;

@@ -1,17 +1,7 @@
 import { isSeasonLive } from "@space/shared";
-import type { EnrollmentHistoryItem, MeScopes, MeUser } from "@space/shared";
 
-/**
- * Ruling C7 on the client, mirroring apps/backend/src/lib/rbac.ts
- * isAdminOfSeason: SUPER passes; otherwise the ADMIN role AND the claim for
- * that season. A stray SeasonAdmin row on a STUDENT grants nothing here
- * either.
- */
-function isAdminOfSeasonForUi(user: Pick<MeUser, "role"> | null, scopes: MeScopes | null, seasonId: number): boolean {
-  if (!user || !scopes) return false;
-  if (user.role === "SUPER") return true;
-  return user.role === "ADMIN" && scopes.seasonAdminIds.includes(seasonId);
-}
+import { isAdminOfSeasonForUi } from "./season-admin";
+import type { EnrollmentHistoryItem, MeScopes, MeUser } from "@space/shared";
 
 interface StudentActions {
   /** Plan 7's canEditStudent: SUPER, or an ADMIN with an ACTIVE enrollment in one of their seasons. */

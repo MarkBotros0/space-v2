@@ -19,6 +19,11 @@ export function isStudyingAlumnus(u: SessionUser): boolean {
   return studyingRule(u);
 }
 
+/** Shared's rule over a token: the alumni experience, i.e. an alumnus who isn't studying. */
+export function isAlumnusNotStudying(u: SessionUser): boolean {
+  return isAlumnus(u) && !isStudyingAlumnus(u);
+}
+
 export function isMentor(u: SessionUser): boolean {
   return u.role === "MENTOR";
 }

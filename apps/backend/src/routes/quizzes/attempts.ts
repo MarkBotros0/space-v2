@@ -6,7 +6,7 @@ import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import type { SessionUser } from "../../lib/auth/tokens";
 import { hasActiveEnrollment } from "../../lib/permissions";
-import { isAlumnus, isStudyingAlumnus } from "../../lib/rbac";
+import { isAlumnusNotStudying } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { saveQuizAnswersRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
@@ -23,7 +23,7 @@ import { loadStudentQuizDetail } from "./student-detail";
  * and check-in already apply (`hasActiveEnrollment`).
  */
 async function canTakeQuizIn(user: SessionUser, seasonId: number): Promise<boolean> {
-  if (isAlumnus(user) && !isStudyingAlumnus(user)) return false;
+  if (isAlumnusNotStudying(user)) return false;
   return hasActiveEnrollment(user, seasonId);
 }
 

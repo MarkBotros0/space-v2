@@ -1,4 +1,3 @@
-import { isAlumnus, isStudyingAlumnus } from "@space/shared";
 import { View } from "react-native";
 
 import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
@@ -9,7 +8,7 @@ import { AlumniHistory } from "../../../src/screens/alumni/alumni-history";
 import { SeasonHistory } from "../../../src/design/students/season-history";
 import { EmptyState } from "../../../src/design/ui";
 import { useSeasonHistory } from "../../../src/hooks/use-self-service";
-import { useSessionStore } from "../../../src/store/session";
+import { useAlumnusNotStudying, useSessionStore } from "../../../src/store/session";
 
 /**
  * /history — STUDENT (sidebar) and ALUMNI (tab). One screen for v1's two
@@ -20,12 +19,9 @@ import { useSessionStore } from "../../../src/store/session";
  */
 export default function HistoryScreen() {
   const role = useSessionStore((s) => s.user?.role ?? null);
-  const graduationYear = useSessionStore((s) => s.scopes?.graduationYear ?? null);
   const activeSeasonId = useSessionStore((s) => s.scopes?.activeSeasonId ?? null);
   const isStudent = role === "STUDENT";
-  // navFor's rule (shared): a graduated student, unless studying.
-  const audience = role === null ? null : { role, graduationYear, activeSeasonId };
-  const alumnusNotStudying = audience !== null && isAlumnus(audience) && !isStudyingAlumnus(audience);
+  const alumnusNotStudying = useAlumnusNotStudying();
   const query = useSeasonHistory(activeSeasonId, isStudent);
   const { data, isPending, isError, refetch, isRefetching } = query;
 
