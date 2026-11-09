@@ -9,10 +9,9 @@ import type { SeasonDetail } from "@space/shared";
 
 import { formatSeasonDay } from "../../lib/format";
 import { MS_PER_MINUTE, MS_PER_DAY } from "../../lib/time";
+import { plural } from "../../lib/plural";
 
 const dayNumber = (key: string) => Math.round(Date.parse(`${key}T00:00:00Z`) / MS_PER_DAY);
-const plural = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
-
 export function phoneDayKey(now = new Date()): string {
   const local = new Date(now.getTime() - now.getTimezoneOffset() * MS_PER_MINUTE);
   return local.toISOString().slice(0, 10);
@@ -29,11 +28,11 @@ export function seasonTimeline(
     return { label: `Ended ${formatSeasonDay(season.endDate)}`, tone: "neutral" };
   }
   if (season.status === "DRAFT") {
-    if (start > t) return { label: `Starts in ${plural(start - t)}`, tone: "info" };
+    if (start > t) return { label: `Starts in ${plural(start - t, "day")}`, tone: "info" };
     if (start === t) return { label: "Due to start today", tone: "info" };
     return { label: `Was due to start ${formatSeasonDay(season.startDate)}`, tone: "warn" };
   }
   if (t > end) return { label: "Past its end date", tone: "warn" };
-  if (t < start) return { label: `Starts in ${plural(start - t)}`, tone: "info" };
+  if (t < start) return { label: `Starts in ${plural(start - t, "day")}`, tone: "info" };
   return { label: `Day ${t - start + 1} of ${end - start + 1}`, tone: "info" };
 }

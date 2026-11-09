@@ -26,8 +26,8 @@ import {
 import { PeopleFilterBar } from "./people-filters";
 import { initialSourceId, isStraggler, passersToTick, stragglerPhrase } from "./source";
 import { SourcePicker } from "./source-picker";
+import { people as peopleCount } from "../../lib/plural";
 
-const noun = (n: number) => (n === 1 ? "1 person" : `${n} people`);
 const keyOf = (item: PeopleItem) => item.key;
 
 /**
@@ -158,7 +158,7 @@ export function PeopleList({
     setNotice(null);
     add.mutate(overrideUserIds.length > 0 ? { userIds, overrideUserIds } : { userIds }, {
       onSuccess: (added) => {
-        toast.success(`Added ${noun(added)}`);
+        toast.success(`Added ${peopleCount(added)}`);
         router.back();
       },
       onError: (err) => {
@@ -178,7 +178,7 @@ export function PeopleList({
           setSelected(new Set(userIds.filter(stillOk)));
           setNotice(
             dropped > 0
-              ? `${message}. ${noun(dropped)} ${dropped === 1 ? "was" : "were"} taken off your selection. Check the rest and add again.`
+              ? `${message}. ${peopleCount(dropped)} ${dropped === 1 ? "was" : "were"} taken off your selection. Check the rest and add again.`
               : message,
           );
         });
@@ -298,7 +298,7 @@ export function PeopleList({
       />
     </>,
     <SaveBar
-      label={`Add ${noun(selected.size)}`}
+      label={`Add ${peopleCount(selected.size)}`}
       onPress={submit}
       loading={add.isPending}
       disabled={selected.size === 0}

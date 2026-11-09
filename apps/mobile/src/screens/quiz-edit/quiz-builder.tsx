@@ -18,10 +18,9 @@ import { apiErrorMessage } from "../../lib/api-error";
 import { ReleaseResultsCard } from "../quiz-grade/release-results";
 import { QuestionRow } from "./question-row";
 import { QuizDetailsSheet } from "./quiz-details-sheet";
+import { plural } from "../../lib/plural";
 
 iconWithClassName(Plus);
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /**
  * The quiz at a glance: its name with Edit, what it is, and where it stands.

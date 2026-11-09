@@ -2,12 +2,9 @@ import { View } from "react-native";
 
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Text } from "../../design/ui/text";
+import { people } from "../../lib/plural";
 
 /** "1 person", "120 people": a reach of exactly one is singular. */
-function peopleCount(n: number): string {
-  return n === 1 ? "1 person" : `${n} people`;
-}
-
 /** The one confirm before a post goes out: who it reaches, with Cancel and Post in one Sheet. */
 export function ConfirmPostSheet({
   open,
@@ -45,7 +42,7 @@ export function ConfirmPostSheet({
     >
       <View className="pb-4">
         <Text variant="body" className="text-foreground">
-          {`This notifies ${peopleCount(reach)}${withPoll ? ", with a poll" : ""}.`}
+          {`This notifies ${people(reach)}${withPoll ? ", with a poll" : ""}.`}
         </Text>
       </View>
     </Sheet>

@@ -13,8 +13,7 @@ import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { IssueList } from "../../../../src/screens/season-start/issue-list";
 import { useIsSuper } from "../../../../src/store/session";
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+import { plural } from "../../../../src/lib/plural";
 
 /**
  * Start a draft season (SUPER): clear what blocks it, then start. The check is

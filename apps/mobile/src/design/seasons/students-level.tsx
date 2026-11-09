@@ -12,12 +12,11 @@ import { iconWithClassName } from "../lib/icon";
 import { Button } from "../ui/button";
 import { Text } from "../ui/text";
 import { LevelHeader } from "./level-header";
+import { people } from "../../lib/plural";
 
 iconWithClassName(UserPlus, Users);
 
 export type StudentsSuggestion = { title: string; count: number; onAdd: () => void };
-
-const people = (n: number) => (n === 1 ? "1 person" : `${n} people`);
 
 /** `Nobody is in GBV 2026 yet.` / `3 people are in GBV 2026. 1 isn't in a group yet.` */
 export function studentsSummary(seasonTitle: string, count: number, ungrouped: number, groups: number): string {

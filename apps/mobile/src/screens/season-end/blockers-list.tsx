@@ -5,8 +5,7 @@ import type { SeasonEndCheck } from "@space/shared";
 import { EmptyState, GroupedList, ListRow, Text } from "../../design/ui";
 import { formatDateTime } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+import { plural } from "../../lib/plural";
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (

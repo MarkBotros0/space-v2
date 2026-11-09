@@ -13,10 +13,11 @@ import { BlockersList } from "../../../../src/screens/season-end/blockers-list";
 import { ResultSheet, type ResultDraft } from "../../../../src/screens/season-end/result-sheet";
 import { ReviewList } from "../../../../src/screens/season-end/review-list";
 import { useIsSuper } from "../../../../src/store/session";
+import { blankToNull } from "../../../../src/lib/form-values";
+import { plural } from "../../../../src/lib/plural";
 
 type Student = SeasonEndCheck["students"][number];
 
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const PASSED: ResultDraft = { result: "PASSED", reason: "" };
 
 /**
@@ -43,7 +44,7 @@ export default function EndSeasonScreen() {
   const reviewedIds = check.data?.students.map((s) => s.userId) ?? [];
   const notPassed = Object.entries(staged)
     .filter(([id, d]) => d.result === "NOT_PASSED" && reviewedIds.includes(Number(id)))
-    .map(([id, d]) => ({ userId: Number(id), reason: d.reason.trim() === "" ? null : d.reason.trim() }));
+    .map(([id, d]) => ({ userId: Number(id), reason: blankToNull(d.reason) }));
 
   const onConfirm = () => {
     if (!check.data) return;

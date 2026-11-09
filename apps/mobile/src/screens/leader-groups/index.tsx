@@ -13,12 +13,11 @@ import { Text } from "../../design/ui/text";
 import { useGroupDetails, useMyGroups } from "../../hooks/use-groups";
 import { useSeasons } from "../../hooks/use-seasons";
 import { useSessionStore } from "../../store/session";
+import { plural } from "../../lib/plural";
 
 const GroupIcon = NAV_ICONS.groups;
 const byName = (a: GroupListItem, b: GroupListItem) => a.name.localeCompare(b.name);
 const NONE_DESCRIPTION = "An admin will add you to a group when you're ready.";
-const plural = (n: number, one: string) => `${n} ${n === 1 ? one : `${one}s`}`;
-
 /** The group a leader serves now: a card that opens it, then its students, searchable. */
 function CurrentGroup({ group, detail }: { group: GroupListItem; detail: { data?: GroupDetail; isError: boolean } }) {
   const router = useRouter();
