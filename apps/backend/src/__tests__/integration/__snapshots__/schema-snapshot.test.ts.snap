@@ -536,6 +536,7 @@ exports[`database schema has exactly these indexes 1`] = `
   "CREATE INDEX "GroupStudent_groupId_idx" ON public."GroupStudent" USING btree ("groupId")",
   "CREATE UNIQUE INDEX "GroupStudent_pkey" ON public."GroupStudent" USING btree ("groupId", "studentUserId")",
   "CREATE UNIQUE INDEX "GroupStudent_seasonId_studentUserId_key" ON public."GroupStudent" USING btree ("seasonId", "studentUserId")",
+  "CREATE INDEX "GroupStudent_studentUserId_idx" ON public."GroupStudent" USING btree ("studentUserId")",
   "CREATE INDEX "InviteToken_expiresAt_idx" ON public."InviteToken" USING btree ("expiresAt")",
   "CREATE UNIQUE INDEX "InviteToken_pkey" ON public."InviteToken" USING btree (id)",
   "CREATE UNIQUE INDEX "InviteToken_token_key" ON public."InviteToken" USING btree (token)",

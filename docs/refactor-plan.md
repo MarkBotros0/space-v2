@@ -255,7 +255,7 @@ snapshot updated, `schema.prisma` updated where expressible.
       record the pattern as D10 (or the psql fallback, audit §2.11) — verified; D10 recorded (no transaction
       wrap: CONCURRENTLY works, other migrations use explicit `BEGIN/COMMIT`); no psql fallback
 - [x] 3.1 IDX-1 `SeasonEnrollment(groupId, status)` — `20261110010000_season_enrollment_group_status_idx`; cycle + drift (`migrate diff` empty) + snapshot (+1 index)
-- [ ] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14)
+- [x] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14) — `20261110020000_group_student_student_idx`; cycle + drift empty + snapshot (+1 index)
 - [ ] 3.3 IDX-4 open follow-ups partial index
 - [ ] 3.4 IDX-5 `Session(startsAt)` (cross-season calendar range)
 - [ ] 3.5 IDX-8 + DB-029 composite FK on `AnnouncementPollVote` (`NOT VALID` → `VALIDATE`)

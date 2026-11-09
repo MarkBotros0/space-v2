@@ -396,6 +396,7 @@ model GroupStudent {
   @@id([groupId, studentUserId])
   @@unique([seasonId, studentUserId])
   @@index([groupId])
+  @@index([studentUserId])
 }
 
 // Append-only history: which students were in which seasons (and groups).
