@@ -13,7 +13,7 @@ import {
   eventWindowFilter,
 } from "../lib/queries/events";
 import { isSuper } from "../lib/rbac";
-import { requireAuth, requireUser } from "../middleware/require-auth";
+import { requireAuth, requireUser, requireRole } from "../middleware/require-auth";
 import {
   EVENT_PAGE_SIZE,
   createJpcEventRequestSchema,
@@ -166,10 +166,10 @@ eventsRouter.get("/:id", async (req, res) => {
 });
 
 eventsRouter.post("/", async (req, res) => {
-  const user = requireUser(req);
   // Gate before parse. v1 enforces this inside the action rather than by page
   // placement (R3); the envelope replaces its bare thrown Error (R2).
-  if (!isSuper(user)) return apiError(res, "forbidden", "Only a super admin can manage events.", 403);
+  const user = requireRole(req, res, isSuper, "Only a super admin can manage events.");
+  if (!user) return;
 
   const parsed = createJpcEventRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid event.", 400);
@@ -202,8 +202,8 @@ eventsRouter.post("/", async (req, res) => {
 });
 
 eventsRouter.patch("/:id", async (req, res) => {
-  const user = requireUser(req);
-  if (!isSuper(user)) return apiError(res, "forbidden", "Only a super admin can manage events.", 403);
+  const user = requireRole(req, res, isSuper, "Only a super admin can manage events.");
+  if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid event id.", 400);
 
@@ -256,8 +256,8 @@ eventsRouter.patch("/:id", async (req, res) => {
 });
 
 eventsRouter.delete("/:id", async (req, res) => {
-  const user = requireUser(req);
-  if (!isSuper(user)) return apiError(res, "forbidden", "Only a super admin can manage events.", 403);
+  const user = requireRole(req, res, isSuper, "Only a super admin can manage events.");
+  if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid event id.", 400);
 

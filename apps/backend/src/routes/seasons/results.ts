@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
+import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { idParam } from "../../lib/http/params";
@@ -12,14 +12,14 @@ import { findLiveSeason } from "../../lib/queries/seasons";
 import { graduatePerson } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
-import { requireUser } from "../../middleware/require-auth";
+import { requireUser, requireRole } from "../../middleware/require-auth";
 import { updateSeasonResultRequestSchema } from "../../../../../packages/shared/src/index";
 import { isSeasonFinished } from "../../lib/seasons/status";
 
 /** Each finished student's pass result for a season. SUPER only. */
 export async function getSeasonResults(req: Request, res: Response) {
-  const user = requireUser(req);
-  if (!isSuper(user)) return forbidden(res);
+  const user = requireRole(req, res, isSuper);
+  if (!user) return;
   const id = idParam(res, req.params.id, "season");
   if (id === null) return;
   const season = await findLiveSeason(id, { id: true });
@@ -33,8 +33,8 @@ export async function getSeasonResults(req: Request, res: Response) {
  * away. The flag is frozen once the season has finished, so it can be read first.
  */
 export async function updateSeasonResult(req: Request, res: Response) {
-  const user = requireUser(req);
-  if (!isSuper(user)) return forbidden(res);
+  const user = requireRole(req, res, isSuper);
+  if (!user) return;
   const id = parseId(req.params.id);
   const studentUserId = parseId(req.params.studentUserId);
   if (id === null || studentUserId === null) return apiError(res, "bad_request", "Invalid id.", 400);

@@ -8,11 +8,12 @@ import { liveInviteWhere } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { userRoleSchema, userStatusSchema } from "../../../../../packages/shared/src/index";
-import { requireSuper } from "./super-only";
 import { LIST_SELECT, toListItem } from "./views";
+import { requireRole } from "../../middleware/require-auth";
+import { canManageUsers } from "../../lib/rbac";
 
 export async function listUsers(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
 
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";

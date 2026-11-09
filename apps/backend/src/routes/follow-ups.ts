@@ -1,7 +1,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk, apiError, forbidden } from "../lib/api-response";
+import { apiOk, apiError } from "../lib/api-response";
 import { config } from "../lib/config";
 import {
   createFollowUp,
@@ -12,8 +12,9 @@ import {
 } from "../lib/follow-ups";
 import { parseId } from "../lib/parse-id";
 import { isUniqueViolation as isPrismaUniqueViolation } from "../lib/prisma-errors";
-import { requireAuth, requireUser } from "../middleware/require-auth";
+import { requireAuth, requireRole } from "../middleware/require-auth";
 import { createFollowUpRequestSchema } from "../../../../packages/shared/src/index";
+import { isMentor } from "../lib/rbac";
 
 /**
  * A mentor's follow-ups (owner, 2026-11-07). Three routers on three prefixes,
@@ -28,14 +29,14 @@ export const studentFollowUpsRouter = Router();
 export const internalRouter = Router();
 
 followUpsRouter.get("/", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "MENTOR") return forbidden(res);
+  const user = requireRole(req, res, isMentor);
+  if (!user) return;
   return apiOk(res, { followUps: await listFollowUps(user.userId) });
 });
 
 followUpsRouter.post("/:id/done", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "MENTOR") return forbidden(res);
+  const user = requireRole(req, res, isMentor);
+  if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid follow-up id.", 400);
 
@@ -63,8 +64,8 @@ followUpsRouter.post("/:id/done", requireAuth, async (req, res) => {
 });
 
 studentFollowUpsRouter.post("/:id/follow-ups", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "MENTOR") return forbidden(res);
+  const user = requireRole(req, res, isMentor);
+  if (!user) return;
   const studentUserId = parseId(req.params.id);
   if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
   const parsed = createFollowUpRequestSchema.safeParse(req.body ?? {});

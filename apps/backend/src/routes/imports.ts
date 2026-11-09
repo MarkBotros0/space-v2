@@ -1,5 +1,5 @@
 // apps/backend/src/routes/imports.ts
-import express, { Router } from "express";
+import express, { Router, type Request, type Response } from "express";
 
 import { db } from "../db/client";
 import { isUniqueViolation } from "../lib/prisma-errors";
@@ -29,7 +29,7 @@ import {
   pastedSheetInputSchema,
   studentImportCommitInputSchema,
 } from "../../../../packages/shared/src/index";
-import { requireAuth, requireUser } from "../middleware/require-auth";
+import { requireAuth, requireRole, requireUser } from "../middleware/require-auth";
 import { isSeasonFinished } from "../lib/seasons/status";
 
 /**
@@ -88,20 +88,16 @@ importsRouter.use(requireAuth);
  * own roster, the row-scoped check goes in THE SAME change as the widened
  * role gate, never after it (ruling C8).
  */
-function requireSuper(req: Parameters<typeof requireUser>[0], res: Parameters<typeof apiError>[0]): boolean {
-  const user = requireUser(req);
-  if (isSuper(user)) return true;
-  apiError(res, "forbidden", "Only a super user can import students.", 403);
-  return false;
-}
+const requireImporter = (req: Request, res: Response) =>
+  requireRole(req, res, isSuper, "Only a super user can import students.");
 
 importsRouter.get("/students/template", async (req, res) => {
-  if (!requireSuper(req, res)) return;
+  if (!requireImporter(req, res)) return;
   return apiOk(res, studentImportTemplate());
 });
 
 importsRouter.post("/students/preview", previewLimiter, importJsonParser, async (req, res) => {
-  if (!requireSuper(req, res)) return;
+  if (!requireImporter(req, res)) return;
 
   const parsed = pastedSheetInputSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -128,7 +124,7 @@ importsRouter.post("/students/preview", previewLimiter, importJsonParser, async 
 });
 
 importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (req, res) => {
-  if (!requireSuper(req, res)) return;
+  if (!requireImporter(req, res)) return;
 
   const parsed = studentImportCommitInputSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid import request.", 400);

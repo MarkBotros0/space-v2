@@ -52,3 +52,24 @@ export function requireUser(req: Request): SessionUser {
   if (!req.user) throw new UnauthorizedError();
   return req.user;
 }
+
+/**
+ * The signed-in user when `allowed(user)` holds, else null after answering 403
+ * `forbidden` with `message` (the generic one unless the route has its own).
+ * Replaces `requireUser` plus a role check on the next line, in place, so the
+ * order of a handler's checks doesn't change:
+ *
+ *     const user = requireRole(req, res, isSuper);
+ *     if (!user) return;
+ */
+export function requireRole(
+  req: Request,
+  res: Response,
+  allowed: (user: SessionUser) => boolean,
+  message = "You don't have access to this.",
+): SessionUser | null {
+  const user = requireUser(req);
+  if (allowed(user)) return user;
+  apiError(res, "forbidden", message, 403);
+  return null;
+}

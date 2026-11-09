@@ -13,7 +13,7 @@ import { reportScopeFor } from "../lib/permissions";
 import { buildOrganisationReport } from "../lib/queries/organisation-report";
 import { buildEngagementSummary, listEngagementRows, resolveReportScope } from "../lib/queries/reports";
 import { isSuper } from "../lib/rbac";
-import { requireAuth, requireUser } from "../middleware/require-auth";
+import { requireAuth, requireUser, requireRole } from "../middleware/require-auth";
 
 export const reportsRouter = Router();
 
@@ -89,8 +89,8 @@ reportsRouter.get("/engagement/students", requireAuth, async (req, res) => {
  * is the entire protection in v1, and it moves here.
  */
 reportsRouter.get("/organisation", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (!isSuper(user)) return forbidden(res);
+  const user = requireRole(req, res, isSuper);
+  if (!user) return;
 
   return apiOk(res, await buildOrganisationReport());
 });

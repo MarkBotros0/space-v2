@@ -6,8 +6,9 @@ import { isEmailConfigured } from "../../lib/email";
 import { listPendingInviteUserIds, resendInvite as resendInviteNow, sendPendingInviteBatch } from "../../lib/invites";
 import { parseId } from "../../lib/parse-id";
 import { makeLimiter } from "../../lib/rate-limit";
-import { requireSuper } from "./super-only";
 import { loadUserDetail } from "./views";
+import { requireRole } from "../../middleware/require-auth";
+import { canManageUsers } from "../../lib/rbac";
 
 // Own bucket (Plan 10 Decision 11). With the 20-user batch ceiling this caps
 // bulk sending at 600 invites an hour.
@@ -29,7 +30,7 @@ function emailNotConfigured(res: Response) {
 
 /** How many accounts the bulk button would reach (R87: hidden at zero). */
 export async function countPendingInvites(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   const ids = await listPendingInviteUserIds();
   return apiOk(res, { pending: ids.length });
@@ -43,7 +44,7 @@ export async function countPendingInvites(req: Request, res: Response) {
  * still need an invite.
  */
 export async function sendPendingInvites(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   if (!isEmailConfigured()) return emailNotConfigured(res);
   const result = await sendPendingInviteBatch(user.userId);
@@ -51,7 +52,7 @@ export async function sendPendingInvites(req: Request, res: Response) {
 }
 
 export async function resendInvite(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);

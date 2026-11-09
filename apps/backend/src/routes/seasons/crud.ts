@@ -12,7 +12,7 @@ import { loadSeasonDetail } from "../../lib/queries/seasons";
 import { canAccessSeason } from "../../lib/permissions";
 import { isAdminOfSeason, isMentor, isSuper } from "../../lib/rbac";
 import { lockPeople, lockSeason, type SeatRefusal } from "../../lib/roles";
-import { requireUser } from "../../middleware/require-auth";
+import { requireUser, requireRole } from "../../middleware/require-auth";
 import {
   SEASON_ADMIN_EDITABLE_FIELDS,
   OWN_PROGRAM_MESSAGE,
@@ -127,9 +127,9 @@ function seasonColumns(body: SeasonWriteBody) {
 }
 
 export async function createSeason(req: Request, res: Response) {
-  const user = requireUser(req);
   // Spec 02 D3: creation is SUPER-only (v1's canCreateSeason).
-  if (!isSuper(user)) return forbidden(res);
+  const user = requireRole(req, res, isSuper);
+  if (!user) return;
 
   const parsed = seasonWriteRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
@@ -278,8 +278,8 @@ export async function updateSeason(req: Request, res: Response) {
 }
 
 export async function deleteSeason(req: Request, res: Response) {
-  const user = requireUser(req);
-  if (!isSuper(user)) return forbidden(res);
+  const user = requireRole(req, res, isSuper);
+  if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 

@@ -10,7 +10,7 @@ import { isUniqueViolation } from "../../lib/prisma-errors";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import { lockPeople, readSeatSeason, restoreStudentSeat, seatStudents, type SeatRefusal } from "../../lib/roles";
 import { refusalStatus } from "../../lib/api-error";
-import { requireUser } from "../../middleware/require-auth";
+import { requireUser, requireRole } from "../../middleware/require-auth";
 import {
   createEnrollmentRequestSchema,
   restoreEnrollmentRequestSchema,
@@ -155,8 +155,8 @@ export async function updateEnrollment(req: Request, res: Response) {
  * so it holds the season's share lock, then the person's, as adding does.
  */
 export async function restoreEnrollment(req: Request, res: Response) {
-  const user = requireUser(req);
-  if (!isSuper(user)) return apiError(res, "forbidden", "Only a super admin can bring a student back.", 403);
+  const user = requireRole(req, res, isSuper, "Only a super admin can bring a student back.");
+  if (!user) return;
   const id = parseId(req.params.id);
   const seasonId = parseId(req.params.seasonId);
   if (id === null || seasonId === null) {

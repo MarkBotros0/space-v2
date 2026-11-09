@@ -18,9 +18,10 @@ import {
   roleRequiresAlumnus,
   updateUserRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { requireSuper } from "./super-only";
 import { loadUserDetail } from "./views";
 import { EMAIL_IN_USE } from "../../lib/error-messages";
+import { requireRole } from "../../middleware/require-auth";
+import { canManageUsers } from "../../lib/rbac";
 
 const isSeasonRole = (role: unknown): role is "ADMIN" | "LEADER" => role === "ADMIN" || role === "LEADER";
 
@@ -28,7 +29,7 @@ const roleFromSeasons = (res: Response) =>
   apiError(res, "role_from_seasons", "Admin and leader come from seasons, not from the account.", 400);
 
 export async function getUser(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
@@ -39,7 +40,7 @@ export async function getUser(req: Request, res: Response) {
 }
 
 export async function updateUser(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
@@ -184,7 +185,7 @@ export async function updateUser(req: Request, res: Response) {
 }
 
 export async function deactivateUser(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
@@ -223,7 +224,7 @@ export async function deactivateUser(req: Request, res: Response) {
 }
 
 export async function reactivateUser(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
@@ -245,7 +246,7 @@ export async function reactivateUser(req: Request, res: Response) {
 }
 
 export async function createUser(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
 
   // Before the schema, whose graduation-year rule would answer first.

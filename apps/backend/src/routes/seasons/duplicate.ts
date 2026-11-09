@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
+import { apiOk, apiError } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { newPublicId } from "../../lib/public-id";
 import { isSuper } from "../../lib/rbac";
-import { requireUser } from "../../middleware/require-auth";
+import { requireRole } from "../../middleware/require-auth";
 import {
   duplicateSeasonRequestSchema,
   isValidSeasonCode,
@@ -15,9 +15,9 @@ import {
 import { codeTaken } from "./crud";
 
 export async function duplicateSeason(req: Request, res: Response) {
-  const user = requireUser(req);
   // R54: canCreateSeason (SUPER), not the source's admin rights.
-  if (!isSuper(user)) return forbidden(res);
+  const user = requireRole(req, res, isSuper);
+  if (!user) return;
   const sourceId = parseId(req.params.id);
   if (sourceId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 

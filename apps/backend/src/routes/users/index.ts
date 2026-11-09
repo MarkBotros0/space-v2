@@ -8,7 +8,7 @@ import { listUsers } from "./list";
 /**
  * Users (spec 11): account administration — list, detail, role edits,
  * deactivation, creation-with-invite and invite re-sends. Every route is
- * SUPER-only (see ./super-only.ts). This file is the route table, in
+ * SUPER-only (requireRole(req, res, canManageUsers)). This file is the route table, in
  * registration order; handlers live beside it.
  */
 export const usersRouter = Router();

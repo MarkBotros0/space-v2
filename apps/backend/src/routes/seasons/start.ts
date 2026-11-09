@@ -11,8 +11,9 @@ import { loadSeasonStartCheck } from "../../lib/queries/season-start";
 import { lockPeople, lockSeasonStart, readSeatSeason, type SeatRefusal } from "../../lib/roles";
 import { refusalStatus } from "../../lib/api-error";
 import type { SeasonStartCheck } from "../../../../../packages/shared/src/index";
-import { requireSuper } from "../users/super-only";
 import { NOT_DRAFT, SEASON_NOT_FOUND } from "./enrollments";
+import { requireRole } from "../../middleware/require-auth";
+import { canManageUsers } from "../../lib/rbac";
 
 /** `"Mina is already leading a group in GBV 2026, and 2 more to clear."` */
 function blockedMessage(check: SeasonStartCheck): string {
@@ -28,7 +29,7 @@ function refuse(res: Response, refusal: SeatRefusal) {
 
 /** `GET /seasons/:id/start-check`: SUPER only. Who stops this draft from starting, for the checklist. */
 export async function getSeasonStartCheck(req: Request, res: Response) {
-  if (!requireSuper(req, res)) return;
+  if (!requireRole(req, res, canManageUsers)) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
 
@@ -50,7 +51,7 @@ export async function getSeasonStartCheck(req: Request, res: Response) {
  * Everyone refreshes into their role: no one is signed out.
  */
 export async function startSeason(req: Request, res: Response) {
-  const user = requireSuper(req, res);
+  const user = requireRole(req, res, canManageUsers);
   if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);

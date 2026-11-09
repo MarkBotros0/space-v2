@@ -9,7 +9,7 @@ import { parseId } from "../../lib/parse-id";
 import { graduatePerson, passedGraduatingYears } from "../../lib/queries/students/writes";
 import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
-import { requireUser } from "../../middleware/require-auth";
+import { requireRole } from "../../middleware/require-auth";
 import { graduateStudentRequestSchema } from "../../../../../packages/shared/src/index";
 
 /**
@@ -32,10 +32,8 @@ import { graduateStudentRequestSchema } from "../../../../../packages/shared/src
  * transaction and the audit line says `override`, never the reason (a console log).
  */
 export async function graduateStudent(req: Request, res: Response) {
-  const user = requireUser(req);
-  if (!isSuper(user)) {
-    return apiError(res, "forbidden", "Only a super user can graduate students.", 403);
-  }
+  const user = requireRole(req, res, isSuper, "Only a super user can graduate students.");
+  if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
 
@@ -92,10 +90,8 @@ export async function graduateStudent(req: Request, res: Response) {
  * this through POST /users/:id/reactivate, which clears both stamps.
  */
 export async function deleteStudent(req: Request, res: Response) {
-  const user = requireUser(req);
-  if (!isSuper(user)) {
-    return apiError(res, "forbidden", "Only a super user can delete students.", 403);
-  }
+  const user = requireRole(req, res, isSuper, "Only a super user can delete students.");
+  if (!user) return;
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
 

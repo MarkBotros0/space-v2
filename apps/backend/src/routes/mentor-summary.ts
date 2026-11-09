@@ -1,13 +1,14 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk, forbidden } from "../lib/api-response";
+import { apiOk } from "../lib/api-response";
 import { countDueFollowUps } from "../lib/follow-ups";
 import { noteVisibilityWhere } from "../lib/permissions";
 import { writtenWithin } from "../lib/queries/notes";
 import { listStudents } from "../lib/queries/students";
-import { requireAuth, requireUser } from "../middleware/require-auth";
+import { requireAuth, requireRole } from "../middleware/require-auth";
 import { studentListQuerySchema, type MentorSummary } from "../../../../packages/shared/src/index";
+import { isMentor } from "../lib/rbac";
 
 /** "This week" on the mentor's Home is the last seven days. */
 const NOTES_WINDOW_DAYS = 7;
@@ -21,8 +22,8 @@ const NOTES_WINDOW_DAYS = 7;
 export const mentorSummaryRouter = Router();
 
 mentorSummaryRouter.get("/mentor-summary", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "MENTOR") return forbidden(res);
+  const user = requireRole(req, res, isMentor);
+  if (!user) return;
 
   const base = studentListQuerySchema.parse({ limit: 1 });
   const visible = noteVisibilityWhere(user);

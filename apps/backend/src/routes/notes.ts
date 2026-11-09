@@ -14,13 +14,14 @@ import {
 import { canReadEnrollmentHistory } from "../lib/queries/students";
 import type { SessionUser } from "../lib/auth/tokens";
 import { makeLimiter } from "../lib/rate-limit";
-import { requireAuth, requireUser } from "../middleware/require-auth";
+import { requireAuth, requireUser, requireRole } from "../middleware/require-auth";
 import {
   createNoteRequestSchema,
   noteListQuerySchema,
   plainTextToHtml,
   updateNoteRequestSchema,
 } from "../../../../packages/shared/src/index";
+import { isMentor } from "../lib/rbac";
 
 /**
  * Notes are mounted as three routers from one file rather than as routes added
@@ -108,9 +109,9 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
 });
 
 myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
-  const user = requireUser(req);
   // Only the four roles that can author have anything to list (R46–R49, R51).
-  if (user.role === "STUDENT") return forbidden(res);
+  const user = requireRole(req, res, (u) => u.role !== "STUDENT");
+  if (!user) return;
 
   const parsed = noteListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
@@ -125,8 +126,8 @@ myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
  * is the only gate needed. Audit: ids and a count, never a body or a name.
  */
 myNotesRouter.get("/visible-notes", requireAuth, noteReadLimiter, async (req, res) => {
-  const user = requireUser(req);
-  if (user.role !== "MENTOR") return forbidden(res);
+  const user = requireRole(req, res, isMentor);
+  if (!user) return;
 
   const parsed = noteListQuerySchema.safeParse(req.query);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);

@@ -10,7 +10,8 @@ import { lockPeople, readSeatSeason, refuseNewSeats, type SeatRefusal } from "..
 import { refusalStatus } from "../../lib/api-error";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { addSeasonAdminRequestSchema } from "../../../../../packages/shared/src/index";
-import { requireSuper } from "../users/super-only";
+import { requireRole } from "../../middleware/require-auth";
+import { canManageUsers } from "../../lib/rbac";
 
 /**
  * SUPER-only management of a season's SeasonAdmin rows (owner decision): v1
@@ -51,7 +52,7 @@ async function loadSeasonAdmins(seasonId: number) {
 }
 
 export async function listSeasonAdmins(req: Request, res: Response) {
-  if (!requireSuper(req, res)) return;
+  if (!requireRole(req, res, canManageUsers)) return;
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
   if (!(await liveSeason(seasonId))) return seasonNotFound(res);
@@ -59,7 +60,7 @@ export async function listSeasonAdmins(req: Request, res: Response) {
 }
 
 export async function addSeasonAdmin(req: Request, res: Response) {
-  const actor = requireSuper(req, res);
+  const actor = requireRole(req, res, canManageUsers);
   if (!actor) return;
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
@@ -102,7 +103,7 @@ export async function addSeasonAdmin(req: Request, res: Response) {
 }
 
 export async function removeSeasonAdmin(req: Request, res: Response) {
-  const actor = requireSuper(req, res);
+  const actor = requireRole(req, res, canManageUsers);
   if (!actor) return;
   const seasonId = parseId(req.params.id);
   if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
