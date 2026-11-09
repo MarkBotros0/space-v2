@@ -11,6 +11,7 @@ import { userRoleSchema, userStatusSchema } from "../../../../../packages/shared
 import { LIST_SELECT, toListItem } from "./views";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
+import { parseOr400 } from "../../lib/http/validate";
 
 export async function listUsers(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
@@ -19,15 +20,15 @@ export async function listUsers(req: Request, res: Response) {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
   let roleFilter: UserRole | null = null;
   if (typeof req.query.role === "string") {
-    const parsed = userRoleSchema.safeParse(req.query.role);
-    if (!parsed.success) return apiError(res, "bad_request", "Invalid role filter.", 400);
-    roleFilter = parsed.data;
+    const parsed = parseOr400(userRoleSchema, req.query.role, res, "Invalid role filter.");
+    if (parsed === null) return;
+    roleFilter = parsed;
   }
   let statusFilter: UserStatus | null = null;
   if (typeof req.query.status === "string") {
-    const parsed = userStatusSchema.safeParse(req.query.status);
-    if (!parsed.success) return apiError(res, "bad_request", "Invalid status filter.", 400);
-    statusFilter = parsed.data;
+    const parsed = parseOr400(userStatusSchema, req.query.status, res, "Invalid status filter.");
+    if (parsed === null) return;
+    statusFilter = parsed;
   }
   const limitRaw = typeof req.query.limit === "string" ? Number(req.query.limit) : NaN;
   const limit = Number.isInteger(limitRaw) && limitRaw >= 1 && limitRaw <= 100 ? limitRaw : 50;

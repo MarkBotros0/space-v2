@@ -4,12 +4,14 @@ import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { isEmailConfigured } from "../../lib/email";
 import { listPendingInviteUserIds, resendInvite as resendInviteNow, sendPendingInviteBatch } from "../../lib/invites";
-import { parseId } from "../../lib/parse-id";
+
 import { makeLimiter } from "../../lib/rate-limit";
 import { loadUserDetail } from "./views";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
 import { MS_PER_HOUR } from "../../lib/org-time";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
 
 // Own bucket (Plan 10 Decision 11). With the 20-user batch ceiling this caps
 // bulk sending at 600 invites an hour.
@@ -55,8 +57,8 @@ export async function sendPendingInvites(req: Request, res: Response) {
 export async function resendInvite(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  const id = idParam(res, req.params.id, "user");
+  if (id === null) return;
   return answerResend(res, id, user.userId);
 }
 
@@ -70,7 +72,7 @@ export async function answerResend(res: Response, id: number, byUserId: number) 
     where: { id },
     select: { email: true, passwordHash: true, lastLoginAt: true, deletedAt: true },
   });
-  if (!target) return apiError(res, "not_found", "User not found.", 404);
+  if (!target) return notFound(res, "User");
   // Explicit refusals where v1 silently dropped (R16): this is someone
   // pressing a button on one person, and deserves an answer.
   if (target.deletedAt) return apiError(res, "user_deleted", "This account is deactivated.", 409);
