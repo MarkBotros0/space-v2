@@ -2,6 +2,11 @@
 import { z } from "zod";
 
 import { announcementAudienceSchema } from "./enums";
+import {
+  announcementPollSchema,
+  pollInputSchema,
+  pollInputWithoutIdsSchema,
+} from "./announcement-poll";
 
 export const ANNOUNCEMENT_BODY_MAX = 5000;
 export const ANNOUNCEMENT_EXCERPT_LENGTH = 280;
@@ -22,6 +27,9 @@ export const announcementListItemSchema = z.object({
   createdAt: z.string(),
   editedAt: z.string().nullable(),
   isRead: z.boolean(),
+  hasPoll: z.boolean(),
+  /** Null when the post has no poll. */
+  pollClosed: z.boolean().nullable(),
 });
 export type AnnouncementListItem = z.infer<typeof announcementListItemSchema>;
 
@@ -30,6 +38,7 @@ export const announcementDetailSchema = announcementListItemSchema.omit({ excerp
   canEdit: z.boolean(),
   canDelete: z.boolean(),
   seasonFinished: z.boolean(),
+  poll: announcementPollSchema.nullable(),
 });
 export type AnnouncementDetail = z.infer<typeof announcementDetailSchema>;
 
@@ -62,16 +71,30 @@ export type AnnouncementTargetsResponse = z.infer<typeof announcementTargetsResp
 const bodyField = z.string().trim().min(1).max(ANNOUNCEMENT_BODY_MAX);
 
 export const createAnnouncementRequestSchema = z.discriminatedUnion("audience", [
-  z.object({ audience: z.literal("COMMUNITY"), body: bodyField }).strict(),
+  z
+    .object({
+      audience: z.literal("COMMUNITY"),
+      body: bodyField,
+      poll: pollInputWithoutIdsSchema.optional(),
+    })
+    .strict(),
   z
     .object({
       audience: z.literal("SEASON"),
       seasonId: z.number().int().positive(),
       body: bodyField,
+      poll: pollInputWithoutIdsSchema.optional(),
     })
     .strict(),
 ]);
 export type CreateAnnouncementRequest = z.infer<typeof createAnnouncementRequestSchema>;
 
-export const updateAnnouncementRequestSchema = z.object({ body: bodyField }).strict();
+export const updateAnnouncementRequestSchema = z
+  .object({
+    body: bodyField,
+    /** Absent leaves the poll alone; null removes it. */
+    poll: pollInputSchema.nullable().optional(),
+    confirmVoteLoss: z.boolean().optional(),
+  })
+  .strict();
 export type UpdateAnnouncementRequest = z.infer<typeof updateAnnouncementRequestSchema>;

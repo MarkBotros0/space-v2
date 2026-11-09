@@ -9,6 +9,8 @@ export const listItem = (id: number, over: Record<string, unknown> = {}) => ({
   createdAt: "2026-11-03T12:00:00.000Z",
   editedAt: null,
   isRead: true,
+  hasPoll: false,
+  pollClosed: null,
   ...over,
 });
 
@@ -20,6 +22,7 @@ export const detailItem = (id: number, over: Record<string, unknown> = {}) => {
     canEdit: false,
     canDelete: false,
     seasonFinished: false,
+    poll: null,
     ...over,
   };
 };

@@ -1,6 +1,8 @@
 import {
   createAnnouncementRequestSchema,
   updateAnnouncementRequestSchema,
+  pollInputSchema,
+  pollVoteRequestSchema,
   NOTIFICATION_PREFERENCE_KEYS,
   shouldPush,
 } from "../index";
@@ -38,5 +40,50 @@ describe("announcement contracts", () => {
   it("registers the announcement preference and push", () => {
     expect(NOTIFICATION_PREFERENCE_KEYS).toContain("announcement");
     expect(shouldPush("ANNOUNCEMENT")).toBe(true);
+  });
+});
+
+describe("announcement poll contracts", () => {
+  const opts = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `Option ${i}` }));
+
+  it("accepts 2 and 10 options and refuses 1 and 11", () => {
+    expect(pollInputSchema.safeParse({ allowsMultiple: false, options: opts(2) }).success).toBe(true);
+    expect(pollInputSchema.safeParse({ allowsMultiple: true, options: opts(10) }).success).toBe(true);
+    expect(pollInputSchema.safeParse({ allowsMultiple: false, options: opts(1) }).success).toBe(false);
+    expect(pollInputSchema.safeParse({ allowsMultiple: false, options: opts(11) }).success).toBe(false);
+  });
+
+  it("refuses a 151-char label and an empty-after-trim label", () => {
+    const bad = (label: string) =>
+      pollInputSchema.safeParse({ allowsMultiple: false, options: [{ label }, { label: "ok" }] }).success;
+    expect(bad("a".repeat(151))).toBe(false);
+    expect(bad("a".repeat(150))).toBe(true);
+    expect(bad("   ")).toBe(false);
+  });
+
+  it("refuses duplicate labels ignoring case and spaces, at the later option", () => {
+    const r = pollInputSchema.safeParse({ allowsMultiple: false, options: [{ label: "Sat" }, { label: " sat " }] });
+    expect(r.success).toBe(false);
+    if (!r.success) expect(r.error.issues.some((i) => i.path.join(".") === "options.1.label")).toBe(true);
+  });
+
+  it("create refuses an option id; update accepts poll null or absent", () => {
+    const poll = { allowsMultiple: false, options: [{ id: 4, label: "A" }, { label: "B" }] };
+    expect(createAnnouncementRequestSchema.safeParse({ audience: "COMMUNITY", body: "b", poll }).success).toBe(false);
+    expect(
+      createAnnouncementRequestSchema.safeParse({
+        audience: "COMMUNITY",
+        body: "b",
+        poll: { allowsMultiple: false, options: opts(2) },
+      }).success,
+    ).toBe(true);
+    expect(updateAnnouncementRequestSchema.safeParse({ body: "x", poll: null }).success).toBe(true);
+    expect(updateAnnouncementRequestSchema.safeParse({ body: "x" }).success).toBe(true);
+    expect(updateAnnouncementRequestSchema.safeParse({ body: "x", poll, confirmVoteLoss: true }).success).toBe(true);
+  });
+
+  it("vote request needs at least one option", () => {
+    expect(pollVoteRequestSchema.safeParse({ version: 1, optionIds: [] }).success).toBe(false);
+    expect(pollVoteRequestSchema.safeParse({ version: 1, optionIds: [3] }).success).toBe(true);
   });
 });

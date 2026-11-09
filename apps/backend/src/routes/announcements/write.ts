@@ -65,7 +65,7 @@ export async function updatePost(req: Request, res: Response) {
 
   const updated = await db.announcement.update({
     where: { id },
-    data: { ...parsed.data, editedAt: new Date() },
+    data: { body: parsed.data.body, editedAt: new Date() }, // Task 3 handles poll edits
     select: ANNOUNCEMENT_SELECT,
   });
   auditLog("announcement.update", user.userId, id, updated.seasonId !== null ? { season: updated.seasonId } : {});

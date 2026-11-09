@@ -32,10 +32,12 @@ const item = (id: number) => ({
   createdAt: "2026-11-07T10:00:00.000Z",
   editedAt: null,
   isRead: false,
+  hasPoll: false,
+  pollClosed: null,
 });
 const detail = (id: number) => {
   const { excerpt: _e, ...rest } = item(id);
-  return { ...rest, body: "Full body", canEdit: false, canDelete: false, seasonFinished: false };
+  return { ...rest, body: "Full body", canEdit: false, canDelete: false, seasonFinished: false, poll: null };
 };
 
 let client: QueryClient;

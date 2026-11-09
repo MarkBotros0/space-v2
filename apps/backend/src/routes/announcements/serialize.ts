@@ -52,7 +52,8 @@ function common(row: AnnouncementRow, isRead: boolean) {
 }
 
 export function toListItem(row: AnnouncementRow, isRead: boolean): AnnouncementListItem {
-  return { ...common(row, isRead), excerpt: excerptOf(row.body) };
+  // Task 2 replaces the poll placeholders.
+  return { ...common(row, isRead), excerpt: excerptOf(row.body), hasPoll: false, pollClosed: null };
 }
 
 export function toDetail(
@@ -60,5 +61,5 @@ export function toDetail(
   isRead: boolean,
   flags: AnnouncementFlags,
 ): AnnouncementDetail {
-  return { ...common(row, isRead), body: row.body, ...flags };
+  return { ...common(row, isRead), body: row.body, ...flags, hasPoll: false, pollClosed: null, poll: null };
 }

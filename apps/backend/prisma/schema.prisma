@@ -122,6 +122,8 @@ enum QuizAttemptStatus {
 model User {
   announcementsAuthored Announcement[]     @relation("AnnouncementAuthor")
   announcementReads     AnnouncementRead[]
+  announcementPollsClosed AnnouncementPoll[] @relation("AnnouncementPollClosedBy")
+  announcementPollVotes AnnouncementPollVote[]
   id           Int       @id @default(autoincrement())
   email        String    @unique
   name         String
@@ -913,6 +915,7 @@ model Announcement {
   season    Season?              @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   author    User?                @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   reads     AnnouncementRead[]
+  poll      AnnouncementPoll?
 
   @@index([audience, createdAt])
   @@index([seasonId, createdAt])
@@ -927,4 +930,42 @@ model AnnouncementRead {
 
   @@id([announcementId, userId])
   @@index([userId])
+}
+
+model AnnouncementPoll {
+  id             Int                      @id @default(autoincrement())
+  announcementId Int                      @unique
+  allowsMultiple Boolean
+  version        Int                      @default(1) // bumped when options change; a vote carries it
+  closedAt       DateTime?
+  closedById     Int? // SetNull: the poll outlives the closer's account
+  createdAt      DateTime                 @default(now())
+  announcement   Announcement             @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  closedBy       User?                    @relation("AnnouncementPollClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  options        AnnouncementPollOption[]
+  votes          AnnouncementPollVote[]
+}
+
+model AnnouncementPollOption {
+  id       Int                    @id @default(autoincrement())
+  pollId   Int
+  label    String // 1..150 after trim, plain text
+  position Int
+  poll     AnnouncementPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes    AnnouncementPollVote[]
+
+  @@index([pollId, position])
+}
+
+model AnnouncementPollVote {
+  optionId  Int
+  pollId    Int
+  userId    Int
+  createdAt DateTime               @default(now())
+  option    AnnouncementPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  poll      AnnouncementPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([optionId, userId])
+  @@index([pollId, userId])
 }

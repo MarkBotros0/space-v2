@@ -19,6 +19,8 @@ const community: AnnouncementListItem = {
   createdAt: "2026-11-03T09:00:00.000Z",
   editedAt: null,
   isRead: false,
+  hasPoll: false,
+  pollClosed: null,
 };
 const season: AnnouncementListItem = {
   ...community,
