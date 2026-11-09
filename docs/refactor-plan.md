@@ -302,7 +302,7 @@ Each commit: the domain's integration suites + backend unit tests + typecheck + 
 - [x] 4.2 Auth & me: BE-010 (`routes/me/` split), DB-020 (`tokenHash` via `@map`), DB-010 stop writing
       `StudentProfile.deletedAt`, DB-006 stop writing `userAgent`, DB-007 + DB-006 purge (tokens, stale devices, old notifications; internal
       cron route + test), DB-004 single exact-match email lookup (ILIKE fallback and raw `lower()` removed) — done: routes/me/ split, lib/me/account, tokenHash @map, StudentProfile.deletedAt and userAgent no longer written, exact email lookup, acceptInvite in lib/invites. DB-007 changed by the owner: no cron; a new refresh token deletes every other one the person holds (one device per person), on sign-in and refresh. No purge of notifications, devices, invites or reset tokens. Deploy order: the Wave 3 email migration before this code (exact email lookup).
-- [ ] 4.3 Users: BE-001 `updateUserInTx`, BE-029 sites, DB-010 (restore)
+- [x] 4.3 Users: BE-001 `updateUserInTx`, BE-029 sites, DB-010 (restore) — done: updateUserInTx in lib/users/update-user.ts (ApiError refusals, role-change rules in one helper); helper call sites in users routes; reactivate clears only User.deletedAt (DB-010). BE-029 needed nothing more: both messages were constants since 2.7 (unifying them is Q22). Integration 155/155 (users, roles, lifecycle, soft delete), unit 568.
 - [ ] 4.4 Students: BE-014, BE-016 (`lib/students/graduation.ts`), DB-010 (lifecycle), DB-001 seed `year` removed
 - [ ] 4.5 Groups & enrolment: BE-073; BE-027 helpers for the **identical** variants only
 - [ ] 4.6 Seasons: BE-002 (duplicate, nesting 4 → 3), BE-003 (end), crud status transitions, start
