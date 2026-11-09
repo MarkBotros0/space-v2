@@ -6,9 +6,9 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-09)
 
-- **Current phase:** Wave 2 (shared foundations) is **finished on `refactor/wave-2-foundations`** (from
-  `main` @ `f595762e`) and stopped for the owner's review. Waves 0 and 1 are merged to `main` locally
-  (fast-forward, no PR, at the owner's request); **nothing is pushed**. Rulings D8 (fit the rules, skip what is
+- **Current phase:** Wave 3 (schema expand) on `refactor/wave-3-schema-expand`, from `main` @ `d2a9ef88`.
+  Waves 0–2 are merged to `main` locally (fast-forward, no PR, at the owner's request); Waves 1–2 are
+  **not pushed**. Rulings D8 (fit the rules, skip what is
   slow or complicated) and D9 (losing data is acceptable) apply.
 - Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
   again. Tests run only on the throwaway DB (see Working setup).
@@ -117,6 +117,16 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
   data or change behaviour; **skip it** if it needs a check on a real database, changes semantics, or
   rewrites a subtle rule across many call sites. Skipped findings stay in the audit as known gaps
   and are listed under "Skipped (D8)" at the end of each wave; nothing skipped is half-done.
+
+- D10. **Migrations under Prisma 7.10 `migrate deploy` (verified 2026-11-09, step 3.0, scratch DB `probe`).**
+  Prisma sends a migration file without wrapping it in a transaction, so `CREATE INDEX CONCURRENTLY` works,
+  several in one file and mixed with plain DDL. The flip side: a file that fails midway stays half-applied
+  (the probe kept its first index). So every Wave 3/6 migration that is not CONCURRENTLY is wrapped in an
+  explicit `BEGIN; … COMMIT;` (the pattern three existing migrations already use; verified to roll back
+  entirely on error), and a CONCURRENTLY index goes in its own file without `BEGIN`, using `IF NOT EXISTS` so
+  a retry is safe. `rollback.sql` sits beside `migration.sql` (Prisma ignores it), undoes the change and ends
+  with `DELETE FROM "_prisma_migrations" WHERE migration_name = '…'`, so the migration can be applied again.
+  The psql fallback in audit §2.11 is not needed.
 
 - D11. **Prettier printWidth is 120, not the configured-but-never-applied 100.** Measured on the unformatted
   tree (~163k lines): width 100 → ~179k lines and 33 files over 400 (one of them app source, `routes/me.ts`);
@@ -241,8 +251,9 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 Every step: migration + `rollback.sql` (D6), apply → rollback → apply on the throwaway DB, schema
 snapshot updated, `schema.prisma` updated where expressible.
 
-- [ ] 3.0 Verify `CREATE INDEX CONCURRENTLY` under Prisma 7 `migrate deploy` (one statement per file);
-      record the pattern as D10 (or the psql fallback, audit §2.11)
+- [x] 3.0 Verify `CREATE INDEX CONCURRENTLY` under Prisma 7 `migrate deploy` (one statement per file);
+      record the pattern as D10 (or the psql fallback, audit §2.11) — verified; D10 recorded (no transaction
+      wrap: CONCURRENTLY works, other migrations use explicit `BEGIN/COMMIT`); no psql fallback
 - [ ] 3.1 IDX-1 `SeasonEnrollment(groupId, status)`
 - [ ] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14)
 - [ ] 3.3 IDX-4 open follow-ups partial index
