@@ -3,8 +3,11 @@ import { View } from "react-native";
 import {
   ANNOUNCEMENT_BODY_MAX,
   createAnnouncementRequestSchema,
+  updateAnnouncementRequestSchema,
   type AnnouncementTargetsResponse,
   type CreateAnnouncementRequest,
+  type PollInput,
+  type UpdateAnnouncementRequest,
 } from "@space/shared";
 
 import { SaveBar } from "../../design/layout/save-bar";
@@ -20,7 +23,9 @@ import {
   Text,
   Textarea,
 } from "../../design/ui";
+import { PillButton } from "../../design/ui/pill-button";
 import { ConfirmPostSheet } from "./confirm-post-sheet";
+import { EMPTY_POLL, PollEditor, pollErrors, type PollErrors } from "./poll/poll-editor";
 
 /** The counter shows once the message is this long. */
 const COUNTER_FROM = 4000;
@@ -29,9 +34,10 @@ const AUDIENCE_OPTIONS = [
   { value: "SEASON", label: "A season" },
 ];
 
-export type PostFormValues = { body: string };
+/** `poll` is the poll as edited: null for none, with ids on the options a post already had. */
+export type PostFormValues = { body: string; poll: PollInput | null };
 
-type Fields = { body?: string; season?: string };
+type Fields = { body?: string; season?: string; poll?: PollErrors };
 
 /** Field errors from the shared schema, keyed by the field they belong to. */
 function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Fields {
@@ -40,6 +46,8 @@ function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Fields
     const key = issue.path[0];
     if (key === "body") out.body ??= "Enter a message (up to 5000 characters).";
   }
+  const poll = pollErrors(issues);
+  if (Object.keys(poll).length > 0) out.poll = poll;
   return out;
 }
 
@@ -61,7 +69,7 @@ type Props = {
       mode: "edit";
       /** Edit: where it went, read-only. */
       toLabel: string;
-      onSubmit: (values: PostFormValues) => void;
+      onSubmit: (request: UpdateAnnouncementRequest) => void;
     }
 );
 
@@ -70,6 +78,7 @@ export function PostForm(props: Props) {
   const { screenTitle, saveLabel, error, pending, initial } = props;
   const targets = props.mode === "create" ? props.targets : null;
   const [body, setBody] = useState(initial?.body ?? "");
+  const [poll, setPoll] = useState<PollInput | null>(initial?.poll ?? null);
   const [errors, setErrors] = useState<Fields>({});
   const [confirming, setConfirming] = useState(false);
 
@@ -91,7 +100,7 @@ export function PostForm(props: Props) {
   const reach = toSeason ? (chosen?.reach ?? 0) : (targets?.communityReach ?? 0);
 
   function buildRequest(): CreateAnnouncementRequest | null {
-    const base = { body };
+    const base = { body, ...(poll ? { poll } : {}) };
     const parsed = createAnnouncementRequestSchema.safeParse(
       toSeason ? { audience: "SEASON", seasonId: seasonId ?? 0, ...base } : { audience: "COMMUNITY", ...base },
     );
@@ -101,11 +110,25 @@ export function PostForm(props: Props) {
     return parsed.success && Object.keys(errs).length === 0 ? parsed.data : null;
   }
 
+  /** An edit always sends a poll it had or has (ids keep votes; identical input is a no-op), null once removed, nothing if it never had one. */
+  function buildUpdate(): UpdateAnnouncementRequest | null {
+    const hadPoll = initial?.poll != null;
+    const parsed = updateAnnouncementRequestSchema.safeParse({
+      body,
+      ...(poll ? { poll } : hadPoll ? { poll: null } : {}),
+    });
+    const errs = parsed.success ? {} : fieldErrors(parsed.error.issues);
+    setErrors(errs);
+    return parsed.success ? parsed.data : null;
+  }
+
   function submit(): void {
-    const request = buildRequest();
-    if (request === null) return;
-    if (props.mode === "edit") props.onSubmit({ body: request.body });
-    else setConfirming(true);
+    if (props.mode === "edit") {
+      const update = buildUpdate();
+      if (update !== null) props.onSubmit(update);
+      return;
+    }
+    if (buildRequest() !== null) setConfirming(true);
   }
 
   return (
@@ -166,12 +189,19 @@ export function PostForm(props: Props) {
             </Text>
           ) : null}
         </FormField>
+
+        {poll ? (
+          <PollEditor value={poll} onChange={setPoll} errors={errors.poll ?? {}} onRemove={() => setPoll(null)} />
+        ) : (
+          <PillButton label="Add a poll" onPress={() => setPoll(EMPTY_POLL)} className="self-start" />
+        )}
       </View>
 
       {targets ? (
         <ConfirmPostSheet
           open={confirming}
           audienceLabel={toLabel}
+          withPoll={poll !== null}
           reach={reach}
           pending={pending}
           onClose={() => setConfirming(false)}

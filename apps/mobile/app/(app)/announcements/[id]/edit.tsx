@@ -35,10 +35,15 @@ export default function EditAnnouncementScreen() {
       screenTitle="Edit announcement"
       saveLabel="Save"
       toLabel={data.audience === "SEASON" ? (data.seasonTitle ?? "A season") : "Everyone"}
-      initial={{ body: data.body }}
+      initial={{
+        body: data.body,
+        poll: data.poll
+          ? { allowsMultiple: data.poll.allowsMultiple, options: data.poll.options.map((o) => ({ id: o.id, label: o.label })) }
+          : null,
+      }}
       pending={update.isPending}
       error={update.isError ? apiErrorMessage(update.error, "Couldn't save. Try again.") : null}
-      onSubmit={(values) => update.mutate(values, { onSuccess: () => router.back() })}
+      onSubmit={(request) => update.mutate(request, { onSuccess: () => router.back() })}
     />
   );
 }
