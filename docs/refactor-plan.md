@@ -205,13 +205,13 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 - [x] 2.1 ESLint size rules in **warning** mode in `packages/config` (built-in rules, no deps):
       `max-lines` 400 (all lines), `max-lines-per-function` 50 (target 40), `max-depth` 3, `complexity` 15;
       exclude `src/generated`, `prisma/migrations`, `src/docs` data. Record the warning count here — warnings, no errors (pnpm lint passes): max-lines 17 (9 backend: 4 tests + 5 OpenAPI data; 8 mobile tests), max-lines-per-function 237 (backend 59, mobile 178), complexity 56 (14 / 41 / shared 1), max-depth 2 (backend). Per-function rules skip __tests__ and src/docs; all four skip src/generated and prisma/migrations
-- [ ] 2.2 Split every file over 400 lines, so `max-lines` warns on nothing. After the Prettier format (1.15)
+- [x] 2.2 Split every file over 400 lines, so `max-lines` warns on nothing. After the Prettier format (1.15)
       that is 17, none of them app source: 12 tests (`imports-students-commit-routes` 636, `session-detail` 537,
       `season-people` 508, `quiz-runner` 492, `season-lock-routes` 465, `student-today` 462, `dashboard-routes` 460,
       `people-candidates` 457, `quiz-runner-saves` 428, `student-detail` 419, `students-list` 413,
       `assignment-detail` 407) and 5 OpenAPI data files under `apps/backend/src/docs/` (`paths/me` 451,
       `components/people` 451, `paths/students` 441, `paths/notes-notifications` 436, `paths/seasons` 402),
-      split by path group / schema group
+      split by path group / schema group — all 17 split, max-lines now 0 and no tracked .ts/.tsx over 400. OpenAPI (5062292a): a path/schema group per file spread back in place, docs.json byte-identical. Mobile tests (29096139): 8 → 16 files, 272 suites / 2,304 tests, same titles. Backend integration (cde6626e): 4 → 8 suites, same titles, split suites pass. Splitter: scratchpad scan/splittest.js (TS AST, moves whole describe/it blocks, prunes unused setup)
 - [ ] 2.3 Shared season status: BE-022 / SH-002 / FE-014 / BE-043 — all inline copies replaced (D5)
 - [ ] 2.4 Shared audience and admin predicates: SH-003 / FE-016, FE-015 / SH-004 — all sites
 - [ ] 2.5 Shared types: FE-040, FE-041, FE-042 (`startSeasonResponseSchema`), SH-005 — all sites
