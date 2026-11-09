@@ -134,25 +134,25 @@ model User {
   graduationYear Int?
   // Set only when a super graduated someone who hadn't passed a graduating season
   // (the rare exception). Shown to SUPER alone; the reason is never logged.
-  graduationOverrideAt     DateTime?
+  graduationOverrideAt     DateTime? @db.Timestamptz(3)
   graduationOverrideById   Int?
   graduationOverrideBy     User?     @relation("GraduationOverrideBy", fields: [graduationOverrideById], references: [id], onDelete: SetNull)
   graduationOverrideReason String?
   // Account-level contact fields, for every role (owner 2026-11-06). Replace
   // StudentProfile.phone/dateOfBirth, which stay in the table but are unused.
   phone        String?
-  // A calendar day stored at UTC midnight.
-  dateOfBirth  DateTime?
+  // A calendar day (a date column; Prisma reads it as UTC midnight).
+  dateOfBirth  DateTime? @db.Date
   address      String?
   avatarPath   String?
-  lastLoginAt  DateTime?
+  lastLoginAt  DateTime? @db.Timestamptz(3)
   // Access tokens issued before this instant are refused by requireAuth (Plan
   // 18 M13). Written by logout-all, password change and reset, deactivation
   // and role change. Null: nothing has been invalidated.
-  sessionsValidFrom DateTime?
-  deletedAt    DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  sessionsValidFrom DateTime? @db.Timestamptz(3)
+  deletedAt    DateTime? @db.Timestamptz(3)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime  @updatedAt @db.Timestamptz(3)
 
   studentProfile StudentProfile?
 
@@ -215,9 +215,9 @@ model InviteToken {
   user        User      @relation("InviteUser", fields: [userId], references: [id], onDelete: Cascade)
   invitedById Int
   invitedBy   User      @relation("InviteIssuedBy", fields: [invitedById], references: [id], onDelete: Restrict)
-  expiresAt   DateTime
-  usedAt      DateTime?
-  createdAt   DateTime  @default(now())
+  expiresAt   DateTime @db.Timestamptz(3)
+  usedAt      DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([userId])
   @@index([expiresAt])
@@ -231,10 +231,10 @@ model RefreshToken {
   tokenHash String    @unique
   userId    Int
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  revokedAt DateTime?
+  expiresAt DateTime @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
   userAgent String?
-  createdAt DateTime  @default(now())
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([userId])
   @@index([expiresAt])
@@ -245,9 +245,9 @@ model PasswordResetToken {
   token     String    @unique
   userId    Int
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
+  expiresAt DateTime @db.Timestamptz(3)
+  usedAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
 
   @@index([userId])
 }
@@ -275,14 +275,14 @@ model StudentProfile {
   // from the product. Kept in the table; no code reads or writes them.
   year                String?
   phone               String?
-  dateOfBirth         DateTime?
+  dateOfBirth         DateTime? @db.Timestamptz(3)
   spiritualBackground String?
   gifts               String?
   notes               String?
   photoPath           String?
-  deletedAt           DateTime?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime? @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
 
   @@index([activeSeasonId])
 }
@@ -302,8 +302,8 @@ model Season {
   isCommunityWide Boolean @default(false) // anyone may study, alumni too; no required program, graduates nobody; SUPER-only, draft-only
   year           Int // e.g. 2026 — the cohort year within the program
   description    String?
-  startDate      DateTime
-  endDate        DateTime
+  startDate      DateTime @db.Timestamptz(3)
+  endDate        DateTime @db.Timestamptz(3)
   status         SeasonStatus @default(DRAFT)
   coverImagePath String?
 
@@ -314,9 +314,9 @@ model Season {
   createdBy   User?     @relation("SeasonCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById Int?
   updatedBy   User?     @relation("SeasonUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 
   admins            SeasonAdmin[]
   groups            Group[]
@@ -338,7 +338,7 @@ model SeasonAdmin {
   season       Season   @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   userId       Int
   user         User     @relation("SeasonAdminUser", fields: [userId], references: [id], onDelete: Cascade)
-  assignedAt   DateTime @default(now())
+  assignedAt   DateTime @default(now()) @db.Timestamptz(3)
   assignedById Int?
   assignedBy   User?    @relation("SeasonAdminAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
 
@@ -356,8 +356,8 @@ model Group {
   season      Season   @relation(fields: [seasonId], references: [id], onDelete: Restrict)
   name        String
   description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
 
   leaders           GroupLeader[]
   students          GroupStudent[]
@@ -374,7 +374,7 @@ model GroupLeader {
   group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   userId     Int
   user       User     @relation(fields: [userId], references: [id], onDelete: Restrict)
-  assignedAt DateTime @default(now())
+  assignedAt DateTime @default(now()) @db.Timestamptz(3)
 
   @@id([groupId, userId])
   @@index([userId])
@@ -391,7 +391,7 @@ model GroupStudent {
   group         Group    @relation(fields: [groupId, seasonId], references: [id, seasonId], onDelete: Cascade)
   studentUserId Int
   studentUser   User     @relation(fields: [studentUserId], references: [id], onDelete: Restrict)
-  enrolledAt    DateTime @default(now())
+  enrolledAt    DateTime @default(now()) @db.Timestamptz(3)
 
   @@id([groupId, studentUserId])
   @@unique([seasonId, studentUserId])
@@ -409,20 +409,20 @@ model SeasonEnrollment {
   groupId       Int?
   group         Group?           @relation(fields: [groupId], references: [id], onDelete: SetNull)
   status        EnrollmentStatus @default(ACTIVE)
-  enrolledAt    DateTime         @default(now())
-  completedAt   DateTime?
-  droppedAt     DateTime? // set when status transitions to WITHDRAWN
+  enrolledAt    DateTime         @default(now()) @db.Timestamptz(3)
+  completedAt   DateTime? @db.Timestamptz(3)
+  droppedAt     DateTime? @db.Timestamptz(3) // set when status transitions to WITHDRAWN
   dropReason    String?
   // Set when the season ends (or a SUPER/ADMIN corrects it later); null until then.
   result        EnrollmentResult?
   resultReason  String?
-  resultSetAt   DateTime?
+  resultSetAt   DateTime? @db.Timestamptz(3)
   // A SUPER let this person in past a block; null when nobody did.
   overrideById  Int?
   overrideBy    User?            @relation("EnrollmentOverrideBy", fields: [overrideById], references: [id], onDelete: SetNull)
-  overrideAt    DateTime?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  overrideAt    DateTime? @db.Timestamptz(3)
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
 
   @@unique([studentUserId, seasonId])
   @@index([seasonId, status])
@@ -438,7 +438,7 @@ model Session {
   seasonId          Int
   season            Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   title             String
-  startsAt          DateTime
+  startsAt          DateTime @db.Timestamptz(3)
   durationMinutes   Int       @default(90)
   location          String?
   youtubeUrl        String?
@@ -447,10 +447,10 @@ model Session {
   // Sibling sessions created in the same recurrence batch share this id.
   recurrenceGroupId String?
   checkInToken      String?   @unique
-  checkInOpenAt     DateTime?
-  checkInClosedAt   DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  checkInOpenAt     DateTime? @db.Timestamptz(3)
+  checkInClosedAt   DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
 
   attendance     Attendance[]
   assignments    Assignment[]
@@ -476,8 +476,8 @@ model SessionVideoQuestion {
   points       Int      @default(1)
   createdById  Int?
   createdBy    User?    @relation("VideoQuestionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
 
   responses SessionVideoQuestionResponse[]
 
@@ -492,7 +492,7 @@ model SessionVideoQuestionResponse {
   studentUser   User                 @relation("VideoResponseStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
   selectedIndex Int
   isCorrect     Boolean
-  answeredAt    DateTime             @default(now())
+  answeredAt    DateTime             @default(now()) @db.Timestamptz(3)
 
   @@unique([questionId, studentUserId])
   @@index([studentUserId])
@@ -505,9 +505,9 @@ model SessionVideoProgress {
   studentUserId   Int
   studentUser     User      @relation("VideoProgressStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
   furthestSeconds Int       @default(0)
-  completedAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  completedAt     DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([sessionId, studentUserId])
 }
@@ -522,11 +522,11 @@ model Attendance {
   notes         String?
   markedById    Int?
   markedBy      User?            @relation("AttendanceMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
-  markedAt      DateTime         @default(now())
-  checkedInAt   DateTime?
+  markedAt      DateTime         @default(now()) @db.Timestamptz(3)
+  checkedInAt   DateTime? @db.Timestamptz(3)
   lateMinutes   Int?
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
 
   @@unique([sessionId, studentUserId])
   @@index([studentUserId])
@@ -544,7 +544,7 @@ model Assignment {
   session     Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   title       String
   description String?
-  dueAt       DateTime?
+  dueAt       DateTime? @db.Timestamptz(3)
   // When true, the assignment targets every group in the season (no AssignmentTarget rows).
   isAllGroups Boolean   @default(false)
 
@@ -563,9 +563,9 @@ model Assignment {
   createdBy   User?     @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById Int?
   updatedBy   User?     @relation("AssignmentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
-  deletedAt   DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 
   targets     AssignmentTarget[]
   submissions Submission[]
@@ -580,7 +580,7 @@ model AssignmentTarget {
   assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   groupId      Int
   group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
 
   @@id([assignmentId, groupId])
   @@index([groupId])
@@ -596,13 +596,13 @@ model Submission {
   studentUser   User             @relation("SubmissionStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
   text          String?
   status        SubmissionStatus @default(DRAFT)
-  submittedAt   DateTime?
-  reviewedAt    DateTime?
+  submittedAt   DateTime? @db.Timestamptz(3)
+  reviewedAt    DateTime? @db.Timestamptz(3)
   feedback      String?
   reviewedById  Int?
   reviewedBy    User?            @relation("SubmissionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
 
   files         SubmissionFile[]
   forumComments ForumComment[]
@@ -620,7 +620,7 @@ model SubmissionFile {
   storagePath  String
   mimeType     String
   sizeBytes    Int
-  uploadedAt   DateTime   @default(now())
+  uploadedAt   DateTime   @default(now()) @db.Timestamptz(3)
 
   @@index([submissionId])
 }
@@ -634,8 +634,8 @@ model ForumComment {
   authorUserId Int
   authorUser   User       @relation("ForumCommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
   body         String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
 
   @@index([submissionId])
   @@index([authorUserId])
@@ -656,8 +656,8 @@ model EngagementNote {
   body            String
   visibility      NoteVisibility @default(LEADERS)
   followUpFlagged Boolean        @default(false)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime       @updatedAt @db.Timestamptz(3)
 
   @@index([studentUserId, createdAt])
   @@index([authorUserId])
@@ -674,11 +674,11 @@ model MentorFollowUp {
   studentUserId Int
   studentUser   User      @relation("FollowUpStudent", fields: [studentUserId], references: [id], onDelete: Cascade)
   reason        String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt // default: rows from before the column, and older builds' inserts
-  dueAt         DateTime
-  remindedAt    DateTime?
-  doneAt        DateTime?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @default(now()) @updatedAt @db.Timestamptz(3) // default: rows from before the column, and older builds' inserts
+  dueAt         DateTime @db.Timestamptz(3)
+  remindedAt    DateTime? @db.Timestamptz(3)
+  doneAt        DateTime? @db.Timestamptz(3)
 
   @@index([mentorUserId, doneAt])
   @@index([dueAt])
@@ -698,8 +698,8 @@ model Notification {
   title     String
   body      String?
   link      String?
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
+  readAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime         @default(now()) @db.Timestamptz(3)
 
   @@index([userId, readAt])
   @@index([userId, createdAt])
@@ -721,8 +721,8 @@ model NotificationPreference {
   sessionCancelled   Boolean @default(true)
   announcement       Boolean @default(true)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }
 
 model StudentDocument {
@@ -735,7 +735,7 @@ model StudentDocument {
   storagePath   String
   mimeType      String
   sizeBytes     Int
-  uploadedAt    DateTime @default(now())
+  uploadedAt    DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([studentUserId])
 }
@@ -755,17 +755,17 @@ model Quiz {
   // For ONLINE quizzes maxScore is recomputed as the sum of question points.
   maxScore    Int       @default(100)
   // ONLINE availability: null = draft, students only see published quizzes.
-  publishedAt DateTime?
+  publishedAt DateTime? @db.Timestamptz(3)
   createdById Int?
   createdBy   User?     @relation("QuizCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   // Students see their scores, and which answers were right, only once the
   // season's admin (or a super) releases the results (owner, 2026-11-07): a
   // student who takes it later can't learn the answers from one who took it first.
-  resultsReleasedAt   DateTime?
+  resultsReleasedAt   DateTime? @db.Timestamptz(3)
   resultsReleasedById Int?
   resultsReleasedBy   User?     @relation("QuizResultsReleasedBy", fields: [resultsReleasedById], references: [id], onDelete: SetNull)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 
   grades    QuizGrade[]
   questions QuizQuestion[]
@@ -785,9 +785,9 @@ model QuizGrade {
   notes         String?
   gradedById    Int?
   gradedBy      User?     @relation("QuizGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)
-  gradedAt      DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  gradedAt      DateTime? @db.Timestamptz(3)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([quizId, studentUserId])
   @@index([studentUserId])
@@ -805,8 +805,8 @@ model QuizQuestion {
   points       Int              @default(1)
   options      String[]
   correctIndex Int?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt    DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
 
   answers QuizAnswer[]
 
@@ -826,12 +826,12 @@ model QuizAttempt {
   autoScore     Int?
   manualScore   Int?
   totalScore    Int?
-  submittedAt   DateTime?
+  submittedAt   DateTime? @db.Timestamptz(3)
   gradedById    Int?
   gradedBy      User?             @relation("QuizAttemptGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)
-  gradedAt      DateTime?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  gradedAt      DateTime? @db.Timestamptz(3)
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
 
   answers QuizAnswer[]
 
@@ -850,8 +850,8 @@ model QuizAnswer {
   text          String?
   isCorrect     Boolean?
   pointsAwarded Int?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt     DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
 
   @@unique([attemptId, questionId])
   @@index([questionId])
@@ -864,16 +864,16 @@ model QuizAnswer {
 model JpcEvent {
   id          Int           @id @default(autoincrement())
   title       String
-  date        DateTime
-  endDate     DateTime?
+  date        DateTime @db.Timestamptz(3)
+  endDate     DateTime? @db.Timestamptz(3)
   description String?
   imagePath   String?
   url         String?
   visibility  JpcVisibility @default(ALL)
   seasonId    Int?
   createdById Int?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime      @updatedAt @db.Timestamptz(3)
 
   createdBy User?   @relation("JpcEventCreator", fields: [createdById], references: [id], onDelete: SetNull)
   season    Season? @relation("JpcEventSeason", fields: [seasonId], references: [id], onDelete: SetNull)
@@ -890,8 +890,8 @@ model DeviceToken {
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   token      String         @unique
   platform   DevicePlatform
-  lastSeenAt DateTime       @default(now())
-  createdAt  DateTime       @default(now())
+  lastSeenAt DateTime       @default(now()) @db.Timestamptz(3)
+  createdAt  DateTime       @default(now()) @db.Timestamptz(3)
 
   @@index([userId])
   @@index([lastSeenAt])
@@ -916,9 +916,9 @@ model Announcement {
   seasonId  Int? // required when SEASON, null when COMMUNITY (checked in the route; a CHECK constraint too)
   body      String // 1..5000 after trim, plain text
   authorId  Int? // SetNull: the post outlives a deleted author ("Former member")
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-  editedAt  DateTime? // set by PATCH only; drives "Edited"
+  createdAt DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime             @updatedAt @db.Timestamptz(3)
+  editedAt  DateTime? @db.Timestamptz(3) // set by PATCH only; drives "Edited"
   season    Season?              @relation(fields: [seasonId], references: [id], onDelete: Cascade)
   author    User?                @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: SetNull)
   reads     AnnouncementRead[]
@@ -931,7 +931,7 @@ model Announcement {
 model AnnouncementRead {
   announcementId Int
   userId         Int
-  readAt         DateTime     @default(now())
+  readAt         DateTime     @default(now()) @db.Timestamptz(3)
   announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -944,10 +944,10 @@ model AnnouncementPoll {
   announcementId Int                      @unique
   allowsMultiple Boolean
   version        Int                      @default(1) // bumped when options change; a vote carries it
-  closedAt       DateTime?
+  closedAt       DateTime? @db.Timestamptz(3)
   closedById     Int? // SetNull: the poll outlives the closer's account
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @default(now()) @updatedAt // default: rows from before the column, and older builds' inserts
+  createdAt      DateTime                 @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime                 @default(now()) @updatedAt @db.Timestamptz(3) // default: rows from before the column, and older builds' inserts
   announcement   Announcement             @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   closedBy       User?                    @relation("AnnouncementPollClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
   options        AnnouncementPollOption[]
@@ -959,8 +959,8 @@ model AnnouncementPollOption {
   pollId   Int
   label    String // 1..150 after trim, plain text
   position Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt // default: rows from before the column, and older builds' inserts
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(3) // default: rows from before the column, and older builds' inserts
   poll     AnnouncementPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   votes    AnnouncementPollVote[]
 
@@ -973,7 +973,7 @@ model AnnouncementPollVote {
   optionId  Int
   pollId    Int
   userId    Int
-  createdAt DateTime               @default(now())
+  createdAt DateTime               @default(now()) @db.Timestamptz(3)
   option    AnnouncementPollOption @relation(fields: [optionId, pollId], references: [id, pollId], onDelete: Cascade)
   poll      AnnouncementPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
