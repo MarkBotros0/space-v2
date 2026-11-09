@@ -193,7 +193,7 @@ export function EventForm({
           />
           {values.endDay !== "" ? (
             // V2-only: v1's native date input could be cleared; the picker cannot.
-            <Button variant="ghost" size="sm" className="self-start" onPress={() => set("endDay")("")}>
+            <Button variant="plain" size="sm" className="self-start" onPress={() => set("endDay")("")}>
               Remove end date
             </Button>
           ) : null}

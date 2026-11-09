@@ -153,7 +153,7 @@ export function RichTextEditor({
             keyboardType="url"
           />
           <ModalFooter>
-            <Button variant="outline" onPress={() => setLinkOpen(false)}>
+            <Button variant="secondary" onPress={() => setLinkOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -187,8 +187,8 @@ function ToolbarButton({
 }) {
   return (
     <Button
-      variant={active ? "secondary" : "ghost"}
-      size="icon-sm"
+      variant={active ? "secondary" : "plain"}
+      size="icon"
       accessibilityLabel={label}
       accessibilityState={{ selected: !!active, disabled: !!disabled }}
       onPress={onPress}

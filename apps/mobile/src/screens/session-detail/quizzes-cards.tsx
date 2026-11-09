@@ -78,7 +78,7 @@ export function AdminQuizzesCard({
         {/* V2-ONLY: v1's inline "+ Add quiz" form; v2 opens the new-quiz screen. */}
         {canAuthor ? (
           <ButtonV1
-            variant="outline"
+            variant="secondary"
             size="sm"
             onPress={() =>
               // v1 always created the quiz on this session, in this session's
@@ -129,7 +129,7 @@ export function AdminQuizzesCard({
               <View className="shrink-0 flex-row gap-1">
                 {canAuthor && q.kind === "ONLINE" ? (
                   <ButtonV1
-                    variant="ghost"
+                    variant="plain"
                     size="sm"
                     onPress={() => router.push({ pathname: "/quiz/[id]/edit", params: { id: String(q.id) } })}
                   >
@@ -137,7 +137,7 @@ export function AdminQuizzesCard({
                   </ButtonV1>
                 ) : null}
                 <ButtonV1
-                  variant="ghost"
+                  variant="plain"
                   size="sm"
                   onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(q.id) } })}
                 >

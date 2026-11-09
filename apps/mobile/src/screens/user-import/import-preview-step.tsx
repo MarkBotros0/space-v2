@@ -86,14 +86,14 @@ export function ImportPreviewStep({
             <View className="flex-row gap-2">
               <Button
                 size="sm"
-                variant={filter === "attention" ? "default" : "outline"}
+                variant={filter === "attention" ? "primary" : "secondary"}
                 onPress={() => flow.setFilter("attention")}
               >
                 Needs attention
               </Button>
               <Button
                 size="sm"
-                variant={filter === "all" ? "default" : "outline"}
+                variant={filter === "all" ? "primary" : "secondary"}
                 onPress={() => flow.setFilter("all")}
               >
                 All
@@ -105,13 +105,13 @@ export function ImportPreviewStep({
               <DataTable columns={COLUMNS} rows={shown} rowKey={(r) => r.rowNumber} />
             )}
             {visibleRows.length > shownCount ? (
-              <Button variant="outline" onPress={flow.showMore}>
+              <Button variant="secondary" onPress={flow.showMore}>
                 {`Show more (${visibleRows.length - shownCount} left)`}
               </Button>
             ) : null}
             {flow.mode === "season" ? (
               <View className="flex-col gap-2">
-                <Button variant={flow.enrolExisting ? "default" : "outline"} onPress={flow.toggleEnrolExisting}>
+                <Button variant={flow.enrolExisting ? "primary" : "secondary"} onPress={flow.toggleEnrolExisting}>
                   Enrol existing students
                 </Button>
                 {flow.enrolExisting && !flow.enrolConfirmed ? (
@@ -136,7 +136,7 @@ export function ImportPreviewStep({
                     }`}
             </Button>
             {/* Not just "Back": the pinned back bar says that and leaves the screen. */}
-            <Button variant="outline" onPress={() => flow.setStep("paste")}>
+            <Button variant="secondary" onPress={() => flow.setStep("paste")}>
               Back to your spreadsheet
             </Button>
           </View>

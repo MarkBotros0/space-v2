@@ -115,7 +115,7 @@ export function QuestionRow({
         <View className="shrink-0 flex-row flex-wrap justify-end">
           {/* V2-ONLY: reorder (v1 had none; PATCH /quizzes/:id/order, spec 12). */}
           <Button
-            variant="ghost"
+            variant="plain"
             size="sm"
             accessibilityLabel={`Move question ${n} up`}
             disabled={index === 0 || reorder.isPending}
@@ -124,7 +124,7 @@ export function QuestionRow({
             <ChevronUp size={16} className="text-foreground" />
           </Button>
           <Button
-            variant="ghost"
+            variant="plain"
             size="sm"
             accessibilityLabel={`Move question ${n} down`}
             disabled={index === ids.length - 1 || reorder.isPending}
@@ -132,11 +132,11 @@ export function QuestionRow({
           >
             <ChevronDown size={16} className="text-foreground" />
           </Button>
-          <Button variant="ghost" size="sm" accessibilityLabel={`Edit question ${n}`} onPress={() => setEditing(true)}>
+          <Button variant="plain" size="sm" accessibilityLabel={`Edit question ${n}`} onPress={() => setEditing(true)}>
             <Pencil size={16} className="text-foreground" />
           </Button>
           <Button
-            variant="ghost"
+            variant="plain"
             size="sm"
             accessibilityLabel={`Delete question ${n}`}
             onPress={() => setConfirming(true)}

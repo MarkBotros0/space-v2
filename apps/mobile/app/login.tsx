@@ -139,7 +139,7 @@ export default function LoginScreen() {
           </View>
         ) : null}
         <Button
-          size="lg"
+          size="md"
           className="w-full"
           disabled={formState.isSubmitting}
           onPress={() => void handleSubmit(onSubmit)()}
@@ -150,7 +150,7 @@ export default function LoginScreen() {
         {/* Owner 2026-11-09: Google signs in an existing account; it never creates one. */}
         <Button
           variant="secondary"
-          size="lg"
+          size="md"
           className="w-full"
           accessibilityLabel="Continue with Google"
           disabled={googleBusy || formState.isSubmitting}

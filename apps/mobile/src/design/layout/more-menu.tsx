@@ -92,7 +92,7 @@ export function MoreMenu({
             title="Appearance"
             subtitle="Switch between light and dark."
             subtitleLines={2}
-            trailing={<ThemeToggle size="icon" />}
+            trailing={<ThemeToggle />}
           />
         </GroupedList>
         <GroupedList>

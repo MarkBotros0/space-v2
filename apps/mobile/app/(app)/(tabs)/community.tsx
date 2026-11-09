@@ -196,7 +196,7 @@ export default function CommunityScreen() {
             />
             {users$.hasNextPage ? (
               <Button
-                variant="outline"
+                variant="secondary"
                 disabled={users$.isFetchingNextPage}
                 onPress={() => void users$.fetchNextPage()}
               >

@@ -128,7 +128,7 @@ function StaffQuizzes() {
         {seasonId !== null ? (
           <View className="flex-row flex-wrap gap-2">
             {canAuthor ? <Button onPress={() => router.push("/quiz/new")}>New quiz</Button> : null}
-            <Button variant="outline" onPress={() => router.push("/calendar")}>
+            <Button variant="secondary" onPress={() => router.push("/calendar")}>
               Go to sessions
             </Button>
           </View>

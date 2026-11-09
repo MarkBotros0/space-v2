@@ -153,7 +153,7 @@ export default function GroupImportScreen() {
             </View>
           ))}
           <Button
-            variant="outline"
+            variant="secondary"
             className="self-end"
             onPress={() => {
               setResult(null);

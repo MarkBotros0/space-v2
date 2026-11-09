@@ -134,7 +134,7 @@ export function QuestionEditor({ initial, submitting, serverError, onSubmit, onC
               />
               {options.length > 2 ? (
                 <Button
-                  variant="ghost"
+                  variant="plain"
                   size="sm"
                   accessibilityLabel={`Remove option ${index + 1}`}
                   onPress={() => removeOption(index)}
@@ -147,7 +147,7 @@ export function QuestionEditor({ initial, submitting, serverError, onSubmit, onC
           {options.length < MAX_OPTIONS ? (
             <Button
               className="self-start"
-              variant="ghost"
+              variant="plain"
               size="sm"
               onPress={() => setOptions((prev) => [...prev, ""])}
             >
@@ -164,7 +164,7 @@ export function QuestionEditor({ initial, submitting, serverError, onSubmit, onC
         <Button size="sm" disabled={submitting} onPress={submit}>
           {submitting ? "Saving…" : initial ? "Save" : "Add question"}
         </Button>
-        <Button variant="ghost" size="sm" disabled={submitting} onPress={onCancel}>
+        <Button variant="plain" size="sm" disabled={submitting} onPress={onCancel}>
           Cancel
         </Button>
       </View>

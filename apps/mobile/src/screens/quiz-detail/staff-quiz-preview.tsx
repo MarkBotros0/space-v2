@@ -37,12 +37,12 @@ export function StaffPreview({ id }: { id: number }) {
           <Text className="text-sm font-medium text-muted-foreground">
             {data.kind === "PAPER" ? "Paper" : data.publishedAt === null ? "Online · Draft" : "Online · Published"}
           </Text>
-          <Button size="lg" onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}>
+          <Button size="md" onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}>
             Grade this quiz
           </Button>
           {data.canManage ? (
             <Button
-              size="lg"
+              size="md"
               variant="secondary"
               onPress={() => router.push({ pathname: "/quiz/[id]/edit", params: { id: String(id) } })}
             >

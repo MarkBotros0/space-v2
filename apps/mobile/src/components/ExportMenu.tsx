@@ -80,7 +80,7 @@ export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay,
     // and a failure are read in the same place the action was taken.
     return (
       <>
-        <Button variant="outline" accessibilityLabel="Export" onPress={() => setOpen(true)}>
+        <Button variant="secondary" accessibilityLabel="Export" onPress={() => setOpen(true)}>
           Export
         </Button>
         <Sheet open={open} onClose={() => setOpen(false)} title="Export">
@@ -98,12 +98,12 @@ export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay,
 
   return (
     <View className="flex-col gap-2">
-      <Button className="self-start" variant="outline" onPress={exportEngagement}>
+      <Button className="self-start" variant="secondary" onPress={exportEngagement}>
         Export engagement
       </Button>
 
       {canExportWorkbook && manifest.data ? (
-        <Button className="self-start" variant="outline" onPress={exportWorkbook}>
+        <Button className="self-start" variant="secondary" onPress={exportWorkbook}>
           {workbookTitle}
         </Button>
       ) : null}

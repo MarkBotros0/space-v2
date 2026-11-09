@@ -64,7 +64,7 @@ export default function AcceptInviteScreen() {
   if (done) {
     return (
       <AuthCard title="Your account is ready" description="Sign in with your email and the password you just chose.">
-        <Button size="lg" className="w-full" onPress={() => router.replace("/login")}>
+        <Button size="md" className="w-full" onPress={() => router.replace("/login")}>
           Go to sign in
         </Button>
       </AuthCard>
@@ -92,7 +92,7 @@ export default function AcceptInviteScreen() {
           <PasswordInput size="lg" accessibilityLabel="Confirm password" value={confirm} onChangeText={setConfirm} />
         </AuthField>
         <Button
-          size="lg"
+          size="md"
           className="w-full"
           onPress={submit}
           disabled={acceptInvite.isPending || !code.trim() || !password || !confirm}

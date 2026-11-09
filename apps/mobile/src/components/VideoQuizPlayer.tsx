@@ -261,7 +261,7 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
                 player has no controls, so the app keeps explicit ones. */}
             <View className="mt-1 flex-row items-center justify-between">
               <Button
-                variant="ghost"
+                variant="plain"
                 size="sm"
                 textClassName="text-white"
                 accessibilityLabel={playing ? "Pause" : "Play"}
@@ -270,7 +270,7 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
                 {playing ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
                 {playing ? "Pause" : "Play"}
               </Button>
-              <Button variant="ghost" size="sm" textClassName="text-white/70" onPress={handleLeave}>
+              <Button variant="plain" size="sm" textClassName="text-white/70" onPress={handleLeave}>
                 Leave the quiz
               </Button>
             </View>

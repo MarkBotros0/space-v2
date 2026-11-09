@@ -198,7 +198,7 @@ export function StudentCheckInCard({ detail, onHero = false }: { detail: Session
   return (
     <View className="flex-col items-start gap-1.5">
       {enabled && !marked ? (
-        <Button variant={onHero ? "onHero" : "primary"} size="lg" className="min-h-[44px] w-full" onPress={openSheet}>
+        <Button variant={onHero ? "onHero" : "primary"} size="md" className="min-h-[44px] w-full" onPress={openSheet}>
           <QrCode size={16} className={onHero ? "text-on-hero-foreground" : "text-primary-foreground"} />
           Check In
         </Button>

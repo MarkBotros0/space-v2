@@ -208,7 +208,7 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
                 </Text>
                 <Text className="text-xs text-muted-foreground">{`${q.responseCount} answers recorded`}</Text>
                 <View className="flex-row flex-wrap gap-2">
-                  <Button variant="outline" onPress={() => openEdit(q)}>
+                  <Button variant="secondary" onPress={() => openEdit(q)}>
                     Edit
                   </Button>
                   <Button
@@ -225,7 +225,7 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
           {status ? <Text className="text-sm font-medium">{status}</Text> : null}
 
           {form === null ? (
-            <Button variant="secondary" size="lg" onPress={openAdd}>
+            <Button variant="secondary" size="md" onPress={openAdd}>
               Add question
             </Button>
           ) : (
@@ -249,7 +249,7 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
               ))}
               {form.options.length < MAX_OPTIONS ? (
                 <Button
-                  variant="outline"
+                  variant="secondary"
                   className="self-start"
                   onPress={() => patch({ options: [...form.options, ""] })}
                 >
@@ -270,10 +270,10 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
               />
               <FormErrorBox message={formError} />
               <View className="flex-col gap-2">
-                <Button size="lg" disabled={create.isPending || update.isPending} onPress={onSave}>
+                <Button size="md" disabled={create.isPending || update.isPending} onPress={onSave}>
                   {create.isPending || update.isPending ? "Saving…" : "Save question"}
                 </Button>
-                <Button size="lg" variant="outline" onPress={() => setForm(null)}>
+                <Button size="md" variant="secondary" onPress={() => setForm(null)}>
                   Cancel
                 </Button>
               </View>

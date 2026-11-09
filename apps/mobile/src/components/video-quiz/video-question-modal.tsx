@@ -95,7 +95,7 @@ export function VideoQuestionModal({
                   <Button onPress={onContinue}>Continue</Button>
                 </View>
               ) : null}
-              <Button variant="ghost" onPress={onLeave}>
+              <Button variant="plain" onPress={onLeave}>
                 Leave the quiz
               </Button>
             </View>

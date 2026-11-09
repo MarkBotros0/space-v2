@@ -136,7 +136,7 @@ export function NotificationPreferences() {
             {PUSH_COPY[pushStatus ?? (pushOn ? "registered" : "idle")]}
           </Text>
           <Button
-            variant={pushOn ? "outline" : "primary"}
+            variant={pushOn ? "secondary" : "primary"}
             disabled={enabling || pushOn}
             onPress={() => {
               setEnabling(true);
@@ -164,7 +164,7 @@ export function NotificationPreferences() {
               <Text className="text-sm text-error-600 dark:text-error-400">
                 Couldn't load your notification settings.
               </Text>
-              <Button variant="outline" size="sm" onPress={() => void refetch()}>
+              <Button variant="secondary" size="sm" onPress={() => void refetch()}>
                 Try again
               </Button>
             </View>

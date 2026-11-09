@@ -43,17 +43,16 @@ describe("Text", () => {
 });
 
 describe("Button", () => {
-  it("maps v1's variant names onto the redesign classes", () => {
-    expect(buttonVariants({ variant: "default" })).toContain("bg-primary");
-    expect(buttonVariants({ variant: "outline" })).toContain("border-control-border");
+  it("maps each variant and size onto the redesign classes", () => {
+    expect(buttonVariants({ variant: "primary" })).toContain("bg-primary");
+    expect(buttonVariants({ variant: "secondary" })).toContain("border-control-border");
     expect(buttonVariants({ variant: "destructive" })).toContain("bg-bad-soft");
-    expect(buttonVariants({ size: "default" })).toContain("min-h-[46px]");
-    expect(buttonVariants({ size: "lg" })).toContain("min-h-[46px]");
+    expect(buttonVariants({ size: "md" })).toContain("min-h-[46px]");
     expect(buttonVariants({ size: "icon" })).toContain("min-h-[44px]");
   });
 
   it("drops web-only classes", () => {
-    const all = buttonVariants({ variant: "default", size: "default" });
+    const all = buttonVariants({ variant: "primary", size: "md" });
     expect(all).not.toMatch(/hover:|focus-visible:|aria-|md:|transition/);
   });
 

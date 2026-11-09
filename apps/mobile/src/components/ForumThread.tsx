@@ -143,8 +143,8 @@ function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignme
             {/* canDelete is the server's answer; the client never re-derives it. */}
             {comment.canDelete ? (
               <Button
-                variant="ghost"
-                size="icon-xs"
+                variant="plain"
+                size="icon"
                 accessibilityLabel="Delete comment"
                 disabled={remove.isPending}
                 onPress={() => setConfirming(true)}
@@ -221,7 +221,7 @@ function PostCard({
             {expanded && comments.isError ? (
               <View className="flex-row items-center gap-2">
                 <Text className="text-xs text-error-700">Couldn't load the comments.</Text>
-                <Button variant="outline" size="sm" onPress={() => void comments.refetch()}>
+                <Button variant="secondary" size="sm" onPress={() => void comments.refetch()}>
                   Try again
                 </Button>
               </View>
@@ -233,7 +233,7 @@ function PostCard({
             {!expanded && remaining > 0 ? (
               <View className="flex-row items-center gap-2">
                 <Text className="text-xs text-muted-foreground">{`${remaining} more`}</Text>
-                <Button variant="outline" size="sm" onPress={() => setExpanded(true)}>
+                <Button variant="secondary" size="sm" onPress={() => setExpanded(true)}>
                   Show all comments
                 </Button>
               </View>
@@ -241,7 +241,7 @@ function PostCard({
             {expanded && comments.isPending ? <Skeleton className="h-10" /> : null}
             {expanded && comments.hasNextPage ? (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 className="self-start"
                 disabled={comments.isFetchingNextPage}
@@ -331,7 +331,7 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
           ))}
           {query.hasNextPage ? (
             <Button
-              variant="outline"
+              variant="secondary"
               className="self-start"
               disabled={query.isFetchingNextPage}
               onPress={() => void query.fetchNextPage()}

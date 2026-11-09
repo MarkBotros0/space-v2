@@ -1,10 +1,8 @@
 /**
- * Redesign Button: variants primary | secondary | destructive | plain, sizes
- * md (min-height 46) | sm (min-height 44), radius 14, dims while pressed.
- * v1's names stay as aliases so no call site changes: default -> primary,
- * outline -> secondary, ghost/link -> plain (no underlines anywhere, owner 2026-11-07;
- * a light link-like action is a PillButton),
- * default/lg/icon-lg -> md, xs/sm/icon/icon-xs/icon-sm -> sm.
+ * Redesign Button: variants primary | secondary | destructive | plain | onHero,
+ * sizes md (min-height 46) | sm (min-height 44) | icon (a 44pt square), radius
+ * 14, dims while pressed. No underlines anywhere (owner 2026-11-07); a light
+ * link-like action is a PillButton.
  * The outer Pressable takes the caller's layout classes (self-start, flex-1,
  * w-full); the Animated.View inside it carries only the press dim, which
  * also runs under reduced motion (it is feedback, not travel), and the View
@@ -29,35 +27,7 @@ import { withTextRuns } from "../lib/text-runs";
 import { Text } from "./text";
 
 type Variant = "primary" | "secondary" | "destructive" | "plain" | "onHero";
-type Size = "md" | "sm";
-type LegacyVariant = "default" | "outline" | "ghost" | "link";
-type LegacySize = "default" | "xs" | "lg" | "icon" | "icon-xs" | "icon-sm" | "icon-lg";
-type VariantInput = Variant | LegacyVariant;
-type SizeInput = Size | LegacySize;
-
-const VARIANT_ALIAS: Record<VariantInput, Variant> = {
-  primary: "primary",
-  secondary: "secondary",
-  destructive: "destructive",
-  plain: "plain",
-  onHero: "onHero",
-  default: "primary",
-  outline: "secondary",
-  ghost: "plain",
-  link: "plain",
-};
-const SIZE_ALIAS: Record<SizeInput, Size> = {
-  md: "md",
-  sm: "sm",
-  default: "md",
-  lg: "md",
-  "icon-lg": "md",
-  xs: "sm",
-  icon: "sm",
-  "icon-xs": "sm",
-  "icon-sm": "sm",
-};
-const ICON_SIZES = new Set<string>(["icon", "icon-xs", "icon-sm", "icon-lg"]);
+type Size = "md" | "sm" | "icon";
 
 const base = cva("shrink-0 flex-row items-center justify-center gap-2 rounded-control border border-transparent px-4", {
   variants: {
@@ -68,7 +38,7 @@ const base = cva("shrink-0 flex-row items-center justify-center gap-2 rounded-co
       plain: "bg-transparent",
       onHero: "bg-on-hero",
     },
-    size: { md: "min-h-[46px]", sm: "min-h-[44px]" },
+    size: { md: "min-h-[46px]", sm: "min-h-[44px]", icon: "min-h-[44px] min-w-[44px] px-0" },
   },
   defaultVariants: { variant: "primary", size: "md" },
 });
@@ -86,18 +56,15 @@ const baseText = cva("", {
   defaultVariants: { variant: "primary" },
 });
 
-type Opts = { variant?: VariantInput | null; size?: SizeInput | null };
+type Opts = { variant?: Variant | null; size?: Size | null };
 
 function buttonVariants({ variant, size }: Opts = {}) {
-  const icon = !!size && ICON_SIZES.has(size);
-  return cn(
-    base({ variant: VARIANT_ALIAS[variant ?? "primary"], size: SIZE_ALIAS[size ?? "md"] }),
-    icon && "min-w-[44px] px-0",
-  );
+  // cn, not cva alone: tailwind-merge drops the base px-4 under icon's px-0.
+  return cn(base({ variant: variant ?? "primary", size: size ?? "md" }));
 }
 
 function buttonTextVariants({ variant }: Pick<Opts, "variant"> = {}) {
-  return baseText({ variant: VARIANT_ALIAS[variant ?? "primary"] });
+  return baseText({ variant: variant ?? "primary" });
 }
 
 /**
@@ -149,7 +116,7 @@ function Button({
   const colors = useThemeColors();
   const blocked = !!disabled || loading;
   const dimmed = blocked && !loading;
-  const resolved = VARIANT_ALIAS[variant ?? "primary"];
+  const resolved = variant ?? "primary";
   const spinner =
     resolved === "primary"
       ? colors["primary-foreground"]

@@ -148,7 +148,7 @@ export function StudentList({
           ))}
         </GroupedList>
         {hasNextPage ? (
-          <Button variant="outline" disabled={isFetchingNextPage} onPress={() => void fetchNextPage()}>
+          <Button variant="secondary" disabled={isFetchingNextPage} onPress={() => void fetchNextPage()}>
             {isFetchingNextPage ? "Loading…" : "Load more"}
           </Button>
         ) : null}

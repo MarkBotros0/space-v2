@@ -64,7 +64,7 @@ export default function CheckInLinkScreen() {
               title="Check in to this session?"
               message="Check in to the session this code belongs to?"
             />
-            <Button size="lg" disabled={checkIn.isPending} onPress={() => confirm(token)}>
+            <Button size="md" disabled={checkIn.isPending} onPress={() => confirm(token)}>
               Check in
             </Button>
           </>

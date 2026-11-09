@@ -54,7 +54,7 @@ function ManageActions({ detail }: { detail: AssignmentDetail }) {
     <View className="flex-col gap-2">
       <View className="flex-row flex-wrap gap-2">
         <Button
-          variant="outline"
+          variant="secondary"
           onPress={() => router.push({ pathname: "/assignment/[id]/edit", params: { id: String(detail.id) } })}
         >
           Edit
@@ -106,7 +106,7 @@ function trackerColumns(onOpen: (publicId: string) => void): DataTableColumn<Ass
       header: "",
       cell: (row) =>
         row.submissionPublicId !== null ? (
-          <Button variant="outline" size="sm" onPress={() => onOpen(row.submissionPublicId as string)}>
+          <Button variant="secondary" size="sm" onPress={() => onOpen(row.submissionPublicId as string)}>
             Open
           </Button>
         ) : null,

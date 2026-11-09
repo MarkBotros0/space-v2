@@ -185,7 +185,7 @@ export function ImportPasteStep({
             ) : null}
 
             <FormErrorBox message={flow.localError} />
-            <Button variant="outline" disabled={flow.previewPending} onPress={flow.runPreview}>
+            <Button variant="secondary" disabled={flow.previewPending} onPress={flow.runPreview}>
               {flow.previewPending ? "Reading…" : "Preview"}
             </Button>
           </View>

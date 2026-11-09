@@ -87,7 +87,7 @@ export default function GroupDetailScreen() {
       trailing={
         data.canManage ? (
           <Button
-            variant="outline"
+            variant="secondary"
             onPress={() => router.push({ pathname: "/group/[id]/edit", params: { id: String(data.id) } })}
           >
             Edit group

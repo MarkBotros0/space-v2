@@ -53,7 +53,7 @@ export function QrScanner({ onCode, onCancel }: QrScannerProps) {
         <Text className="text-sm text-muted-foreground">
           Camera access is turned off for JPC Space. Turn it on in Settings, or enter the code instead.
         </Text>
-        <Button variant="outline" onPress={() => void Linking.openSettings()}>
+        <Button variant="secondary" onPress={() => void Linking.openSettings()}>
           Open settings
         </Button>
       </>
@@ -81,7 +81,7 @@ export function QrScanner({ onCode, onCancel }: QrScannerProps) {
   return (
     <View className="flex-col gap-3">
       {body}
-      <Button variant="ghost" onPress={onCancel}>
+      <Button variant="plain" onPress={onCancel}>
         Cancel
       </Button>
     </View>

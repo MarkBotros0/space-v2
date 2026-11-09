@@ -59,7 +59,7 @@ export default function ForgotPasswordScreen() {
             keyboardType="email-address"
           />
         </AuthField>
-        <Button size="lg" className="w-full" onPress={submit} disabled={forgot.isPending || !email.trim()}>
+        <Button size="md" className="w-full" onPress={submit} disabled={forgot.isPending || !email.trim()}>
           Send reset code
         </Button>
         <AuthLink label="I have a reset code" onPress={() => router.push("/reset-password")} />

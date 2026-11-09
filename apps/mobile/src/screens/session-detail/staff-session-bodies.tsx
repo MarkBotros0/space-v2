@@ -72,7 +72,7 @@ export function AdminSessionBody({ data, showConsole, refetch, isRefetching }: B
           <View className="flex-row flex-wrap gap-2">
             {data.canManageCheckIn ? (
               <ButtonV1
-                variant="outline"
+                variant="secondary"
                 onPress={() => router.push({ pathname: "/session/[id]/edit", params: { id: String(data.id) } })}
               >
                 Edit

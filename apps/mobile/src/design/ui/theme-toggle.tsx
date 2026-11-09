@@ -11,13 +11,13 @@ import { Button } from "./button";
 
 iconWithClassName(Moon, Sun);
 
-export function ThemeToggle({ className, size = "icon-sm" }: { className?: string; size?: "icon" | "icon-sm" }) {
+export function ThemeToggle({ className }: { className?: string }) {
   const { resolved, setMode } = useThemeMode();
   const isDark = resolved === "dark";
   return (
     <Button
-      variant="ghost"
-      size={size}
+      variant="plain"
+      size="icon"
       accessibilityLabel={isDark ? "Switch to light mode" : "Switch to dark mode"}
       onPress={() => void setMode(isDark ? "light" : "dark")}
       className={className}

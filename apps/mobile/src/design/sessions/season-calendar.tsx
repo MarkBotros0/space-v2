@@ -77,7 +77,7 @@ export function SeasonCalendar({
         {view !== "upcoming" ? (
           <View className="flex-row items-center gap-1">
             <Button
-              variant="ghost"
+              variant="plain"
               size="icon"
               accessibilityLabel={`Previous ${view}`}
               onPress={() => setAnchor((a) => stepAnchor(view, a, -1))}
@@ -88,7 +88,7 @@ export function SeasonCalendar({
               {rangeLabel(view, anchor)}
             </Text>
             <Button
-              variant="ghost"
+              variant="plain"
               size="icon"
               accessibilityLabel={`Next ${view}`}
               onPress={() => setAnchor((a) => stepAnchor(view, a, 1))}

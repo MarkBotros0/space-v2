@@ -155,14 +155,14 @@ export function CheckInConsoleCard({ detail }: { detail: SessionDetail }) {
         </View>
         <View className="mt-2 flex-row flex-wrap items-center gap-2">
           {token ? (
-            <ButtonV1 variant="ghost" size="sm" disabled={regenerate.isPending} onPress={onRegenerate}>
+            <ButtonV1 variant="plain" size="sm" disabled={regenerate.isPending} onPress={onRegenerate}>
               <RotateCcw size={16} className="text-foreground" />
               {regenArmed ? "Replace the code? The current one stops working." : "Regenerate code"}
             </ButtonV1>
           ) : null}
           {detail.checkInOpen ? (
             <ButtonV1
-              variant="outline"
+              variant="secondary"
               size="sm"
               disabled={close.isPending}
               onPress={() => run(close, "Couldn't close check-in.")}

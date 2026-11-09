@@ -75,7 +75,7 @@ export default function ResetPasswordScreen() {
         title="Password updated"
         description="Sign in with your new password. Every other device signed in to this account has been signed out."
       >
-        <Button size="lg" className="w-full" onPress={() => router.replace("/login")}>
+        <Button size="md" className="w-full" onPress={() => router.replace("/login")}>
           Go to sign in
         </Button>
       </AuthCard>
@@ -108,7 +108,7 @@ export default function ResetPasswordScreen() {
           <PasswordInput size="lg" accessibilityLabel="Confirm password" value={confirm} onChangeText={setConfirm} />
         </AuthField>
         <Button
-          size="lg"
+          size="md"
           className="w-full"
           onPress={submit}
           disabled={resetPassword.isPending || !code.trim() || !password || !confirm}

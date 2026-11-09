@@ -116,8 +116,8 @@ function DatePicker({
         <View className="rounded-group border border-separator bg-popover p-3">
           <View className="mb-2 flex-row items-center justify-between">
             <Button
-              size="icon-sm"
-              variant="ghost"
+              size="icon"
+              variant="plain"
               onPress={() =>
                 setViewMonth((m) =>
                   mode === "day" ? subMonths(m, 1) : mode === "month" ? subYears(m, 1) : subYears(m, YEARS_PER_PAGE),
@@ -151,8 +151,8 @@ function DatePicker({
               <ChevronDown size={14} className="text-muted-foreground" />
             </Pressable>
             <Button
-              size="icon-sm"
-              variant="ghost"
+              size="icon"
+              variant="plain"
               onPress={() =>
                 setViewMonth((m) =>
                   mode === "day" ? addMonths(m, 1) : mode === "month" ? addYears(m, 1) : addYears(m, YEARS_PER_PAGE),

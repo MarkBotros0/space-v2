@@ -25,30 +25,18 @@ describe("Button redesign", () => {
     expect(buttonVariants({ size: "sm" })).toContain("min-h-[44px]");
   });
 
-  it("maps legacy variants and sizes onto the new ones", () => {
-    expect(buttonVariants({ variant: "default" })).toBe(buttonVariants({ variant: "primary" }));
-    expect(buttonVariants({ variant: "outline" })).toBe(buttonVariants({ variant: "secondary" }));
-    expect(buttonVariants({ variant: "ghost" })).toBe(buttonVariants({ variant: "plain" }));
-    expect(buttonTextVariants({ variant: "link" })).toBe(buttonTextVariants({ variant: "plain" }));
-    expect(buttonTextVariants({ variant: "link" })).not.toContain("underline");
-    expect(buttonVariants({ size: "default" })).toBe(buttonVariants({ size: "md" }));
-    expect(buttonVariants({ size: "lg" })).toBe(buttonVariants({ size: "md" }));
-    expect(buttonVariants({ size: "icon" })).toContain("min-h-[44px]");
-    expect(buttonVariants({ size: "xs" })).toContain("min-h-[44px]");
+  it("makes the icon size a 44pt square with no side padding", () => {
+    const icon = buttonVariants({ size: "icon" });
+    expect(icon).toContain("min-h-[44px]");
+    expect(icon).toContain("min-w-[44px]");
+    expect(icon).toContain("px-0");
+    expect(icon).not.toContain("px-4");
+    expect(buttonTextVariants({ variant: "plain" })).not.toContain("underline");
   });
 
-  it("renders every legacy variant and size without throwing", () => {
-    for (const variant of [
-      "default",
-      "outline",
-      "secondary",
-      "ghost",
-      "destructive",
-      "link",
-      "primary",
-      "plain",
-    ] as const) {
-      for (const size of ["default", "xs", "sm", "lg", "icon", "icon-xs", "icon-sm", "icon-lg", "md"] as const) {
+  it("renders every variant and size without throwing", () => {
+    for (const variant of ["primary", "secondary", "destructive", "plain", "onHero"] as const) {
+      for (const size of ["md", "sm", "icon"] as const) {
         const { unmount } = render(<Button variant={variant} size={size}>{`${variant}-${size}`}</Button>);
         expect(screen.getByText(`${variant}-${size}`)).toBeTruthy();
         unmount();

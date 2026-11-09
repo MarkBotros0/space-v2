@@ -92,7 +92,7 @@ export function CalendarList({
             ) : null}
           </View>
           {onMarkAttendance ? (
-            <Button variant="outline" size="sm" className="self-start" onPress={() => onMarkAttendance(s.id)}>
+            <Button variant="secondary" size="sm" className="self-start" onPress={() => onMarkAttendance(s.id)}>
               Mark attendance
             </Button>
           ) : null}
