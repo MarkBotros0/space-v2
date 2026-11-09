@@ -6,14 +6,13 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-09)
 
-- **Current phase:** end of Phase 1. The merged audit and this plan are written. **Waiting for the
-  owner to approve or edit them and to answer the open questions (Q1–Q27).** Nothing in Waves 1–7
-  starts before that.
+- **Current phase:** Phase 1 approved by the owner with ruling D8 (fit the rules to the repo, skip
+  what is slow or complicated); Q1–Q27 answered below. **Next: finish Wave 0 (0.9–0.11), then Wave 1.**
 - `main` @ `edc1fad0` (announcement polls) was merged into `refactor/wave-0-safety-net` at the
   owner's request (`bcb79a93`); the route-inventory snapshot now includes the 4 poll routes (`cea0568e`).
-- **Blocked:** applying the poll migration to the throwaway DB (`db:migrate:deploy`) was refused by
-  the session's permission classifier, so the schema-snapshot test and the integration suite haven't
-  run on the merged tree yet (Wave 0 steps 0.9–0.10). Needs the owner's go-ahead.
+- **Blocked (Q28):** applying the poll migration to the throwaway DB (`db:migrate:deploy`) is refused by
+  the session's permission classifier, so the schema snapshot and the integration suite haven't run on
+  the merged tree yet (Wave 0 0.9–0.10). `apps/backend/.env` was checked: `127.0.0.1:55441/refactor_test`.
 - No code outside tests has changed. Nothing has been pushed; no PR opened yet.
 
 ## Working setup
@@ -84,14 +83,14 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 - [x] Merge into one deduplicated `docs/refactor-audit.md` (ERD per domain + column tables included;
       area files kept as appendices)
 - [x] Fill the wave step lists below from the findings (every finding ID is assigned or explicitly kept)
-- [ ] **STOP — owner approves/edits audit and plan, answers Q1–Q27**
+- [x] **STOP — owner approved with ruling D8 (2026-11-09), answers recorded below**
 
 ## Decisions so far
 
 - D1. **No repository layer per table** (BE-035). Thin handlers → domain services in `lib/<domain>/`
   (own transactions and locks, throw `ApiError`) → reads in `lib/queries/` → Prisma `select` as the
   data layer; `lib/permissions/` stays. Reference module: announcements; transactional model:
-  `lib/roles/student-seats.ts`. *Pending owner approval (Q27).*
+  `lib/roles/student-seats.ts`. Approved (D8).
 - D2. The 400-line rule is already met for source; only 4 test files need splitting (Wave 2, with the
   lint rule).
 - D3. Characterization tests are snapshots; a deliberate route or schema change updates the snapshot
@@ -111,113 +110,73 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
   check as a read-only script under `apps/backend/scripts/refactor-checks/`; the owner runs it against
   each real environment before that step's migration is deployed. This session never connects to
   them.
+- D8. **Owner ruling (2026-11-09) on the audit, the plan and Q1–Q27:** "Fit the rules to the repo as
+  much as you can, and if something will take so much time or will be complicated, just ignore it and
+  don't fix it." Applied as one test per item: **do it** if it is mechanical and can't fail on existing
+  data or change behaviour; **skip it** if it needs a check on a real database, changes semantics, or
+  rewrites a subtle rule across many call sites. Skipped findings stay in the audit as known gaps
+  and are listed under "Skipped (D8)" at the end of each wave; nothing skipped is half-done.
 
-## Open questions for the owner (answer before Wave 1; "accept recommendations" is a valid answer)
+## Owner answers (D8, 2026-11-09)
 
-**Standards that don't fit as written (gate Wave 2–3 design)**
-1. **Int → BIGINT ids** (DB-025). Recommend: keep `Int` for existing *and* new tables; record as the
-   documented exception (BIGINT breaks every JSON response and every shared id schema).
-2. **snake_case** (DB-023). Recommend: keep PascalCase/camelCase; document it as the convention.
-3. **Soft delete scope and mechanism** (DB-024). Recommend: (a) named filter fragments in
-   `lib/db/live.ts` + a lint rule, not a Prisma `$extends` (it can't filter nested reads);
-   (b) no new soft-delete tables — today's hard deletes (Group, Session, ForumComment, JpcEvent, quiz
-   and video questions, SeasonAdmin) stay hard and are documented, since converting them changes
-   behaviour; (c) a deleted account's email stays taken (re-invite restores), as today.
-4. **Base columns** (DB-021/030). Recommend: add `createdAt`/`updatedAt` where rows are updated and the
-   column is missing (MentorFollowUp, SessionVideoProgress, AnnouncementPoll, AnnouncementPollOption);
-   leave append-only rows and pure links without `updatedAt`. Alternative: strict, every non-link table.
-5. **"Base entity"** — Prisma has no model mixins. Recommend: a schema conformance test (Wave 7) that
-   fails when a model lacks the agreed columns or an FK lacks an index.
-6. **Timestamps → `timestamptz`, `dateOfBirth` → `date`** (DB-015). Recommend: yes, in Wave 3, small
-   tables first and the large ones after the purge (Q13) in a quiet window (table rewrite + lock).
-
-**Behaviour and contract changes (each needs an explicit yes)**
-7. **Routes with no mobile caller** (DC-060…066). Recommend: remove `POST /auth/logout-all`,
-   `POST /me/password`, `GET /seasons/:id/engagement` and their schemas; keep the rest.
-8. **`checkStudentSeat` and `canViewNote`** have no production caller (DC-021/022). Missing guards or
-   dead? Recommend: I trace each seat-write and note-read path in Wave 1 and report before deleting.
-9. **Assignment notifications reach deleted students** (`lib/assignment-writes.ts:85`, BE-028), unlike
-   the other producers. Recommend: treat as a bug, fix in Wave 4 with a test.
-13. **Retention** (DB-007, DB-006): a daily purge of expired/revoked refresh tokens and used/expired
-   invite and reset tokens; stale device tokens; a Notification retention period? Recommend: tokens yes
-   (7-day grace), devices unused > 180 days yes, notifications: your call (e.g. 180 days).
-22. **Copy unification:** "Show more" vs "Load more" (FE-028), the two `email_taken` messages (BE-029),
-   trimming in blank-to-null (FE-025). Recommend: keep every current text and trim behaviour.
-
-**Schema contents**
-11. **Dependencies to drop:** `expo-linear-gradient` (native: lands with the next binary), `pg` +
-   `@types/pg`, `react-hook-form` + `@hookform/resolvers` (after login moves to `useSchemaErrors`).
-   Recommend: all four.
-12. **Personal data before Wave 6 drops** (DB-001, DB-003): archive the dead StudentProfile columns
-   (phone, DOB, spiritualBackground, gifts, photoPath, year) and `StudentDocument` rows/files first?
-   And please run the `pg_stat_user_tables` row-count query (audit §2.15) on Prisma Postgres.
-14. **`GroupStudent`** duplicates `SeasonEnrollment.groupId` (DB-012). Recommend: switch reads in Wave 4,
-   drop in Wave 6.
-15. **Case-insensitive email unique** (DB-004): run the duplicate query (audit §2.10) on each DB and
-   resolve hits; then IDX-3. Lowercase the stored emails too? Recommend: yes.
-16. **Group targeting** (DB-013): gone for good? Recommend: keep the schema (it defines past
-   percentages); no change.
-18. **Columns kept for the CMS:** `Season.coverImagePath`, `Session.materialsPath`, `JpcEvent.imagePath`
-   (never read) and `User.avatarPath` (returned in 4 payloads, never written). Recommend: drop the first
-   three, keep `avatarPath`.
-19. **Write-only columns** (DB-006): drop `RefreshToken.userAgent`? Keep `DeviceToken.lastSeenAt` only
-   with the prune of Q13. Recommend: drop `userAgent`; keep `lastSeenAt` + prune.
-20. **Optional DB guards:** DB-019 invariants (yes, after violation checks), DB-017 mime/`correctIndex`
-   CHECKs and `recurrenceGroupId` → uuid (yes), DB-016 `totalScore` CHECK (yes after check), DB-018
-   length CHECKs (no), a `Program` lookup table (no). Recommend as listed.
-21. **NotificationPreference** → opt-out rows (DB-011b)? Recommend: keep the current table.
-26. **User ↔ StudentProfile 1:1** (DB-011a). Recommend: keep the split (isolates the staff-only note).
-
-**Dead code and config**
-17. **Dormant switches:** remove `IMPORT_FILE_UPLOAD_SUPPORTED` (DC-013), the throwing `s3` storage
-   driver (DC-056), the `READ_ONLY` freeze (DC-057), `AUTH_URL` (DC-050); sync `turbo.json` env with
-   `config.ts` or replace the list with a comment (DC-051)? Recommend: remove all four; sync the list.
-23. **103 unused shared type aliases** (DC-016). Recommend: delete those unused anywhere, keep schemas.
-
-**Process and tooling**
-10. **Tooling dependencies** for Wave 7: `jscpd` (duplication; no in-repo equivalent; also needed for
-   the before/after duplication % in the final report), `knip` (dead code) and
-   `eslint-plugin-boundaries`. Recommend: approve `jscpd` (pinned dev dep); do dead code with an in-repo
-   TS-API script and boundaries with ESLint's built-in `no-restricted-imports` (no new deps).
-24. **CI triggers:** both workflows are `workflow_dispatch` only. Recommend: run `pnpm check` + unit
-   tests on `pull_request`; integration stays manual, or gets a Postgres service container.
-25. **Keeping up with `main`** (redesign 02–05 are active). Recommend: merge `main` into each wave
-   branch at its start and before its PR; agree a short freeze on the files a wave touches.
-27. **Approve D1** (services + reads, no repository layer) and **D5–D7** above.
-28. **Permission:** may this session run `db:migrate:deploy` and integration tests against the
-   throwaway container `space-v2-refactor-db` (127.0.0.1:55441)? The classifier blocked it (Wave 0 0.9).
+| Q | Topic | Answer |
+|---|---|---|
+| 1 | Int → BIGINT ids | keep `Int` for existing and new tables; documented exception |
+| 2 | snake_case | keep PascalCase/camelCase; documented convention |
+| 3 | soft delete | named fragments in `lib/db/live.ts` + lint rule; no new soft-delete tables; deleted account's email stays taken |
+| 4 | base columns | add `createdAt`/`updatedAt` where rows are updated and the column is missing |
+| 5 | base entity | schema conformance test (Wave 7) |
+| 6 | `timestamptz`, `date` | yes, one Wave 3 step (value-preserving; the database is a test DB per owner) |
+| 7 | routes without caller | remove `logout-all`, `POST /me/password`, `GET /seasons/:id/engagement`; keep the rest |
+| 8 | `checkStudentSeat`, `canViewNote` | trace in Wave 1: delete if dead; if it looks like a missing guard, **report, don't add it** |
+| 9 | assignment notifications to deleted students | fix as a bug, with a test |
+| 10 | tooling deps | **no new dependency approved** → in-repo dead-code script; built-in `no-restricted-imports`/`no-restricted-syntax` for boundaries; **duplication check skipped** unless the owner later approves `jscpd` |
+| 11 | drop deps | yes: `expo-linear-gradient`, `pg`, `@types/pg`, `react-hook-form`, `@hookform/resolvers` |
+| 12 | archive + row counts | skipped: the pre-Wave-6 backup is the archive; sizes stay estimates |
+| 13 | retention | token purge only (refresh, invite, reset); device prune and notification retention skipped |
+| 14 | `GroupStudent` | **keep** (moving 7 reads off the mirror is semantics-sensitive); add IDX-2, drop redundant IDX-D1 |
+| 15 | case-insensitive email | skipped (needs a duplicate check on real data) |
+| 16 | group targeting | keep |
+| 17 | dormant switches | remove `IMPORT_FILE_UPLOAD_SUPPORTED`, `s3` driver, `READ_ONLY`, `AUTH_URL`; sync turbo env |
+| 18 | CMS columns | drop the three never-read path columns; keep `avatarPath` |
+| 19 | write-only columns | drop `RefreshToken.userAgent`; keep `DeviceToken.lastSeenAt` + index |
+| 20 | DB guards | skipped: every CHECK / partial unique can fail on existing rows or on an update of one (DB-014, DB-016…019, DB-031, IDX-3/6/7, uuid cast) |
+| 21 | NotificationPreference | keep |
+| 22 | copy | keep every current text and trim behaviour |
+| 23 | unused type aliases | delete those unused anywhere |
+| 24 | CI | `pnpm check` + unit tests on `pull_request`; integration stays manual |
+| 25 | keeping up with `main` | merge `main` at each wave start and before its PR |
+| 26 | User ↔ StudentProfile | keep |
+| 27 | D1, D5–D7 | approved (fits the repo) |
+| 28 | migrations on the throwaway DB | **still open**: the permission classifier blocks `db:migrate:deploy`; the owner runs it once, or allows it |
 
 ## Waves
 
 Each step: change → relevant tests + lint + typecheck → commit (one concern) → tick here. End of
 wave: full suite (lint, typecheck, unit, build, integration on the throwaway DB; UI sweep for
 Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
-"(Q*n*)" = the step runs only as the owner answers; a refused step is ticked with "skipped (Q*n*)".
 
 ### Wave 1 — dead code removal (`refactor/wave-1-dead-code`)
 
-- [ ] 1.0 Branch from Wave 0; merge current `main` (Q25); re-run the dead-code and length scans on the merged tree
+- [ ] 1.0 Branch from Wave 0; merge current `main`; re-run the dead-code and length scans on the merged tree
 - [ ] 1.1 Mobile dead files: DC-001, DC-002, DC-003, DC-004, DC-005 (+ barrel lines)
 - [ ] 1.2 Mobile dead symbols: DC-006, DC-007, DC-008, DC-009, DC-010, DC-011
 - [ ] 1.3 Mobile test-only production code with its tests: DC-025, DC-026, DC-027, DC-028, DC-029, DC-030
-      (`work-model.ts` drops under 300, FE-010 part)
 - [ ] 1.4 Backend: DC-012 (`canReadAnnouncement`), DC-014, DC-020 (`isAdminOfAnySeason`), BE-054
-- [ ] 1.5 Shared: SH-007 (`dashboardSchema`, `assignmentListItemSchema`), DC-024; DC-016 unused type aliases (Q23)
+- [ ] 1.5 Shared: SH-007 (`dashboardSchema`, `assignmentListItemSchema`), DC-024, DC-016 (unused type aliases)
 - [ ] 1.6 Drop `export` from file-local symbols: DC-017 / BE-081
-- [ ] 1.7 Config: DC-050 (`AUTH_URL`), FE-052 (redundant `staleTime`, `LIVE_CHECK`), DC-051 (Q17)
-- [ ] 1.8 Dormant switches (Q17): DC-013/055, DC-056, DC-057 — with openapi + README text
-- [ ] 1.9 Routes without a caller (Q7): DC-060, DC-061 (+ DC-015), DC-062 — route-inventory snapshot,
-      openapi, README, shared schemas in the same commits
-- [ ] 1.10 Q8 trace of `checkStudentSeat` (DC-022) and `canViewNote` (DC-021): delete, or move to Wave 4
-      step 4.4 / 4.12 as a guard; update CLAUDE.md "Roles" to match
-- [ ] 1.11 Button legacy variants: codemod the 55 call sites to the mapped names, delete the alias maps
-      (FE-071 part 1; render identical by construction)
-- [ ] 1.12 Dependencies (Q11): DC-040 (`expo-linear-gradient`), DC-046 (`pg`, `@types/pg`)
+- [ ] 1.7 Config: DC-050 (`AUTH_URL`), DC-051 (turbo env synced), FE-052 (`LIVE_CHECK`)
+- [ ] 1.8 Dormant switches: DC-013/055, DC-056 (`s3` driver), DC-057 (`READ_ONLY`) — with openapi + README
+- [ ] 1.9 Routes without a caller: DC-060, DC-061 (+ DC-015), DC-062 — route-inventory snapshot, openapi,
+      README, shared schemas in the same commits
+- [ ] 1.10 Trace `checkStudentSeat` (DC-022) and `canViewNote` (DC-021): delete if dead, else report (D8); CLAUDE.md "Roles" kept accurate
+- [ ] 1.11 Button legacy variants: codemod the 55 call sites to the mapped names, delete the alias maps (FE-071 part 1)
+- [ ] 1.12 Dependencies: DC-040 (`expo-linear-gradient`), DC-046 (`pg`, `@types/pg`)
 - [ ] 1.13 Docs and leftovers: SH-006 (stale CLAUDE.md paragraph), `scripts/smoke.sh` if unused
 - [ ] 1.14 Kept on purpose, recorded here: DC-023 (`sentryEnabled` test seam), DC-031, DC-032, DC-058,
-      DC-059, DC-063…066 (unless Q7), FE-062. No action by design: BE-051, BE-053, BE-074, BE-075,
-      BE-077, BE-078, FE-033, FE-053, FE-054, DB-011a, DB-029a. Covered under their duplicate IDs:
-      BE-080 (= DC-020/022/023), FE-070 (= DC-001/003/011/025…030)
+      DC-059, DC-063…066, FE-062. No action by design: BE-051, BE-053, BE-074, BE-075, BE-077, BE-078,
+      FE-033, FE-053, FE-054, DB-011a, DB-029a. Covered under their duplicate IDs: BE-080
+      (= DC-020/022/023), FE-070 (= DC-001/003/011/025…030)
 - [ ] 1.15 Full verification + UI sweep spot-check (button variants) + wave summary + PR → **STOP**
 
 ### Wave 2 — shared foundations (`refactor/wave-2-foundations`)
@@ -226,60 +185,50 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
       `max-lines` 400 (all lines), `max-lines-per-function` 50 (target 40), `max-depth` 3, `complexity` 15;
       exclude `src/generated`, `prisma/migrations`, `src/docs` data. Record the warning count here
 - [ ] 2.2 Split the 4 test files over 400 lines (audit §1.1), so `max-lines` warns on nothing
-- [ ] 2.3 Shared season status: BE-022 / SH-002 / FE-014 / BE-043 — constants + predicates in
-      `packages/shared/src/enums.ts`, backend `lib/seasons/status.ts`, **all** inline copies replaced (D5)
-- [ ] 2.4 Shared audience and admin predicates: SH-003 / FE-016 (`isAlumnusNotStudying`, `useAudience`),
-      FE-015 / SH-004 (`isAdminOfSeason` claims predicate, `useIsAdminOfSeason`) — all sites
+- [ ] 2.3 Shared season status: BE-022 / SH-002 / FE-014 / BE-043 — all inline copies replaced (D5)
+- [ ] 2.4 Shared audience and admin predicates: SH-003 / FE-016, FE-015 / SH-004 — all sites
 - [ ] 2.5 Shared types: FE-040, FE-041, FE-042 (`startSeasonResponseSchema`), SH-005 — all sites
 - [ ] 2.6 Shared file splits: SH-001 (`import.ts`, `reports.ts` → folders)
-- [ ] 2.7 Error-code catalogue: BE-040 / FE-050 in `packages/shared/src/api-error.ts`; type `apiError`'s
-      code; replace literals on both sides; BE-029 constants (text unchanged, Q22); poll codes (BE-091 part)
-- [ ] 2.8 `ApiError` + one mapping point in `error-handler.ts`; `ForbiddenError` as a subclass;
-      `toApiError(refusal)` (BE-030 class part, BE-031); `apiNoContent` (BE-032); worked example: announcements
-- [ ] 2.9 Moves to their layer: BE-017 (`quizzes/notify.ts` → lib, `submissions/editable.ts` verdict →
-      permissions, `forbidden` → `lib/api-response.ts`)
+- [ ] 2.7 Error-code catalogue: BE-040 / FE-050; BE-029 constants (text unchanged); poll codes (BE-091 part)
+- [ ] 2.8 `ApiError` + one mapping point; `ForbiddenError` as a subclass; `toApiError` (BE-030 class part,
+      BE-031); `apiNoContent` (BE-032); worked example: announcements
+- [ ] 2.9 Moves to their layer: BE-017
 - [ ] 2.10 HTTP helpers with tests + one worked example each: BE-020 `idParam`, BE-021 `notFound` + loaders,
       BE-02A `parseOr400`, BE-023 `pageOf` + shared cursor schemas
 - [ ] 2.11 `requireRole` middleware (BE-025, BE-026) — all sites (messages unchanged)
 - [ ] 2.12 Soft-delete fragments `lib/db/live.ts` (`liveUser`, `liveSeason`, `liveAssignment`, `withDeleted`)
-      with tests; worked example (DB-024 part, Q3)
-- [ ] 2.13 Constants: BE-041 (rate-limit window), BE-042 / FE-051 (time units), BE-044 (notification link
-      builders), BE-045 (batch caps)
+      with tests; worked example (DB-024 part)
+- [ ] 2.13 Constants: BE-041, BE-042 / FE-051, BE-044, BE-045
 - [ ] 2.14 Backend plumbing: BE-060 (storage cycle), BE-02C (test helpers), BE-02D (`scripts/lib/db-host.ts`)
-- [ ] 2.15 Mobile API layer: FE-032 `apiGet`/`apiSend` (worked example: one hook file), FE-013
-      `apiErrorStatus` (all 6 sites), FE-035 query-key factory entries (key identity unchanged), FE-063 `useRole`
-- [ ] 2.16 Mobile UI primitives: FE-020 `QueryGate`, FE-021 `useSeasonRoute` + `SeasonRouteGate` (all 10
-      season routes), FE-028 `LoadMoreButton` (+ catalogue; label per Q22)
-- [ ] 2.17 Mobile helpers: FE-030 `useSchemaErrors`, FE-024 `day-key.ts`, FE-025 `blankToNull` (per-site
-      trim kept), FE-023 `countOf`/`people`, FE-022, FE-026 `formatBytes`, FE-027 debounce hook
-- [ ] 2.18 FE-031: login on `useSchemaErrors`; drop `react-hook-form` + `@hookform/resolvers` (Q11)
-      (after 2.17, which it needs — reason it isn't in Wave 1)
+- [ ] 2.15 Mobile API layer: FE-032 `apiGet`/`apiSend` (worked example), FE-013 (all 6 sites), FE-035
+      (key identity unchanged), FE-063 `useRole`
+- [ ] 2.16 Mobile UI primitives: FE-020 `QueryGate`, FE-021 `useSeasonRoute` (all 10 season routes), FE-028
+      `LoadMoreButton` (each site keeps its label)
+- [ ] 2.17 Mobile helpers: FE-030, FE-024, FE-025 (per-site trim kept), FE-023, FE-022, FE-026, FE-027
+- [ ] 2.18 FE-031: login on `useSchemaErrors`; drop `react-hook-form` + `@hookform/resolvers`
+      (needs 2.17 — the reason it isn't in Wave 1)
 - [ ] 2.19 Full verification + wave summary + PR → **STOP**
 
 ### Wave 3 — schema expand (`refactor/wave-3-schema-expand`)
 
 Every step: migration + `rollback.sql` (D6), apply → rollback → apply on the throwaway DB, schema
-snapshot updated, `schema.prisma` updated where expressible, data-check script for the owner (D7).
+snapshot updated, `schema.prisma` updated where expressible.
 
-- [ ] 3.0 Verify `CREATE INDEX CONCURRENTLY` under Prisma 7 `migrate deploy` (one statement per file)
-      on the throwaway DB; record the pattern as D8 (or use the psql fallback, audit §2.11)
-- [ ] 3.1 IDX-1 `SeasonEnrollment(groupId, status)` (DB-008 hot FK)
-- [ ] 3.2 IDX-5 `Session(startsAt)` (needed by DB-026 in 4.12)
-- [ ] 3.3 IDX-4 open follow-ups partial index (IDX-D3 drop waits for Wave 6)
-- [ ] 3.4 IDX-8 + DB-029 composite FK on `AnnouncementPollVote` (parity check script)
-- [ ] 3.5 Missing base columns DB-021 / DB-030 (Q4)
-- [ ] 3.6 DB-004 / IDX-3 `lower(email)` unique — after the owner's duplicate check on each DB (Q15); optional lowercasing backfill
-- [ ] 3.7 DB-014 stored-role CHECK — after `roles:convert --apply` on each DB
-- [ ] 3.8 DB-019 invariants: IDX-6, IDX-7, then the CHECKs (`NOT VALID` → `VALIDATE`), each after its violation query
-- [ ] 3.9 DB-016 / DB-017 CHECKs, `recurrenceGroupId` → uuid (Q20)
-- [ ] 3.10 DB-031 option uniques — only if `applyUpdate`'s write order never holds a transient duplicate
-- [ ] 3.11 DB-015 `timestamptz` + `dateOfBirth` → `date` (Q6): small tables first; the large ones after
-      the purge (4.2) is live — so this step may move to a Wave 3b after Wave 4 (stated reason: lock size)
-- [ ] 3.12 IDX-2 — only if Q14 keeps `GroupStudent`
-- [ ] 3.13 DB-012 parity script (read-only) for the owner; DB-028 + DB-022: schema header and SQL-only
-      objects documented; living ERD `docs/database/erd.md` created from audit §2.1 and kept current
-- [ ] 3.14 DB-011b opt-out table expand (only if Q21 says yes)
-- [ ] 3.15 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
+- [ ] 3.0 Verify `CREATE INDEX CONCURRENTLY` under Prisma 7 `migrate deploy` (one statement per file);
+      record the pattern as D9 (or the psql fallback, audit §2.11)
+- [ ] 3.1 IDX-1 `SeasonEnrollment(groupId, status)`
+- [ ] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14)
+- [ ] 3.3 IDX-4 open follow-ups partial index
+- [ ] 3.4 IDX-5 `Session(startsAt)` (cross-season calendar range)
+- [ ] 3.5 IDX-8 + DB-029 composite FK on `AnnouncementPollVote` (`NOT VALID` → `VALIDATE`)
+- [ ] 3.6 Missing base columns DB-021 / DB-030 (MentorFollowUp, SessionVideoProgress, AnnouncementPoll, AnnouncementPollOption)
+- [ ] 3.7 DB-015: every `DateTime` → `timestamptz(3)` (`USING … AT TIME ZONE 'UTC'`), `User.dateOfBirth` → `date`
+- [ ] 3.8 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
+      from audit §2.1, kept current from here on
+- [ ] 3.9 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
+- Skipped (D8): DB-004 / IDX-3 (real-data duplicate check), DB-014 (fails on updates of unconverted
+  rows), DB-016, DB-017, DB-018, DB-019 / IDX-6 / IDX-7, DB-031 (each can fail on existing rows),
+  DB-012 parity, DB-011b
 
 ### Wave 4 — backend per domain (`refactor/wave-4-backend`)
 
@@ -288,92 +237,86 @@ Every domain step also does, for that domain: `ApiError` conversions (BE-030), `
 transactions out of handlers into `lib/<domain>/` (BE-035), files kept under 300 lines.
 
 - [ ] 4.1 Announcements & polls (reference domain first, to settle the pattern): BE-090, BE-091
-- [ ] 4.2 Auth & me: BE-010 (`routes/me/` split), DB-004 single `lower(email)` lookup, DB-020 `tokenHash`
-      field rename (`@map`), DB-010 stop writing `StudentProfile.deletedAt` (me.ts), DB-007 purge cron (Q13),
-      DB-006 stop writing `userAgent` / device prune (Q13, Q19)
-- [ ] 4.3 Users: BE-001 `updateUserInTx`, BE-029 sites, DB-010 (accounts restore)
-- [ ] 4.4 Students: BE-014, BE-016 (`lib/students/graduation.ts`), DB-010 (lifecycle), DB-001 seed `year`
-      removed; DC-022 guard if Q8 says so
-- [ ] 4.5 Groups & enrolment: DB-012 reads moved to `SeasonEnrollment`, mirror writes stopped (Q14);
-      BE-073; BE-027 (`ledSeasonIds`, `ledGroupIdsInSeason`, deleted-season filter explicit); BE-02B (optional)
-- [ ] 4.6 Seasons: BE-002 (duplicate), BE-003 (end), crud status transitions, start
+- [ ] 4.2 Auth & me: BE-010 (`routes/me/` split), DB-020 (`tokenHash` via `@map`), DB-010 stop writing
+      `StudentProfile.deletedAt`, DB-006 stop writing `userAgent`, DB-007 token purge (internal cron route + test)
+- [ ] 4.3 Users: BE-001 `updateUserInTx`, BE-029 sites, DB-010 (restore)
+- [ ] 4.4 Students: BE-014, BE-016 (`lib/students/graduation.ts`), DB-010 (lifecycle), DB-001 seed `year` removed
+- [ ] 4.5 Groups & enrolment: BE-073; BE-027 helpers for the **identical** variants only
+- [ ] 4.6 Seasons: BE-002 (duplicate, nesting 4 → 3), BE-003 (end), crud status transitions, start
 - [ ] 4.7 Sessions, attendance, check-in: BE-070 (N+1), attendance save and check-in services
-- [ ] 4.8 Assignments & submissions: BE-072 (count N+1), BE-028 `liveStudentIds` (+ Q9 fix)
+- [ ] 4.8 Assignments & submissions: BE-072 (count N+1), BE-028 `liveStudentIds` + the Q9 fix
 - [ ] 4.9 Quizzes: BE-004 grading / attempts / paper grades / reorder services
 - [ ] 4.10 Video quiz: BE-004 part (`lib/video-quiz/answer.ts`)
-- [ ] 4.11 Forum: BE-015, BE-024, BE-071 (`canDeleteLoadedComment` + parity test)
-- [ ] 4.12 Notes, follow-ups, mentor: DB-026 (bounded Absent lately, pinned by a test first), BE-076
-      (optional); DC-021 per Q8
-- [ ] 4.13 Notifications & push: BE-052 (`push/tokens.ts` + `push/expo.ts`), BE-044 call sites
-- [ ] 4.14 Permission scopes: BE-050 `staffSeasonScope` primitive; role literals → `rbac.ts` predicates
-- [ ] 4.15 Reports, engagement, dashboard, exports: BE-005, BE-012, BE-013
-- [ ] 4.16 Imports: BE-011
-- [ ] 4.17 Events, dev, health, scripts: remaining call sites (BE-02D adoption); BE-006 left as is
-- [ ] 4.18 Sweep: no `deletedAt` literal outside `lib/db/live.ts`, no `$transaction` in `routes/`, no
+- [ ] 4.11 Forum: BE-015, BE-024, BE-071 (`canDeleteLoadedComment` + list-vs-DELETE parity test)
+- [ ] 4.12 Notes, follow-ups, mentor: call-site conversions only
+- [ ] 4.13 Notifications & push: BE-044 call sites
+- [ ] 4.14 Reports, engagement, dashboard, exports: BE-005, BE-012, BE-013
+- [ ] 4.15 Imports: BE-011; `commitStudentImport` transaction nesting 4 → 3; `splitRecords` keeps depth 4
+      with a documented lint exception (CSV state machine)
+- [ ] 4.16 Events, dev, health, scripts: remaining call sites (BE-02D adoption); BE-006 left as is
+- [ ] 4.17 Sweep: no `deletedAt` literal outside `lib/db/live.ts`, no `$transaction` in `routes/`, no
       inline `apiError` with a catalogued code; full verification + wave summary + PR → **STOP**
+- Skipped (D8): DB-004 lookup switch, DB-012 read switch, DB-026 (a bounded query changes the result),
+  BE-050 (authz scopes across domains), BE-052, BE-076, BE-02B, DB-006 device prune, BE-027 variants
+  that differ
 
 ### Wave 5 — mobile per feature area (`refactor/wave-5-mobile`)
 
-Every area step also: `QueryGate` / `apiGet` / `useSchemaErrors` adoption (FE-020, FE-032, FE-030), moves
-the area's files from `src/components` and data-bound `src/design/<domain>` into `src/screens/<area>/`
-in kebab-case (FE-017, FE-073), thin route files (FE-011).
+Every area step also: `QueryGate` / `apiGet` / `useSchemaErrors` adoption (FE-020, FE-032, FE-030) and
+a thin route file where it touches one (FE-011). Files stay where they are (see Skipped).
 
-- [ ] 5.1 Season overview and lifecycle routes: FE-001 (`seasonOverviewModel`, tiles snapshot first),
+- [ ] 5.1 Season overview and lifecycle routes: FE-001 (`seasonOverviewModel`, tile snapshot first),
       FE-003 (start/end ladders), FE-018 (no placeholder ids)
 - [ ] 5.2 Season people: FE-002 (`usePeopleSelection`, reducer tests first)
 - [ ] 5.3 Roster import: FE-005
-- [ ] 5.4 Forms: FE-006 (assignment, group, event, user, student, session, quiz) — `assignment-form.tsx` under 300
+- [ ] 5.4 Forms: FE-006 (assignment, group, event, user, student, session, quiz)
 - [ ] 5.5 Quizzes: FE-008 (grade screen), FE-010 (`use-quizzes/` split)
 - [ ] 5.6 Forum: FE-009
-- [ ] 5.7 Video quiz: FE-004
-- [ ] 5.8 Students lists: FE-034 (renames), FE-061 (`studentListCopy`), FE-029 (`SearchFilterRow`),
-      FE-010 (`use-students` split)
+- [ ] 5.7 Video questions editor: FE-004 editor part (`video-question-form.ts`)
+- [ ] 5.8 Students lists: FE-034 (renames), FE-061 (`studentListCopy`), FE-029, FE-010 (`use-students` split)
 - [ ] 5.9 Calendar: FE-060 (`calendarBranchFor`), FE-010 (`season-calendars` split)
 - [ ] 5.10 Reports & exports: FE-012
-- [ ] 5.11 Announcements & polls: FE-080 (`PostForm`, poll-diff rule pinned first), FE-081 (`PollCard`)
-- [ ] 5.12 Remaining screens: FE-020 / FE-032 / FE-011 leftovers
-- [ ] 5.13 Legacy kit: FE-071 part 2 (`Modal`, `PageTitle`, `Card`, `Badge`, `ShellFrame` users migrated, components deleted)
-- [ ] 5.14 Theme tokens: FE-072 (raw palette and text-size classes → tones and `Text` variants);
-      extend `design-consistency.test.ts` to ban them
-- [ ] 5.15 Layering leftovers FE-017 (`lib → design` imports) + the layer rule written into CLAUDE.md;
-      FE-007 kit files left as is (recorded)
-- [ ] 5.16 Full verification + **UI sweep** + wave summary + PR → **STOP**
+- [ ] 5.11 Announcements & polls: FE-080 (poll-diff rule pinned first), FE-081
+- [ ] 5.12 Remaining screens: FE-020 / FE-032 leftovers
+- [ ] 5.13 Full verification + **UI sweep** + wave summary + PR → **STOP**
+- Skipped (D8): FE-004 player part (YouTube timing), FE-017 + FE-073 (mass moves and renames that
+  collide with the active redesign 02–05 branches), FE-071 part 2 and FE-072 (visual changes that the
+  redesign plans own), FE-007
 
 ### Wave 6 — schema contract (`refactor/wave-6-schema-contract`)
 
-**Deploy only after Waves 3–5 are live in production. The owner takes a database backup (and the
-Q12 archive) on each environment first; a rollback restores columns, not data.**
+**Deploy only after Waves 3–5 are live. The owner takes a database backup on each environment first
+(it is also the archive of the dropped personal data, Q12); a rollback restores columns, not data.**
 
-- [ ] 6.0 Confirm Waves 3–5 deployed; owner backup + archive done (Q12)
+- [ ] 6.0 Confirm Waves 3–5 deployed; owner backup done
 - [ ] 6.1 DB-001: drop the 7 dead `StudentProfile` columns, its FK and IDX-D2
-- [ ] 6.2 DB-002 path columns (Q18); DB-005 `avatarPath` only if Q18 drops it (contract change)
+- [ ] 6.2 DB-002: drop `Season.coverImagePath`, `Session.materialsPath`, `JpcEvent.imagePath`
 - [ ] 6.3 DB-003: drop `StudentDocument` and its User relations
-- [ ] 6.4 DB-006: drop `RefreshToken.userAgent` (Q19); `DeviceToken.lastSeenAt` + IDX-D4 only if no prune
+- [ ] 6.4 DB-006: drop `RefreshToken.userAgent`
 - [ ] 6.5 DB-010: drop `StudentProfile.deletedAt`
-- [ ] 6.6 DB-012: drop `GroupStudent` (+ IDX-D1) and `Group @@unique([id, seasonId])` if unused (Q14)
-- [ ] 6.7 IDX-D3 (`MentorFollowUp_dueAt_idx`)
-- [ ] 6.8 DB-004 (optional): drop `User_email_key` once IDX-3 serves every lookup
-- [ ] 6.9 DB-011b old preference columns (only if Q21)
-- [ ] 6.10 ERD (`docs/database/erd.md`) final; full verification + wave summary + PR → **STOP**
+- [ ] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`)
+- [ ] 6.7 ERD final; full verification + wave summary + PR → **STOP**
+- Skipped (D8): DB-012 table drop, DB-004 old unique, DB-005, IDX-D4, DB-011b
 
 ### Wave 7 — guardrails (`refactor/wave-7-guardrails`)
 
-- [ ] 7.1 Size/complexity rules → **error**; `no-unused-vars` stays error; a `no-restricted-syntax` rule
-      banning a literal `deletedAt: null` outside `lib/db/live.ts`
-- [ ] 7.2 Layer boundaries with `no-restricted-imports` (routes ↛ `db/client`; mobile `app/`, `screens/`,
-      `design/` ↛ `api-client`/axios; `design/ui|layout` ↛ hooks/store) — `eslint-plugin-boundaries` only if Q10
-- [ ] 7.3 Dead-code check: in-repo TS-API script `pnpm check:dead` (or `knip`, Q10)
-- [ ] 7.4 Duplication check: `jscpd` with a threshold just above the post-refactor level (Q10)
-- [ ] 7.5 Schema conformance test (Q5): base columns per the agreed rule, every FK indexed (minus the
-      documented audit-FK exceptions), link tables keyed by their pair
-- [ ] 7.6 One command `pnpm check` (lint, typecheck, unit tests, dead-code, size, duplication)
-- [ ] 7.7 CI: add `pnpm check` to the existing workflows; triggers per Q24
-- [ ] 7.8 `.github/pull_request_template.md` with the definition-of-done checklist
-- [ ] 7.9 CLAUDE.md `## Code & Data Standards` (real paths; AGENTS.md if present points to it)
-- [ ] 7.10 Prove each guardrail fails on a planted violation (401-line file, unused export, duplicated
-      block, route importing `db/client`, model without base columns), then passes once removed
-- [ ] 7.11 Phase 4: final verification vs baseline, the >400-line command, dead-code and duplication
-      re-runs, `docs/refactor-report.md` → **STOP**
+- [ ] 7.1 `max-lines` 400 and `max-depth` 3 → **error**; `max-lines-per-function` and `complexity` stay
+      **warnings** (zero needs the skipped refactors, D8); `no-unused-vars` stays error;
+      `no-restricted-syntax` bans a literal `deletedAt: null` outside `lib/db/live.ts` and `$transaction` under `routes/`
+- [ ] 7.2 Boundaries with `no-restricted-imports`: mobile `app/`, `src/screens`, `src/components`, `src/design`
+      ↛ `api-client` / axios (D1 lets thin handlers import `db`, so no route ↛ db rule)
+- [ ] 7.3 Dead-code check: in-repo TS-API script `pnpm check:dead`
+- [ ] 7.4 Schema conformance test: base columns per Q4, every FK indexed (minus the documented audit-FK
+      exceptions), link tables keyed by their pair
+- [ ] 7.5 One command `pnpm check` (lint, typecheck, unit tests, dead-code, size)
+- [ ] 7.6 CI: `pnpm check` + unit tests on `pull_request` in the existing workflows
+- [ ] 7.7 `.github/pull_request_template.md` with the definition-of-done checklist
+- [ ] 7.8 CLAUDE.md `## Code & Data Standards` (real paths, the D8 exceptions)
+- [ ] 7.9 Prove each guardrail fails on a planted violation (401-line file, unused export, route with
+      `$transaction`, screen importing `api-client`, model without base columns), then passes once removed
+- [ ] 7.10 Phase 4: final verification vs baseline, the >400-line command, dead-code re-run,
+      `docs/refactor-report.md` (incl. every D8 skip) → **STOP**
+- Skipped (D8): duplication check (`jscpd` not approved, Q10)
 
 ## Wave summaries
 

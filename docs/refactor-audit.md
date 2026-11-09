@@ -1695,8 +1695,11 @@ environment, read-only:
 
 ## 3. Owner decisions this audit depends on
 
-Listed with recommendations in `docs/refactor-plan.md` → "Open questions" (Q1–Q27). The audit's
-proposals above assume the recommended answer where a wave column says "if Q*n*".
+Answered by the owner on 2026-11-09 with ruling **D8** (`docs/refactor-plan.md` → "Owner answers"):
+fit the rules to the repo, skip what is slow or complicated. **Where this report and the plan differ,
+the plan wins**: each wave there ends with a "Skipped (D8)" list, and those findings stay here as
+known gaps (notably DB-004, DB-012, DB-014, DB-016…019, DB-026, DB-031, BE-050, FE-017, FE-071 part 2,
+FE-072, and the duplication check).
 
 ## 4. Checks run for this audit
 
