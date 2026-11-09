@@ -2,7 +2,6 @@
  * The season form's parts, one per question it asks: what the season is, when
  * it runs, who takes part, what it is about, and its attendance rules.
  */
-import { format } from "date-fns";
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -22,6 +21,7 @@ import {
 } from "../../design/ui";
 import { FormField } from "../../design/ui/form-field";
 import { dayToDate, NO_REQUIRED, type SeasonFormValues } from "./season-form-model";
+import { dateToDay } from "../../lib/day-key";
 
 type Errors = Record<string, string>;
 type Patch = (next: Partial<SeasonFormValues>) => void;
@@ -107,7 +107,7 @@ export function DatesSection({ v, errors, patch }: { v: SeasonFormValues; errors
             <DatePicker
               accessibilityLabel="Start date"
               value={dayToDate(v.startDay)}
-              onChange={(d) => patch({ startDay: format(d, "yyyy-MM-dd") })}
+              onChange={(d) => patch({ startDay: dateToDay(d) })}
               ariaInvalid={Boolean(errors.startDate)}
             />
           </FormField>
@@ -117,7 +117,7 @@ export function DatesSection({ v, errors, patch }: { v: SeasonFormValues; errors
             <DatePicker
               accessibilityLabel="End date"
               value={dayToDate(v.endDay)}
-              onChange={(d) => patch({ endDay: format(d, "yyyy-MM-dd") })}
+              onChange={(d) => patch({ endDay: dateToDay(d) })}
               ariaInvalid={Boolean(errors.endDate)}
             />
           </FormField>

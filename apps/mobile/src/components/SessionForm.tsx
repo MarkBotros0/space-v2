@@ -1,4 +1,3 @@
-import { format, isValid, parse } from "date-fns";
 import { View } from "react-native";
 import type { RecurrenceScope } from "@space/shared";
 
@@ -15,6 +14,8 @@ import {
   Textarea,
   TimePicker,
 } from "../design/ui";
+import { dateToDay, dayToDate, partsToTime, timeToParts } from "../lib/day-key";
+import { blankToNull } from "../lib/form-values";
 
 type SessionType = "inperson" | "online";
 
@@ -43,8 +44,6 @@ export const emptySessionValues: SessionFormValues = {
   description: "",
 };
 
-const orNull = (v: string): string | null => (v.trim() === "" ? null : v.trim());
-
 /**
  * The write fields both create and update share. The start travels as org
  * wall-clock fields startDay + startTime (Plan 6 D-16.6 — Plan 5's
@@ -57,9 +56,9 @@ export function sessionWriteFields(v: SessionFormValues) {
     startDay: v.day.trim(),
     startTime: v.time.trim(),
     durationMinutes: Number(v.durationMinutes),
-    location: v.sessionType === "inperson" ? orNull(v.location) : null,
-    youtubeUrl: v.sessionType === "online" ? orNull(v.youtubeUrl) : null,
-    description: orNull(v.description),
+    location: v.sessionType === "inperson" ? blankToNull(v.location) : null,
+    youtubeUrl: v.sessionType === "online" ? blankToNull(v.youtubeUrl) : null,
+    description: blankToNull(v.description),
   };
 }
 
@@ -67,15 +66,6 @@ export function sessionWriteFields(v: SessionFormValues) {
 export const sessionTypeFor = (youtubeUrl: string | null): SessionType => (youtubeUrl ? "online" : "inperson");
 
 /** The day key as a local-midnight Date for the picker (and back) — no zone arithmetic (X13). */
-const dayToDate = (day: string): Date | null => {
-  const d = parse(day, "yyyy-MM-dd", new Date());
-  return isValid(d) ? d : null;
-};
-const timeToParts = (time: string): { hour: number; minute: number } => {
-  const m = /^(\d{2}):(\d{2})$/.exec(time);
-  return m ? { hour: Number(m[1]), minute: Number(m[2]) } : { hour: 18, minute: 0 };
-};
-const pad = (n: number) => String(n).padStart(2, "0");
 
 /**
  * v1 src/components/sessions/session-form.tsx fields: Title, Date / Start
@@ -108,15 +98,15 @@ export function SessionFields({
         <DatePicker
           accessibilityLabel="Date"
           value={dayToDate(values.day)}
-          onChange={(d) => onChange({ ...values, day: format(d, "yyyy-MM-dd") })}
+          onChange={(d) => onChange({ ...values, day: dateToDay(d) })}
           ariaInvalid={Boolean(errors.startDay)}
         />
       </FormField>
       <FormField label="Start time" required error={errors.startTime ?? errors.startsAt}>
         <TimePicker
           minuteStep={15}
-          value={timeToParts(values.time)}
-          onChange={({ hour, minute }) => onChange({ ...values, time: `${pad(hour)}:${pad(minute)}` })}
+          value={timeToParts(values.time, { hour: 18, minute: 0 })}
+          onChange={({ hour, minute }) => onChange({ ...values, time: partsToTime({ hour, minute }) })}
         />
       </FormField>
       <FormField label="Duration (min)" required error={errors.durationMinutes}>

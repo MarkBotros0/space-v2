@@ -19,6 +19,7 @@ import { isDue, useCreateFollowUp, useFollowUps, useMarkFollowUpDone } from "../
 import { apiErrorMessage } from "../../lib/api-error";
 import { formatDate } from "../../lib/format";
 import { FOLLOW_UP_DAYS, FOLLOW_UP_REASON_MAX } from "@space/shared";
+import { blankToNull } from "../../lib/form-values";
 
 function OpenFollowUp({ followUp }: { followUp: FollowUp }) {
   const done = useMarkFollowUpDone();
@@ -73,7 +74,7 @@ export function FollowUpCard({ studentId, studentName }: { studentId: number; st
   const submit = () => {
     setError(null);
     create.mutate(
-      { studentId, body: { reason: reason.trim() || null } },
+      { studentId, body: { reason: blankToNull(reason) } },
       {
         onSuccess: () => {
           setReason("");

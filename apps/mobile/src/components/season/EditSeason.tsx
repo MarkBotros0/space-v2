@@ -5,6 +5,7 @@ import type { SeasonDetail } from "@space/shared";
 import { Button, FormField, Input, Text, Textarea } from "../../design/ui";
 import { useUpdateSeason, type UpdateSeasonInput } from "../../hooks/use-season-writes";
 import { apiErrorMessage } from "../../lib/api-error";
+import { blankToNull } from "../../lib/form-values";
 
 /**
  * A whole number of minutes, at least 1 — the server's rule
@@ -53,7 +54,7 @@ export function EditSeason({ season }: { season: SeasonDetail }) {
       return;
     }
     const body: UpdateSeasonInput = {
-      description: description.trim() === "" ? null : description,
+      description: blankToNull(description, { trim: false }),
       absenceBudgetMinutes: budgetMinutes,
       absenceWeightMinutes: weightMinutes,
     };

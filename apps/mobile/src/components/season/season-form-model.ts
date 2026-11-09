@@ -1,7 +1,8 @@
-import { isValid, parse } from "date-fns";
 import type { SeasonStatus } from "@space/shared";
 
 import type { SeasonIdentityInput } from "../../hooks/use-season-writes";
+import { blankToNull } from "../../lib/form-values";
+export { dayToDate } from "../../lib/day-key";
 
 export interface SeasonFormValues {
   code: string;
@@ -78,11 +79,6 @@ export function requiredProgramChoices(seasons: { program: string }[], ownProgra
   return [...set].sort((a, b) => a.localeCompare(b));
 }
 
-export const dayToDate = (day: string): Date | null => {
-  const d = parse(day, "yyyy-MM-dd", new Date());
-  return isValid(d) ? d : null;
-};
-
 export function toBody(
   v: SeasonFormValues,
   canSetRequired: boolean,
@@ -93,7 +89,7 @@ export function toBody(
     code: v.code,
     program: v.program,
     year: Number(v.year),
-    description: v.description.trim() === "" ? null : v.description,
+    description: blankToNull(v.description, { trim: false }),
     // Settled before the season starts: left out once it has, so the server has nothing to refuse.
     ...(canSetRequired
       ? { requiredProgram: v.requiredProgram === "" || v.isCommunityWide ? null : v.requiredProgram }

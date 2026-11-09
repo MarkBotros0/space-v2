@@ -11,6 +11,7 @@ import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { joinMeta } from "../../../../src/lib/join-meta";
 import { ResultSheet } from "../../../../src/screens/season-end/result-sheet";
 import { useIsSuper } from "../../../../src/store/session";
+import { blankToNull } from "../../../../src/lib/form-values";
 
 /**
  * Super admin: every student's result in a finished season, and corrections.
@@ -30,7 +31,7 @@ export default function SeasonResultsScreen() {
     if (!editing) return;
     setError(null);
     update.mutate(
-      { userId: editing.userId, result: draft.result, reason: draft.reason.trim() === "" ? null : draft.reason.trim() },
+      { userId: editing.userId, result: draft.result, reason: blankToNull(draft.reason) },
       {
         onSuccess: () => {
           toast.success(`Saved the result for ${editing.name}.`);

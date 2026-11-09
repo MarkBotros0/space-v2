@@ -1,4 +1,3 @@
-import { format, isValid, parse } from "date-fns";
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 
@@ -6,6 +5,7 @@ import { FormScreen } from "../design/layout/form-screen";
 import { Combobox, DatePicker, Input, Text, Textarea, type ComboboxOption } from "../design/ui";
 import { FormField } from "../design/ui/form-field";
 import { validateStudentForm, type StudentFormErrors, type StudentFormValues } from "../lib/student-form";
+import { dateToDay, dayToDate } from "../lib/day-key";
 
 interface StudentFormProps {
   title: string;
@@ -32,11 +32,6 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     </View>
   );
 }
-
-const dayToDate = (day: string): Date | null => {
-  const d = parse(day, "yyyy-MM-dd", new Date());
-  return isValid(d) ? d : null;
-};
 
 /**
  * One form for create and edit (v1 student-form.tsx), validated with the
@@ -97,7 +92,7 @@ export function StudentForm({
               accessibilityLabel="Date of birth"
               startWith="year"
               value={dayToDate(values.dateOfBirth)}
-              onChange={(d) => setField("dateOfBirth", format(d, "yyyy-MM-dd"))}
+              onChange={(d) => setField("dateOfBirth", dateToDay(d))}
             />
           </FormField>
         </Section>

@@ -2,11 +2,11 @@ import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import { updateProfileRequestSchema, type MeUser, type UpdateProfileBody } from "@space/shared";
 import { useQueryClient } from "@tanstack/react-query";
-import { format, isValid, parse } from "date-fns";
 
 import { DatePicker, FormField, Input, Textarea } from "../../design/ui";
 import { useUpdateProfile } from "../../hooks/use-me";
 import { queryKeys } from "../../lib/query-keys";
+import { dateToDay, dayToDate } from "../../lib/day-key";
 
 type Field = "name" | "phone" | "dateOfBirth" | "address";
 type Values = Record<Field, string>;
@@ -22,11 +22,6 @@ function valuesOf(user: MeUser): Values {
 }
 
 /** "2001-04-05" ↔ a local-midnight Date: no zone shift either way. */
-function dayToDate(value: string): Date | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const date = parse(value, "yyyy-MM-dd", new Date());
-  return isValid(date) ? date : null;
-}
 
 /**
  * Name, phone, date of birth and address: `User` columns every role edits
@@ -99,7 +94,7 @@ export function usePersonalForm(user: MeUser): {
           accessibilityLabel="Date of birth"
           startWith="year"
           value={dayToDate(values.dateOfBirth)}
-          onChange={(d) => set("dateOfBirth")(format(d, "yyyy-MM-dd"))}
+          onChange={(d) => set("dateOfBirth")(dateToDay(d))}
         />
       </FormField>
       <FormField label="Address" error={errors.address}>

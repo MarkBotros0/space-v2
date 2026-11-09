@@ -14,6 +14,7 @@ import { firstErrorByField } from "../lib/form-errors";
 import { MembersField } from "../screens/group-form/members-field";
 import { StaffPickerSheet } from "../screens/season-people/staff-picker-sheet";
 import { useIsAdminOfSeason, useSessionStore } from "../store/session";
+import { blankToNull } from "../lib/form-values";
 
 iconWithClassName(Trash2, UserPlus);
 
@@ -87,7 +88,7 @@ export function GroupForm({
   const submit = () => {
     const body: GroupWriteInput = {
       name: values.name.trim(),
-      description: values.description.trim() === "" ? null : values.description,
+      description: blankToNull(values.description, { trim: false }),
       leaderIds: values.leaderIds,
       studentIds: values.studentIds,
     };

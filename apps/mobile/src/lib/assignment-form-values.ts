@@ -2,8 +2,9 @@
  * The assignment form's values: the as-typed state, v1's defaults, the edit
  * pre-fill, and the write body validated with the server's own schema.
  */
-import { format, isValid, parse } from "date-fns";
 import { assignmentWriteRequestSchema, type AssignmentDetail, type MimeCategory } from "@space/shared";
+import { blankToNull } from "./form-values";
+export { dateToDay, dayToDate, partsToTime, timeToParts } from "./day-key";
 
 /** Form state — strings for the numeric inputs, as typed. */
 export interface AssignmentFormValues {
@@ -67,7 +68,7 @@ export function toAssignmentBody(v: AssignmentFormValues) {
   const isForum = v.type === "FORUM";
   return assignmentWriteRequestSchema.safeParse({
     title: v.title.trim(),
-    description: v.description.trim() === "" ? null : v.description,
+    description: blankToNull(v.description, { trim: false }),
     dueDay: v.dueDay,
     dueTime: v.dueDay === null ? null : v.dueTime,
     sessionId: v.sessionId,
@@ -83,17 +84,3 @@ export function toAssignmentBody(v: AssignmentFormValues) {
 }
 
 /** The picked due day as a Date for the picker, or null. */
-export const dayToDate = (day: string | null): Date | null => {
-  if (day === null) return null;
-  const d = parse(day, "yyyy-MM-dd", new Date());
-  return isValid(d) ? d : null;
-};
-/** A picked Date back to the org-day key. */
-export const dateToDay = (d: Date): string => format(d, "yyyy-MM-dd");
-export const timeToParts = (time: string): { hour: number; minute: number } => {
-  const m = /^(\d{2}):(\d{2})$/.exec(time);
-  return m ? { hour: Number(m[1]), minute: Number(m[2]) } : { hour: 23, minute: 59 };
-};
-const pad = (n: number) => String(n).padStart(2, "0");
-export const partsToTime = ({ hour, minute }: { hour: number; minute: number }): string =>
-  `${pad(hour)}:${pad(minute)}`;

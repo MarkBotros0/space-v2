@@ -229,7 +229,7 @@ export function AssignmentForm({
         <FormField label="Due time" description="Times are on the organisation's clock, the same for every student.">
           <TimePicker
             minuteStep={15}
-            value={timeToParts(v.dueTime)}
+            value={timeToParts(v.dueTime, { hour: 23, minute: 59 })}
             onChange={(parts) => set("dueTime", partsToTime(parts))}
           />
         </FormField>

@@ -1,4 +1,3 @@
-import { format, isValid, parse } from "date-fns";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { createJpcEventRequestSchema, type CreateJpcEventBody, type JpcVisibility } from "@space/shared";
@@ -20,6 +19,8 @@ import { FormField } from "../design/ui/form-field";
 import { Sheet, SheetSaveBar } from "../design/ui/sheet";
 import { useSeasons } from "../hooks/use-seasons";
 import { firstErrorByField } from "../lib/form-errors";
+import { dateToDay, dayToDate } from "../lib/day-key";
+import { blankToNull } from "../lib/form-values";
 
 export interface EventFormValues {
   title: string;
@@ -50,11 +51,6 @@ export const VISIBILITY_LABELS: Record<JpcVisibility, string> = {
   SEASON: "One season",
 };
 
-const dayToDate = (day: string): Date | null => {
-  const d = parse(day, "yyyy-MM-dd", new Date());
-  return isValid(d) ? d : null;
-};
-
 /**
  * Wall-clock fields only (ruling X13): an empty Time is all-day (`null`), an
  * empty End date is `null`. The device composes no instant and applies no zone.
@@ -63,10 +59,10 @@ function eventFormBody(values: EventFormValues): unknown {
   return {
     title: values.title.trim(),
     day: values.day.trim(),
-    time: values.time.trim() === "" ? null : values.time.trim(),
-    endDay: values.endDay.trim() === "" ? null : values.endDay.trim(),
-    description: values.description.trim() === "" ? null : values.description.trim(),
-    url: values.url.trim() === "" ? null : values.url.trim(),
+    time: blankToNull(values.time),
+    endDay: blankToNull(values.endDay),
+    description: blankToNull(values.description),
+    url: blankToNull(values.url),
     visibility: values.visibility,
     seasonId: values.visibility === "SEASON" ? values.seasonId : null,
   };
@@ -171,7 +167,7 @@ export function EventForm({
           <DatePicker
             accessibilityLabel="Date"
             value={dayToDate(values.day)}
-            onChange={(d) => set("day")(format(d, "yyyy-MM-dd"))}
+            onChange={(d) => set("day")(dateToDay(d))}
             ariaInvalid={Boolean(errors.day)}
           />
         </FormField>
@@ -188,7 +184,7 @@ export function EventForm({
           <DatePicker
             accessibilityLabel="End date"
             value={dayToDate(values.endDay)}
-            onChange={(d) => set("endDay")(format(d, "yyyy-MM-dd"))}
+            onChange={(d) => set("endDay")(dateToDay(d))}
             ariaInvalid={Boolean(errors.endDay)}
           />
           {values.endDay !== "" ? (

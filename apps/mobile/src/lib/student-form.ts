@@ -11,6 +11,7 @@ import {
   type StudentDetailPublic,
   type UpdateStudentBody,
 } from "@space/shared";
+import { blankToNull } from "./form-values";
 
 /** What the StudentForm edits — strings as typed, plus the season choice. */
 export interface StudentFormValues {
@@ -77,8 +78,6 @@ export function studentFormFromDetail(
     seasonId: null,
   };
 }
-
-const blankToNull = (s: string): string | null => (s.trim() === "" ? null : s.trim());
 
 /** Typed text → the year the API takes. Only called on a form that passed validation. */
 const gradYear = (s: string): number | null => {
