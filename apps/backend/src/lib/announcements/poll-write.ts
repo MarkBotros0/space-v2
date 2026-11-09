@@ -1,12 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client";
-import { lockPoll } from "../../lib/announcement-poll-lock";
+import { lockPoll } from "../announcement-poll-lock";
 import type { PollInput } from "../../../../../packages/shared/src/index";
-import {
-  planPollEdit,
-  type CurrentPoll,
-  type PollEdit,
-  type PollEditPlan,
-} from "../../lib/announcements/poll-edit-plan";
+import { planPollEdit, type CurrentPoll, type PollEdit, type PollEditPlan } from "./poll-edit-plan";
 
 type Tx = Prisma.TransactionClient;
 

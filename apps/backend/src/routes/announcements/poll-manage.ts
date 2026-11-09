@@ -1,19 +1,18 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { lockPoll } from "../../lib/announcement-poll-lock";
+
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags, canManagePoll, canSeePollNames } from "../../lib/permissions";
 import { findReadableAnnouncement } from "../../lib/queries/announcements";
+import { setPollClosed } from "../../lib/announcements/poll-close";
 import { requireUser } from "../../middleware/require-auth";
 import type { PollVotersResponse } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
 import { unreadIdsAmong } from "./read";
 import { toDetail } from "./serialize";
-
-type Outcome = "ok" | "not_found" | "season_finished";
 
 /** Shared by close and reopen: pre-checks, then set or clear closedAt under the poll lock. */
 async function setClosed(req: Request, res: Response, close: boolean) {
@@ -26,29 +25,7 @@ async function setClosed(req: Request, res: Response, close: boolean) {
     return apiError(res, "season_finished", "This season has finished.", 409);
   if (!canManagePoll(user, row)) return forbidden(res);
 
-  const outcome = await db.$transaction(async (tx): Promise<Outcome> => {
-    const found = await tx.announcementPoll.findUnique({
-      where: { announcementId: id },
-      select: { id: true },
-    });
-    if (!found) return "not_found";
-    await lockPoll(tx, found.id);
-    // Re-read under the lock: the season may have finished since the checks above.
-    const poll = await tx.announcementPoll.findUnique({
-      where: { id: found.id },
-      select: { announcement: { select: { season: { select: { status: true } } } } },
-    });
-    if (!poll) return "not_found";
-    if (announcementFlags(user, { ...row, season: poll.announcement.season }).seasonFinished) return "season_finished";
-    await tx.announcementPoll.update({
-      where: { id: found.id },
-      data: close ? { closedAt: new Date(), closedById: user.userId } : { closedAt: null, closedById: null },
-    });
-    return "ok";
-  });
-
-  if (outcome === "not_found") return apiError(res, "not_found", "Poll not found.", 404);
-  if (outcome === "season_finished") return apiError(res, "season_finished", "This season has finished.", 409);
+  await setPollClosed(user, row, close);
   auditLog(
     close ? "announcement.poll.close" : "announcement.poll.reopen",
     user.userId,

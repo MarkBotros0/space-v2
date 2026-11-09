@@ -6,14 +6,14 @@ import { notifyAnnouncement } from "../../lib/announcement-notifications";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags, canDeleteAnnouncement, canEditAnnouncement, canPostTo } from "../../lib/permissions";
-import { ANNOUNCEMENT_SELECT, findReadableAnnouncement } from "../../lib/queries/announcements";
+import { findReadableAnnouncement } from "../../lib/queries/announcements";
+import { createAnnouncement, updateAnnouncement } from "../../lib/announcements/posts";
 import { requireUser } from "../../middleware/require-auth";
 import {
   createAnnouncementRequestSchema,
   updateAnnouncementRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
-import { createPollFor, editPollInTx, type PollEditOutcome } from "./poll-write";
 import { toDetail } from "./serialize";
 
 export async function createPost(req: Request, res: Response) {
@@ -29,15 +29,7 @@ export async function createPost(req: Request, res: Response) {
   if (verdict === "season_draft") return apiError(res, "season_draft", "This season hasn't started yet.", 409);
   if (verdict === "season_finished") return apiError(res, "season_finished", "This season has finished.", 409);
 
-  // The post and its poll land together or not at all.
-  const row = await db.$transaction(async (tx) => {
-    const created = await tx.announcement.create({
-      data: { audience: input.audience, seasonId, body: input.body, authorId: user.userId },
-      select: { id: true },
-    });
-    if (input.poll) await createPollFor(tx, created.id, input.poll);
-    return tx.announcement.findUniqueOrThrow({ where: { id: created.id }, select: ANNOUNCEMENT_SELECT });
-  });
+  const row = await createAnnouncement(user.userId, input, seasonId);
   auditLog("announcement.create", user.userId, row.id, seasonId !== null ? { season: seasonId } : {});
   notifyAnnouncement(row);
   return apiOk(res, toDetail(row, true, announcementFlags(user, row), await loadPollView(user, row)), 201);
@@ -58,26 +50,10 @@ export async function updatePost(req: Request, res: Response) {
 
   const { body, poll, confirmVoteLoss } = parsed.data;
 
-  // An absent poll is never read or locked, so a message-only edit leaves votes and version alone.
-  const result = await db.$transaction(async (tx) => {
-    const outcome: PollEditOutcome = await editPollInTx(tx, id, poll, confirmVoteLoss === true);
-    if (outcome.kind !== "ok") return { outcome, updated: null };
-    const updated = await tx.announcement.update({
-      where: { id },
-      data: { body, editedAt: new Date() },
-      select: ANNOUNCEMENT_SELECT,
-    });
-    return { outcome, updated };
-  });
-  const { outcome, updated } = result;
-  if (outcome.kind === "bad_options") return apiError(res, "bad_request", "Invalid poll.", 400);
-  if (outcome.kind === "votes_lost") {
-    return apiError(res, "poll_votes_lost", "This change would remove votes.", 409, { votes: outcome.votes });
-  }
-  if (!updated) return apiError(res, "not_found", "Post not found.", 404);
+  const { row: updated, pollChanged } = await updateAnnouncement(id, body, poll, confirmVoteLoss === true);
   const scope = updated.seasonId !== null ? { season: updated.seasonId } : {};
   auditLog("announcement.update", user.userId, id, scope);
-  if (outcome.pollChanged) auditLog("announcement.poll.update", user.userId, id, scope);
+  if (pollChanged) auditLog("announcement.poll.update", user.userId, id, scope);
   // The author has seen their own post.
   return apiOk(res, toDetail(updated, true, announcementFlags(user, updated), await loadPollView(user, updated)));
 }
