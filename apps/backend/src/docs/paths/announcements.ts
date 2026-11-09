@@ -22,7 +22,7 @@ export const announcementPaths = {
       tags: ["Announcements"],
       summary: "Publish a post",
       description:
-        "Audience COMMUNITY (SUPER) or SEASON with a `seasonId` (that season's admin, or SUPER). The season must be ACTIVE: a draft is 409 `season_draft`, a finished one 409 `season_finished`; an unknown season is 404. Body 1 to 5000 characters after trimming (a post has no title), plain text only (never HTML); unknown fields are rejected with 400. Notifies the audience (type `ANNOUNCEMENT`, titled \"New announcement\", link `/announcements/<id>`), never the author.",
+        "Optional `poll` (2 to 10 options, each 1 to 150 characters, unique ignoring case). Audience COMMUNITY (SUPER) or SEASON with a `seasonId` (that season's admin, or SUPER). The season must be ACTIVE: a draft is 409 `season_draft`, a finished one 409 `season_finished`; an unknown season is 404. Body 1 to 5000 characters after trimming (a post has no title), plain text only (never HTML); unknown fields are rejected with 400. Notifies the audience (type `ANNOUNCEMENT`, titled \"New announcement\", link `/announcements/<id>`), never the author.",
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/CreateAnnouncementRequest" } } },
@@ -79,7 +79,7 @@ export const announcementPaths = {
       tags: ["Announcements"],
       summary: "Edit a post",
       description:
-        "The new body, same limit as publishing; the audience never changes. Stamps `editedAt`. Only SUPER, or the post's author while they still administer its season, may edit. Nobody may edit a finished season's post: 409 `season_finished`, checked before the permission.",
+        "The new body, same limit as publishing; the audience never changes. `poll` absent leaves the poll alone, null removes it, an object edits it (options with an `id` keep their votes); an edit that would remove votes needs `confirmVoteLoss: true` or answers 409 `poll_votes_lost` with `votes`. Invalid options are 400. Stamps `editedAt`. Only SUPER, or the post's author while they still administer its season, may edit. Nobody may edit a finished season's post: 409 `season_finished`, checked before the permission.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -91,7 +91,14 @@ export const announcementPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`season_finished`."),
+        409: {
+          description: "`season_finished`, or `poll_votes_lost`: the poll edit would remove votes and `confirmVoteLoss` was not true.",
+          content: {
+            "application/json": {
+              schema: { oneOf: [{ $ref: "#/components/schemas/Error" }, { $ref: "#/components/schemas/PollVotesLostError" }] },
+            },
+          },
+        },
       },
     },
     delete: {
@@ -116,6 +123,75 @@ export const announcementPaths = {
       parameters: [idParam],
       responses: {
         204: { description: "Marked read." },
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        404: errRef("NotFound"),
+      },
+    },
+  },
+  "/api/v1/announcements/{id}/poll/vote": {
+    put: {
+      tags: ["Announcements"],
+      summary: "Vote in a poll",
+      description:
+        "Replaces the caller's whole vote and answers the post with its fresh poll. A post the caller may not read, or without a poll, is 404. `version` must match the poll's current version (409 `poll_changed` otherwise: reload and vote again). A closed poll is 409 `poll_closed`, a finished season 409 `season_finished`. Unknown, duplicate or too many `optionIds`, or a malformed body, is 400. Callers who may not vote (for example the author) get 403.",
+      parameters: [idParam],
+      requestBody: {
+        required: true,
+        content: { "application/json": { schema: { $ref: "#/components/schemas/PollVoteRequest" } } },
+      },
+      responses: {
+        200: ok(detail, "The post with the updated poll."),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`poll_closed`, `poll_changed` or `season_finished`."),
+      },
+    },
+  },
+  "/api/v1/announcements/{id}/poll/close": {
+    post: {
+      tags: ["Announcements"],
+      summary: "Close a poll",
+      description:
+        "Idempotent. Only the poll's managers (`poll.canManage`) may close it; a post the caller cannot read or without a poll is 404. A finished season is 409 `season_finished`. Answers the post.",
+      parameters: [idParam],
+      responses: {
+        200: ok(detail, "The post with the closed poll."),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`season_finished`."),
+      },
+    },
+  },
+  "/api/v1/announcements/{id}/poll/reopen": {
+    post: {
+      tags: ["Announcements"],
+      summary: "Reopen a poll",
+      description: "Idempotent; same access and errors as close. Answers the post.",
+      parameters: [idParam],
+      responses: {
+        200: ok(detail, "The post with the reopened poll."),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`season_finished`."),
+      },
+    },
+  },
+  "/api/v1/announcements/{id}/poll/voters": {
+    get: {
+      tags: ["Announcements"],
+      summary: "Who voted for what",
+      description:
+        "Names per option, in option order. Only the poll's managers (and SUPER once the season has finished) may read it; for anyone else, or a post without a poll, it is 404, never 403. A deleted account reads `name: null`.",
+      parameters: [idParam],
+      responses: {
+        200: ok({ $ref: "#/components/schemas/PollVoters" }, "Voters per option."),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         404: errRef("NotFound"),
