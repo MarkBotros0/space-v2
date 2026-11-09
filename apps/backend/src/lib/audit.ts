@@ -45,7 +45,8 @@ export type AuditOperation =
   | "announcement.update"
   | "announcement.delete"
   | "announcement.poll.close"
-  | "announcement.poll.reopen";
+  | "announcement.poll.reopen"
+  | "announcement.poll.update";
 
 /** Extra ids that locate a change — ids only, like the rest of the line. */
 export type AuditScope = {

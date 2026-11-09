@@ -19,6 +19,7 @@ import {
   updateAnnouncementRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
+import { createPollFor, editPollInTx, type PollEditOutcome } from "./poll-write";
 import { ANNOUNCEMENT_SELECT, toDetail } from "./serialize";
 
 export async function createPost(req: Request, res: Response) {
@@ -34,9 +35,14 @@ export async function createPost(req: Request, res: Response) {
   if (verdict === "season_draft") return apiError(res, "season_draft", "This season hasn't started yet.", 409);
   if (verdict === "season_finished") return apiError(res, "season_finished", "This season has finished.", 409);
 
-  const row = await db.announcement.create({
-    data: { audience: input.audience, seasonId, body: input.body, authorId: user.userId },
-    select: ANNOUNCEMENT_SELECT,
+  // The post and its poll land together or not at all.
+  const row = await db.$transaction(async (tx) => {
+    const created = await tx.announcement.create({
+      data: { audience: input.audience, seasonId, body: input.body, authorId: user.userId },
+      select: { id: true },
+    });
+    if (input.poll) await createPollFor(tx, created.id, input.poll);
+    return tx.announcement.findUniqueOrThrow({ where: { id: created.id }, select: ANNOUNCEMENT_SELECT });
   });
   auditLog("announcement.create", user.userId, row.id, seasonId !== null ? { season: seasonId } : {});
   notifyAnnouncement(row);
@@ -64,12 +70,28 @@ export async function updatePost(req: Request, res: Response) {
   const parsed = updateAnnouncementRequestSchema.safeParse(req.body);
   if (!parsed.success) return apiError(res, "bad_request", "Invalid post.", 400);
 
-  const updated = await db.announcement.update({
-    where: { id },
-    data: { body: parsed.data.body, editedAt: new Date() }, // Task 3 handles poll edits
-    select: ANNOUNCEMENT_SELECT,
+  const { body, poll, confirmVoteLoss } = parsed.data;
+
+  // An absent poll is never read or locked, so a message-only edit leaves votes and version alone.
+  const result = await db.$transaction(async (tx) => {
+    const outcome: PollEditOutcome = await editPollInTx(tx, id, poll, confirmVoteLoss === true);
+    if (outcome.kind !== "ok") return { outcome, updated: null };
+    const updated = await tx.announcement.update({
+      where: { id },
+      data: { body, editedAt: new Date() },
+      select: ANNOUNCEMENT_SELECT,
+    });
+    return { outcome, updated };
   });
-  auditLog("announcement.update", user.userId, id, updated.seasonId !== null ? { season: updated.seasonId } : {});
+  const { outcome, updated } = result;
+  if (outcome.kind === "bad_options") return apiError(res, "bad_request", "Invalid poll.", 400);
+  if (outcome.kind === "votes_lost") {
+    return apiError(res, "poll_votes_lost", "This change would remove votes.", 409, { votes: outcome.votes });
+  }
+  if (!updated) return apiError(res, "not_found", "Post not found.", 404);
+  const scope = updated.seasonId !== null ? { season: updated.seasonId } : {};
+  auditLog("announcement.update", user.userId, id, scope);
+  if (outcome.pollChanged) auditLog("announcement.poll.update", user.userId, id, scope);
   // The author has seen their own post.
   return apiOk(res, toDetail(updated, true, announcementFlags(user, updated), await loadPollView(user, updated)));
 }
