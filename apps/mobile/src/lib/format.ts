@@ -209,3 +209,13 @@ export function formatMinutes(minutes: number): string {
 export function keepTogether(text: string): string {
   return text.replace(/ /g, "\u00a0");
 }
+
+/** A file's size as the file lists show it: kilobytes to one decimal ("12.5 KB"). */
+export function formatKb(bytes: number): string {
+  return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+/** A size rounded to whole KB, or MB from one megabyte up (the export sheet). */
+export function formatBytes(bytes: number): string {
+  return bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`;
+}

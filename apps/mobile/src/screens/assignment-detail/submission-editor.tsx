@@ -20,7 +20,7 @@ import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { ConfirmDialog } from "../../design/ui/confirm-dialog";
 import { useEnsureSubmission, useSaveSubmission, useSubmissionDetail } from "../../hooks/use-submission";
 import { apiErrorMessage } from "../../lib/api-error";
-import { formatDistanceOnly } from "../../lib/format";
+import { formatDistanceOnly, formatKb } from "../../lib/format";
 import { reportOutcome } from "../../lib/outcome";
 import { useDraftFlush } from "./use-draft-flush";
 import { MS_PER_DAY } from "../../lib/time";
@@ -76,10 +76,10 @@ function FilesGroup({ detail, sub }: { detail: AssignmentDetail; sub: Submission
               leading={<FileIcon size={16} className="text-muted-foreground" />}
               trailing={
                 <Text variant="caption" tabular className="text-muted-foreground">
-                  {`${(f.sizeBytes / 1024).toFixed(1)} KB`}
+                  {formatKb(f.sizeBytes)}
                 </Text>
               }
-              trailingLabel={`${(f.sizeBytes / 1024).toFixed(1)} KB`}
+              trailingLabel={formatKb(f.sizeBytes)}
             />
           ))}
         </GroupedList>

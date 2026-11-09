@@ -5,6 +5,7 @@ import { exportFilename } from "@space/shared";
 
 import { useReportExport, useSeasonWorkbookManifest } from "../hooks/use-report-export";
 import { Button, GroupedList, ListRow, Sheet, Text } from "../design/ui";
+import { formatBytes } from "../lib/format";
 
 interface ExportMenuProps {
   seasonId: number | null;
@@ -16,10 +17,6 @@ interface ExportMenuProps {
    * sheet with the same actions. Default false keeps the mentor's inline buttons.
    */
   sheet?: boolean;
-}
-
-function kb(bytes: number): string {
-  return bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
 /**
@@ -63,7 +60,7 @@ export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay,
       estimatedBytes: manifest.data!.estimatedBytes,
     });
 
-  const workbookTitle = manifest.data ? `Export season workbook (~${kb(manifest.data.estimatedBytes)})` : "";
+  const workbookTitle = manifest.data ? `Export season workbook (~${formatBytes(manifest.data.estimatedBytes)})` : "";
 
   const status = (
     <>

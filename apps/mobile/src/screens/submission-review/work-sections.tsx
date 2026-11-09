@@ -7,6 +7,7 @@ import { RichTextView } from "../../design/ui/rich-text-view";
 import { Text } from "../../design/ui/text";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { storedTextToHtml } from "../../lib/stored-text";
+import { formatKb } from "../../lib/format";
 
 iconWithClassName(FileIcon);
 
@@ -48,10 +49,9 @@ export function WorkSection({ text, files }: { text: string | null; files: Submi
                     {f.originalName}
                   </Text>
                 </View>
-                <Text
-                  variant="caption"
-                  className="shrink-0 text-muted-foreground"
-                >{`${(f.sizeBytes / 1024).toFixed(1)} KB`}</Text>
+                <Text variant="caption" className="shrink-0 text-muted-foreground">
+                  {formatKb(f.sizeBytes)}
+                </Text>
               </View>
             ))}
             <Text variant="caption" className="italic text-muted-foreground">
