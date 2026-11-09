@@ -1,4 +1,4 @@
-import { planPollEdit, type CurrentPoll } from "../routes/announcements/poll-edit-plan";
+import { planPollEdit, type CurrentPoll } from "../lib/announcements/poll-edit-plan";
 
 /** A poll with options 1..n labelled as given, and the given (optionId, userId) votes. */
 function current(allowsMultiple: boolean, labels: string[], votes: Array<[number, number]> = []): CurrentPoll {
