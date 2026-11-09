@@ -3,27 +3,24 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { derivedRoleOf } from "../../lib/auth/scopes";
-import { invalidateSessions, markSessionsStale } from "../../lib/auth/session-validity";
+
+import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { findExistingByEmail } from "../../lib/imports/students/validation";
 import { deliverInvite, issueInvite } from "../../lib/invites";
-import { parseId } from "../../lib/parse-id";
+
 import { isUniqueViolation } from "../../lib/prisma-errors";
-import { liveSeasonRole, lockPeople } from "../../lib/roles";
+
 import { isLastActiveSuper, lockActiveSuperIds } from "../../lib/super-guard";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
-import {
-  createUserRequestSchema,
-  roleRequiresAlumnus,
-  updateUserRequestSchema,
-} from "../../../../../packages/shared/src/index";
+import { createUserRequestSchema, updateUserRequestSchema } from "../../../../../packages/shared/src/index";
 import { loadUserDetail } from "./views";
+import { isSeasonRole, updateUserInTx } from "../../lib/users/update-user";
 import { EMAIL_IN_USE } from "../../lib/error-messages";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
-
-const isSeasonRole = (role: unknown): role is "ADMIN" | "LEADER" => role === "ADMIN" || role === "LEADER";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
 
 const roleFromSeasons = (res: Response) =>
   apiError(res, "role_from_seasons", "Admin and leader come from seasons, not from the account.", 400);
@@ -31,19 +28,19 @@ const roleFromSeasons = (res: Response) =>
 export async function getUser(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  const id = idParam(res, req.params.id, "user");
+  if (id === null) return;
 
   const detail = await loadUserDetail(id);
-  if (!detail) return apiError(res, "not_found", "User not found.", 404);
+  if (!detail) return notFound(res, "User");
   return apiOk(res, detail);
 }
 
 export async function updateUser(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  const id = idParam(res, req.params.id, "user");
+  if (id === null) return;
 
   // Before the schema, whose graduation-year rule would answer first. The form
   // sends no role for someone whose role comes from seasons, so ADMIN and
@@ -56,139 +53,23 @@ export async function updateUser(req: Request, res: Response) {
   }
   const body = parsed.data;
 
-  const outcome = await db.$transaction(async (tx) => {
-    // A SUPER's demotion locks every SUPER before this person alone: two
-    // demotions each holding their own row and waiting on the other's would deadlock.
-    const before = await tx.user.findUnique({ where: { id }, select: { role: true } });
-    const lockedSuperIds = before?.role === "SUPER" && body.role !== "SUPER" ? await lockActiveSuperIds(tx) : null;
+  const outcome = await db.$transaction((tx) => updateUserInTx(tx, user.userId, id, body));
 
-    await lockPeople(tx, [id]);
-    const target = await tx.user.findUnique({
-      where: { id },
-      select: { id: true, name: true, role: true, deletedAt: true, graduationYear: true },
-    });
-    // REG-104: a deactivated account is not an edit target. GET and reactivate
-    // still reach it; only this write refuses.
-    if (!target || target.deletedAt !== null) {
-      return { fail: ["not_found", "User not found.", 404] as const };
-    }
-
-    // Against the role the form was shown, not the stored one: a stored ADMIN
-    // with only finished rows reads STUDENT, and saving that changes nothing.
-    // No role at all (a derived ADMIN or LEADER's form) is no change either.
-    const currentRole = await derivedRoleOf(tx, target);
-    const roleChanged = body.role !== undefined && body.role !== currentRole;
-
-    // The schema can't check the year of a role it wasn't sent: that is the held one.
-    if (body.role === undefined && body.graduationYear === null && roleRequiresAlumnus(currentRole)) {
-      return { fail: ["bad_request", "Required for this role.", 400] as const };
-    }
-
-    // D7 rec 1: you cannot change your own role — the lockout guard v1's
-    // updateUserAction lacked (R50). Renaming yourself stays allowed.
-    if (roleChanged && id === user.userId) {
-      return {
-        fail: ["cannot_change_own_role", "You can't change your own role.", 409] as const,
-      };
-    }
-
-    // D7 rec 3: SUPER is never a mis-tapped picker item.
-    if (roleChanged && body.role === "SUPER" && body.confirmSuper !== true) {
-      return {
-        fail: ["confirm_super_required", "Granting SUPER requires explicit confirmation.", 400] as const,
-      };
-    }
-
-    // D7 rec 2: never demote the last SUPER. The active SUPER rows are LOCKED
-    // (Decision 16), not merely counted — a count alone lets two concurrent
-    // demotions both pass under READ COMMITTED.
-    if (roleChanged && target.role === "SUPER") {
-      const activeSuperIds = lockedSuperIds ?? (await lockActiveSuperIds(tx));
-      if (isLastActiveSuper(activeSuperIds, id)) {
-        return {
-          fail: ["last_super", "This is the only active SUPER account.", 409] as const,
-        };
-      }
-    }
-
-    // SUPER and MENTOR hold no seasons. A derived ADMIN or LEADER can't become
-    // a STUDENT here either: the rows are the role, so saving would change nothing.
-    if (roleChanged && (body.role !== "STUDENT" || isSeasonRole(currentRole))) {
-      const held = await liveSeasonRole(tx, id);
-      if (held) {
-        return {
-          fail: [
-            "has_season_role",
-            `${target.name} has a role in ${held.seasonTitle}. Remove them from that season first.`,
-            409,
-          ] as const,
-        };
-      }
-    }
-
-    // A stored student's year is their alumni status, and Graduate is what changes
-    // that: its gate, its audit line, its enrolment completion. Correcting one year
-    // to another isn't a change of status. Moving off STUDENT sets the year that
-    // role needs.
-    const staysStudent = target.role === "STUDENT" && (!roleChanged || body.role === "STUDENT");
-    if (staysStudent && (target.graduationYear === null) !== (body.graduationYear === null)) {
-      return {
-        fail: ["use_graduate", "Use Graduate. A graduation year can't be added or cleared here.", 409] as const,
-      };
-    }
-    const yearCorrected = staysStudent && target.graduationYear !== body.graduationYear;
-
-    // A move to STUDENT finally gets a profile (R46: v1 left promoted users
-    // with a null activeSeasonId forever).
-    if (roleChanged && body.role === "STUDENT") {
-      await tx.studentProfile.upsert({
-        where: { userId: id },
-        update: {},
-        create: { userId: id },
-      });
-    }
-
-    await tx.user.update({
-      where: { id },
-      data: {
-        name: body.name,
-        graduationYear: body.graduationYear,
-        ...(roleChanged ? { role: body.role } : {}),
-      },
-    });
-
-    if (roleChanged) {
-      // C7 made real: the claims baked into live tokens cannot outlive the
-      // change. The refresh path dies now, and so do the access tokens
-      // (Plan 18 M13) instead of within their 900s TTL.
-      await revokeAllRefreshTokensForUser(tx, id);
-      await invalidateSessions(tx, id);
-    }
-    // The year rides in the token; the next silent refresh picks up the right one.
-    if (yearCorrected) await markSessionsStale(tx, [id]);
-
-    return { fail: null, roleChanged, yearCorrected };
-  });
-
-  if (outcome.fail) {
-    const [code, message, status] = outcome.fail;
-    return apiError(res, code, message, status);
-  }
   if (outcome.roleChanged) auditLog("user.role_change", user.userId, id);
   if (outcome.yearCorrected) auditLog("user.graduation_year_change", user.userId, id);
 
   // Through the same builder GET /:id uses, so PATCH returns exactly what GET
   // does — invite panel included.
   const detail = await loadUserDetail(id);
-  if (!detail) return apiError(res, "not_found", "User not found.", 404);
+  if (!detail) return notFound(res, "User");
   return apiOk(res, detail);
 }
 
 export async function deactivateUser(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  const id = idParam(res, req.params.id, "user");
+  if (id === null) return;
   if (id === user.userId) {
     // v1 returned void and the UI couldn't tell the no-op from success (R57,
     // R58). An explicit error is the fix, not a silent return.
@@ -215,7 +96,7 @@ export async function deactivateUser(req: Request, res: Response) {
     return "ok" as const;
   });
 
-  if (outcome === "not_found") return apiError(res, "not_found", "User not found.", 404);
+  if (outcome === "not_found") return notFound(res, "User");
   if (outcome === "last_super") {
     return apiError(res, "last_super", "This is the only active SUPER account.", 409);
   }
@@ -226,11 +107,11 @@ export async function deactivateUser(req: Request, res: Response) {
 export async function reactivateUser(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  const id = idParam(res, req.params.id, "user");
+  if (id === null) return;
 
   const target = await db.user.findUnique({ where: { id }, select: { id: true } });
-  if (!target) return apiError(res, "not_found", "User not found.", 404);
+  if (!target) return notFound(res, "User");
 
   // Only the user: StudentProfile.deletedAt is no longer read or kept in step
   // (refactor DB-010; the column goes in Wave 6).
