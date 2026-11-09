@@ -256,7 +256,7 @@ snapshot updated, `schema.prisma` updated where expressible.
       wrap: CONCURRENTLY works, other migrations use explicit `BEGIN/COMMIT`); no psql fallback
 - [x] 3.1 IDX-1 `SeasonEnrollment(groupId, status)` — `20261110010000_season_enrollment_group_status_idx`; cycle + drift (`migrate diff` empty) + snapshot (+1 index)
 - [x] 3.2 IDX-2 `GroupStudent(studentUserId)` (the table stays, Q14) — `20261110020000_group_student_student_idx`; cycle + drift empty + snapshot (+1 index)
-- [ ] 3.3 IDX-4 open follow-ups partial index
+- [x] 3.3 IDX-4 open follow-ups partial index — `20261110030000_mentor_follow_up_due_open_idx` (SQL-only, noted on the model; `migrate diff` ignores it, so no drift); cycle + snapshot (+1 index)
 - [ ] 3.4 IDX-5 `Session(startsAt)` (cross-season calendar range)
 - [ ] 3.5 IDX-8 + DB-029 composite FK on `AnnouncementPollVote` (`NOT VALID` → `VALIDATE`)
 - [ ] 3.6 Missing base columns DB-021 / DB-030 (MentorFollowUp, SessionVideoProgress, AnnouncementPoll, AnnouncementPollOption)

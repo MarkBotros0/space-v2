@@ -679,6 +679,8 @@ model MentorFollowUp {
 
   @@index([mentorUserId, doneAt])
   @@index([dueAt])
+  // SQL-only (not expressible here): partial index MentorFollowUp_due_open_idx on (dueAt)
+  // WHERE doneAt IS NULL AND remindedAt IS NULL, for the daily reminder (migration 20261110030000).
 }
 
 // ---------------------------------------------------------------------------
