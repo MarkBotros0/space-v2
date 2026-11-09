@@ -6,7 +6,7 @@ import type { Readable } from "node:stream";
 
 import { config } from "../config";
 
-import { FileNotFoundError, type PutMeta, type PutResult, type Storage } from "./index";
+import { FileNotFoundError, type PutMeta, type PutResult, type Storage } from "./types";
 
 export class LocalFsStorage implements Storage {
   private readonly root: string;
