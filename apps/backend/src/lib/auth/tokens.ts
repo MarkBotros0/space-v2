@@ -4,6 +4,7 @@ import { SignJWT, jwtVerify } from "jose";
 import type { UserRole } from "@space/shared";
 
 import { db } from "../../db/client";
+import { bestEffort } from "../best-effort";
 import { config } from "../config";
 import { loadScopes } from "./scopes";
 import { MS_PER_DAY } from "../org-time";
@@ -90,6 +91,17 @@ async function issueRefreshToken(userId: number): Promise<{ token: string; expir
   return { token: raw, expiresAt };
 }
 
+/**
+ * A new refresh token replaces every other one the person holds, live or not:
+ * one signed-in device per person (owner, refactor DB-007), so signing in on a
+ * new phone signs the old one out, and the table holds about one row per
+ * person instead of one per refresh forever. Uses the userId index.
+ */
+export async function deleteOtherRefreshTokens(userId: number, keepTokenHash: string): Promise<number> {
+  const { count } = await db.refreshToken.deleteMany({ where: { userId, tokenHash: { not: keepTokenHash } } });
+  return count;
+}
+
 export async function issueSession(userId: number): Promise<{ session: IssuedSession; user: SessionUser } | null> {
   const dbUser = await db.user.findUnique({
     where: { id: userId },
@@ -100,6 +112,10 @@ export async function issueSession(userId: number): Promise<{ session: IssuedSes
   const user: SessionUser = { userId: dbUser.id, ...(await loadScopes(dbUser.id)) };
   const access = await signAccessToken(user);
   const refresh = await issueRefreshToken(user.userId);
+  // Never a reason to fail a sign-in: a row left behind is swept next time.
+  await bestEffort("delete other refresh tokens", () =>
+    deleteOtherRefreshTokens(user.userId, hashToken(refresh.token)),
+  );
   return {
     session: {
       accessToken: access.token,
@@ -114,13 +130,11 @@ export async function rotateRefreshToken(rawToken: string): Promise<IssuedSessio
   const record = await db.refreshToken.findUnique({ where: { tokenHash: hashToken(rawToken) } });
   if (!record || record.revokedAt || record.expiresAt < new Date()) return null;
 
-  // Revoke only if still live, so two concurrent refreshes with the same
-  // token can't both win and fork two sessions from one stolen token.
-  const revoked = await db.refreshToken.updateMany({
-    where: { id: record.id, revokedAt: null },
-    data: { revokedAt: new Date() },
-  });
-  if (revoked.count !== 1) return null;
+  // The new token replaces the old one, which is deleted, not kept as revoked.
+  // Guarded on still-live, so two concurrent refreshes with the same token
+  // can't both win and fork two sessions from one stolen token.
+  const consumed = await db.refreshToken.deleteMany({ where: { id: record.id, revokedAt: null } });
+  if (consumed.count !== 1) return null;
 
   const issued = await issueSession(record.userId);
   return issued?.session ?? null;

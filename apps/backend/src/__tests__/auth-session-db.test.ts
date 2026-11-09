@@ -3,7 +3,13 @@ const mockDb = {
   seasonAdmin: { findMany: jest.fn() },
   groupLeader: { findMany: jest.fn() },
   seasonEnrollment: { findMany: jest.fn() },
-  refreshToken: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
+  refreshToken: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
+    deleteMany: jest.fn(),
+  },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
 
@@ -32,6 +38,7 @@ beforeEach(() => {
   mockDb.refreshToken.create.mockResolvedValue({});
   mockDb.refreshToken.update.mockResolvedValue({});
   mockDb.refreshToken.updateMany.mockResolvedValue({ count: 2 });
+  mockDb.refreshToken.deleteMany.mockResolvedValue({ count: 0 });
 });
 
 describe("deriveRole", () => {
@@ -126,32 +133,34 @@ describe("rotateRefreshToken", () => {
     ["unknown token", null],
     ["revoked token", { id: 1, userId: 5, revokedAt: new Date(), expiresAt: future }],
     ["expired token", { id: 1, userId: 5, revokedAt: null, expiresAt: new Date(Date.now() - 1000) }],
-  ])("rejects a %s and revokes nothing", async (_l, record) => {
+  ])("rejects a %s and deletes nothing", async (_l, record) => {
     mockDb.refreshToken.findUnique.mockResolvedValue(record);
     await expect(rotateRefreshToken("raw")).resolves.toBeNull();
-    expect(mockDb.refreshToken.updateMany).not.toHaveBeenCalled();
+    expect(mockDb.refreshToken.deleteMany).not.toHaveBeenCalled();
   });
 
-  it("returns null when a concurrent refresh already revoked the token", async () => {
+  it("returns null when a concurrent refresh already consumed the token", async () => {
     mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5, revokedAt: null, expiresAt: future });
-    mockDb.refreshToken.updateMany.mockResolvedValue({ count: 0 });
+    mockDb.refreshToken.deleteMany.mockResolvedValue({ count: 0 });
     await expect(rotateRefreshToken("raw")).resolves.toBeNull();
     expect(mockDb.user.findUnique).not.toHaveBeenCalled();
   });
 
-  it("revokes the old token and returns a new session", async () => {
+  it("deletes the old token, then every other token the person holds, and returns a new session", async () => {
     stubScopes();
-    mockDb.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+    mockDb.refreshToken.deleteMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 3 });
     mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5, revokedAt: null, expiresAt: future });
     mockDb.user.findUnique
       .mockResolvedValueOnce({ id: 5, deletedAt: null })
       .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
     const session = await rotateRefreshToken("raw");
     expect(mockDb.refreshToken.findUnique).toHaveBeenCalledWith({ where: { tokenHash: hashToken("raw") } });
-    expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith({
-      where: { id: 1, revokedAt: null },
-      data: { revokedAt: expect.any(Date) },
+    expect(mockDb.refreshToken.deleteMany).toHaveBeenNthCalledWith(1, { where: { id: 1, revokedAt: null } });
+    // One device per person: everything but the new token goes, live or not.
+    expect(mockDb.refreshToken.deleteMany).toHaveBeenNthCalledWith(2, {
+      where: { userId: 5, tokenHash: { not: hashToken(session!.refreshToken) } },
     });
+    expect(mockDb.refreshToken.updateMany).not.toHaveBeenCalled();
     expect(session?.refreshToken).toEqual(expect.any(String));
   });
 
