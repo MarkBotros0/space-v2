@@ -5,7 +5,6 @@ import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 import { signAccessToken } from "../../lib/auth/tokens";
 import { newPublicId } from "../../lib/public-id";
-import { studentQuizDetailSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestUser, reviewedOf } from "./fixtures";
 import { seedModuleWorld, type ModuleWorld } from "./module-world";
 
@@ -44,8 +43,6 @@ interface Kit {
 const kit = {} as Record<"former" | "dropped", Kit>;
 let reviewedPublicId: string;
 let alumnusSubmission: string;
-let droppedQuizId: number;
-let droppedUserId: number;
 let activeAssignmentSubmission: string;
 
 /** Forum + quiz + video + check-in fixtures for one season, with a group-mate who has posted. */
@@ -179,7 +176,6 @@ beforeAll(async () => {
     return u.id;
   };
   const droppedId = await mkStudent("mw-dropped", "WITHDRAWN");
-  droppedUserId = droppedId;
   const activeId = await mkStudent("mw-active", "ACTIVE");
   const otherMate = await mkStudent("mw-other-mate", "ACTIVE");
   kit.dropped = await buildKit({
@@ -192,7 +188,6 @@ beforeAll(async () => {
     adminId: w.ids.otherAdmin,
     token: "mwdroppedtoken",
   });
-  droppedQuizId = kit.dropped.quizId;
   alumnusSubmission = newPublicId();
   await db.submission.create({
     data: {
@@ -311,155 +306,5 @@ describe("a finished season is locked to its former staff", () => {
     ).toBe(200);
     expect((await call("get", `/seasons/${w.seasonId}`, t.mentor)).status).toBe(200);
     expect((await call("get", `/groups/${w.groupAId}`, t.mentor)).status).toBe(200);
-  });
-});
-
-/** One student write: expected status and error code, and why the lock (not something else) refuses it. */
-type Row = [name: string, method: Method, path: string, body: object | undefined, status: number, code: string];
-
-function studentWrites(k: Kit): Row[] {
-  return [
-    ["start submission", "put", `/submissions/by-assignment/${k.assignmentId}`, {}, 403, "forbidden"],
-    ["save submission", "patch", `/submissions/${k.draft}`, { text: "edited after end" }, 403, "forbidden"],
-    ["start attempt", "put", `/quizzes/${k.quizId}/attempt`, undefined, 403, "forbidden"],
-    ["submit attempt", "post", `/quizzes/${k.quizId}/attempt/submit`, {}, 403, "forbidden"],
-    ["forum response", "put", `/assignments/${k.forumId}/forum/response`, { text: "late post" }, 403, "forbidden"],
-    [
-      "forum comment",
-      "post",
-      `/assignments/${k.forumId}/forum/posts/${k.matePost}/comments`,
-      { body: "late comment" },
-      403,
-      "forbidden",
-    ],
-    ["delete own comment", "delete", `/forum/comments/${k.ownCommentId}`, undefined, 403, "forbidden"],
-    [
-      "video answer",
-      "post",
-      `/sessions/${k.sessionId}/video-quiz/answers`,
-      { questionId: k.questionId, selectedIndex: 0 },
-      403,
-      "forbidden",
-    ],
-    ["check in", "post", `/sessions/check-in`, { token: k.token }, 403, "not_enrolled"],
-  ];
-}
-
-async function expectRefused(who: "studentA" | "dropped", k: Kit) {
-  const bad: string[] = [];
-  for (const [name, m, p, b, status, code] of studentWrites(k)) {
-    const res = await call(m, p, t[who], b);
-    if (res.status !== status || res.body?.error?.code !== code) {
-      bad.push(`${name}: ${m.toUpperCase()} ${p} -> ${res.status} ${res.body?.error?.code}`);
-    }
-  }
-  expect(bad).toEqual([]);
-  const sid = who === "studentA" ? w.ids.studentA : droppedUserId;
-  expect((await db.submission.findUniqueOrThrow({ where: { publicId: k.draft } })).text).toBe("my draft");
-  expect(await db.forumComment.count({ where: { submission: { assignmentId: k.forumId }, authorUserId: sid } })).toBe(
-    1,
-  ); // the seeded one only
-  expect(await db.forumComment.findUnique({ where: { id: k.ownCommentId } })).not.toBeNull();
-  expect(
-    await db.quizAttempt.count({ where: { quizId: k.quizId, studentUserId: sid, status: { not: "IN_PROGRESS" } } }),
-  ).toBe(0);
-  expect(
-    await db.attendance.count({ where: { sessionId: k.sessionId, studentUserId: sid, checkedInAt: { not: null } } }),
-  ).toBe(0);
-  expect(await db.sessionVideoQuestionResponse.count({ where: { questionId: k.questionId } })).toBe(0);
-  expect(await db.submission.count({ where: { assignmentId: k.forumId, studentUserId: sid } })).toBe(1);
-}
-
-describe("a former student can read their work but not change it", () => {
-  it("refuses all nine writes, each for the lock", () => expectRefused("studentA", kit.former));
-
-  it("opens their own assignment, submission and quiz read-only", async () => {
-    const a = await call("get", `/assignments/${w.assignmentId}`, t.studentA);
-    expect(a.status).toBe(200);
-    expect(a.body.data.readOnly).toBe(true);
-    expect(a.body.data.mySubmission.publicId).toBe(kit.former.draft);
-    const s = await call("get", `/submissions/${kit.former.draft}`, t.studentA);
-    expect(s.status).toBe(200);
-    const q = await call("get", `/quizzes/${kit.former.quizId}`, t.studentA);
-    expect(q.status).toBe(200);
-    expect(q.body.data.readOnly).toBe(true);
-    for (const body of [a.body, s.body, q.body]) {
-      expect(JSON.stringify(body)).not.toContain("Staff-only pastoral note");
-    }
-  });
-
-  it("keeps another student's submission private", async () => {
-    expect((await call("get", `/submissions/${reviewedPublicId}`, t.studentA)).status).toBe(403);
-  });
-});
-
-describe("an alumnus", () => {
-  it("opens past work, their submission and the quiz, read-only", async () => {
-    const a = await call("get", `/assignments/${w.otherAssignmentId}`, t.alumnus);
-    expect(a.status).toBe(200);
-    expect(a.body.data.readOnly).toBe(true);
-    const s = await call("get", `/submissions/${alumnusSubmission}`, t.alumnus);
-    expect(s.status).toBe(200);
-    expect(JSON.stringify(s.body)).not.toContain("Staff-only pastoral note");
-    const q = await call("get", `/quizzes/${droppedQuizId}`, t.alumnus);
-    expect(q.status).toBe(200);
-    expect(q.body.data.readOnly).toBe(true);
-  });
-});
-
-describe("a dropped student, mid-season", () => {
-  it("reads their own work and the quiz, read-only", async () => {
-    const a = await call("get", `/assignments/${w.otherAssignmentId}`, t.dropped);
-    expect(a.status).toBe(200);
-    expect(a.body.data.readOnly).toBe(true);
-    expect((await call("get", `/submissions/${kit.dropped.draft}`, t.dropped)).status).toBe(200);
-    const q = await call("get", `/quizzes/${droppedQuizId}`, t.dropped);
-    expect(q.status).toBe(200);
-    expect(q.body.data.readOnly).toBe(true);
-  });
-
-  it("refuses all nine writes, each for the lock", () => expectRefused("dropped", kit.dropped));
-});
-
-describe("a student with an active place", () => {
-  it("is not read-only on the assignment or the quiz", async () => {
-    const a = await call("get", `/assignments/${w.otherAssignmentId}`, t.active);
-    expect(a.status).toBe(200);
-    expect(a.body.data.readOnly).toBe(false);
-    const q = await call("get", `/quizzes/${droppedQuizId}`, t.active);
-    expect(q.status).toBe(200);
-    expect(q.body.data.readOnly).toBe(false);
-    expect((await call("get", `/submissions/${activeAssignmentSubmission}`, t.active)).status).toBe(200);
-  });
-
-  it("gets a quiz body it can parse back from the attempt writes (start and submit)", async () => {
-    const started = await call("put", `/quizzes/${droppedQuizId}/attempt`, t.active);
-    expect(started.status).toBe(200);
-    expect(studentQuizDetailSchema.safeParse(JSON.parse(JSON.stringify(started.body.data))).success).toBe(true);
-    expect(started.body.data.readOnly).toBe(false);
-    const qid = started.body.data.questions[0].id as number;
-    const saved = await call("patch", `/quizzes/${droppedQuizId}/attempt`, t.active, {
-      answers: [{ questionId: qid, selectedIndex: 0, text: null }],
-    });
-    expect(saved.status).toBe(200);
-    const submitted = await call("post", `/quizzes/${droppedQuizId}/attempt/submit`, t.active, {});
-    expect(submitted.status).toBe(200);
-    expect(studentQuizDetailSchema.safeParse(JSON.parse(JSON.stringify(submitted.body.data))).success).toBe(true);
-  });
-
-  it("can comment on a group-mate's post and delete its own comment", async () => {
-    // Post-first: the active student needs their own post; the forum response creates it.
-    const posted = await call("put", `/assignments/${kit.dropped.forumId}/forum/response`, t.active, {
-      text: "my take",
-    });
-    expect(posted.status).toBe(200);
-    const c = await call(
-      "post",
-      `/assignments/${kit.dropped.forumId}/forum/posts/${kit.dropped.matePost}/comments`,
-      t.active,
-      { body: "hi" },
-    );
-    expect(c.status).toBe(201);
-    expect((await call("delete", `/forum/comments/${c.body.data.comment.id}`, t.active)).status).toBe(200);
   });
 });

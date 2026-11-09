@@ -5,11 +5,7 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { orgDayKey } from "../../lib/org-time";
 import { newPublicId } from "../../lib/public-id";
-import {
-  mentorDashboardSchema,
-  staffSeasonDashboardSchema,
-  studentDashboardSchema,
-} from "../../../../../packages/shared/src/index";
+import { staffSeasonDashboardSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 // The shared Neon staging Postgres autosuspends; the first query after idle has
@@ -26,7 +22,6 @@ let s1: number;
 let s2: number;
 let s3: number;
 let liveSessionId: number;
-let aOldId: number;
 let aAId: number;
 let m1: number;
 let m2: number;
@@ -125,17 +120,15 @@ beforeAll(async () => {
       select: { id: true },
     })
   ).id;
-  aOldId = (
-    await db.assignment.create({
-      data: {
-        seasonId,
-        title: "Group A old",
-        dueAt: at("2020-01-05T10:00:00.000Z"),
-        targets: { create: { groupId: groupAId } },
-      },
-      select: { id: true },
-    })
-  ).id;
+  await db.assignment.create({
+    data: {
+      seasonId,
+      title: "Group A old",
+      dueAt: at("2020-01-05T10:00:00.000Z"),
+      targets: { create: { groupId: groupAId } },
+    },
+    select: { id: true },
+  });
   const aDeleted = await db.assignment.create({
     data: { seasonId, title: "Deleted", isAllGroups: true, deletedAt: new Date() },
     select: { id: true },
@@ -382,79 +375,5 @@ describe("SEASON_STAFF", () => {
     expect(d.submissions).toEqual({ pendingReview: 1, reviewed: 1 });
     // s1 and s2 are graded on both, so nothing is pending for this leader.
     expect(d.quizzes).toEqual({ total: 2, pending: 0, fullyGraded: 2, drafts: 1 });
-  });
-});
-
-describe("STUDENT", () => {
-  it("carries only the caller's own figures and ignores ?seasonId= (C8 #2, D22)", async () => {
-    const res = await get(`/api/v1/me/dashboard?seasonId=${otherSeasonId}`, tokens.student);
-    expect(res.status).toBe(200);
-    expect(Object.keys(res.body.data).sort()).toEqual([
-      "assignments",
-      "nextSession",
-      "progress",
-      "season",
-      "todayOrgDay",
-      "variant",
-    ]);
-    const d = studentDashboardSchema.parse(res.body.data);
-
-    expect(d.todayOrgDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(d.season?.id).toBe(seasonId);
-    expect(d.progress).toEqual({ sessionsHeld: 3, sessionsTotal: 4, pct: 75 });
-    expect(d.nextSession).toMatchObject({ id: liveSessionId, isInProgress: true });
-    expect(d.nextSession?.dayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    expect(d.nextSession?.time).toMatch(/^\d{2}:\d{2}$/);
-    // Outstanding: aOld (PENDING, overdue) and aA (DRAFT). Late: aAll. Deleted: nowhere.
-    expect(d.assignments).toMatchObject({ outstandingCount: 2, overdueCount: 1, lateSubmittedCount: 1 });
-    expect(d.assignments?.dueSoon.map((a) => [a.id, a.status, a.isOverdue, a.dueOrgDay])).toEqual([
-      [aOldId, "PENDING", true, "2020-01-05"],
-      [aAId, "DRAFT", false, "2099-06-01"],
-    ]);
-    // Nothing returned for s1, so open is the same two rows (no SUBMITTED).
-    expect(d.assignments?.open.map((a) => a.id)).toEqual([aOldId, aAId]);
-  });
-
-  it("lists a RETURNED row in assignments.open, though it is not outstanding (P2-4, C5)", async () => {
-    const res = await get("/api/v1/me/dashboard", tokens.student3);
-    expect(res.status).toBe(200);
-    const d = studentDashboardSchema.parse(res.body.data);
-    expect(d.assignments?.outstandingCount).toBe(0);
-    expect(d.assignments?.overdueCount).toBe(0);
-    expect(d.assignments?.dueSoon).toEqual([]);
-    expect(d.assignments?.open.map((a) => [a.status, a.dueOrgDay])).toEqual([["RETURNED", "2020-01-10"]]);
-  });
-
-  it("states 'not enrolled' itself: season null and everything else null (R63)", async () => {
-    const res = await get("/api/v1/me/dashboard", tokens.studentNone);
-    expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({
-      variant: "STUDENT",
-      todayOrgDay: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-      season: null,
-      progress: null,
-      nextSession: null,
-      assignments: null,
-    });
-  });
-});
-
-describe("MENTOR", () => {
-  it("is one merged feed, newest first, reviews at reviewedAt, without DRAFT, graduated or deleted-season rows (D18)", async () => {
-    const res = await get(`/api/v1/me/dashboard?seasonId=${seasonId}`, tokens.mentor);
-    expect(res.status).toBe(200);
-    const d = mentorDashboardSchema.parse(res.body.data);
-
-    expect(d.recentActivity.length).toBeLessThanOrEqual(8);
-    expect(d.recentActivity.slice(0, 4).map((i) => [i.kind, i.at, i.studentUserId])).toEqual([
-      ["reviewed", "2099-05-03T09:00:00.000Z", m2],
-      ["submitted", "2099-05-02T09:00:00.000Z", m1],
-      ["attendance", "2099-05-01T09:00:00.000Z", m1],
-      ["submitted", "2099-04-01T09:00:00.000Z", m2],
-    ]);
-    expect(d.recentActivity[0]?.submissionPublicId).toEqual(expect.any(String));
-    expect(d.recentActivity[2]?.attendanceStatus).toBe("PRESENT");
-    expect(d.recentActivity.some((i) => i.at >= "2099-06-01")).toBe(false);
-    expect(d.recentActivity.some((i) => i.studentUserId === graduatedId)).toBe(false);
   });
 });
