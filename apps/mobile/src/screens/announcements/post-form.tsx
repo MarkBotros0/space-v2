@@ -54,6 +54,16 @@ function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Fields
   return out;
 }
 
+/** Same multi-pick setting, then the same option ids and labels in order. */
+function samePoll(a: PollInput | null, b: PollInput | null): boolean {
+  if (a === null || b === null) return a === b;
+  return (
+    a.allowsMultiple === b.allowsMultiple &&
+    a.options.length === b.options.length &&
+    a.options.every((o, i) => o.id === b.options[i]!.id && o.label === b.options[i]!.label)
+  );
+}
+
 type Props = {
   screenTitle: string;
   saveLabel: string;
@@ -123,6 +133,8 @@ export function PostForm(props: Props) {
     } else if (error) {
       setConfirming(false);
       setLostSeen(null);
+      // That confirmed count belonged to the failed save; a later 409 must ask again.
+      confirmedLoss.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error, serverLost]);
@@ -144,12 +156,15 @@ export function PostForm(props: Props) {
     return parsed.success && Object.keys(errs).length === 0 ? parsed.data : null;
   }
 
-  /** An edit always sends a poll it had or has (ids keep votes; identical input is a no-op), null once removed, nothing if it never had one. */
+  /**
+   * An edit sends `poll` only when it differs from the poll as opened (null once removed), so a
+   * message-only save can't undo another manager's poll edit made in the meantime.
+   */
   function buildUpdate(): UpdateAnnouncementRequest | null {
-    const hadPoll = initial?.poll != null;
+    const changed = !samePoll(initial?.poll ?? null, poll);
     const parsed = updateAnnouncementRequestSchema.safeParse({
       body,
-      ...(poll ? { poll } : hadPoll ? { poll: null } : {}),
+      ...(changed ? { poll } : {}),
     });
     const errs = parsed.success ? {} : fieldErrors(parsed.error.issues);
     setErrors(errs);

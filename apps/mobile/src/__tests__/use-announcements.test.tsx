@@ -212,14 +212,27 @@ describe("poll hooks", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.feed() });
   });
 
-  it("a poll_changed 409 invalidates the detail", async () => {
-    api.put.mockRejectedValue(conflict("poll_changed"));
+  it.each(["poll_changed", "poll_closed", "season_finished"])(
+    "a %s 409 invalidates the detail, so the card shows the poll as it now is",
+    async (code) => {
+      api.put.mockRejectedValue(conflict(code));
+      const spy = jest.spyOn(client, "invalidateQueries");
+      const { result } = renderHook(() => useVotePoll(5), { wrapper });
+      await act(async () => {
+        await result.current.mutateAsync({ version: 1, optionIds: [3] }).catch(() => undefined);
+      });
+      expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.detail(5) });
+    },
+  );
+
+  it("any other vote failure leaves the detail alone", async () => {
+    api.put.mockRejectedValue(conflict("bad_request"));
     const spy = jest.spyOn(client, "invalidateQueries");
     const { result } = renderHook(() => useVotePoll(5), { wrapper });
     await act(async () => {
       await result.current.mutateAsync({ version: 1, optionIds: [3] }).catch(() => undefined);
     });
-    expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.announcements.detail(5) });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: queryKeys.announcements.detail(5) });
   });
 
   it.each([

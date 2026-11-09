@@ -120,7 +120,7 @@ describe("PollCard", () => {
   });
 
   it("a Super on a season poll sees no Vote pill, but See who voted and Close poll", () => {
-    render({ canVote: false, canManage: true, voterCount: 0, options: [opt(1, "Saturday", 0), opt(2, "Sunday", 0)] });
+    render({ canVote: false, canManage: true, canSeeNames: true, voterCount: 0, options: [opt(1, "Saturday", 0), opt(2, "Sunday", 0)] });
     expect(screen.queryByRole("button", { name: "Vote" })).toBeNull();
     expect(screen.getByRole("button", { name: "See who voted" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Close poll" })).toBeTruthy();
@@ -146,11 +146,35 @@ describe("PollCard", () => {
         ],
       }),
     );
-    render({ canManage: true, voterCount: 2, options: [opt(1, "Saturday", 2), opt(2, "Sunday", 0)] });
+    render({ canManage: true, canSeeNames: true, voterCount: 2, options: [opt(1, "Saturday", 2), opt(2, "Sunday", 0)] });
     fireEvent.press(screen.getByRole("button", { name: "See who voted" }));
     expect(await screen.findByText("Mina Saad")).toBeTruthy();
     expect(screen.getByText("Former member")).toBeTruthy();
     expect(api.get).toHaveBeenCalledWith("/api/v1/announcements/7/poll/voters");
+  });
+
+  it("a Super on a finished season's poll sees who voted, but no Close or Reopen", async () => {
+    api.get.mockReturnValue(
+      ok({ options: [{ id: 1, label: "Saturday", voters: [{ name: "Mina Saad" }] }, { id: 2, label: "Sunday", voters: [] }] }),
+    );
+    render({
+      closed: true,
+      canVote: false,
+      canManage: false,
+      canSeeNames: true,
+      voterCount: 1,
+      options: [opt(1, "Saturday", 1), opt(2, "Sunday", 0)],
+    });
+    expect(screen.queryByRole("button", { name: "Close poll" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reopen poll" })).toBeNull();
+    fireEvent.press(screen.getByRole("button", { name: "See who voted" }));
+    expect(await screen.findByText("Mina Saad")).toBeTruthy();
+  });
+
+  it("a manager flag alone does not open names: See who voted follows canSeeNames", () => {
+    render({ canManage: true, canSeeNames: false, voterCount: 0, options: [opt(1, "Saturday", 0), opt(2, "Sunday", 0)] });
+    expect(screen.queryByRole("button", { name: "See who voted" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close poll" })).toBeTruthy();
   });
 
   it("poll_changed: a toast, and back to the choices with nothing ticked", async () => {

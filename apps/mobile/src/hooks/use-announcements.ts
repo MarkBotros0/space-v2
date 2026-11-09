@@ -168,7 +168,10 @@ function usePollDetailWrite(postId: number) {
   };
 }
 
-/** Cast or change a vote. A stale `version` (409 `poll_changed`) refetches the post so the reader sees the new poll. */
+/** Codes after which the poll on screen is out of date: changed options, closed, or a finished season. */
+const STALE_POLL_CODES = new Set(["poll_changed", "poll_closed", "season_finished"]);
+
+/** Cast or change a vote. A 409 saying the poll moved on refetches the post, so the card shows it as it now is. */
 export function useVotePoll(postId: number) {
   const queryClient = useQueryClient();
   const write = usePollDetailWrite(postId);
@@ -178,7 +181,7 @@ export function useVotePoll(postId: number) {
       return write(res.data.data);
     },
     onError: (err) => {
-      if (apiErrorCode(err) === "poll_changed") {
+      if (STALE_POLL_CODES.has(apiErrorCode(err) ?? "")) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.announcements.detail(postId) });
       }
     },

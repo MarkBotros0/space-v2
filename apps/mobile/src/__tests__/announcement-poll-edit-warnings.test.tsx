@@ -71,11 +71,12 @@ describe("editWarnings", () => {
       { id: 1, label: "Saturday" },
       { id: 2, label: "Sunday" },
     ];
-    const p = poll({ allowsMultiple: true, multiPickVoters: 2 });
+    // The line counts people; lostVotes counts their vote rows, as the server's 409 does.
+    const p = poll({ allowsMultiple: true, multiPickVoters: 2, multiPickVotes: 5 });
     expect(editWarnings(p, { allowsMultiple: false, options: keep })).toEqual({
       lines: ["2 people who picked more than one answer will need to vote again"],
       losesVotes: true,
-      lostVotes: null,
+      lostVotes: 5,
     });
     expect(
       editWarnings(poll({ allowsMultiple: true, multiPickVoters: 1 }), {

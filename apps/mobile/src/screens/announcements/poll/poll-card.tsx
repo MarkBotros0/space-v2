@@ -114,7 +114,7 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
         />
       ) : null}
 
-      {canOpenChoices || poll.canManage ? (
+      {canOpenChoices || poll.canSeeNames || poll.canManage ? (
         <View className="flex-row flex-wrap gap-2">
           {canOpenChoices ? (
             <PillButton
@@ -123,20 +123,21 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
               onPress={startChoosing}
             />
           ) : null}
+          {poll.canSeeNames ? (
+            <PillButton label={POLL_COPY.seeWhoVoted} onPress={() => setVotersOpen(true)} />
+          ) : null}
           {poll.canManage ? (
-            <>
-              <PillButton label={POLL_COPY.seeWhoVoted} onPress={() => setVotersOpen(true)} />
-              <PillButton
-                label={poll.closed ? POLL_COPY.reopenPoll : POLL_COPY.closePoll}
-                disabled={busy}
-                onPress={() => closeOrReopen(poll.closed ? "reopen" : "close")}
-              />
-            </>
+            <PillButton
+              label={poll.closed ? POLL_COPY.reopenPoll : POLL_COPY.closePoll}
+              disabled={busy}
+              onPress={() => closeOrReopen(poll.closed ? "reopen" : "close")}
+            />
           ) : null}
         </View>
       ) : null}
 
-      {poll.canManage ? (
+      {/* Names: managers, and a Super once the season has finished (who can't close or reopen). */}
+      {poll.canSeeNames ? (
         <VotersSheet postId={postId} open={votersOpen} onClose={() => setVotersOpen(false)} />
       ) : null}
     </View>

@@ -36,9 +36,11 @@ export const pollItem = (over: Record<string, unknown> = {}) => ({
   closed: false,
   canVote: true,
   canManage: false,
+  canSeeNames: false,
   myOptionIds: [] as number[],
   voterCount: null as number | null,
   multiPickVoters: null as number | null,
+  multiPickVotes: null as number | null,
   options: [
     { id: 1, label: "Saturday", votes: null as number | null },
     { id: 2, label: "Sunday", votes: null as number | null },

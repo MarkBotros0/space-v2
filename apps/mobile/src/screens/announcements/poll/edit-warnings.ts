@@ -14,7 +14,12 @@ export function editWarnings(
 ): { lines: string[]; losesVotes: boolean; lostVotes: number | null } {
   const lines: string[] = [];
   let losesVotes = false;
-  /** Votes the lossy lines name; null once a line only knows people (several to one). */
+  /**
+   * Vote rows the lossy lines delete, to match against the server's 409 count. Null when the
+   * app can't know it (no multi-pick row count). A several-to-one edit that also removes an
+   * option a multi-picker chose counts that vote twice; the server's count then differs and
+   * the sheet asks again, which is the safe way to be wrong.
+   */
   let lostVotes: number | null = 0;
   if (current === null) return { lines, losesVotes, lostVotes };
 
@@ -48,7 +53,8 @@ export function editWarnings(
   if (current.allowsMultiple && !next.allowsMultiple && multi > 0) {
     lines.push(`${people(multi)} who picked more than one answer will need to vote again`);
     losesVotes = true;
-    lostVotes = null;
+    const rows = current.multiPickVotes;
+    lostVotes = lostVotes === null || rows === null ? null : lostVotes + rows;
   }
   return { lines, losesVotes, lostVotes };
 }
