@@ -6,7 +6,7 @@ import { notifyAnnouncement } from "../../lib/announcement-notifications";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags, canDeleteAnnouncement, canEditAnnouncement, canPostTo } from "../../lib/permissions";
-import { announcementVisibilityFilter } from "../../lib/queries/announcements";
+import { ANNOUNCEMENT_SELECT, findReadableAnnouncement } from "../../lib/queries/announcements";
 import { requireUser } from "../../middleware/require-auth";
 import {
   createAnnouncementRequestSchema,
@@ -14,7 +14,7 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
 import { createPollFor, editPollInTx, type PollEditOutcome } from "./poll-write";
-import { ANNOUNCEMENT_SELECT, toDetail } from "./serialize";
+import { toDetail } from "./serialize";
 
 export async function createPost(req: Request, res: Response) {
   const user = requireUser(req);
@@ -43,19 +43,11 @@ export async function createPost(req: Request, res: Response) {
   return apiOk(res, toDetail(row, true, announcementFlags(user, row), await loadPollView(user, row)), 201);
 }
 
-/** A post the caller can read, or null (404 for the unknown and the invisible alike). */
-async function loadReadable(user: ReturnType<typeof requireUser>, id: number) {
-  return db.announcement.findFirst({
-    where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
-    select: ANNOUNCEMENT_SELECT,
-  });
-}
-
 export async function updatePost(req: Request, res: Response) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
-  const row = await loadReadable(user, id);
+  const row = await findReadableAnnouncement(user, id);
   if (!row) return apiError(res, "not_found", "Post not found.", 404);
   if (announcementFlags(user, row).seasonFinished) {
     return apiError(res, "season_finished", "This season has finished.", 409);
@@ -94,7 +86,7 @@ export async function deletePost(req: Request, res: Response) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
-  const row = await loadReadable(user, id);
+  const row = await findReadableAnnouncement(user, id);
   if (!row) return apiError(res, "not_found", "Post not found.", 404);
   if (!canDeleteAnnouncement(user, row)) return forbidden(res);
 

@@ -2,7 +2,7 @@ import { db } from "../../db/client";
 import type { SessionUser } from "../../lib/auth/tokens";
 import { canManagePoll, canSeePollNames, canVotePoll, isPollClosed } from "../../lib/permissions";
 import type { AnnouncementPoll } from "../../../../../packages/shared/src/index";
-import type { AnnouncementRow } from "./serialize";
+import type { AnnouncementRow } from "../../lib/queries/announcements";
 
 const POLL_SELECT = {
   id: true,

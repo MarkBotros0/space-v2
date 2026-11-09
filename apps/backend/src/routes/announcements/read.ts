@@ -6,6 +6,8 @@ import { parseId } from "../../lib/parse-id";
 import { announcementFlags } from "../../lib/permissions";
 import {
   ANNOUNCEMENT_PAGE_ORDER,
+  ANNOUNCEMENT_SELECT,
+  findReadableAnnouncement,
   announcementCursorFilter,
   announcementUnreadFilter,
   announcementVisibilityFilter,
@@ -14,7 +16,7 @@ import {
 import { requireUser } from "../../middleware/require-auth";
 import { ANNOUNCEMENT_PAGE_SIZE } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
-import { ANNOUNCEMENT_SELECT, toDetail, toListItem } from "./serialize";
+import { toDetail, toListItem } from "./serialize";
 
 import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../../lib/auth/tokens";
@@ -82,10 +84,7 @@ export async function getOne(req: Request, res: Response) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
-  const row = await db.announcement.findFirst({
-    where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
-    select: ANNOUNCEMENT_SELECT,
-  });
+  const row = await findReadableAnnouncement(user, id);
   // 404, not 403: a post the caller may not read looks like one that isn't there.
   if (!row) return apiError(res, "not_found", "Post not found.", 404);
   const unread = await unreadIdsAmong(user, [row.id]);
@@ -96,10 +95,7 @@ export async function markRead(req: Request, res: Response) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
-  const readable = await db.announcement.findFirst({
-    where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
-    select: { id: true },
-  });
+  const readable = await findReadableAnnouncement(user, id);
   if (!readable) return apiError(res, "not_found", "Post not found.", 404);
   await db.announcementRead.createMany({
     data: [{ announcementId: id, userId: user.userId }],

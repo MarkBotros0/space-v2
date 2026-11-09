@@ -5,6 +5,7 @@ import { isMentor, isSuper } from "../rbac";
 import { seasonParticipant } from "./season-participants";
 import { ANNOUNCEMENT_UNREAD_DAYS } from "../../../../../packages/shared/src/index";
 import { MS_PER_DAY } from "../org-time";
+import { liveSeason } from "../db/live";
 
 export const ANNOUNCEMENT_PAGE_ORDER: Prisma.AnnouncementOrderByWithRelationInput[] = [
   { createdAt: "desc" },
@@ -46,7 +47,7 @@ export async function announcementVisibilityFilter(user: SessionUser): Promise<P
       branches.push({
         audience: "SEASON",
         seasonId: { in: seasonIds },
-        season: { deletedAt: null },
+        season: liveSeason,
       });
     }
   }
@@ -86,7 +87,7 @@ export async function announcementUnreadFilter(
     addressed.push({
       audience: "SEASON",
       seasonId: { in: live },
-      season: { status: "ACTIVE", deletedAt: null },
+      season: { status: "ACTIVE", ...liveSeason },
     });
   }
   return {
@@ -111,4 +112,42 @@ export function announcementCursorFilter(cursor: string): Prisma.AnnouncementWhe
   if (rest.length > 0 || !createdAt || Number.isNaN(createdAt.getTime())) return null;
   if (!Number.isInteger(id) || id <= 0) return null;
   return { OR: [{ createdAt: { lt: createdAt } }, { createdAt, id: { lt: id } }] };
+}
+
+/** What every announcement read selects; serialize.ts turns it into the wire shapes. */
+export const ANNOUNCEMENT_SELECT = {
+  id: true,
+  audience: true,
+  seasonId: true,
+  body: true,
+  authorId: true,
+  createdAt: true,
+  editedAt: true,
+  season: { select: { title: true, status: true } },
+  author: { select: { name: true, deletedAt: true } },
+  poll: { select: { closedAt: true } },
+} as const;
+
+export interface AnnouncementRow {
+  id: number;
+  audience: "COMMUNITY" | "SEASON";
+  seasonId: number | null;
+  body: string;
+  authorId: number | null;
+  createdAt: Date;
+  editedAt: Date | null;
+  season: { title: string; status: string } | null;
+  author: { name: string; deletedAt: Date | null } | null;
+  poll: { closedAt: Date | null } | null;
+}
+
+/**
+ * A post the caller may read, with ANNOUNCEMENT_SELECT, or null. The unknown and
+ * the invisible look alike, so callers answer both with 404, never 403.
+ */
+export async function findReadableAnnouncement(user: SessionUser, id: number): Promise<AnnouncementRow | null> {
+  return db.announcement.findFirst({
+    where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
+    select: ANNOUNCEMENT_SELECT,
+  });
 }

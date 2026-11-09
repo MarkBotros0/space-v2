@@ -6,12 +6,12 @@ import { ApiError } from "../../lib/api-error";
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags, canVotePoll, isPollClosed } from "../../lib/permissions";
-import { announcementVisibilityFilter } from "../../lib/queries/announcements";
+import { findReadableAnnouncement } from "../../lib/queries/announcements";
 import { requireUser } from "../../middleware/require-auth";
 import { pollVoteRequestSchema } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
 import { unreadIdsAmong } from "./read";
-import { ANNOUNCEMENT_SELECT, toDetail } from "./serialize";
+import { toDetail } from "./serialize";
 
 // Refusals found under the poll lock. Thrown, so the transaction rolls back and
 // the error handler answers them (lib/api-error.ts).
@@ -30,10 +30,7 @@ export async function castVote(req: Request, res: Response) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
-  const row = await db.announcement.findFirst({
-    where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
-    select: ANNOUNCEMENT_SELECT,
-  });
+  const row = await findReadableAnnouncement(user, id);
   // 404, not 403: a post the caller may not read looks like one that isn't there.
   if (!row) return apiError(res, "not_found", "Post not found.", 404);
   if (!row.poll) return apiError(res, "not_found", "Poll not found.", 404);

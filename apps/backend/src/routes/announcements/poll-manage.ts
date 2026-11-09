@@ -6,12 +6,12 @@ import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags, canManagePoll, canSeePollNames } from "../../lib/permissions";
-import { announcementVisibilityFilter } from "../../lib/queries/announcements";
+import { findReadableAnnouncement } from "../../lib/queries/announcements";
 import { requireUser } from "../../middleware/require-auth";
 import type { PollVotersResponse } from "../../../../../packages/shared/src/index";
 import { loadPollView } from "./poll-serialize";
 import { unreadIdsAmong } from "./read";
-import { ANNOUNCEMENT_SELECT, toDetail } from "./serialize";
+import { toDetail } from "./serialize";
 
 type Outcome = "ok" | "not_found" | "season_finished";
 
@@ -20,10 +20,7 @@ async function setClosed(req: Request, res: Response, close: boolean) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
-  const row = await db.announcement.findFirst({
-    where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
-    select: ANNOUNCEMENT_SELECT,
-  });
+  const row = await findReadableAnnouncement(user, id);
   if (!row?.poll) return apiError(res, "not_found", "Poll not found.", 404);
   if (announcementFlags(user, row).seasonFinished)
     return apiError(res, "season_finished", "This season has finished.", 409);
@@ -77,10 +74,7 @@ export async function listVoters(req: Request, res: Response) {
   const user = requireUser(req);
   const id = parseId(req.params.id);
   if (id === null) return apiError(res, "bad_request", "Invalid post id.", 400);
-  const row = await db.announcement.findFirst({
-    where: { AND: [{ id }, await announcementVisibilityFilter(user)] },
-    select: ANNOUNCEMENT_SELECT,
-  });
+  const row = await findReadableAnnouncement(user, id);
   if (!row?.poll || !canSeePollNames(user, row)) return apiError(res, "not_found", "Poll not found.", 404);
   const poll = await db.announcementPoll.findUnique({
     where: { announcementId: id },

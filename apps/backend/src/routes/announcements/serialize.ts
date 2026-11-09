@@ -5,32 +5,7 @@ import type {
 } from "../../../../../packages/shared/src/index";
 import { ANNOUNCEMENT_EXCERPT_LENGTH } from "../../../../../packages/shared/src/index";
 import { isPollClosed, type AnnouncementFlags } from "../../lib/permissions";
-
-export const ANNOUNCEMENT_SELECT = {
-  id: true,
-  audience: true,
-  seasonId: true,
-  body: true,
-  authorId: true,
-  createdAt: true,
-  editedAt: true,
-  season: { select: { title: true, status: true } },
-  author: { select: { name: true, deletedAt: true } },
-  poll: { select: { closedAt: true } },
-} as const;
-
-export interface AnnouncementRow {
-  id: number;
-  audience: "COMMUNITY" | "SEASON";
-  seasonId: number | null;
-  body: string;
-  authorId: number | null;
-  createdAt: Date;
-  editedAt: Date | null;
-  season: { title: string; status: string } | null;
-  author: { name: string; deletedAt: Date | null } | null;
-  poll: { closedAt: Date | null } | null;
-}
+import type { AnnouncementRow } from "../../lib/queries/announcements";
 
 /** Cut by code point, so an emoji (a surrogate pair) is never split at the limit. */
 function excerptOf(body: string): string {
