@@ -1,7 +1,8 @@
-import type { UserRole } from "@space/shared";
+import type { SeasonStatus, UserRole } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
+import { liveSeasonStatus } from "../seasons/status";
 
 export interface Scopes {
   seasonAdminIds: number[];
@@ -12,7 +13,7 @@ export interface Scopes {
 
 /** A season that still grants its people anything. */
 const LIVE_SEASON = {
-  status: { in: ["DRAFT", "ACTIVE"] as ("DRAFT" | "ACTIVE")[] },
+  status: liveSeasonStatus,
   deletedAt: null,
 };
 
@@ -33,7 +34,7 @@ export function deriveRole(storedRole: UserRole, grants: { adminIds: number[]; l
   return "STUDENT";
 }
 
-type Grant = { id: number; seasonStatus: "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED" };
+type Grant = { id: number; seasonStatus: SeasonStatus };
 
 /**
  * Someone with any role in an ACTIVE season has no access to a draft they've

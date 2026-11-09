@@ -1,5 +1,6 @@
 import { standingFor, type Standing, type StandingHistoryRow } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
+import { isSeasonFinished } from "../seasons/status";
 
 /** One finished or dropped enrolment, with what the picker needs to show it. */
 export type HistoryEntry = StandingHistoryRow & {
@@ -44,7 +45,7 @@ export async function loadHistory(
     },
   });
   for (const r of rows) {
-    const finished = r.status === "COMPLETED" && (r.season.status === "COMPLETED" || r.season.status === "ARCHIVED");
+    const finished = r.status === "COMPLETED" && isSeasonFinished(r.season.status);
     const entry: HistoryEntry = {
       program: r.season.program,
       seasonTitle: r.season.title,

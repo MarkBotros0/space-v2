@@ -31,6 +31,7 @@ import {
 } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
+import { isSeasonFinished } from "../lib/seasons/status";
 
 /**
  * Import intake is NOT gated by `ENABLE_UPLOADS`, and nothing in this file
@@ -144,7 +145,7 @@ importsRouter.post("/students/commit", commitLimiter, importJsonParser, async (r
       select: { id: true, status: true },
     });
     if (!season) return apiError(res, "not_found", "That season no longer exists.", 404);
-    if (season.status === "COMPLETED" || season.status === "ARCHIVED") {
+    if (isSeasonFinished(season.status)) {
       return apiError(res, "season_finished", "This season has finished.", 409);
     }
     target = { kind: "season", seasonId: season.id };

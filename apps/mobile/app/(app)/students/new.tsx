@@ -1,3 +1,4 @@
+import { isSeasonLive } from "@space/shared";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
@@ -35,7 +36,7 @@ export default function NewStudentScreen() {
   // Enrollment targets: seasons that are running or about to (a new
   // enrollment in a finished season would be history written backwards).
   const seasonOptions = (seasons.data ?? [])
-    .filter((s) => s.status === "ACTIVE" || s.status === "DRAFT")
+    .filter((s) => isSeasonLive(s.status))
     .map((s) => ({ id: s.id, title: s.title }));
 
   return (

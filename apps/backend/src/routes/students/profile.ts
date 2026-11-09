@@ -12,6 +12,7 @@ import { newPersonRefusal, readSeatSeason, refusalStatus, type SeatRefusal } fro
 import { requireUser } from "../../middleware/require-auth";
 import { createStudentRequestSchema, updateStudentRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { isSeasonFinished } from "../../lib/seasons/status";
 
 /**
  * Per-role PATCH allowlists, checked against the RAW body keys before the
@@ -53,7 +54,7 @@ export async function createStudent(req: Request, res: Response) {
       select: { id: true, status: true },
     });
     if (!season) return apiError(res, "not_found", "Season not found.", 404);
-    if (season.status === "COMPLETED" || season.status === "ARCHIVED") {
+    if (isSeasonFinished(season.status)) {
       return apiError(res, "season_finished", "This season has finished.", 409);
     }
   }

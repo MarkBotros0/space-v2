@@ -1,3 +1,4 @@
+import { isSeasonLive } from "@space/shared";
 import type { ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -30,7 +31,7 @@ export default function SeasonPeopleScreen() {
         isDraft={status === "DRAFT"}
         from={parsePositiveInt(rawFrom)}
         onInviteNew={
-          status === "DRAFT" || status === "ACTIVE"
+          isSeasonLive(status)
             ? () => router.replace({ pathname: "/seasons/[code]/invite", params: { code: seasonCode } })
             : undefined
         }

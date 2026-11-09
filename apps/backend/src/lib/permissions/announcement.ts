@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason, isSuper } from "../rbac";
+import { isSeasonFinished } from "../seasons/status";
 
 export interface AnnouncementFlags {
   canEdit: boolean;
@@ -16,7 +17,7 @@ export interface AnnouncementRowForAuth {
 }
 
 export function isFinished(row: AnnouncementRowForAuth): boolean {
-  return row.season?.status === "COMPLETED" || row.season?.status === "ARCHIVED";
+  return isSeasonFinished(row.season?.status);
 }
 
 /** Super, or the author while they still admin the post's season. A community post is Super-only. */

@@ -1,3 +1,4 @@
+import { isSeasonLive } from "@space/shared";
 import type { EnrollmentHistoryItem, MeScopes, MeUser } from "@space/shared";
 
 /**
@@ -49,7 +50,6 @@ export function studentActionsFor(
       e.status === "ACTIVE" && e.seasonStatus !== "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
     canRemove: (e) =>
       e.status === "ACTIVE" && e.seasonStatus === "DRAFT" && isAdminOfSeasonForUi(user, scopes, e.seasonId),
-    canRestore: (e) =>
-      isSuper && e.status === "WITHDRAWN" && (e.seasonStatus === "DRAFT" || e.seasonStatus === "ACTIVE"),
+    canRestore: (e) => isSuper && e.status === "WITHDRAWN" && isSeasonLive(e.seasonStatus),
   };
 }

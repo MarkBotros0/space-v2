@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
-import { seasonWriteRequestSchema, type SeasonStatus } from "@space/shared";
+import { isSeasonFinished, type SeasonStatus, seasonWriteRequestSchema } from "@space/shared";
 
 import { FormSection } from "../../design/forms/form-section";
 import { FormScreen } from "../../design/layout/form-screen";
@@ -70,7 +70,7 @@ export function SeasonForm({
   const canSetRequired = mode === "create" || initial.status === "DRAFT";
   const seasons = useSeasons(canSetRequired);
   const isSuper = useSessionStore((s) => s.user?.role === "SUPER");
-  const seasonFinished = initial.status === "COMPLETED" || initial.status === "ARCHIVED";
+  const seasonFinished = isSeasonFinished(initial.status);
   const canSetGraduating = isSuper && !seasonFinished;
   const canSetCommunity = isSuper && canSetRequired;
   const requiredChoices = requiredProgramChoices(seasons.data ?? [], v.program, initial.requiredProgram);

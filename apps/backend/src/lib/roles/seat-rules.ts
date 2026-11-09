@@ -1,6 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonStatus, UserRole } from "../../generated/prisma/enums";
 import { describeActiveRole, type ActiveRole } from "./active-role";
+import { isSeasonFinished } from "../seasons/status";
 
 export type Seat = {
   kind: "admin" | "leader" | "student";
@@ -101,7 +102,7 @@ export async function seatRefusal(
   const ineligible = eligibilityRefusal(person, seat.kind, seat.season);
   if (ineligible) return ineligible;
 
-  if (seat.season.status === "COMPLETED" || seat.season.status === "ARCHIVED") {
+  if (isSeasonFinished(seat.season.status)) {
     return { code: "season_finished", message: "This season has finished." };
   }
 

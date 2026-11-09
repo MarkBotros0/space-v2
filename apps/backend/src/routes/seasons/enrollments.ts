@@ -9,7 +9,6 @@ import { parseId } from "../../lib/parse-id";
 import { deleteDraftRow, hasWorkInSeason } from "../../lib/queries/students/writes";
 import { isAdminOfSeason } from "../../lib/rbac";
 import {
-  isSeasonFinished,
   lockPeople,
   readSeatSeason,
   refusalStatus,
@@ -21,6 +20,7 @@ import { requireUser } from "../../middleware/require-auth";
 // Value import: relative path is mandatory here (CLAUDE.md's rootDir emit trap).
 import { addSeasonEnrollmentsRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { isSeasonFinished } from "../../lib/seasons/status";
 
 export const SEASON_NOT_FOUND: SeatRefusal = { code: "not_found", message: "Season not found." };
 export const NOT_DRAFT: SeatRefusal = { code: "not_draft", message: "This season has already started." };
@@ -56,7 +56,7 @@ export async function addSeasonEnrollments(req: Request, res: Response) {
     async (tx): Promise<SeatRefusal | SeatStudentsResult> => {
       const season = await readSeatSeason(tx, seasonId);
       if (!season) return SEASON_NOT_FOUND;
-      if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
+      if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
       return seatStudents(tx, season, userIds, {
         override: { userIds: overrideUserIds, actorId: user.userId, actorMayOverride: true },
       });

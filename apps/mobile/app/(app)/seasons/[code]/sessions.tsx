@@ -1,3 +1,4 @@
+import { isSeasonFinished } from "@space/shared";
 import type { ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -24,7 +25,7 @@ export default function SeasonSessionsScreen() {
   const detail = useSeasonByCode(code);
   const sessions = useSeasonSessions(detail.data?.id ?? null);
   // A finished season's sessions are read, never changed (owner, 2026-11-07).
-  const finished = detail.data?.status === "COMPLETED" || detail.data?.status === "ARCHIVED";
+  const finished = isSeasonFinished(detail.data?.status);
   const manage = detail.data !== undefined && (detail.data.canAdminister || isSuper) && !finished;
   // The org's day for the status badges; only those who read the season's dashboard ask.
   const orgToday = useStaffOrgToday(

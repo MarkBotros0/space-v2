@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import type { SeasonWriteBody } from "@space/shared";
+import type { SeasonStatus, SeasonWriteBody } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
@@ -21,6 +21,7 @@ import {
   seasonWriteRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { isSeasonFinished, liveSeasonStatus } from "../../lib/seasons/status";
 
 export async function listSeasons(req: Request, res: Response) {
   const user = requireUser(req);
@@ -45,7 +46,7 @@ export async function listSeasons(req: Request, res: Response) {
               // The claim, not the rows: loadScopes hides a draft from someone
               // leading in an ACTIVE season, and canAccessSeason reads it too.
               deletedAt: null,
-              status: { in: ["DRAFT", "ACTIVE"] },
+              status: liveSeasonStatus,
               groups: { some: { id: { in: user.groupLeaderIds } } },
             }
           : { deletedAt: null, enrollments: { some: { studentUserId: user.userId } } };
@@ -158,8 +159,6 @@ export async function createSeason(req: Request, res: Response) {
   }
 }
 
-type SeasonStatusValue = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
-
 /**
  * The only moves are an unchanged status and COMPLETED to or from ARCHIVED. A
  * season only starts through Start, which runs the checks, and only finishes
@@ -167,7 +166,7 @@ type SeasonStatusValue = "DRAFT" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
  * to DRAFT, then COMPLETED) strands them ACTIVE in a finished season. A finished
  * season never reopens.
  */
-function statusChangeError(from: SeasonStatusValue, to: SeasonStatusValue) {
+function statusChangeError(from: SeasonStatus, to: SeasonStatus) {
   if (from === to) return null;
   if (from === "DRAFT") {
     if (to === "ACTIVE") return { code: "use_start_season", message: "Start the season from its Start button." };
@@ -176,7 +175,7 @@ function statusChangeError(from: SeasonStatusValue, to: SeasonStatusValue) {
   if (from === "ACTIVE") {
     return { code: "use_end_season", message: "End the season instead of changing its status." };
   }
-  if (to === "COMPLETED" || to === "ARCHIVED") return null;
+  if (isSeasonFinished(to)) return null;
   return { code: "season_finished", message: "A finished season cannot be reopened." };
 }
 
@@ -231,7 +230,7 @@ export async function updateSeason(req: Request, res: Response) {
     }
     // Until the season has finished; End reads it under the season's lock, and the
     // write below only lands while the status is still the one checked here.
-    const finished = existing.status === "COMPLETED" || existing.status === "ARCHIVED";
+    const finished = isSeasonFinished(existing.status);
     if (finished && body.graduatesOnPass !== undefined && body.graduatesOnPass !== existing.graduatesOnPass) {
       return apiError(
         res,

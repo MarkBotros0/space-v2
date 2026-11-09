@@ -30,10 +30,6 @@ export async function readSeatSeason(
   });
 }
 
-export function isSeasonFinished(season: { status: SeasonStatus }): boolean {
-  return season.status === "COMPLETED" || season.status === "ARCHIVED";
-}
-
 /**
  * `seatRefusal` plus standing. Blocked and in a role reads as the picker does,
  * block first; an override lifts only the block, so the role still refuses. A

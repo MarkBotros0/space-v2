@@ -4,6 +4,7 @@
  * calendar days (the ISO date part, spec 02 D12); `today` is the org's day key
  * when the caller has it, else the phone's.
  */
+import { isSeasonFinished } from "@space/shared";
 import type { SeasonDetail } from "@space/shared";
 
 import { formatSeasonDay } from "../../lib/format";
@@ -24,7 +25,7 @@ export function seasonTimeline(
   const t = dayNumber(today);
   const start = dayNumber(season.startDate.slice(0, 10));
   const end = dayNumber(season.endDate.slice(0, 10));
-  if (season.status === "COMPLETED" || season.status === "ARCHIVED") {
+  if (isSeasonFinished(season.status)) {
     return { label: `Ended ${formatSeasonDay(season.endDate)}`, tone: "neutral" };
   }
   if (season.status === "DRAFT") {

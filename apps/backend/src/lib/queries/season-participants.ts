@@ -1,4 +1,5 @@
 import type { Prisma } from "../../generated/prisma/client";
+import { finishedSeasonStatus } from "../seasons/status";
 
 /**
  * "The season's participants": who a staff roster, count or report lists.
@@ -18,7 +19,7 @@ import type { Prisma } from "../../generated/prisma/client";
  * nobody in a finished season is told anything, and those stay ACTIVE-only.
  */
 export const seasonParticipant: Prisma.SeasonEnrollmentWhereInput = {
-  OR: [{ status: "ACTIVE" }, { status: "COMPLETED", season: { status: { in: ["COMPLETED", "ARCHIVED"] } } }],
+  OR: [{ status: "ACTIVE" }, { status: "COMPLETED", season: { status: finishedSeasonStatus } }],
 };
 
 /**

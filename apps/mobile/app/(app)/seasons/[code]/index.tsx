@@ -1,3 +1,4 @@
+import { isSeasonFinished } from "@space/shared";
 import { useState, type ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Award, CalendarDays, ClipboardList, Copy, FileQuestion, Flag, Pencil } from "lucide-react-native";
@@ -74,7 +75,7 @@ export default function SeasonDetailScreen() {
     const s = detail.data;
     // A finished season is locked (owner, 2026-11-07): its people, groups and
     // sessions can be read, nothing changed; Duplicate starts a draft from it.
-    const finished = s.status === "COMPLETED" || s.status === "ARCHIVED";
+    const finished = isSeasonFinished(s.status);
     const canAdminister = s.canAdminister && !finished;
     const manage = (s.canAdminister || isSuper) && !finished;
     const params = { code: s.code };
@@ -117,7 +118,7 @@ export default function SeasonDetailScreen() {
     if (s.status === "ACTIVE" && manage && !pastEnd) {
       actions.push({ label: "End season", hint: "Results and graduation", icon: Flag, onPress: go.end });
     }
-    if (isSuper && (s.status === "COMPLETED" || s.status === "ARCHIVED")) {
+    if (isSuper && isSeasonFinished(s.status)) {
       actions.push({
         label: "Results",
         icon: Award,

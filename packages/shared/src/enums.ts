@@ -5,6 +5,20 @@ import { z } from "zod";
 export const seasonStatusSchema = z.enum(["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"]);
 export type SeasonStatus = z.infer<typeof seasonStatusSchema>;
 
+/** A finished season is locked: read-only, never reopened, nothing enrols into it. */
+export const FINISHED_SEASON_STATUSES = ["COMPLETED", "ARCHIVED"] as const satisfies readonly SeasonStatus[];
+/** A live season still takes people and roles: a draft or a running one. */
+export const LIVE_SEASON_STATUSES = ["DRAFT", "ACTIVE"] as const satisfies readonly SeasonStatus[];
+
+// The predicates take any string, so a row typed loosely (`status: string`) needs no cast.
+export function isSeasonFinished(status: string | null | undefined): boolean {
+  return status === "COMPLETED" || status === "ARCHIVED";
+}
+
+export function isSeasonLive(status: string | null | undefined): boolean {
+  return status === "DRAFT" || status === "ACTIVE";
+}
+
 export const enrollmentStatusSchema = z.enum(["ACTIVE", "COMPLETED", "WITHDRAWN"]);
 export type EnrollmentStatus = z.infer<typeof enrollmentStatusSchema>;
 

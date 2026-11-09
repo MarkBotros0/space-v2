@@ -1,3 +1,4 @@
+import { isSeasonFinished } from "@space/shared";
 import { useRouter } from "expo-router";
 import { View } from "react-native";
 import type { GroupDetail, GroupListItem } from "@space/shared";
@@ -79,9 +80,7 @@ export function LeaderGroups() {
   }
 
   // Past = a finished season; a DRAFT season being set up is upcoming, so it stays current.
-  const past = new Set(
-    (seasons.data ?? []).filter((x) => x.status === "COMPLETED" || x.status === "ARCHIVED").map((x) => x.id),
-  );
+  const past = new Set((seasons.data ?? []).filter((x) => isSeasonFinished(x.status)).map((x) => x.id));
   // Until the seasons load, every group counts as current.
   const isCurrent = (g: GroupListItem) => !past.has(g.seasonId);
   const current = rows.filter(isCurrent).sort(byName);

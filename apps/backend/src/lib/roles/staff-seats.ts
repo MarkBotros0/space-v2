@@ -1,6 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client";
 import { ACTIVE_SEASON, activeRolesFor, lockPeople } from "./active-role";
 import { seatRefusal, type Seat, type SeatRefusal } from "./seat-rules";
+import { liveSeasonStatus } from "../seasons/status";
 
 /** The HTTP status of a refusal: only "that person doesn't exist" isn't a 409. */
 export function refusalStatus(refusal: SeatRefusal): 404 | 409 {
@@ -34,7 +35,7 @@ export async function refuseNewSeats(
 }
 
 /** A season that hasn't finished: a draft's rows are held even though they don't clash yet. */
-const UNFINISHED_SEASON = { status: { in: ["DRAFT", "ACTIVE"] as ("DRAFT" | "ACTIVE")[] }, deletedAt: null };
+const UNFINISHED_SEASON = { status: liveSeasonStatus, deletedAt: null };
 const SEASON_TITLE = { season: { select: { title: true } } } as const;
 
 /** A season this person holds a row in, if any, whatever the row. For a change to the account's role. */

@@ -1,4 +1,5 @@
 import type { Prisma } from "../../generated/prisma/client";
+import { finishedSeasonStatus } from "../seasons/status";
 
 /**
  * The season a season normally follows, for "the people who passed it join
@@ -17,7 +18,7 @@ export async function findPreviousSeasonId(
     where: {
       id: { not: season.id },
       program: season.requiredProgram ?? season.program,
-      status: { in: ["COMPLETED", "ARCHIVED"] },
+      status: finishedSeasonStatus,
       deletedAt: null,
     },
     orderBy: [{ endDate: "desc" }, { id: "desc" }],
@@ -41,7 +42,7 @@ export async function listSourceSeasons(
   listedIds: number[],
 ): Promise<SourceSeason[]> {
   const seasons = await tx.season.findMany({
-    where: { id: { not: seasonId }, status: { in: ["COMPLETED", "ARCHIVED"] }, deletedAt: null },
+    where: { id: { not: seasonId }, status: finishedSeasonStatus, deletedAt: null },
     orderBy: [{ endDate: "desc" }, { id: "desc" }],
     select: { id: true, code: true, title: true },
   });

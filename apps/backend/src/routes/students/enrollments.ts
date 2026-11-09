@@ -9,7 +9,6 @@ import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import {
-  isSeasonFinished,
   lockPeople,
   readSeatSeason,
   refusalStatus,
@@ -24,6 +23,7 @@ import {
   updateEnrollmentRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { isSeasonFinished } from "../../lib/seasons/status";
 
 /**
  * Explicit enrollment — the endpoint v1 never had (spec 06 §7): its only
@@ -74,7 +74,7 @@ function alreadyEnrolled(res: Response) {
 async function enrollOne(tx: Prisma.TransactionClient, id: number, seasonId: number): Promise<SeatRefusal | null> {
   const season = await readSeatSeason(tx, seasonId);
   if (!season) return { code: "not_found", message: "Season not found." };
-  if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
+  if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
 
   const student = await tx.user.findFirst({
     where: { id, role: "STUDENT", deletedAt: null },
@@ -127,7 +127,7 @@ export async function updateEnrollment(req: Request, res: Response) {
   const outcome = await db.$transaction(async (tx): Promise<SeatRefusal | { id: number; status: string }> => {
     const season = await readSeatSeason(tx, seasonId);
     if (!season) return { code: "not_found", message: "Enrollment not found." };
-    if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
+    if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
     // A draft's row is a plan: dropping would leave a "Did not finish" for a season they were never in.
     if (season.status === "DRAFT") {
       return { code: "season_draft", message: "This season hasn't started. Remove them from it instead." };
@@ -175,7 +175,7 @@ export async function restoreEnrollment(req: Request, res: Response) {
   const outcome = await db.$transaction(async (tx) => {
     const season = await readSeatSeason(tx, seasonId);
     if (!season) return { code: "not_found", message: "Season not found." };
-    if (isSeasonFinished(season)) return { code: "season_finished", message: "This season has finished." };
+    if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
     return restoreStudentSeat(tx, season, id, { id: user.userId, override: parsed.data.override ?? false });
   });
   if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));

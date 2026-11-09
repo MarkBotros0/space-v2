@@ -212,7 +212,7 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
       `assignment-detail` 407) and 5 OpenAPI data files under `apps/backend/src/docs/` (`paths/me` 451,
       `components/people` 451, `paths/students` 441, `paths/notes-notifications` 436, `paths/seasons` 402),
       split by path group / schema group — all 17 split, max-lines now 0 and no tracked .ts/.tsx over 400. OpenAPI (5062292a): a path/schema group per file spread back in place, docs.json byte-identical. Mobile tests (29096139): 8 → 16 files, 272 suites / 2,304 tests, same titles. Backend integration (cde6626e): 4 → 8 suites, same titles, split suites pass. Splitter: scratchpad scan/splittest.js (TS AST, moves whole describe/it blocks, prunes unused setup)
-- [ ] 2.3 Shared season status: BE-022 / SH-002 / FE-014 / BE-043 — all inline copies replaced (D5)
+- [x] 2.3 Shared season status: BE-022 / SH-002 / FE-014 / BE-043 — all inline copies replaced (D5) — FINISHED_SEASON_STATUSES / LIVE_SEASON_STATUSES / isSeasonFinished / isSeasonLive in shared enums.ts (+ unit test); backend lib/seasons/status.ts re-exports them with finishedSeasonStatus / liveSeasonStatus Prisma filters. Replaced 9 backend predicates, 5 finished + 4 live where-lists, 2 redeclared status types, 8 mobile finished + 5 mobile live copies. Predicates take any string so loosely typed rows need no cast. Unit 335/536/2304, integration 137/1582
 - [ ] 2.4 Shared audience and admin predicates: SH-003 / FE-016, FE-015 / SH-004 — all sites
 - [ ] 2.5 Shared types: FE-040, FE-041, FE-042 (`startSeasonResponseSchema`), SH-005 — all sites
 - [ ] 2.6 Shared file splits: SH-001 (`import.ts`, `reports.ts` → folders)

@@ -1,5 +1,6 @@
 import type { Prisma } from "../../../generated/prisma/client";
 import { markSessionsStale } from "../../auth/session-validity";
+import { finishedSeasonStatus } from "../../seasons/status";
 
 export interface NewStudentInput {
   name: string;
@@ -271,7 +272,7 @@ export async function passedGraduatingYears(tx: Prisma.TransactionClient, studen
       studentUserId,
       status: "COMPLETED",
       result: "PASSED",
-      season: { graduatesOnPass: true, status: { in: ["COMPLETED", "ARCHIVED"] }, deletedAt: null },
+      season: { graduatesOnPass: true, status: finishedSeasonStatus, deletedAt: null },
     },
     select: { season: { select: { year: true } } },
   });

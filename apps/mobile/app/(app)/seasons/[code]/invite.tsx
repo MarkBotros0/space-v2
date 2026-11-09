@@ -1,3 +1,4 @@
+import { isSeasonLive } from "@space/shared";
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { View } from "react-native";
@@ -28,7 +29,7 @@ export default function InviteToSeasonScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
 
   const s = season.data;
-  const open = s !== undefined && (s.status === "DRAFT" || s.status === "ACTIVE");
+  const open = s !== undefined && isSeasonLive(s.status);
   if (code !== null && s !== undefined && s.canAdminister && open) {
     return (
       <StudentForm

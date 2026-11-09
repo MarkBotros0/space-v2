@@ -3,6 +3,7 @@ import { AttendanceStatus } from "../generated/prisma/enums";
 
 import { createNotificationsBulk } from "./notifications";
 import { groupIdInSeason } from "./queries/enrollment";
+import { liveSeasonStatus } from "./seasons/status";
 
 /** If a student has 2+ consecutive ABSENTs in this season, flag them as high-risk
  *  to their group leaders and season admins (each with a link they can actually open). */
@@ -41,7 +42,7 @@ export async function flagLowAttendance(
 
     // Former staff have no access to a finished season, so a Super correcting
     // its attendance must not name the student to them.
-    const liveSeason = { status: { in: ["DRAFT" as const, "ACTIVE" as const] } };
+    const liveSeason = { status: liveSeasonStatus };
     const leaders = await db.groupLeader.findMany({
       where: { groupId, group: { season: liveSeason }, user: { deletedAt: null } },
       select: { userId: true },

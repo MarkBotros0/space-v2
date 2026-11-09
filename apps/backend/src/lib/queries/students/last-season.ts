@@ -3,6 +3,7 @@ import type { StudentListItem } from "@space/shared";
 import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
 import { staffRosterWhere } from "../../permissions";
+import { finishedSeasonStatus } from "../../seasons/status";
 
 /**
  * A list row's season line (owner, 2026-11-07): its active season, else the
@@ -16,7 +17,7 @@ export async function withLastSeason(items: StudentListItem[], user: SessionUser
     where: {
       studentUserId: { in: ids },
       status: "COMPLETED",
-      season: { status: { in: ["COMPLETED", "ARCHIVED"] }, deletedAt: null },
+      season: { status: finishedSeasonStatus, deletedAt: null },
       ...(staffRosterWhere(user) ?? {}),
     },
     orderBy: [{ season: { endDate: "desc" } }, { id: "desc" }],

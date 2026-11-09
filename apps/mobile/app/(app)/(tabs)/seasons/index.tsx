@@ -1,3 +1,4 @@
+import { isSeasonFinished } from "@space/shared";
 import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
@@ -34,7 +35,7 @@ const NONE_WITH_STATUS: Record<Exclude<StatusFilter, "all">, string> = {
 
 function matchesStatus(status: string, filter: StatusFilter): boolean {
   if (filter === "all") return true;
-  if (filter === "finished") return status === "COMPLETED" || status === "ARCHIVED";
+  if (filter === "finished") return isSeasonFinished(status);
   return status === filter.toUpperCase();
 }
 

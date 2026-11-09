@@ -11,6 +11,7 @@ import { lockPeople } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
 import { updateSeasonResultRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";
+import { isSeasonFinished } from "../../lib/seasons/status";
 
 /** Each finished student's pass result for a season. SUPER only. */
 export async function getSeasonResults(req: Request, res: Response) {
@@ -42,7 +43,7 @@ export async function updateSeasonResult(req: Request, res: Response) {
     select: { status: true, year: true, graduatesOnPass: true },
   });
   if (!season) return apiError(res, "not_found", "Season not found.", 404);
-  if (season.status !== "COMPLETED" && season.status !== "ARCHIVED") {
+  if (!isSeasonFinished(season.status)) {
     return apiError(res, "not_finished", "Results can be corrected once the season has ended.", 409);
   }
   const enrolment = await db.seasonEnrollment.findUnique({
