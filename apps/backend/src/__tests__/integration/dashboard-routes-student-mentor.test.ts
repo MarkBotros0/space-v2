@@ -189,8 +189,8 @@ beforeAll(async () => {
   });
   await db.quizAttempt.createMany({
     data: [
-      { quizId: online.id, studentUserId: s1, status: "GRADED", totalScore: 2 },
-      { quizId: online.id, studentUserId: s2, status: "GRADED", totalScore: 1 },
+      { quizId: online.id, studentUserId: s1, status: "GRADED", autoScore: 2, totalScore: 2 },
+      { quizId: online.id, studentUserId: s2, status: "GRADED", autoScore: 1, totalScore: 1 },
       { quizId: online.id, studentUserId: s3, status: "SUBMITTED" },
     ],
   });

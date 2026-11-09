@@ -489,6 +489,7 @@ model SessionVideoQuestion {
 
   @@index([sessionId, atSeconds])
   // SQL-only CHECK: points >= 0.
+  // SQL-only CHECK: 0 <= correctIndex < cardinality(options).
 }
 
 model SessionVideoQuestionResponse {
@@ -580,6 +581,7 @@ model Assignment {
   @@index([seasonId])
   @@index([sessionId])
   @@index([dueAt])
+  // SQL-only CHECK: allowedMimeCategories <@ the Zod enum (image, pdf, doc, audio, video, text).
 }
 
 model AssignmentTarget {
@@ -848,6 +850,7 @@ model QuizAttempt {
   @@index([quizId, status])
   // SQL-only: partial unique QuizAttempt_one_in_progress_key on (quizId, studentUserId)
   // WHERE status = 'IN_PROGRESS' (migration 20261110090000).
+  // SQL-only CHECK: totalScore IS NULL OR totalScore = coalesce(autoScore, 0) + coalesce(manualScore, 0).
 }
 
 model QuizAnswer {

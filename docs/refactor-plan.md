@@ -265,16 +265,19 @@ snapshot updated, `schema.prisma` updated where expressible.
 - [x] 3.9 DB-019 (D9), each constraint after its cleanup in the same migration: IDX-6 (older duplicate
       IN_PROGRESS attempts deleted, newest kept), IDX-7 (duplicate group names get a " (2)" suffix),
       `Season endDate >= startDate`, `JpcEvent endDate IS NULL OR >= date`, positive durations, budgets, points — `20261110090000_integrity_guards`: cleanups + 5 CHECKs `NOT VALID` in one transaction, then `VALIDATE` and 2 unique indexes `CONCURRENTLY`. **Deviations:** IDX-7 is `UNIQUE (seasonId, name)` exact, not `lower(name)` — validateGroupWrite compares exactly, so lower() would refuse names the API accepts; JpcEvent date CHECK skipped (D8, below). Each cleanup shown on seeded violations; three test fixtures built states the API can't (`endDate` before `startDate`, two "G" groups in a season) and were fixed; `check:wave-3` counts the rows; full integration 137/1,583 green
-- [ ] 3.10 DB-016 `totalScore` CHECK (recomputed first); DB-017 mime-category CHECK (unknown values removed),
+- [x] 3.10 DB-016 `totalScore` CHECK (recomputed first); DB-017 mime-category CHECK (unknown values removed),
       `correctIndex` CHECK (out-of-range questions fixed or deleted), `Session.recurrenceGroupId` → uuid
-      (non-uuid values nulled)
+      (non-uuid values nulled) — `20261110100000_value_guards`: `totalScore` CHECK (mismatches recomputed), mime-category CHECK (unknown values removed), video `correctIndex` CHECK (out of range → 0), each shown on seeded violations; NOT VALID → VALIDATE. **Skipped (D8):** QuizQuestion `correctIndex` CHECK and `recurrenceGroupId` → uuid (below). Four test fixtures wrote a `totalScore` that isn't auto + manual; they now add up. Full integration 137/1,583 green
 - [ ] 3.11 DB-031 option uniques — only if `applyUpdate`'s write order never holds a transient duplicate
 - [ ] 3.12 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
       from audit §2.1, kept current from here on
 - [ ] 3.13 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
 - Skipped (D8): DB-014 (CLAUDE.md: no migration may change `User.role`), DB-019 enrolment-coherence
   CHECKs (semantics), DB-019 `JpcEvent endDate >= date` (endDate is org midnight of the end day, date
-  carries the start time: a valid same-day timed event violates it; a correct rule needs org-time days), DB-018, IDX-3 (not needed after 3.8), DB-012 parity, DB-011b
+  carries the start time: a valid same-day timed event violates it; a correct rule needs org-time days),
+  DB-017 `QuizQuestion.correctIndex` CHECK (the publish route's R24 re-check and its test rely on the state
+  existing; making it impossible is a Wave 4 call), DB-017 `recurrenceGroupId` → uuid (ids come from
+  `newPublicId()`, which is not a UUID), DB-018, IDX-3 (not needed after 3.8), DB-012 parity, DB-011b
 
 ### Wave 4 — backend per domain (`refactor/wave-4-backend`)
 

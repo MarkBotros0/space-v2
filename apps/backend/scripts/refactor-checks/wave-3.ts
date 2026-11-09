@@ -92,6 +92,25 @@ export const CHECKS: Check[] = [
       };
     },
   },
+  {
+    step: "3.10",
+    title:
+      "rows the value guards fix first (totals recomputed, unknown mime categories removed, video answer keys reset)",
+    run: async () => {
+      const [totals, mimes, videoIdx] = await Promise.all([
+        count`SELECT count(*) AS n FROM "QuizAttempt" WHERE "totalScore" IS NOT NULL
+              AND "totalScore" <> COALESCE("autoScore", 0) + COALESCE("manualScore", 0)`,
+        count`SELECT count(*) AS n FROM "Assignment"
+              WHERE NOT ("allowedMimeCategories" <@ ARRAY['image', 'pdf', 'doc', 'audio', 'video', 'text'])`,
+        count`SELECT count(*) AS n FROM "SessionVideoQuestion"
+              WHERE "correctIndex" < 0 OR "correctIndex" >= cardinality("options")`,
+      ]);
+      return {
+        ok: true,
+        detail: `${totals} attempt(s), ${mimes} assignment(s), ${videoIdx} video question(s)`,
+      };
+    },
+  },
 ];
 
 async function main(): Promise<void> {

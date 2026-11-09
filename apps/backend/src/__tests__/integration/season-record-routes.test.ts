@@ -125,6 +125,7 @@ beforeAll(async () => {
       quizId: q3.id,
       studentUserId: s.id,
       status: "GRADED",
+      autoScore: 7,
       totalScore: 7,
       submittedAt: new Date(),
       gradedAt: new Date(),

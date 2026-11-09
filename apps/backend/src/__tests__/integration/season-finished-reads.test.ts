@@ -120,6 +120,7 @@ beforeAll(async () => {
         attemptNumber: 1,
         status: "GRADED",
         autoScore: 0,
+        manualScore: 1,
         totalScore: 1,
       },
       select: { id: true },
