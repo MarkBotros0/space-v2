@@ -153,3 +153,35 @@ describe("a confirmed loss that failed for another reason", () => {
     expect(onSubmit).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("a refetch while the edit screen is open", () => {
+  it("a message-only save sends no poll and opens no vote-loss sheet, though initial.poll changed", async () => {
+    const onSubmit = jest.fn();
+    const form = (initialPoll: { allowsMultiple: boolean; options: { id: number; label: string }[] }, current: AnnouncementPoll) => (
+      <PostForm
+        mode="edit"
+        screenTitle="Edit announcement"
+        saveLabel="Save"
+        toLabel="Everyone"
+        pending={false}
+        error={null}
+        initial={{ body: "Old body", poll: initialPoll }}
+        currentPoll={current}
+        serverLostVotes={null}
+        onSubmit={onSubmit}
+      />
+    );
+    const opened = { allowsMultiple: false, options: [{ id: 1, label: "Saturday" }, { id: 2, label: "Sunday" }] };
+    const view = render(wrap(form(opened, poll())));
+    // Another manager renames Sunday and drops it to zero votes; a refetch lands.
+    const theirs = { allowsMultiple: false, options: [{ id: 1, label: "Saturday" }, { id: 2, label: "Sun" }] };
+    view.rerender(
+      wrap(form(theirs, poll({ options: [{ id: 1, label: "Saturday", votes: 3 }, { id: 2, label: "Sun", votes: 0 }] }))),
+    );
+    fireEvent.changeText(screen.getByLabelText("Message"), "New body");
+    fireEvent.press(screen.getByText("Save"));
+    expect(screen.queryByText("Save changes")).toBeNull();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0]).toEqual({ body: "New body" });
+  });
+});

@@ -98,6 +98,9 @@ export function PostForm(props: Props) {
   const targets = props.mode === "create" ? props.targets : null;
   const [body, setBody] = useState(initial?.body ?? "");
   const [poll, setPoll] = useState<PollInput | null>(initial?.poll ?? null);
+  // The poll as the screen opened. `initial` is rebuilt from every refetch, so comparing against it
+  // would treat another manager's later edit as ours and send it back.
+  const [openedPoll] = useState<PollInput | null>(() => initial?.poll ?? null);
   const [errors, setErrors] = useState<Fields>({});
   const [confirming, setConfirming] = useState(false);
 
@@ -161,7 +164,7 @@ export function PostForm(props: Props) {
    * message-only save can't undo another manager's poll edit made in the meantime.
    */
   function buildUpdate(): UpdateAnnouncementRequest | null {
-    const changed = !samePoll(initial?.poll ?? null, poll);
+    const changed = pollChanged;
     const parsed = updateAnnouncementRequestSchema.safeParse({
       body,
       ...(changed ? { poll } : {}),
@@ -171,7 +174,10 @@ export function PostForm(props: Props) {
     return parsed.success ? parsed.data : null;
   }
 
-  const warnings = props.mode === "edit" ? editWarnings(props.currentPoll ?? null, poll) : null;
+  const pollChanged = !samePoll(openedPoll, poll);
+  // Warn only about a poll change that will actually be sent.
+  const warnings =
+    props.mode === "edit" && pollChanged ? editWarnings(props.currentPoll ?? null, poll) : null;
 
   function submit(): void {
     if (props.mode === "edit") {
