@@ -1,4 +1,3 @@
-import axios from "axios";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -8,6 +7,7 @@ import { AuthCard, AuthField, AuthLink, AuthNotice } from "../src/design/layout/
 import { Button, Input, PasswordInput } from "../src/design/ui";
 import { useAcceptInvite } from "../src/hooks/use-accept-invite";
 import { authErrorMessage } from "../src/lib/auth-error";
+import { apiErrorStatus } from "../src/lib/api-error";
 
 const INVALID_INVITE = "That invite is invalid or has expired. Ask for a new one.";
 
@@ -53,7 +53,7 @@ export default function AcceptInviteScreen() {
         // answer in the 4xx range except the rate limiter gets our copy;
         // no answer or a 5xx is a connection or server problem instead.
         onError: (err) => {
-          const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+          const status = apiErrorStatus(err);
           const refused = status !== undefined && status >= 400 && status < 500 && status !== 429;
           setFailure(refused ? INVALID_INVITE : authErrorMessage(err, INVALID_INVITE));
         },

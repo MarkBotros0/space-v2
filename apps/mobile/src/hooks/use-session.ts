@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import axios from "axios";
 import { meResponseSchema } from "@space/shared";
 
 import {
@@ -10,7 +9,7 @@ import {
   logout as logoutRequest,
 } from "../lib/api-client";
 import { googleIdToken } from "../lib/google-sign-in";
-import { isRefreshIndeterminate } from "../lib/api-error";
+import { isRefreshIndeterminate, apiErrorStatus } from "../lib/api-error";
 import { clearSession, loadAccessToken } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
 import { syncPushRegistration, unregisterPushToken } from "../lib/push";
@@ -21,7 +20,7 @@ import { syncPushRegistration, unregisterPushToken } from "../lib/push";
  * nor was refused (tagged by api-client) says nothing about the refresh token.
  */
 function isUnconfirmed(err: unknown): boolean {
-  return isRefreshIndeterminate(err) || (axios.isAxiosError(err) && err.response?.status === 429);
+  return isRefreshIndeterminate(err) || apiErrorStatus(err) === 429;
 }
 
 /** One look for a stored session. `BootRetry` runs it again; see `useBootSession`. */
@@ -64,7 +63,8 @@ export async function bootSession(): Promise<void> {
     // "anonymous" so the app is usable, but leave the stored tokens
     // alone so the next launch (once connectivity returns) can retry
     // instead of forcing a full re-login.
-    if (axios.isAxiosError(err) && err.response && err.response.status >= 400 && err.response.status < 500) {
+    const status = apiErrorStatus(err);
+    if (status !== undefined && status >= 400 && status < 500) {
       await forgetDevice();
       await clearSession();
     }

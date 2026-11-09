@@ -1,5 +1,4 @@
 // apps/mobile/src/lib/push.ts
-import axios from "axios";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
@@ -7,6 +6,7 @@ import { apiClient, forgetDevice } from "./api-client";
 import { easProjectId } from "./app-config";
 import { savePushToken } from "./token-storage";
 import { useSessionStore } from "../store/session";
+import { apiErrorStatus } from "./api-error";
 
 type PushTokenResult =
   { kind: "token"; token: string } | { kind: "denied" } | { kind: "not_configured" } | { kind: "failed" };
@@ -60,7 +60,7 @@ export async function registerPushToken(token: string): Promise<"registered" | "
     });
     return "registered";
   } catch (err) {
-    if (axios.isAxiosError(err) && err.response?.status === 503) return "unavailable";
+    if (apiErrorStatus(err) === 503) return "unavailable";
     return "failed";
   }
 }

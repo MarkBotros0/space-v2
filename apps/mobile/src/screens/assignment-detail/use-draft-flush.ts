@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import axios from "axios";
 import { AppState } from "react-native";
 
 import { reportOutcome } from "../../lib/outcome";
+import { apiErrorStatus } from "../../lib/api-error";
 
 type SaveInput = { text: string; submit?: boolean };
 
@@ -18,7 +18,7 @@ const FLUSH_LOCKED = "Your draft wasn't saved. This assignment can't be edited a
  * "Check your connection" would be wrong: 409 is the assignment having closed to edits.
  */
 function flushFailedMessage(err: unknown): string {
-  const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+  const status = apiErrorStatus(err);
   if (status === undefined) return FLUSH_FAILED;
   return status === 409 ? FLUSH_LOCKED : FLUSH_REFUSED;
 }

@@ -1,5 +1,4 @@
 import { useMutation, useQuery, type UseMutationResult } from "@tanstack/react-query";
-import axios from "axios";
 import { devUsersResponseSchema, loginResponseSchema, meResponseSchema, type DevSwitchUser } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
@@ -7,6 +6,7 @@ import { syncPushRegistration } from "../lib/push";
 import { queryKeys } from "../lib/query-keys";
 import { saveSession } from "../lib/token-storage";
 import { useSessionStore } from "../store/session";
+import { apiErrorStatus } from "../lib/api-error";
 
 /**
  * Dev user switcher (v1 parity). The backend answers 404 on /dev/* unless it
@@ -21,7 +21,7 @@ export function useDevUsers(q: string, probeOnly = false) {
         const res = await apiClient.get("/api/v1/dev/users", { params: q ? { q } : undefined });
         return devUsersResponseSchema.parse(res.data.data).users;
       } catch (err) {
-        if (axios.isAxiosError(err) && err.response?.status === 404) return null;
+        if (apiErrorStatus(err) === 404) return null;
         throw err;
       }
     },

@@ -25,6 +25,16 @@ export function apiErrorMessage(err: unknown, fallback: string): string {
   return parsed.success ? parsed.data.error.message : fallback;
 }
 
+/** The HTTP status of a failed request, or undefined when there was no response (offline, timeout) or it wasn't a request. */
+export function apiErrorStatus(err: unknown): number | undefined {
+  return axios.isAxiosError(err) ? err.response?.status : undefined;
+}
+
+/** A request that never got an answer: offline, DNS, timeout. */
+export function isNetworkError(err: unknown): boolean {
+  return axios.isAxiosError(err) && !err.response;
+}
+
 const KNOWN_CODES: ReadonlySet<string> = new Set(API_ERROR_CODES);
 
 /**

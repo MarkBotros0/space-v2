@@ -1,6 +1,4 @@
-import axios from "axios";
-
-import { apiErrorCode, apiErrorMessage } from "./api-error";
+import { apiErrorCode, apiErrorMessage, isNetworkError } from "./api-error";
 
 /**
  * What to tell a SUPER when POST /users/:id/invite fails, by the envelope's
@@ -20,7 +18,7 @@ export function inviteErrorMessage(err: unknown): string {
     default:
       break;
   }
-  if (axios.isAxiosError(err) && !err.response) {
+  if (isNetworkError(err)) {
     return "Couldn't reach the server. Check your connection and try again.";
   }
   return apiErrorMessage(err, "Couldn't send the invite. Try again.");

@@ -1,9 +1,8 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import axios from "axios";
 import { studentEngagementDetailSchema, type StudentEngagementDetail } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
-import { apiErrorCode } from "../lib/api-error";
+import { apiErrorCode, apiErrorStatus } from "../lib/api-error";
 import { queryKeys } from "../lib/query-keys";
 
 /**
@@ -13,9 +12,8 @@ import { queryKeys } from "../lib/query-keys";
  * error as "No season to score yet".
  */
 export function isNoSeasonError(err: unknown): boolean {
-  if (!axios.isAxiosError(err)) return false;
   // Code read through the envelope schema (api-error.ts), not a cast.
-  return err.response?.status === 404 && apiErrorCode(err) === "no_season";
+  return apiErrorStatus(err) === 404 && apiErrorCode(err) === "no_season";
 }
 
 /**

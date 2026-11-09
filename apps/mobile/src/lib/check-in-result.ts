@@ -1,11 +1,11 @@
-import axios from "axios";
 import {
-  apiErrorBodySchema,
   checkInErrorCodeSchema,
   type CheckInErrorCode,
   type CheckInResponse,
   type MyAttendanceSession,
 } from "@space/shared";
+
+import { apiErrorCode } from "./api-error";
 
 export type CheckInOutcome =
   | { kind: "checked_in"; status: CheckInResponse["status"]; minutesLate: number }
@@ -13,10 +13,7 @@ export type CheckInOutcome =
 
 /** The server's refusal code, parsed — never read off the body by cast (X10). */
 export function checkInRefusalCode(err: unknown): CheckInErrorCode | "unknown" {
-  if (!axios.isAxiosError(err)) return "unknown";
-  const body = apiErrorBodySchema.safeParse(err.response?.data);
-  if (!body.success) return "unknown";
-  const code = checkInErrorCodeSchema.safeParse(body.data.error.code);
+  const code = checkInErrorCodeSchema.safeParse(apiErrorCode(err));
   return code.success ? code.data : "unknown";
 }
 
