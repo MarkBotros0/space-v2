@@ -2,7 +2,7 @@ import type { ErrorRequestHandler } from "express";
 import { MulterError } from "multer";
 
 import { apiError } from "../lib/api-response";
-import { ForbiddenError, UnauthorizedError } from "../lib/auth/errors";
+import { ApiError } from "../lib/api-error";
 import { reportError } from "../lib/sentry";
 
 /** body-parser (express.json()) rejects malformed bodies with a SyntaxError
@@ -40,15 +40,11 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     return;
   }
 
-  // v1 mapped these inside withApiAuth; Express 5 forwards async rejections
-  // here instead, so the mapping lives in one place for every route.
-  if (err instanceof ForbiddenError) {
-    apiError(res, "forbidden", "You don't have access to this.", 403);
-    return;
-  }
-
-  if (err instanceof UnauthorizedError) {
-    apiError(res, "unauthorized", "Not authenticated.", 401);
+  // A refusal thrown below a route (ApiError, and its ForbiddenError and
+  // UnauthorizedError subclasses). v1 mapped these inside withApiAuth; Express 5
+  // forwards async rejections here instead, so the mapping lives in one place.
+  if (err instanceof ApiError) {
+    apiError(res, err.code, err.message, err.status, err.extra);
     return;
   }
 

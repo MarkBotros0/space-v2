@@ -26,7 +26,7 @@ import {
 } from "../../lib/queries/groups";
 import { listSessionsForSeason } from "../../lib/queries/sessions";
 import { isAdminOfSeason } from "../../lib/rbac";
-import { refusalStatus } from "../../lib/roles";
+import { refusalStatus } from "../../lib/api-error";
 import { requireUser } from "../../middleware/require-auth";
 import { createAssignmentRequestSchema, groupWriteRequestSchema } from "../../../../../packages/shared/src/index";
 import { forbidden } from "../respond";

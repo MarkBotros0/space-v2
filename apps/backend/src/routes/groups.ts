@@ -15,7 +15,8 @@ import {
 } from "../lib/queries/groups";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfSeason } from "../lib/rbac";
-import { lockPeople, lockSeason, refusalStatus } from "../lib/roles";
+import { lockPeople, lockSeason } from "../lib/roles";
+import { refusalStatus } from "../lib/api-error";
 import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";

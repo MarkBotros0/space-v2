@@ -12,7 +12,7 @@ import { config } from "./config";
  * Only 5xx and background failures are reported, and only from our own code
  * (middleware/error-handler.ts, lib/background.ts). The SDK's automatic
  * Express capture is switched off: it runs before our terminal handler and
- * would report a thrown ForbiddenError (which carries no status) as a 500.
+ * would report a thrown ApiError (a refusal, answered by our handler) as a 500.
  */
 
 interface SentryOptions {

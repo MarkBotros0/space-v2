@@ -6,7 +6,8 @@ import { auditLog } from "../../lib/audit";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
-import { lockPeople, readSeatSeason, refuseNewSeats, refusalStatus, type SeatRefusal } from "../../lib/roles";
+import { lockPeople, readSeatSeason, refuseNewSeats, type SeatRefusal } from "../../lib/roles";
+import { refusalStatus } from "../../lib/api-error";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { addSeasonAdminRequestSchema } from "../../../../../packages/shared/src/index";
 import { requireSuper } from "../users/super-only";

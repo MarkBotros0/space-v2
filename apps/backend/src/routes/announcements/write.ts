@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiError, apiOk } from "../../lib/api-response";
+import { apiError, apiOk, apiNoContent } from "../../lib/api-response";
 import { notifyAnnouncement } from "../../lib/announcement-notifications";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
@@ -101,5 +101,5 @@ export async function deletePost(req: Request, res: Response) {
 
   await db.announcement.deleteMany({ where: { id } });
   auditLog("announcement.delete", user.userId, id, row.seasonId !== null ? { season: row.seasonId } : {});
-  return res.status(204).end();
+  return apiNoContent(res);
 }

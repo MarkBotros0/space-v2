@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiError, apiOk } from "../../lib/api-response";
+import { apiError, apiOk, apiNoContent } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags } from "../../lib/permissions";
 import {
@@ -105,5 +105,5 @@ export async function markRead(req: Request, res: Response) {
     data: [{ announcementId: id, userId: user.userId }],
     skipDuplicates: true,
   });
-  return res.status(204).end();
+  return apiNoContent(res);
 }

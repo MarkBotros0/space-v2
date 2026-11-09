@@ -4,10 +4,6 @@ import { seatRefusal, type Seat, type SeatRefusal } from "./seat-rules";
 import { liveSeasonStatus } from "../seasons/status";
 
 /** The HTTP status of a refusal: only "that person doesn't exist" isn't a 409. */
-export function refusalStatus(refusal: SeatRefusal): 404 | 409 {
-  return refusal.code === "not_found" ? 404 : 409;
-}
-
 /**
  * The first reason any of these people can't be newly seated, or null. Runs the
  * whole check in its required order, so the caller only has to write the seat

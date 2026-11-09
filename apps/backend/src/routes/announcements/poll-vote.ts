@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { lockPoll } from "../../lib/announcement-poll-lock";
+import { ApiError } from "../../lib/api-error";
 import { apiError, apiOk } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { announcementFlags, canVotePoll, isPollClosed } from "../../lib/permissions";
@@ -13,7 +14,14 @@ import { loadPollView } from "./poll-serialize";
 import { unreadIdsAmong } from "./read";
 import { ANNOUNCEMENT_SELECT, toDetail } from "./serialize";
 
-type VoteOutcome = "ok" | "not_found" | "season_finished" | "poll_closed" | "poll_changed" | "bad_options";
+// Refusals found under the poll lock. Thrown, so the transaction rolls back and
+// the error handler answers them (lib/api-error.ts).
+const POLL_GONE = () => new ApiError("not_found", "Poll not found.", 404);
+const SEASON_FINISHED = () => new ApiError("season_finished", "This season has finished.", 409);
+const POLL_CLOSED = () => new ApiError("poll_closed", "This poll is closed.", 409);
+const POLL_CHANGED = () =>
+  new ApiError("poll_changed", "This poll has changed. Check the options and vote again.", 409);
+const BAD_VOTE = () => new ApiError("bad_request", "Invalid vote.", 400);
 
 /**
  * PUT /announcements/:id/poll/vote: replace the caller's whole vote. Answers
@@ -39,12 +47,12 @@ export async function castVote(req: Request, res: Response) {
   if (!parsed.success) return apiError(res, "bad_request", "Invalid vote.", 400);
   const { version, optionIds } = parsed.data;
 
-  const outcome = await db.$transaction(async (tx): Promise<VoteOutcome> => {
+  await db.$transaction(async (tx) => {
     const found = await tx.announcementPoll.findUnique({
       where: { announcementId: id },
       select: { id: true },
     });
-    if (!found) return "not_found";
+    if (!found) throw POLL_GONE();
     await lockPoll(tx, found.id);
     // Re-read under the lock: an edit or close may have committed since the checks above.
     const poll = await tx.announcementPoll.findUnique({
@@ -58,42 +66,24 @@ export async function castVote(req: Request, res: Response) {
         announcement: { select: { season: { select: { status: true } } } },
       },
     });
-    if (!poll) return "not_found";
+    if (!poll) throw POLL_GONE();
     const fresh = { ...row, season: poll.announcement.season };
-    if (announcementFlags(user, fresh).seasonFinished) return "season_finished";
-    if (isPollClosed(fresh, poll) || !canVotePoll(user, fresh, false)) return "poll_closed";
-    if (poll.version !== version) return "poll_changed";
+    if (announcementFlags(user, fresh).seasonFinished) throw SEASON_FINISHED();
+    if (isPollClosed(fresh, poll) || !canVotePoll(user, fresh, false)) throw POLL_CLOSED();
+    if (poll.version !== version) throw POLL_CHANGED();
     const onPoll = new Set(poll.options.map((o) => o.id));
     const unique = new Set(optionIds);
-    if (unique.size !== optionIds.length) return "bad_options";
-    if (!optionIds.every((o) => onPoll.has(o))) return "bad_options";
-    if (!poll.allowsMultiple && optionIds.length > 1) return "bad_options";
+    if (unique.size !== optionIds.length) throw BAD_VOTE();
+    if (!optionIds.every((o) => onPoll.has(o))) throw BAD_VOTE();
+    if (!poll.allowsMultiple && optionIds.length > 1) throw BAD_VOTE();
 
     // pollId comes from the locked row, never from the client.
     await tx.announcementPollVote.deleteMany({ where: { pollId: poll.id, userId: user.userId } });
     await tx.announcementPollVote.createMany({
       data: optionIds.map((optionId) => ({ pollId: poll.id, optionId, userId: user.userId })),
     });
-    return "ok";
   });
 
-  switch (outcome) {
-    case "not_found":
-      return apiError(res, "not_found", "Poll not found.", 404);
-    case "season_finished":
-      return apiError(res, "season_finished", "This season has finished.", 409);
-    case "poll_closed":
-      return apiError(res, "poll_closed", "This poll is closed.", 409);
-    case "poll_changed":
-      return apiError(res, "poll_changed", "This poll has changed. Check the options and vote again.", 409);
-    case "bad_options":
-      return apiError(res, "bad_request", "Invalid vote.", 400);
-    case "ok": {
-      const unread = await unreadIdsAmong(user, [row.id]);
-      return apiOk(
-        res,
-        toDetail(row, !unread.has(row.id), announcementFlags(user, row), await loadPollView(user, row)),
-      );
-    }
-  }
+  const unread = await unreadIdsAmong(user, [row.id]);
+  return apiOk(res, toDetail(row, !unread.has(row.id), announcementFlags(user, row), await loadPollView(user, row)));
 }

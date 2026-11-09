@@ -5,6 +5,11 @@ export function apiOk<T>(res: Response, data: T, status = 200): Response {
   return res.status(status).json({ data });
 }
 
+/** 204 with no body, for a write that has nothing to say back. */
+export function apiNoContent(res: Response): Response {
+  return res.status(204).end();
+}
+
 /**
  * The failure envelope. `extra` sits beside `error` at the top level, for the
  * few refusals that carry a figure (e.g. `poll_votes_lost`'s `votes`).

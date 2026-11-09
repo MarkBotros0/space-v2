@@ -8,14 +8,8 @@ import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
-import {
-  lockPeople,
-  readSeatSeason,
-  refusalStatus,
-  restoreStudentSeat,
-  seatStudents,
-  type SeatRefusal,
-} from "../../lib/roles";
+import { lockPeople, readSeatSeason, restoreStudentSeat, seatStudents, type SeatRefusal } from "../../lib/roles";
+import { refusalStatus } from "../../lib/api-error";
 import { requireUser } from "../../middleware/require-auth";
 import {
   createEnrollmentRequestSchema,

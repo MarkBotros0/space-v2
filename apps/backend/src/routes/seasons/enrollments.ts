@@ -8,14 +8,8 @@ import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { deleteDraftRow, hasWorkInSeason } from "../../lib/queries/students/writes";
 import { isAdminOfSeason } from "../../lib/rbac";
-import {
-  lockPeople,
-  readSeatSeason,
-  refusalStatus,
-  seatStudents,
-  type SeatRefusal,
-  type SeatStudentsResult,
-} from "../../lib/roles";
+import { lockPeople, readSeatSeason, seatStudents, type SeatRefusal, type SeatStudentsResult } from "../../lib/roles";
+import { refusalStatus } from "../../lib/api-error";
 import { requireUser } from "../../middleware/require-auth";
 // Value import: relative path is mandatory here (CLAUDE.md's rootDir emit trap).
 import { addSeasonEnrollmentsRequestSchema } from "../../../../../packages/shared/src/index";
