@@ -18,6 +18,7 @@ import {
   createAnnouncementRequestSchema,
   updateAnnouncementRequestSchema,
 } from "../../../../../packages/shared/src/index";
+import { loadPollView } from "./poll-serialize";
 import { ANNOUNCEMENT_SELECT, toDetail } from "./serialize";
 
 export async function createPost(req: Request, res: Response) {
@@ -39,7 +40,7 @@ export async function createPost(req: Request, res: Response) {
   });
   auditLog("announcement.create", user.userId, row.id, seasonId !== null ? { season: seasonId } : {});
   notifyAnnouncement(row);
-  return apiOk(res, toDetail(row, true, announcementFlags(user, row)), 201);
+  return apiOk(res, toDetail(row, true, announcementFlags(user, row), await loadPollView(user, row)), 201);
 }
 
 /** A post the caller can read, or null (404 for the unknown and the invisible alike). */
@@ -70,7 +71,7 @@ export async function updatePost(req: Request, res: Response) {
   });
   auditLog("announcement.update", user.userId, id, updated.seasonId !== null ? { season: updated.seasonId } : {});
   // The author has seen their own post.
-  return apiOk(res, toDetail(updated, true, announcementFlags(user, updated)));
+  return apiOk(res, toDetail(updated, true, announcementFlags(user, updated), await loadPollView(user, updated)));
 }
 
 export async function deletePost(req: Request, res: Response) {

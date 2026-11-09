@@ -130,3 +130,24 @@ export async function seedAnnouncementFixtures(app: Express): Promise<Announceme
     },
   };
 }
+
+/** Inserts a poll on a post; labels become options in order. */
+export async function insertPoll(
+  postId: number,
+  data: { allowsMultiple: boolean; labels: string[]; closed?: boolean },
+): Promise<{ pollId: number; optionIds: number[] }> {
+  const poll = await db.announcementPoll.create({
+    data: {
+      announcementId: postId,
+      allowsMultiple: data.allowsMultiple,
+      ...(data.closed ? { closedAt: new Date() } : {}),
+      options: { create: data.labels.map((label, position) => ({ label, position })) },
+    },
+    select: { id: true, options: { orderBy: { position: "asc" }, select: { id: true } } },
+  });
+  return { pollId: poll.id, optionIds: poll.options.map((o) => o.id) };
+}
+
+export async function insertVote(pollId: number, optionId: number, userId: number): Promise<void> {
+  await db.announcementPollVote.create({ data: { pollId, optionId, userId } });
+}

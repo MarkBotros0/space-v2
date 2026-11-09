@@ -13,6 +13,7 @@ import {
 } from "../../lib/queries/announcements";
 import { requireUser } from "../../middleware/require-auth";
 import { ANNOUNCEMENT_PAGE_SIZE } from "../../../../../packages/shared/src/index";
+import { loadPollView } from "./poll-serialize";
 import { ANNOUNCEMENT_SELECT, toDetail, toListItem } from "./serialize";
 
 import type { Prisma } from "../../generated/prisma/client";
@@ -85,7 +86,7 @@ export async function getOne(req: Request, res: Response) {
   // 404, not 403: a post the caller may not read looks like one that isn't there.
   if (!row) return apiError(res, "not_found", "Post not found.", 404);
   const unread = await unreadIdsAmong(user, [row.id]);
-  return apiOk(res, toDetail(row, !unread.has(row.id), announcementFlags(user, row)));
+  return apiOk(res, toDetail(row, !unread.has(row.id), announcementFlags(user, row), await loadPollView(user, row)));
 }
 
 export async function markRead(req: Request, res: Response) {
