@@ -4,7 +4,6 @@ import {
   acceptInviteResponseSchema,
   activationResponseSchema,
   bulkInviteResponseSchema,
-  changePasswordRequestSchema,
   createUserRequestSchema,
   createUserResponseSchema,
   inviteStateSchema,
@@ -129,21 +128,6 @@ describe("self-scoped settings schemas", () => {
       dateOfBirth: "1999-12-31",
       address: null,
     });
-  });
-
-  it("changePasswordRequestSchema carries no `confirm` (client-side rule, spec 18 §7)", () => {
-    const ok = changePasswordRequestSchema.safeParse({
-      currentPassword: "x",
-      newPassword: "longenough",
-    });
-    expect(ok.success).toBe(true);
-    expect(
-      changePasswordRequestSchema.safeParse({
-        currentPassword: "x",
-        newPassword: "longenough",
-        confirm: "longenough",
-      }).success,
-    ).toBe(false);
   });
 });
 

@@ -41,38 +41,6 @@ describe("PATCH /api/v1/me", () => {
   });
 });
 
-describe("POST /api/v1/me/password", () => {
-  it("400s a body missing the new password", async () => {
-    const u = await createTestUser("me-edge-pw-bad", "STUDENT");
-    const { accessToken } = await session(u.email);
-    const res = await request(app)
-      .post("/api/v1/me/password")
-      .set("authorization", `Bearer ${accessToken}`)
-      .send({ currentPassword: PASSWORD });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("bad_request");
-  });
-
-  it("with no refresh token presented, revokes every session including this device's", async () => {
-    const u = await createTestUser("me-edge-pw-all", "STUDENT");
-    const a = await session(u.email);
-    const b = await session(u.email);
-    const res = await request(app)
-      .post("/api/v1/me/password")
-      .set("authorization", `Bearer ${a.accessToken}`)
-      .send({ currentPassword: PASSWORD, newPassword: "a-brand-new-password-9" });
-    expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ ok: true, sessionsRevoked: 2 });
-    for (const t of [a.refreshToken, b.refreshToken]) {
-      expect((await request(app).post("/api/v1/auth/refresh").send({ refreshToken: t })).status).toBe(401);
-    }
-    const relog = await request(app)
-      .post("/api/v1/auth/login")
-      .send({ email: u.email, password: "a-brand-new-password-9" });
-    expect(relog.status).toBe(200);
-  });
-});
-
 describe("/api/v1/me/profile for a student with no profile row", () => {
   it("GET answers with blank profile fields rather than an error", async () => {
     const u = await createTestUser("me-edge-noprofile", "STUDENT");

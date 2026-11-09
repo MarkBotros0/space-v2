@@ -1,6 +1,6 @@
 /**
  * Auth API edge cases the main auth and password-reset suites leave out:
- * bad bodies on every anonymous endpoint, logout and logout-all semantics,
+ * bad bodies on every anonymous endpoint, logout semantics,
  * deleted and unactivated accounts, and malformed bearer headers.
  */
 import { SignJWT } from "jose";
@@ -134,26 +134,6 @@ describe("logout", () => {
     await request(app).post("/api/v1/auth/logout").send({ refreshToken: a.refreshToken }).expect(200);
     expect((await request(app).post("/api/v1/auth/refresh").send({ refreshToken: a.refreshToken })).status).toBe(401);
     expect((await request(app).post("/api/v1/auth/refresh").send({ refreshToken: b.refreshToken })).status).toBe(200);
-  });
-});
-
-describe("logout-all", () => {
-  it("requires an access token", async () => {
-    const res = await request(app).post("/api/v1/auth/logout-all");
-    expect(res.status).toBe(401);
-    expect(res.body.error.code).toBe("unauthorized");
-  });
-
-  it("revokes every live session and reports how many", async () => {
-    const u = await createTestUser("auth-edge-logout-all", "STUDENT");
-    const a = await session(u.email);
-    const b = await session(u.email);
-    const res = await request(app).post("/api/v1/auth/logout-all").set("authorization", `Bearer ${a.accessToken}`);
-    expect(res.status).toBe(200);
-    expect(res.body.data.revoked).toBe(2);
-    for (const t of [a.refreshToken, b.refreshToken]) {
-      expect((await request(app).post("/api/v1/auth/refresh").send({ refreshToken: t })).status).toBe(401);
-    }
   });
 });
 

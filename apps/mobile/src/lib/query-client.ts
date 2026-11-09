@@ -52,7 +52,7 @@ export function createQueryClient(): QueryClient {
 
 /**
  * Drops every cached query when the signed-in user changes — sign-out
- * (explicit, forced by a dead refresh token, or logout-all) or a different
+ * (explicit, or forced by a dead refresh token) or a different
  * user signing in. Query keys are not scoped by user (`notifications.lists()`,
  * `dashboard.me(seasonId)`), so without this the next person on the same
  * phone briefly sees the previous user's data. Returns the unsubscribe.

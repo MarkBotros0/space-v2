@@ -409,43 +409,4 @@ export const mePaths = {
       },
     },
   },
-  "/api/v1/me/password": {
-    post: {
-      tags: ["Me"],
-      summary: "Change your password and evict other sessions",
-      description:
-        "Verifies `currentPassword`, writes a bcrypt cost-12 hash and revokes every refresh token of the caller in one transaction, **except** the one whose raw value is sent as `refreshToken` (this device). Omit `refreshToken` and every session is revoked. A wrong current password is `400 incorrect_password` (deliberately not 401, which the mobile client reads as an expired access token). An invited account with no password is `409 no_password`. Rate limited (10 / 15 min per IP); 429 uses the standard envelope. New password: 8+ characters, at most 72 bytes. Also expires any outstanding password-reset codes.",
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              required: ["currentPassword", "newPassword"],
-              additionalProperties: false,
-              properties: {
-                currentPassword: { type: "string", minLength: 1 },
-                newPassword: { type: "string", minLength: 8 },
-                refreshToken: { type: "string", description: "The caller's own refresh token, spared from the sweep." },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        200: ok(
-          {
-            type: "object",
-            required: ["ok", "sessionsRevoked"],
-            properties: { ok: { type: "boolean", example: true }, sessionsRevoked: { type: "integer", minimum: 0 } },
-          },
-          "Changed.",
-        ),
-        400: conflict("`bad_request` (malformed body) or `incorrect_password`."),
-        401: errRef("Unauthorized"),
-        409: conflict("`no_password`."),
-        429: errRef("TooManyRequests"),
-      },
-    },
-  },
 } as const;

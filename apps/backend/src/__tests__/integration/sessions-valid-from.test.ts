@@ -69,32 +69,4 @@ describe("User.sessionsValidFrom (Plan 18 M13)", () => {
     ) as { graduationYear: number | null };
     expect(claims.graduationYear).toBe(2024);
   });
-
-  it("logout-all ends the access token that asked for it", async () => {
-    const u = await createTestUser("m13-logout-all", "STUDENT");
-    const token = await login(app, u.email);
-    await nextSecond();
-    const res = await request(app).post("/api/v1/auth/logout-all").set("authorization", `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect((await request(app).get("/api/v1/me").set("authorization", `Bearer ${token}`)).status).toBe(401);
-  });
-
-  it("password change ends every access token; this device recovers through its spared refresh token", async () => {
-    const u = await createTestUser("m13-password", "STUDENT");
-    const session = await request(app).post("/api/v1/auth/login").send({ email: u.email, password: PASSWORD });
-    const { accessToken, refreshToken } = session.body.data as { accessToken: string; refreshToken: string };
-    await nextSecond();
-
-    const change = await request(app)
-      .post("/api/v1/me/password")
-      .set("authorization", `Bearer ${accessToken}`)
-      .send({ currentPassword: PASSWORD, newPassword: "An0ther-Passw0rd!", refreshToken });
-    expect(change.status).toBe(200);
-
-    expect((await request(app).get("/api/v1/me").set("authorization", `Bearer ${accessToken}`)).status).toBe(401);
-    const rotated = await request(app).post("/api/v1/auth/refresh").send({ refreshToken });
-    expect(rotated.status).toBe(200);
-    const fresh = await request(app).get("/api/v1/me").set("authorization", `Bearer ${rotated.body.data.accessToken}`);
-    expect(fresh.status).toBe(200);
-  });
 });

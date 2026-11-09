@@ -197,7 +197,3 @@ export const engagementRowSchema = studentEngagementSchema.extend({
   groupName: z.string().nullable(),
 });
 export type EngagementRow = z.infer<typeof engagementRowSchema>;
-
-export const seasonEngagementResponseSchema = z.object({
-  students: z.array(engagementRowSchema),
-});

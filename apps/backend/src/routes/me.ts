@@ -1,11 +1,9 @@
 import { Router } from "express";
-import bcrypt from "bcryptjs";
 import type { UserRole } from "@space/shared";
 // Relative, not "@space/shared" — the rootDir emit trap (see routes/auth.ts).
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   OWN_PROFILE_FIELDS,
-  changePasswordRequestSchema,
   notificationPreferencesSchema,
   updateOwnProfileInputSchema,
   updateProfileRequestSchema,
@@ -14,29 +12,19 @@ import {
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { auditLog } from "../lib/audit";
-import { expireLiveResetTokens } from "../lib/auth/password-reset";
 import { invalidateSessions } from "../lib/auth/session-validity";
-import { hashToken, revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
+import { revokeAllRefreshTokensForUser } from "../lib/auth/tokens";
 import { parseId } from "../lib/parse-id";
 import { staffScopeForSeason } from "../lib/permissions";
 import { loadMentorDashboard, loadSeasonStaffDashboard, loadStudentDashboard } from "../lib/queries/dashboard";
 import { loadMyProfile } from "../lib/queries/me";
 // The one 429 handler (ruling X4) — never a local copy.
-import { makeLimiter } from "../lib/rate-limit";
 import { isAlumnus, isStudyingAlumnus } from "../lib/rbac";
 import { isLastActiveSuper, lockActiveSuperIds } from "../lib/super-guard";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { meDevicesRouter } from "./me-devices";
 import { meSeasonReadsRouter } from "./me-season-reads";
 import { forbidden } from "./respond";
-
-// Closes spec 18 R31: v1's current-password check was an unthrottled online
-// oracle for anyone already holding a session.
-const passwordLimiter = makeLimiter({
-  name: "password-change",
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
-});
 
 export const meRouter = Router();
 meRouter.use(meDevicesRouter);
@@ -142,53 +130,6 @@ meRouter.patch("/", requireAuth, async (req, res) => {
   });
   // Returning the row closes v1's write-then-double-refresh (spec 18 R23).
   return apiOk(res, { user: toMeUser(updated, user.role) });
-});
-
-meRouter.post("/password", requireAuth, passwordLimiter, async (req, res) => {
-  const user = requireUser(req);
-
-  const parsed = changePasswordRequestSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return apiError(res, "bad_request", parsed.error.issues[0]?.message ?? "Invalid password body.", 400);
-  }
-  const body = parsed.data;
-
-  const record = await db.user.findUnique({
-    where: { id: user.userId },
-    select: { passwordHash: true },
-  });
-  if (!record?.passwordHash) {
-    // R27's rule kept, surfaced before typing on the client via hasPassword.
-    return apiError(res, "no_password", "No password is set on this account — use your invite instead.", 409);
-  }
-
-  const ok = await bcrypt.compare(body.currentPassword, record.passwordHash);
-  if (!ok) {
-    // 400, not 401: the mobile client's interceptor reads any non-auth 401 as
-    // an expired access token and spends a refresh rotation on it.
-    return apiError(res, "incorrect_password", "Current password is incorrect.", 400);
-  }
-
-  const newHash = await bcrypt.hash(body.newPassword, 12);
-  const exceptHash = body.refreshToken ? hashToken(body.refreshToken) : undefined;
-
-  // Spec 18 D1: the change and the eviction are one transaction. Every other
-  // session dies; the presented refresh token (this device) survives.
-  //
-  // Plan 18 M13: every access token issued before now dies too, this
-  // device's included — access tokens carry no session id to spare one by.
-  // This device's next request gets a 401 and its client refreshes with the
-  // surviving refresh token, as it does after an expiry.
-  const sessionsRevoked = await db.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: user.userId }, data: { passwordHash: newHash } });
-    // Spec 18 R29 / spec 11 D6: an outstanding reset link must not outlive
-    // the password it was meant to replace.
-    await expireLiveResetTokens(tx, user.userId);
-    await invalidateSessions(tx, user.userId);
-    return revokeAllRefreshTokensForUser(tx, user.userId, exceptHash);
-  });
-
-  return apiOk(res, { ok: true, sessionsRevoked });
 });
 
 /**

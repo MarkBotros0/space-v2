@@ -180,15 +180,8 @@ describe("revoking", () => {
     });
   });
 
-  it("revokeAllRefreshTokensForUser returns the count and can spare one session", async () => {
+  it("revokeAllRefreshTokensForUser revokes every live token and returns the count", async () => {
     await expect(revokeAllRefreshTokensForUser(mockDb as never, 5)).resolves.toBe(2);
     expect(mockDb.refreshToken.updateMany.mock.calls[0][0].where).toEqual({ userId: 5, revokedAt: null });
-
-    await revokeAllRefreshTokensForUser(mockDb as never, 5, "keepme");
-    expect(mockDb.refreshToken.updateMany.mock.calls[1][0].where).toEqual({
-      userId: 5,
-      revokedAt: null,
-      tokenHash: { not: "keepme" },
-    });
   });
 });

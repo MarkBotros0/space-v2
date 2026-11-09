@@ -16,7 +16,7 @@ import { sessionsRouter } from "./routes/sessions";
 import { studentsRouter } from "./routes/students";
 import { submissionsRouter } from "./routes/submissions";
 import { quizzesRouter } from "./routes/quizzes";
-import { seasonEngagementRouter, studentEngagementRouter } from "./routes/engagement";
+import { studentEngagementRouter } from "./routes/engagement";
 import { followUpsRouter, internalRouter, studentFollowUpsRouter } from "./routes/follow-ups";
 import { mentorSummaryRouter } from "./routes/mentor-summary";
 import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
@@ -114,7 +114,6 @@ export function createApp(): Express {
   // routes, and keeping this domain's arithmetic in one file keeps its single
   // definition single (ruling C4).
   app.use("/api/v1/students", studentEngagementRouter);
-  app.use("/api/v1/seasons", seasonEngagementRouter);
   app.use("/api/v1/reports", reportsRouter);
   // Mounted alongside the reports router so /reports/engagement/export sits
   // beside /reports/engagement. Express tries reportsRouter first; it defines

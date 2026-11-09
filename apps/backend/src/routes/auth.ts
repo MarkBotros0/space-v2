@@ -19,17 +19,9 @@ import { db } from "../db/client";
 import { verifyCredentials, type VerifiedUser } from "../lib/auth/credentials";
 import { findGoogleUser, verifyGoogleIdToken } from "../lib/auth/google";
 import { completePasswordReset, requestPasswordReset } from "../lib/auth/password-reset";
-import { invalidateSessions } from "../lib/auth/session-validity";
-import {
-  hashToken,
-  issueSession,
-  revokeAllRefreshTokensForUser,
-  rotateRefreshToken,
-  revokeRefreshToken,
-} from "../lib/auth/tokens";
+import { hashToken, issueSession, rotateRefreshToken, revokeRefreshToken } from "../lib/auth/tokens";
 import { makeLimiter } from "../lib/rate-limit";
 import { apiOk, apiError } from "../lib/api-response";
-import { requireAuth, requireUser } from "../middleware/require-auth";
 import { runInBackground } from "../lib/background";
 import { config } from "../lib/config";
 
@@ -185,20 +177,6 @@ authRouter.post("/accept-invite", acceptInviteLimiter, async (req, res) => {
   if (!consumed) return refuse();
 
   return apiOk(res, { ok: true });
-});
-
-// Unlike /logout (one token, anonymous, idempotent), this revokes EVERYTHING
-// the caller holds — the only recovery a user has when a device is lost
-// (spec 18 D1). Authenticated: "everything of mine" needs a proven "me".
-authRouter.post("/logout-all", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  // Plan 18 M13: the access tokens end with the refresh tokens, so a lost
-  // phone loses access now, not within 900s.
-  const revoked = await db.$transaction(async (tx) => {
-    await invalidateSessions(tx, user.userId);
-    return revokeAllRefreshTokensForUser(tx, user.userId);
-  });
-  return apiOk(res, { revoked });
 });
 
 // Own buckets (Plan 10 Decision 11), like acceptInviteLimiter: sharing the

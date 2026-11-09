@@ -138,28 +138,21 @@ export async function revokeRefreshToken(rawToken: string): Promise<void> {
 /**
  * Revoke every live refresh token a user holds. C7's note — "a role change
  * does not revoke a live token; the mitigation is TTL" — stops being a
- * mitigation and becomes a revocation here: role change, deactivation,
- * password change and reset, and logout-all all call this in (or right after)
- * the write that changes the user's authority, together with
- * invalidateSessions (session-validity.ts), which ends the access tokens too
- * (Plan 18 M13). `exceptTokenHash` spares the caller's own refresh token
- * (password change only).
+ * mitigation and becomes a revocation here: stored-role change, deactivation,
+ * account deletion and password reset all call this in (or right after) the
+ * write that changes the user's authority, together with invalidateSessions
+ * (session-validity.ts), which ends the access tokens too (Plan 18 M13).
  *
  * Accepts any client exposing `refreshToken` so it runs inside a
  * db.$transaction as well as standalone.
  */
 type DbWriter = Pick<typeof db, "refreshToken">;
 
-export async function revokeAllRefreshTokensForUser(
-  client: DbWriter,
-  userId: number,
-  exceptTokenHash?: string,
-): Promise<number> {
+export async function revokeAllRefreshTokensForUser(client: DbWriter, userId: number): Promise<number> {
   const result = await client.refreshToken.updateMany({
     where: {
       userId,
       revokedAt: null,
-      ...(exceptTokenHash ? { tokenHash: { not: exceptTokenHash } } : {}),
     },
     data: { revokedAt: new Date() },
   });

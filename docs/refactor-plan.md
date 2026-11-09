@@ -182,8 +182,8 @@ Waves 1, 5), wave summary below, PR, **stop for review**. Never continue on red.
 - [x] 1.6 Drop `export` from file-local symbols: DC-017 / BE-081 — export dropped from 282 file-local declarations in 164 files (TS-API scan, kept if the name appears in any other file); 10 kept exported for declaration emit or typeof use (3 schemas wait for 1.9); dead PollOptionInput, PollVotesLost, sessionRangeResponseSchema deleted; typecheck + lint + all unit tests pass
 - [x] 1.7 Config: DC-050 (`AUTH_URL`), DC-051 (turbo env synced), FE-052 (`LIVE_CHECK`) — AUTH_URL gone from turbo + .env.example; turbo build env = the 32 keys config.ts reads (READ_ONLY leaves in 1.8); two redundant staleTime overrides dropped, LIVE_CHECK named; tsc/lint/130 related suites pass
 - [x] 1.8 Dormant switches: DC-013/055, DC-056 (`s3` driver), DC-057 (`READ_ONLY`) — with openapi + README — S3Storage stub deleted (STORAGE_DRIVER kept as the CMS slot, local only); READ_ONLY freeze (middleware, config, its test, openapi, README, .env.example, turbo) removed; IMPORT_FILE_UPLOAD_SUPPORTED removed; backend unit 71/539 + import/files/docs integration pass
-- [ ] 1.9 Routes without a caller: DC-060, DC-061 (+ DC-015), DC-062 — route-inventory snapshot, openapi,
-      README, shared schemas in the same commits
+- [x] 1.9 Routes without a caller: DC-060, DC-061 (+ DC-015), DC-062 — route-inventory snapshot, openapi,
+      README, shared schemas in the same commits — removed POST /auth/logout-all, POST /me/password, GET /seasons/:id/engagement with their schemas, openapi entries and tests; revokeAllRefreshTokensForUser lost its unused exceptTokenHash. Route inventory: exactly these 3 gone. Unit 329/536/2304, affected integration 8 suites / 69 tests pass
 - [ ] 1.10 Trace `checkStudentSeat` (DC-022) and `canViewNote` (DC-021): delete if dead, else report (D8); CLAUDE.md "Roles" kept accurate
 - [ ] 1.11 Button legacy variants: codemod the 55 call sites to the mapped names, delete the alias maps (FE-071 part 1)
 - [ ] 1.12 Dependencies: DC-040 (`expo-linear-gradient`), DC-046 (`pg`, `@types/pg`)

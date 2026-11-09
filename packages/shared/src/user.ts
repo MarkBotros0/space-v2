@@ -181,29 +181,6 @@ export const updateProfileRequestSchema = z
   });
 export type UpdateProfileBody = z.input<typeof updateProfileRequestSchema>;
 
-/**
- * No `confirm` field — the typo guard is a client-side form rule (spec 18 §7).
- * `refreshToken` (optional) is the caller's own refresh token, excluded from
- * the revocation sweep so changing your password doesn't sign out the device
- * you changed it on; omitted, every session is revoked (fail-safe).
- */
-export const changePasswordRequestSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password required."),
-    newPassword: passwordSchema,
-    refreshToken: z.string().min(1).optional(),
-  })
-  .strict();
-
-export const changePasswordResponseSchema = z.object({
-  ok: z.literal(true),
-  sessionsRevoked: z.number().int().nonnegative(),
-});
-
-export const logoutAllResponseSchema = z.object({
-  revoked: z.number().int().nonnegative(),
-});
-
 /** DELETE /me — the account holder deletes their own account. */
 export const deleteAccountResponseSchema = z.object({
   deletedAt: z.string(),

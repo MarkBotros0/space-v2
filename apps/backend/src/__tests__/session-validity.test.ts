@@ -1,9 +1,7 @@
 /**
  * Plan 18 M13 with the database mocked: requireAuth refuses an access token
- * issued before User.sessionsValidFrom, and logout-all and password change
- * write it in the same transaction as the refresh-token revocation. (Role
- * change and deactivation: users-accounts-unit; reset: password-reset-unit;
- * student soft delete: below.)
+ * issued before User.sessionsValidFrom. (Role change and deactivation:
+ * users-accounts-unit; reset: password-reset-unit; student soft delete: below.)
  */
 const mockDb = {
   user: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
@@ -14,7 +12,6 @@ const mockDb = {
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
 
-import bcrypt from "bcryptjs";
 import express from "express";
 import request from "supertest";
 
@@ -126,10 +123,6 @@ describe("requireAuth", () => {
 
 describe("writers", () => {
   const app = createApp();
-  let token: string;
-  beforeEach(async () => {
-    ({ token } = await signAccessToken(student));
-  });
 
   function stampedFor(userId: number): boolean {
     return mockDb.user.update.mock.calls.some(
@@ -137,42 +130,6 @@ describe("writers", () => {
         arg.where.id === userId && arg.data.sessionsValidFrom instanceof Date,
     );
   }
-
-  it("logout-all revokes the refresh tokens and stamps sessionsValidFrom in one transaction", async () => {
-    mockDb.user.findUnique.mockResolvedValue({ sessionsValidFrom: null });
-    const res = await request(app).post("/api/v1/auth/logout-all").set("authorization", `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ revoked: 2 });
-    expect(mockDb.$transaction).toHaveBeenCalledTimes(1);
-    expect(stampedFor(7)).toBe(true);
-  });
-
-  it("password change stamps sessionsValidFrom and still spares the presented refresh token", async () => {
-    const passwordHash = await bcrypt.hash("OldPassw0rd!", 4);
-    mockDb.user.findUnique.mockResolvedValue({ sessionsValidFrom: null, passwordHash });
-    const res = await request(app)
-      .post("/api/v1/me/password")
-      .set("authorization", `Bearer ${token}`)
-      .send({ currentPassword: "OldPassw0rd!", newPassword: "NewPassw0rd!2", refreshToken: "this-device" });
-    expect(res.status).toBe(200);
-    expect(stampedFor(7)).toBe(true);
-    expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ userId: 7, tokenHash: { not: expect.any(String) } }),
-      }),
-    );
-  });
-
-  it("a refused current password stamps nothing", async () => {
-    const passwordHash = await bcrypt.hash("OldPassw0rd!", 4);
-    mockDb.user.findUnique.mockResolvedValue({ sessionsValidFrom: null, passwordHash });
-    const res = await request(app)
-      .post("/api/v1/me/password")
-      .set("authorization", `Bearer ${token}`)
-      .send({ currentPassword: "wrong", newPassword: "NewPassw0rd!2" });
-    expect(res.status).toBe(400);
-    expect(mockDb.user.update).not.toHaveBeenCalled();
-  });
 
   it("a student soft delete stamps the student's sessionsValidFrom", async () => {
     const { token: superToken } = await signAccessToken({ ...student, userId: 1, role: "SUPER" });

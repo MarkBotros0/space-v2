@@ -11,8 +11,6 @@ const app = createApp();
 
 let seasonId: number;
 let earlyStudentId: number;
-let lateJoinerId: number;
-let otherGroupStudentId: number;
 let otherSeasonId: number;
 let superToken: string;
 let leaderToken: string;
@@ -32,8 +30,6 @@ beforeAll(async () => {
   const leader = await createTestUser("eng-leader", "LEADER");
   const superUser = await createTestUser("eng-super", "SUPER");
   earlyStudentId = early.id;
-  lateJoinerId = late.id;
-  otherGroupStudentId = otherGroup.id;
 
   const groupA = await db.group.create({
     data: { seasonId, name: "Group A", leaders: { create: { userId: leader.id } } },
@@ -177,76 +173,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await cleanupTestData();
   await db.$disconnect();
-});
-
-describe("GET /api/v1/seasons/:id/engagement", () => {
-  it("returns one row per active enrolment with the composite and the flag", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/engagement`)
-      .set("authorization", `Bearer ${superToken}`);
-
-    expect(res.status).toBe(200);
-    const rows: Array<{ studentUserId: number }> = res.body.data.students;
-    expect(rows).toHaveLength(3);
-
-    const early = res.body.data.students.find((r: { studentUserId: number }) => r.studentUserId === earlyStudentId);
-    // 2 of 4 present (PRESENT and LATE both count — R54) → 50%.
-    // 2 of 2 assignments done → 100%. Composite = round(50*0.5 + 100*0.5) = 75.
-    expect(early).toMatchObject({
-      attendanceTotal: 4,
-      attendancePresent: 2,
-      attendancePct: 50,
-      submissionsExpected: 2,
-      submissionsCompleted: 2,
-      submissionPct: 100,
-      score: 75,
-      // Component-wise: attendance is under 60 even though the composite is 75.
-      // v1's reports screen called this student "Medium" (D7).
-      atRisk: true,
-      groupName: "Group A",
-    });
-  });
-
-  it("scores a mid-season joiner only against sessions after they enrolled (R55)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/engagement`)
-      .set("authorization", `Bearer ${superToken}`);
-
-    const late = res.body.data.students.find((r: { studentUserId: number }) => r.studentUserId === lateJoinerId);
-    // Two sessions ran after 2020-01-10; one attended. v1 divided by all four
-    // and reported 25%, the largest source of spurious at-risk flags.
-    expect(late).toMatchObject({ attendanceTotal: 2, attendancePresent: 1, attendancePct: 50 });
-  });
-
-  it("counts a group-targeted assignment only for that group's students (C9)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/engagement`)
-      .set("authorization", `Bearer ${superToken}`);
-
-    const other = res.body.data.students.find(
-      (r: { studentUserId: number }) => r.studentUserId === otherGroupStudentId,
-    );
-    // Group B: only the isAllGroups assignment is expected of them.
-    expect(other).toMatchObject({ submissionsExpected: 1, submissionsCompleted: 0 });
-  });
-
-  it("narrows a LEADER to the students in the groups they lead (ruling C8 #2)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/engagement`)
-      .set("authorization", `Bearer ${leaderToken}`);
-
-    expect(res.status).toBe(200);
-    const ids = res.body.data.students.map((r: { studentUserId: number }) => r.studentUserId);
-    expect(ids).toEqual(expect.arrayContaining([earlyStudentId, lateJoinerId]));
-    expect(ids).not.toContain(otherGroupStudentId);
-  });
-
-  it("refuses a STUDENT the cohort view", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/engagement`)
-      .set("authorization", `Bearer ${earlyStudentToken}`);
-    expect(res.status).toBe(403);
-  });
 });
 
 describe("GET /api/v1/students/:id/engagement", () => {

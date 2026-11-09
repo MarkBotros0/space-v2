@@ -410,27 +410,4 @@ export const notesNotificationsPaths = {
       },
     },
   },
-
-  "/api/v1/seasons/{id}/engagement": {
-    get: {
-      tags: ["Notes"],
-      summary: "Engagement for a season's whole cohort",
-      description:
-        "Staff only (STUDENT gets 403). Computed in a constant number of queries regardless of cohort size (v1 issued four per student). SUPER, MENTOR and the season's admins read every active enrollment; a LEADER is narrowed to the students in the groups they lead (naming another group via `groupId` is 403). `groupId` optionally restricts to one group. Each row carries the composite `score` and the single `atRisk` flag. The attendance denominator starts at each student's enrollment date; the score does not read `lateMinutes` (see `GET /students/{id}/engagement`).",
-      parameters: [idParam, { name: "groupId", in: "query", schema: { type: "integer", minimum: 1 } }],
-      responses: {
-        200: ok(
-          {
-            type: "object",
-            required: ["students"],
-            properties: { students: { type: "array", items: { $ref: "#/components/schemas/EngagementRow" } } },
-          },
-          "One row per active enrollment in scope.",
-        ),
-        400: errRef("BadRequest"),
-        401: errRef("Unauthorized"),
-        403: errRef("Forbidden"),
-      },
-    },
-  },
 } as const;

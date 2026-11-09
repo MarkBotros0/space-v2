@@ -256,20 +256,4 @@ export const authPaths = {
       },
     },
   },
-
-  "/api/v1/auth/logout-all": {
-    post: {
-      tags: ["Auth"],
-      summary: "Revoke every refresh token you hold",
-      description:
-        "Authenticated (Bearer). Revokes all of the caller's live refresh tokens, including the current device's: the lost-phone lever. Access tokens already issued live out their 15-minute TTL.",
-      responses: {
-        200: ok(
-          { type: "object", required: ["revoked"], properties: { revoked: { type: "integer", minimum: 0 } } },
-          "Number of sessions revoked.",
-        ),
-        401: errRef("Unauthorized"),
-      },
-    },
-  },
 } as const;

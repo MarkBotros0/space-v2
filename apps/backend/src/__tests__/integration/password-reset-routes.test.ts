@@ -15,7 +15,7 @@ import { db } from "../../db/client";
 import { hashToken } from "../../lib/auth/tokens";
 import { issuePasswordReset, requestPasswordReset } from "../../lib/auth/password-reset";
 import { issueInvite } from "../../lib/invites";
-import { PASSWORD, cleanupTestData, createTestUser, createUnactivatedTestUser, login, testEmail } from "./fixtures";
+import { PASSWORD, cleanupTestData, createTestUser, createUnactivatedTestUser, testEmail } from "./fixtures";
 
 jest.setTimeout(60000);
 
@@ -277,23 +277,5 @@ describe("POST /api/v1/auth/reset-password", () => {
     expect(res.body.error.code).toBe("bad_request");
     const row = await db.passwordResetToken.findUnique({ where: { token: hashToken(raw) }, select: { usedAt: true } });
     expect(row?.usedAt).toBeNull();
-  });
-});
-
-describe("POST /api/v1/me/password consumes outstanding reset tokens (spec 18 R29, Decision 14)", () => {
-  it("a token minted before a password change no longer works after it", async () => {
-    const u = await createTestUser("change-then-reset", "STUDENT");
-    const raw = await mintReset(u.id);
-    const change = await request(app)
-      .post("/api/v1/me/password")
-      .set("authorization", `Bearer ${await login(app, u.email)}`)
-      .send({ currentPassword: PASSWORD, newPassword: "changed-password-1" });
-    expect(change.status).toBe(200);
-
-    const res = await request(app)
-      .post("/api/v1/auth/reset-password")
-      .send({ token: raw, password: "brand-new-password" });
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("invalid_reset_token");
   });
 });

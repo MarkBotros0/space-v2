@@ -4,7 +4,7 @@ import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
 import type { SessionUser } from "../lib/auth/tokens";
-import { canAccessSeason, canViewStudent, staffScopeForSeason } from "../lib/permissions";
+import { canViewStudent, staffScopeForSeason } from "../lib/permissions";
 import { computeEngagementForSeason } from "../lib/queries/engagement";
 import { quizParticipation } from "../lib/queries/quiz-participation";
 import { canReadAllStudents } from "../lib/rbac";
@@ -12,7 +12,6 @@ import { requireAuth, requireUser } from "../middleware/require-auth";
 import { forbidden } from "./respond";
 
 export const studentEngagementRouter = Router();
-export const seasonEngagementRouter = Router();
 
 // requireAuth is attached per route (ruling X5): these routers share
 // /api/v1/students and /api/v1/seasons with other routers.
@@ -132,49 +131,4 @@ studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => 
     submissionsCompleted: row.submissionsCompleted,
     ...quizzes,
   });
-});
-
-/**
- * The cohort endpoint — the one the mentor dashboard and the reports screen
- * both consume. v1's per-student fan-out is unshippable on mobile (spec D10).
- */
-seasonEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => {
-  const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
-
-  // A cohort listing is a staff surface. canAccessSeason admits students to
-  // their own season, so the role check is separate and comes first.
-  if (user.role === "STUDENT") return forbidden(res);
-  if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
-
-  const groupId = parseId(typeof req.query.groupId === "string" ? req.query.groupId : undefined);
-
-  // A LEADER sees their own groups' students, not the season's. The same
-  // helper the attendance roster narrows with, so the two cannot drift.
-  // MENTOR and SUPER read the whole cohort (canReadAllStudents).
-  const scope = await staffScopeForSeason(user, seasonId);
-  if (user.role === "LEADER") {
-    if (scope === null || scope.kind !== "groups") {
-      return apiOk(res, { students: [] });
-    }
-    if (groupId !== null && !scope.groupIds.includes(groupId)) return forbidden(res);
-    const enrollments = await db.seasonEnrollment.findMany({
-      where: {
-        seasonId,
-        status: "ACTIVE",
-        groupId: { in: groupId !== null ? [groupId] : scope.groupIds },
-      },
-      select: { studentUserId: true },
-    });
-    const students = await computeEngagementForSeason(seasonId, {
-      studentUserIds: enrollments.map((e) => e.studentUserId),
-    });
-    return apiOk(res, { students });
-  }
-
-  const students = await computeEngagementForSeason(seasonId, {
-    ...(groupId !== null ? { groupId } : {}),
-  });
-  return apiOk(res, { students });
 });
