@@ -33,26 +33,45 @@
       "dependsOn": ["^build", "db:generate"],
       "outputs": ["dist/**", "build/**"],
       // Declared so Vercel does not strip them from the build environment and
-      // so a changed value correctly busts the cache. The build itself reads
+      // so a changed value correctly busts the cache. The list is every key
+      // apps/backend/src/lib/config.ts reads; keep the two in step. The build itself reads
       // none of them today — `prisma generate` needs no DATABASE_URL because
       // the datasource carries no `url` (Prisma 7 driver adapters supply it at
       // runtime) — but the app reads them when it boots.
       "env": [
-        "DATABASE_URL",
+        "APP_STORE_URL",
         "AUTH_SECRET",
-        "PORT",
-        "NODE_ENV",
-        "TRUST_PROXY",
-        "MOBILE_APP_ORIGIN",
-        "GMAIL_USER",
+        "CRON_SECRET",
+        "DATABASE_URL",
+        "DEV_USER_SWITCHER",
+        "ENABLE_API_DOCS",
+        "ENABLE_PUSH",
+        "ENABLE_UPLOADS",
+        "EXPO_ACCESS_TOKEN",
         "GMAIL_APP_PASSWORD",
-        "AUTH_URL",
-        "STORAGE_DRIVER",
+        "GMAIL_USER",
+        "GOOGLE_CLIENT_IDS",
+        "IMPORT_BODY_LIMIT",
+        "IMPORT_COMMIT_RATE_LIMIT",
+        "IMPORT_PREVIEW_RATE_LIMIT",
+        "INVITE_TOKEN_TTL_HOURS",
         "LOCAL_UPLOADS_DIR",
         "MAX_UPLOAD_BYTES",
-        "ENABLE_API_DOCS",
+        "MOBILE_APP_ORIGIN",
         "MOBILE_APP_SCHEME",
-        "ORG_TIMEZONE"
+        "NODE_ENV",
+        "ORG_TIMEZONE",
+        "PLAY_STORE_URL",
+        "PORT",
+        "RATE_LIMIT_STORE",
+        "READ_ONLY",
+        "SENTRY_DSN",
+        "SENTRY_ENVIRONMENT",
+        "SENTRY_RELEASE",
+        "SENTRY_TRACES_SAMPLE_RATE",
+        "STORAGE_DRIVER",
+        "TRUST_PROXY",
+        "VERCEL_GIT_COMMIT_SHA"
       ]
     },
     "dev": {

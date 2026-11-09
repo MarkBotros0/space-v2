@@ -13,6 +13,7 @@ import {
 import { z } from "zod";
 
 import { apiClient } from "../lib/api-client";
+import { LIVE_CHECK } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 
 const resultsSchema = z.array(seasonResultRowSchema);
@@ -26,9 +27,7 @@ export function useSeasonEndCheck(id: number | null): UseQueryResult<SeasonEndCh
       return seasonEndCheckSchema.parse(res.data.data);
     },
     enabled: id !== null,
-    // The check is a live answer for a decision; never serve an old one.
-    staleTime: 0,
-    gcTime: 0,
+    ...LIVE_CHECK,
   });
 }
 

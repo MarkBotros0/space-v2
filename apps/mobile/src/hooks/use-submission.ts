@@ -56,7 +56,6 @@ export function usePrefetchSubmission() {
     void queryClient.prefetchQuery({
       queryKey: queryKeys.submissions.detail(publicId),
       queryFn: () => fetchSubmission(publicId),
-      staleTime: 30_000,
     });
 }
 

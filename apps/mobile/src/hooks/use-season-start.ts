@@ -3,6 +3,7 @@ import { seasonStartCheckSchema, type SeasonStartCheck } from "@space/shared";
 import { z } from "zod";
 
 import { apiClient } from "../lib/api-client";
+import { LIVE_CHECK } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 
 /** GET /seasons/:id/start-check (SUPER): who stops a draft from starting. */
@@ -14,9 +15,7 @@ export function useSeasonStartCheck(id: number | null): UseQueryResult<SeasonSta
       return seasonStartCheckSchema.parse(res.data.data);
     },
     enabled: id !== null,
-    // A live answer for a decision; never serve an old one.
-    staleTime: 0,
-    gcTime: 0,
+    ...LIVE_CHECK,
   });
 }
 

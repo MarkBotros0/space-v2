@@ -51,7 +51,6 @@ export function useUnreadCount(): UseQueryResult<number> {
       return unreadCountResponseSchema.parse(res.data.data).unreadCount;
     },
     refetchInterval: 60_000,
-    staleTime: 30_000,
   });
 }
 

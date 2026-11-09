@@ -7,6 +7,9 @@ import { queryKeys } from "./query-keys";
 /** How long a query counts as fresh, unless it sets its own `staleTime`. */
 export const DEFAULT_STALE_TIME = 30_000;
 
+/** A live answer for a decision (start / end checks): never fresh, never cached. */
+export const LIVE_CHECK = { staleTime: 0, gcTime: 0 } as const;
+
 /**
  * The one place React Query defaults are set — every screen's `useQuery`
  * inherits these rather than repeating them.
