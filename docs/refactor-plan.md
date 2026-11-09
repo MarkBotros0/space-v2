@@ -7,7 +7,7 @@ resumes from the first unchecked step.** Update it after every step.
 
 - **Current phase:** Phase 1 (audit). Wave 0 (safety net) is done; all four area audits are in
   `docs/refactor-audit/` (backend, mobile, dead-code, database).
-- **Next action:** record the integration baseline, then finish Phase 1 — merge the four area files
+- **Next action:** finish Phase 1 — merge the four area files
   into one deduplicated `docs/refactor-audit.md`, assign every finding to a wave below, then **stop
   for owner approval**.
 - No code outside tests has changed. Nothing has been pushed; no PR opened yet.
@@ -36,7 +36,7 @@ resumes from the first unchecked step.** Update it after every step.
 | `pnpm typecheck` | pass (5 tasks) |
 | `pnpm test:unit` | pass — shared 30 suites / 326 tests; backend 69 / 529; mobile 261 / 2269 |
 | `pnpm build` | pass |
-| backend `test:integration` (127 suites, throwaway DB) | **result to record** — see `~/logs/space-v2-refactor-integration.log` (`grep -E "Tests:|Suites:"`) |
+| backend `test:integration` (127 suites, throwaway DB) | pass — 129 suites / 1,553 tests / 4 snapshots, 301 s. Includes Wave 0's 2 new suites (8 tests), which were already on disk when the run reached integration; `main` alone = 127 suites / 1,545 tests |
 | e2e | none automated; the Maestro UI sweep (`ui-sweep` skill) is the mobile e2e — not run |
 | CI | `.github/workflows/unit-tests.yml` and `integration-tests.yml`, both `workflow_dispatch` only |
 | Files > 400 lines | 4, all tests: `mobile/src/__tests__/season-people.test.tsx` 475, `student-today.test.tsx` 462, `session-detail.test.tsx` 432, `backend/src/__tests__/integration/people-candidates.test.ts` 423 |
@@ -54,8 +54,9 @@ resumes from the first unchecked step.** Update it after every step.
       reactivate restores
 - [x] `apps/backend/src/__tests__/integration/schema-snapshot.test.ts` — snapshot of columns,
       indexes, constraints, enums of the migrated DB (schema waves update it deliberately)
-- [ ] Record the integration baseline numbers in the table above
-- [ ] Commit Wave 0; open PR after Phase 1 approval (owner asked to stop after audit)
+- [x] Record the integration baseline numbers in the table above
+- [x] Commit Wave 0 (d8bb57e0, 55598fcf on `refactor/wave-0-safety-net`, local only, not pushed)
+- [ ] Push + open the Wave 0 PR once the owner approves Phase 1
 
 ## Phase 1 — audit (read-only)
 
