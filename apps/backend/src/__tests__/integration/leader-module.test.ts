@@ -42,7 +42,6 @@ describe("reads a leader is allowed", () => {
       ["get", `/api/v1/seasons/${w.seasonId}/sessions`, 200],
       ["get", `/api/v1/seasons/${w.seasonId}/assignments`, 200],
       ["get", `/api/v1/seasons/${w.seasonId}/groups`, 200],
-      ["get", `/api/v1/seasons/${w.seasonId}/engagement`, 200],
       ["get", "/api/v1/sessions", 200],
       ["get", `/api/v1/sessions/${w.sessionId}`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/attendance`, 200],

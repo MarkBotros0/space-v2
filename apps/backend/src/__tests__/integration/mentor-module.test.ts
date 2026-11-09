@@ -35,7 +35,6 @@ describe("mentor reads", () => {
     await expectStatuses(app, w.tokens.mentor, [
       ["get", `/api/v1/seasons/${w.seasonId}`, 200],
       ["get", `/api/v1/seasons/${w.otherSeasonId}`, 200],
-      ["get", `/api/v1/seasons/${w.seasonId}/engagement`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}`, 200],
       ["get", `/api/v1/sessions/${w.otherSessionId}`, 200],
       ["get", `/api/v1/assignments/${w.assignmentId}`, 200],

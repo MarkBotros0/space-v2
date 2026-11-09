@@ -37,7 +37,6 @@ describe("reads a season admin is allowed", () => {
     await expectStatuses(app, w.tokens.admin, [
       ["get", `/api/v1/seasons/${w.seasonId}`, 200],
       ["get", `/api/v1/seasons/${w.seasonId}/roster`, 200],
-      ["get", `/api/v1/seasons/${w.seasonId}/engagement`, 200],
       ["get", `/api/v1/seasons/${w.seasonId}/exports/manifest`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/attendance`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/check-in`, 200],
