@@ -2,6 +2,7 @@ import type { NavIconName } from "@space/shared";
 import {
   Backpack,
   Bell,
+  BookUser,
   BookOpen,
   Calendar,
   ChartColumn,
@@ -22,7 +23,6 @@ import {
   Settings,
   Ticket,
   UserCheck,
-  UserCog,
   UserMinus,
   UsersRound,
   type LucideIcon,
@@ -37,13 +37,15 @@ import { cssInterop } from "nativewind";
  * lifted): each destination gets its own icon that says what it opens (v1
  * used FileText for both reports and submissions, Folders for groups,
  * Sparkles for seasons, PenLine for quizzes); GraduationCap is alumni, a
- * Backpack is students; groups are people (UsersRound) and admin user
- * management a person with a cog (UserCog), so the two never look alike.
+ * Backpack is students; groups are people (UsersRound) and the Community
+ * directory a book with a person (BookUser), so the two never look alike. It was
+ * a person with a cog until 2026-11-09 (owner): a cog says settings, and the
+ * dev user switcher in Home's header draws that one.
  */
 export const NAV_ICONS: Record<NavIconName, LucideIcon> = {
   home: Home,
   dashboard: LayoutDashboard,
-  users: UserCog,
+  users: BookUser,
   calendar: Calendar,
   events: Ticket,
   assignments: ClipboardList,

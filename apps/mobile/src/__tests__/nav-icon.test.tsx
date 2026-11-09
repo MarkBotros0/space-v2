@@ -3,6 +3,7 @@ import {
   Backpack,
   Bell,
   BookOpen,
+  BookUser,
   Calendar,
   ChartColumn,
   CircleUserRound,
@@ -22,7 +23,6 @@ import {
   Ticket,
   Flag,
   UserCheck,
-  UserCog,
   UserMinus,
   UsersRound,
 } from "lucide-react-native";
@@ -31,9 +31,9 @@ import { NAV_ICONS } from "../design/icons/nav-icon";
 import { MoreMenu } from "../design/layout/more-menu";
 import { renderWithProviders } from "./helpers/render";
 
-it("groups read as people and admin user management as a person with a cog", () => {
+it("groups read as people and the Community directory as a book with a person (owner, 2026-11-09)", () => {
   expect(NAV_ICONS.groups).toBe(UsersRound);
-  expect(NAV_ICONS.users).toBe(UserCog);
+  expect(NAV_ICONS.users).toBe(BookUser);
 });
 
 // R35, entry by entry: the whole map, so no destination's icon can drift unnoticed.
@@ -41,7 +41,7 @@ it("each destination says what it opens (owner revision R35, 2026-11-05)", () =>
   expect(NAV_ICONS).toEqual({
     home: Home,
     dashboard: LayoutDashboard,
-    users: UserCog,
+    users: BookUser,
     calendar: Calendar,
     events: Ticket,
     followUps: Flag,
