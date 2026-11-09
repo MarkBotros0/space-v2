@@ -506,6 +506,7 @@ model SessionVideoProgress {
   studentUser     User      @relation("VideoProgressStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
   furthestSeconds Int       @default(0)
   completedAt     DateTime?
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
   @@unique([sessionId, studentUserId])
@@ -674,6 +675,7 @@ model MentorFollowUp {
   studentUser   User      @relation("FollowUpStudent", fields: [studentUserId], references: [id], onDelete: Cascade)
   reason        String?
   createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt // default: rows from before the column, and older builds' inserts
   dueAt         DateTime
   remindedAt    DateTime?
   doneAt        DateTime?
@@ -945,6 +947,7 @@ model AnnouncementPoll {
   closedAt       DateTime?
   closedById     Int? // SetNull: the poll outlives the closer's account
   createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @default(now()) @updatedAt // default: rows from before the column, and older builds' inserts
   announcement   Announcement             @relation(fields: [announcementId], references: [id], onDelete: Cascade)
   closedBy       User?                    @relation("AnnouncementPollClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
   options        AnnouncementPollOption[]
@@ -956,6 +959,8 @@ model AnnouncementPollOption {
   pollId   Int
   label    String // 1..150 after trim, plain text
   position Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt // default: rows from before the column, and older builds' inserts
   poll     AnnouncementPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
   votes    AnnouncementPollVote[]
 
