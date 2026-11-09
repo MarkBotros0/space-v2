@@ -4,6 +4,7 @@ import {
   notificationListResponseSchema,
   notificationPreferencesResponseSchema,
   unreadCountResponseSchema,
+  type MarkReadRequest,
   type NotificationItem,
   type NotificationPreferences,
 } from "@space/shared";
@@ -11,7 +12,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-type MarkReadInput = { ids: number[] } | { all: true };
+type MarkReadInput = MarkReadRequest;
 
 /**
  * The inbox, paginated.

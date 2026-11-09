@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import type { EnrollmentStatus } from "./enums";
+import { seasonOutcomeSchema, type EnrollmentResult } from "./season-lifecycle";
+
 // Standing: whether someone may join a season, from the results of the seasons
 // they finished. Pure, so the picker and every write share one rule.
 
@@ -8,8 +11,8 @@ export type StandingHistoryRow = {
   seasonTitle: string;
   /** When the enrolment finished; null while it hasn't. */
   finishedAt: Date | null;
-  enrollmentStatus: "ACTIVE" | "COMPLETED" | "WITHDRAWN";
-  result: "PASSED" | "NOT_PASSED" | null;
+  enrollmentStatus: EnrollmentStatus;
+  result: EnrollmentResult | null;
 };
 
 export const standingSchema = z.object({
@@ -61,7 +64,7 @@ const peopleCandidateSchema = z.object({
   last: z
     .object({
       seasonTitle: z.string(),
-      outcome: z.enum(["PASSED", "NOT_PASSED", "DROPPED", "COMPLETED"]),
+      outcome: seasonOutcomeSchema,
       attendancePct: z.number().int().min(0).max(100).nullable(),
     })
     .nullable(),

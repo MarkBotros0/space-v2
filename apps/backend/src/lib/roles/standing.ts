@@ -1,3 +1,4 @@
+import type { SeasonStatus } from "@space/shared";
 import { standingFor, type Standing, type StandingHistoryRow } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
 import { isSeasonFinished } from "../seasons/status";
@@ -5,7 +6,7 @@ import { isSeasonFinished } from "../seasons/status";
 /** One finished or dropped enrolment, with what the picker needs to show it. */
 export type HistoryEntry = StandingHistoryRow & {
   seasonId: number;
-  seasonStatus: "ACTIVE" | "COMPLETED" | "ARCHIVED";
+  seasonStatus: Exclude<SeasonStatus, "DRAFT">;
   enrollmentId: number;
   enrolledAt: Date;
   /** When it ended, finished or dropped: the order of "last season". */

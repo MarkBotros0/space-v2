@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { studentAssignmentListItemSchema } from "./assignment";
-import { attendanceStatusSchema, quizKindSchema } from "./enums";
+import { attendanceStatusSchema, quizKindSchema, seasonStatusSchema } from "./enums";
 
 // Season end, pass results and the per-season record. Timestamps are ISO strings
 // on the wire, like the rest of this package.
@@ -20,7 +20,14 @@ export function seasonOutcomeLabel(outcome: SeasonOutcome): string {
   return OUTCOME_LABELS[outcome];
 }
 
-const enrollmentResultSchema = z.enum(["PASSED", "NOT_PASSED"]);
+export const enrollmentResultSchema = z.enum(["PASSED", "NOT_PASSED"]);
+export type EnrollmentResult = z.infer<typeof enrollmentResultSchema>;
+
+/** POST /seasons/:id/start: the season, now ACTIVE. */
+export const startSeasonResponseSchema = z.object({
+  season: z.object({ id: z.number(), code: z.string(), status: seasonStatusSchema }),
+});
+export type StartSeasonResponse = z.infer<typeof startSeasonResponseSchema>;
 
 /** One reason a season can't start yet. A person can have several, or one per seat. */
 const startIssueSchema = z.object({

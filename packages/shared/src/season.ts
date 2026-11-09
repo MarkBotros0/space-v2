@@ -143,6 +143,9 @@ export const duplicateSeasonRequestSchema = z
     message: DATE_ORDER_MESSAGE,
   });
 
+export type DuplicateSeasonRequest = z.input<typeof duplicateSeasonRequestSchema>;
+export type SeasonAdminPatch = z.input<typeof seasonAdminPatchSchema>;
+
 /** POST /seasons, POST /seasons/:id/duplicate and PATCH /seasons/:id all answer this. */
 export const seasonRefResponseSchema = z.object({ id: z.number(), code: z.string() });
 

@@ -1,24 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { z } from "zod";
 import { seasonDeletedResponseSchema, seasonRefResponseSchema } from "@space/shared";
-import type { seasonWriteRequestSchema } from "@space/shared";
+import type { DuplicateSeasonRequest, SeasonAdminPatch, seasonWriteRequestSchema } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-interface DuplicateSeasonInput {
-  year: number;
-  startDate: string;
-  endDate: string;
-  code?: string;
-}
+type DuplicateSeasonInput = DuplicateSeasonRequest;
 
 /** ADMIN's allowlist on PATCH /seasons/:id (Plan 3, spec 02 D3) — nothing else is sent. */
-export interface UpdateSeasonInput {
-  description?: string | null;
-  absenceBudgetMinutes?: number;
-  absenceWeightMinutes?: number;
-}
+export type UpdateSeasonInput = SeasonAdminPatch;
 
 function useInvalidateSeasons() {
   const queryClient = useQueryClient();

@@ -1,4 +1,4 @@
-import type { SessionListItem } from "@space/shared";
+import type { SessionListItem, UserRole } from "@space/shared";
 
 import { unmarkedSessions, type NeedsAction } from "../lib/staff-today";
 import { useStaffOrgToday } from "./use-dashboard";
@@ -36,7 +36,10 @@ function count(q: CountQuery, value: number | undefined): number | null {
  * own scope (queue-counts.ts counts SUBMITTED over the same `reachable`
  * clause, seasonId included).
  */
-export function useStaffToday(role: "ADMIN" | "SUPER"): StaffToday {
+/** The two roles with a staff Today: a season admin and a super. */
+export type StaffRole = Extract<UserRole, "ADMIN" | "SUPER">;
+
+export function useStaffToday(role: StaffRole): StaffToday {
   const isSuper = role === "SUPER";
   const current = useCurrentSeasonId();
   const seasons = useSeasons(isSuper);

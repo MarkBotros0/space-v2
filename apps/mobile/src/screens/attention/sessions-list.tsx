@@ -6,7 +6,7 @@ import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { EmptyState, GroupedList, ListRow } from "../../design/ui";
-import { useStaffToday } from "../../hooks/use-staff-today";
+import { useStaffToday, type StaffRole } from "../../hooks/use-staff-today";
 import { useLedSeasonSessions } from "../../hooks/use-sessions";
 import { formatWallTime, formatWeekdayDay } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
@@ -30,13 +30,7 @@ function bySeason(sessions: SessionListItem[]): { seasonId: number; title: strin
  * season (what ADMIN's Today passed); without one it is what `useStaffToday`
  * returned for the role (SUPER: every active season).
  */
-export function SessionsWithoutAttendance({
-  role,
-  seasonId,
-}: {
-  role: "ADMIN" | "SUPER";
-  seasonId: number | undefined;
-}) {
+export function SessionsWithoutAttendance({ role, seasonId }: { role: StaffRole; seasonId: number | undefined }) {
   const router = useRouter();
   const today = useStaffToday(role);
   const led = useLedSeasonSessions(seasonId === undefined ? [] : [seasonId]);

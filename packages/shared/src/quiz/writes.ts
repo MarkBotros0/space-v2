@@ -94,6 +94,9 @@ export const saveQuizAnswersRequestSchema = z.object({
     .max(100),
 });
 
+/** One answer as the app sends it (after defaults: both fields present). */
+export type QuizAnswerInput = z.output<typeof saveQuizAnswersRequestSchema>["answers"][number];
+
 /**
  * `score: null` CLEARS the grade row.
  *
@@ -116,6 +119,8 @@ export const saveQuizGradesRequestSchema = z.object({
     .min(1)
     .max(200),
 });
+
+export type QuizGradeEntry = z.output<typeof saveQuizGradesRequestSchema>["entries"][number];
 
 /**
  * Every ESSAY question of the quiz must appear. v1 recomputed manualScore from

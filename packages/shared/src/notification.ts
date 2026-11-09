@@ -104,6 +104,8 @@ export const markReadRequestSchema = z.union([
   z.object({ all: z.literal(true) }).strict(),
 ]);
 
+export type MarkReadRequest = z.input<typeof markReadRequestSchema>;
+
 export const markReadResponseSchema = z.object({
   /** The number v1's markRead discarded (§6). */
   marked: z.number().int().min(0),

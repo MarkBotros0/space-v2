@@ -1,3 +1,4 @@
+import type { StartSeasonResponse } from "@space/shared";
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
@@ -73,7 +74,7 @@ export async function startSeason(req: Request, res: Response) {
       // Stamped now, not at the transaction's start: a token refreshed after that
       // start still carries the old grants and must fall before the cut-off.
       await markSessionsStale(tx, people, new Date());
-      return { season: started };
+      return { season: started } satisfies StartSeasonResponse;
     },
     { timeout: 30_000 },
   );

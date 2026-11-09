@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { seasonStartCheckSchema, type SeasonStartCheck } from "@space/shared";
-import { z } from "zod";
+import { seasonStartCheckSchema, startSeasonResponseSchema, type SeasonStartCheck } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
@@ -30,9 +29,7 @@ export function useStartSeason(id: number) {
   return useMutation({
     mutationFn: async () => {
       const res = await apiClient.post(`/api/v1/seasons/${id}/start`);
-      return z
-        .object({ season: z.object({ id: z.number(), code: z.string(), status: z.string() }) })
-        .parse(res.data.data);
+      return startSeasonResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({

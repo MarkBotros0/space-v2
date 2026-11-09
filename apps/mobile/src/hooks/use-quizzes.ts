@@ -23,6 +23,8 @@ import {
   type QuizListPage,
   type StudentQuizDetail,
   type StudentQuizResult,
+  type QuizAnswerInput,
+  type QuizGradeEntry,
 } from "@space/shared";
 
 import { apiClient } from "../lib/api-client";
@@ -126,11 +128,7 @@ export function useStartAttempt(id: number) {
   });
 }
 
-export interface AnswerInput {
-  questionId: number;
-  selectedIndex: number | null;
-  text: string | null;
-}
+export type AnswerInput = QuizAnswerInput;
 
 /** The cached student detail with these saved answers written into it. */
 function mergeSavedAnswers(
@@ -199,11 +197,7 @@ export function useQuizGradeSheet(id: number | null, enabled: boolean): UseQuery
   });
 }
 
-export interface GradeEntryInput {
-  studentUserId: number;
-  score: number | null;
-  notes: string | null;
-}
+export type GradeEntryInput = QuizGradeEntry;
 
 export function useSaveQuizGrades(id: number) {
   const queryClient = useQueryClient();
