@@ -29,6 +29,12 @@ Mobile-first rebuild of JPC Space (`D:\Projects\JPC\jpc-space` is v1 and still r
   applies them through `prisma.config.ts`). Keep migrations additive unless a
   destructive change is explicitly planned, and say in the commit which
   environments they were applied to.
+  Each migration ships a `rollback.sql` beside it; a CHECK or partial index
+  that Prisma can't declare is noted on its model as
+  `// SQL-only <kind> <name>: <definition>` (the schema snapshot test fails
+  otherwise), and `pnpm --filter @space/backend db:erd` regenerates
+  `docs/database/erd.md` (a unit test fails while it is stale). Never run
+  `prisma migrate dev` against a migrated database: it drops SQL-only objects.
 - **Passwords are bcryptjs.** Existing hashes are bcrypt; any other algorithm
   locks out every user.
 - **Tokens must stay v1-compatible:** `jose` HS256, secret `AUTH_SECRET`

@@ -9,6 +9,9 @@
  *
  * Read-only: it only queries the catalog.
  */
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { db } from "../../db/client";
 
 jest.setTimeout(60000);
@@ -70,5 +73,22 @@ describe("database schema", () => {
       WHERE n.nspname = 'public'
       GROUP BY t.typname ORDER BY t.typname`;
     expect(rows.map((r) => r.line)).toMatchSnapshot();
+  });
+
+  // DB-028: Prisma can't declare these, and `migrate dev` would drop what it can't see,
+  // so schema.prisma names each one as `// SQL-only <kind> <name>: …` on its model.
+  it("documents every CHECK and partial or expression index in schema.prisma", async () => {
+    const rows = await db.$queryRaw<{ name: string }[]>`
+      SELECT conname AS name FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace
+      WHERE n.nspname = 'public' AND c.contype = 'c'
+      UNION
+      SELECT indexname FROM pg_indexes
+      WHERE schemaname = 'public' AND (indexdef LIKE '% WHERE %' OR indexdef ~ '\\((lower|\\()')
+      ORDER BY 1`;
+    const schema = readFileSync(join(__dirname, "../../../prisma/schema.prisma"), "utf8");
+    const documented = [...schema.matchAll(/\/\/ SQL-only (?:CHECK|UNIQUE INDEX|INDEX) (\w+):/g)]
+      .map((m) => m[1])
+      .sort();
+    expect(documented).toEqual(rows.map((r) => r.name));
   });
 });

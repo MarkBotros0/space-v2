@@ -12,6 +12,7 @@
     "test:integration": "jest --config jest.integration.config.js --testPathPattern integration",
     "clean": "rm -rf dist src/generated",
     "db:generate": "prisma generate",
+    "db:erd": "ts-node --transpile-only scripts/erd.ts",
     "db:studio": "prisma studio",
     "db:migrate:local": "bash scripts/apply-migrations.sh",
     "db:migrate:deploy": "prisma migrate deploy",

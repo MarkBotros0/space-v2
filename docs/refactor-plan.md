@@ -269,8 +269,8 @@ snapshot updated, `schema.prisma` updated where expressible.
       `correctIndex` CHECK (out-of-range questions fixed or deleted), `Session.recurrenceGroupId` → uuid
       (non-uuid values nulled) — `20261110100000_value_guards`: `totalScore` CHECK (mismatches recomputed), mime-category CHECK (unknown values removed), video `correctIndex` CHECK (out of range → 0), each shown on seeded violations; NOT VALID → VALIDATE. **Skipped (D8):** QuizQuestion `correctIndex` CHECK and `recurrenceGroupId` → uuid (below). Four test fixtures wrote a `totalScore` that isn't auto + manual; they now add up. Full integration 137/1,583 green
 - [x] 3.11 DB-031 option uniques — only if `applyUpdate`'s write order never holds a transient duplicate — **skipped, condition not met:** `applyUpdate` (poll-write.ts) moves kept options one `updateMany` at a time, so a swap of two positions or labels passes through a duplicate; a plain unique would refuse a valid edit. Needs a `DEFERRABLE` constraint (not expressible in Prisma) or a new write order (code, Wave 4)
-- [ ] 3.12 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
-      from audit §2.1, kept current from here on
+- [x] 3.12 DB-022 + DB-028: schema header and SQL-only objects documented; living ERD `docs/database/erd.md`
+      from audit §2.1, kept current from here on — header rewritten to the real conventions (DB-022); all 13 SQL-only objects noted on their models as `// SQL-only <kind> <name>: …`, and a new schema-snapshot test fails on an undocumented CHECK or partial index (DB-028; shown failing on a removed note); `docs/database/erd.md` is **generated** (`pnpm db:erd`, `scripts/erd/render.ts`, no dependencies) rather than copied from the audit, with a unit test that fails while it is stale or a model has no domain; CLAUDE.md migration rules updated
 - [ ] 3.13 Full verification + wave summary + PR → **STOP** (deploy order: migrations before Wave 4 code)
 - Skipped (D8): DB-014 (CLAUDE.md: no migration may change `User.role`), DB-019 enrolment-coherence
   CHECKs (semantics), DB-019 `JpcEvent endDate >= date` (endDate is org midnight of the end day, date
