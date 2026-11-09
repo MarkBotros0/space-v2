@@ -10,7 +10,7 @@
  */
 import { create } from "zustand";
 
-export type ScrollDirection = "up" | "down";
+type ScrollDirection = "up" | "down";
 
 const useTabBarStore = create<{ visible: boolean }>(() => ({ visible: true }));
 
@@ -79,7 +79,7 @@ export function resetTabBarScroll(): void {
  * direction changes: 24px of sustained scroll (Task 11's value), so jitter,
  * a resting finger or a small reversal mid-fling never flips the bar.
  */
-export const SCROLL_THRESHOLD = 24;
+const SCROLL_THRESHOLD = 24;
 /** How close to the bottom of the content counts as the end. */
 const END_SLOP = 4;
 

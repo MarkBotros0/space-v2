@@ -5,14 +5,14 @@ import Svg, { Circle, G, Line, Polyline } from "react-native-svg";
 import { Text } from "../../design/ui/text";
 import { useChartColors } from "../../lib/report-colors";
 
-export interface TrendPoint {
+interface TrendPoint {
   label: string;
   pct: number | null;
   /** Which line this point belongs to (e.g. a season). Points without one share a single line. */
   series?: { key: string; label: string };
 }
 
-export interface TrendLineProps {
+interface TrendLineProps {
   points: TrendPoint[];
   height?: number;
 }

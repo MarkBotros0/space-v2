@@ -18,7 +18,7 @@ import { useSaveAnswers, type AnswerInput } from "../../hooks/use-quizzes";
  */
 const SAVE_DEBOUNCE_MS = 1000;
 
-export type SaveState = "idle" | "saving" | "saved" | "error";
+type SaveState = "idle" | "saving" | "saved" | "error";
 export type Answer = { selectedIndex: number | null; text: string };
 
 function isAnswered(q: QuizQuestionStudent, a: Answer): boolean {

@@ -13,7 +13,7 @@ import { formatInOrgTime, orgWallClockToInstant } from "./org-time";
  * divergences listed in Plan 5's header, each named where it happens.
  */
 
-export interface AssignmentRefRefusal {
+interface AssignmentRefRefusal {
   code: "invalid_group" | "invalid_session";
   message: string;
 }

@@ -19,7 +19,7 @@ export function displayNameFor(name: string | null): string {
   return trimmed ? trimmed : "Group member";
 }
 
-export interface ForumAssignmentRow {
+interface ForumAssignmentRow {
   id: number;
   seasonId: number;
   dueAt: Date | null;
@@ -51,7 +51,7 @@ export async function loadForumAssignment(
   });
 }
 
-export interface ForumCommentData {
+interface ForumCommentData {
   id: number;
   authorUserId: number;
   authorDisplayName: string;
@@ -60,7 +60,7 @@ export interface ForumCommentData {
   canDelete: boolean;
 }
 
-export interface ForumPostData {
+interface ForumPostData {
   submissionPublicId: string;
   studentUserId: number;
   authorDisplayName: string;
@@ -71,7 +71,7 @@ export interface ForumPostData {
   canComment: boolean;
 }
 
-export interface ForumOwnData {
+interface ForumOwnData {
   submissionPublicId: string | null;
   text: string;
   status: SubmissionStatus;
@@ -81,7 +81,7 @@ export interface ForumOwnData {
   reviewedAt: Date | null;
 }
 
-export interface ForumViewData {
+interface ForumViewData {
   assignmentId: number;
   dueAt: Date | null;
   own: ForumOwnData | null;

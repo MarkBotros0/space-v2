@@ -4,7 +4,7 @@ import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason } from "../rbac";
 
-export interface SeasonDetailRow {
+interface SeasonDetailRow {
   id: number;
   code: string;
   title: string;

@@ -53,7 +53,7 @@ export function standingFor(
   return { kind: "ok", reason: null, programSeasonTitle: null };
 }
 
-export const peopleCandidateSchema = z.object({
+const peopleCandidateSchema = z.object({
   id: z.number(),
   name: z.string(),
   /** `alumni` when `graduationYear` is set. */

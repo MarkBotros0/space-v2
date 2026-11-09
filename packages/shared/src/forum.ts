@@ -9,7 +9,7 @@ import { submissionStatusSchema } from "./enums";
 // `forumAllowComments` belong to assignment.ts (domain 7) and are flattened
 // onto the view below only as the two config values the screen needs.
 
-export const forumCommentSchema = z.object({
+const forumCommentSchema = z.object({
   id: z.number(),
   authorUserId: z.number(),
   /**
@@ -31,7 +31,7 @@ export const forumCommentSchema = z.object({
 });
 export type ForumComment = z.infer<typeof forumCommentSchema>;
 
-export const forumPostSchema = z.object({
+const forumPostSchema = z.object({
   /** Addressed by publicId, never the sequential Submission.id (v1 R5/R43). */
   submissionPublicId: z.string(),
   studentUserId: z.number(),

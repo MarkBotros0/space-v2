@@ -38,7 +38,7 @@ export const loginResponseSchema = sessionSchema.extend({
 });
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 
-export const meScopesSchema = z.object({
+const meScopesSchema = z.object({
   seasonAdminIds: z.array(z.number().int()),
   groupLeaderIds: z.array(z.number().int()),
   activeSeasonId: z.number().int().nullable(),

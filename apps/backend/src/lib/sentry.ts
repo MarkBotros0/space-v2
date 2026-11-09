@@ -15,7 +15,7 @@ import { config } from "./config";
  * would report a thrown ForbiddenError (which carries no status) as a 500.
  */
 
-export interface SentryOptions {
+interface SentryOptions {
   dsn: string | undefined;
   environment: string;
   release: string | undefined;

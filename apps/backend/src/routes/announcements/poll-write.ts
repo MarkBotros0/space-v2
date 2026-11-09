@@ -19,7 +19,7 @@ export async function createPollFor(tx: Tx, announcementId: number, input: PollI
 }
 
 /** Applies a plan from `planPollEdit`. Call it inside the transaction that read `current` under the lock. */
-export async function applyPollEdit(
+async function applyPollEdit(
   tx: Tx,
   announcementId: number,
   pollId: number | null,

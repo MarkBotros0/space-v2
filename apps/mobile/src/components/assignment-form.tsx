@@ -92,7 +92,7 @@ const FIELD_OF_ISSUE: Record<string, string> = {
   allowedMimeCategories: "mime",
 };
 
-export interface AssignmentFormProps {
+interface AssignmentFormProps {
   title: string;
   subtitle?: string;
   initial: AssignmentFormValues;

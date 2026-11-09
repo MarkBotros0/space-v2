@@ -15,7 +15,7 @@ import { useSeasonRecord } from "../../hooks/use-self-service";
 import { isNotFoundError } from "../../lib/api-error";
 import { parsePositiveInt } from "../../lib/params";
 
-export function useSeasonIdParam(): number | null {
+function useSeasonIdParam(): number | null {
   const { seasonId } = useLocalSearchParams<{ seasonId: string }>();
   return parsePositiveInt(seasonId);
 }

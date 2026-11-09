@@ -5,7 +5,7 @@ import { currentSeasonEnrollmentSelect } from "../students/current-season";
 // Own profile — v1 app/student/profile/page.tsx, app/alumni/profile/page.tsx
 // ---------------------------------------------------------------------------
 
-export interface MyProfileRow {
+interface MyProfileRow {
   name: string;
   email: string;
   avatarPath: string | null;

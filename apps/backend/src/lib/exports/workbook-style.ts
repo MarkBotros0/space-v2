@@ -37,7 +37,7 @@ export function columnWidths(headerLength: number, dataWidth: number): Array<{ w
   }));
 }
 
-export interface KeySheetContext {
+interface KeySheetContext {
   scopeDescription: string;
   symbols: Array<[string, string]>;
 }

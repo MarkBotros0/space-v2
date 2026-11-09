@@ -7,7 +7,7 @@ import { reportOutcome } from "../../lib/outcome";
 type SaveInput = { text: string; submit?: boolean };
 
 /** The editor as it stands now. `text` is null until the student types. */
-export type DraftState = { text: string | null; serverText: string; editable: boolean };
+type DraftState = { text: string | null; serverText: string; editable: boolean };
 
 const FLUSH_FAILED = "Your draft wasn't saved. Check your connection.";
 const FLUSH_REFUSED = "Your draft wasn't saved.";

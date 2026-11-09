@@ -5,7 +5,7 @@ import { Text } from "../../design/ui/text";
 import { palette } from "../../design/theme/palette";
 import { useChartColors } from "../../lib/report-colors";
 
-export interface RankedBar {
+interface RankedBar {
   key: string;
   label: string;
   /** null renders as an em dash — "no cohort to measure", not "0%". */

@@ -5,12 +5,12 @@ import { createNotificationsBulk } from "./notifications";
 import { formatInOrgTime } from "./org-time";
 
 /** Same destination as SESSION_RESCHEDULED: the calendar (X1 link shape). */
-export const SESSION_CANCELLED_LINK = "/student/calendar";
+const SESSION_CANCELLED_LINK = "/student/calendar";
 
 /** How many cancelled dates a series notice spells out before "and N more". */
 const LISTED_DATES = 8;
 
-export interface SessionCancelledNotice {
+interface SessionCancelledNotice {
   recipientIds: number[];
   title: string;
   body?: string;

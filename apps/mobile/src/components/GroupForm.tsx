@@ -17,7 +17,7 @@ import { useSessionStore } from "../store/session";
 
 iconWithClassName(Trash2, UserPlus);
 
-export interface GroupFormValues {
+interface GroupFormValues {
   name: string;
   description: string;
   leaderIds: number[];

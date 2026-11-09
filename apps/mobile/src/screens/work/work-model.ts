@@ -160,7 +160,7 @@ export function todayWork(
 }
 
 /** A labelled group of rows; an empty group is not shown. */
-export type WorkGroup = { key: string; header: string; rows: WorkRow[] };
+type WorkGroup = { key: string; header: string; rows: WorkRow[] };
 
 /**
  * The To do tab, grouped so a student reads it top to bottom as "what first"
@@ -197,7 +197,7 @@ export function todoGroups(
  * A handed-in assignment on the Submitted tab: the chip says in words where
  * the grading stands — never colour alone.
  */
-export function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
+function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
   const reviewed = a.status === "REVIEWED";
   return {
     key: `assignment-${a.id}`,
@@ -217,7 +217,7 @@ export function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
 }
 
 /** A taken or paper quiz on the Submitted tab: its score, or that it isn't out yet. */
-export function submittedQuizRow(q: StudentQuizResult): WorkRow {
+function submittedQuizRow(q: StudentQuizResult): WorkRow {
   const base = quizRow(q);
   if (q.score !== null) return base;
   // Held by staff (owner, 2026-11-07) reads differently from an essay still being marked.
@@ -225,7 +225,7 @@ export function submittedQuizRow(q: StudentQuizResult): WorkRow {
   return { ...base, chip: { tone: "neutral", label } };
 }
 
-export type SubmittedSections = { assignments: WorkRow[]; quizzes: WorkRow[] };
+type SubmittedSections = { assignments: WorkRow[]; quizzes: WorkRow[] };
 
 /** Newest hand-in first; an older backend sends no `submittedAt`, so the review date stands in. */
 function handedInAt(a: StudentAssignmentListItem): string {

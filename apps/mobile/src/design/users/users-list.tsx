@@ -20,7 +20,7 @@ import { GroupedList, ListRow } from "../ui/grouped-list";
 import { StatusChip, statusChip } from "../ui/status-chip";
 
 /** "No invite" is what users see for `pending`; the shared table says "Pending". Call site only. */
-export function userStatusChip(status: UserStatus) {
+function userStatusChip(status: UserStatus) {
   const spec = statusChip("user", status);
   return status === "pending" ? { ...spec, label: "No invite" } : spec;
 }

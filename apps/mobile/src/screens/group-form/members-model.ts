@@ -5,8 +5,8 @@ import type { SeasonRosterRow } from "@space/shared";
  * in the season, never invited or enrolled here. Each row says where the
  * person is now, since picking someone from another group moves them.
  */
-export type MemberRow = { id: number; name: string; line: string };
-export type MemberSection = { key: "this" | "none" | "other"; title: string; rows: MemberRow[] };
+type MemberRow = { id: number; name: string; line: string };
+type MemberSection = { key: "this" | "none" | "other"; title: string; rows: MemberRow[] };
 
 const nameOf = (r: SeasonRosterRow) => r.name ?? r.email;
 

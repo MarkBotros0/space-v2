@@ -11,7 +11,7 @@ export interface CommunityWideNotAlone {
 }
 
 /** Prisma's "column does not exist": the migration that added the flag hasn't reached this database. */
-export function isMissingColumn(err: unknown): boolean {
+function isMissingColumn(err: unknown): boolean {
   return typeof err === "object" && err !== null && "code" in err && err.code === "P2022";
 }
 

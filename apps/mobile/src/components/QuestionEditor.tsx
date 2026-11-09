@@ -15,7 +15,7 @@ import { Button, Input, Text, Textarea } from "../design/ui";
 
 iconWithClassName(Check, Plus, Trash2);
 
-export interface QuestionEditorProps {
+interface QuestionEditorProps {
   /** Present when editing; absent when adding. */
   initial?: QuizQuestionAuthoring;
   submitting: boolean;

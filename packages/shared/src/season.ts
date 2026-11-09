@@ -20,7 +20,7 @@ export const seasonListItemSchema = z.object({
 });
 export type SeasonListItem = z.infer<typeof seasonListItemSchema>;
 
-export const seasonDetailGroupSchema = z.object({
+const seasonDetailGroupSchema = z.object({
   id: z.number(), name: z.string(), studentCount: z.number(),
   leaderNames: z.array(z.string()),
 });
@@ -44,7 +44,7 @@ export type SeasonDetail = z.infer<typeof seasonDetailSchema>;
 
 // ---- Season code: v1's src/lib/slug.ts, ported verbatim (spec 02 R3–R4) ----
 
-export const SEASON_CODE_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+const SEASON_CODE_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
 export function slugifySeasonCode(input: string): string {
   return input
@@ -148,7 +148,7 @@ export const seasonDeletedResponseSchema = z.object({ deleted: z.literal(true) }
 // Student self-service — Plan 11
 // ---------------------------------------------------------------------------
 
-export const seasonHistoryCurriculumItemSchema = z.object({
+const seasonHistoryCurriculumItemSchema = z.object({
   sessionId: z.number(),
   title: z.string(),
   startsAt: z.string(),
@@ -179,14 +179,14 @@ export type SeasonHistoryRow = z.infer<typeof seasonHistoryRowSchema>;
 export const seasonHistoryResponseSchema = z.object({ seasons: z.array(seasonHistoryRowSchema) });
 
 /** v1 showed leaders' emails to their students (spec 05 R89). */
-export const mySeasonLeaderSchema = z.object({ id: z.number(), name: z.string(), email: z.string() });
+const mySeasonLeaderSchema = z.object({ id: z.number(), name: z.string(), email: z.string() });
 
 /** Peers: name only — never an email (R89). Strict so an address cannot slip in. */
-export const mySeasonMemberSchema = z
+const mySeasonMemberSchema = z
   .object({ id: z.number(), name: z.string(), isYou: z.boolean() })
   .strict();
 
-export const mySeasonGroupSchema = z.object({
+const mySeasonGroupSchema = z.object({
   id: z.number(),
   name: z.string(),
   description: z.string().nullable(),
@@ -194,7 +194,7 @@ export const mySeasonGroupSchema = z.object({
   members: z.array(mySeasonMemberSchema),
 });
 
-export const mySeasonUpcomingSessionSchema = z.object({
+const mySeasonUpcomingSessionSchema = z.object({
   id: z.number(),
   title: z.string(),
   startsAt: z.string(),
@@ -206,7 +206,7 @@ export const mySeasonUpcomingSessionSchema = z.object({
  * `GET /api/v1/me/season` — the student's current season page (v1
  * app/student/season/page.tsx), every figure server-derived (C4).
  */
-export const mySeasonSchema = z.object({
+const mySeasonSchema = z.object({
   id: z.number(),
   code: z.string(),
   title: z.string(),

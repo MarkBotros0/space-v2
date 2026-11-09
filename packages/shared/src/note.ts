@@ -16,7 +16,7 @@ export type NoteVisibility = z.infer<typeof noteVisibilitySchema>;
 
 /** v1's create bound (R1). v2 applies it to update as well, fixing R25. */
 export const NOTE_BODY_MIN = 2;
-export const NOTE_BODY_MAX = 20000;
+const NOTE_BODY_MAX = 20000;
 
 /**
  * `body` is PLAIN TEXT on the wire, in both directions.
@@ -51,7 +51,7 @@ export const noteSummarySchema = z.object({
 export type NoteSummary = z.infer<typeof noteSummarySchema>;
 
 /** The /me/notes shape: the same note, plus who it is about. */
-export const authoredNoteSchema = noteSummarySchema.extend({
+const authoredNoteSchema = noteSummarySchema.extend({
   student: z.object({
     id: z.number().int(),
     name: z.string(),
@@ -145,7 +145,7 @@ export function isAtRisk(s: EngagementScore): boolean {
 }
 
 /** One student's engagement, staff view. */
-export const studentEngagementSchema = engagementScoreSchema.extend({
+const studentEngagementSchema = engagementScoreSchema.extend({
   studentUserId: z.number().int(),
   seasonId: z.number().int(),
   seasonTitle: z.string().nullable(),

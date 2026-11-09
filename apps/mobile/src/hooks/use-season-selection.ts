@@ -3,7 +3,7 @@ import type { SeasonListItem } from "@space/shared";
 
 import { pickCurrentSeasonId, useSeasons } from "./use-seasons";
 
-export interface StaffSeasonSelection {
+interface StaffSeasonSelection {
   seasons: SeasonListItem[];
   seasonId: number | null;
   season: SeasonListItem | null;

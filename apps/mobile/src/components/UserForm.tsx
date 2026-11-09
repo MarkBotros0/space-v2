@@ -17,7 +17,7 @@ import { Text } from "../design/ui/text";
 import { firstErrorByField } from "../lib/form-errors";
 import { USER_ROLE_LABELS as ROLE_LABELS } from "../lib/user-role-labels";
 
-export interface UserFormValues {
+interface UserFormValues {
   name: string;
   email: string;
   role: UserRole;

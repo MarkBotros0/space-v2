@@ -2,7 +2,7 @@ import { notificationTargetSchema } from "@space/shared";
 
 import { routeForTarget, type NotificationRoute } from "./notification-route";
 
-export type PushRoute = NotificationRoute | { pathname: "/notifications" };
+type PushRoute = NotificationRoute | { pathname: "/notifications" };
 
 /**
  * A tapped push → the screen to open. The data is `{ type, target }` from the

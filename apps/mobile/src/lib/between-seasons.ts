@@ -1,6 +1,6 @@
 import type { SeasonHistoryRow } from "@space/shared";
 
-export type BetweenSeasonsState =
+type BetweenSeasonsState =
   | { kind: "first" }
   | { kind: "finished"; row: SeasonHistoryRow }
   | { kind: "dropped"; row: SeasonHistoryRow };

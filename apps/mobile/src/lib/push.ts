@@ -8,7 +8,7 @@ import { easProjectId } from "./app-config";
 import { savePushToken } from "./token-storage";
 import { useSessionStore } from "../store/session";
 
-export type PushTokenResult =
+type PushTokenResult =
   | { kind: "token"; token: string }
   | { kind: "denied" }
   | { kind: "not_configured" }

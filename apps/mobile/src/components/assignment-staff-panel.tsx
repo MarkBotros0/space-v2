@@ -36,7 +36,7 @@ const TRACKER_ROLES: ReadonlySet<UserRole> = new Set<UserRole>(["SUPER", "ADMIN"
  * control (v1 rendered none, R80) — RN has no window.confirm, so the first
  * press arms and the second deletes.
  */
-export function ManageActions({ detail }: { detail: AssignmentDetail }) {
+function ManageActions({ detail }: { detail: AssignmentDetail }) {
   const router = useRouter();
   const remove = useDeleteAssignment();
   const [armed, setArmed] = useState(false);

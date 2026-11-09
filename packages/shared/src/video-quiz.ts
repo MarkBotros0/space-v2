@@ -126,7 +126,7 @@ export const videoProgressResponseSchema = z.object({
 });
 
 /** New capability — v1 shows no student's video-quiz result to anybody (R74). */
-export const videoQuizResultRowSchema = z.object({
+const videoQuizResultRowSchema = z.object({
   studentUserId: z.number(),
   studentName: z.string().nullable(),
   groupId: z.number().nullable(),

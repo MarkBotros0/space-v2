@@ -43,7 +43,7 @@ function isAuthEndpoint(url: string | undefined): boolean {
  */
 export const ROTATE_INDETERMINATE = Symbol("rotate-indeterminate");
 
-export type RotateFn = (
+type RotateFn = (
   refreshToken: string,
 ) => Promise<Session | null | typeof ROTATE_INDETERMINATE>;
 

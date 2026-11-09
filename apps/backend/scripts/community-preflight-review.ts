@@ -7,13 +7,13 @@
  */
 import { db } from "../src/db/client";
 
-export interface SeatRow {
+interface SeatRow {
   userId: number;
   seasonId: number;
   row: "admin" | "leader";
 }
 
-export interface ReviewLists {
+interface ReviewLists {
   /** Stored ADMIN or LEADER with no graduationYear: `roles:convert` refuses these. */
   storedStaffWithoutGraduationYear: { userId: number; role: string }[];
   /** Live seat holders (ACTIVE season) with no graduationYear. Staff must be alumni. */

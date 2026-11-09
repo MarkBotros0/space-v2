@@ -26,7 +26,7 @@ export type BackTarget = { label: string; href?: Href };
 export const BACK_TO_PREVIOUS: BackTarget = { label: "Back" };
 
 /** `href` pushes that route; without one it goes back to wherever the screen was opened from. */
-export function BackLink({ label, href }: BackTarget) {
+function BackLink({ label, href }: BackTarget) {
   const router = useRouter();
   return (
     <Pressable

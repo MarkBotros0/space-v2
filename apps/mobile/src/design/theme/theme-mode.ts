@@ -2,7 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colorScheme, useColorScheme } from "nativewind";
 import { useCallback, useEffect, useState } from "react";
 
-export type ThemeMode = "light" | "dark" | "system";
+type ThemeMode = "light" | "dark" | "system";
 
 /** Same key and values as v1's theme-provider.tsx. */
 export const THEME_STORAGE_KEY = "theme";

@@ -25,7 +25,7 @@ const TOLERANCE_SECONDS = 0.75;
 const PROGRESS_SAVE_MS = 15_000;
 const LOAD_TIMEOUT_MS = 15_000;
 
-export interface VideoQuizPlayerProps {
+interface VideoQuizPlayerProps {
   sessionId: number;
   quiz: StudentVideoQuiz;
   /** Wired to the quiz query's refetch by the screen; used by the deadlock guard. */

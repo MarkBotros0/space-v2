@@ -88,7 +88,7 @@ export const reportScopeQuerySchema = z.object({
   trendLimit: z.coerce.number().int().min(1).max(200).default(26),
 });
 
-export const resolvedScopeSchema = z.object({
+const resolvedScopeSchema = z.object({
   /** The intersection actually queried — never the request (ruling C8, spec D6 #1). */
   seasonIds: z.array(z.number().int()),
   seasons: z.array(
@@ -174,7 +174,7 @@ export const assignmentCompletionRowSchema = z.object({
 });
 export type AssignmentCompletionRow = z.infer<typeof assignmentCompletionRowSchema>;
 
-export const engagementBandCountSchema = z.object({
+const engagementBandCountSchema = z.object({
   band: engagementBandSchema,
   count: z.number().int().min(0),
 });
@@ -257,7 +257,7 @@ export const engagementStudentPageSchema = z.object({
  * points at `/super/seasons/<integer id>` while the route resolves by `code`,
  * so every row 404s (R62, spec D13).
  */
-export const seasonEnrollmentCountSchema = z.object({
+const seasonEnrollmentCountSchema = z.object({
   seasonId: z.number().int(),
   code: z.string(),
   program: z.string(),
@@ -270,7 +270,7 @@ export const seasonEnrollmentCountSchema = z.object({
   leaderCount: z.number().int().min(0),
 });
 
-export const alumniByYearRowSchema = z.object({
+const alumniByYearRowSchema = z.object({
   year: z.number().int(),
   count: z.number().int().min(0),
 });

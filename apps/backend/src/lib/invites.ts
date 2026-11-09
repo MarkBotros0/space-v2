@@ -10,7 +10,7 @@ import type { BulkInviteResponse } from "@space/shared";
 // Relative, not "@space/shared": a VALUE import (ruling X12 — the rootDir emit trap).
 import { BULK_INVITE_BATCH_SIZE } from "../../../../packages/shared/src/index";
 
-export type InviteWriter = Pick<typeof db, "inviteToken">;
+type InviteWriter = Pick<typeof db, "inviteToken">;
 
 export interface IssuedInvite {
   /** The raw code. Goes to the mailer and NOWHERE else — never into a
@@ -79,7 +79,7 @@ async function expireUndelivered(raw: string): Promise<void> {
   });
 }
 
-export type InviteDelivery = "sent" | "email_not_configured" | "send_failed";
+type InviteDelivery = "sent" | "email_not_configured" | "send_failed";
 
 /**
  * Mail a freshly minted invite. On any failure (no transport configured, or
@@ -174,7 +174,7 @@ export async function listPendingInviteUserIds(scope: Prisma.UserWhereInput = {}
     .map((row) => row.id);
 }
 
-export interface MintedInvite extends IssuedInvite {
+interface MintedInvite extends IssuedInvite {
   userId: number;
   email: string;
 }

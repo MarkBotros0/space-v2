@@ -81,7 +81,7 @@ export function storeLinksHtml(links: StoreLinks): string {
 }
 
 /** The page, the card, the wordmark, a title over a one-line lead, the body and a quiet footer. */
-export function renderShell(title: string, lead: string, bodyHtml: string): string {
+function renderShell(title: string, lead: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -125,14 +125,14 @@ export function paragraph(html: string, muted = false): string {
 }
 
 /** The primary action: the app's primary button (14 radius, 48 tall). */
-export function buttonHtml(href: string, label: string): string {
+function buttonHtml(href: string, label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;"><tr><td class="e-btn" style="background-color:${T.button};border-radius:14px;">
     <a class="e-btn-text" href="${href}" style="display:inline-block;padding:14px 24px;font-size:16px;font-weight:600;color:${T.buttonText};text-decoration:none;border-radius:14px;">${label}</a>
   </td></tr></table>`;
 }
 
 /** Numbered steps, each a teal disc and a line. */
-export function stepsHtml(steps: string[]): string {
+function stepsHtml(steps: string[]): string {
   const rows = steps
     .map(
       (step, i) => `<tr>
@@ -165,7 +165,7 @@ export function codeGroupsHtml(code: string): string {
  * button (mail apps strip scripts), so one tap selects the whole code
  * (user-select: all) and the hint under it says so (owner, 2026-11-07).
  */
-export function codeBoxHtml(label: string, code: string): string {
+function codeBoxHtml(label: string, code: string): string {
   return `<div style="margin:8px 0 20px 0;">
     <p class="e-muted" style="margin:0 0 8px 0;font-size:14px;font-weight:600;line-height:1.4;color:${T.muted};">${label}</p>
     <div class="e-field" style="padding:14px 6px 10px 16px;border-radius:14px;background-color:${T.field};font-family:${MONO};font-size:18px;line-height:1.5;font-weight:600;color:${T.text};"><span style="display:inline-block;max-width:236px;-webkit-user-select:all;user-select:all;">${codeGroupsHtml(code)}</span></div>

@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 type RouterOverride = NonNullable<ComponentProps<typeof Tabs>["UNSTABLE_router"]>;
 
 /** The tab every role has: the tabs' anchor (`unstable_settings` in `(tabs)/_layout.tsx`). */
-export const HOME_TAB = "dashboard";
+const HOME_TAB = "dashboard";
 
 /**
  * Back on the tabs (ruling R19): through the tabs visited, newest first

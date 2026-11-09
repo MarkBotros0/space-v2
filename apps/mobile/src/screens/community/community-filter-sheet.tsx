@@ -7,7 +7,7 @@ import { GroupedList, ListRow, Sheet, SheetSaveBar } from "../../design/ui";
 iconWithClassName(Check);
 
 /** Who: everyone, or one role (a season role is derived from live seats, server-side). */
-export const COMMUNITY_ROLES: { role: UserRole | undefined; label: string }[] = [
+const COMMUNITY_ROLES: { role: UserRole | undefined; label: string }[] = [
   { role: undefined, label: "Everyone" },
   { role: "STUDENT", label: "Students" },
   { role: "LEADER", label: "Leaders" },
@@ -17,7 +17,7 @@ export const COMMUNITY_ROLES: { role: UserRole | undefined; label: string }[] = 
 ];
 
 /** Where their account stands. */
-export const COMMUNITY_STATUSES: { status: UserStatus | undefined; label: string }[] = [
+const COMMUNITY_STATUSES: { status: UserStatus | undefined; label: string }[] = [
   { status: undefined, label: "Any" },
   { status: "active", label: "Active" },
   { status: "invited", label: "Invited" },

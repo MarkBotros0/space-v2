@@ -40,7 +40,7 @@ export async function isAccessTokenInvalidated(userId: number, issuedAt: number)
   return issuedBeforeCutoff(issuedAt, row?.sessionsValidFrom ?? null);
 }
 
-export type SessionInvalidator = Pick<typeof db, "user">;
+type SessionInvalidator = Pick<typeof db, "user">;
 
 /**
  * Every access token the user holds stops working now. Call it in the same

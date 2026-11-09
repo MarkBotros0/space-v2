@@ -142,7 +142,7 @@ export interface AnswerInput {
 }
 
 /** The cached student detail with these saved answers written into it. */
-export function mergeSavedAnswers(
+function mergeSavedAnswers(
   detail: StudentQuizDetail | undefined,
   answers: AnswerInput[],
 ): StudentQuizDetail | undefined {

@@ -28,7 +28,7 @@ import { apiErrorCode, isNotFoundError } from "../lib/api-error";
 import { queryKeys } from "../lib/query-keys";
 
 /** What `useAnnouncement` yields for a post that is gone or was never visible to this reader. */
-export interface AnnouncementRemoved {
+interface AnnouncementRemoved {
   removed: true;
 }
 

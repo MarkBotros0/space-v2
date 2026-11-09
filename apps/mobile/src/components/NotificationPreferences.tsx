@@ -85,7 +85,7 @@ const STUDENT_KEYS: ShownKey[] = [
  * season admin's low-attendance flags; a mentor's follow-up reminders (owner,
  * 2026-11-07). Everyone also gets New announcements, last; for SUPER it is the only switch.
  */
-export function preferenceKeysFor(
+function preferenceKeysFor(
   role: UserRole | null,
   scopes: { seasonAdminIds: number[]; groupLeaderIds: number[] } | null,
 ): ShownKey[] {

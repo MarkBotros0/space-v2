@@ -4,7 +4,7 @@ import { z } from "zod";
 // List
 // ---------------------------------------------------------------------------
 
-export const droppedEnrollmentSummarySchema = z.object({
+const droppedEnrollmentSummarySchema = z.object({
   enrollmentId: z.number(),
   seasonId: z.number(),
   seasonTitle: z.string(),
@@ -18,7 +18,7 @@ export const droppedEnrollmentSummarySchema = z.object({
   dropReason: z.string().nullable(),
 });
 
-export const studentListItemSchema = z.object({
+const studentListItemSchema = z.object({
   id: z.number(),
   name: z.string(),
   email: z.string(),
@@ -60,11 +60,11 @@ export const studentListResponseSchema = z.object({
 });
 export type StudentListResponse = z.infer<typeof studentListResponseSchema>;
 
-export const studentListStatusSchema = z.enum(["active", "alumni", "dropped"]);
+const studentListStatusSchema = z.enum(["active", "alumni", "dropped"]);
 export type StudentListStatus = z.infer<typeof studentListStatusSchema>;
 
 /** v1's four sort keys on the students list (students-list.tsx `SortKey`). */
-export const studentListSortSchema = z.enum(["name", "university", "season", "group"]);
+const studentListSortSchema = z.enum(["name", "university", "season", "group"]);
 export type StudentListSort = z.infer<typeof studentListSortSchema>;
 
 export const studentListQuerySchema = z.object({

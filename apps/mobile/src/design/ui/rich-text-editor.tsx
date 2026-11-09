@@ -42,7 +42,7 @@ body, .ProseMirror { font-family: 'Geist', sans-serif; font-size: 14px; line-hei
 `;
 }
 
-export interface RichTextEditorProps {
+interface RichTextEditorProps {
   value: string;
   onChange: (html: string) => void;
   placeholder?: string;

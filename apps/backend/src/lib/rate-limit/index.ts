@@ -12,9 +12,9 @@ import { PostgresStore } from "./postgres-store";
 export { rateLimitHandler } from "./handler";
 export { PostgresStore } from "./postgres-store";
 
-export type RateLimitStoreKind = "postgres" | "memory";
+type RateLimitStoreKind = "postgres" | "memory";
 
-export interface LimiterSpec {
+interface LimiterSpec {
   /**
    * Unique per limiter: it becomes the store's key prefix (`auth:<ip>`), so
    * two limiters keyed on the same IP or user id never share a bucket.

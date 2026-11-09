@@ -1,8 +1,8 @@
 const { boxShadow } = require("../theme/tailwind-theme.js") as { boxShadow: Record<string, string> };
 
-export type ShadowName = "xs" | "sm" | "md" | "lg" | "xl" | "soft" | "pop" | "lift";
+type ShadowName = "xs" | "sm" | "md" | "lg" | "xl" | "soft" | "pop" | "lift";
 
-export const SHADOWS = boxShadow as Record<ShadowName, string>;
+const SHADOWS = boxShadow as Record<ShadowName, string>;
 
 /**
  * Fallback for when NativeWind's shadow classes do not render (Task 2,

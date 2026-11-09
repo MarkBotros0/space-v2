@@ -17,7 +17,7 @@ import { quizAttemptStatusSchema, quizKindSchema, quizQuestionTypeSchema } from 
  * narrowed to the caller's scope; `gradedCount` is QuizGrade rows with a
  * non-null score for PAPER, and QuizAttempt rows with status GRADED for ONLINE.
  */
-export const quizSummarySchema = z.object({
+const quizSummarySchema = z.object({
   id: z.number(),
   title: z.string(),
   kind: quizKindSchema,
@@ -139,7 +139,7 @@ export const studentQuizDetailSchema = z.object({
 export type StudentQuizDetail = z.infer<typeof studentQuizDetailSchema>;
 
 /** One row of the student's results list. */
-export const studentQuizResultSchema = z.object({
+const studentQuizResultSchema = z.object({
   quizId: z.number(),
   title: z.string(),
   kind: quizKindSchema,

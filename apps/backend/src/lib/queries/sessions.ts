@@ -5,7 +5,7 @@ import { orgDayKey, orgWallTime } from "../org-time";
 import type { CalendarScope } from "../permissions";
 import { seasonParticipant } from "./season-participants";
 
-export interface SessionListRow {
+interface SessionListRow {
   id: number;
   title: string;
   startsAt: Date;

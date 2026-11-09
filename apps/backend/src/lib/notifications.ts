@@ -6,7 +6,7 @@ import { runInBackground } from "./background";
 import { parseNotificationLink } from "./notification-target";
 import { sendPushToUsers } from "./push";
 
-export interface CreateNotificationInput {
+interface CreateNotificationInput {
   userId: number;
   type: NotificationType;
   title: string;
@@ -32,7 +32,7 @@ const PREF_FIELD = {
   ANNOUNCEMENT: "announcement",
 } as const satisfies Record<NotificationType, string>;
 
-export interface BulkNotificationResult {
+interface BulkNotificationResult {
   /** Rows written. One per distinct recipient, always — see below. */
   written: number;
   /** Recipients whose *outbound* channels were suppressed by their preference. */

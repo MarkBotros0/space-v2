@@ -6,7 +6,7 @@ import { quizAttemptStatusSchema, quizKindSchema, quizQuestionTypeSchema } from 
 // Grading read shapes — the paper grade sheet and the online grading page.
 // ---------------------------------------------------------------------------
 
-export const quizGradeRowSchema = z.object({
+const quizGradeRowSchema = z.object({
   studentUserId: z.number(),
   studentName: z.string().nullable(),
   /** The student's group in the quiz's season, for listing by group (owner, 2026-11-07). */
@@ -32,7 +32,7 @@ export const quizGradeSheetSchema = z.object({
 export type QuizGradeSheet = z.infer<typeof quizGradeSheetSchema>;
 
 /** Grader-only: carries the answer key by design (R103). */
-export const quizGradingAnswerSchema = z.object({
+const quizGradingAnswerSchema = z.object({
   questionId: z.number(),
   type: quizQuestionTypeSchema,
   prompt: z.string(),

@@ -23,7 +23,7 @@ import {
 
 const MAX_DOTS = 3;
 
-export interface CalendarGridProps {
+interface CalendarGridProps {
   view: Exclude<CalendarView, "upcoming">;
   anchor: string;
   sessions: SessionListItem[];

@@ -4,7 +4,7 @@ import { submissionQueueSchema, type SubmissionQueue } from "@space/shared";
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-export interface QueueFilters {
+interface QueueFilters {
   pendingOnly: boolean;
   seasonId?: number;
 }

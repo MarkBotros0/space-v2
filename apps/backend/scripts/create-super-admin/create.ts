@@ -6,13 +6,13 @@ import { db } from "../../src/db/client";
 import { passwordSchema } from "../../../../packages/shared/src/user";
 
 /** What the operator types. Same email and password rules as the app. */
-export const superAdminInputSchema = z.object({
+const superAdminInputSchema = z.object({
   email: z.string().trim().toLowerCase().email("Must be a valid email."),
   name: z.string().trim().min(1, "Name is required.").max(120, "At most 120 characters."),
   password: passwordSchema,
 });
 
-export type CreateSuperAdminResult =
+type CreateSuperAdminResult =
   | { ok: true; id: number; email: string }
   | { ok: false; error: string };
 

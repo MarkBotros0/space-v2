@@ -12,7 +12,7 @@ import { Switch } from "../design/ui/switch";
 import { Text } from "../design/ui/text";
 import { Textarea } from "../design/ui/textarea";
 
-export interface GraduateStudentSheetProps {
+interface GraduateStudentSheetProps {
   visible: boolean;
   studentId: number;
   studentName: string;

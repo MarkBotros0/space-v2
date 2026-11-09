@@ -27,7 +27,7 @@ export function submissionLocked(res: Response) {
  */
 export const EDITABLE_STATUSES: readonly SubmissionStatus[] = ["DRAFT", "RETURNED"];
 
-export function isEditableStatus(status: SubmissionStatus): boolean {
+function isEditableStatus(status: SubmissionStatus): boolean {
   return EDITABLE_STATUSES.includes(status);
 }
 

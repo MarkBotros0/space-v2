@@ -4,9 +4,9 @@ import { db } from "../../db/client";
 import { runInBackground } from "../background";
 
 /** The slice of the Prisma client the store uses, so tests can pass a fake. */
-export type RateLimitDb = Pick<typeof db, "$queryRaw" | "$executeRaw">;
+type RateLimitDb = Pick<typeof db, "$queryRaw" | "$executeRaw">;
 
-export interface PostgresStoreOptions {
+interface PostgresStoreOptions {
   client?: RateLimitDb;
   /** Share of increments that also sweep expired rows. Default 1%. */
   cleanupRate?: number;

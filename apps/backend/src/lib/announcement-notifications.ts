@@ -3,7 +3,7 @@ import { ANNOUNCEMENT_PUSH_LENGTH } from "../../../../packages/shared/src/index"
 import { runInBackground } from "./background";
 import { createNotificationsBulk } from "./notifications";
 
-export interface RecipientTarget {
+interface RecipientTarget {
   audience: "COMMUNITY" | "SEASON";
   seasonId?: number | null;
 }

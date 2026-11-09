@@ -36,13 +36,13 @@ const KEY_SYMBOLS: Array<[string, string]> = [
   [NOT_ASSIGNED, "This assignment was not assigned to this student"],
 ];
 
-export interface SheetSummary {
+interface SheetSummary {
   name: string;
   columnCount: number;
   rowCount: number;
 }
 
-export interface SeasonWorkbookSummary {
+interface SeasonWorkbookSummary {
   seasonCode: string;
   seasonTitle: string;
   rowCount: number;
@@ -50,7 +50,7 @@ export interface SeasonWorkbookSummary {
   estimatedBytes: number;
 }
 
-export interface SeasonWorkbookResult extends SeasonWorkbookSummary {
+interface SeasonWorkbookResult extends SeasonWorkbookSummary {
   workbook: ExcelJS.Workbook;
 }
 

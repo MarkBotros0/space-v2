@@ -23,7 +23,7 @@ interface PersonRow {
   deletedAt: Date | null;
 }
 
-export interface ConversionPlan {
+interface ConversionPlan {
   convert: (PersonRow & { from: string; to: "STUDENT" })[];
   /** Staff with no graduationYear would become current students, not alumni. */
   refused: PersonRow[];

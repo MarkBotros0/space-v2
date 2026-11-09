@@ -20,7 +20,7 @@ export function checkInRefusalCode(err: unknown): CheckInErrorCode | "unknown" {
   return code.success ? code.data : "unknown";
 }
 
-export interface CheckInCopy {
+interface CheckInCopy {
   title: string;
   message: string | null;
 }

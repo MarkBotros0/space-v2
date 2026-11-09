@@ -184,7 +184,7 @@ async function clearDraftRows(tx: Prisma.TransactionClient, studentUserIds: numb
   }
 }
 
-export type GraduationOutcome = "not_found" | "already_graduated" | { enrollmentsCompleted: number };
+type GraduationOutcome = "not_found" | "already_graduated" | { enrollmentsCompleted: number };
 
 /**
  * One person's graduation, as `POST /students/:id/graduate` and a corrected

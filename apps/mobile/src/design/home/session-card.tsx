@@ -18,14 +18,14 @@ import { HeroCard } from "../ui/hero-card";
 
 const NEXT_SESSION = "Next session";
 
-export function sessionEyebrow(session: DashboardSession, todayKey: string): string {
+function sessionEyebrow(session: DashboardSession, todayKey: string): string {
   if (session.isInProgress) return "Happening now";
   const cue = dayCue(session.dayKey, todayKey);
   return cue ? `${NEXT_SESSION} · ${cue}` : NEXT_SESSION;
 }
 
 /** Each unit is one unbreakable run, so the line breaks between them, never inside one. */
-export function sessionMeta(session: DashboardSession, note?: string): string {
+function sessionMeta(session: DashboardSession, note?: string): string {
   const parts = [
     formatWeekdayDay(session.dayKey),
     formatWallTime(session.time),

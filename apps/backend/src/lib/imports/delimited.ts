@@ -20,7 +20,7 @@
  * `exceljs` is deliberately not a dependency of this backend (D-16.2).
  */
 
-export type ImportDelimiter = "comma" | "tab";
+type ImportDelimiter = "comma" | "tab";
 
 /**
  * An error whose message was written for the operator and is safe to surface
@@ -32,7 +32,7 @@ export type ImportDelimiter = "comma" | "tab";
  */
 export class ImportParseError extends Error {}
 
-export interface ParsedRow {
+interface ParsedRow {
   /**
    * The operator's own line number. The header is line 1 and data starts at
    * line 2 (spec R11); a blank line KEEPS its number and is dropped, so these

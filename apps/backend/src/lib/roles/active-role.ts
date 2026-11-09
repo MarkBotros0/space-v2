@@ -112,7 +112,7 @@ export async function lockSeason(
 }
 
 /** One fixed key for the global Start lock. Nothing else takes an advisory lock. */
-export const SEASON_START_LOCK_KEY = 7_302_026_001n;
+const SEASON_START_LOCK_KEY = 7_302_026_001n;
 
 /**
  * Serialises every Start, so two of them can't each judge the other season

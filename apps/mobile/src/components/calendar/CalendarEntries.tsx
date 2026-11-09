@@ -25,7 +25,7 @@ export interface CalendarContext {
 }
 
 /** A tint as NativeWind classes: card/chip background, text, the card's left rule, and the month dot. */
-export interface Tint {
+interface Tint {
   box: string;
   text: string;
   border: string;
@@ -67,7 +67,7 @@ const SEASON_TINTS: Tint[] = [
 ];
 
 /** v1's five-colour SEASON_PALETTE, as tinted pairs. */
-export function seasonTint(slot: number): Tint {
+function seasonTint(slot: number): Tint {
   return SEASON_TINTS[slot % SEASON_TINTS.length]!;
 }
 
@@ -89,7 +89,7 @@ const TONE_TINTS: Record<SessionTone, Tint> = {
 };
 
 /** v1's single-season cue: today green, past muted, upcoming teal. */
-export function toneTint(tone: SessionTone): Tint {
+function toneTint(tone: SessionTone): Tint {
   return TONE_TINTS[tone];
 }
 

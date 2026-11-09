@@ -11,7 +11,7 @@ import {
   type StudentFormValues,
 } from "../lib/student-form";
 
-export interface StudentFormProps {
+interface StudentFormProps {
   title: string;
   subtitle?: string;
   /** Shown above the fields (a failed season lookup, say). */

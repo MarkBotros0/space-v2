@@ -12,7 +12,7 @@ const SEATS: { seat: StartIssue["seat"]; title: string }[] = [
   { seat: "admin", title: "Admins" },
 ];
 
-export type IssueActions = {
+type IssueActions = {
   /** The season being started: where a leader is fixed (the issue carries no group id). */
   seasonCode: string;
   seasonTitle: string;

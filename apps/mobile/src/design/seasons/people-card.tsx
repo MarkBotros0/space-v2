@@ -25,7 +25,7 @@ import { StudentsLevel, type StudentsSuggestion } from "./students-level";
 iconWithClassName(ChevronRight, FolderOpen, ShieldCheck, Users);
 
 /** Students shown under a group before "+N more"; the full list is one tap away. */
-export const STUDENTS_SHOWN = 6;
+const STUDENTS_SHOWN = 6;
 
 type Group = SeasonDetail["groups"][number];
 

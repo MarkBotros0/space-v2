@@ -18,7 +18,7 @@ export function submissionReceivedLink(publicId: string): string {
   return `/leader/submissions/${publicId}`;
 }
 
-export interface ReceivedSubmission {
+interface ReceivedSubmission {
   publicId: string;
   studentUserId: number;
   seasonId: number;

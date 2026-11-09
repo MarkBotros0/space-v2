@@ -72,7 +72,7 @@ const NOT_MEASURED = Number.MAX_SAFE_INTEGER;
 /** Padding under the footer's content, as under a sheet's save bar. */
 const FOOTER_BOTTOM_PADDING = 12;
 
-export type ScreenProps = {
+type ScreenProps = {
   children: ReactNode;
   title?: string;
   subtitle?: string;

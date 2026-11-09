@@ -22,7 +22,7 @@ export interface AttendanceBudget {
   lateCount: number;
 }
 
-export interface BudgetInput {
+interface BudgetInput {
   absentCount: number;
   lateCount: number;
   /** SUM(lateMinutes) over LATE rows; a null lateMinutes contributes 0 (R89). */

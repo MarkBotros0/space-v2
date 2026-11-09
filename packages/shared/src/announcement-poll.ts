@@ -5,12 +5,11 @@ export const POLL_OPTIONS_MIN = 2;
 export const POLL_OPTIONS_MAX = 10;
 export const POLL_OPTION_MAX = 150;
 
-export const pollOptionInputSchema = z.object({
+const pollOptionInputSchema = z.object({
   /** Present on an edit to keep an existing option (and its votes); absent for a new one. */
   id: z.number().int().positive().optional(),
   label: z.string().trim().min(1).max(POLL_OPTION_MAX),
 });
-export type PollOptionInput = z.infer<typeof pollOptionInputSchema>;
 
 const optionsField = z
   .array(pollOptionInputSchema)
@@ -88,4 +87,3 @@ export type PollVotersResponse = z.infer<typeof pollVotersResponseSchema>;
 
 /** Extra field on the 409 `poll_votes_lost` body. */
 export const pollVotesLostSchema = z.object({ votes: z.number().int().min(0) });
-export type PollVotesLost = z.infer<typeof pollVotesLostSchema>;

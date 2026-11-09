@@ -31,7 +31,7 @@ export function progressFrom(held: number, total: number): ProgressFigures {
   };
 }
 
-export type StudentAssignmentSummaryRow = Omit<StudentAssignmentStateRow, "isLate">;
+type StudentAssignmentSummaryRow = Omit<StudentAssignmentStateRow, "isLate">;
 
 export interface StudentAssignmentSummaryFigures {
   outstandingCount: number;
@@ -71,7 +71,7 @@ export function summarizeStudentAssignments(
   };
 }
 
-export interface QuizForRollup {
+interface QuizForRollup {
   id: number;
   kind: "PAPER" | "ONLINE";
   publishedAt: Date | null;

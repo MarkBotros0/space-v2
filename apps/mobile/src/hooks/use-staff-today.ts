@@ -8,7 +8,7 @@ import { useLedSeasonSessions } from "./use-sessions";
 import { useSubmissionQueue } from "./use-submission-queue";
 import { usePendingInviteCount } from "./use-users";
 
-export interface StaffToday {
+interface StaffToday {
   /** ADMIN: [current season]; SUPER: every ACTIVE season. */
   seasonIds: number[];
   /** ADMIN: the current season; SUPER: null. The season param every list Today opens uses. */

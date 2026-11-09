@@ -11,8 +11,8 @@ import { isoDaySchema } from "./org-time";
 // PATCH semantics everywhere: absent = untouched, "" or null = cleared.
 // ---------------------------------------------------------------------------
 
-export const PHONE_MAX = 60;
-export const ADDRESS_MAX = 300;
+const PHONE_MAX = 60;
+const ADDRESS_MAX = 300;
 
 /** Trimmed free text; "" (after trimming) and null clear it. */
 const trimmedToNull = (max: number) =>
@@ -30,7 +30,7 @@ const trimmedToNull = (max: number) =>
 // drops it on import). Stored in that one canonical form, "01XXXXXXXXX".
 // ---------------------------------------------------------------------------
 
-export const PHONE_PATTERN = /^01\d{9}$/;
+const PHONE_PATTERN = /^01\d{9}$/;
 export const PHONE_MESSAGE = "Enter an 11-digit mobile number starting with 01.";
 
 /** The canonical form of what was typed: digits only, with the local 0. Unchanged when it can't be one. */
@@ -65,8 +65,8 @@ export const dateOfBirthFieldSchema = z
 // gates roles.
 // ---------------------------------------------------------------------------
 
-export const UNIVERSITY_GRADUATION_YEAR_MIN = 1950;
-export const UNIVERSITY_GRADUATION_YEAR_MAX = 2100;
+const UNIVERSITY_GRADUATION_YEAR_MIN = 1950;
+const UNIVERSITY_GRADUATION_YEAR_MAX = 2100;
 
 const yearMessage = `Use a year between ${UNIVERSITY_GRADUATION_YEAR_MIN} and ${UNIVERSITY_GRADUATION_YEAR_MAX}.`;
 

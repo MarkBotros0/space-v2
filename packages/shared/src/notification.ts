@@ -24,7 +24,7 @@ import { notificationTypeSchema, type NotificationType } from "./enums";
  * is ever stored in its own column, the column maps to these values rather
  * than clients changing.
  */
-export const notificationEntityTypeSchema = z.enum([
+const notificationEntityTypeSchema = z.enum([
   "assignment",
   "quiz",
   "calendar",
@@ -127,7 +127,7 @@ export const NOTIFICATION_PREFERENCE_KEY_BY_TYPE = {
   ANNOUNCEMENT: "announcement",
 } as const satisfies Record<NotificationType, string>;
 
-export type NotificationPreferenceKey =
+type NotificationPreferenceKey =
   (typeof NOTIFICATION_PREFERENCE_KEY_BY_TYPE)[NotificationType];
 
 /**
@@ -221,7 +221,7 @@ export function pushContent(
  * `DevicePlatform { IOS ANDROID }`; the server maps at the write
  * (`DEVICE_PLATFORM_TO_DB`, below), so the wire contract never changes.
  */
-export const devicePlatformSchema = z.enum(["ios", "android"]);
+const devicePlatformSchema = z.enum(["ios", "android"]);
 export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
 
 /** Wire → database enum value, for the DeviceToken upsert in POST /me/devices. */

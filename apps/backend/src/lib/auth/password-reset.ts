@@ -15,7 +15,7 @@ export const PASSWORD_RESET_TTL_MS = PASSWORD_RESET_TTL_MINUTES * 60 * 1000;
 /** One request per account per minute — stops mail-bombing a victim from many IPs. */
 const RESET_REQUEST_COOLDOWN_MS = 60 * 1000;
 
-export type ResetWriter = Pick<typeof db, "passwordResetToken">;
+type ResetWriter = Pick<typeof db, "passwordResetToken">;
 
 /** Expire every live, unused reset token a user holds. Returns how many. */
 export async function expireLiveResetTokens(

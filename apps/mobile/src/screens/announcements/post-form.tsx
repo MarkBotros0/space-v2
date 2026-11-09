@@ -38,7 +38,7 @@ const AUDIENCE_OPTIONS = [
 ];
 
 /** `poll` is the poll as edited: null for none, with ids on the options a post already had. */
-export type PostFormValues = { body: string; poll: PollInput | null };
+type PostFormValues = { body: string; poll: PollInput | null };
 
 type Fields = { body?: string; season?: string; poll?: PollErrors };
 

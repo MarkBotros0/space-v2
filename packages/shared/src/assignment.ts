@@ -13,7 +13,7 @@ import { isoDaySchema, wallTimeSchema } from "./org-time";
  * The six MIME buckets an assignment may restrict uploads to. An empty array
  * means "any type" — there is no "all" member.
  */
-export const mimeCategorySchema = z.enum(["image", "pdf", "doc", "audio", "video", "text"]);
+const mimeCategorySchema = z.enum(["image", "pdf", "doc", "audio", "video", "text"]);
 export type MimeCategory = z.infer<typeof mimeCategorySchema>;
 
 /**
@@ -24,11 +24,11 @@ export type MimeCategory = z.infer<typeof mimeCategorySchema>;
  * there would be a migration, and the absence of a row is not a status the
  * database should have to represent.
  */
-export const assignmentStudentStatusSchema = z.union([
+const assignmentStudentStatusSchema = z.union([
   submissionStatusSchema,
   z.literal("PENDING"),
 ]);
-export type AssignmentStudentStatus = z.infer<typeof assignmentStudentStatusSchema>;
+type AssignmentStudentStatus = z.infer<typeof assignmentStudentStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Response schemas
@@ -78,7 +78,7 @@ export const studentAssignmentListItemSchema = z.object({
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 
-export const mySubmissionSummarySchema = z.object({
+const mySubmissionSummarySchema = z.object({
   publicId: z.string(),
   status: submissionStatusSchema,
   submittedAt: z.string().nullable(),
@@ -132,7 +132,7 @@ export const assignmentDetailSchema = z.object({
 export type AssignmentDetail = z.infer<typeof assignmentDetailSchema>;
 
 /** One row of the per-assignment submission tracker. */
-export const assignmentTrackerRowSchema = z.object({
+const assignmentTrackerRowSchema = z.object({
   studentUserId: z.number(),
   name: z.string().nullable(),
   email: z.string(),

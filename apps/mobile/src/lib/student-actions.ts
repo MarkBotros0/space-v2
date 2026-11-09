@@ -6,7 +6,7 @@ import type { EnrollmentHistoryItem, MeScopes, MeUser } from "@space/shared";
  * that season. A stray SeasonAdmin row on a STUDENT grants nothing here
  * either.
  */
-export function isAdminOfSeasonForUi(
+function isAdminOfSeasonForUi(
   user: Pick<MeUser, "role"> | null,
   scopes: MeScopes | null,
   seasonId: number,
@@ -16,7 +16,7 @@ export function isAdminOfSeasonForUi(
   return user.role === "ADMIN" && scopes.seasonAdminIds.includes(seasonId);
 }
 
-export interface StudentActions {
+interface StudentActions {
   /** Plan 7's canEditStudent: SUPER, or an ADMIN with an ACTIVE enrollment in one of their seasons. */
   canEdit: boolean;
   /** R55 + R63: SUPER, and only while not yet graduated. */

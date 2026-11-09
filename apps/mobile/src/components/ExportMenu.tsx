@@ -6,7 +6,7 @@ import { exportFilename } from "@space/shared";
 import { useReportExport, useSeasonWorkbookManifest } from "../hooks/use-report-export";
 import { Button, GroupedList, ListRow, Sheet, Text } from "../design/ui";
 
-export interface ExportMenuProps {
+interface ExportMenuProps {
   seasonId: number | null;
   scopeLabel: string;
   canExportWorkbook: boolean;

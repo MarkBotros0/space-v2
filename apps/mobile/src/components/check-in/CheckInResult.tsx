@@ -28,7 +28,7 @@ const ICON: Record<Tone, string> = {
 };
 
 /** v1's `span.inline-flex size-16 … rounded-full` + 32px icon. */
-export function StatusCircle({ icon: Icon, tone }: { icon: LucideIcon; tone: Tone }) {
+function StatusCircle({ icon: Icon, tone }: { icon: LucideIcon; tone: Tone }) {
   return (
     <View className={cn("size-16 items-center justify-center rounded-full", CIRCLE[tone])}>
       <Icon size={32} className={ICON[tone]} />

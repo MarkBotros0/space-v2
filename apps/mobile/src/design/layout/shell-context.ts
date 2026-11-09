@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 /** v1 shell-frame.tsx <main> bottom padding that keeps content clear of the tab bar. */
-export const SHELL_BOTTOM_PADDING = 96;
+const SHELL_BOTTOM_PADDING = 96;
 
 /**
  * Whether the floating tab bar is drawn under this screen. The tabs layout

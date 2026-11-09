@@ -32,7 +32,7 @@ export const passwordSchema = z
 export const userStatusSchema = z.enum(["active", "invited", "pending", "inactive"]);
 export type UserStatus = z.infer<typeof userStatusSchema>;
 
-export const userListItemSchema = authUserSchema.extend({
+const userListItemSchema = authUserSchema.extend({
   graduationYear: z.number().int().nullable(),
   lastLoginAt: z.string().nullable(),
   deletedAt: z.string().nullable(),
@@ -57,7 +57,7 @@ export const inviteStateSchema = z.object({
 export type InviteState = z.infer<typeof inviteStateSchema>;
 
 /** A season the user is a SeasonAdmin of (detail screen only). */
-export const userAdminSeasonSchema = z.object({
+const userAdminSeasonSchema = z.object({
   id: z.number().int(),
   code: z.string(),
   title: z.string(),
@@ -259,7 +259,7 @@ export const devSwitchRequestSchema = z.object({
   userId: z.number().int().positive(),
 });
 
-export const devSwitchUserSchema = z.object({
+const devSwitchUserSchema = z.object({
   id: z.number().int(),
   email: z.string(),
   name: z.string(),

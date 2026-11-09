@@ -35,7 +35,7 @@ export function bandColor(band: EngagementBand): string {
   return BAND_COLOR[band];
 }
 
-export interface ChartColors {
+interface ChartColors {
   /** Unfilled track behind a donut arc or a bar, and the trend line's grid. */
   track: string;
   /** One colour per series, in order; wraps past the end. */

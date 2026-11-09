@@ -13,7 +13,7 @@ import { printReviewLists } from "./community-preflight-review";
 import { findCommunityWideNotAlone, type CommunityWideNotAlone } from "./community-preflight-wide";
 
 /** Every way the data breaks "zero or one active role". Each list is one rule. */
-export interface Violations {
+interface Violations {
   /** A leader with more than one group in one ACTIVE season. */
   leadersWithManyGroups: { userId: number; seasonId: number; groups: number }[];
   /** A leader with groups in more than one ACTIVE season. */

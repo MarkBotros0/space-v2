@@ -4,7 +4,7 @@ import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Text } from "../../design/ui/text";
 
 /** "1 person", "120 people": a reach of exactly one is singular. */
-export function peopleCount(n: number): string {
+function peopleCount(n: number): string {
   return n === 1 ? "1 person" : `${n} people`;
 }
 

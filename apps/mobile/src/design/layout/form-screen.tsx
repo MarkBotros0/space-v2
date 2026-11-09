@@ -9,7 +9,7 @@ import type { BackTarget } from "./large-title";
 import { SaveBar } from "./save-bar";
 import { Screen } from "./screen";
 
-export type FormScreenProps = {
+type FormScreenProps = {
   title: string;
   subtitle?: string;
   back?: BackTarget | null;

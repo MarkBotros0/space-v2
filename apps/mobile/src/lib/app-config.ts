@@ -42,7 +42,7 @@ export function sentryEnvironment(): string {
   return __DEV__ ? "development" : "production";
 }
 
-export interface GoogleSignInIds {
+interface GoogleSignInIds {
   /** The Web OAuth client: Android asks Google for an ID token addressed to it. */
   webClientId: string;
   /** The iOS OAuth client; null on a build that has none. */

@@ -7,7 +7,7 @@ import { SegmentedControl } from "../../design/ui/segmented-control";
 import { Text } from "../../design/ui/text";
 import { Textarea } from "../../design/ui/textarea";
 
-export type ResultValue = "PASSED" | "NOT_PASSED";
+type ResultValue = "PASSED" | "NOT_PASSED";
 export type ResultDraft = { result: ResultValue; reason: string };
 
 const OPTIONS = [
@@ -16,7 +16,7 @@ const OPTIONS = [
 ];
 
 /** What the correction screen knows about a graduating season's student. */
-export type ResultGraduation = { isAlumnus: boolean; stored: ResultValue | null; year: number | null };
+type ResultGraduation = { isAlumnus: boolean; stored: ResultValue | null; year: number | null };
 
 /** What saving this draft does to alumni status, on a graduating season; null when it does nothing to say. */
 function graduationNote(graduation: ResultGraduation, result: ResultValue): string | null {

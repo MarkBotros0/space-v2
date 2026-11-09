@@ -1,7 +1,7 @@
 import { db } from "../../db/client";
 import { budgetFrom, type AttendanceBudget } from "../attendance-budget";
 
-export interface BudgetSeason {
+interface BudgetSeason {
   id: number;
   absenceBudgetMinutes: number;
   absenceWeightMinutes: number;

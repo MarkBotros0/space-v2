@@ -8,7 +8,7 @@ import { navFor, type MeScopes, type MeUser, type RoleNav } from "@space/shared"
  * on every cold start. `retry` means there is a stored session that the server
  * couldn't confirm or refuse (rate limited, say): keep it and offer to try again.
  */
-export type BootStatus = "idle" | "restoring" | "authenticated" | "anonymous" | "retry";
+type BootStatus = "idle" | "restoring" | "authenticated" | "anonymous" | "retry";
 
 interface SessionState {
   status: BootStatus;

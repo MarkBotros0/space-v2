@@ -41,7 +41,7 @@ export function meanAttendancePct(
 const count = z.number().int().min(0);
 
 /** Sessions, never weeks (D12): held = `startsAt <= now`. */
-export const seasonProgressSchema = z
+const seasonProgressSchema = z
   .object({
     sessionsHeld: count,
     sessionsTotal: count,
@@ -51,7 +51,7 @@ export const seasonProgressSchema = z
   .strict();
 
 /** The session in progress, else the next one (D13). Day and time are org wall-clock (X13). */
-export const dashboardSessionSchema = z
+const dashboardSessionSchema = z
   .object({
     id: z.number().int(),
     title: z.string(),
@@ -68,11 +68,11 @@ export const dashboardSessionSchema = z
   .strict();
 export type DashboardSession = z.infer<typeof dashboardSessionSchema>;
 
-export const dashboardSeasonSchema = z
+const dashboardSeasonSchema = z
   .object({ id: z.number().int(), code: z.string(), title: z.string(), status: seasonStatusSchema })
   .strict();
 
-export const staffCohortSummarySchema = z
+const staffCohortSummarySchema = z
   .object({
     /** ACTIVE enrolments in scope (C9, D8). */
     studentCount: count,
@@ -84,10 +84,10 @@ export const staffCohortSummarySchema = z
   .strict();
 
 /** The review queue's own scope (D11): SUBMITTED, and REVIEWED | RETURNED. */
-export const reviewCountsSchema = z.object({ pendingReview: count, reviewed: count }).strict();
+const reviewCountsSchema = z.object({ pendingReview: count, reviewed: count }).strict();
 
 /** D10: Plan 8's per-kind graded count; unpublished ONLINE quizzes are `drafts`, not pending. */
-export const quizRollupSchema = z
+const quizRollupSchema = z
   .object({ total: count, pending: count, fullyGraded: count, drafts: count })
   .strict();
 
@@ -134,10 +134,10 @@ export type StaffSeasonDashboard = z.infer<typeof staffSeasonDashboardSchema>;
  * A due-soon / open row: the student list row, which carries its org-calendar
  * due day so the label never formats `dueAt` in the device zone (X13).
  */
-export const dashboardDueItemSchema = studentAssignmentListItemSchema;
+const dashboardDueItemSchema = studentAssignmentListItemSchema;
 export type DashboardDueItem = z.infer<typeof dashboardDueItemSchema>;
 
-export const studentAssignmentSummarySchema = z
+const studentAssignmentSummarySchema = z
   .object({
     /** `isAssignmentOutstanding` (PENDING | DRAFT), targeted assignments only. */
     outstandingCount: count,
@@ -171,7 +171,7 @@ export const studentDashboardSchema = z
   .strict();
 export type StudentDashboard = z.infer<typeof studentDashboardSchema>;
 
-export const activityItemSchema = z
+const activityItemSchema = z
   .object({
     /** Stable list key: `att:<id>`, `sub:<id>`, `rev:<id>`. */
     key: z.string(),

@@ -17,13 +17,13 @@ import { Text } from "./text";
 
 iconWithClassName(Check, ChevronDown, X);
 
-export interface MultiSelectOption {
+interface MultiSelectOption {
   value: string;
   label: string;
   description?: string;
 }
 
-export interface MultiSelectProps {
+interface MultiSelectProps {
   options: MultiSelectOption[];
   value: string[];
   onChange: (value: string[]) => void;

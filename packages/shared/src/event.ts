@@ -8,7 +8,7 @@ import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 
-export const jpcEventListItemSchema = z.object({
+const jpcEventListItemSchema = z.object({
   id: z.number(),
   title: z.string(),
   /** The stored instant — for ordering only. Never formatted on the device. */
@@ -89,7 +89,7 @@ const eventWriteBase = eventFields.extend({
  * Exported so the PATCH handler re-runs the same two rules against the merged
  * row. ISO days compare correctly as strings.
  */
-export function refineEvent(
+function refineEvent(
   v: { day: string; endDay: string | null; visibility: string; seasonId: number | null },
   ctx: z.RefinementCtx,
 ): void {

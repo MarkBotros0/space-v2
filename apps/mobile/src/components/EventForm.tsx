@@ -63,7 +63,7 @@ const dayToDate = (day: string): Date | null => {
  * Wall-clock fields only (ruling X13): an empty Time is all-day (`null`), an
  * empty End date is `null`. The device composes no instant and applies no zone.
  */
-export function eventFormBody(values: EventFormValues): unknown {
+function eventFormBody(values: EventFormValues): unknown {
   return {
     title: values.title.trim(),
     day: values.day.trim(),
@@ -76,7 +76,7 @@ export function eventFormBody(values: EventFormValues): unknown {
   };
 }
 
-export interface EventFormProps {
+interface EventFormProps {
   /** The form lives in a bottom sheet; closed, nothing renders and the fields reset on the next open. */
   open: boolean;
   title: string;

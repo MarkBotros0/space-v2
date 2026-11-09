@@ -14,7 +14,7 @@ function defaultKeys(): JWTVerifyGetKey {
   return googleKeys;
 }
 
-export interface GoogleIdentity {
+interface GoogleIdentity {
   /** Google's stable account id. */
   sub: string;
   email: string;

@@ -7,9 +7,9 @@ import { activeRolesFor, lockPeople, lockSeason, type ActiveRole, type SeasonLoc
 import { seatRefusal, type SeatPerson, type SeatRefusal } from "./seat-rules";
 import { describeBlock, loadStandings, standingsFrom, type StandingSeason } from "./standing";
 
-export type StudentSeatSeason = StandingSeason & { status: SeasonStatus; isCommunityWide: boolean };
+type StudentSeatSeason = StandingSeason & { status: SeasonStatus; isCommunityWide: boolean };
 
-export type StudentSeatOptions = { overridden: boolean; actorMayOverride: boolean };
+type StudentSeatOptions = { overridden: boolean; actorMayOverride: boolean };
 
 const NOT_OVERRIDDEN: StudentSeatOptions = { overridden: false, actorMayOverride: false };
 
@@ -87,7 +87,7 @@ export async function newPersonRefusal(
   return decide(tx, person, season, undefined, standing, NOT_OVERRIDDEN);
 }
 
-export type StudentSeatOverride = { userIds: number[]; actorId: number; actorMayOverride: boolean };
+type StudentSeatOverride = { userIds: number[]; actorId: number; actorMayOverride: boolean };
 
 export type SeatStudentsResult = {
   seated: number[];
@@ -174,7 +174,7 @@ async function refusalFor(
   return decide(tx, person, season, active, standing, options);
 }
 
-export type RestoredSeat = { id: number; status: "ACTIVE" };
+type RestoredSeat = { id: number; status: "ACTIVE" };
 
 /**
  * A dropped student back into the row they already have: WITHDRAWN to ACTIVE,

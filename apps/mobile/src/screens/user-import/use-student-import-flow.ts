@@ -30,7 +30,7 @@ export type Filter = "attention" | "all";
 /** Default the filter to the rows that need attention (spec §10c). */
 const ATTENTION: ImportRowStatus[] = ["invalid", "duplicate"];
 /** The phone table is not virtualised; "All" on a 2000-row paste shows this many at a time. */
-export const PAGE_SIZE = 50;
+const PAGE_SIZE = 50;
 
 export function useStudentImportFlow() {
   const [step, setStep] = useState<Step>("paste");

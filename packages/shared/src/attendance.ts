@@ -3,7 +3,7 @@ import { z } from "zod";
 import { attendanceStatusSchema } from "./enums";
 import { isoDaySchema, wallTimeSchema } from "./org-time";
 
-export const attendanceEntrySchema = z.object({
+const attendanceEntrySchema = z.object({
   studentUserId: z.number().int(),
   status: attendanceStatusSchema,
   notes: z.string().max(500).optional().nullable(),
@@ -30,7 +30,7 @@ export const saveAttendanceResponseSchema = z.object({
 // ---------------------------------------------------------------------------
 
 /** `newPublicId()`'s alphabet and length — what `Session.checkInToken` holds (spec 04 R35). */
-export const CHECK_IN_TOKEN_RE = /^[0-9A-Za-z]{10}$/;
+const CHECK_IN_TOKEN_RE = /^[0-9A-Za-z]{10}$/;
 const CHECK_IN_URL_RE = /^https?:\/\/[^/?#\s]+\/checkin\/([0-9A-Za-z]{10})\/?(?:[?#]\S*)?$/i;
 const CHECK_IN_APP_LINK_RE = /^spacev2:\/\/\/?checkin\/([0-9A-Za-z]{10})\/?$/i;
 
@@ -81,7 +81,7 @@ export const attendanceBudgetSchema = z.object({
 });
 export type AttendanceBudget = z.infer<typeof attendanceBudgetSchema>;
 
-export const myAttendanceSessionSchema = z.object({
+const myAttendanceSessionSchema = z.object({
   sessionId: z.number(),
   title: z.string(),
   startsAt: z.string(),

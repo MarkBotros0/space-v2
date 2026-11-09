@@ -20,10 +20,10 @@ export function seasonOutcomeLabel(outcome: SeasonOutcome): string {
   return OUTCOME_LABELS[outcome];
 }
 
-export const enrollmentResultSchema = z.enum(["PASSED", "NOT_PASSED"]);
+const enrollmentResultSchema = z.enum(["PASSED", "NOT_PASSED"]);
 
 /** One reason a season can't start yet. A person can have several, or one per seat. */
-export const startIssueSchema = z.object({
+const startIssueSchema = z.object({
   userId: z.number(),
   name: z.string(),
   seat: z.enum(["admin", "leader", "student"]),

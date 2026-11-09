@@ -13,9 +13,9 @@
  */
 export const CHECK_IN_WINDOW_MS = 3 * 60 * 60 * 1000;
 
-export type CheckInState = "not_open" | "open" | "expired" | "closed";
+type CheckInState = "not_open" | "open" | "expired" | "closed";
 
-export interface CheckInTimes {
+interface CheckInTimes {
   checkInOpenAt: Date | null;
   checkInClosedAt: Date | null;
 }

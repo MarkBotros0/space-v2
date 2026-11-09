@@ -15,7 +15,7 @@ import type { ImportCellValues, ImportProfileFieldKey } from "@space/shared";
 
 import { ImportParseError } from "../delimited";
 
-export interface StudentHeaderMap {
+interface StudentHeaderMap {
   nameCol: number;
   emailCol: number;
   profileCols: { col: number; field: ImportProfileFieldKey }[];

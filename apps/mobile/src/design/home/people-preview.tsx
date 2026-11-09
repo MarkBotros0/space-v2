@@ -9,7 +9,7 @@ import { initialsOf } from "../../lib/initials";
 import { GroupedList, ListRow } from "../ui/grouped-list";
 import { Text } from "../ui/text";
 
-export type PreviewPerson = { id: number; name: string; reason?: string };
+type PreviewPerson = { id: number; name: string; reason?: string };
 
 function Initials({ name }: { name: string }) {
   return (

@@ -11,7 +11,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
  * to sign in. A restore of the R8 backup discards them, and that costs the
  * affected accounts one extra sign-in - nothing a user created.
  */
-export const READ_ONLY_ALLOWED_WRITES: ReadonlySet<string> = new Set([
+const READ_ONLY_ALLOWED_WRITES: ReadonlySet<string> = new Set([
   "POST /api/v1/auth/login",
   "POST /api/v1/auth/google",
   "POST /api/v1/auth/refresh",

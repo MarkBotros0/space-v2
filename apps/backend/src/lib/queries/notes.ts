@@ -55,7 +55,7 @@ function wasEdited(row: { createdAt: Date; updatedAt: Date }): boolean {
  * It's their role today, not when they wrote the note: a leader whose season
  * has ended reads as a student. No table records the role at the time.
  */
-export async function withDerivedAuthorRoles<T extends { authorUserId: number; authorUser: NoteRow["authorUser"] }>(
+async function withDerivedAuthorRoles<T extends { authorUserId: number; authorUser: NoteRow["authorUser"] }>(
   rows: T[],
 ): Promise<T[]> {
   const authors = rows.map((r) => ({ id: r.authorUserId, role: r.authorUser.role }));

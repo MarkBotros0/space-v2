@@ -34,7 +34,7 @@ export const sessionListItemSchema = z.object({
 });
 export type SessionListItem = z.infer<typeof sessionListItemSchema>;
 
-export const myAttendanceSchema = z.object({
+const myAttendanceSchema = z.object({
   status: attendanceStatusSchema,
   notes: z.string().nullable(),
   lateMinutes: z.number().nullable(),
@@ -170,7 +170,7 @@ export const sessionUpdatedResponseSchema = z.object({ updated: z.number().int()
 export const sessionDeletedResponseSchema = z.object({ deleted: z.number().int().nonnegative() });
 
 /** One target of a scoped edit/delete, as GET /sessions/:id/series previews it (D-16.8). */
-export const sessionSeriesItemSchema = z.object({
+const sessionSeriesItemSchema = z.object({
   id: z.number(),
   title: z.string(),
   startsAt: z.string(),
@@ -200,17 +200,7 @@ export const sessionRangeQuerySchema = z.object({
   seasonId: z.coerce.number().int().positive().optional(),
 });
 
-export const sessionRangeResponseSchema = z.object({
-  sessions: z.array(sessionListItemSchema),
-  /** The effective window, half-open [from, to). Page with to=from / from=to. */
-  from: z.string(),
-  to: z.string(),
-  /** Org-calendar days of the first and last instant in the window (X13) — for the header. */
-  fromDayKey: isoDaySchema,
-  toDayKey: isoDaySchema,
-});
-
-export const checkInStateValueSchema = z.enum(["not_open", "open", "expired", "closed"]);
+const checkInStateValueSchema = z.enum(["not_open", "open", "expired", "closed"]);
 
 /** GET /sessions/:id/check-in — admin-only (D-16.9). One derivation: lib/check-in.ts. */
 export const checkInStateSchema = z.object({

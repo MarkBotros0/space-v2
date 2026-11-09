@@ -10,7 +10,7 @@
  * data and stays out of logs (the spec's "without logging any field value").
  * The signature makes that structural — it accepts ids only.
  */
-export type AuditOperation =
+type AuditOperation =
   | "student.graduate"
   | "student.delete"
   | "enrollment.drop"
@@ -49,7 +49,7 @@ export type AuditOperation =
   | "announcement.poll.update";
 
 /** Extra ids that locate a change — ids only, like the rest of the line. */
-export type AuditScope = {
+type AuditScope = {
   season?: number;
   /** A super let this past the rule it would otherwise have failed. */
   override?: true;

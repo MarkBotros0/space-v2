@@ -3,7 +3,7 @@ import { Linking } from "react-native";
 
 import { Text } from "../../design/ui";
 
-export type LinkRun = { kind: "text"; value: string } | { kind: "link"; url: string };
+type LinkRun = { kind: "text"; value: string } | { kind: "link"; url: string };
 
 const URL_PATTERN = /https?:\/\/[^\s<>]+/gi;
 const TRAILING = /[.,;:!?'")\]]+$/;

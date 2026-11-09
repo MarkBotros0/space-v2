@@ -2,7 +2,7 @@ import { View } from "react-native";
 
 import { Switch, Text } from "../../design/ui";
 
-export const COMMUNITY_WIDE_DESCRIPTION =
+const COMMUNITY_WIDE_DESCRIPTION =
   "Everyone can take part as a student, alumni too. It runs alone: no other season can be active.";
 
 /**

@@ -7,7 +7,7 @@ import { BAND_LABEL } from "@space/shared";
 import { Text } from "../../design/ui/text";
 import { bandColor, useChartColors } from "../../lib/report-colors";
 
-export interface BandDonutProps {
+interface BandDonutProps {
   bands: Array<{ band: EngagementBand; count: number }>;
   size?: number;
 }

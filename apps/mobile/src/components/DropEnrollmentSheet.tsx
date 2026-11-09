@@ -9,7 +9,7 @@ import { Sheet, SheetSaveBar } from "../design/ui/sheet";
 import { Text } from "../design/ui/text";
 import { Textarea } from "../design/ui/textarea";
 
-export interface DropEnrollmentSheetProps {
+interface DropEnrollmentSheetProps {
   studentId: number;
   /** The row being dropped; null hides the sheet. */
   enrollment: EnrollmentHistoryItem | null;

@@ -18,7 +18,7 @@ import { SearchField } from "../ui/search-field";
 import { Text } from "../ui/text";
 
 /** How many rows show before "Show more", and how many each press adds. */
-export const STUDENT_PAGE = 20;
+const STUDENT_PAGE = 20;
 
 export type StudentListItem = {
   id: number | string;

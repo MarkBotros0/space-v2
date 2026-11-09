@@ -6,7 +6,7 @@ import { DURATION, useReducedMotion } from "../motion";
 
 const SLIDE = { duration: DURATION.fast, easing: Easing.out(Easing.cubic) };
 
-export type HighlightTarget = { x: number; width: number } | null;
+type HighlightTarget = { x: number; width: number } | null;
 
 /**
  * The active tab's highlight: one absolutely positioned view whose translateX

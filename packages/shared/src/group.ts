@@ -51,7 +51,7 @@ export const groupUpdateRequestSchema = groupWriteRequestSchema.extend({
   studentIds: z.array(z.number().int().positive()).max(500).optional(),
 });
 
-export const groupMemberSchema = z.object({
+const groupMemberSchema = z.object({
   id: z.number(),
   name: z.string().nullable(),
   /**
@@ -110,7 +110,7 @@ export const seasonRosterRowSchema = z.object({
 export type SeasonRosterRow = z.infer<typeof seasonRosterRowSchema>;
 
 /** v1 allowed 2000 and could not finish inside its own 20 s timeout (spec 05 R56). */
-export const GROUP_ASSIGNMENTS_MAX = 500;
+const GROUP_ASSIGNMENTS_MAX = 500;
 
 export const groupAssignmentsRequestSchema = z.object({
   assignments: z

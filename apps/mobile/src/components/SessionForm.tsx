@@ -16,7 +16,7 @@ import {
   TimePicker,
 } from "../design/ui";
 
-export type SessionType = "inperson" | "online";
+type SessionType = "inperson" | "online";
 
 export interface SessionFormValues {
   title: string;
@@ -179,7 +179,7 @@ export function SessionFields({
 }
 
 /** v1 words for the "Apply to" select. */
-export const SCOPE_LABELS: Record<RecurrenceScope, string> = {
+const SCOPE_LABELS: Record<RecurrenceScope, string> = {
   one: "This session only",
   future: "This and future sessions",
   all: "All sessions in the series",

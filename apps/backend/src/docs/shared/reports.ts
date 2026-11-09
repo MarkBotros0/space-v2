@@ -1,6 +1,6 @@
 // Reports (Plan 15). Hand-authored like every response in this document.
-export const intField = { type: "integer" } as const;
-export const reportScopeDoc = {
+const intField = { type: "integer" } as const;
+const reportScopeDoc = {
   type: "object",
   required: ["seasonIds", "seasons", "truncated", "label"],
   properties: {
@@ -23,7 +23,7 @@ export const reportScopeDoc = {
     label: { type: "string" },
   },
 } as const;
-export const engagementReportRowDoc = {
+const engagementReportRowDoc = {
   type: "object",
   required: [
     "score", "attendancePct", "submissionPct", "attendanceTotal", "attendancePresent",

@@ -6,7 +6,7 @@ import type { seasonWriteRequestSchema } from "@space/shared";
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-export interface DuplicateSeasonInput {
+interface DuplicateSeasonInput {
   year: number;
   startDate: string;
   endDate: string;

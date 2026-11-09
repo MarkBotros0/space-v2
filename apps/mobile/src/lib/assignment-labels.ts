@@ -63,7 +63,7 @@ export function configLabel(
   return `Standard · files up to ${d.maxFileSizeMb} MB (${types})`;
 }
 
-export interface TrackerGroup {
+interface TrackerGroup {
   groupId: number | null;
   groupName: string;
   rows: AssignmentTrackerRow[];

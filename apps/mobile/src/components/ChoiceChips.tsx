@@ -5,12 +5,12 @@ import { FieldError } from "../design/ui/field";
 import { Label } from "../design/ui/label";
 import { Text } from "../design/ui/text";
 
-export interface ChoiceOption<T> {
+interface ChoiceOption<T> {
   value: T;
   label: string;
 }
 
-export interface ChoiceChipsProps<T> {
+interface ChoiceChipsProps<T> {
   label: string;
   options: readonly ChoiceOption<T>[];
   value: T;

@@ -2,7 +2,7 @@ import { parseYouTubeId } from "../../../../../packages/shared/src/index";
 import { db } from "../../db/client";
 import { seasonParticipant } from "./season-participants";
 
-export interface VideoQuizQuestionRow {
+interface VideoQuizQuestionRow {
   id: number;
   atSeconds: number;
   prompt: string;
@@ -13,7 +13,7 @@ export interface VideoQuizQuestionRow {
   isCorrect: boolean | null;
 }
 
-export interface StudentVideoQuizData {
+interface StudentVideoQuizData {
   seasonId: number;
   videoId: string | null;
   youtubeUrl: string | null;
@@ -107,7 +107,7 @@ export async function loadStudentVideoQuiz(
   };
 }
 
-export interface VideoQuizResultRowData {
+interface VideoQuizResultRowData {
   studentUserId: number;
   studentName: string | null;
   groupId: number | null;
@@ -119,7 +119,7 @@ export interface VideoQuizResultRowData {
   completedAt: Date | null;
 }
 
-export interface VideoQuizResultsData {
+interface VideoQuizResultsData {
   questionCount: number;
   totalPoints: number;
   rows: VideoQuizResultRowData[];

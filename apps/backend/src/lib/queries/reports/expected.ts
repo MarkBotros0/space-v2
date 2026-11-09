@@ -1,12 +1,12 @@
 import type { EnrollmentStatus } from "../../../generated/prisma/client";
 
-export interface ExpectedEnrollment {
+interface ExpectedEnrollment {
   studentUserId: number;
   groupId: number | null;
   status: EnrollmentStatus;
 }
 
-export interface ExpectedAssignment {
+interface ExpectedAssignment {
   isAllGroups: boolean;
   targets: Array<{ groupId: number }>;
 }

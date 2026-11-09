@@ -17,7 +17,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-export type MarkReadInput = { ids: number[] } | { all: true };
+type MarkReadInput = { ids: number[] } | { all: true };
 
 /**
  * The inbox, paginated.

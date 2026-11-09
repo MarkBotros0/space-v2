@@ -2,8 +2,8 @@ import axios from "axios";
 
 import { apiErrorMessage } from "./api-error";
 
-export const UNREACHABLE_MESSAGE = "Can't reach JPC Space. Check your connection and try again.";
-export const SERVER_TROUBLE_MESSAGE = "Something went wrong on our side. Try again in a moment.";
+const UNREACHABLE_MESSAGE = "Can't reach JPC Space. Check your connection and try again.";
+const SERVER_TROUBLE_MESSAGE = "Something went wrong on our side. Try again in a moment.";
 
 /**
  * What to tell a signed-out user when a request fails. Tells apart "the

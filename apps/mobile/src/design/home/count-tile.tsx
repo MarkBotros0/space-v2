@@ -22,7 +22,7 @@ import { Text } from "../ui/text";
 
 iconWithClassName(CircleCheck);
 
-export type CountTone = "warn" | "bad" | "info";
+type CountTone = "warn" | "bad" | "info";
 
 const TONE: Record<CountTone | "ok", { box: string; icon: string }> = {
   warn: { box: "bg-warn-soft", icon: "text-warn" },

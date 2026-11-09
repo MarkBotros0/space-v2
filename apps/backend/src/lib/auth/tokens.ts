@@ -20,7 +20,7 @@ export interface SessionUser {
   graduationYear: number | null;
 }
 
-export interface IssuedSession {
+interface IssuedSession {
   accessToken: string;
   expiresIn: number;
   refreshToken: string;
@@ -50,7 +50,7 @@ export async function signAccessToken(
 }
 
 /** A verified access token: its claims plus its `iat`, in seconds. */
-export type VerifiedAccess = SessionUser & { issuedAt: number };
+type VerifiedAccess = SessionUser & { issuedAt: number };
 
 /**
  * Signature, audience and expiry only. Whether the user has since invalidated
@@ -153,7 +153,7 @@ export async function revokeRefreshToken(rawToken: string): Promise<void> {
  * Accepts any client exposing `refreshToken` so it runs inside a
  * db.$transaction as well as standalone.
  */
-export type DbWriter = Pick<typeof db, "refreshToken">;
+type DbWriter = Pick<typeof db, "refreshToken">;
 
 export async function revokeAllRefreshTokensForUser(
   client: DbWriter,

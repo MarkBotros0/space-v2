@@ -17,7 +17,7 @@ import { Text } from "../ui/text";
 
 iconWithClassName(Check, X, RotateCcw);
 
-export type EssayAwards = Record<number, string>;
+type EssayAwards = Record<number, string>;
 
 /** The essay marks as typed so far, seeded from what the server holds. */
 export function initialAwards(attempt: QuizGradingAttempt): EssayAwards {

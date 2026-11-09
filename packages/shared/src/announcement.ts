@@ -16,7 +16,7 @@ export const ANNOUNCEMENT_PAGE_SIZE = 20;
 
 // Wire shapes: timestamps are strings. Bodies are plain text, never HTML.
 
-export const announcementListItemSchema = z.object({
+const announcementListItemSchema = z.object({
   id: z.number().int(),
   audience: announcementAudienceSchema,
   seasonId: z.number().int().nullable(),

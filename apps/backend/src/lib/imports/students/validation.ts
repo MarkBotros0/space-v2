@@ -31,7 +31,7 @@ export function normaliseEmail(email: string): string {
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-export type RowValidation =
+type RowValidation =
   | { ok: true; row: StudentImportRow }
   | { ok: false; message: string };
 

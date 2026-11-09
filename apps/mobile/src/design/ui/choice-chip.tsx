@@ -4,7 +4,7 @@ import { Pressable } from "react-native";
 import { cn } from "../lib/cn";
 import { Text } from "./text";
 
-export type ChoiceChipProps = {
+type ChoiceChipProps = {
   label: string;
   selected: boolean;
   onPress: () => void;

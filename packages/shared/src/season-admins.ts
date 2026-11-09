@@ -9,7 +9,7 @@ import { z } from "zod";
  */
 
 /** One SeasonAdmin row, joined to the person it names. */
-export const seasonAdminItemSchema = z.object({
+const seasonAdminItemSchema = z.object({
   userId: z.number().int(),
   name: z.string(),
   email: z.string(),
@@ -41,7 +41,7 @@ export const addSeasonAdminRequestSchema = z.object({
  * Name and last season only: a season admin picks a leader from this and sees
  * nothing else of anyone's earlier seasons.
  */
-export const staffCandidateSchema = z.object({
+const staffCandidateSchema = z.object({
   id: z.number().int(),
   name: z.string(),
   lastSeason: z.object({ title: z.string() }).nullable(),

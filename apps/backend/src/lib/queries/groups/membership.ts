@@ -53,7 +53,7 @@ export async function validateGroupWrite(
 }
 
 /** Who a group's save adds and removes as leaders. */
-export type LeaderChange = { added: number[]; removed: number[] };
+type LeaderChange = { added: number[]; removed: number[] };
 
 /**
  * Check a group's new leader list, before writing anything. `groupId` is null

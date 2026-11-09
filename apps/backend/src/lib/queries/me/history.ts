@@ -10,7 +10,7 @@ import { outcomeOf } from "./outcome";
  * alumni alike. The subject is the token's, never a parameter (spec 02 D13).
  */
 
-export interface SeasonHistoryCurriculumItem {
+interface SeasonHistoryCurriculumItem {
   sessionId: number;
   title: string;
   startsAt: Date;

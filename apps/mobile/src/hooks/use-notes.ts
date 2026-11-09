@@ -19,7 +19,7 @@ import type { z } from "zod";
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 
-export type AuthoredNotePage = z.infer<typeof authoredNoteListResponseSchema>;
+type AuthoredNotePage = z.infer<typeof authoredNoteListResponseSchema>;
 
 /** `?cursor=` appended only past the first page, so page one's URL is bare. */
 function withCursor(path: string, cursor: string | null): string {

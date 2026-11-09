@@ -8,7 +8,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** How long a done follow-up stays on the list. */
 const DONE_SHOWN_DAYS = 30;
 
-export function dueAtFor(createdAt: Date): Date {
+function dueAtFor(createdAt: Date): Date {
   return new Date(createdAt.getTime() + FOLLOW_UP_DAYS * DAY_MS);
 }
 

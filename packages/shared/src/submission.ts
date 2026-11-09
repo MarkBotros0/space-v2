@@ -30,7 +30,7 @@ export const reviewSubmissionRequestSchema = z.object({
   returnForRevision: z.boolean().optional(),
 });
 
-export const submissionFileSummarySchema = z.object({
+const submissionFileSummarySchema = z.object({
   id: z.number(),
   originalName: z.string(),
   mimeType: z.string(),
@@ -79,7 +79,7 @@ export const submissionDetailSchema = z.object({
 export type SubmissionDetail = z.infer<typeof submissionDetailSchema>;
 
 /** One row of a reviewer's queue. Deliberately narrower than the detail. */
-export const submissionQueueItemSchema = z.object({
+const submissionQueueItemSchema = z.object({
   publicId: z.string(),
   status: submissionStatusSchema,
   submittedAt: z.string().nullable(),
@@ -107,7 +107,7 @@ export type SubmissionQueueItem = z.infer<typeof submissionQueueItemSchema>;
  * ignoring `pendingOnly` and paging, so the header does not change as the list
  * is filtered or scrolled. DRAFTs are never counted.
  */
-export const submissionQueueCountsSchema = z.object({
+const submissionQueueCountsSchema = z.object({
   /** Status SUBMITTED — awaiting a verdict. */
   pending: z.number().int().nonnegative(),
   /** Every non-DRAFT submission in scope. */

@@ -6,7 +6,7 @@ import { formatEventWhen } from "../../lib/format";
 import { VISIBILITY_LABELS } from "../../components/EventForm";
 
 /** At most one chip: Past wins; otherwise who can see it when that is not everyone (Alumni only, or the season code). */
-export function eventChip(e: JpcEventListItem): ChipSpec | null {
+function eventChip(e: JpcEventListItem): ChipSpec | null {
   if (e.isPast) return { tone: "neutral", label: "Past" };
   if (e.visibility === "ALUMNI_ONLY") return { tone: "warn", label: VISIBILITY_LABELS.ALUMNI_ONLY };
   if (e.visibility === "SEASON")

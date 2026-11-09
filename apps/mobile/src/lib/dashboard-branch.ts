@@ -1,6 +1,6 @@
 import { isAlumnus, isStudyingAlumnus, type NavAudience, type UserRole } from "@space/shared";
 
-export type DashboardBranch = UserRole | "ALUMNI";
+type DashboardBranch = UserRole | "ALUMNI";
 
 /**
  * Which Home a user sees — the same audience rule as `navFor`: an alumnus has

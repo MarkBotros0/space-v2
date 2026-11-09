@@ -34,7 +34,7 @@ function DetailRow({ label, value, trailing }: Row) {
   );
 }
 
-export function detailRows(
+function detailRows(
   p: StudentDetail["profile"],
   exception?: GraduatedByException | null,
   canCall = true,

@@ -26,7 +26,7 @@ export const IMPORT_MAX_PASTE_CHARS = 256 * 1024;
  * `studentImportRowSchema` with a message naming the column, instead of being
  * swallowed by the body schema with a generic "invalid request".
  */
-export const IMPORT_MAX_CELL_CHARS = 5000;
+const IMPORT_MAX_CELL_CHARS = 5000;
 
 // ---------------------------------------------------------------------------
 // Header vocabulary — pure data, shared so the mobile screen can render
@@ -97,7 +97,7 @@ export const IMPORT_FIELD_LABELS: Readonly<Record<ImportProfileFieldKey, string>
  * somebody removed on purpose — but reporting a soft-deleted row as "Already
  * in the system" is a lie the operator cannot act on.
  */
-export const importRowStatusSchema = z.enum([
+const importRowStatusSchema = z.enum([
   "new",
   "exists",
   "duplicate",
@@ -146,7 +146,7 @@ export type ImportCellValues = z.infer<typeof importCellValuesSchema>;
 export const studentImportRowSchema = createStudentRequestSchema.omit({ seasonId: true });
 export type StudentImportRow = z.output<typeof studentImportRowSchema>;
 
-export const studentImportPreviewRowSchema = z.object({
+const studentImportPreviewRowSchema = z.object({
   /**
    * The operator's line number: the header is line 1, data starts at line 2
    * (spec R11). NOT contiguous — a blank line keeps its number and is skipped
@@ -161,7 +161,7 @@ export const studentImportPreviewRowSchema = z.object({
   values: importCellValuesSchema,
 });
 
-export const studentImportCountsSchema = z.object({
+const studentImportCountsSchema = z.object({
   new: z.number(),
   exists: z.number(),
   duplicate: z.number(),
@@ -202,7 +202,7 @@ export type StudentImportPreview = z.infer<typeof studentImportPreviewSchema>;
  * mode that overwrote profile data from a spreadsheet is how a stale export
  * erases a year of pastoral notes.
  */
-export const importOnExistingSchema = z.enum(["skip", "enroll"]);
+const importOnExistingSchema = z.enum(["skip", "enroll"]);
 export type ImportOnExisting = z.infer<typeof importOnExistingSchema>;
 
 /**
@@ -212,7 +212,7 @@ export type ImportOnExisting = z.infer<typeof importOnExistingSchema>;
  * itself before writing (D-16.4), so sending one would be meaningless; the
  * schema strips it.
  */
-export const studentImportCommitRowSchema = z.object({
+const studentImportCommitRowSchema = z.object({
   rowNumber: z.number().int().positive(),
   values: importCellValuesSchema,
 });
@@ -258,9 +258,9 @@ export type StudentImportCommitInput = z.output<typeof studentImportCommitInputS
  * and nothing is written, so no result can contain a failure. `enrolled` is
  * `onExisting: "enroll"` landing on an existing student.
  */
-export const importCommitOutcomeSchema = z.enum(["created", "skipped", "enrolled"]);
+const importCommitOutcomeSchema = z.enum(["created", "skipped", "enrolled"]);
 
-export const studentImportResultRowSchema = z.object({
+const studentImportResultRowSchema = z.object({
   /**
    * v1 omits the row number here (`student-import.ts:183-189`), which makes a
    * report impossible to map back to the sheet. Added (spec §8).
@@ -297,7 +297,7 @@ export const pastedSheetInputSchema = z.object({
   delimiter: z.enum(["comma", "tab", "auto"]).default("auto"),
 });
 
-export const importColumnSpecSchema = z.object({
+const importColumnSpecSchema = z.object({
   label: z.string(),
   acceptedHeaders: z.array(z.string()),
   required: z.boolean(),
@@ -329,7 +329,7 @@ export type ImportTemplate = z.infer<typeof importTemplateSchema>;
 // ---------------------------------------------------------------------------
 
 /** v1's five (`jpc-space/src/lib/group-import.ts:6`), unchanged. */
-export const groupImportRowStatusSchema = z.enum([
+const groupImportRowStatusSchema = z.enum([
   "assign",
   "unchanged",
   "no_student",
@@ -337,7 +337,7 @@ export const groupImportRowStatusSchema = z.enum([
   "invalid",
 ]);
 
-export const groupImportPreviewRowSchema = z.object({
+const groupImportPreviewRowSchema = z.object({
   rowNumber: z.number().int().positive(),
   /** Read for display only — never written, never validated (spec R56). */
   name: z.string(),

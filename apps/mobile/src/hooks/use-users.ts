@@ -53,7 +53,7 @@ function useInvalidateAfterAccountWrite(): () => void {
 }
 
 /** The list's server-side filters. `role`/`status` are optional so the users screen's key stays `{ q }`. */
-export interface UserListFilters {
+interface UserListFilters {
   q: string;
   role?: UserRole;
   status?: UserStatus;

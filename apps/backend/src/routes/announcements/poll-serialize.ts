@@ -4,7 +4,7 @@ import { canManagePoll, canSeePollNames, canVotePoll, isPollClosed } from "../..
 import type { AnnouncementPoll } from "../../../../../packages/shared/src/index";
 import type { AnnouncementRow } from "./serialize";
 
-export const POLL_SELECT = {
+const POLL_SELECT = {
   id: true,
   version: true,
   allowsMultiple: true,

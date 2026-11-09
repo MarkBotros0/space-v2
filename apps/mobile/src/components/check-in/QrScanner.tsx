@@ -5,7 +5,7 @@ import { parseCheckInCode } from "@space/shared";
 
 import { Button, Text } from "../../design/ui";
 
-export interface QrScannerProps {
+interface QrScannerProps {
   /** Called once, with a token parseCheckInCode accepted. */
   onCode: (token: string) => void;
   onCancel: () => void;

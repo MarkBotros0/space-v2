@@ -4,7 +4,7 @@ import type { SeasonListItem } from "@space/shared";
 import { cn } from "../design/lib/cn";
 import { Text } from "../design/ui";
 
-export interface SeasonSwitcherProps {
+interface SeasonSwitcherProps {
   seasons: SeasonListItem[];
   selectedId: number | null;
   onSelect: (id: number) => void;

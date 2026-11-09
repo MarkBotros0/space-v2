@@ -1,7 +1,7 @@
 // apps/backend/src/lib/exports/audit.ts
 import type { ExportKind } from "@space/shared";
 
-export interface ExportAuditEntry {
+interface ExportAuditEntry {
   actorId: number;
   actorRole: string;
   kind: ExportKind;

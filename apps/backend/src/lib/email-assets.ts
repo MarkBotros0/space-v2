@@ -6,7 +6,7 @@
  * logo is apps/mobile/assets/icon.png at 96px. Generated: replace a string to
  * change an image, never edit it by hand.
  */
-export interface InlineImage {
+interface InlineImage {
   cid: string;
   filename: string;
   base64: string;

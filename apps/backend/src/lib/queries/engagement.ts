@@ -10,7 +10,7 @@ import { isAtRisk } from "../../../../../packages/shared/src/index";
 import { db } from "../../db/client";
 import { seasonParticipant } from "./season-participants";
 
-export interface EngagementCohortOptions {
+interface EngagementCohortOptions {
   /** Restrict to these students (a leader's roster, or a single detail view). */
   studentUserIds?: number[];
   /** Restrict to one group's students. */

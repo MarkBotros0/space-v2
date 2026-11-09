@@ -1,5 +1,5 @@
 // Imports (Plan 17). Hand-authored like every response in this document.
-export const importCellValuesDoc = {
+const importCellValuesDoc = {
   type: "object",
   description:
     "The raw trimmed cell text of one row. Flat (no nested profile). Resubmitted verbatim on commit.",

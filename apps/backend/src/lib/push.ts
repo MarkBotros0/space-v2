@@ -13,7 +13,7 @@ import { config } from "./config";
 export const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const BATCH = 100;
 
-export interface PushPayload {
+interface PushPayload {
   title: string;
   body?: string | null;
   /**

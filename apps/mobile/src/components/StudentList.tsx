@@ -20,8 +20,8 @@ import { useDebouncedSearch } from "../screens/students-list/use-debounced-searc
 import { useSessionStore } from "../store/session";
 
 /** Who may open each list: the screen mirrors the endpoint's per-surface gate. */
-export const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];
-export const DROPPED_ROLES: readonly UserRole[] = ["SUPER", "ADMIN"];
+const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];
+const DROPPED_ROLES: readonly UserRole[] = ["SUPER", "ADMIN"];
 
 const COPY = {
   active: {
@@ -54,7 +54,7 @@ function mentorSubtitle(n: number, absent: boolean): string {
   return absent ? `${people} absent lately` : people;
 }
 
-export interface StudentListProps {
+interface StudentListProps {
   status: StudentListStatus;
   /** Mirrors the endpoint's per-surface role gate — the screen never asks for a 403. */
   allowedRoles: readonly UserRole[];

@@ -7,7 +7,7 @@ import { useSessionStore } from "../../store/session";
  * community-wide season) edits university, faculty and graduation year; an
  * alumnus reads them; staff have none.
  */
-export type ProfileKind = "student" | "alumni" | "staff";
+type ProfileKind = "student" | "alumni" | "staff";
 
 export function useProfileKind(): ProfileKind {
   const role = useSessionStore((s) => s.user?.role ?? null);

@@ -98,7 +98,7 @@ function FilesGroup({ detail, sub }: { detail: AssignmentDetail; sub: Submission
   );
 }
 
-export type SubmissionParts = { body: ReactNode; footer: ReactNode | undefined };
+type SubmissionParts = { body: ReactNode; footer: ReactNode | undefined };
 
 export function useSubmissionEditor(detail: AssignmentDetail): SubmissionParts {
   const summary = detail.mySubmission;

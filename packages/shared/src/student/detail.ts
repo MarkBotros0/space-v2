@@ -17,7 +17,7 @@ import {
  * carrying a withheld field, instead of stripping it silently. That parse
  * failure is the leak detector D3 asks for.
  */
-export const studentProfilePublicSchema = z
+const studentProfilePublicSchema = z
   .object({
     university: z.string().nullable(),
     faculty: z.string().nullable(),
@@ -32,16 +32,16 @@ export const studentProfilePublicSchema = z
   .strict();
 
 /** + the personal data SUPER/ADMIN and the student themselves may read. */
-export const studentProfilePrivateSchema = studentProfilePublicSchema.extend({
+const studentProfilePrivateSchema = studentProfilePublicSchema.extend({
   dateOfBirth: z.string().nullable(),
 });
 
 /** + staff-only internal notes. Never sent to the subject (R23). */
-export const studentProfileInternalSchema = studentProfilePrivateSchema.extend({
+const studentProfileInternalSchema = studentProfilePrivateSchema.extend({
   notes: z.string().nullable(),
 });
 
-export const enrollmentHistoryItemSchema = z.object({
+const enrollmentHistoryItemSchema = z.object({
   enrollmentId: z.number(),
   seasonId: z.number(),
   seasonCode: z.string(),
@@ -72,7 +72,7 @@ export type EnrollmentHistoryItem = z.infer<typeof enrollmentHistoryItemSchema>;
  * Who graduated this person by the rare exception (no graduating season passed),
  * when, and why. SUPER's view alone: null when there was none, absent for everyone else.
  */
-export const graduatedByExceptionSchema = z
+const graduatedByExceptionSchema = z
   .object({ at: z.string(), byName: z.string().nullable(), reason: z.string().nullable() })
   .nullable();
 export type GraduatedByException = z.infer<typeof graduatedByExceptionSchema>;
@@ -82,7 +82,7 @@ export type GraduatedByException = z.infer<typeof graduatedByExceptionSchema>;
  * while the newest invite still works (`expiresAt`), `pending` when none does.
  * Drives Resend invite on the student's page (owner, 2026-11-07).
  */
-export const studentInviteStateSchema = z
+const studentInviteStateSchema = z
   .object({ status: z.enum(["invited", "pending"]), expiresAt: z.string().nullable() })
   .nullable();
 export type StudentInviteState = z.infer<typeof studentInviteStateSchema>;
@@ -110,7 +110,7 @@ const studentDetailBase = z.object({
 });
 
 /** One row of `GET /students/:id/attendance` (REG-83), newest session first. */
-export const studentAttendanceHistoryItemSchema = z.object({
+const studentAttendanceHistoryItemSchema = z.object({
   sessionId: z.number(),
   sessionTitle: z.string(),
   startsAt: z.string(),
@@ -127,7 +127,7 @@ export const studentAttendanceHistorySchema = z.object({
 export type StudentAttendanceHistory = z.infer<typeof studentAttendanceHistorySchema>;
 
 /** One row of `GET /students/:id/submissions` (REG-83), newest first, never a DRAFT. */
-export const studentSubmissionItemSchema = z.object({
+const studentSubmissionItemSchema = z.object({
   publicId: z.string(),
   assignmentId: z.number(),
   assignmentTitle: z.string(),

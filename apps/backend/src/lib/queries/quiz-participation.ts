@@ -1,6 +1,6 @@
 import { db } from "../../db/client";
 
-export interface QuizParticipation {
+interface QuizParticipation {
   quizzesGiven: number;
   quizzesTaken: number;
   quizPct: number;

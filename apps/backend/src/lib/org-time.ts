@@ -22,7 +22,7 @@ const partsFormatter = new Intl.DateTimeFormat("en-US", {
   hour: "numeric", minute: "numeric", second: "numeric",
 });
 
-export interface OrgWallClock {
+interface OrgWallClock {
   year: number;
   /** 1–12 */
   month: number;

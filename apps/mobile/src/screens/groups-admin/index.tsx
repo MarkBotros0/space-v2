@@ -16,7 +16,7 @@ import { joinMeta } from "../../lib/join-meta";
 import { countOf } from "../../lib/plural";
 
 /** "3 students · Lina, Karim", or "No leaders" when nobody leads it. */
-export function groupMeta(g: GroupListItem): string {
+function groupMeta(g: GroupListItem): string {
   return joinMeta([
     countOf(g.studentCount, "student"),
     g.leaderNames.length === 0 ? "No leaders" : g.leaderNames.join(", "),

@@ -9,7 +9,7 @@ import { computeAttendanceBudget } from "../attendance-budget";
 // Attendance — v1 app/student/attendance/page.tsx:44-72 + engagement streak
 // ---------------------------------------------------------------------------
 
-export interface MyAttendanceSessionRow {
+interface MyAttendanceSessionRow {
   sessionId: number;
   title: string;
   startsAt: Date;
