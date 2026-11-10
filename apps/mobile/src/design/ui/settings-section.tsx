@@ -6,8 +6,8 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
-import { ListSectionHeader } from "../ui/grouped-list";
-import { Text } from "../ui/text";
+import { ListSectionHeader } from "./grouped-list";
+import { Text } from "./text";
 
 export function Section({
   title,

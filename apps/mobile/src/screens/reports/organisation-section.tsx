@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { RankedBars } from "../../components/charts/RankedBars";
+import { RankedBars } from "../../design/charts/ranked-bars";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import {

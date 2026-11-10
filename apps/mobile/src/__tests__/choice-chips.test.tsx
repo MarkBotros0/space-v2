@@ -1,6 +1,6 @@
 import { fireEvent, screen } from "@testing-library/react-native";
 
-import { ChoiceChips } from "../components/ChoiceChips";
+import { ChoiceChips } from "../design/ui/choice-chips";
 import { renderWithProviders } from "./helpers/render";
 
 describe("ChoiceChips", () => {

@@ -2,7 +2,7 @@
 import { View } from "react-native";
 import Svg, { Circle, G, Line, Polyline } from "react-native-svg";
 
-import { Text } from "../../design/ui/text";
+import { Text } from "../ui/text";
 import { useChartColors } from "../../lib/report-colors";
 
 interface TrendPoint {

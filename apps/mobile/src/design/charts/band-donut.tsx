@@ -4,7 +4,7 @@ import Svg, { Circle } from "react-native-svg";
 import type { EngagementBand } from "@space/shared";
 import { BAND_LABEL } from "@space/shared";
 
-import { Text } from "../../design/ui/text";
+import { Text } from "../ui/text";
 import { bandColor, useChartColors } from "../../lib/report-colors";
 
 interface BandDonutProps {

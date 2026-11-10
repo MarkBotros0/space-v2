@@ -3,9 +3,9 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { REPORT_METRIC_NOTES, type EngagementReportRow, type EngagementSummary } from "@space/shared";
 
-import { BandDonut } from "../../components/charts/BandDonut";
-import { RankedBars } from "../../components/charts/RankedBars";
-import { TrendLine } from "../../components/charts/TrendLine";
+import { BandDonut } from "../../design/charts/band-donut";
+import { RankedBars } from "../../design/charts/ranked-bars";
+import { TrendLine } from "../../design/charts/trend-line";
 import { GroupedList, ListRow, PillButton, Text } from "../../design/ui";
 import { InlineError } from "../../design/layout/route-states";
 import { formatDayKey } from "../../lib/format";

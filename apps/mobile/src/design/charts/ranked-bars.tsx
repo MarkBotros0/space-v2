@@ -1,8 +1,8 @@
 // apps/mobile/src/components/charts/RankedBars.tsx
 import { View } from "react-native";
 
-import { Text } from "../../design/ui/text";
-import { palette } from "../../design/theme/palette";
+import { Text } from "../ui/text";
+import { palette } from "../theme/palette";
 import { useChartColors } from "../../lib/report-colors";
 
 interface RankedBar {

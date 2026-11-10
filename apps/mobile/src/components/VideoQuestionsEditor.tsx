@@ -12,7 +12,7 @@ import { Input } from "../design/ui/input";
 import { Skeleton } from "../design/ui/skeleton";
 import { Text } from "../design/ui/text";
 import { apiErrorMessage } from "../lib/api-error";
-import { ChoiceChips } from "./ChoiceChips";
+import { ChoiceChips } from "../design/ui/choice-chips";
 import {
   EMPTY_VIDEO_QUESTION_FORM,
   formFromQuestion,

@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react-native";
 
-import { BandDonut } from "../components/charts/BandDonut";
+import { BandDonut } from "../design/charts/band-donut";
 
 it("names every band with its count beside the ring: colour alone says nothing", () => {
   render(

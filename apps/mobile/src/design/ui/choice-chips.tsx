@@ -1,9 +1,9 @@
 import { Pressable, View } from "react-native";
 
-import { cn } from "../design/lib/cn";
-import { FieldError } from "../design/ui/field";
-import { Label } from "../design/ui/label";
-import { Text } from "../design/ui/text";
+import { cn } from "../lib/cn";
+import { FieldError } from "./field";
+import { Label } from "./label";
+import { Text } from "./text";
 
 interface ChoiceOption<T> {
   value: T;
