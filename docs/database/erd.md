@@ -17,7 +17,6 @@ erDiagram
   User ||--o{ RefreshToken : "user"
   User ||--o{ PasswordResetToken : "user"
   User ||--o| StudentProfile : "user"
-  Season |o--o{ StudentProfile : "activeSeason"
   User ||--o| NotificationPreference : "user"
   User ||--o{ DeviceToken : "user"
   User {
@@ -69,17 +68,10 @@ erDiagram
   StudentProfile {
     Int id PK
     Int userId FK, UK
-    Int activeSeasonId FK "nullable"
     String university "nullable"
     String faculty "nullable"
     Int universityGraduationYear "nullable"
-    String year "nullable"
-    String phone "nullable"
-    DateTime dateOfBirth "nullable"
-    String spiritualBackground "nullable"
-    String gifts "nullable"
     String notes "nullable"
-    String photoPath "nullable"
     DateTime deletedAt "nullable"
     DateTime createdAt
     DateTime updatedAt
@@ -112,9 +104,6 @@ erDiagram
     String key PK
     Int hits
     DateTime resetAt
-  }
-  Season {
-    Int id PK
   }
 ```
 

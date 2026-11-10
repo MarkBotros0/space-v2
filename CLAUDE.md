@@ -703,8 +703,8 @@ and Build 2 (see "Roles") and Build 3 (see "Community-wide seasons") are written
 - **`activeSeasonId` is a derived claim.** `lib/auth/scopes.ts` computes it on every token from the
   newest ACTIVE enrolment in an ACTIVE, non-deleted season; `seasonAdminIds` / `groupLeaderIds`
   likewise cover DRAFT or ACTIVE seasons only. The claim keeps its name, so the mobile app and
-  tests are unchanged. **`StudentProfile.activeSeasonId` stays as an unused column** (migrations
-  stay additive): nothing reads or writes it. Ending a season marks its people's sessions stale
+  tests are unchanged. The old `StudentProfile.activeSeasonId` column is
+  gone (refactor Wave 6, DB-001). Ending a season marks its people's sessions stale
   (`sessionsValidFrom`), so the change lands on their next refresh, not at the next login.
 - **Former staff are cut off.** Once a season ends, its admins and leaders lose it with their
   scopes: no access to it and no History entry; only Super (and Mentors) read finished seasons.

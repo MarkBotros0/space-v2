@@ -183,7 +183,6 @@ export async function cleanupTestData(): Promise<void> {
     await db.group.deleteMany({ where: inSeasons });
     await db.session.deleteMany({ where: inSeasons });
     await db.seasonAdmin.deleteMany({ where: inSeasons });
-    await db.studentProfile.deleteMany({ where: { activeSeasonId: { in: seasonIds } } });
     await db.season.deleteMany({ where: { id: { in: seasonIds } } });
   }
 

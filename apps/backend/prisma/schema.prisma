@@ -274,30 +274,15 @@ model StudentProfile {
   userId Int  @unique
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // "One active season at a time" — enforced by FK + business rules.
-  activeSeasonId Int?
-  activeSeason   Season? @relation("StudentActiveSeason", fields: [activeSeasonId], references: [id], onDelete: SetNull)
-
   university          String?
   faculty             String?
   // The student's university graduation year (may be in the future). Not
   // User.graduationYear, which is the JPCS-alumni marker.
   universityGraduationYear Int?
-  // Unused since 2026-11-06 (owner): year was free text ("3rd · Engineering"),
-  // phone/dateOfBirth moved to User, spiritualBackground/gifts were dropped
-  // from the product. Kept in the table; no code reads or writes them.
-  year                String?
-  phone               String?
-  dateOfBirth         DateTime? @db.Timestamptz(3)
-  spiritualBackground String?
-  gifts               String?
   notes               String?
-  photoPath           String?
   deletedAt           DateTime? @db.Timestamptz(3)
   createdAt           DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
-
-  @@index([activeSeasonId])
 }
 
 // ---------------------------------------------------------------------------
@@ -336,7 +321,6 @@ model Season {
   sessions          Session[]
   assignments       Assignment[]
   enrollments       SeasonEnrollment[]
-  activeForStudents StudentProfile[]   @relation("StudentActiveSeason")
   jpcEvents         JpcEvent[]         @relation("JpcEventSeason")
   engagementNotes   EngagementNote[]
   quizzes           Quiz[]

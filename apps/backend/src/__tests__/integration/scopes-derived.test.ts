@@ -1,5 +1,5 @@
 // Task 2 (community model): the current season and staff grants are derived
-// from live rows, not read from StudentProfile.activeSeasonId.
+// from live rows (StudentProfile.activeSeasonId, which v1 read, is dropped: DB-001).
 import { loadScopes } from "../../lib/auth/scopes";
 import { db } from "../../db/client";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
@@ -26,7 +26,7 @@ describe("loadScopes derives from live data", () => {
     const b = await createTestUser("sd-b", "STUDENT");
     const c = await createTestUser("sd-c", "STUDENT");
     const d = await createTestUser("sd-d", "STUDENT");
-    await db.studentProfile.create({ data: { userId: b.id, activeSeasonId: draft.id } });
+    await db.studentProfile.create({ data: { userId: b.id } });
     await enrol(a.id, active.id);
     await enrol(b.id, draft.id);
     await enrol(c.id, active.id, { status: "COMPLETED" });
