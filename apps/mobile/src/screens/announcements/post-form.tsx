@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import {
-  ANNOUNCEMENT_BODY_MAX,
   createAnnouncementRequestSchema,
   updateAnnouncementRequestSchema,
   type AnnouncementTargetsResponse,
@@ -13,30 +12,14 @@ import {
 
 import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
-import {
-  FormField,
-  SegmentedControl,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Text,
-  Textarea,
-} from "../../design/ui";
+import { Text } from "../../design/ui";
 import { PillButton } from "../../design/ui/pill-button";
 import { ConfirmEditSheet } from "./confirm-edit-sheet";
+import { AudienceSection, MessageField, type Audience } from "./post-form-sections";
 import { ConfirmPostSheet } from "./confirm-post-sheet";
 import { editWarnings } from "./poll/edit-warnings";
 import { PollEditor, pollErrors, type PollErrors } from "./poll/poll-editor";
 import { pollPatch, usePollDraft } from "./poll/use-poll-draft";
-
-/** The counter shows once the message is this long. */
-const COUNTER_FROM = 4000;
-const AUDIENCE_OPTIONS = [
-  { value: "COMMUNITY", label: "Everyone" },
-  { value: "SEASON", label: "A season" },
-];
 
 /** `poll` is the poll as edited: null for none, with ids on the options a post already had. */
 type PostFormValues = { body: string; poll: PollInput | null };
@@ -96,7 +79,7 @@ export function PostForm(props: Props) {
   const community = targets?.community ?? false;
   const seasons = targets?.seasons ?? [];
   const canChoose = community && seasons.length > 0;
-  const [audience, setAudience] = useState<"COMMUNITY" | "SEASON">(community ? "COMMUNITY" : "SEASON");
+  const [audience, setAudience] = useState<Audience>(community ? "COMMUNITY" : "SEASON");
   const [seasonId, setSeasonId] = useState<number | null>(seasons.length === 1 ? seasons[0]!.id : null);
   const toSeason = targets !== null && (canChoose ? audience === "SEASON" : !community);
   const chosen = toSeason ? (seasons.find((s) => s.id === seasonId) ?? null) : null;
@@ -185,50 +168,18 @@ export function PostForm(props: Props) {
           </View>
         ) : null}
 
-        {canChoose ? (
-          <SegmentedControl
-            options={AUDIENCE_OPTIONS}
-            value={audience}
-            onChange={(v) => setAudience(v as "COMMUNITY" | "SEASON")}
-          />
-        ) : null}
-        {pickSeason ? (
-          <FormField label="Season" error={errors.season}>
-            <Select
-              items={seasons.map((s) => ({ value: String(s.id), label: s.title }))}
-              value={seasonId === null ? null : String(seasonId)}
-              onValueChange={(v) => setSeasonId(Number(v))}
-            >
-              <SelectTrigger accessibilityLabel="Season">
-                <SelectValue placeholder="Choose a season" />
-              </SelectTrigger>
-              <SelectContent>
-                {seasons.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    {s.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FormField>
-        ) : (
-          <Text variant="headline" className="text-foreground">{`To: ${toLabel}`}</Text>
-        )}
-
-        <FormField label="Message" error={errors.body}>
-          <Textarea
-            accessibilityLabel="Message"
-            value={body}
-            maxLength={ANNOUNCEMENT_BODY_MAX}
-            onChangeText={setBody}
-            className="min-h-40"
-          />
-          {body.length > COUNTER_FROM ? (
-            <Text variant="caption" className="text-muted-foreground">
-              {`${body.length} / ${ANNOUNCEMENT_BODY_MAX}`}
-            </Text>
-          ) : null}
-        </FormField>
+        <AudienceSection
+          canChoose={canChoose}
+          audience={audience}
+          setAudience={setAudience}
+          pickSeason={pickSeason}
+          seasons={seasons}
+          seasonId={seasonId}
+          setSeasonId={setSeasonId}
+          seasonError={errors.season}
+          toLabel={toLabel}
+        />
+        <MessageField body={body} setBody={setBody} error={errors.body} />
 
         {poll ? (
           <PollEditor value={poll} onChange={draft.setPoll} errors={errors.poll ?? {}} onRemove={draft.remove} />
