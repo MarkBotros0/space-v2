@@ -101,9 +101,19 @@ export async function updateQuiz(req: Request, res: Response) {
     }
   }
 
+  if (body.shuffleQuestions !== undefined && (await db.quizAttempt.count({ where: { quizId: id } })) > 0) {
+    return apiError(
+      res,
+      "quiz_has_attempts",
+      "Students have started this quiz, so its settings can no longer change.",
+      409,
+    );
+  }
+
   await db.quiz.update({
     where: { id },
     data: {
+      ...(body.shuffleQuestions !== undefined ? { shuffleQuestions: body.shuffleQuestions } : {}),
       ...(body.title !== undefined ? { title: body.title } : {}),
       ...(body.maxScore !== undefined ? { maxScore: body.maxScore } : {}),
       ...(body.sessionId !== undefined ? { sessionId: body.sessionId } : {}),

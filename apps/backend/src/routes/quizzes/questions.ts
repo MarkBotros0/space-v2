@@ -70,6 +70,35 @@ async function loadAuthorableQuiz(
   return quiz;
 }
 
+type PublishCheckRow = {
+  type: string;
+  quizOptions: { isCorrect: boolean; side: string | null; matchId: number | null }[];
+  quizBlanks: unknown[];
+};
+
+/** Whether a stored question has the answer key its type needs. */
+function isAnswerable(q: PublishCheckRow): boolean {
+  const correct = q.quizOptions.filter((o) => o.isCorrect).length;
+  switch (q.type) {
+    case "SINGLE_CHOICE":
+      return q.quizOptions.length >= 2 && correct === 1;
+    case "MULTI_CHOICE":
+      return q.quizOptions.length >= 3 && correct >= 2 && correct < q.quizOptions.length;
+    case "TRUE_FALSE":
+      return q.quizOptions.length === 2 && correct === 1;
+    case "MATCHING": {
+      const lefts = q.quizOptions.filter((o) => o.side === "LEFT");
+      return lefts.length >= 2 && lefts.every((l) => l.matchId !== null);
+    }
+    case "FILL_BLANK":
+      return q.quizBlanks.length >= 1;
+    case "ESSAY":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export async function addQuestion(req: Request, res: Response) {
   const id = idParam(res, req.params.id, "quiz");
   if (id === null) return;
@@ -181,19 +210,19 @@ export async function publishQuiz(req: Request, res: Response) {
   if (parsed.publish) {
     const questions = await db.quizQuestion.findMany({
       where: { quizId: id },
-      select: { type: true, correctIndex: true, options: true },
+      select: {
+        type: true,
+        quizOptions: { select: { isCorrect: true, side: true, matchId: true } },
+        quizBlanks: { select: { id: true } },
+      },
     });
     if (questions.length === 0) {
       return apiError(res, "no_questions", "Add at least one question before publishing.", 409);
     }
-    // Re-checked here because R18's guarantee at write time can be broken later
-    // by an option edit — correctIndex is a position into `options`, not a
-    // reference to one (R24).
-    const badMcq = questions.some(
-      (q) => q.type === "MCQ" && (q.correctIndex === null || q.correctIndex >= q.options.length),
-    );
-    if (badMcq) {
-      return apiError(res, "mcq_without_answer", "Every multiple-choice question needs a correct answer.", 409);
+    // Re-checked here by type, because the write-time schema can be bypassed
+    // by rows written elsewhere; an unanswerable question must never go live.
+    if (questions.some((q) => !isAnswerable(q))) {
+      return apiError(res, "mcq_without_answer", "Every question needs a complete answer key.", 409);
     }
   } else {
     // Spec D4. v1 wrote publishedAt: null unconditionally and both student

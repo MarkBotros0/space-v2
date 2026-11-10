@@ -48,7 +48,7 @@ const publishedAt = new Date("2026-11-04T10:00:00Z");
 beforeEach(() => {
   jest.resetAllMocks();
   mockDb.quiz.findUnique.mockResolvedValue({ id: 5, kind: "ONLINE" });
-  mockDb.quizQuestion.findMany.mockResolvedValue([{ type: "MCQ", correctIndex: 0, options: ["a", "b"] }]);
+  mockDb.quizQuestion.findMany.mockResolvedValue([{ type: "ESSAY", quizOptions: [], quizBlanks: [] }]);
   mockDb.quizAttempt.count.mockResolvedValue(0);
   mockDb.quiz.findUniqueOrThrow.mockResolvedValue({ publishedAt, seasonId: 7, title: "Week 3 check" });
   mockDb.quiz.update.mockResolvedValue({ publishedAt, seasonId: 7, title: "Week 3 check" });

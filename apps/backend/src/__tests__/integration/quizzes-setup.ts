@@ -1,6 +1,9 @@
 import type { Express } from "express";
 
 import { db } from "../../db/client";
+import type { QuizQuestionType } from "../../generated/prisma/enums";
+import { addQuizQuestion } from "../../lib/quizzes/questions";
+import type { QuizQuestionRequest } from "../../lib/quizzes/question-rows";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 /**
@@ -113,54 +116,74 @@ export async function quizGradedCountFor(ownStudentId: number): Promise<number> 
   });
 }
 
+type SampleType = Exclude<QuizQuestionType, "MCQ">;
+
+/** One sample question per type, for quizzes that need a mix. */
+const SAMPLE_BY_TYPE: Record<SampleType, QuizQuestionRequest> = {
+  SINGLE_CHOICE: {
+    type: "SINGLE_CHOICE",
+    prompt: "Capital of France?",
+    points: 2,
+    options: [
+      { label: "London", isCorrect: false },
+      { label: "Paris", isCorrect: true },
+    ],
+  },
+  MULTI_CHOICE: {
+    type: "MULTI_CHOICE",
+    prompt: "Pick the primes",
+    points: 3,
+    options: [
+      { label: "2", isCorrect: true },
+      { label: "3", isCorrect: true },
+      { label: "4", isCorrect: false },
+    ],
+  },
+  TRUE_FALSE: { type: "TRUE_FALSE", prompt: "The sky is blue.", points: 1, correct: true },
+  MATCHING: {
+    type: "MATCHING",
+    prompt: "Match country to capital",
+    points: 4,
+    pairs: [
+      { left: "France", right: "Paris" },
+      { left: "Italy", right: "Rome" },
+    ],
+  },
+  FILL_BLANK: { type: "FILL_BLANK", prompt: "Paris is in {{blank}}.", points: 2, answers: ["France"] },
+  ESSAY: { type: "ESSAY", prompt: "Discuss the reading.", points: 5 },
+};
+
 /**
- * A published ONLINE quiz: one MCQ (2 points) and optionally one essay (5).
- * Released by default, so suites about grading see what a student sees once
- * results are out; `released: false` holds them back (quizzes-release-routes).
+ * A published ONLINE quiz built through `addQuizQuestion`: one single-choice
+ * question (2 points), an essay (5) when `withEssay`, then one sample of each
+ * `withTypes` entry in order. Released by default, so suites about grading see
+ * what a student sees once results are out; `released: false` holds them back
+ * (quizzes-release-routes). `mcqId` is the single-choice question's id (the
+ * name predates the six types); `questionIds` lists every question in order.
  */
 export async function buildPublishedQuizIn(
   seasonId: number,
   sessionId: number,
-  opts: { withEssay: boolean; released?: boolean },
+  opts: { withEssay: boolean; withTypes?: SampleType[]; released?: boolean },
 ) {
   const quiz = await db.quiz.create({
     data: { seasonId, sessionId, title: "Runner quiz", kind: "ONLINE", maxScore: 0 },
     select: { id: true },
   });
-  const mcq = await db.quizQuestion.create({
-    data: {
-      quizId: quiz.id,
-      order: 0,
-      type: "MCQ",
-      prompt: "Capital of France?",
-      points: 2,
-      options: ["London", "Paris"],
-      correctIndex: 1,
-    },
-    select: { id: true },
-  });
-  let essay = { id: 0 };
+  const choice = await addQuizQuestion(quiz.id, SAMPLE_BY_TYPE.SINGLE_CHOICE);
+  const questionIds = [choice.id];
+  let essayId = 0;
   if (opts.withEssay) {
-    essay = await db.quizQuestion.create({
-      data: {
-        quizId: quiz.id,
-        order: 1,
-        type: "ESSAY",
-        prompt: "Discuss the reading.",
-        points: 5,
-        options: [],
-        correctIndex: null,
-      },
-      select: { id: true },
-    });
+    essayId = (await addQuizQuestion(quiz.id, SAMPLE_BY_TYPE.ESSAY)).id;
+    questionIds.push(essayId);
   }
+  for (const type of opts.withTypes ?? []) {
+    questionIds.push((await addQuizQuestion(quiz.id, SAMPLE_BY_TYPE[type])).id);
+  }
+  // addQuizQuestion keeps maxScore at the sum of question points.
   await db.quiz.update({
     where: { id: quiz.id },
-    data: {
-      maxScore: opts.withEssay ? 7 : 2,
-      publishedAt: new Date(),
-      resultsReleasedAt: opts.released === false ? null : new Date(),
-    },
+    data: { publishedAt: new Date(), resultsReleasedAt: opts.released === false ? null : new Date() },
   });
-  return { quizId: quiz.id, mcqId: mcq.id, essayId: essay.id };
+  return { quizId: quiz.id, mcqId: choice.id, essayId, questionIds };
 }

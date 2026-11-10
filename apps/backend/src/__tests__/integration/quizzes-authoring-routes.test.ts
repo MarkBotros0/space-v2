@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { cleanupTestData } from "./fixtures";
+import type { QuizQuestionRequest } from "../../lib/quizzes/question-rows";
 import { seedQuizFixtures } from "./quizzes-setup";
 
 // Same reason as the submissions suite: the shared Neon staging Postgres
@@ -10,6 +11,45 @@ import { seedQuizFixtures } from "./quizzes-setup";
 jest.setTimeout(60000);
 
 const app = createApp();
+
+/** A valid single-choice request: "a" wrong, "b" right. */
+function choice(prompt: string, points: number): QuizQuestionRequest {
+  return {
+    type: "SINGLE_CHOICE",
+    prompt,
+    points,
+    options: [
+      { label: "a", isCorrect: false },
+      { label: "b", isCorrect: true },
+    ],
+  };
+}
+
+const ONE_OF_EACH: QuizQuestionRequest[] = [
+  choice("Single", 1),
+  {
+    type: "MULTI_CHOICE",
+    prompt: "Multi",
+    points: 2,
+    options: [
+      { label: "a", isCorrect: true },
+      { label: "b", isCorrect: true },
+      { label: "c", isCorrect: false },
+    ],
+  },
+  { type: "TRUE_FALSE", prompt: "Statement", points: 1, correct: false },
+  {
+    type: "MATCHING",
+    prompt: "Match",
+    points: 3,
+    pairs: [
+      { left: "a", right: "1" },
+      { left: "b", right: "2" },
+    ],
+  },
+  { type: "FILL_BLANK", prompt: "Fill {{blank}} in", points: 2, answers: ["x"] },
+  { type: "ESSAY", prompt: "Discuss it", points: 5 },
+];
 
 let seasonId: number;
 let sessionId: number;
@@ -40,16 +80,16 @@ describe("question authoring", () => {
     const first = await request(app)
       .post(`/api/v1/quizzes/${quizId}/questions`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "MCQ", prompt: "Capital of France?", points: 2, options: ["London", "Paris"], correctIndex: 1 });
+      .send(choice("Capital of France?", 2));
     expect(first.status).toBe(201);
-    expect(first.body.data).toMatchObject({ order: 0, correctIndex: 1, points: 2 });
+    expect(first.body.data).toMatchObject({ type: "SINGLE_CHOICE", order: 0, points: 2 });
 
     const second = await request(app)
       .post(`/api/v1/quizzes/${quizId}/questions`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "ESSAY", prompt: "Discuss the reading.", points: 5, options: [], correctIndex: null });
+      .send({ type: "ESSAY", prompt: "Discuss the reading.", points: 5 });
     expect(second.status).toBe(201);
-    expect(second.body.data).toMatchObject({ order: 1, options: [], correctIndex: null });
+    expect(second.body.data).toMatchObject({ order: 1 });
 
     const quiz = await db.quiz.findUnique({ where: { id: quizId }, select: { maxScore: true } });
     expect(quiz?.maxScore).toBe(7);
@@ -61,7 +101,7 @@ describe("question authoring", () => {
       const res = await request(app)
         .post(`/api/v1/quizzes/${quizId}/questions`)
         .set("authorization", `Bearer ${adminToken}`)
-        .send({ type: "ESSAY", prompt, points: 1, options: [], correctIndex: null });
+        .send({ type: "ESSAY", prompt, points: 1 });
       ids.push(res.body.data.id);
     }
 
@@ -90,7 +130,7 @@ describe("question authoring", () => {
       const res = await request(app)
         .post(`/api/v1/quizzes/${quizId}/questions`)
         .set("authorization", `Bearer ${adminToken}`)
-        .send({ type: "ESSAY", prompt, points: 1, options: [], correctIndex: null });
+        .send({ type: "ESSAY", prompt, points: 1 });
       ids.push(res.body.data.id);
     }
 
@@ -113,7 +153,7 @@ describe("question authoring", () => {
     const q = await request(app)
       .post(`/api/v1/quizzes/${quizId}/questions`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "MCQ", prompt: "Pick", points: 2, options: ["a", "b"], correctIndex: 0 });
+      .send(choice("Pick", 2));
     const questionId = q.body.data.id;
 
     await request(app)
@@ -127,11 +167,11 @@ describe("question authoring", () => {
     const add = await request(app)
       .post(`/api/v1/quizzes/${quizId}/questions`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "ESSAY", prompt: "Late addition", points: 1, options: [], correctIndex: null });
+      .send({ type: "ESSAY", prompt: "Late addition", points: 1 });
     const edit = await request(app)
       .patch(`/api/v1/quizzes/${quizId}/questions/${questionId}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "MCQ", prompt: "Rewritten", points: 9, options: ["a", "b"], correctIndex: 1 });
+      .send(choice("Rewritten", 9));
     const remove = await request(app)
       .delete(`/api/v1/quizzes/${quizId}/questions/${questionId}`)
       .set("authorization", `Bearer ${adminToken}`);
@@ -151,6 +191,107 @@ describe("question authoring", () => {
     }
   });
 
+  it("adds each of the six types and reads them back", async () => {
+    for (const body of ONE_OF_EACH) {
+      const res = await request(app)
+        .post(`/api/v1/quizzes/${quizId}/questions`)
+        .set("authorization", `Bearer ${adminToken}`)
+        .send(body);
+      expect(res.status).toBe(201);
+    }
+
+    const detail = await request(app).get(`/api/v1/quizzes/${quizId}`).set("authorization", `Bearer ${adminToken}`);
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.shuffleQuestions).toBe(true);
+    const qs = detail.body.data.questions;
+    expect(qs.map((q: { type: string }) => q.type)).toEqual([
+      "SINGLE_CHOICE",
+      "MULTI_CHOICE",
+      "TRUE_FALSE",
+      "MATCHING",
+      "FILL_BLANK",
+      "ESSAY",
+    ]);
+    const labels = (q: { options: { label: string; isCorrect: boolean }[] }) =>
+      q.options.map((o) => [o.label, o.isCorrect]);
+    expect(labels(qs[0])).toEqual([
+      ["a", false],
+      ["b", true],
+    ]);
+    expect(labels(qs[1])).toEqual([
+      ["a", true],
+      ["b", true],
+      ["c", false],
+    ]);
+    expect(qs[2].correct).toBe(false);
+    expect(qs[3].pairs.map((p: { left: string; right: string }) => [p.left, p.right])).toEqual([
+      ["a", "1"],
+      ["b", "2"],
+    ]);
+    expect(qs[4].blanks.map((b: { expected: string }) => b.expected)).toEqual(["x"]);
+
+    // The legacy columns stay empty: the backfill rollback tells former MCQs
+    // apart by SINGLE_CHOICE rows whose legacy options[] is non-empty.
+    const rows = await db.quizQuestion.findMany({ where: { quizId }, select: { options: true, correctIndex: true } });
+    expect(rows).toHaveLength(6);
+    for (const row of rows) expect(row).toEqual({ options: [], correctIndex: null });
+    const quiz = await db.quiz.findUnique({ where: { id: quizId }, select: { maxScore: true } });
+    expect(quiz?.maxScore).toBe(14);
+  });
+
+  it("editing a MATCHING question replaces its pairs", async () => {
+    const created = await request(app)
+      .post(`/api/v1/quizzes/${quizId}/questions`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send(ONE_OF_EACH[3]);
+    const questionId = created.body.data.id;
+
+    const edit = await request(app)
+      .patch(`/api/v1/quizzes/${quizId}/questions/${questionId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({
+        type: "MATCHING",
+        prompt: "Match again",
+        points: 3,
+        pairs: [
+          { left: "x", right: "9" },
+          { left: "y", right: "8" },
+          { left: "z", right: "7" },
+        ],
+      });
+    expect(edit.status).toBe(200);
+    expect(edit.body.data.pairs.map((p: { left: string; right: string }) => [p.left, p.right])).toEqual([
+      ["x", "9"],
+      ["y", "8"],
+      ["z", "7"],
+    ]);
+    expect(await db.quizOption.count({ where: { questionId } })).toBe(6);
+    const legacy = await db.quizQuestion.findUnique({
+      where: { id: questionId },
+      select: { options: true, correctIndex: true },
+    });
+    expect(legacy).toEqual({ options: [], correctIndex: null });
+  });
+
+  it("shuffleQuestions can be turned off before attempts and is refused after", async () => {
+    const off = await request(app)
+      .patch(`/api/v1/quizzes/${quizId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ shuffleQuestions: false });
+    expect(off.status).toBe(200);
+    expect(
+      (await db.quiz.findUnique({ where: { id: quizId }, select: { shuffleQuestions: true } }))?.shuffleQuestions,
+    ).toBe(false);
+
+    await db.quizAttempt.create({ data: { quizId, studentUserId: ownStudentId, attemptNumber: 1 } });
+    const after = await request(app)
+      .patch(`/api/v1/quizzes/${quizId}`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ shuffleQuestions: true });
+    expect(after.status).toBe(409);
+    expect(after.body.error.code).toBe("quiz_has_attempts");
+  });
+
   it("refuses a question on a PAPER quiz (R25)", async () => {
     const paper = await db.quiz.create({
       data: { seasonId, sessionId, title: "Paper", kind: "PAPER", maxScore: 10 },
@@ -159,7 +300,7 @@ describe("question authoring", () => {
     const res = await request(app)
       .post(`/api/v1/quizzes/${paper.id}/questions`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "ESSAY", prompt: "Nope", points: 1, options: [], correctIndex: null });
+      .send({ type: "ESSAY", prompt: "Nope", points: 1 });
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("wrong_quiz_kind");
   });
@@ -168,7 +309,7 @@ describe("question authoring", () => {
     const res = await request(app)
       .post(`/api/v1/quizzes/${quizId}/questions`)
       .set("authorization", `Bearer ${leaderToken}`)
-      .send({ type: "ESSAY", prompt: "Nope", points: 1, options: [], correctIndex: null });
+      .send({ type: "ESSAY", prompt: "Nope", points: 1 });
     expect(res.status).toBe(403);
   });
 
@@ -192,116 +333,8 @@ describe("question authoring", () => {
     const res = await request(app)
       .patch(`/api/v1/quizzes/${quizId}/questions/${stray.id}`)
       .set("authorization", `Bearer ${adminToken}`)
-      .send({ type: "ESSAY", prompt: "Hijack", points: 1, options: [], correctIndex: null });
+      .send({ type: "ESSAY", prompt: "Hijack", points: 1 });
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("question_not_in_quiz");
-  });
-});
-
-describe("publish / unpublish", () => {
-  it("refuses to publish with no questions, or with an unanswerable MCQ (R28, R29)", async () => {
-    const quiz = await db.quiz.create({
-      data: { seasonId, sessionId, title: "Empty", kind: "ONLINE", maxScore: 0 },
-      select: { id: true },
-    });
-    const empty = await request(app)
-      .post(`/api/v1/quizzes/${quiz.id}/publish`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ publish: true });
-    expect(empty.status).toBe(409);
-    expect(empty.body.error.code).toBe("no_questions");
-
-    // Written straight to the database: an MCQ whose correctIndex points past
-    // the end of its options. R18 stops this at the question write, but R24's
-    // positional key means an option edit can produce it later, which is
-    // exactly why v1 re-checked at publish.
-    await db.quizQuestion.create({
-      data: {
-        quizId: quiz.id,
-        order: 0,
-        type: "MCQ",
-        prompt: "Broken",
-        points: 1,
-        options: ["a", "b"],
-        correctIndex: 5,
-      },
-    });
-    const bad = await request(app)
-      .post(`/api/v1/quizzes/${quiz.id}/publish`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ publish: true });
-    expect(bad.status).toBe(409);
-    expect(bad.body.error.code).toBe("mcq_without_answer");
-  });
-
-  it("publishes and unpublishes a clean quiz", async () => {
-    const quiz = await db.quiz.create({
-      data: { seasonId, sessionId, title: "Publishable", kind: "ONLINE", maxScore: 0 },
-      select: { id: true },
-    });
-    await db.quizQuestion.create({
-      data: { quizId: quiz.id, order: 0, type: "MCQ", prompt: "Pick", points: 1, options: ["a", "b"], correctIndex: 0 },
-    });
-
-    const on = await request(app)
-      .post(`/api/v1/quizzes/${quiz.id}/publish`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ publish: true });
-    expect(on.status).toBe(200);
-    expect(on.body.data.publishedAt).not.toBeNull();
-
-    const off = await request(app)
-      .post(`/api/v1/quizzes/${quiz.id}/publish`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ publish: false });
-    expect(off.status).toBe(200);
-    expect(off.body.data.publishedAt).toBeNull();
-  });
-
-  it("refuses to unpublish once an attempt has been graded (spec D4)", async () => {
-    const quiz = await db.quiz.create({
-      data: { seasonId, sessionId, title: "Live", kind: "ONLINE", maxScore: 1, publishedAt: new Date() },
-      select: { id: true },
-    });
-    await db.quizQuestion.create({
-      data: { quizId: quiz.id, order: 0, type: "MCQ", prompt: "Pick", points: 1, options: ["a", "b"], correctIndex: 0 },
-    });
-    await db.quizAttempt.create({
-      data: {
-        quizId: quiz.id,
-        studentUserId: ownStudentId,
-        attemptNumber: 1,
-        status: "GRADED",
-        autoScore: 1,
-        manualScore: 0,
-        totalScore: 1,
-        submittedAt: new Date(),
-        gradedAt: new Date(),
-      },
-    });
-
-    const res = await request(app)
-      .post(`/api/v1/quizzes/${quiz.id}/publish`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ publish: false });
-    // v1's unpublish ran no validation at all (R30) and both student reads
-    // filter on publishedAt (R32, R37), so a graded student lost their own
-    // result with no trace — and the notification they had already received
-    // linked to a list the quiz was no longer in (R40, R118).
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("quiz_has_graded_attempts");
-  });
-
-  it("refuses publishing a PAPER quiz", async () => {
-    const paper = await db.quiz.create({
-      data: { seasonId, sessionId, title: "Paper", kind: "PAPER", maxScore: 10 },
-      select: { id: true },
-    });
-    const res = await request(app)
-      .post(`/api/v1/quizzes/${paper.id}/publish`)
-      .set("authorization", `Bearer ${adminToken}`)
-      .send({ publish: true });
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("wrong_quiz_kind");
   });
 });

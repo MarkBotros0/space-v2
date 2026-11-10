@@ -1,20 +1,19 @@
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-// Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
-import type { quizQuestionRequestSchema } from "../../../../../packages/shared/src/index";
-import type { z } from "zod";
+import { questionRowsFor, toAuthoringQuestion, type QuizQuestionRequest } from "./question-rows";
 
-type QuestionData = z.infer<typeof quizQuestionRequestSchema>;
-
-/** The authoring view of a question — the answer key included. */
-const AUTHORING_QUESTION_SELECT = {
+/** The authoring view of a question � the answer key included. */
+export const AUTHORING_QUESTION_SELECT = {
   id: true,
   order: true,
   type: true,
   prompt: true,
   points: true,
-  options: true,
-  correctIndex: true,
+  quizOptions: {
+    orderBy: { position: "asc" },
+    select: { id: true, position: true, label: true, isCorrect: true, side: true, matchId: true },
+  },
+  quizBlanks: { orderBy: { position: "asc" }, select: { id: true, position: true, expected: true } },
 } as const;
 
 /**
@@ -30,33 +29,64 @@ async function recomputeMaxScore(tx: Prisma.TransactionClient, quizId: number): 
   await tx.quiz.update({ where: { id: quizId }, data: { maxScore: agg._sum.points ?? 0 } });
 }
 
+/**
+ * Replaces a question's option and blank rows with the ones its request implies.
+ * Safe because questions are frozen once attempts exist, so no answer row points at the old ones.
+ */
+async function writeRows(tx: Prisma.TransactionClient, questionId: number, data: QuizQuestionRequest): Promise<void> {
+  await tx.quizOption.deleteMany({ where: { questionId } });
+  await tx.quizBlank.deleteMany({ where: { questionId } });
+  const { options, blanks } = questionRowsFor(data);
+  const created = new Map<string, number>();
+  for (const o of options) {
+    const row = await tx.quizOption.create({
+      data: { questionId, position: o.position, label: o.label, isCorrect: o.isCorrect, side: o.side },
+      select: { id: true },
+    });
+    if (o.matchKey !== undefined && o.side !== null) created.set(`${o.side}:${o.matchKey}`, row.id);
+  }
+  // A LEFT row points at its RIGHT row; that needs both inserted first.
+  for (const [key, leftId] of created) {
+    const rightId = key.startsWith("LEFT:") ? created.get(`RIGHT:${key.slice(5)}`) : undefined;
+    if (rightId !== undefined) await tx.quizOption.update({ where: { id: leftId }, data: { matchId: rightId } });
+  }
+  if (blanks.length > 0) await tx.quizBlank.createMany({ data: blanks.map((b) => ({ questionId, ...b })) });
+}
+
+/** The question row's own columns. The legacy `options` / `correctIndex` stay empty for every type. */
+function questionColumns(data: QuizQuestionRequest) {
+  return { type: data.type, prompt: data.prompt, points: data.points, options: [], correctIndex: null };
+}
+
 /** Adds a question at the end and recomputes maxScore, in one transaction. */
-export async function addQuizQuestion(quizId: number, data: QuestionData) {
+export async function addQuizQuestion(quizId: number, data: QuizQuestionRequest) {
   return db.$transaction(async (tx) => {
     // R20: order is the current count. It stays that way, but a real reorder
     // endpoint exists now, and delete renumbers, so `order` is a position.
     const count = await tx.quizQuestion.count({ where: { quizId } });
-    const question = await tx.quizQuestion.create({
-      data: { quizId, order: count, ...data },
-      select: AUTHORING_QUESTION_SELECT,
+    const { id } = await tx.quizQuestion.create({
+      data: { quizId, order: count, ...questionColumns(data) },
+      select: { id: true },
     });
+    await writeRows(tx, id, data);
     await recomputeMaxScore(tx, quizId);
-    return question;
+    return toAuthoringQuestion(
+      await tx.quizQuestion.findUniqueOrThrow({ where: { id }, select: AUTHORING_QUESTION_SELECT }),
+    );
   });
 }
 
 /** Edits a question (never its `order`) and recomputes maxScore, in one transaction. */
-export async function updateQuizQuestion(quizId: number, questionId: number, data: QuestionData) {
+export async function updateQuizQuestion(quizId: number, questionId: number, data: QuizQuestionRequest) {
   return db.$transaction(async (tx) => {
-    // `order` is deliberately not writable here — reordering has its own
+    // `order` is deliberately not writable here � reordering has its own
     // endpoint, so a question edit cannot silently move a question.
-    const question = await tx.quizQuestion.update({
-      where: { id: questionId },
-      data,
-      select: AUTHORING_QUESTION_SELECT,
-    });
+    await tx.quizQuestion.update({ where: { id: questionId }, data: questionColumns(data), select: { id: true } });
+    await writeRows(tx, questionId, data);
     await recomputeMaxScore(tx, quizId);
-    return question;
+    return toAuthoringQuestion(
+      await tx.quizQuestion.findUniqueOrThrow({ where: { id: questionId }, select: AUTHORING_QUESTION_SELECT }),
+    );
   });
 }
 
@@ -84,10 +114,11 @@ export async function reorderQuizQuestions(quizId: number, questionIds: number[]
     for (const [index, questionId] of questionIds.entries()) {
       await tx.quizQuestion.update({ where: { id: questionId }, data: { order: index } });
     }
-    return tx.quizQuestion.findMany({
+    const rows = await tx.quizQuestion.findMany({
       where: { quizId },
       orderBy: { order: "asc" },
       select: AUTHORING_QUESTION_SELECT,
     });
+    return rows.map(toAuthoringQuestion);
   });
 }

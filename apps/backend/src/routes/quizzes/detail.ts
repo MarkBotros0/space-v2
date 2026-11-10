@@ -4,6 +4,8 @@ import { db } from "../../db/client";
 import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason, canGradeQuiz, canManageQuiz, hasActiveEnrollment } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
+import { AUTHORING_QUESTION_SELECT } from "../../lib/quizzes/questions";
+import { toAuthoringQuestion } from "../../lib/quizzes/question-rows";
 import { canReleaseQuizResults } from "./release";
 import { loadStudentQuizDetail } from "./student-detail";
 import { idParam } from "../../lib/http/params";
@@ -25,18 +27,8 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
       season: { select: { code: true } },
       session: { select: { title: true } },
       _count: { select: { attempts: true, grades: true } },
-      questions: {
-        orderBy: { order: "asc" },
-        select: {
-          id: true,
-          order: true,
-          type: true,
-          prompt: true,
-          points: true,
-          options: true,
-          correctIndex: true,
-        },
-      },
+      shuffleQuestions: true,
+      questions: { orderBy: { order: "asc" }, select: AUTHORING_QUESTION_SELECT },
     },
   });
   if (!quiz) return null;
@@ -59,7 +51,8 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
     canManage,
     resultsReleasedAt: quiz.resultsReleasedAt,
     canReleaseResults: canRelease(quiz.seasonId),
-    questions: quiz.questions,
+    shuffleQuestions: quiz.shuffleQuestions,
+    questions: quiz.questions.map(toAuthoringQuestion),
   };
 }
 
