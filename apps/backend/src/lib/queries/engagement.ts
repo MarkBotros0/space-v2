@@ -51,7 +51,13 @@ export async function computeEngagementForSeasons(
   seasonIds: number[],
   opts: EngagementCohortOptions = {},
 ): Promise<EngagementRow[]> {
-  if (seasonIds.length === 0) return [];
+  const cohort = await loadCohort(seasonIds, opts);
+  return cohort ? foldEngagement(cohort) : [];
+}
+
+/** The five reads, in order; null when the scope has no one to score. */
+async function loadCohort(seasonIds: number[], opts: EngagementCohortOptions) {
+  if (seasonIds.length === 0) return null;
 
   // 1 — the cohort.
   const enrollments = await db.seasonEnrollment.findMany({
@@ -78,7 +84,7 @@ export async function computeEngagementForSeasons(
       season: { select: { title: true } },
     },
   });
-  if (enrollments.length === 0) return [];
+  if (enrollments.length === 0) return null;
   const ids = [...new Set(enrollments.map((e) => e.studentUserId))];
 
   // 2 — every past session in scope, with its season and instant, so each
@@ -127,6 +133,14 @@ export async function computeEngagementForSeasons(
           },
           select: { studentUserId: true, assignmentId: true },
         });
+
+  return { enrollments, pastSessions, attendance, assignments, submissions };
+}
+
+type Cohort = NonNullable<Awaited<ReturnType<typeof loadCohort>>>;
+
+/** Pure: the formula above over what loadCohort read. */
+function foldEngagement({ enrollments, pastSessions, attendance, assignments, submissions }: Cohort): EngagementRow[] {
   const completed = new Set(submissions.map((s) => `${s.studentUserId}:${s.assignmentId}`));
 
   const presentBy = new Map<number, Set<number>>();

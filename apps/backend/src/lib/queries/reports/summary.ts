@@ -11,8 +11,8 @@ import { BAND_ORDER } from "../../../../../../packages/shared/src/index";
 import { db } from "../../../db/client";
 import { orgDayKey } from "../../org-time";
 import { computeEngagementForSeasons } from "../engagement";
-import { expectedStudentIds } from "./expected";
-import { byScoreThenId, toReportRows, withEmails } from "./rows";
+import { attendanceTrendPoints, bySeason, completionRows, foldBands, setsBy } from "./folds";
+import { toReportRows, withEmails } from "./rows";
 import { liveAssignment } from "../../db/live";
 
 export interface EngagementSummaryOptions {
@@ -123,53 +123,10 @@ export async function buildEngagementSummary(
           },
           select: { sessionId: true, studentUserId: true },
         });
-  const presentBySession = new Map<number, Set<number>>();
-  for (const row of attendance) {
-    const set = presentBySession.get(row.sessionId) ?? new Set<number>();
-    set.add(row.studentUserId);
-    presentBySession.set(row.sessionId, set);
-  }
-
-  const enrollmentsBySeason = new Map<number, typeof enrollments>();
-  for (const e of enrollments) {
-    const list = enrollmentsBySeason.get(e.seasonId) ?? [];
-    list.push(e);
-    enrollmentsBySeason.set(e.seasonId, list);
-  }
+  const presentBySession = setsBy(attendance, (r) => r.sessionId);
+  const enrollmentsBySeason = bySeason(enrollments);
   const seasonTitleById = new Map(scope.seasons.map((s) => [s.id, s.title]));
-
-  const attendanceTrend: AttendancePoint[] = sessions.map((s) => {
-    // The roster AS IT STOOD at this session's instant. v1 divided by today's
-    // ACTIVE count (R10, R11) while counting attendance rows from students who
-    // have since withdrawn (R12), so pct could exceed 100 and nothing clamped
-    // it. Restricting the numerator to the same set makes presentCount <=
-    // expectedCount hold by construction — no clamp, which would only hide the
-    // next bug (ruling C5's closing line).
-    const eligible = new Set<number>();
-    for (const e of enrollmentsBySeason.get(s.seasonId) ?? []) {
-      const joined = e.enrolledAt.getTime() <= s.startsAt.getTime();
-      const stillOn = e.droppedAt === null || e.droppedAt.getTime() > s.startsAt.getTime();
-      if (joined && stillOn) eligible.add(e.studentUserId);
-    }
-    const present = presentBySession.get(s.id) ?? new Set<number>();
-    let presentCount = 0;
-    for (const id of present) if (eligible.has(id)) presentCount += 1;
-
-    return {
-      sessionId: s.id,
-      seasonId: s.seasonId,
-      seasonTitle: seasonTitleById.get(s.seasonId) ?? "",
-      title: s.title,
-      startsAt: s.startsAt.toISOString(),
-      dayKey: orgDayKey(s.startsAt), // X13: the label's day is the org's, not the device's
-      presentCount,
-      expectedCount: eligible.size,
-      // null, not 0: a session that ran before anybody enrolled has no
-      // percentage, and plotting it at zero draws a cliff that never happened
-      // (fixes R13).
-      pct: eligible.size > 0 ? Math.round((presentCount / eligible.size) * 100) : null,
-    };
-  });
+  const attendanceTrend = attendanceTrendPoints(sessions, enrollmentsBySeason, presentBySession, seasonTitleById);
 
   // Q4 — assignments and their targets.
   const assignments = await db.assignment.findMany({
@@ -196,52 +153,22 @@ export async function buildEngagementSummary(
           },
           select: { assignmentId: true, studentUserId: true },
         });
-  const submittedBy = new Map<number, Set<number>>();
-  for (const row of submissions) {
-    const set = submittedBy.get(row.assignmentId) ?? new Set<number>();
-    set.add(row.studentUserId);
-    submittedBy.set(row.assignmentId, set);
-  }
-
-  const completion: AssignmentCompletionRow[] = assignments.map((a) => {
-    // v1 counted GroupStudent rows (R20) — then a table unique on
-    // studentUserId across the ENTIRE database (R21, fixed by Plan 18 M1), so
-    // it held one group per student regardless of season.
-    const expectedIds = expectedStudentIds(enrollmentsBySeason.get(a.seasonId) ?? [], a);
-    // Intersecting the numerator is the fix for R23: v1 counted submissions
-    // from ANY student against a denominator of targeted students, so the bar
-    // could exceed 100 and neither end was clamped.
-    const submitters = submittedBy.get(a.id) ?? new Set<number>();
-    let completed = 0;
-    for (const id of submitters) if (expectedIds.has(id)) completed += 1;
-
-    return {
-      assignmentId: a.id,
-      seasonId: a.seasonId,
-      title: a.title,
-      targeting: a.isAllGroups ? "all_groups" : "targeted",
-      completed,
-      expected: expectedIds.size,
-      // null for a targeted assignment with no AssignmentTarget rows. v1 showed
-      // 0 %, which reads as total cohort failure and is a mis-configured
-      // assignment (R22).
-      completionRate: expectedIds.size > 0 ? Math.round((completed / expectedIds.size) * 100) : null,
-    };
-  });
+  const completion = completionRows(
+    assignments,
+    enrollmentsBySeason,
+    setsBy(submissions, (r) => r.assignmentId),
+  );
 
   // Q6..Q10 — domain 9's aggregation, called once for the whole scope.
   const rows = toReportRows(await computeEngagementForSeasons(seasonIds));
 
-  const bandCounts = new Map<EngagementBand, number>(BAND_ORDER.map((b) => [b, 0]));
-  for (const r of rows) bandCounts.set(r.band, (bandCounts.get(r.band) ?? 0) + 1);
-
-  const atRiskAll = rows.filter((r) => r.band === "AT_RISK").sort(byScoreThenId);
+  const { bands, atRiskAll } = foldBands(rows);
 
   return {
     scope,
     attendanceTrend,
     completion,
-    bands: BAND_ORDER.map((band) => ({ band, count: bandCounts.get(band) ?? 0 })),
+    bands,
     // The cap is v1's (R33). What is new is atRiskTotal beside it: a reader
     // currently cannot tell whether ten is all of them (spec D16).
     atRisk: await withEmails(atRiskAll.slice(0, 10)),
