@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { View } from "react-native";
 import type { StudentDashboard } from "@space/shared";
 
-import { SeasonPulse, type PulseFigure } from "../../design/home/season-pulse";
+import { SeasonPulse, type PulseFigure } from "../home/season-pulse";
 import { InlineError } from "../../design/layout/route-states";
 import type { useMyAttendance } from "../../hooks/use-self-service";
 

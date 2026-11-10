@@ -4,7 +4,7 @@ import type { JpcEventListResponse } from "@space/shared";
 
 import { InlineError } from "../../design/layout/route-states";
 import { GroupedList, Skeleton } from "../../design/ui";
-import { UpcomingEventsGroup } from "../../screens/events/upcoming-events-group";
+import { UpcomingEventsGroup } from "../events/upcoming-events-group";
 
 const HEADER = "Upcoming events";
 

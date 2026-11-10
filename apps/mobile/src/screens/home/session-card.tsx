@@ -14,7 +14,7 @@ import type { DashboardSession } from "@space/shared";
 
 import { dayCue } from "../../lib/calendar-grid";
 import { formatMinutes, formatWallTime, formatWeekdayDay, unbreakable } from "../../lib/format";
-import { HeroCard } from "../ui/hero-card";
+import { HeroCard } from "../../design/ui/hero-card";
 
 const NEXT_SESSION = "Next session";
 

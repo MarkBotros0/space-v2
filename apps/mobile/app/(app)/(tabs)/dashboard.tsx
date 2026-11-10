@@ -1,5 +1,5 @@
-import { AlumniDashboard } from "../../../src/components/dashboard/AlumniDashboard";
-import { MentorDashboard } from "../../../src/components/dashboard/MentorDashboard";
+import { AlumniDashboard } from "../../../src/screens/alumni/alumni-dashboard";
+import { MentorDashboard } from "../../../src/screens/mentor/mentor-dashboard";
 import { dashboardBranchFor } from "../../../src/lib/dashboard-branch";
 import { LeaderToday } from "../../../src/screens/leader-today";
 import { RouteSkeleton } from "../../../src/design/layout/route-states";

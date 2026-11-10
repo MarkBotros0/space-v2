@@ -1,6 +1,6 @@
 import { View } from "react-native";
 
-import { SessionHomeCard } from "../../design/home/session-card";
+import { SessionHomeCard } from "../home/session-card";
 import { Button } from "../../design/ui/button";
 import { LeaderSessionSection } from "../leader-today/session-section";
 import { deviceTodayKey } from "../../lib/calendar-grid";

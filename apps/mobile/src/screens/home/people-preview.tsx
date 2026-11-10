@@ -6,8 +6,8 @@
 import { View } from "react-native";
 
 import { initialsOf } from "../../lib/initials";
-import { GroupedList, ListRow } from "../ui/grouped-list";
-import { Text } from "../ui/text";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { Text } from "../../design/ui/text";
 
 type PreviewPerson = { id: number; name: string; reason?: string };
 

@@ -11,7 +11,7 @@ jest.mock("expo-router", () => ({
 }));
 
 import { apiClient } from "../lib/api-client";
-import { UpcomingEventsCard } from "../components/dashboard/UpcomingEventsCard";
+import { UpcomingEventsCard } from "../screens/home/upcoming-events-card";
 import { useUpcomingEvents } from "../hooks/use-events";
 import { renderWithProviders } from "./helpers/render";
 

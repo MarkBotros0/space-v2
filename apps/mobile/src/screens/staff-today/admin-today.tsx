@@ -2,11 +2,11 @@ import { useRouter } from "expo-router";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
 
-import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
+import { UpcomingEventsCard } from "../home/upcoming-events-card";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { PeoplePreview } from "../../design/home/people-preview";
-import { SeasonPulse, staffPulseFigures } from "../../design/home/season-pulse";
+import { PeoplePreview } from "../home/people-preview";
+import { SeasonPulse, staffPulseFigures } from "../home/season-pulse";
 import { EmptyState } from "../../design/ui";
 import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";

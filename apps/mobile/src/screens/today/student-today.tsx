@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
-import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
+import { UpcomingEventsCard } from "../home/upcoming-events-card";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { DASHBOARD_STALE_TIME, useStudentDashboard } from "../../hooks/use-dashboard";

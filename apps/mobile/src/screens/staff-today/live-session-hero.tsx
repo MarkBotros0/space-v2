@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { Linking } from "react-native";
 import type { DashboardSession } from "@space/shared";
 
-import { SessionHomeCard } from "../../design/home/session-card";
+import { SessionHomeCard } from "../home/session-card";
 import { Button } from "../../design/ui";
 
 /**

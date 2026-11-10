@@ -10,10 +10,10 @@ import { ChevronRight } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 
-import { iconWithClassName } from "../lib/icon";
-import { usePressDim } from "../motion";
-import { ProgressRing, RingCaption, RingValue } from "../ui/progress-ring";
-import { Text } from "../ui/text";
+import { iconWithClassName } from "../../design/lib/icon";
+import { usePressDim } from "../../design/motion";
+import { ProgressRing, RingCaption, RingValue } from "../../design/ui/progress-ring";
+import { Text } from "../../design/ui/text";
 
 iconWithClassName(ChevronRight);
 

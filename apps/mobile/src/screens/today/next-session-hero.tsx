@@ -3,7 +3,7 @@ import { Linking, View } from "react-native";
 import type { DashboardSession, SessionDetail } from "@space/shared";
 
 import { CheckInWatcher, StudentCheckInCard, checkInVisible } from "../../components/check-in/StudentCheckInCard";
-import { SessionHomeCard } from "../../design/home/session-card";
+import { SessionHomeCard } from "../home/session-card";
 import { Button } from "../../design/ui";
 
 /**

@@ -8,9 +8,9 @@ import { GroupedList, HeroCard, ListRow, Skeleton, StatusChip } from "../../desi
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useSeasonHistory } from "../../hooks/use-self-service";
 import { firstName, formatEventWhenShort, formatSeasonDay } from "../../lib/format";
-import { FinishedSeasonCard } from "../../screens/today/finished-season-card";
-import { UpcomingEventsGroup } from "../../screens/events/upcoming-events-group";
-import { AnnouncementsHomeCard } from "../../screens/announcements/announcements-home-card";
+import { FinishedSeasonCard } from "../today/finished-season-card";
+import { UpcomingEventsGroup } from "../events/upcoming-events-group";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { useSessionStore } from "../../store/session";
 
 const HISTORY_ROWS = 3;

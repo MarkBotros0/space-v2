@@ -5,7 +5,7 @@ import { PageTitle } from "../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { AlumniHistory } from "../../../src/screens/alumni/alumni-history";
-import { SeasonHistory } from "../../../src/design/students/season-history";
+import { SeasonHistory } from "../../../src/screens/alumni/season-history";
 import { EmptyState } from "../../../src/design/ui";
 import { useSeasonHistory } from "../../../src/hooks/use-self-service";
 import { useAlumnusNotStudying, useSessionStore, useRole } from "../../../src/store/session";

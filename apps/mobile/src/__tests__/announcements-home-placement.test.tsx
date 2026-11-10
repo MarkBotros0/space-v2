@@ -11,7 +11,7 @@ jest.mock("../design/layout/home-actions", () => {
   return { HomeActions: () => <Text testID="home-actions">home actions</Text> };
 });
 
-import { MentorDashboard } from "../components/dashboard/MentorDashboard";
+import { MentorDashboard } from "../screens/mentor/mentor-dashboard";
 import { LeaderToday } from "../screens/leader-today";
 import { StudentToday } from "../screens/today/student-today";
 import { deviceTodayKey } from "../lib/calendar-grid";

@@ -4,8 +4,8 @@ import { CalendarDays, GraduationCap, MailPlus, Users } from "lucide-react-nativ
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
-import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
-import { FigureGrid, type FigureTileProps } from "../../design/home/figure-tile";
+import { UpcomingEventsCard } from "../home/upcoming-events-card";
+import { FigureGrid, type FigureTileProps } from "../home/figure-tile";
 import { InlineError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { ListSectionHeader } from "../../design/ui";

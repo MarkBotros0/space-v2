@@ -16,7 +16,7 @@ jest.mock("../design/layout/home-actions", () => {
   return { HomeActions: () => <Text testID="home-actions">home actions</Text> };
 });
 
-import { AlumniDashboard } from "../components/dashboard/AlumniDashboard";
+import { AlumniDashboard } from "../screens/alumni/alumni-dashboard";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";

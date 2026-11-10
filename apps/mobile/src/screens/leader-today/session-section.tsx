@@ -3,8 +3,8 @@ import { useRouter } from "expo-router";
 import { Linking, View } from "react-native";
 
 import { Button } from "../../design/ui/button";
-import { PeoplePreview } from "../../design/home/people-preview";
-import { SessionHomeCard } from "../../design/home/session-card";
+import { PeoplePreview } from "../home/people-preview";
+import { SessionHomeCard } from "../home/session-card";
 import { deviceTodayKey } from "../../lib/calendar-grid";
 import { unbreakable } from "../../lib/format";
 

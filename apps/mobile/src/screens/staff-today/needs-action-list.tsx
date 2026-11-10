@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { CalendarX, FileText, MailPlus, TriangleAlert } from "lucide-react-native";
 import { View } from "react-native";
 
-import { CountGrid, type CountTileProps } from "../../design/home/count-tile";
+import { CountGrid, type CountTileProps } from "../home/count-tile";
 import { InlineError } from "../../design/layout/route-states";
 import { ListSectionHeader } from "../../design/ui";
 import type { NeedsAction } from "../../lib/staff-today";

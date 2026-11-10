@@ -5,17 +5,17 @@ import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { InlineError } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { AllCaughtUp, CountTile } from "../../design/home/count-tile";
-import { FigureTile } from "../../design/home/figure-tile";
+import { AllCaughtUp, CountTile } from "../home/count-tile";
+import { FigureTile } from "../home/figure-tile";
 import { GroupedList, Skeleton } from "../../design/ui";
 import { useUpcomingEvents } from "../../hooks/use-events";
 import { useMentorSummary } from "../../hooks/use-follow-ups";
 import { useVisibleNotes } from "../../hooks/use-notes";
 import { firstName } from "../../lib/format";
-import { RecentNotesGroup } from "../../screens/mentor/recent-notes-group";
-import { AnnouncementsHomeCard } from "../../screens/announcements/announcements-home-card";
+import { RecentNotesGroup } from "./recent-notes-group";
+import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { useSessionStore } from "../../store/session";
-import { UpcomingEventsCard } from "./UpcomingEventsCard";
+import { UpcomingEventsCard } from "../home/upcoming-events-card";
 
 const NOTES_LIMIT = 5;
 

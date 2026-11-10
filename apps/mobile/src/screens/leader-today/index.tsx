@@ -4,13 +4,13 @@ import { ClipboardCheck, FileText } from "lucide-react-native";
 import { View } from "react-native";
 import { UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared";
 
-import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
+import { UpcomingEventsCard } from "../home/upcoming-events-card";
 import { Screen } from "../../design/layout/screen";
 import { queryStateView, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { EmptyState } from "../../design/ui/empty-state";
-import { CountGrid, type CountTileProps } from "../../design/home/count-tile";
-import { PeoplePreview } from "../../design/home/people-preview";
-import { SeasonPulse, staffPulseFigures } from "../../design/home/season-pulse";
+import { CountGrid, type CountTileProps } from "../home/count-tile";
+import { PeoplePreview } from "../home/people-preview";
+import { SeasonPulse, staffPulseFigures } from "../home/season-pulse";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { useSeasonStaffDashboard } from "../../hooks/use-dashboard";
 import { useUpcomingEvents } from "../../hooks/use-events";

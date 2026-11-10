@@ -15,10 +15,10 @@ import { CircleCheck, type LucideIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 
-import { cn } from "../lib/cn";
-import { iconWithClassName } from "../lib/icon";
-import { usePressDim } from "../motion";
-import { Text } from "../ui/text";
+import { cn } from "../../design/lib/cn";
+import { iconWithClassName } from "../../design/lib/icon";
+import { usePressDim } from "../../design/motion";
+import { Text } from "../../design/ui/text";
 
 iconWithClassName(CircleCheck);
 

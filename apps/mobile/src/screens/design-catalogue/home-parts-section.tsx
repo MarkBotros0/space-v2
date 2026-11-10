@@ -1,9 +1,9 @@
 import { CalendarX, FileText, GraduationCap, TriangleAlert, Users } from "lucide-react-native";
 
-import { CountGrid } from "../../design/home/count-tile";
-import { FigureGrid } from "../../design/home/figure-tile";
-import { PeoplePreview } from "../../design/home/people-preview";
-import { SeasonPulse, staffPulseFigures } from "../../design/home/season-pulse";
+import { CountGrid } from "../home/count-tile";
+import { FigureGrid } from "../home/figure-tile";
+import { PeoplePreview } from "../home/people-preview";
+import { SeasonPulse, staffPulseFigures } from "../home/season-pulse";
 import { CatalogueSection } from "./section";
 
 const noop = () => {};

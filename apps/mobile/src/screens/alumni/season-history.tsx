@@ -8,9 +8,9 @@
 import { View } from "react-native";
 import type { SeasonHistoryRow } from "@space/shared";
 
-import { SeasonGroup } from "../../screens/alumni/alumni-history";
-import { NAV_ICONS } from "../icons/nav-icon";
-import { EmptyState } from "../ui/empty-state";
+import { SeasonGroup } from "./alumni-history";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
+import { EmptyState } from "../../design/ui/empty-state";
 
 export function SeasonHistory({ rows, emptyDescription }: { rows: SeasonHistoryRow[]; emptyDescription: string }) {
   if (rows.length === 0) {
