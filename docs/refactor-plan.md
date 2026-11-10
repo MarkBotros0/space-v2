@@ -311,8 +311,8 @@ Each commit: the domain's integration suites + backend unit tests + typecheck + 
 - [x] 4.9 Quizzes: BE-004 grading / attempts / paper grades / reorder services — done: lib/quizzes/attempts.ts (saveAnswers, submitAnswers; the fail tuple replaced by ApiError before any write), grading.ts, paper-grades.ts, questions.ts; helpers and live fragments across routes/quizzes. No $transaction left in routes/quizzes. Unit 572; integration 149/149.
 - [x] 4.10 Video quiz: BE-004 part (`lib/video-quiz/answer.ts`) — done: lib/video-quiz/answer.ts (recordVideoAnswer, saveVideoProgressSeconds) and questions.ts (updateAndRegrade, deleteQuestionCountingResponses); the unique-violation replay stays in the route; helpers in routes/video-quiz. Unit 572; integration 44/44.
 - [x] 4.11 Forum: BE-015, BE-024, BE-071 (`canDeleteLoadedComment` + list-vs-DELETE parity test) — done: BE-015 lib/queries/forum.ts → forum/{shared,feed,comments}.ts; BE-024 FORUM_COMMENT_SELECT + toForumComment for all three readers; BE-071 commentDeleteCtx + canDeleteLoadedComment shared by DELETE and both lists (one context per post), with a six-role list-vs-DELETE parity test; helpers and liveAssignment in the forum. Unit 572; integration 53/53.
-- [ ] 4.12 Notes, follow-ups, mentor: call-site conversions only
-- [ ] 4.13 Notifications & push: BE-044 call sites
+- [x] 4.12 Notes, follow-ups, mentor: call-site conversions only — done: idParam / notFound / parseOr400 and liveUser across notes, follow-ups, mentor summary and lib/follow-ups. Integration 150/150.
+- [x] 4.13 Notifications & push: BE-044 call sites — done: BE-044 was already adopted (every producer uses notificationLink); the two documented link constants and the tested submissionReceivedLink wrapper are kept (D8, no gain); mark-read uses parseOr400; liveUser in the session notices. Integration 150/150.
 - [ ] 4.14 Reports, engagement, dashboard, exports: BE-005, BE-012, BE-013
 - [ ] 4.15 Imports: BE-011; `commitStudentImport` transaction nesting 4 → 3; `splitRecords` keeps depth 4
       with a documented lint exception (CSV state machine)
