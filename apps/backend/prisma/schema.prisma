@@ -909,6 +909,16 @@ model RateLimitHit {
   @@index([resetAt])
 }
 
+// Request-driven scheduler lease (lib/scheduler/lease.ts): one row per job name. An
+// instance claims it with a conditional UPDATE, so only one runs the sweep at a time.
+model SchedulerLease {
+  name        String    @id
+  lockedUntil DateTime  @db.Timestamptz(3)
+  lastRunAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+}
+
 model Announcement {
   id        Int                  @id @default(autoincrement())
   audience  AnnouncementAudience

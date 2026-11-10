@@ -103,6 +103,13 @@ erDiagram
     Int hits
     DateTime resetAt
   }
+  SchedulerLease {
+    String name PK
+    DateTime lockedUntil
+    DateTime lastRunAt "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 ```
 
 ## 2. Seasons, groups & enrolment

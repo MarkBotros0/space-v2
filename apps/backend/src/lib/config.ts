@@ -101,6 +101,8 @@ const envSchema = z.object({
   // follow-up reminder (owner, 2026-11-07). Unset: that endpoint is a 404 and
   // no reminder is ever sent.
   CRON_SECRET: z.string().min(16).optional(),
+  // Request-driven scheduler (lib/scheduler): "off" stops any request from starting a sweep.
+  SCHEDULER_TICK: z.enum(["on", "off"]).default("on"),
   // Sentry error reporting (lib/sentry.ts). Entirely off while SENTRY_DSN is
   // unset: nothing initialises and nothing is sent.
   SENTRY_DSN: z.string().optional(),
@@ -185,6 +187,7 @@ export const config = {
   enablePush: parsed.data.ENABLE_PUSH,
   expoAccessToken: parsed.data.EXPO_ACCESS_TOKEN,
   cronSecret: parsed.data.CRON_SECRET,
+  schedulerTick: parsed.data.SCHEDULER_TICK === "on",
   sentryDsn: parsed.data.SENTRY_DSN,
   sentryEnvironment: parsed.data.SENTRY_ENVIRONMENT ?? parsed.data.NODE_ENV,
   sentryTracesSampleRate: parsed.data.SENTRY_TRACES_SAMPLE_RATE,

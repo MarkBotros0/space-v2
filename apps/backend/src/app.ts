@@ -30,6 +30,7 @@ import { docsRouter } from "./routes/docs";
 import { reportsRouter } from "./routes/reports";
 import { importsRouter, seasonImportsRouter } from "./routes/imports";
 import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
+import { schedulerTick } from "./lib/scheduler/middleware";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -61,6 +62,7 @@ export function createApp(): Express {
   app.use("/api/v1/imports", importsRouter);
   app.use("/api/v1/seasons", seasonImportsRouter);
   app.use(express.json());
+  app.use(schedulerTick());
   if (config.nodeEnv !== "test") {
     // Coloured "dev" lines locally; Apache combined format in production,
     // which log drains parse. Neither logs bodies or the Authorization header.

@@ -20,6 +20,7 @@ const DOMAINS: { title: string; models: string[] }[] = [
       "NotificationPreference",
       "DeviceToken",
       "RateLimitHit",
+      "SchedulerLease",
     ],
   },
   {
