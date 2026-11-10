@@ -83,6 +83,7 @@ boundary rather than handing a malformed object to callers.
 
 ```
 pnpm dev / build / lint / typecheck / test / test:unit
+pnpm check          # lint, typecheck, test:unit, check:dead, check:size (what CI runs on a PR)
 pnpm --filter @space/backend db:generate
 ```
 
@@ -717,6 +718,45 @@ and Build 2 (see "Roles") and Build 3 (see "Community-wide seasons") are written
 - **Students between seasons** (no `activeSeasonId`) get Today, Calendar, History and More, with
   Today telling finished, dropped and first-time apart; the finished season has a read-only page
   with its assignments, quizzes and attendance. Alumni keep their own nav.
+
+## Code & Data Standards
+
+Set by the whole-app refactor (`docs/refactor-plan.md`, summaries per wave; `docs/refactor-report.md`).
+`pnpm check` (lint, typecheck, unit tests, `check:dead`, `check:size`) holds the mechanical ones and
+runs on every pull request (`.github/workflows/unit-tests.yml`); `.github/pull_request_template.md`
+is the definition of done.
+
+- **Size.** 400 lines per file and nesting depth 3 are lint errors (`packages/config/eslint/index.js`);
+  `pnpm check:size` (`scripts/check-size.mjs`) applies the 400 lines to every tracked code file.
+  Function length (50) and complexity (15) stay warnings: getting them to zero needs refactors the
+  owner chose to skip (D8). `splitRecords` keeps depth 4 under a named `eslint-disable`.
+- **Dead code.** `pnpm check:dead` (`scripts/check-dead.mjs`) fails on an export no other file names;
+  delete it or drop the `export`. `scripts/check-dead.allow` lists the few that must stay, with why.
+- **Backend layers.** A route handler parses, gates and answers; a transaction lives in a
+  `lib/<domain>/` service (lint bans `$transaction` under `src/routes/`), and a refusal below the route
+  is a thrown `ApiError` (`lib/api-error.ts`). Shared reads are named selects and loaders in
+  `lib/queries/`. Use `idParam`, `notFound`, `parseOr400` and `pageOf` where the message is theirs.
+- **Soft delete.** User, Season and Assignment only. Filter with `liveUser` / `liveSeason` /
+  `liveAssignment` (`lib/db/live.ts`); lint bans a literal `deletedAt: null` inside a `where`.
+  `withDeleted` and `deletedOnly` name the paths that must see deleted rows.
+- **Mobile layers.** `app/`, `src/screens`, `src/components` and `src/design` never import axios,
+  `lib/api-client` or `lib/api-request` (lint); data goes through `src/hooks/` with `apiGet` /
+  `apiSend`. A screen's model or state machine is pure and tested apart (`overview-model.ts`,
+  `use-people-selection.ts`, `use-poll-draft.ts`, `calendar-branch.ts`).
+- **Schema.** `src/__tests__/schema-conformance.test.ts` holds `createdAt` / `updatedAt` on every model
+  (append-only rows and links listed), an index on every foreign key (the audit trail to User and
+  DB-008's small tables listed) and link tables keyed by their pair; `schema-snapshot.test.ts` and
+  `erd.test.ts` hold the database itself and `docs/database/erd.md`. Integer ids and
+  PascalCase/camelCase stay (Q1, Q2).
+- **Migrations.** One concern per migration, `BEGIN; … COMMIT;` unless it is `CONCURRENTLY`, which
+  goes one statement per file (D10). A `rollback.sql` beside it, cycled apply → rollback → apply on a
+  throwaway database. A data check a real database needs first ships as a read-only script in
+  `apps/backend/scripts/refactor-checks/`. A contract migration (a drop) deploys after the code
+  that stops using the column.
+- **Known gaps (D8, kept on purpose).** No duplication check (`jscpd` not approved); FE-017 / FE-073
+  moves and renames; the irregular form validators and state ladders; 53 `apiClient` calls that don't
+  fit `apiGet` / `apiSend`; DB-012, DB-014, DB-018, DB-026, DB-031, BE-050. The full list is in each
+  wave's "Skipped (D8)" in the plan.
 
 ## Git
 
