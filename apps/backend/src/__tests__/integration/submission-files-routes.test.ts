@@ -6,15 +6,15 @@ import { newPublicId } from "../../lib/public-id";
 import { getStorage } from "../../lib/storage";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
-// Brief specifies 30000, but the shared Neon staging Postgres autosuspends —
-// measured ~18s for the first query after idle. 60000 gives headroom for a
-// cold start without masking a genuine hang.
+// Generous for a cold database's first query, without masking a genuine hang.
 jest.setTimeout(60000);
 
 const app = createApp();
 
 let publicId: string;
 let otherPublicId: string;
+let noFilesPublicId: string;
+let workId: number;
 let ownerToken: string;
 let peerToken: string;
 
@@ -32,47 +32,41 @@ beforeAll(async () => {
     ],
   });
 
+  // Two essays that take files (1 MB, text or image) and one that takes none.
+  // The second gives the fileId<->publicId cross-work guard a real "different
+  // essay" to point at.
+  const essay = (position: number, files: boolean) => ({
+    position,
+    kind: "ESSAY" as const,
+    prompt: `Question ${position + 1}`,
+    maxFileSizeMb: files ? 1 : null,
+    allowedMimeCategories: files ? ["text", "image"] : [],
+  });
   const assignment = await db.assignment.create({
     data: {
       seasonId: season.id,
       title: "Upload one file",
-      isAllGroups: true,
-      maxFileSizeMb: 1,
-      allowedMimeCategories: ["text", "image"],
+      parts: { create: [essay(0, true), essay(1, true), essay(2, false)] },
     },
-    select: { id: true },
+    select: { id: true, parts: { orderBy: { position: "asc" }, select: { id: true } } },
   });
+  const [first, second, third] = assignment.parts.map((p) => p.id) as [number, number, number];
 
   // See Ruling F2 — production's generator, not a hand-rolled short id.
-  publicId = newPublicId();
-  await db.submission.create({
-    data: { assignmentId: assignment.id, studentUserId: owner.id, publicId, status: "DRAFT" },
-  });
-
-  // A second submission on a different assignment (the same owner, since
-  // @@unique([assignmentId, studentUserId]) forbids two on the same
-  // assignment). Exists only so the fileId<->publicId cross-submission guard
-  // has a real "different submission" to point at, without depending on any
-  // row outside this fixture's own season.
-  const otherAssignment = await db.assignment.create({
-    data: {
-      seasonId: season.id,
-      title: "Upload another file",
-      isAllGroups: true,
-      maxFileSizeMb: 1,
-      allowedMimeCategories: ["text", "image"],
-    },
+  const submission = await db.submission.create({
+    data: { assignmentId: assignment.id, studentUserId: owner.id, publicId: newPublicId() },
     select: { id: true },
   });
-  otherPublicId = newPublicId();
-  await db.submission.create({
-    data: {
-      assignmentId: otherAssignment.id,
-      studentUserId: owner.id,
-      publicId: otherPublicId,
-      status: "DRAFT",
-    },
-  });
+  const work = (partId: number) =>
+    db.assignmentPartWork.create({
+      data: { publicId: newPublicId(), partId, submissionId: submission.id, studentUserId: owner.id },
+      select: { id: true, publicId: true },
+    });
+  const w1 = await work(first);
+  publicId = w1.publicId;
+  workId = w1.id;
+  otherPublicId = (await work(second)).publicId;
+  noFilesPublicId = (await work(third)).publicId;
 
   ownerToken = await login(app, owner.email);
   peerToken = await login(app, peer.email);
@@ -80,13 +74,13 @@ beforeAll(async () => {
 
 afterAll(async () => {
   // Collect exactly the storage paths this run's uploads wrote, before the
-  // rows are cleaned up. Every SubmissionFile row here hangs off publicId or
-  // otherPublicId — the two submissions this suite created in beforeAll — so
-  // this query cannot see a file any other run or any real user wrote. The
-  // storagePath itself also embeds the submission's newPublicId() (see
-  // buildStorageKey), so even the filename on disk is unique to this run.
+  // rows are cleaned up. Every SubmissionFile row here hangs off the essay
+  // works this suite created in beforeAll, so this query cannot see a file any
+  // other run or any real user wrote. The storagePath itself also embeds a
+  // newPublicId() (see buildStorageKey), so even the filename on disk is
+  // unique to this run.
   const files = await db.submissionFile.findMany({
-    where: { submission: { publicId: { in: [publicId, otherPublicId] } } },
+    where: { partWork: { publicId: { in: [publicId, otherPublicId, noFilesPublicId] } } },
     select: { storagePath: true },
   });
 
@@ -121,13 +115,41 @@ describe("POST /api/v1/submissions/:publicId/files", () => {
     });
 
     const stored = await db.submissionFile.findFirst({
-      where: { submission: { publicId } },
-      select: { storagePath: true },
+      where: { partWork: { publicId } },
+      select: { storagePath: true, partWorkId: true },
     });
     expect(stored?.storagePath).toMatch(/^submissions\/\d{4}\/\d{2}\/.+-notes\.txt$/);
+    // Files attach to the essay, and the essay's detail lists them.
+    expect(stored?.partWorkId).toBe(workId);
+    const detail = await request(app)
+      .get(`/api/v1/submissions/${publicId}`)
+      .set("authorization", `Bearer ${ownerToken}`);
+    expect(detail.body.data.files).toEqual([res.body.data.file]);
+    expect(detail.body.data).toMatchObject({ maxFileSizeMb: 1, allowedMimeCategories: ["text", "image"] });
   });
 
-  it("rejects a MIME type the assignment does not allow", async () => {
+  it("refuses a file on an essay that takes none", async () => {
+    const res = await request(app)
+      .post(`/api/v1/submissions/${noFilesPublicId}/files`)
+      .set("authorization", `Bearer ${ownerToken}`)
+      .attach("file", Buffer.from("hello"), { filename: "a.txt", contentType: "text/plain" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toBe("This essay doesn't take files.");
+    expect(await db.submissionFile.count({ where: { partWork: { publicId: noFilesPublicId } } })).toBe(0);
+  });
+
+  it("refuses a file once the essay is handed in", async () => {
+    await db.assignmentPartWork.update({ where: { publicId: otherPublicId }, data: { status: "SUBMITTED" } });
+    const res = await request(app)
+      .post(`/api/v1/submissions/${otherPublicId}/files`)
+      .set("authorization", `Bearer ${ownerToken}`)
+      .attach("file", Buffer.from("late"), { filename: "late.txt", contentType: "text/plain" });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("submission_locked");
+    await db.assignmentPartWork.update({ where: { publicId: otherPublicId }, data: { status: "DRAFT" } });
+  });
+
+  it("rejects a MIME type the essay does not allow", async () => {
     const res = await request(app)
       .post(`/api/v1/submissions/${publicId}/files`)
       .set("authorization", `Bearer ${ownerToken}`)
@@ -140,9 +162,9 @@ describe("POST /api/v1/submissions/:publicId/files", () => {
     expect(res.body.error.code).toBe("mime_not_allowed");
   });
 
-  it("rejects a file over the assignment's size limit", async () => {
+  it("rejects a file over the essay's size limit", async () => {
     // maxFileSizeMb is 1; send 2 MB. Under MAX_UPLOAD_BYTES, so this exercises
-    // the per-assignment check rather than multer's backstop.
+    // the essay's own check rather than multer's backstop.
     const res = await request(app)
       .post(`/api/v1/submissions/${publicId}/files`)
       .set("authorization", `Bearer ${ownerToken}`)
@@ -189,7 +211,7 @@ describe("POST /api/v1/submissions/:publicId/files", () => {
 describe("DELETE /api/v1/submissions/:publicId/files", () => {
   it("deletes the owner's file", async () => {
     const file = await db.submissionFile.findFirstOrThrow({
-      where: { submission: { publicId } },
+      where: { partWork: { publicId } },
       select: { id: true },
     });
 
@@ -239,9 +261,9 @@ describe("DELETE /api/v1/submissions/:publicId/files", () => {
   });
 
   it("refuses a fileId that belongs to a different submission", async () => {
-    // A bare fileId must not let a caller reach across submissions — the
-    // handler ties the file to the :publicId in the path. otherPublicId is a
-    // second submission owned by the same user, created in beforeAll.
+    // A bare fileId must not let a caller reach across essays — the handler
+    // ties the file to the :publicId in the path. otherPublicId is a second
+    // essay of the same student, created in beforeAll.
     const upload = await request(app)
       .post(`/api/v1/submissions/${publicId}/files`)
       .set("authorization", `Bearer ${ownerToken}`)

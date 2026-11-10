@@ -89,7 +89,12 @@ describe("mentor writes", () => {
 
   it("never reviews, marks attendance, grades or administers", async () => {
     await expectStatuses(app, w.tokens.mentor, [
-      ["post", `/api/v1/submissions/${w.submissionBPublicId}/review`, 403, { feedback: "Mentor verdict" }],
+      [
+        "post",
+        `/api/v1/submissions/${w.submissionBPublicId}/review`,
+        403,
+        { action: "reviewed", feedback: "Mentor verdict" },
+      ],
       [
         "post",
         `/api/v1/sessions/${w.sessionId}/attendance`,
@@ -112,7 +117,8 @@ describe("mentor writes", () => {
       ["post", "/api/v1/quizzes", 403, { seasonId: w.seasonId, title: "Mentor quiz", kind: "PAPER", maxScore: 10 }],
       ["patch", `/api/v1/groups/${w.groupAId}`, 403, { name: "Mentor group" }],
     ]);
-    expect((await db.submission.findUnique({ where: { publicId: w.submissionBPublicId } }))?.status).toBe("SUBMITTED");
+    const essay = await db.assignmentPartWork.findUnique({ where: { publicId: w.submissionBPublicId } });
+    expect(essay?.status).toBe("SUBMITTED");
     expect(await db.attendance.count({ where: { sessionId: w.sessionId } })).toBe(0);
   });
 });

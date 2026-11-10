@@ -154,23 +154,17 @@ describe("their work", () => {
     expect((await request(app).put(path).set(as(notStudying))).status).toBe(403);
   });
 
-  it("submits an assignment; an alumnus who isn't studying is refused", async () => {
-    const start = await request(app).put(`/api/v1/submissions/by-assignment/${assignmentId}`).set(as(studying));
-    expect(start.status).toBeLessThan(300);
-    const submit = await request(app)
-      .patch(`/api/v1/submissions/${start.body.data.publicId}`)
-      .set(as(studying))
-      .send({ text: "real work", submit: true });
-    expect(submit.status).toBe(200);
-    expect(
-      (
-        await db.submission.findUniqueOrThrow({
-          where: { publicId: start.body.data.publicId },
-          select: { status: true },
-        })
-      ).status,
-    ).toBe("SUBMITTED");
-    const refused = await request(app).put(`/api/v1/submissions/by-assignment/${assignmentId}`).set(as(notStudying));
+  it("writes an essay; an alumnus who isn't studying is refused", async () => {
+    const part = await db.assignmentPart.findFirstOrThrow({ where: { assignmentId, kind: "ESSAY" } });
+    const path = `/api/v1/assignments/${assignmentId}/parts/${part.id}/essay`;
+    const draft = await request(app).put(path).set(as(studying)).send({ text: "real work" });
+    expect(draft.status).toBe(200);
+    const essay = await db.assignmentPartWork.findUniqueOrThrow({
+      where: { publicId: draft.body.data.publicId },
+      select: { status: true, text: true },
+    });
+    expect(essay).toEqual({ status: "DRAFT", text: "real work" });
+    const refused = await request(app).put(path).set(as(notStudying)).send({ text: "x" });
     expect(refused.status).toBe(403);
   });
 

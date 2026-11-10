@@ -1,0 +1,161 @@
+import { db } from "../../db/client";
+import type { Prisma, SubmissionStatus } from "../../generated/prisma/client";
+import { canSubmit, countWords, essayWordRangeMessage, type PartWork } from "../../../../../packages/shared/src/index";
+import { ApiError } from "../api-error";
+import { liveAssignment } from "../db/live";
+import { EDITABLE_STATUSES } from "../permissions/submission";
+import { newPublicId } from "../public-id";
+import { loadWorkIndex, PART_SELECT, partWorksFor, toAssignmentPart } from "../queries/assignments/part-work";
+
+/*
+ * A student's essays: saving a draft and handing a returned essay in again.
+ * Every write here takes the assignment's row FOR SHARE first, which pairs
+ * with `replaceAssignment`'s FOR UPDATE (an edit that removes the part waits,
+ * or the write sees it gone), then the essay work row FOR UPDATE.
+ */
+
+type Tx = Prisma.TransactionClient;
+
+const essayGone = () => new ApiError("not_found", "Essay not found.", 404);
+
+export function lockAssignmentForWork(tx: Tx, assignmentId: number) {
+  return tx.$queryRaw`SELECT "id" FROM "Assignment" WHERE "id" = ${assignmentId} FOR SHARE`;
+}
+
+export function lockWorkRow(tx: Tx, publicId: string) {
+  return tx.$queryRaw`SELECT "id" FROM "AssignmentPartWork" WHERE "publicId" = ${publicId} FOR UPDATE`;
+}
+
+/**
+ * The student's essay work on this part, made (with the assignment's
+ * Submission) if missing, so the work's part is always the submission's
+ * assignment's and its student the submission's. Locked FOR UPDATE.
+ */
+async function ensureEssayWork(tx: Tx, assignmentId: number, partId: number, studentUserId: number) {
+  await tx.submission.createMany({
+    data: [{ assignmentId, studentUserId, publicId: newPublicId() }],
+    skipDuplicates: true,
+  });
+  const submission = await tx.submission.findUniqueOrThrow({
+    where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
+    select: { id: true },
+  });
+  await tx.assignmentPartWork.createMany({
+    data: [{ publicId: newPublicId(), partId, submissionId: submission.id, studentUserId }],
+    skipDuplicates: true,
+  });
+  await tx.$queryRaw`SELECT "id" FROM "AssignmentPartWork" WHERE "partId" = ${partId} AND "studentUserId" = ${studentUserId} FOR UPDATE`;
+  return tx.assignmentPartWork.findUniqueOrThrow({
+    where: { partId_studentUserId: { partId, studentUserId } },
+    select: { id: true, publicId: true, status: true },
+  });
+}
+
+const handedInMessage = "This essay has been handed in and can no longer be changed.";
+
+/**
+ * PUT /assignments/:id/parts/:partId/essay: saves the draft's text. A save is
+ * never a hand-in and never changes the status: a draft stays a draft until
+ * Submit, a returned essay stays returned until it is handed in again. A
+ * handed-in or reviewed essay is the reviewer's to judge (409).
+ */
+export async function saveEssayDraft(
+  partId: number,
+  studentUserId: number,
+  text: string,
+): Promise<{ publicId: string; wordCount: number; reviewStatus: SubmissionStatus }> {
+  return db.$transaction(async (tx) => {
+    const owner = await tx.assignmentPart.findUnique({ where: { id: partId }, select: { assignmentId: true } });
+    if (!owner) throw new ApiError("not_found", "Part not found.", 404);
+    await lockAssignmentForWork(tx, owner.assignmentId);
+    // Re-read under the lock: an edit that landed first wins.
+    const part = await tx.assignmentPart.findFirst({
+      where: { id: partId, kind: "ESSAY", assignment: liveAssignment },
+      select: { id: true },
+    });
+    if (!part) throw new ApiError("not_found", "Part not found.", 404);
+    const work = await ensureEssayWork(tx, owner.assignmentId, partId, studentUserId);
+    if (!EDITABLE_STATUSES.includes(work.status)) throw new ApiError("submission_locked", handedInMessage, 409);
+    await tx.assignmentPartWork.update({ where: { id: work.id }, data: { text } });
+    return { publicId: work.publicId, wordCount: countWords(text), reviewStatus: work.status };
+  });
+}
+
+/**
+ * Where a student stands on one assignment, read inside a write's transaction:
+ * whether every part is done (Submit's rule), and whether every essay is
+ * reviewed. An assignment with no essay counts its essays as reviewed.
+ */
+export async function workStanding(
+  tx: Tx,
+  assignmentId: number,
+  studentUserId: number,
+): Promise<{ everyPartDone: boolean; essaysReviewed: boolean }> {
+  const parts = await tx.assignmentPart.findMany({
+    where: { assignmentId },
+    orderBy: { position: "asc" },
+    select: PART_SELECT,
+  });
+  const index = await loadWorkIndex(
+    parts.map((p) => p.id),
+    [studentUserId],
+    tx,
+  );
+  const works: PartWork[] = partWorksFor(parts, studentUserId, index, { forStaff: false });
+  return {
+    everyPartDone: canSubmit(parts.map(toAssignmentPart), works),
+    essaysReviewed: works.filter((w) => w.kind === "ESSAY").every((w) => w.essay?.reviewStatus === "REVIEWED"),
+  };
+}
+
+function notReturnedMessage(status: SubmissionStatus): string {
+  return status === "DRAFT" ? "Hand your essays in with Submit." : "This essay is already handed in.";
+}
+
+/**
+ * POST /submissions/:publicId/hand-in: a returned essay, handed in again on its
+ * own (only from RETURNED; the first hand-in is the assignment's Submit). The
+ * word range is checked on the server's count (`countWords`, as the app
+ * counts). The essay goes back to SUBMITTED, so only it re-enters the queue;
+ * when that leaves every part done, the assignment is submitted again.
+ */
+export async function handInEssay(
+  publicId: string,
+  studentUserId: number,
+  now = new Date(),
+): Promise<{ reviewStatus: "SUBMITTED"; assignmentSubmitted: boolean }> {
+  return db.$transaction(async (tx) => {
+    const found = await tx.assignmentPartWork.findUnique({
+      where: { publicId },
+      select: { part: { select: { assignmentId: true } } },
+    });
+    if (!found) throw essayGone();
+    const { assignmentId } = found.part;
+    await lockAssignmentForWork(tx, assignmentId);
+    await lockWorkRow(tx, publicId);
+    const work = await tx.assignmentPartWork.findFirst({
+      where: { publicId, studentUserId, part: { kind: "ESSAY", assignment: liveAssignment } },
+      select: {
+        id: true,
+        status: true,
+        text: true,
+        submissionId: true,
+        part: { select: { minWords: true, maxWords: true } },
+      },
+    });
+    if (!work) throw essayGone();
+    if (work.status !== "RETURNED") throw new ApiError("not_returned", notReturnedMessage(work.status), 409);
+    const refusal = essayWordRangeMessage(countWords(work.text ?? ""), work.part.minWords, work.part.maxWords);
+    if (refusal !== null) throw new ApiError("word_range", refusal, 400);
+
+    await tx.assignmentPartWork.update({ where: { id: work.id }, data: { status: "SUBMITTED", submittedAt: now } });
+    const { everyPartDone } = await workStanding(tx, assignmentId, studentUserId);
+    if (everyPartDone) {
+      await tx.submission.updateMany({
+        where: { id: work.submissionId, submittedAt: null },
+        data: { submittedAt: now },
+      });
+    }
+    return { reviewStatus: "SUBMITTED", assignmentSubmitted: everyPartDone };
+  });
+}

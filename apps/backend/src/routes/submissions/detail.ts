@@ -3,15 +3,17 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, forbidden } from "../../lib/api-response";
 import { config } from "../../lib/config";
+import { liveAssignment } from "../../lib/db/live";
 import { canReviewSubmission, canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
-import { htmlToPlainText } from "../../../../../packages/shared/src/index";
+import { countWords, htmlToPlainText } from "../../../../../packages/shared/src/index";
 import { notFound } from "../../lib/http/not-found";
 
-async function loadSubmissionForApi(publicId: string) {
-  return db.submission.findUnique({
-    where: { publicId },
+/** One essay work (not a video's progress or a forum post), with its part and assignment. */
+async function loadEssayForApi(publicId: string) {
+  return db.assignmentPartWork.findFirst({
+    where: { publicId, part: { kind: "ESSAY", assignment: liveAssignment } },
     select: {
       id: true,
       publicId: true,
@@ -20,95 +22,101 @@ async function loadSubmissionForApi(publicId: string) {
       feedback: true,
       submittedAt: true,
       reviewedAt: true,
-      assignmentId: true,
       studentUserId: true,
-      assignment: {
+      submissionId: true,
+      part: {
         select: {
-          title: true,
-          dueAt: true,
-          description: true,
-          seasonId: true,
-          season: { select: { code: true } },
+          id: true,
+          assignmentId: true,
+          prompt: true,
+          minWords: true,
+          maxWords: true,
+          maxFileSizeMb: true,
+          allowedMimeCategories: true,
+          assignment: {
+            select: {
+              title: true,
+              dueAt: true,
+              description: true,
+              seasonId: true,
+              season: { select: { code: true } },
+            },
+          },
         },
       },
       studentUser: { select: { name: true, email: true } },
       // storagePath is deliberately absent. v1's client needed it to build a
       // URL into /api/uploads/[...path] — the endpoint that served any stored
       // file to any logged-in user. v2 addresses a file by id scoped to its
-      // submission, so the path is not just unnecessary on the wire, it is the
-      // one field that made the old hole exploitable by anyone who saw a
-      // response.
+      // essay, so the path is not just unnecessary on the wire, it is the one
+      // field that made the old hole exploitable by anyone who saw a response.
       files: {
-        select: {
-          id: true,
-          originalName: true,
-          mimeType: true,
-          sizeBytes: true,
-        },
+        select: { id: true, originalName: true, mimeType: true, sizeBytes: true },
         orderBy: { uploadedAt: "asc" },
       },
     },
   });
 }
 
+/**
+ * GET /submissions/:publicId: one essay, for its author (their draft too), the
+ * staff who may read the student's work, and the review screen.
+ */
 export async function getSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
   // publicId is an opaque 10-character string, not an integer — no parseId here.
-  const { publicId } = req.params;
-
-  const sub = await loadSubmissionForApi(publicId ?? "");
+  const work = await loadEssayForApi(req.params.publicId ?? "");
   // A draft is its author's alone: anyone else is told it does not exist.
-  if (!sub || isHiddenDraft(user, sub)) {
-    return notFound(res, "Submission");
-  }
+  if (!work || isHiddenDraft(user, work)) return notFound(res, "Submission");
+  const { part } = work;
+  const { assignment } = part;
 
   // The three reads below depend only on the row just loaded, not on each
-  // other, so they run together: each is a round trip to the database, and
-  // one after another they were the wait before the review screen could draw.
-  // The student's group in this assignment's season comes from the enrolment
-  // (ruling C9) — v1's detail named it. A caller who then fails the access
-  // check has paid for two reads it never uses, the cheap side of the trade.
+  // other, so they run together. The student's group in this assignment's
+  // season comes from the enrolment (ruling C9).
   const [canView, enrollment, canReview] = await Promise.all([
-    canViewSubmission(user, sub.id),
+    canViewSubmission(user, work.submissionId),
     db.seasonEnrollment.findUnique({
-      where: {
-        studentUserId_seasonId: {
-          studentUserId: sub.studentUserId,
-          seasonId: sub.assignment.seasonId,
-        },
-      },
+      where: { studentUserId_seasonId: { studentUserId: work.studentUserId, seasonId: assignment.seasonId } },
       select: { groupId: true, group: { select: { name: true } } },
     }),
-    canReviewSubmission(user, sub.id),
+    canReviewSubmission(user, work.submissionId),
   ]);
   if (!canView) return forbidden(res);
 
+  // Ruling C11 / REG-90: stored values may be HTML (or anything a client once
+  // wrote); the wire carries plain text only.
+  const text = work.text === null ? null : htmlToPlainText(work.text);
   return apiOk(res, {
-    id: sub.id,
-    publicId: sub.publicId,
-    status: sub.status,
-    // Ruling C11 / REG-90: stored values may be v1 TipTap HTML (or anything a
-    // client once wrote); the wire carries plain text only.
-    text: sub.text === null ? null : htmlToPlainText(sub.text),
-    feedback: sub.feedback === null ? null : htmlToPlainText(sub.feedback),
-    submittedAt: sub.submittedAt,
-    reviewedAt: sub.reviewedAt,
-    isLate: isLate(sub.submittedAt, sub.assignment.dueAt),
-    assignmentId: sub.assignmentId,
-    assignmentTitle: sub.assignment.title,
-    assignmentDueAt: sub.assignment.dueAt,
-    assignmentDescription: sub.assignment.description,
-    seasonCode: sub.assignment.season.code,
-    studentUserId: sub.studentUserId,
-    studentName: sub.studentUser.name,
-    studentEmail: sub.studentUser.email,
+    id: work.id,
+    publicId: work.publicId,
+    status: work.status,
+    text,
+    wordCount: countWords(work.text ?? ""),
+    partId: part.id,
+    prompt: part.prompt ?? "",
+    minWords: part.minWords,
+    maxWords: part.maxWords,
+    maxFileSizeMb: part.maxFileSizeMb,
+    allowedMimeCategories: part.allowedMimeCategories,
+    feedback: work.feedback === null ? null : htmlToPlainText(work.feedback),
+    submittedAt: work.submittedAt,
+    reviewedAt: work.reviewedAt,
+    isLate: isLate(work.submittedAt, assignment.dueAt),
+    assignmentId: part.assignmentId,
+    assignmentTitle: assignment.title,
+    assignmentDueAt: assignment.dueAt,
+    assignmentDescription: assignment.description,
+    seasonCode: assignment.season.code,
+    studentUserId: work.studentUserId,
+    studentName: work.studentUser.name,
+    studentEmail: work.studentUser.email,
     groupId: enrollment?.groupId ?? null,
     groupName: enrollment?.group?.name ?? null,
-    files: sub.files,
-    // Told to the client rather than left for it to discover by receiving a
-    // 503: an assignment declaring maxFileSizeMb is telling the student a file
-    // is expected, so the screen needs to explain why it cannot offer one.
-    canUploadFiles: config.enableUploads,
+    files: work.files,
+    // An essay with no file limit takes no files; with uploads switched off
+    // the screen explains why it cannot offer one rather than meeting a 503.
+    canUploadFiles: config.enableUploads && part.maxFileSizeMb !== null,
     canReview,
   });
 }

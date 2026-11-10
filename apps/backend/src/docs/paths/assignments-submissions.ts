@@ -84,13 +84,13 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Submissions"],
       summary: "A reviewer's queue",
       description:
-        "Staff only. Scoped to the caller: a LEADER sees submissions from students enrolled in a group they lead **in that assignment's own season**; an ADMIN sees their seasons; SUPER and MENTOR see everything.\n\nv1's equivalent was unscoped and unpaginated — every submission the reader could reach, in one response. Cursor-paged here, in v1's order (REG-89): status ascending (SUBMITTED first, then REVIEWED, RETURNED), then most recently submitted. The response carries `counts` for the header.",
+        "Staff only. Lists **essays**, one item per student per essay, labelled with the assignment and the essay's question; a video's progress and a forum post are never items. A DRAFT never appears. Scoped to the caller: a LEADER sees essays from students enrolled in a group they lead **in that assignment's own season**; an ADMIN sees their seasons; SUPER and MENTOR see everything.\n\nv1's equivalent was unscoped and unpaginated. Cursor-paged here, in v1's order (REG-89): status ascending (SUBMITTED first, then REVIEWED, RETURNED), then most recently handed in. The response carries `counts` for the header.",
       parameters: [
         {
           name: "pendingOnly",
           in: "query",
           schema: { type: "string", enum: ["true", "false"], default: "true" },
-          description: "Only submissions awaiting a verdict. Defaults true — it is a queue.",
+          description: "Only essays awaiting a verdict. Defaults true — it is a queue.",
         },
         { name: "seasonId", in: "query", schema: { type: "integer" } },
         {
@@ -114,100 +114,16 @@ export const assignmentsSubmissionsPaths = {
     },
   },
 
-  "/api/v1/submissions/by-assignment/{assignmentId}": {
+  "/api/v1/assignments/{id}/parts/{partId}/essay": {
     put: {
       tags: ["Submissions"],
-      summary: "Start (or fetch) this student's submission for an assignment",
+      summary: "Save the student's essay draft",
       description:
-        "Idempotent: the first call creates a DRAFT, later calls return the same row untouched. Never overwrites saved work.\n\nThis exists because v1 created the row as a side effect of *rendering* the assignment page. A read that writes is wrong on its own terms, and React Query would make it far worse — it refetches on mount, on focus and on reconnect, so the write would fire every time the app is tabbed back to.\n\nSTUDENT only, with an ACTIVE enrolment in the assignment's season, and only for an assignment actually targeted at them.",
-      parameters: [{ name: "assignmentId", in: "path", required: true, schema: { type: "integer" } }],
-      responses: {
-        200: ok(
-          {
-            type: "object",
-            properties: {
-              publicId: { type: "string" },
-              status: { $ref: "#/components/schemas/SubmissionStatus" },
-            },
-          },
-          "The student's submission for this assignment.",
-        ),
-        400: errRef("BadRequest"),
-        401: errRef("Unauthorized"),
-        403: errRef("Forbidden"),
-        404: errRef("NotFound"),
-        409: conflict(
-          "`use_forum_endpoint` —A FORUM assignment is written only through `PUT /assignments/{id}/forum/response`.",
-        ),
-      },
-    },
-  },
-
-  "/api/v1/submissions/{publicId}/review": {
-    post: {
-      tags: ["Submissions"],
-      summary: "Record a verdict",
-      description:
-        'Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every submission in the system but reviews none.\n\n`returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 had `RETURNED` in its vocabulary with no producer, so the only route back to editable was its accidental one, where saving a draft silently demoted a reviewed submission and dropped it out of the queue.\n\nThe student is notified, best-effort (title `Feedback ready on "<assignment>"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.',
-      parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              required: ["feedback"],
-              properties: {
-                feedback: { type: "string", maxLength: 20000 },
-                returnForRevision: { type: "boolean" },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        200: ok(
-          {
-            type: "object",
-            properties: {
-              reviewed: { type: "boolean" },
-              returnedForRevision: { type: "boolean" },
-            },
-          },
-          "Recorded.",
-        ),
-        400: errRef("BadRequest"),
-        401: errRef("Unauthorized"),
-        403: errRef("Forbidden"),
-        404: {
-          description:
-            "No such submission, or it is a DRAFT — a draft exists only for its author, so it can be neither reviewed nor returned.",
-          content: { "application/json": { schema: errorResponse } },
-        },
-      },
-    },
-  },
-
-  "/api/v1/submissions/{publicId}": {
-    get: {
-      tags: ["Submissions"],
-      summary: "Submission detail",
-      description:
-        "Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's submission. A DRAFT is the student's unfinished work and exists only for its author: to anyone else — staff included — it is `404`, as if it did not exist (on this route, its files, PATCH and review alike). RETURNED is not a draft and stays visible. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
-      parameters: [publicIdParam],
-      responses: {
-        200: ok({ $ref: "#/components/schemas/SubmissionDetail" }, "The submission."),
-        401: errRef("Unauthorized"),
-        403: errRef("Forbidden"),
-        404: errRef("NotFound"),
-      },
-    },
-    patch: {
-      tags: ["Submissions"],
-      summary: "Save a draft or submit",
-      description:
-        "**Author only** — reading and writing are different rights, so a season admin who can read this submission still cannot edit it. The author must also hold an ACTIVE enrolment in the assignment's season (a withdrawn, completed or alumni student gets 403).\n\nOnly a DRAFT or RETURNED submission can be changed; a SUBMITTED or REVIEWED one is `409 submission_locked`, for a save and a submit alike — the way back to editable is a reviewer's `returnForRevision`. `submit: true` sets status SUBMITTED and stamps `submittedAt` (a submit that loses a race to another is `409 submission_locked`), and tells the leaders of the student's group in the assignment's season with one `SUBMISSION_RECEIVED` notification each (link `/leader/submissions/{publicId}`, target `submission`; season admins are not notified; best-effort). Omitting it saves the text, leaves the status alone and notifies nobody.\n\nSubmitting blank text with no attached file is `400 empty_submission` (v1's rule, REG-85); saving a blank draft stays legal.",
-      parameters: [publicIdParam],
+        "STUDENT only, with an ACTIVE enrolment in the assignment's season (staff, and a finished or dropped season's students, get 403). The part must be an essay of this live assignment (404). Saves the whole text; the first save makes the student's Submission and essay work, later saves reuse them, so the response's `publicId` is the essay's handle for its detail, files and hand-in.\n\nA save never hands the essay in and never changes its status: a draft stays a draft until the assignment's Submit, and a RETURNED essay stays returned until it is handed in again (`POST /submissions/{publicId}/hand-in`). A handed-in or reviewed essay is `409 submission_locked`. A draft is the student's alone: staff are told it does not exist.",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "integer" } },
+        { name: "partId", in: "path", required: true, schema: { type: "integer" } },
+      ],
       requestBody: {
         required: true,
         content: {
@@ -215,9 +131,79 @@ export const assignmentsSubmissionsPaths = {
             schema: {
               type: "object",
               required: ["text"],
+              properties: { text: { type: "string", maxLength: 20000 } },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            properties: {
+              publicId: { type: "string" },
+              wordCount: { type: "integer" },
+              reviewStatus: { $ref: "#/components/schemas/SubmissionStatus" },
+            },
+          },
+          "Saved.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`submission_locked` — the essay is handed in (SUBMITTED) or REVIEWED."),
+      },
+    },
+  },
+
+  "/api/v1/submissions/{publicId}/hand-in": {
+    post: {
+      tags: ["Submissions"],
+      summary: "Hand a returned essay in again",
+      description:
+        "The author only (403 otherwise), with an ACTIVE enrolment in the season. Only a RETURNED essay (`409 not_returned` otherwise: the first hand-in is the assignment's Submit). The word count is the server's (`countWords` on the stored text, as the app counts): outside the essay's range, or with no words, it is `400 word_range` with the count in the message, e.g. \"This is 142 words; it needs at least 150.\"\n\nThe essay becomes SUBMITTED, so only it re-enters the review queue; the student's other parts are untouched. When that leaves every part done, the assignment is submitted again (`Submission.submittedAt` set; `assignmentSubmitted: true`). The leaders of the student's group in the season get one `SUBMISSION_RECEIVED` each, naming the essay (link `/leader/submissions/{publicId}`; best-effort).",
+      parameters: [publicIdParam],
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            properties: {
+              reviewStatus: { type: "string", enum: ["SUBMITTED"] },
+              assignmentSubmitted: { type: "boolean" },
+            },
+          },
+          "Handed in.",
+        ),
+        400: {
+          description: "`word_range` — outside the essay's word range, or empty; the message says the count.",
+          content: { "application/json": { schema: errorResponse } },
+        },
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`not_returned` — the essay is a draft (Submit hands it in) or already handed in."),
+      },
+    },
+  },
+
+  "/api/v1/submissions/{publicId}/review": {
+    post: {
+      tags: ["Submissions"],
+      summary: "Record a verdict on one essay",
+      description:
+        'Each essay is reviewed on its own. Gated on a check strictly narrower than the read gate: the author never reviews their own work, and a MENTOR reads every essay but reviews none.\n\n`reviewed` (feedback optional) sets the essay REVIEWED; once every essay of the student\'s assignment is reviewed (and it is submitted), the assignment is complete (`Submission.completedAt`). `return` needs a note (`400` "Say what to change" without one) and sets the essay RETURNED: the assignment is reopened (`submittedAt` and `completedAt` cleared) and the student\'s other parts stay as they are. A handed-in or reviewed essay can be judged; a returned one is with the student (`409 not_handed_in`).\n\nThe student is notified, best-effort (title `Feedback ready on "<assignment>"` as in v1; `<assignment> was returned for revision` when returned; no body) — a mail failure does not report the review as failed.',
+      parameters: [{ name: "publicId", in: "path", required: true, schema: { type: "string" } }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["action", "feedback"],
               properties: {
-                text: { type: "string", maxLength: 20000 },
-                submit: { type: "boolean", default: false },
+                action: { type: "string", enum: ["reviewed", "return"] },
+                feedback: { type: ["string", "null"], maxLength: 20000, description: "Required for `return`." },
               },
             },
           },
@@ -225,16 +211,34 @@ export const assignmentsSubmissionsPaths = {
       },
       responses: {
         200: ok(
-          { type: "object", properties: { saved: { type: "boolean" }, submitted: { type: "boolean" } } },
-          "Saved.",
+          { type: "object", properties: { reviewStatus: { type: "string", enum: ["REVIEWED", "RETURNED"] } } },
+          "Recorded.",
         ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
+        404: {
+          description:
+            "No such essay, or it is a DRAFT — a draft exists only for its author, so it can be neither reviewed nor returned.",
+          content: { "application/json": { schema: errorResponse } },
+        },
+        409: conflict("`not_handed_in` — the essay was returned and the student has not handed it in again."),
+      },
+    },
+  },
+
+  "/api/v1/submissions/{publicId}": {
+    get: {
+      tags: ["Submissions"],
+      summary: "One essay",
+      description:
+        "`publicId` is the essay work's (an essay part of a live assignment; a forum post's or a video's work is 404). Readable by the author, the student's group leader, a season admin, SUPER and MENTOR. A peer student cannot read another's essay. A DRAFT is the student's unfinished work and exists only for its author: to anyone else — staff included — it is `404`, as if it did not exist (on this route, its files, hand-in and review alike). RETURNED is not a draft and stays visible. `text` and `feedback` are plain text (stored HTML is converted on read, ruling C11); `groupId`/`groupName` name the student's group in the assignment's season.",
+      parameters: [publicIdParam],
+      responses: {
+        200: ok({ $ref: "#/components/schemas/SubmissionDetail" }, "The essay."),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict(
-          "`use_forum_endpoint` — a FORUM assignment is written only through `PUT /assignments/{id}/forum/response`; `submission_locked` — the submission is SUBMITTED or REVIEWED.",
-        ),
       },
     },
   },
@@ -249,7 +253,8 @@ export const assignmentsSubmissionsPaths = {
         "files already recorded are unaffected.",
         "",
         "When enabled: author only, ACTIVE enrolment in the season, and only while the",
-        "submission is DRAFT or RETURNED (otherwise `409 submission_locked`). The assignment's own `maxFileSizeMb` and",
+        "essay is DRAFT or RETURNED (otherwise `409 submission_locked`). An essay with no `maxFileSizeMb`",
+        "takes no files (`400`). The essay's own `maxFileSizeMb` and",
         "`allowedMimeCategories` are enforced after upload; a process-level ceiling",
         "(`MAX_UPLOAD_BYTES`, 25 MB by default) rejects anything larger before the handler runs.",
       ].join("\n"),
@@ -285,7 +290,8 @@ export const assignmentsSubmissionsPaths = {
           "Stored.",
         ),
         400: {
-          description: "`file_too_large`, `mime_not_allowed`, or `bad_request` (no file part).",
+          description:
+            "`file_too_large`, `mime_not_allowed`, or `bad_request` (no file part, or the essay takes no files).",
           content: { "application/json": { schema: errorResponse } },
         },
         401: errRef("Unauthorized"),
@@ -302,7 +308,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Submissions"],
       summary: "Remove an attached file",
       description:
-        "Author only, with an ACTIVE enrolment in the season. The file must belong to this submission, and the submission must be DRAFT or RETURNED.",
+        "Author only, with an ACTIVE enrolment in the season. The file must belong to this essay, and the essay must be DRAFT or RETURNED.",
       parameters: [
         publicIdParam,
         { name: "fileId", in: "query", required: true, schema: { type: "integer", minimum: 1 } },
@@ -313,7 +319,7 @@ export const assignmentsSubmissionsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`submission_locked` — the submission is SUBMITTED or REVIEWED."),
+        409: conflict("`submission_locked` — the essay is SUBMITTED or REVIEWED."),
       },
     },
   },
@@ -324,7 +330,7 @@ export const assignmentsSubmissionsPaths = {
       description: [
         "Streams the raw bytes — **this is the one endpoint whose success path is not the `{ data }` envelope.** Error paths still are.",
         "",
-        "Gated by the same rule as reading the submission, so a season admin or the student's group leader can open submitted work while a peer student cannot.",
+        "Gated by the same rule as reading the essay, so a season admin or the student's group leader can open handed-in work while a peer student cannot.",
         "",
         "Served as `Content-Disposition: attachment` because uploads are arbitrary user content; `Content-Type` is the recorded MIME type, never sniffed from the extension.",
       ].join("\n"),
@@ -349,7 +355,7 @@ export const assignmentsSubmissionsPaths = {
         403: errRef("Forbidden"),
         404: {
           description:
-            "No such file, it belongs to another submission, it is on someone else's DRAFT, or the stored blob is missing.",
+            "No such file, it belongs to another essay, it is on someone else's DRAFT, or the stored blob is missing.",
           content: { "application/json": { schema: errorResponse } },
         },
       },

@@ -100,17 +100,22 @@ const workKey = (partId: number, studentUserId: number) => `${partId}:${studentU
 /**
  * Who has which work: the rows for these parts and students, and each
  * student's timed-question answers per video part. Two queries however many.
+ * A write passes its transaction, so it reads what it holds locked.
  */
-export async function loadWorkIndex(partIds: number[], studentUserIds: number[]) {
+export async function loadWorkIndex(
+  partIds: number[],
+  studentUserIds: number[],
+  client: Prisma.TransactionClient = db,
+) {
   if (partIds.length === 0 || studentUserIds.length === 0) {
     return { works: new Map<string, WorkRow>(), answers: new Map<string, AnswerTally>() };
   }
   const [rows, responses] = await Promise.all([
-    db.assignmentPartWork.findMany({
+    client.assignmentPartWork.findMany({
       where: { partId: { in: partIds }, studentUserId: { in: studentUserIds } },
       select: WORK_SELECT,
     }),
-    db.sessionVideoQuestionResponse.findMany({
+    client.sessionVideoQuestionResponse.findMany({
       where: { studentUserId: { in: studentUserIds }, question: { assignmentPartId: { in: partIds } } },
       select: { studentUserId: true, isCorrect: true, question: { select: { assignmentPartId: true } } },
     }),

@@ -121,7 +121,7 @@ describe("reads a leader is refused", () => {
       ["get", "/api/v1/me/season", 403],
       ["get", "/api/v1/me/attendance", 403],
       ["get", "/api/v1/me/profile", 403],
-      ["put", `/api/v1/submissions/by-assignment/${w.assignmentId}`, 403],
+      ["put", `/api/v1/assignments/${w.assignmentId}/parts/${w.essayPartId}/essay`, 403, { text: "x" }],
     ]);
   });
 
@@ -193,34 +193,37 @@ describe("notes", () => {
   });
 });
 
-describe("reviewing submissions", () => {
-  it("reviews their own student's submission and returns it for revision", async () => {
-    const start = await request(app)
-      .put(`/api/v1/submissions/by-assignment/${w.assignmentId}`)
-      .set({ authorization: `Bearer ${w.tokens.studentA}` });
-    const publicId = start.body.data.publicId as string;
-    await request(app)
-      .patch(`/api/v1/submissions/${publicId}`)
+describe("reviewing essays", () => {
+  it("reviews their own student's essay and returns it for revision", async () => {
+    const draft = await request(app)
+      .put(`/api/v1/assignments/${w.assignmentId}/parts/${w.essayPartId}/essay`)
       .set({ authorization: `Bearer ${w.tokens.studentA}` })
-      .send({ text: "done", submit: true })
+      .send({ text: "done" })
       .expect(200);
+    const publicId = draft.body.data.publicId as string;
+    // What the assignment's Submit does to the essay.
+    await db.assignmentPartWork.update({
+      where: { publicId },
+      data: { status: "SUBMITTED", submittedAt: new Date() },
+    });
 
     const res = await request(app)
       .post(`/api/v1/submissions/${publicId}/review`)
       .set(as("leaderA"))
-      .send({ feedback: "Please expand", returnForRevision: true });
+      .send({ action: "return", feedback: "Please expand" });
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ reviewed: true, returnedForRevision: true });
-    expect((await db.submission.findUnique({ where: { publicId } }))?.status).toBe("RETURNED");
+    expect(res.body.data).toEqual({ reviewStatus: "RETURNED" });
+    expect((await db.assignmentPartWork.findUnique({ where: { publicId } }))?.status).toBe("RETURNED");
   });
 
-  it("cannot review the other group's submission", async () => {
+  it("cannot review the other group's essay", async () => {
     const res = await request(app)
       .post(`/api/v1/submissions/${w.submissionBPublicId}/review`)
       .set(as("leaderA"))
-      .send({ feedback: "nope" });
+      .send({ action: "reviewed", feedback: "nope" });
     expect(res.status).toBe(403);
-    expect((await db.submission.findUnique({ where: { publicId: w.submissionBPublicId } }))?.status).toBe("SUBMITTED");
+    const essay = await db.assignmentPartWork.findUnique({ where: { publicId: w.submissionBPublicId } });
+    expect(essay?.status).toBe("SUBMITTED");
   });
 });
 

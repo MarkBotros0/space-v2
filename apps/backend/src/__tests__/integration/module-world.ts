@@ -22,7 +22,11 @@ export interface ModuleWorld {
   sessionId: number;
   otherSessionId: number;
   assignmentId: number;
+  /** `assignmentId`'s one essay part. */
+  essayPartId: number;
   otherAssignmentId: number;
+  /** `otherAssignmentId`'s one essay part (in the other season). */
+  otherEssayPartId: number;
   submissionBPublicId: string;
   noteOnAId: number;
   eventAllId: number;
@@ -108,22 +112,22 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
   ).id;
 
   // One essay part each: an assignment is for the whole season.
-  const assignmentId = (
-    await createAssignmentWithParts({
-      seasonId,
-      title: "MW Assignment",
-      description: "Write a page.",
-      dueAt: new Date("2099-03-10T21:59:00.000Z"),
-    })
-  ).id;
+  const assignment = await createAssignmentWithParts({
+    seasonId,
+    title: "MW Assignment",
+    description: "Write a page.",
+    dueAt: new Date("2099-03-10T21:59:00.000Z"),
+  });
+  const assignmentId = assignment.id;
+  const essayPartId = assignment.partIds[0]!;
   await db.assignment.update({ where: { id: assignmentId }, data: { createdById: users.admin.id } });
-  const otherAssignmentId = (
-    await createAssignmentWithParts({
-      seasonId: otherSeasonId,
-      title: "MW Other Assignment",
-      dueAt: new Date("2100-03-10T21:59:00.000Z"),
-    })
-  ).id;
+  const otherAssignment = await createAssignmentWithParts({
+    seasonId: otherSeasonId,
+    title: "MW Other Assignment",
+    dueAt: new Date("2100-03-10T21:59:00.000Z"),
+  });
+  const otherAssignmentId = otherAssignment.id;
+  const otherEssayPartId = otherAssignment.partIds[0]!;
 
   // Student B's essay, handed in: its publicId is the review screen's handle.
   const submissionBPublicId = newPublicId();
@@ -186,7 +190,9 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
     sessionId,
     otherSessionId,
     assignmentId,
+    essayPartId,
     otherAssignmentId,
+    otherEssayPartId,
     submissionBPublicId,
     noteOnAId,
     eventAllId,

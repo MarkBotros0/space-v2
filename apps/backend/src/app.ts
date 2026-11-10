@@ -7,6 +7,7 @@ import { config } from "./lib/config";
 import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
 import { assignmentsRouter } from "./routes/assignments";
+import { assignmentEssayRouter } from "./routes/assignments/essay";
 import { assignmentVideoRouter } from "./routes/assignments/video";
 import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
@@ -44,10 +45,9 @@ export function createApp(): Express {
   app.set("trust proxy", config.trustProxy);
 
   app.use(helmet());
-  // PUT belongs here: PUT /api/v1/submissions/by-assignment/:assignmentId is
-  // the idempotent create-or-fetch a student's submission screen calls. It was
-  // added to the router without this list being updated, so a browser client
-  // would have had its preflight refused for an endpoint that exists.
+  // PUT belongs here: an essay's draft and a video's progress are saved with
+  // PUT (/api/v1/assignments/:id/parts/:partId/...). Leaving a method off this
+  // list refuses a browser client's preflight for an endpoint that exists.
   app.use(
     cors({
       origin: config.mobileAppOrigin,
@@ -96,8 +96,9 @@ export function createApp(): Express {
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);
   app.use("/api/v1/sessions", sessionsRouter);
-  // Ahead of assignmentsRouter (router-wide requireAuth); this one guards per route and falls through.
+  // Ahead of assignmentsRouter (router-wide requireAuth); these guard per route and fall through.
   app.use("/api/v1/assignments", assignmentVideoRouter);
+  app.use("/api/v1/assignments", assignmentEssayRouter);
   app.use("/api/v1/assignments", assignmentsRouter);
   app.use("/api/v1/submissions", submissionsRouter);
   app.use("/api/v1/quizzes", quizzesRouter);

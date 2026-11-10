@@ -8,13 +8,14 @@ import { config } from "../../lib/config";
 import { parseId } from "../../lib/parse-id";
 import { canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
+import { findEssayWork } from "../../lib/queries/essays";
 import { FileNotFoundError, buildStorageKey, getStorage } from "../../lib/storage";
 import { requireUser } from "../../middleware/require-auth";
 import { studentWriteRefusal } from "../../lib/permissions";
 import { submissionLocked } from "./editable";
 import { notFound } from "../../lib/http/not-found";
 
-// memoryStorage: the per-assignment size and MIME rules live in the database,
+// memoryStorage: the essay's own size and MIME rules live in the database,
 // so the file has to be in hand before they can be applied. limits.fileSize is
 // the process-level backstop that keeps one request from exhausting memory
 // before that check can run.
@@ -33,7 +34,7 @@ const MIME_CATEGORY_MAP: Record<string, RegExp> = {
 };
 
 function mimeAllowed(mime: string, categories: string[]): boolean {
-  // An assignment with no declared categories accepts anything.
+  // An essay with no declared categories accepts anything.
   if (categories.length === 0) return true;
   return categories.some((c) => MIME_CATEGORY_MAP[c]?.test(mime) ?? false);
 }
@@ -42,7 +43,7 @@ function mimeAllowed(mime: string, categories: string[]): boolean {
  * Refuse uploads before multer reads the body.
  *
  * Placement is the whole point. multer buffers the entire file into memory so
- * the per-assignment `maxFileSizeMb` check has something to measure, which
+ * the essay's `maxFileSizeMb` check has something to measure, which
  * means a guard sitting *after* it would still pay the full
  * `MAX_UPLOAD_BYTES` memory cost for a request it was always going to refuse.
  * In front, this answers without reading a byte.
@@ -60,9 +61,10 @@ export const requireUploadsEnabled: RequestHandler = (_req, res, next) => {
 };
 
 /**
- * Attach one file to the caller's own submission (multipart field "file").
- * Mounted behind requireUploadsEnabled and upload.single("file") — see the
- * route table in ./index.ts for why that order is load-bearing.
+ * Attach one file to the caller's own essay (multipart field "file"), within
+ * the essay's limits: an essay with no size limit takes no files. Mounted
+ * behind requireUploadsEnabled and upload.single("file") — see the route table
+ * in ./index.ts for why that order is load-bearing.
  */
 export async function uploadSubmissionFile(req: Request, res: Response) {
   const user = requireUser(req);
@@ -71,35 +73,25 @@ export async function uploadSubmissionFile(req: Request, res: Response) {
   // param is narrowed below.
   const publicId = typeof req.params.publicId === "string" ? req.params.publicId : undefined;
 
-  const sub = await db.submission.findUnique({
-    where: { publicId: publicId ?? "" },
-    select: {
-      id: true,
-      status: true,
-      studentUserId: true,
-      assignment: {
-        select: { seasonId: true, maxFileSizeMb: true, allowedMimeCategories: true },
-      },
-    },
-  });
+  const work = await findEssayWork(publicId ?? "");
   // A draft is its author's alone: anyone else is told it does not exist.
-  if (!sub || isHiddenDraft(user, sub)) {
+  if (!work || isHiddenDraft(user, work)) {
     return notFound(res, "Submission");
   }
-  if (sub.studentUserId !== user.userId) throw new ForbiddenError();
-  // Attaching a file changes the work as much as editing its text does.
-  const refusal = await studentWriteRefusal(user, sub.assignment.seasonId, sub.status);
+  if (work.studentUserId !== user.userId) throw new ForbiddenError();
+  // Attaching a file changes the essay as much as editing its text does.
+  const refusal = await studentWriteRefusal(user, work.part.assignment.seasonId, work.status);
   if (refusal === "forbidden") return forbidden(res);
   if (refusal === "not_editable") return submissionLocked(res);
 
+  const maxMb = work.part.maxFileSizeMb;
+  if (maxMb === null) return apiError(res, "bad_request", "This essay doesn't take files.", 400);
   const file = req.file;
   if (!file) return apiError(res, "bad_request", "No file provided.", 400);
-
-  const maxMb = sub.assignment.maxFileSizeMb;
-  if (maxMb && file.size > maxMb * 1024 * 1024) {
+  if (file.size > maxMb * 1024 * 1024) {
     return apiError(res, "file_too_large", `File exceeds ${maxMb} MB.`, 400);
   }
-  if (!mimeAllowed(file.mimetype, sub.assignment.allowedMimeCategories)) {
+  if (!mimeAllowed(file.mimetype, work.part.allowedMimeCategories)) {
     return apiError(res, "mime_not_allowed", `File type ${file.mimetype} not allowed.`, 400);
   }
 
@@ -119,7 +111,7 @@ export async function uploadSubmissionFile(req: Request, res: Response) {
 
   const created = await db.submissionFile.create({
     data: {
-      submissionId: sub.id,
+      partWorkId: work.id,
       originalName,
       storagePath: put.path,
       mimeType: file.mimetype || "application/octet-stream",
@@ -131,6 +123,15 @@ export async function uploadSubmissionFile(req: Request, res: Response) {
   return apiOk(res, { file: created }, 201);
 }
 
+/** The essay a file hangs off: its handle, author and status, its Submission (the read gate's) and season. */
+const ESSAY_OF_FILE = {
+  publicId: true,
+  studentUserId: true,
+  status: true,
+  submissionId: true,
+  part: { select: { assignment: { select: { seasonId: true } } } },
+} as const;
+
 export async function deleteSubmissionFile(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
   const { publicId } = req.params;
@@ -140,27 +141,17 @@ export async function deleteSubmissionFile(req: Request<{ publicId: string }>, r
 
   const file = await db.submissionFile.findUnique({
     where: { id: fileId },
-    select: {
-      storagePath: true,
-      submission: {
-        select: {
-          publicId: true,
-          studentUserId: true,
-          status: true,
-          assignment: { select: { seasonId: true } },
-        },
-      },
-    },
+    select: { storagePath: true, partWork: { select: ESSAY_OF_FILE } },
   });
-  // The publicId in the path must match the file's own submission, or a
-  // fileId alone would let a caller probe files across submissions.
+  // The publicId in the path must match the file's own essay, or a fileId
+  // alone would let a caller probe files across essays.
   // A file on someone else's draft is as absent as the draft itself.
-  if (!file || file.submission.publicId !== publicId || isHiddenDraft(user, file.submission)) {
+  if (!file || file.partWork.publicId !== publicId || isHiddenDraft(user, file.partWork)) {
     return notFound(res, "File");
   }
-  if (file.submission.studentUserId !== user.userId) throw new ForbiddenError();
-  // Removing a file from submitted or reviewed work rewrites it after the fact.
-  const refusal = await studentWriteRefusal(user, file.submission.assignment.seasonId, file.submission.status);
+  if (file.partWork.studentUserId !== user.userId) throw new ForbiddenError();
+  // Removing a file from a handed-in or reviewed essay rewrites it after the fact.
+  const refusal = await studentWriteRefusal(user, file.partWork.part.assignment.seasonId, file.partWork.status);
   if (refusal === "forbidden") return forbidden(res);
   if (refusal === "not_editable") return submissionLocked(res);
 
@@ -189,7 +180,7 @@ function contentDisposition(filename: string): string {
 }
 
 /**
- * Download one submission file.
+ * Download one essay file.
  *
  * Deliberately NOT a port of v1's GET /api/uploads/[...path], which takes an
  * arbitrary caller-supplied storage path and gates it on nothing but "is
@@ -212,20 +203,20 @@ export async function downloadSubmissionFile(req: Request<{ publicId: string; fi
       originalName: true,
       mimeType: true,
       sizeBytes: true,
-      submission: { select: { id: true, publicId: true, status: true, studentUserId: true } },
+      partWork: { select: ESSAY_OF_FILE },
     },
   });
   // Same cross-check as DELETE: a bare fileId must never reach a file that
-  // belongs to a different submission, nor one on someone else's draft.
-  if (!file || file.submission.publicId !== publicId || isHiddenDraft(user, file.submission)) {
+  // belongs to a different essay, nor one on someone else's draft.
+  if (!file || file.partWork.publicId !== publicId || isHiddenDraft(user, file.partWork)) {
     return notFound(res, "File");
   }
 
-  // Reading a file is the same right as reading its submission, so this uses
+  // Reading a file is the same right as reading its essay, so this uses
   // canViewSubmission rather than the author-only check the write paths use:
   // a season admin or the student's group leader must be able to open
-  // submitted work, while a peer student must not.
-  if (!(await canViewSubmission(user, file.submission.id))) return forbidden(res);
+  // handed-in work, while a peer student must not.
+  if (!(await canViewSubmission(user, file.partWork.submissionId))) return forbidden(res);
 
   let stream;
   try {

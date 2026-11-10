@@ -9,18 +9,26 @@ export const submissionsMeSchemas = {
       sizeBytes: { type: "integer" },
     },
     description:
-      "`storagePath` is deliberately absent. v1's client needed it to build a URL into the endpoint that served any stored file to any logged-in user; here a file is addressed by id scoped to its submission, so the path is the one field that made the old hole exploitable by anyone who saw a response.",
+      "`storagePath` is deliberately absent. v1's client needed it to build a URL into the endpoint that served any stored file to any logged-in user; here a file is addressed by id scoped to its essay, so the path is the one field that made the old hole exploitable by anyone who saw a response.",
   },
   SubmissionDetail: {
     type: "object",
+    description: "One student's essay: the essay work, its part's question and limits, and its assignment.",
     properties: {
       id: { type: "integer" },
-      publicId: { type: "string" },
+      publicId: { type: "string", description: "The essay work's." },
       status: { $ref: "#/components/schemas/SubmissionStatus" },
       text: {
         type: ["string", "null"],
         description: "Plain text: stored HTML is converted on read (ruling C11, REG-90).",
       },
+      wordCount: { type: "integer", description: "The server's count (`countWords`), as the hand-in checks it." },
+      partId: { type: "integer" },
+      prompt: { type: "string", description: "The essay's question." },
+      minWords: { type: ["integer", "null"] },
+      maxWords: { type: ["integer", "null"] },
+      maxFileSizeMb: { type: ["integer", "null"], description: "Null: this essay takes no files." },
+      allowedMimeCategories: { type: "array", items: { type: "string" }, description: "Empty: any type." },
       feedback: { type: ["string", "null"], description: "Plain text, as `text`." },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       reviewedAt: { type: ["string", "null"], format: "date-time" },
@@ -46,7 +54,7 @@ export const submissionsMeSchemas = {
       canUploadFiles: {
         type: "boolean",
         description:
-          "Whether an upload would currently succeed. False while ENABLE_UPLOADS is off, so a screen can explain the gap rather than offering a control that returns 503. Reading and deleting recorded files are unaffected.",
+          "Whether an upload would currently succeed: the essay takes files and ENABLE_UPLOADS is on, so a screen can explain the gap rather than offering a control that is refused. Reading and deleting recorded files are unaffected.",
       },
       canReview: {
         type: "boolean",
@@ -57,20 +65,16 @@ export const submissionsMeSchemas = {
   },
   SubmissionQueueItem: {
     type: "object",
-    description: "A reviewer's queue row. Deliberately narrower than the detail.",
+    description: "A reviewer's queue row: one essay of one student. Deliberately narrower than the detail.",
     properties: {
-      publicId: { type: "string" },
-      status: { $ref: "#/components/schemas/SubmissionStatus" },
-      submittedAt: { type: ["string", "null"], format: "date-time" },
-      isLate: { type: "boolean" },
+      publicId: { type: "string", description: "The essay work's: the review screen's handle." },
       assignmentId: { type: "integer" },
       assignmentTitle: { type: "string" },
-      assignmentDueAt: { type: ["string", "null"], format: "date-time" },
-      seasonCode: { type: "string" },
-      studentUserId: { type: "integer" },
+      prompt: { type: "string", description: "The essay's question." },
       studentName: { type: ["string", "null"] },
-      groupId: { type: ["integer", "null"] },
-      groupName: { type: ["string", "null"] },
+      submittedAt: { type: ["string", "null"], format: "date-time", description: "When the essay was handed in." },
+      isLate: { type: "boolean", description: "Handed in after the assignment's due date." },
+      reviewStatus: { $ref: "#/components/schemas/SubmissionStatus" },
     },
   },
   SubmissionQueue: {
@@ -82,9 +86,9 @@ export const submissionsMeSchemas = {
         description:
           "v1's header numbers over everything the caller's scope (and `seasonId`) reaches, ignoring `pendingOnly` and paging. DRAFTs never count. Sent on the first page only; null on a page requested with `cursor`, since the header reads the first page's.",
         properties: {
-          pending: { type: "integer", description: "Status SUBMITTED." },
-          total: { type: "integer", description: "Every non-DRAFT submission in scope." },
-          late: { type: "integer", description: "Submitted after the assignment's due date." },
+          pending: { type: "integer", description: "Essays handed in, awaiting a verdict." },
+          total: { type: "integer", description: "Every handed-in essay in scope (a draft never counts)." },
+          late: { type: "integer", description: "Essays handed in after the assignment's due date." },
         },
       },
       nextCursor: {

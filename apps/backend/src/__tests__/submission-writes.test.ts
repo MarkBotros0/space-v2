@@ -1,28 +1,32 @@
-// Student writes to a submission, with the database mocked: the status lock
-// (only DRAFT and RETURNED are editable) and the ACTIVE-enrolment gate.
+// A student's writes to their own essays, with the database and the essay
+// services mocked: who may write (an ACTIVE enrolment, the author only), and
+// that a refusal writes and notifies nothing.
 
 const mockDb = {
-  submission: { findUnique: jest.fn(), update: jest.fn(), updateMany: jest.fn(), upsert: jest.fn() },
-  submissionFile: { count: jest.fn(), findUnique: jest.fn(), delete: jest.fn() },
+  assignmentPart: { findFirst: jest.fn() },
+  assignmentPartWork: { findFirst: jest.fn() },
+  submissionFile: { findUnique: jest.fn(), delete: jest.fn() },
   seasonEnrollment: { findUnique: jest.fn() },
-  assignment: { findFirst: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
-const mockNotifyReceived = jest.fn();
-jest.mock("../lib/submission-notifications", () => ({
-  notifySubmissionReceived: (...args: unknown[]) => mockNotifyReceived(...args),
+const mockSaveDraft = jest.fn();
+const mockHandIn = jest.fn();
+jest.mock("../lib/assignments/essay", () => ({
+  saveEssayDraft: (...args: unknown[]) => mockSaveDraft(...args),
+  handInEssay: (...args: unknown[]) => mockHandIn(...args),
 }));
-const mockStudentCanSee = jest.fn();
-jest.mock("../lib/queries/assignments", () => ({
-  ...jest.requireActual("../lib/queries/assignments"),
-  studentCanSeeAssignment: (...args: unknown[]) => mockStudentCanSee(...args),
+const mockNotifyHandedIn = jest.fn();
+jest.mock("../lib/submission-notifications", () => ({
+  notifyEssayHandedIn: (...args: unknown[]) => mockNotifyHandedIn(...args),
 }));
 
 import type { Request, Response } from "express";
 
+import { ApiError } from "../lib/api-error";
 import type { SessionUser } from "../lib/auth/tokens";
+import { putEssayDraft } from "../routes/assignments/essay";
 import { deleteSubmissionFile } from "../routes/submissions/files";
-import { startSubmission, updateSubmission } from "../routes/submissions/writes";
+import { handInSubmission } from "../routes/submissions/writes";
 
 const student: SessionUser = {
   userId: 10,
@@ -32,6 +36,7 @@ const student: SessionUser = {
   activeSeasonId: 7,
   graduationYear: null,
 };
+const leader: SessionUser = { ...student, userId: 20, role: "LEADER", groupLeaderIds: [5] };
 
 function fakeRes() {
   const res = { status: jest.fn(), json: jest.fn() };
@@ -39,21 +44,26 @@ function fakeRes() {
   res.json.mockReturnValue(res);
   return res;
 }
-function req(over: Partial<Request>): Request<{ publicId: string }> {
-  return { user: student, params: {}, query: {}, body: {}, ...over } as unknown as Request<{
-    publicId: string;
-  }>;
+function req(over: Partial<Request>, user: SessionUser = student): Request<{ publicId: string }> {
+  return { user, params: {}, query: {}, body: {}, ...over } as unknown as Request<{ publicId: string }>;
 }
 const errorCode = (res: ReturnType<typeof fakeRes>) =>
   (res.json.mock.calls[0]?.[0] as { error?: { code: string } }).error?.code;
 
-function ownSubmission(status: string) {
+function essayWork(status: string, studentUserId = 10) {
   return {
     id: 1,
     publicId: "Ab3dE5gH9k",
     status,
-    studentUserId: 10,
-    assignment: { seasonId: 7, type: "STANDARD", title: "Essay one" },
+    studentUserId,
+    submissionId: 2,
+    part: {
+      assignmentId: 3,
+      prompt: "What did you learn?",
+      maxFileSizeMb: null,
+      allowedMimeCategories: [],
+      assignment: { seasonId: 7, title: "Essay one" },
+    },
   };
 }
 
@@ -63,140 +73,110 @@ beforeEach(() => {
     status: "ACTIVE",
     season: { status: "ACTIVE", deletedAt: null },
   });
-  mockDb.submission.update.mockResolvedValue({});
-  mockDb.submission.updateMany.mockResolvedValue({ count: 1 });
+  mockDb.assignmentPart.findFirst.mockResolvedValue({ id: 4, assignment: { seasonId: 7 } });
 });
 
-describe("PATCH /submissions/:publicId — the status lock", () => {
-  it.each(["SUBMITTED", "REVIEWED"])("refuses a save on a %s row with 409", async (status) => {
-    mockDb.submission.findUnique.mockResolvedValue(ownSubmission(status));
-    for (const body of [{ text: "rewritten" }, { text: "rewritten", submit: true }]) {
-      const res = fakeRes();
-      await updateSubmission(req({ params: { publicId: "p" }, body }), res as unknown as Response);
-      expect(res.status).toHaveBeenCalledWith(409);
-      expect(errorCode(res)).toBe("submission_locked");
-    }
-    expect(mockDb.submission.update).not.toHaveBeenCalled();
-    expect(mockDb.submission.updateMany).not.toHaveBeenCalled();
-    expect(mockNotifyReceived).not.toHaveBeenCalled();
-  });
+describe("PUT /assignments/:id/parts/:partId/essay — who may save a draft", () => {
+  const draftReq = (body: object, user = student) => req({ params: { id: "3", partId: "4" } as never, body }, user);
 
-  it.each(["DRAFT", "RETURNED"])("saves and submits a %s row", async (status) => {
-    mockDb.submission.findUnique.mockResolvedValue(ownSubmission(status));
+  it("saves the caller's own draft through the service", async () => {
+    mockSaveDraft.mockResolvedValue({ publicId: "p", wordCount: 1, reviewStatus: "DRAFT" });
     const res = fakeRes();
-    await updateSubmission(
-      req({ params: { publicId: "p" }, body: { text: "work", submit: true } }),
-      res as unknown as Response,
-    );
+    await putEssayDraft(draftReq({ text: "hello" }), res as unknown as Response);
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockDb.submission.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: 1, status: { in: ["DRAFT", "RETURNED"] } },
-        data: expect.objectContaining({ status: "SUBMITTED" }),
-      }),
-    );
+    expect(mockSaveDraft).toHaveBeenCalledWith(4, 10, "hello");
+    expect(mockDb.assignmentPart.findFirst.mock.calls[0][0].where).toMatchObject({ id: 4, assignmentId: 3 });
   });
 
-  it("tells the group's leaders once the submit has committed", async () => {
-    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
+  it.each(["WITHDRAWN", "COMPLETED"])("refuses a %s student with 403", async (status) => {
+    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status, season: { status: "ACTIVE", deletedAt: null } });
     const res = fakeRes();
-    await updateSubmission(
-      req({ params: { publicId: "p" }, body: { text: "work", submit: true } }),
-      res as unknown as Response,
-    );
-    expect(mockNotifyReceived).toHaveBeenCalledWith({
+    await putEssayDraft(draftReq({ text: "x" }), res as unknown as Response);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockSaveDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses staff, who have no essay of their own", async () => {
+    const res = fakeRes();
+    await putEssayDraft(draftReq({ text: "x" }, leader), res as unknown as Response);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockSaveDraft).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 for a part that is not an essay of this assignment, and 400 for a bad body", async () => {
+    mockDb.assignmentPart.findFirst.mockResolvedValueOnce(null);
+    const missing = fakeRes();
+    await putEssayDraft(draftReq({ text: "x" }), missing as unknown as Response);
+    expect(missing.status).toHaveBeenCalledWith(404);
+
+    const bad = fakeRes();
+    await putEssayDraft(draftReq({ text: 5 }), bad as unknown as Response);
+    expect(bad.status).toHaveBeenCalledWith(400);
+    expect(mockSaveDraft).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /submissions/:publicId/hand-in — who may hand in", () => {
+  const handInReq = (user = student) => req({ params: { publicId: "Ab3dE5gH9k" } }, user);
+
+  it("hands in through the service and tells the leaders once, naming the essay", async () => {
+    mockDb.assignmentPartWork.findFirst.mockResolvedValue(essayWork("RETURNED"));
+    mockHandIn.mockResolvedValue({ reviewStatus: "SUBMITTED", assignmentSubmitted: true });
+    const res = fakeRes();
+    await handInSubmission(handInReq(), res as unknown as Response);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockHandIn).toHaveBeenCalledWith("Ab3dE5gH9k", 10);
+    expect(mockNotifyHandedIn).toHaveBeenCalledTimes(1);
+    expect(mockNotifyHandedIn).toHaveBeenCalledWith({
       publicId: "Ab3dE5gH9k",
       studentUserId: 10,
       seasonId: 7,
       assignmentTitle: "Essay one",
+      prompt: "What did you learn?",
     });
   });
 
-  it("does not notify on a plain save", async () => {
-    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
-    const res = fakeRes();
-    await updateSubmission(req({ params: { publicId: "p" }, body: { text: "work" } }), res as unknown as Response);
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockNotifyReceived).not.toHaveBeenCalled();
+  it("tells nobody when the service refuses", async () => {
+    mockDb.assignmentPartWork.findFirst.mockResolvedValue(essayWork("RETURNED"));
+    mockHandIn.mockRejectedValue(new ApiError("word_range", "This is 3 words; it needs at least 5.", 400));
+    await expect(handInSubmission(handInReq(), fakeRes() as unknown as Response)).rejects.toThrow(ApiError);
+    expect(mockNotifyHandedIn).not.toHaveBeenCalled();
   });
 
-  it("answers 409 and stays silent when a racing submit moved the row first", async () => {
-    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
-    mockDb.submission.updateMany.mockResolvedValue({ count: 0 });
-    const res = fakeRes();
-    await updateSubmission(
-      req({ params: { publicId: "p" }, body: { text: "work", submit: true } }),
-      res as unknown as Response,
-    );
-    expect(res.status).toHaveBeenCalledWith(409);
-    expect(errorCode(res)).toBe("submission_locked");
-    expect(mockNotifyReceived).not.toHaveBeenCalled();
-  });
-
-  it.each(["WITHDRAWN", "COMPLETED"])("refuses a %s student with 403", async (enrolment) => {
-    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
-    mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: enrolment });
-    const res = fakeRes();
-    await updateSubmission(
-      req({ params: { publicId: "p" }, body: { text: "x", submit: true } }),
-      res as unknown as Response,
-    );
-    expect(res.status).toHaveBeenCalledWith(403);
-    expect(mockDb.submission.update).not.toHaveBeenCalled();
-    expect(mockDb.submission.updateMany).not.toHaveBeenCalled();
-  });
-
-  it("refuses a student with no enrolment in the season at all", async () => {
-    mockDb.submission.findUnique.mockResolvedValue(ownSubmission("DRAFT"));
-    mockDb.seasonEnrollment.findUnique.mockResolvedValue(null);
-    const res = fakeRes();
-    await updateSubmission(req({ params: { publicId: "p" }, body: { text: "x" } }), res as unknown as Response);
-    expect(res.status).toHaveBeenCalledWith(403);
-  });
-});
-
-describe("PUT /submissions/by-assignment/:assignmentId — the enrolment gate", () => {
-  beforeEach(() => {
-    mockDb.assignment.findFirst.mockResolvedValue({
-      seasonId: 7,
-      isAllGroups: true,
-      type: "STANDARD",
-      targets: [],
-    });
-    mockStudentCanSee.mockResolvedValue(true);
-    mockDb.submission.upsert.mockResolvedValue({ publicId: "p", status: "DRAFT" });
-  });
-
-  it("creates for an ACTIVE student", async () => {
-    const res = fakeRes();
-    await startSubmission(req({ params: { assignmentId: "3" } as never }), res as unknown as Response);
-    expect(res.status).toHaveBeenCalledWith(200);
-    expect(mockDb.submission.upsert).toHaveBeenCalled();
-  });
-
-  it("refuses a dropped or alumni student — any enrolment is no longer enough", async () => {
+  it("refuses someone else's essay with 403, and a withdrawn author too", async () => {
+    mockDb.assignmentPartWork.findFirst.mockResolvedValue(essayWork("RETURNED"));
+    await expect(handInSubmission(handInReq(leader), fakeRes() as unknown as Response)).rejects.toThrow();
     mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status: "WITHDRAWN" });
     const res = fakeRes();
-    await startSubmission(req({ params: { assignmentId: "3" } as never }), res as unknown as Response);
+    await handInSubmission(handInReq(), res as unknown as Response);
     expect(res.status).toHaveBeenCalledWith(403);
-    expect(mockDb.submission.upsert).not.toHaveBeenCalled();
+    expect(mockHandIn).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 for an unknown essay", async () => {
+    mockDb.assignmentPartWork.findFirst.mockResolvedValue(null);
+    const res = fakeRes();
+    await handInSubmission(handInReq(), res as unknown as Response);
+    expect(res.status).toHaveBeenCalledWith(404);
   });
 });
 
-describe("DELETE /submissions/:publicId/files — the same lock", () => {
-  it("refuses to remove a file from submitted work", async () => {
+describe("DELETE /submissions/:publicId/files — the status lock", () => {
+  it("refuses to remove a file from a handed-in essay", async () => {
     mockDb.submissionFile.findUnique.mockResolvedValue({
       storagePath: "x",
-      submission: {
+      partWork: {
         publicId: "p",
         studentUserId: 10,
         status: "SUBMITTED",
-        assignment: { seasonId: 7 },
+        submissionId: 2,
+        part: { assignment: { seasonId: 7 } },
       },
     });
     const res = fakeRes();
     await deleteSubmissionFile(req({ params: { publicId: "p" }, query: { fileId: "4" } }), res as unknown as Response);
     expect(res.status).toHaveBeenCalledWith(409);
+    expect(errorCode(res)).toBe("submission_locked");
     expect(mockDb.submissionFile.delete).not.toHaveBeenCalled();
   });
 });

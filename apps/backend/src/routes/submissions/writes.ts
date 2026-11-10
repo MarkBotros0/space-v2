@@ -1,233 +1,83 @@
 import type { Request, Response } from "express";
 
-import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
+import { apiError, apiOk, forbidden } from "../../lib/api-response";
+import { handInEssay } from "../../lib/assignments/essay";
+import { reviewEssay } from "../../lib/assignments/essay-review";
 import { ForbiddenError } from "../../lib/auth/errors";
 import { bestEffort } from "../../lib/best-effort";
+import { notFound } from "../../lib/http/not-found";
+import { notificationLink } from "../../lib/notification-target";
 import { createNotificationsBulk } from "../../lib/notifications";
 import { canReviewSubmission, hasActiveEnrollment, isHiddenDraft } from "../../lib/permissions";
-import { newPublicId } from "../../lib/public-id";
-import { studentCanSeeAssignment } from "../../lib/queries/assignments";
-import { notifySubmissionReceived } from "../../lib/submission-notifications";
+import { findEssayWork } from "../../lib/queries/essays";
+import { notifyEssayHandedIn } from "../../lib/submission-notifications";
 import { requireUser } from "../../middleware/require-auth";
-import {
-  htmlToPlainText,
-  reviewSubmissionRequestSchema,
-  updateSubmissionRequestSchema,
-} from "../../../../../packages/shared/src/index";
-import { EDITABLE_STATUSES, studentWriteRefusal } from "../../lib/permissions";
-import { submissionLocked } from "./editable";
-import { notificationLink } from "../../lib/notification-target";
-import { idParam } from "../../lib/http/params";
-import { notFound } from "../../lib/http/not-found";
-import { parseOr400 } from "../../lib/http/validate";
-import { liveAssignment } from "../../lib/db/live";
-
-export async function updateSubmission(req: Request<{ publicId: string }>, res: Response) {
-  const user = requireUser(req);
-  const { publicId } = req.params;
-
-  const sub = await db.submission.findUnique({
-    where: { publicId: publicId ?? "" },
-    select: {
-      id: true,
-      publicId: true,
-      status: true,
-      studentUserId: true,
-      assignment: { select: { seasonId: true, type: true, title: true } },
-    },
-  });
-  // A draft is its author's alone: anyone else is told it does not exist.
-  if (!sub || isHiddenDraft(user, sub)) {
-    return notFound(res, "Submission");
-  }
-  // Only the author may edit. Season admins and leaders can read a submission
-  // (canViewSubmission) but must never rewrite a student's words.
-  if (sub.studentUserId !== user.userId) throw new ForbiddenError();
-  // A forum post has exactly one writer (plan 14 D-14.1). A save would replace
-  // a posted body with unescaped text while the row stays SUBMITTED.
-  if (sub.assignment.type === "FORUM") {
-    return apiError(res, "use_forum_endpoint", "Post forum responses through the forum endpoint.", 409);
-  }
-  // Only DRAFT and RETURNED are editable, and only by a student still actively
-  // enrolled in the assignment's season (see ./editable.ts). Order: who may
-  // write (403), then a well-formed body (400), then the row's state (409).
-  const refusal = await studentWriteRefusal(user, sub.assignment.seasonId, sub.status);
-  if (refusal === "forbidden") return forbidden(res);
-
-  const parsed = parseOr400(updateSubmissionRequestSchema, req.body, res, "Invalid submission body.");
-  if (parsed === null) return;
-  if (refusal === "not_editable") return submissionLocked(res);
-
-  if (parsed.submit) {
-    // REG-85: v1's form disabled Submit for blank text with no attached file.
-    // That rule now lives on the server, where a client cannot skip it. A DRAFT
-    // save of blank text stays legal.
-    if (htmlToPlainText(parsed.text) === "") {
-      const attached = await db.submissionFile.count({ where: { submissionId: sub.id } });
-      if (attached === 0) {
-        return apiError(res, "empty_submission", "Write a response or attach a file before submitting.", 400);
-      }
-    }
-    // The transition is conditional on the row still being editable, so two
-    // racing submits produce one SUBMITTED write and one 409 — and the
-    // leaders are told once, by the request that actually moved it.
-    const submitted = await db.submission.updateMany({
-      where: { id: sub.id, status: { in: [...EDITABLE_STATUSES] } },
-      data: { text: parsed.text, status: "SUBMITTED", submittedAt: new Date() },
-    });
-    if (submitted.count === 0) return submissionLocked(res);
-    await notifySubmissionReceived({
-      publicId: sub.publicId,
-      studentUserId: sub.studentUserId,
-      seasonId: sub.assignment.seasonId,
-      assignmentTitle: sub.assignment.title,
-    });
-  } else {
-    // Save the text; do NOT touch the status.
-    //
-    // v1 set status: "DRAFT" unconditionally here, so autosaving after a review
-    // demoted a REVIEWED submission back to DRAFT — it vanished from the
-    // reviewer's queue while `feedback` and `reviewedAt` survived, leaving the
-    // student reading a verdict on text they had since replaced. A save is not
-    // a state transition. Getting back to editable is what
-    // POST /:publicId/review with returnForRevision is for.
-    await db.submission.update({
-      where: { id: sub.id },
-      data: { text: parsed.text },
-    });
-  }
-
-  return apiOk(res, { saved: true, submitted: Boolean(parsed.submit) });
-}
+import { reviewEssayRequestSchema } from "../../../../../packages/shared/src/index";
 
 /**
- * Create-or-fetch this caller's submission for an assignment.
- *
- * v1 created the row as a side effect of *rendering* the assignment page
- * (`student/assignments/[id]/page.tsx:40`). Ruling C6 forbids that, and React
- * Query would make it far worse than it was in v1: it refetches on mount, on
- * window focus and on reconnect, so a read-time write becomes a write every
- * time the app is tabbed back to.
- *
- * A real upsert on the natural unique key, not v1's read-then-create-then-catch
- * — that pattern leaned entirely on the unique constraint to paper over its own
- * race, and there is no reason to reproduce it when the constraint can do the
- * work directly. PUT because it is idempotent: calling it twice yields the same
- * row, which is what makes it safe on a screen that mounts repeatedly.
+ * POST /submissions/:publicId/hand-in: the author hands a returned essay in
+ * again. Who may (the author, 403 for anyone else, with an ACTIVE enrolment in
+ * the season) is checked here; what may (only from RETURNED, inside the word
+ * range) under the locks in `handInEssay`. The leaders are told once, after the
+ * write committed, naming the essay.
  */
-export async function startSubmission(req: Request, res: Response) {
+export async function handInSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
-  const assignmentId = idParam(res, req.params.assignmentId, "assignment");
-  if (assignmentId === null) return;
+  const work = await findEssayWork(req.params.publicId ?? "");
+  // A draft is its author's alone: anyone else is told it does not exist.
+  if (!work || isHiddenDraft(user, work)) return notFound(res, "Submission");
+  if (work.studentUserId !== user.userId) throw new ForbiddenError();
+  if (!(await hasActiveEnrollment(user, work.part.assignment.seasonId))) return forbidden(res);
 
-  // Only a student has a submission of their own; staff have nothing to create.
-  if (user.role !== "STUDENT") {
-    return apiError(res, "forbidden", "Only a student can start a submission.", 403);
-  }
-
-  const assignment = await db.assignment.findFirst({
-    where: { id: assignmentId, ...liveAssignment },
-    select: {
-      seasonId: true,
-      isAllGroups: true,
-      type: true,
-      targets: { select: { groupId: true } },
-    },
+  const result = await handInEssay(work.publicId, user.userId);
+  await notifyEssayHandedIn({
+    publicId: work.publicId,
+    studentUserId: work.studentUserId,
+    seasonId: work.part.assignment.seasonId,
+    assignmentTitle: work.part.assignment.title,
+    prompt: work.part.prompt ?? "",
   });
-  if (!assignment) return notFound(res, "Assignment");
-  // A forum post has exactly one writer: PUT /assignments/:id/forum/response,
-  // which applies forumMinWords, refuses an empty post (it would unlock every
-  // peer's work) and stores escaped HTML. Creating the row here would let a
-  // client skip all three with a follow-up PATCH {submit:true} (plan 14 D-14.1).
-  if (assignment.type === "FORUM") {
-    return apiError(res, "use_forum_endpoint", "Post forum responses through the forum endpoint.", 409);
-  }
+  return apiOk(res, result);
+}
 
-  // An ACTIVE enrolment, not canAccessSeason: that accepts any enrolment row,
-  // so a dropped, completed or alumni student could start work in a past season.
-  if (!(await hasActiveEnrollment(user, assignment.seasonId))) return forbidden(res);
-  // The same targeting rule the assignment reads use, from the same helper —
-  // a student must not be able to start a submission on work never set them.
-  const targeted = await studentCanSeeAssignment(
-    user.userId,
-    assignment.seasonId,
-    assignment.isAllGroups,
-    assignment.targets.map((t) => t.groupId),
-  );
-  if (!targeted) return forbidden(res);
-
-  const submission = await db.submission.upsert({
-    where: { assignmentId_studentUserId: { assignmentId, studentUserId: user.userId } },
-    // Empty update: the point is to return the existing row untouched. Writing
-    // anything here — even a status — would let a remount overwrite work.
-    update: {},
-    create: { assignmentId, studentUserId: user.userId, publicId: newPublicId(), status: "DRAFT" },
-    select: { publicId: true, status: true },
-  });
-
-  return apiOk(res, { publicId: submission.publicId, status: submission.status });
+/** The body's first refusal in words: the schema's own "Say what to change", or a generic one. */
+function reviewBodyMessage(issue: { code: string; message: string } | undefined): string {
+  return issue?.code === "custom" ? issue.message : "Invalid review body.";
 }
 
 /**
- * Record a verdict.
- *
- * v1's reviewSubmissionAction has no ported counterpart, so Phase 2's whole
- * leader surface has been unbuildable. Gated on canReviewSubmission, which is
- * strictly narrower than the read gate rather than derived from it.
+ * POST /submissions/:publicId/review: a verdict on one essay. Gated on
+ * canReviewSubmission (over the essay's Submission), which is strictly
+ * narrower than the read gate rather than derived from it. `return` needs a
+ * note ("Say what to change"). `reviewEssay` holds what each verdict does.
  */
 export async function reviewSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
-  const { publicId } = req.params;
-
-  const sub = await db.submission.findUnique({
-    where: { publicId: publicId ?? "" },
-    select: {
-      id: true,
-      status: true,
-      studentUserId: true,
-      assignmentId: true,
-      assignment: { select: { title: true } },
-    },
-  });
+  const work = await findEssayWork(req.params.publicId ?? "");
   // A draft is its author's alone, and the author never reviews, so nobody can
   // review a DRAFT: to everyone but its author it does not exist.
-  if (!sub || isHiddenDraft(user, sub)) {
-    return notFound(res, "Submission");
-  }
+  if (!work || isHiddenDraft(user, work)) return notFound(res, "Submission");
+  if (!(await canReviewSubmission(user, work.submissionId))) return forbidden(res);
 
-  if (!(await canReviewSubmission(user, sub.id))) return forbidden(res);
+  const parsed = reviewEssayRequestSchema.safeParse(req.body);
+  if (!parsed.success) return apiError(res, "bad_request", reviewBodyMessage(parsed.error.issues[0]), 400);
+  const { action, feedback } = parsed.data;
 
-  const parsed = parseOr400(reviewSubmissionRequestSchema, req.body, res, "Invalid review body.");
-  if (parsed === null) return;
-
-  const now = new Date();
-  await db.submission.update({
-    where: { id: sub.id },
-    data: {
-      feedback: parsed.feedback,
-      status: parsed.returnForRevision ? "RETURNED" : "REVIEWED",
-      reviewedAt: now,
-      reviewedById: user.userId,
-    },
-  });
-
-  // Best-effort: the student is told, but a mail or notification failure must
-  // not report the review itself as failed (spec D6, ruling from R75).
+  const result = await reviewEssay(work.publicId, user.userId, action, feedback);
+  const title = work.part.assignment.title;
+  // Best-effort: the student is told, but a notification failure must not
+  // report the review itself as failed (spec D6, ruling from R75).
   await bestEffort("notify:SUBMISSION_REVIEWED", () =>
-    createNotificationsBulk([sub.studentUserId], {
+    createNotificationsBulk([work.studentUserId], {
       type: "SUBMISSION_REVIEWED",
       // REG-91: v1's exact wording for a verdict (submission-actions.ts:196).
       // v1 had no "returned" state, so that one keeps its own v2 title. Neither
       // carries the feedback text — the body is left empty on purpose.
-      title: parsed.returnForRevision
-        ? `${sub.assignment.title} was returned for revision`
-        : `Feedback ready on "${sub.assignment.title}"`,
-      // v1's exact link (submission-actions.ts:197; ruling X1): the assignment,
-      // not the list.
-      link: notificationLink.studentAssignment(sub.assignmentId),
+      title: action === "return" ? `${title} was returned for revision` : `Feedback ready on "${title}"`,
+      // v1's exact link (submission-actions.ts:197; ruling X1): the assignment.
+      link: notificationLink.studentAssignment(result.assignmentId),
     }),
   );
 
-  return apiOk(res, { reviewed: true, returnedForRevision: Boolean(parsed.returnForRevision) });
+  return apiOk(res, { reviewStatus: result.reviewStatus });
 }
