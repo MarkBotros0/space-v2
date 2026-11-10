@@ -2,7 +2,7 @@
  * Guard (owner, 2026-11-07): motion is calm and quick in an educational app,
  * never cartoonish. No springs (they overshoot and bounce), no entrance or
  * layout animations (list cascades, fades on mount), no looping beyond the
- * loading skeleton, no scale on press. Anything that moves uses withTiming
+ * loading skeleton and the launch loader, no scale on press. Anything that moves uses withTiming
  * with EASE_OUT and stops dead.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -28,8 +28,9 @@ const BANNED: [RegExp, string][] = [
   [/\bwithSequence\b/, "a sequenced (pulse) animation"],
   [/\bscale:\s*\w+\.value\b/, "a scale animation"],
 ];
-// The skeleton's shimmer is the one loop allowed.
-const LOOP_ALLOWED = new Set(["src/design/ui/skeleton.tsx"]);
+// The skeleton's shimmer, and the launch loader: the logo's two dots circling
+// while boot runs (owner, 2026-11-10).
+const LOOP_ALLOWED = new Set(["src/design/ui/skeleton.tsx", "src/design/brand/launch-dots.tsx"]);
 
 it("uses no springs, entrance animations, pulses or scale animations", () => {
   const offences: string[] = [];

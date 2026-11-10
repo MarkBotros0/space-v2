@@ -1,11 +1,13 @@
 /**
  * The JPC logo as pen strokes, traced from assets/icon.png (1024 x 1024; the
  * centre lines of its 58-unit round-capped strokes match the artwork to 98%
- * by area). Three pen movements, in writing order:
- *   1. J and P in one stroke: down into the J's bowl, up, across, round the
- *      P's loop and down its stem;
- *   2. the C: over the top, down, round the bottom;
- *   3. the two dots, each a pen tap.
+ * by area). Two strokes and two dots:
+ *   - J and P in one stroke: down into the J's bowl, up, across, round the
+ *     P's loop and down its stem;
+ *   - the C: over the top, down, round the bottom;
+ *   - the two dots, each a pen tap.
+ * The C writes together with the J and P, then both dots tap in together
+ * (owner, 2026-11-10).
  * Lengths are exact (straight runs plus arcs), so a dash of that length
  * draws the stroke from nothing to whole.
  */
@@ -39,18 +41,18 @@ export const LOGO_DOTS = [
 ] as const;
 
 /**
- * When each mark is drawn, in ms from the start (owner, 2026-11-07: 2.5 s in
- * all). Strokes get time roughly in proportion to their length, so the pen
- * moves at a steady speed; a short lift between marks.
+ * When each mark is drawn, in ms from the start (owner, 2026-11-10: the C
+ * with the J and P, both dots at once; 1.85 s in all). A short lift between
+ * the strokes and the dots.
  */
 export const LOGO_TIMELINE = {
   jp: [0, 1550],
-  c: [1650, 2250],
-  "dot-top": [2300, 2380],
-  "dot-bottom": [2420, 2500],
+  c: [0, 1550],
+  "dot-top": [1730, 1850],
+  "dot-bottom": [1730, 1850],
 } as const satisfies Record<string, readonly [number, number]>;
 
-export const LOGO_WRITING_MS = 2500;
+export const LOGO_WRITING_MS = 1850;
 
 /**
  * How far a mark drawn over [start, end] is at `t` ms: 0 before, 1 after,

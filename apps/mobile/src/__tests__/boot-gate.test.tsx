@@ -48,8 +48,8 @@ jest.mock("../hooks/use-session", () => ({
 }));
 
 import RootLayout from "../../app/_layout";
+import { LAUNCH_STEPS_MS } from "../design/brand/launch-motion";
 import { LOGO_WRITING_MS } from "../design/brand/logo-strokes";
-import { DURATION } from "../design/motion";
 import { useSessionStore } from "../store/session";
 
 beforeEach(() => {
@@ -119,8 +119,8 @@ describe("RootLayout launch screen", () => {
     // The app is underneath the whole time, so boot never waits on the logo.
     expect(screen.getByText("STACK")).toBeTruthy();
 
-    act(() => jest.advanceTimersByTime(LOGO_WRITING_MS));
-    act(() => jest.advanceTimersByTime(DURATION.base));
+    // Writing, then hold, gather, the loader's half turn and the opening: one timer each.
+    for (const ms of [LOGO_WRITING_MS, ...LAUNCH_STEPS_MS]) act(() => jest.advanceTimersByTime(ms));
     expect(screen.queryByTestId("launch-screen")).toBeNull();
 
     // A sign-out and sign-in again (or any re-render) does not replay it.

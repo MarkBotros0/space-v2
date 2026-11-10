@@ -1,6 +1,6 @@
 /**
- * The logo writing itself in front of the user (owner, 2026-11-07): the J and
- * P in one stroke, then the C, then the two dots, 2.5 s in all. It is drawn
+ * The logo writing itself in front of the user (owner, 2026-11-07, timing
+ * 2026-11-10): the J+P stroke and the C together, then both dots, 1.85 s. It is drawn
  * on the app's own background: navy ink in light mode, teal in dark
  * (`logoInk`, theme/brand.ts). One clock drives every mark, so the marks can
  * never drift apart.
@@ -39,7 +39,19 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 type Span = readonly [number, number];
 
-export function LogoWriting({ size = 168, onDone }: { size?: number; onDone?: () => void }) {
+/**
+ * `hideDots`: the launch screen draws the two dots itself once they leave the
+ * logo (launch-dots.tsx), at the same place, so the hand-over is invisible.
+ */
+export function LogoWriting({
+  size = 168,
+  onDone,
+  hideDots = false,
+}: {
+  size?: number;
+  onDone?: () => void;
+  hideDots?: boolean;
+}) {
   const reduced = useReducedMotion();
   const { colorScheme } = useColorScheme();
   const ink = logoInk(colorScheme === "dark" ? "dark" : "light");
@@ -77,7 +89,7 @@ export function LogoWriting({ size = 168, onDone }: { size?: number; onDone?: ()
           ink={ink}
         />
       ))}
-      {LOGO_DOTS.map((dot) => (
+      {(hideDots ? [] : LOGO_DOTS).map((dot) => (
         <WritingDot key={dot.key} cx={dot.cx} cy={dot.cy} span={LOGO_TIMELINE[dot.key]} clock={clock} ink={ink} />
       ))}
     </Svg>

@@ -11,12 +11,11 @@ afterEach(() => {
 });
 
 describe("logo strokes", () => {
-  it("writes J+P, then C, then the dots, ending at 2.5 s", () => {
-    const order = Object.entries(LOGO_TIMELINE)
-      .sort((a, b) => a[1][0] - b[1][0])
-      .map(([k]) => k);
-    expect(order).toEqual(["jp", "c", "dot-top", "dot-bottom"]);
-    expect(LOGO_WRITING_MS).toBe(2500);
+  it("writes the C with J+P, then both dots together, ending at 1.85 s", () => {
+    expect(LOGO_TIMELINE.c).toEqual(LOGO_TIMELINE.jp);
+    expect(LOGO_TIMELINE["dot-top"]).toEqual(LOGO_TIMELINE["dot-bottom"]);
+    expect(LOGO_TIMELINE["dot-top"][0]).toBeGreaterThan(LOGO_TIMELINE.jp[1]);
+    expect(LOGO_WRITING_MS).toBe(1850);
     expect(Math.max(...Object.values(LOGO_TIMELINE).map(([, end]) => end))).toBe(LOGO_WRITING_MS);
     for (const [start, end] of Object.values(LOGO_TIMELINE)) expect(end).toBeGreaterThan(start);
   });
@@ -49,7 +48,7 @@ describe("LogoWriting", () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it("reports done once, when the 2.5 s of writing are over", () => {
+  it("reports done once, when the writing is over", () => {
     setReducedMotionForTests(false);
     jest.useFakeTimers();
     const onDone = jest.fn();
