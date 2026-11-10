@@ -314,8 +314,8 @@ Each commit: the domain's integration suites + backend unit tests + typecheck + 
 - [x] 4.12 Notes, follow-ups, mentor: call-site conversions only — done: idParam / notFound / parseOr400 and liveUser across notes, follow-ups, mentor summary and lib/follow-ups. Integration 150/150.
 - [x] 4.13 Notifications & push: BE-044 call sites — done: BE-044 was already adopted (every producer uses notificationLink); the two documented link constants and the tested submissionReceivedLink wrapper are kept (D8, no gain); mark-read uses parseOr400; liveUser in the session notices. Integration 150/150.
 - [x] 4.14 Reports, engagement, dashboard, exports: BE-005, BE-012, BE-013 — BE-012 dashboard/ folder, BE-013 season-workbook/ folder, BE-005 loadCohort/foldEngagement + reports/folds.ts; live fragments and http helpers in reports, engagement, exports
-- [ ] 4.15 Imports: BE-011; `commitStudentImport` transaction nesting 4 → 3; `splitRecords` keeps depth 4
-      with a documented lint exception (CSV state machine)
+- [x] 4.15 Imports: BE-011; `commitStudentImport` transaction nesting 4 → 3; `splitRecords` keeps depth 4
+      with a documented lint exception (CSV state machine) — routes/imports/{limits,students,season-groups,index}; commitGroupImport in lib/imports/groups.ts (30 s timeout kept); seatRefusalMessage; splitRecords max-depth exception
 - [ ] 4.16 Events, dev, health, scripts: remaining call sites (BE-02D adoption); BE-006 left as is
 - [ ] 4.17 Sweep: no `deletedAt` literal outside `lib/db/live.ts`, no `$transaction` in `routes/`, no
       inline `apiError` with a catalogued code; full verification + wave summary + PR → **STOP**
