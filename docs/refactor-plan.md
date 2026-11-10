@@ -328,7 +328,7 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 
 - [x] 5.1 Season overview and lifecycle routes: FE-001 (`seasonOverviewModel`, tile snapshot first),
       FE-003 (start/end ladders), FE-018 (no placeholder ids) — FE-001: 13-case tile/next-step screen snapshot first, then seasonOverviewModel (src/screens/season/overview-model.ts, 5 unit tests) and SeasonOverview; the route is queries + QueryGate (complexity 37 -> 16). FE-003: startGate and endGate (early returns, same order; 2 end-check tests added, green on the old screen too). FE-018: 8 write hooks take number | null via loadedId; the nine '?? 0' placeholders gone. Mobile unit 279/2340
-- [ ] 5.2 Season people: FE-002 (`usePeopleSelection`, reducer tests first)
+- [x] 5.2 Season people: FE-002 (`usePeopleSelection`, reducer tests first) — usePeopleSelection reducer (7 tests) + PeopleList on it; screen tests unchanged
 - [ ] 5.3 Roster import: FE-005
 - [ ] 5.4 Forms: FE-006 (assignment, group, event, user, student, session, quiz)
 - [ ] 5.5 Quizzes: FE-008 (grade screen), FE-010 (`use-quizzes/` split)
