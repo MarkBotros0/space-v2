@@ -9,6 +9,7 @@ import { listStudents } from "../lib/queries/students";
 import { requireAuth, requireRole } from "../middleware/require-auth";
 import { studentListQuerySchema, type MentorSummary } from "../../../../packages/shared/src/index";
 import { isMentor } from "../lib/rbac";
+import { liveUser } from "../lib/db/live";
 
 /** "This week" on the mentor's Home is the last seven days. */
 const NOTES_WINDOW_DAYS = 7;
@@ -34,7 +35,7 @@ mentorSummaryRouter.get("/mentor-summary", requireAuth, async (req, res) => {
     visible === null
       ? Promise.resolve(0)
       : db.engagementNote.count({
-          where: { AND: [visible, { studentUser: { deletedAt: null } }, writtenWithin(NOTES_WINDOW_DAYS)] },
+          where: { AND: [visible, { studentUser: liveUser }, writtenWithin(NOTES_WINDOW_DAYS)] },
         }),
   ]);
   const summary: MentorSummary = {

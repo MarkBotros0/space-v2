@@ -5,6 +5,7 @@ import { FOLLOW_UP_DAYS, type FollowUp } from "../../../../packages/shared/src/i
 import { createNotificationsBulk } from "./notifications";
 import { MS_PER_DAY } from "./org-time";
 import { notificationLink } from "./notification-target";
+import { liveUser } from "./db/live";
 
 /** How long a done follow-up stays on the list. */
 const DONE_SHOWN_DAYS = 30;
@@ -50,7 +51,7 @@ export function toFollowUp(row: Row): FollowUp {
 
 /** One mentor's follow-ups: open by due date, then the recently done, newest first. */
 export async function listFollowUps(mentorUserId: number, now = new Date()): Promise<FollowUp[]> {
-  const live = { mentorUserId, studentUser: { deletedAt: null } };
+  const live = { mentorUserId, studentUser: liveUser };
   const [open, done] = await Promise.all([
     db.mentorFollowUp.findMany({
       where: { ...live, doneAt: null },
@@ -68,7 +69,7 @@ export async function listFollowUps(mentorUserId: number, now = new Date()): Pro
 
 export function countDueFollowUps(mentorUserId: number, now = new Date()): Promise<number> {
   return db.mentorFollowUp.count({
-    where: { mentorUserId, doneAt: null, dueAt: { lte: now }, studentUser: { deletedAt: null } },
+    where: { mentorUserId, doneAt: null, dueAt: { lte: now }, studentUser: liveUser },
   });
 }
 
@@ -97,8 +98,8 @@ export async function sendDueFollowUpReminders(now = new Date()): Promise<number
       doneAt: null,
       remindedAt: null,
       dueAt: { lte: now },
-      mentorUser: { role: "MENTOR", deletedAt: null },
-      studentUser: { deletedAt: null },
+      mentorUser: { role: "MENTOR", ...liveUser },
+      studentUser: liveUser,
     },
     orderBy: { id: "asc" },
     take: REMINDER_BATCH,

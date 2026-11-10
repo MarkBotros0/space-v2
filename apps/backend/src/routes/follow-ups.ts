@@ -15,6 +15,10 @@ import { isUniqueViolation as isPrismaUniqueViolation } from "../lib/prisma-erro
 import { requireAuth, requireRole } from "../middleware/require-auth";
 import { createFollowUpRequestSchema } from "../../../../packages/shared/src/index";
 import { isMentor } from "../lib/rbac";
+import { idParam } from "../lib/http/params";
+import { notFound } from "../lib/http/not-found";
+import { parseOr400 } from "../lib/http/validate";
+import { liveUser } from "../lib/db/live";
 
 /**
  * A mentor's follow-ups (owner, 2026-11-07). Three routers on three prefixes,
@@ -66,19 +70,19 @@ followUpsRouter.post("/:id/done", requireAuth, async (req, res) => {
 studentFollowUpsRouter.post("/:id/follow-ups", requireAuth, async (req, res) => {
   const user = requireRole(req, res, isMentor);
   if (!user) return;
-  const studentUserId = parseId(req.params.id);
-  if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
-  const parsed = createFollowUpRequestSchema.safeParse(req.body ?? {});
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid follow-up.", 400);
+  const studentUserId = idParam(res, req.params.id, "student");
+  if (studentUserId === null) return;
+  const parsed = parseOr400(createFollowUpRequestSchema, req.body ?? {}, res, "Invalid follow-up.");
+  if (parsed === null) return;
 
   const student = await db.user.findFirst({
-    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
+    where: { id: studentUserId, role: "STUDENT", ...liveUser },
     select: { id: true },
   });
-  if (!student) return apiError(res, "not_found", "Student not found.", 404);
+  if (!student) return notFound(res, "Student");
 
   try {
-    return apiOk(res, await createFollowUp(user.userId, studentUserId, parsed.data.reason), 201);
+    return apiOk(res, await createFollowUp(user.userId, studentUserId, parsed.reason), 201);
   } catch (err) {
     // The partial unique index: one open follow-up per mentor and student.
     if (isPrismaUniqueViolation(err)) {

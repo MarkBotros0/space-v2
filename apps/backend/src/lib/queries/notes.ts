@@ -10,6 +10,7 @@ import type { SessionUser } from "../auth/tokens";
 import { noteSeasonWhere, noteVisibilityWhere } from "../permissions";
 import { isMentor, isSuper } from "../rbac";
 import { MS_PER_DAY } from "../org-time";
+import { liveUser } from "../db/live";
 
 /**
  * The row shape both list functions select. Kept in one place so the two
@@ -194,7 +195,7 @@ export async function listAuthoredNotes(user: SessionUser, query: NoteListQuery)
       authorUserId: user.userId,
       // A soft-deleted student's notes leave the list with them, as their
       // own notes page already 404s.
-      studentUser: { deletedAt: null },
+      studentUser: liveUser,
       ...(query.studentId ? { studentUserId: query.studentId } : {}),
       ...writtenWithin(query.withinDays),
       ...authoredSeasonWhere(user),
@@ -223,7 +224,7 @@ export async function listVisibleNotes(
   if (scope === null) return null;
 
   const rows = await db.engagementNote.findMany({
-    where: { AND: [scope, { studentUser: { deletedAt: null } }, writtenWithin(query.withinDays)] },
+    where: { AND: [scope, { studentUser: liveUser }, writtenWithin(query.withinDays)] },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: query.limit + 1,
     ...cursorClause(query.cursor),

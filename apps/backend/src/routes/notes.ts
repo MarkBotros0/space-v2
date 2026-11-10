@@ -2,7 +2,6 @@ import { Router } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
-import { parseId } from "../lib/parse-id";
 import { canEditNote, canViewStudent, canWriteNote, staffRosterWhere } from "../lib/permissions";
 import {
   listAuthoredNotes,
@@ -22,6 +21,10 @@ import {
   updateNoteRequestSchema,
 } from "../../../../packages/shared/src/index";
 import { isMentor } from "../lib/rbac";
+import { idParam } from "../lib/http/params";
+import { liveUser } from "../lib/db/live";
+import { parseOr400 } from "../lib/http/validate";
+import { notFound } from "../lib/http/not-found";
 
 /**
  * Notes are mounted as three routers from one file rather than as routes added
@@ -78,8 +81,8 @@ function auditNoteRead(viewerId: number, studentUserId: number, noteCount: numbe
 
 studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, res) => {
   const user = requireUser(req);
-  const studentUserId = parseId(req.params.id);
-  if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const studentUserId = idParam(res, req.params.id, "student");
+  if (studentUserId === null) return;
 
   // Explicit, and first. v1 excluded students by the absence of a screen
   // (R40) — in v2 the student opens the same app over the same API, so the
@@ -88,20 +91,20 @@ studentNotesRouter.get("/:id/notes", requireAuth, noteReadLimiter, async (req, r
   if (user.role === "STUDENT") return forbidden(res);
 
   const student = await db.user.findFirst({
-    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
+    where: { id: studentUserId, role: "STUDENT", ...liveUser },
     select: { id: true },
   });
-  if (!student) return apiError(res, "not_found", "Student not found.", 404);
+  if (!student) return notFound(res, "Student");
 
   // Gate one: may this caller see the student at all. Gate two is inside the
   // query. v1 had both as page-level conventions that did not know about each
   // other (R39).
   if (!(await canViewStudent(user, studentUserId))) return forbidden(res);
 
-  const parsed = noteListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  const parsed = parseOr400(noteListQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
 
-  const page = await listNotesForStudent(user, studentUserId, parsed.data);
+  const page = await listNotesForStudent(user, studentUserId, parsed);
   if (page === null) return forbidden(res);
 
   auditNoteRead(user.userId, studentUserId, page.notes.length);
@@ -113,10 +116,10 @@ myNotesRouter.get("/notes", requireAuth, noteReadLimiter, async (req, res) => {
   const user = requireRole(req, res, (u) => u.role !== "STUDENT");
   if (!user) return;
 
-  const parsed = noteListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  const parsed = parseOr400(noteListQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
 
-  return apiOk(res, await listAuthoredNotes(user, parsed.data));
+  return apiOk(res, await listAuthoredNotes(user, parsed));
 });
 
 /**
@@ -129,10 +132,10 @@ myNotesRouter.get("/visible-notes", requireAuth, noteReadLimiter, async (req, re
   const user = requireRole(req, res, isMentor);
   if (!user) return;
 
-  const parsed = noteListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  const parsed = parseOr400(noteListQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
 
-  const page = await listVisibleNotes(user, parsed.data);
+  const page = await listVisibleNotes(user, parsed);
   if (page === null) return forbidden(res);
 
   console.info(
@@ -148,21 +151,21 @@ myNotesRouter.get("/visible-notes", requireAuth, noteReadLimiter, async (req, re
 
 studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   const user = requireUser(req);
-  const studentUserId = parseId(req.params.id);
-  if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const studentUserId = idParam(res, req.params.id, "student");
+  if (studentUserId === null) return;
 
   const student = await db.user.findFirst({
-    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
+    where: { id: studentUserId, role: "STUDENT", ...liveUser },
     select: { id: true },
   });
-  if (!student) return apiError(res, "not_found", "Student not found.", 404);
+  if (!student) return notFound(res, "Student");
 
   // Gated independently of the read path (ruling C8 #1): narrowing a list only
   // hides rows, it does not stop a caller who already knows an id.
   if (!(await canWriteNote(user, studentUserId))) return forbidden(res);
 
-  const parsed = createNoteRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid note body.", 400);
+  const parsed = parseOr400(createNoteRequestSchema, req.body, res, "Invalid note body.");
+  if (parsed === null) return;
 
   // R4: default the season from the student's enrolment. R5 records that v1
   // never maintains this afterwards — a note keeps pointing at the season it
@@ -180,11 +183,11 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
   const adminSeasons = user.role === "ADMIN" ? user.seasonAdminIds : null;
   const roster = staffRosterWhere(user);
   let seasonId: number | null = null;
-  if (parsed.data.seasonId !== undefined) {
-    if (adminSeasons && !adminSeasons.includes(parsed.data.seasonId)) return forbidden(res);
+  if (parsed.seasonId !== undefined) {
+    if (adminSeasons && !adminSeasons.includes(parsed.seasonId)) return forbidden(res);
     const enrollment = await db.seasonEnrollment.findUnique({
       where: {
-        studentUserId_seasonId: { studentUserId, seasonId: parsed.data.seasonId },
+        studentUserId_seasonId: { studentUserId, seasonId: parsed.seasonId },
       },
       select: { seasonId: true, groupId: true },
     });
@@ -216,9 +219,9 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
       // From the session, never from input (R9).
       authorUserId: user.userId,
       seasonId,
-      body: plainTextToHtml(parsed.data.body),
-      visibility: parsed.data.visibility,
-      followUpFlagged: parsed.data.followUpFlagged,
+      body: plainTextToHtml(parsed.body),
+      visibility: parsed.visibility,
+      followUpFlagged: parsed.followUpFlagged,
     },
     select: NOTE_SELECT,
   });
@@ -230,27 +233,27 @@ studentNotesRouter.post("/:id/notes", requireAuth, async (req, res) => {
 
 notesRouter.patch("/:id", requireAuth, async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid note id.", 400);
+  const id = idParam(res, req.params.id, "note");
+  if (id === null) return;
 
   const existing = await db.engagementNote.findUnique({ where: { id }, select: { id: true } });
-  if (!existing) return apiError(res, "not_found", "Note not found.", 404);
+  if (!existing) return notFound(res, "Note");
   // Author equality, SUPER not exempt (R23).
   if (!(await canEditNote(user, id))) {
     return apiError(res, "forbidden", "Only the note's author can edit it.", 403);
   }
 
-  const parsed = updateNoteRequestSchema.safeParse(req.body);
+  const parsed = parseOr400(updateNoteRequestSchema, req.body, res, "Invalid note body.");
   // v1's update validated nothing at all, so an edit could blank a note
   // entirely (R25). Same bound as create.
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid note body.", 400);
+  if (parsed === null) return;
 
   const updated = await db.engagementNote.update({
     where: { id },
     // body only. visibility, followUpFlagged and seasonId are immutable after
     // creation (R24) — a note written to the wrong audience is corrected by
     // writing a new one, not by silently re-aiming the old one.
-    data: { body: plainTextToHtml(parsed.data.body) },
+    data: { body: plainTextToHtml(parsed.body) },
     select: NOTE_SELECT,
   });
 
