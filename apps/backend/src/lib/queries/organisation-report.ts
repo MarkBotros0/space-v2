@@ -2,6 +2,7 @@
 import type { OrganisationReport } from "@space/shared";
 
 import { db } from "../../db/client";
+import { liveSeason, liveUser } from "../db/live";
 
 /**
  * The organisation roll-up — student and alumni totals, per-season enrolment
@@ -28,11 +29,11 @@ export async function buildOrganisationReport(): Promise<OrganisationReport> {
     // them (R58).
     db.user.groupBy({
       by: ["graduationYear"],
-      where: { role: "STUDENT", deletedAt: null },
+      where: { role: "STUDENT", ...liveUser },
       _count: { _all: true },
     }),
     db.season.findMany({
-      where: { deletedAt: null },
+      where: liveSeason,
       orderBy: [{ year: "desc" }, { program: "asc" }],
       select: { id: true, code: true, title: true, program: true, year: true, status: true },
     }),

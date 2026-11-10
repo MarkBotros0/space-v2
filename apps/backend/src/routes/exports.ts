@@ -16,11 +16,13 @@ import { logExport } from "../lib/exports/audit";
 import { buildEngagementWorkbook } from "../lib/exports/engagement-workbook";
 import { buildSeasonWorkbook, summariseSeasonWorkbook } from "../lib/exports/season-workbook";
 import { orgDayKey } from "../lib/org-time";
-import { parseId } from "../lib/parse-id";
 import { canExportSeasonWorkbook, reportScopeFor } from "../lib/permissions";
 import { listEngagementRows, resolveReportScope } from "../lib/queries/reports";
 import { makeLimiter } from "../lib/rate-limit";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { idParam } from "../lib/http/params";
+import { notFound } from "../lib/http/not-found";
+import { parseOr400 } from "../lib/http/validate";
 
 export const reportExportsRouter = Router();
 export const seasonExportsRouter = Router();
@@ -93,10 +95,10 @@ reportExportsRouter.get("/engagement/export", requireAuth, exportLimiter, async 
     }
   }
 
-  const parsed = reportScopeQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid report filters.", 400);
+  const parsed = parseOr400(reportScopeQuerySchema, req.query, res, "Invalid report filters.");
+  if (parsed === null) return;
 
-  const resolved = await resolveReportScope(scope, parsed.data.seasonId);
+  const resolved = await resolveReportScope(scope, parsed.seasonId);
   // limit is the cap the contract allows; an export is the one caller that
   // legitimately wants every row, and it is rate-limited and audited for it.
   const page = await listEngagementRows(resolved, { limit: Number.MAX_SAFE_INTEGER });
@@ -127,8 +129,8 @@ reportExportsRouter.get("/engagement/export", requireAuth, exportLimiter, async 
  */
 seasonExportsRouter.get("/:id/exports/workbook", requireAuth, exportLimiter, async (req, res) => {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
   // MENTOR is refused here and admitted by the engagement export above — see
   // lib/permissions.ts and spec D6 #3. This is a deliberate divergence from
@@ -140,7 +142,7 @@ seasonExportsRouter.get("/:id/exports/workbook", requireAuth, exportLimiter, asy
   // (R81, spec D14). One answer for both, so this cannot become an existence
   // oracle either.
   const built = await buildSeasonWorkbook(seasonId);
-  if (!built) return apiError(res, "not_found", "Season not found.", 404);
+  if (!built) return notFound(res, "Season");
 
   const filename = exportFilename("season-workbook", built.seasonCode, orgDayKey(new Date()));
 
@@ -170,13 +172,13 @@ seasonExportsRouter.get("/:id/exports/workbook", requireAuth, exportLimiter, asy
  */
 seasonExportsRouter.get("/:id/exports/manifest", requireAuth, async (req, res) => {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
   if (!canExportSeasonWorkbook(user, seasonId)) return forbidden(res);
 
   const summary = await summariseSeasonWorkbook(seasonId);
-  if (!summary) return apiError(res, "not_found", "Season not found.", 404);
+  if (!summary) return notFound(res, "Season");
 
   return apiOk(res, {
     filename: exportFilename("season-workbook", summary.seasonCode, orgDayKey(new Date())),

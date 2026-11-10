@@ -3,6 +3,7 @@ import { Router } from "express";
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { parseId } from "../lib/parse-id";
+import { idParam } from "../lib/http/params";
 import type { SessionUser } from "../lib/auth/tokens";
 import { canViewStudent, staffScopeForSeason } from "../lib/permissions";
 import { computeEngagementForSeason } from "../lib/queries/engagement";
@@ -52,8 +53,8 @@ async function mayScoreInSeason(
  */
 studentEngagementRouter.get("/:id/engagement", requireAuth, async (req, res) => {
   const user = requireUser(req);
-  const studentUserId = parseId(req.params.id);
-  if (studentUserId === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const studentUserId = idParam(res, req.params.id, "student");
+  if (studentUserId === null) return;
 
   if (!(await canViewStudent(user, studentUserId))) return forbidden(res);
 

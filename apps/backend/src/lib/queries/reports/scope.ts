@@ -2,6 +2,7 @@ import type { ResolvedScope } from "@space/shared";
 
 import { db } from "../../../db/client";
 import type { ReportScope } from "../../permissions";
+import { liveSeason } from "../../db/live";
 
 /**
  * Turn "what the caller asked for" into "what the caller may have", by
@@ -23,7 +24,7 @@ import type { ReportScope } from "../../permissions";
 export async function resolveReportScope(scope: ReportScope, requestedIds: number[]): Promise<ResolvedScope> {
   const permitted = await db.season.findMany({
     where: {
-      deletedAt: null,
+      ...liveSeason,
       ...(scope.kind === "seasons" ? { id: { in: scope.seasonIds } } : {}),
     },
     orderBy: [{ year: "desc" }, { title: "asc" }],

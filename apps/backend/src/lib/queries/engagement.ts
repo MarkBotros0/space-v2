@@ -9,6 +9,7 @@ import { isAtRisk } from "../../../../../packages/shared/src/index";
 
 import { db } from "../../db/client";
 import { seasonParticipant } from "./season-participants";
+import { liveAssignment, liveUser } from "../db/live";
 
 interface EngagementCohortOptions {
   /** Restrict to these students (a leader's roster, or a single detail view). */
@@ -59,7 +60,7 @@ export async function computeEngagementForSeasons(
       ...seasonParticipant,
       // A soft-deleted student is gone from every roster; scoring them
       // would put a deleted person back on the reports and dashboards.
-      studentUser: { deletedAt: null },
+      studentUser: liveUser,
       ...(opts.studentUserIds ? { studentUserId: { in: opts.studentUserIds } } : {}),
       ...(opts.groupId ? { groupId: opts.groupId } : {}),
     },
@@ -105,7 +106,7 @@ export async function computeEngagementForSeasons(
 
   // 4 — the scope's assignments and their targets.
   const assignments = await db.assignment.findMany({
-    where: { seasonId: { in: seasonIds }, deletedAt: null },
+    where: { seasonId: { in: seasonIds }, ...liveAssignment },
     select: {
       id: true,
       seasonId: true,

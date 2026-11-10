@@ -13,6 +13,7 @@ import { orgDayKey } from "../../org-time";
 import { computeEngagementForSeasons } from "../engagement";
 import { expectedStudentIds } from "./expected";
 import { byScoreThenId, toReportRows, withEmails } from "./rows";
+import { liveAssignment } from "../../db/live";
 
 export interface EngagementSummaryOptions {
   trendLimit: number;
@@ -172,7 +173,7 @@ export async function buildEngagementSummary(
 
   // Q4 — assignments and their targets.
   const assignments = await db.assignment.findMany({
-    where: { seasonId: { in: seasonIds }, deletedAt: null },
+    where: { seasonId: { in: seasonIds }, ...liveAssignment },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,

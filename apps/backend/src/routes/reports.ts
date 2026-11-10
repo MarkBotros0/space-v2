@@ -8,12 +8,13 @@ import { Router } from "express";
 // Four levels up from src/routes/.
 import { engagementStudentsQuerySchema, reportScopeQuerySchema } from "../../../../packages/shared/src/index";
 
-import { apiError, apiOk, forbidden } from "../lib/api-response";
+import { apiOk, forbidden } from "../lib/api-response";
 import { reportScopeFor } from "../lib/permissions";
 import { buildOrganisationReport } from "../lib/queries/organisation-report";
 import { buildEngagementSummary, listEngagementRows, resolveReportScope } from "../lib/queries/reports";
 import { isSuper } from "../lib/rbac";
 import { requireAuth, requireUser, requireRole } from "../middleware/require-auth";
+import { parseOr400 } from "../lib/http/validate";
 
 export const reportsRouter = Router();
 
@@ -40,14 +41,14 @@ reportsRouter.get("/engagement", requireAuth, async (req, res) => {
   // v1 relied on (spec D6 #4, R109, R110).
   if (scope === null) return forbidden(res);
 
-  const parsed = reportScopeQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid report filters.", 400);
+  const parsed = parseOr400(reportScopeQuerySchema, req.query, res, "Invalid report filters.");
+  if (parsed === null) return;
 
-  const resolved = await resolveReportScope(scope, parsed.data.seasonId);
+  const resolved = await resolveReportScope(scope, parsed.seasonId);
   const summary = await buildEngagementSummary(resolved, {
-    trendLimit: parsed.data.trendLimit,
-    ...(parsed.data.from ? { from: new Date(parsed.data.from) } : {}),
-    ...(parsed.data.to ? { to: new Date(parsed.data.to) } : {}),
+    trendLimit: parsed.trendLimit,
+    ...(parsed.from ? { from: new Date(parsed.from) } : {}),
+    ...(parsed.to ? { to: new Date(parsed.to) } : {}),
   });
 
   return apiOk(res, summary);
@@ -66,14 +67,14 @@ reportsRouter.get("/engagement/students", requireAuth, async (req, res) => {
   const scope = await reportScopeFor(user);
   if (scope === null) return forbidden(res);
 
-  const parsed = engagementStudentsQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid report filters.", 400);
+  const parsed = parseOr400(engagementStudentsQuerySchema, req.query, res, "Invalid report filters.");
+  if (parsed === null) return;
 
-  const resolved = await resolveReportScope(scope, parsed.data.seasonId);
+  const resolved = await resolveReportScope(scope, parsed.seasonId);
   const page = await listEngagementRows(resolved, {
-    limit: parsed.data.limit,
-    ...(parsed.data.cursor ? { cursor: parsed.data.cursor } : {}),
-    ...(parsed.data.band ? { band: parsed.data.band } : {}),
+    limit: parsed.limit,
+    ...(parsed.cursor ? { cursor: parsed.cursor } : {}),
+    ...(parsed.band ? { band: parsed.band } : {}),
   });
 
   return apiOk(res, page);
