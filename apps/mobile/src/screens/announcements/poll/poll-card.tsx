@@ -3,10 +3,11 @@ import { View } from "react-native";
 import type { AnnouncementPoll } from "@space/shared";
 
 import { InlineError } from "../../../design/layout/route-states";
-import { PillButton, Text } from "../../../design/ui";
+import { Text } from "../../../design/ui";
 import { toast } from "../../../design/ui/toaster";
 import { useClosePoll, useReopenPoll, useVotePoll } from "../../../hooks/use-announcements";
 import { apiErrorCode, apiErrorMessage } from "../../../lib/api-error";
+import { PollActions } from "./poll-actions";
 import { PollChoices } from "./poll-choices";
 import { POLL_COPY, pollHeader } from "./poll-copy";
 import { PollResults } from "./poll-results";
@@ -113,21 +114,17 @@ export function PollCard({ postId, poll }: { postId: number; poll: AnnouncementP
         />
       ) : null}
 
-      {canOpenChoices || poll.canSeeNames || poll.canManage ? (
-        <View className="flex-row flex-wrap gap-2">
-          {canOpenChoices ? (
-            <PillButton label={voted ? POLL_COPY.changeVote : POLL_COPY.vote} disabled={busy} onPress={startChoosing} />
-          ) : null}
-          {poll.canSeeNames ? <PillButton label={POLL_COPY.seeWhoVoted} onPress={() => setVotersOpen(true)} /> : null}
-          {poll.canManage ? (
-            <PillButton
-              label={poll.closed ? POLL_COPY.reopenPoll : POLL_COPY.closePoll}
-              disabled={busy}
-              onPress={() => closeOrReopen(poll.closed ? "reopen" : "close")}
-            />
-          ) : null}
-        </View>
-      ) : null}
+      <PollActions
+        canOpenChoices={canOpenChoices}
+        voted={voted}
+        busy={busy}
+        canSeeNames={poll.canSeeNames}
+        canManage={poll.canManage}
+        closed={poll.closed}
+        onChoose={startChoosing}
+        onSeeVoters={() => setVotersOpen(true)}
+        onCloseOrReopen={() => closeOrReopen(poll.closed ? "reopen" : "close")}
+      />
 
       {/* Names: managers, and a Super once the season has finished (who can't close or reopen). */}
       {poll.canSeeNames ? <VotersSheet postId={postId} open={votersOpen} onClose={() => setVotersOpen(false)} /> : null}
