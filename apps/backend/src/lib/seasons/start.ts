@@ -9,7 +9,7 @@ import { loadSeasonStartCheck } from "../queries/season-start";
 import { lockPeople, lockSeasonStart, readSeatSeason } from "../roles";
 
 /** `"Mina is already leading a group in GBV 2026, and 2 more to clear."` */
-export function blockedMessage(check: SeasonStartCheck): string {
+function blockedMessage(check: SeasonStartCheck): string {
   const messages = [...check.seasonsInTheWay.map((s) => s.message), ...check.items.map((i) => i.message)];
   const first = messages[0]!;
   const rest = messages.length - 1;

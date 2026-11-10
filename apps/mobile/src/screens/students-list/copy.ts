@@ -8,7 +8,7 @@ import type { StudentListStatus } from "@space/shared";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import type { StudentListView } from "../../hooks/use-students";
 
-export type StudentListAudience = "staff" | "mentor";
+type StudentListAudience = "staff" | "mentor";
 
 const STAFF = {
   active: {
@@ -37,7 +37,7 @@ function mentorSubtitle(n: number, absent: boolean): string {
   return absent ? `${people} absent lately` : people;
 }
 
-export interface StudentListCopy {
+interface StudentListCopy {
   icon: (typeof STAFF)[StudentListStatus]["icon"];
   searchLabel: string;
   /** The count line under the title, for the population under the current filters. */

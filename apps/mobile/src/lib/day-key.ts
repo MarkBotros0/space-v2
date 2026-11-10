@@ -18,7 +18,7 @@ export function dateToDay(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
-export interface TimeParts {
+interface TimeParts {
   hour: number;
   minute: number;
 }

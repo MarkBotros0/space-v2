@@ -80,4 +80,3 @@ function HeroCard({
 }
 
 export { HeroCard };
-export type { HeroTone };

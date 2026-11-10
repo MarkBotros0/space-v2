@@ -53,5 +53,5 @@ const Input = forwardRef<TextInputInstance, InputProps>(
 );
 Input.displayName = "Input";
 
-export { Input, inputVariants };
+export { Input };
 export type { InputProps };

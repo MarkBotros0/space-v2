@@ -30,7 +30,7 @@ export async function deleteOwnAccount(userId: number, deletedAt: Date): Promise
 }
 
 /** A student's own profile fields. Prisma reads `undefined` as "leave the column alone", exactly PATCH. */
-export interface OwnProfileWrite {
+interface OwnProfileWrite {
   phone?: string | null;
   dateOfBirth?: string | null;
   university?: string | null;

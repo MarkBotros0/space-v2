@@ -190,4 +190,3 @@ function ListRow({
 }
 
 export { GroupedList, ListRow, ListSectionHeader };
-export type { HeaderAction, ListRowProps };

@@ -42,7 +42,7 @@ export function formFromQuestion(q: VideoQuestionAdmin): VideoQuestionFormState 
   };
 }
 
-export type VideoQuestionBody =
+type VideoQuestionBody =
   { ok: true; input: VideoQuestionInput } | { ok: false; field: "timestamp" | "form"; message: string };
 
 /**

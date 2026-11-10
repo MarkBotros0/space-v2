@@ -74,4 +74,4 @@ function SkeletonCard({ className }: { className?: string }) {
   );
 }
 
-export { Skeleton, SkeletonText, SkeletonCard };
+export { Skeleton, SkeletonCard };

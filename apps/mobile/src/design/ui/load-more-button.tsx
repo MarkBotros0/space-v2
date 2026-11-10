@@ -1,7 +1,7 @@
 import { Button } from "./button";
 
 /** What an infinite query hands the button: its `useInfiniteQuery` result fits as is. */
-export interface PagedQuery {
+interface PagedQuery {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   fetchNextPage: () => unknown;

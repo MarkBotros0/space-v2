@@ -71,4 +71,3 @@ function PillButton({
 }
 
 export { PillButton };
-export type { PillButtonProps };

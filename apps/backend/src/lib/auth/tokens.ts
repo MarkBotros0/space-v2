@@ -95,7 +95,7 @@ async function issueRefreshToken(userId: number): Promise<{ token: string; expir
  * new phone signs the old one out, and the table holds about one row per
  * person instead of one per refresh forever. Uses the userId index.
  */
-export async function deleteOtherRefreshTokens(userId: number, keepTokenHash: string): Promise<number> {
+async function deleteOtherRefreshTokens(userId: number, keepTokenHash: string): Promise<number> {
   const { count } = await db.refreshToken.deleteMany({ where: { userId, tokenHash: { not: keepTokenHash } } });
   return count;
 }

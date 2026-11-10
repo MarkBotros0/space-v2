@@ -8,7 +8,7 @@
  */
 
 /** Each model's home domain. A model missing here makes renderErd throw. */
-export const DOMAINS: { title: string; models: string[] }[] = [
+const DOMAINS: { title: string; models: string[] }[] = [
   {
     title: "Identity & auth",
     models: [

@@ -3,7 +3,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useSeasonByCode } from "./use-seasons";
 
 /** A `[code]` route param: a non-empty string, else null. */
-export function seasonCodeParam(raw: unknown): string | null {
+function seasonCodeParam(raw: unknown): string | null {
   return typeof raw === "string" && raw.length > 0 ? raw : null;
 }
 

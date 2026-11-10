@@ -63,7 +63,7 @@ async function applyUpdate(tx: Tx, pollId: number, plan: PollEditPlan): Promise<
   });
 }
 
-export type PollEditOutcome =
+type PollEditOutcome =
   { kind: "ok"; pollChanged: boolean } | { kind: "bad_options" } | { kind: "votes_lost"; votes: number };
 
 /**

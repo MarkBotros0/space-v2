@@ -7,7 +7,7 @@ import type { z } from "zod";
 type QuestionData = z.infer<typeof quizQuestionRequestSchema>;
 
 /** The authoring view of a question — the answer key included. */
-export const AUTHORING_QUESTION_SELECT = {
+const AUTHORING_QUESTION_SELECT = {
   id: true,
   order: true,
   type: true,

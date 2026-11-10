@@ -8,14 +8,14 @@ import { isSeasonFinished, type SeasonStatus } from "@space/shared";
 import { countOf } from "../../lib/plural";
 
 export type OverviewTileKey = "sessions" | "assignments" | "quizzes" | "end" | "results";
-export interface OverviewTile {
+interface OverviewTile {
   key: OverviewTileKey;
   label: string;
   hint?: string;
 }
 
 export type OverviewNextStepKey = "start" | "duplicate" | "end";
-export interface OverviewNextStep {
+interface OverviewNextStep {
   key: OverviewNextStepKey;
   title: string;
   body: string;
@@ -23,7 +23,7 @@ export interface OverviewNextStep {
   tone: "info" | "warn";
 }
 
-export interface SeasonOverviewModel {
+interface SeasonOverviewModel {
   /** A finished season is locked (owner, 2026-11-07): read, never changed. */
   finished: boolean;
   /** The server says this caller administers it (C4), and it hasn't finished. */

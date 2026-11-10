@@ -20,7 +20,7 @@ export function seasonOutcomeLabel(outcome: SeasonOutcome): string {
   return OUTCOME_LABELS[outcome];
 }
 
-export const enrollmentResultSchema = z.enum(["PASSED", "NOT_PASSED"]);
+const enrollmentResultSchema = z.enum(["PASSED", "NOT_PASSED"]);
 export type EnrollmentResult = z.infer<typeof enrollmentResultSchema>;
 
 /** POST /seasons/:id/start: the season, now ACTIVE. */

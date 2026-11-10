@@ -93,4 +93,4 @@ function AvatarFallback({ className, children }: { className?: string; children?
   );
 }
 
-export { Avatar, AvatarImage, AvatarFallback, avatarVariants };
+export { Avatar, AvatarImage, AvatarFallback };

@@ -104,5 +104,4 @@ function Badge({ className, textClassName, variant, role, children }: BadgeProps
   );
 }
 
-export { Badge, badgeVariants, badgeTextVariants };
-export type { BadgeProps };
+export { Badge, badgeVariants };

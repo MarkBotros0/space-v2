@@ -68,7 +68,7 @@ async function refuseRoleChange(
  * Every refusal is thrown as an ApiError before anything is written, so the
  * rollback undoes nothing. Returns what the route audits.
  */
-export async function updateUserInTx(
+async function updateUserInTx(
   tx: Tx,
   actorId: number,
   id: number,

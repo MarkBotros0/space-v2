@@ -47,7 +47,7 @@ function storeFor(kind: RateLimitStoreKind, name: string): Store {
  * failure.
  */
 /** The window every limiter uses unless it names its own. */
-export const RATE_LIMIT_WINDOW_MS = 15 * MS_PER_MINUTE;
+const RATE_LIMIT_WINDOW_MS = 15 * MS_PER_MINUTE;
 
 export function makeLimiter(spec: LimiterSpec): RateLimitRequestHandler {
   return rateLimit({

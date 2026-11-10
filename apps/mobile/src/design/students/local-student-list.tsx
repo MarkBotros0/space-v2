@@ -20,7 +20,7 @@ import { Text } from "../ui/text";
 /** How many rows show before "Show more", and how many each press adds. */
 const STUDENT_PAGE = 20;
 
-export type LocalStudentRow = {
+type LocalStudentRow = {
   id: number | string;
   name: string;
   /** Rows with a group are listed under it, groups in name order. */

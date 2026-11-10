@@ -23,7 +23,7 @@ export interface PeopleSelection {
   notice: string | null;
 }
 
-export type PeopleSelectionAction =
+type PeopleSelectionAction =
   | { type: "chooseSource"; id: number | null; ticks: number[] }
   | { type: "toggle"; id: number; person: PeopleCandidate | undefined }
   | { type: "ask"; person: PeopleCandidate }

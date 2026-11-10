@@ -1,6 +1,6 @@
 import { isAlumnusNotStudying, type NavAudience } from "@space/shared";
 
-export type CalendarBranch = "UNAVAILABLE" | "LEADS_NOTHING" | "LEADER" | "SUPER" | "ADMIN" | "ALUMNI" | "STUDENT";
+type CalendarBranch = "UNAVAILABLE" | "LEADS_NOTHING" | "LEADER" | "SUPER" | "ADMIN" | "ALUMNI" | "STUDENT";
 
 /**
  * Which calendar a user sees (refactor FE-060), in this order: a mentor has none (spec 03 §9), a

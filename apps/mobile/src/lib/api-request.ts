@@ -14,7 +14,7 @@ export async function apiGet<T>(url: string, schema: ZodType<T>, config?: AxiosR
   return schema.parse(res.data.data);
 }
 
-export type ApiSendMethod = "post" | "put" | "patch" | "delete";
+type ApiSendMethod = "post" | "put" | "patch" | "delete";
 
 /** A write and its parsed `{ data }`. A `delete` body goes in the request config, as axios takes it. */
 export async function apiSend<T>(method: ApiSendMethod, url: string, body: unknown, schema: ZodType<T>): Promise<T> {

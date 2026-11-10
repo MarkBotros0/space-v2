@@ -51,7 +51,7 @@ export function loadDuplicateSource(id: number) {
   return db.season.findFirst({ where: { id, ...liveSeason }, select: SOURCE_SELECT });
 }
 
-export type DuplicateSource = NonNullable<Awaited<ReturnType<typeof loadDuplicateSource>>>;
+type DuplicateSource = NonNullable<Awaited<ReturnType<typeof loadDuplicateSource>>>;
 type Target = { code: string; year: number; startDate: Date; endDate: Date };
 
 /**

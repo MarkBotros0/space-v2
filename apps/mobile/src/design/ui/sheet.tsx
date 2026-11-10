@@ -210,4 +210,3 @@ function SheetSaveBar(props: SaveBarProps) {
 }
 
 export { Sheet, SheetSaveBar };
-export type { SheetProps };

@@ -4,7 +4,7 @@ import type { SessionUser } from "../../auth/tokens";
 import { canReadAllStudents } from "../../rbac";
 
 /** Which students a caller may list (refactor BE-014: split from list.ts). */
-export type StudentScope = { kind: "all" } | { kind: "ids"; ids: number[] };
+type StudentScope = { kind: "all" } | { kind: "ids"; ids: number[] };
 
 /**
  * D6's single implementation of "which students may this caller see".
@@ -34,7 +34,7 @@ export async function studentListScope(user: SessionUser): Promise<StudentScope 
 }
 
 /** The distinct students with an enrolment matching `where`, any status. */
-export async function enrolledStudentIds(where: Prisma.SeasonEnrollmentWhereInput): Promise<number[]> {
+async function enrolledStudentIds(where: Prisma.SeasonEnrollmentWhereInput): Promise<number[]> {
   const enrollments = await db.seasonEnrollment.findMany({
     where,
     select: { studentUserId: true },
