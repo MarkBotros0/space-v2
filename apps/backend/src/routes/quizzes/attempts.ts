@@ -9,6 +9,7 @@ import { requireUser } from "../../middleware/require-auth";
 import { answerRefusal, saveAnswers, submitAnswers } from "../../lib/quizzes/attempts";
 import { saveQuizAnswersRequestSchema } from "../../../../../packages/shared/src/index";
 import { notifyQuizGraded } from "../../lib/quizzes/notify";
+import { newShuffleSeed } from "../../lib/quizzes/shuffle";
 import { loadStudentQuizDetail } from "./student-detail";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
@@ -103,7 +104,8 @@ export async function startAttempt(req: Request, res: Response) {
       },
       // Empty update: the point is to return the existing row untouched.
       update: {},
-      create: { quizId: id, studentUserId: user.userId, attemptNumber: 1 },
+      // The seed fixes this attempt's question and option order for its whole life.
+      create: { quizId: id, studentUserId: user.userId, attemptNumber: 1, shuffleSeed: newShuffleSeed() },
       select: { id: true },
     });
   }

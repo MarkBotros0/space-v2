@@ -3,7 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { cleanupTestData } from "./fixtures";
-import { buildPublishedQuizIn, seedQuizFixtures } from "./quizzes-setup";
+import { buildPublishedQuizIn, pickOption, seedQuizFixtures, setLatestAttempt } from "./quizzes-setup";
 
 // Same reason as the submissions suite: the shared Neon staging Postgres
 // autosuspends, and the first query after idling has been measured at ~18s.
@@ -47,43 +47,61 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   // parsed object: the assertion is against the RAW serialised response,
   // because that is what actually travels to a phone.
   // ---------------------------------------------------------------------
-  it("never lets the answer key reach a student, at the raw-JSON level", async () => {
-    const res = await request(app)
-      .get(`/api/v1/quizzes/${onlineQuizId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+  it("never lets the answer key reach a student before release, at the raw-JSON level", async () => {
+    // Every type, answers held. The attempt carries stored marks, so a read
+    // that loaded them would show them.
+    const quiz = await buildPublishedQuizIn(seasonId, sessionId, {
+      withEssay: true,
+      withTypes: ["MULTI_CHOICE", "TRUE_FALSE", "MATCHING", "FILL_BLANK"],
+      released: false,
+    });
+    const get = () => request(app).get(`/api/v1/quizzes/${quiz.quizId}`).set("authorization", `Bearer ${studentToken}`);
+    const list = () =>
+      request(app).get(`/api/v1/quizzes?seasonId=${seasonId}`).set("authorization", `Bearer ${studentToken}`);
+    // Key and marks by name. The option labels are legitimately present
+    // mid-attempt, so the assertion is on the markers, not on the words.
+    const noKey = (body: unknown) => {
+      const raw = JSON.stringify(body);
+      for (const marker of ["correctIndex", "isCorrect", "matchId", "expected", "correctOptionIds", "correctPairs"]) {
+        expect(raw).not.toContain(marker);
+      }
+    };
 
-    expect(res.status).toBe(200);
-    const raw = JSON.stringify(res.body);
-    expect(raw).not.toContain("correctIndex");
-    // The value as well as the key: correctIndex is 1 here, and "Paris" is the
-    // option it points at. The option list itself is legitimately present, so
-    // the assertion is on the marker, not on the word.
-    expect(res.body.data.questions[0]).not.toHaveProperty("correctIndex");
-    expect(Object.keys(res.body.data.questions[0]).sort()).toEqual(
-      [
-        "id",
-        "isCorrect",
-        "options",
-        "order",
-        "pointsAwarded",
-        "points",
-        "prompt",
-        "selectedIndex",
-        "text",
-        "type",
-      ].sort(),
-    );
+    // not_started
+    const before = await get();
+    expect(before.status).toBe(200);
+    expect(before.body.data).toMatchObject({ stage: "not_started", questions: [] });
+    noKey(before.body);
+    noKey((await list()).body);
 
-    // ...and the same guarantee on the two other student-facing responses.
+    // in_progress: the questions, the student's own answers, no review.
     const started = await request(app)
-      .put(`/api/v1/quizzes/${onlineQuizId}/attempt`)
+      .put(`/api/v1/quizzes/${quiz.quizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`);
-    expect(JSON.stringify(started.body)).not.toContain("correctIndex");
+    expect(started.body.data.stage).toBe("in_progress");
+    const attempt = await db.quizAttempt.findFirstOrThrow({ where: { quizId: quiz.quizId }, select: { id: true } });
+    await pickOption(attempt.id, quiz.mcqId, "Paris", { isCorrect: true, pointsAwarded: 2 });
+    const during = await get();
+    noKey(started.body);
+    noKey(during.body);
+    expect(during.body.data.questions).toHaveLength(quiz.questionIds.length);
+    const single = during.body.data.questions.find((q: { id: number }) => q.id === quiz.mcqId);
+    expect(Object.keys(single).sort()).toEqual(
+      ["answer", "id", "options", "order", "points", "pointsAwarded", "prompt", "review", "type"].sort(),
+    );
+    expect(single).toMatchObject({ pointsAwarded: null, review: null });
+    expect(during.body.data.questions.every((q: { review: unknown }) => q.review === null)).toBe(true);
 
-    const list = await request(app)
-      .get(`/api/v1/quizzes?seasonId=${seasonId}`)
-      .set("authorization", `Bearer ${studentToken}`);
-    expect(JSON.stringify(list.body)).not.toContain("correctIndex");
+    // submitted, then graded: no question text, options or own answers either.
+    for (const status of ["SUBMITTED", "GRADED"] as const) {
+      await setLatestAttempt(quiz.quizId, ownStudentId, { status, totalScore: 2 });
+      const after = await get();
+      expect(after.body.data).toMatchObject({ stage: status === "GRADED" ? "graded" : "submitted", questions: [] });
+      noKey(after.body);
+      expect(JSON.stringify(after.body)).not.toContain("Capital of France?");
+      expect(JSON.stringify(after.body)).not.toContain("Paris");
+      noKey((await list()).body);
+    }
   });
 
   it("serves staff the authoring shape from the same path", async () => {

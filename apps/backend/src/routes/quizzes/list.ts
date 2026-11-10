@@ -3,9 +3,10 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason } from "../../lib/permissions";
-import { studentAttemptStatus } from "../../lib/quiz-results";
 import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
+import { toScore } from "../../lib/quizzes/score";
+import { studentQuizStage } from "../../lib/quizzes/student-stage";
 import { quizListQuerySchema } from "../../../../../packages/shared/src/index";
 import { parseOr400 } from "../../lib/http/validate";
 
@@ -70,19 +71,22 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
     ...onlineQuizzes.map((q) => {
       const attempt = q.attempts[0];
       const released = q.resultsReleasedAt !== null;
-      const status = studentAttemptStatus(attempt?.status ?? null, released);
+      // The score shows once graded, no release needed (spec "What students see").
+      // Task 8 moves this to the best graded attempt; today it reads the latest.
+      const stage = studentQuizStage(attempt ?? null, attempt?.status === "GRADED", released);
+      const scored = stage === "graded" || stage === "answers";
       return {
         quizId: q.id,
         title: q.title,
         kind: "ONLINE" as const,
         maxScore: q.maxScore,
-        // Only a GRADED attempt has a score to show (R37), once released.
-        score: status === "GRADED" ? (attempt?.totalScore ?? null) : null,
+        // Only a GRADED attempt has a score to show (R37).
+        score: scored ? toScore(attempt?.totalScore ?? null) : null,
         notes: null,
-        gradedAt: status === "GRADED" ? (attempt?.gradedAt ?? null) : null,
+        gradedAt: scored ? (attempt?.gradedAt ?? null) : null,
         sessionTitle: q.session?.title ?? null,
         sessionDate: q.session?.startsAt ?? null,
-        attemptStatus: status,
+        attemptStatus: attempt?.status ?? null,
         resultsReleased: released,
       };
     }),

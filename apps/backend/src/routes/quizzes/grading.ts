@@ -13,6 +13,7 @@ import {
   reopenAttemptRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizGraded } from "../../lib/quizzes/notify";
+import { newShuffleSeed } from "../../lib/quizzes/shuffle";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
@@ -316,6 +317,8 @@ export async function reopenAttempt(req: Request, res: Response) {
       studentUserId: parsed.studentUserId,
       // R81: a NEW attempt; the previous one and its answers stay intact.
       attemptNumber: latest.attemptNumber + 1,
+      // A retake gets its own shuffle.
+      shuffleSeed: newShuffleSeed(),
     },
     select: { id: true, attemptNumber: true },
   });

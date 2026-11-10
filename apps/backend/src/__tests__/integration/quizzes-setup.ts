@@ -187,3 +187,44 @@ export async function buildPublishedQuizIn(
   });
   return { quizId: quiz.id, mcqId: choice.id, essayId, questionIds };
 }
+
+/**
+ * Moves the student's latest attempt straight to SUBMITTED or GRADED, as the
+ * submit and marking paths would leave it, without going through them. The
+ * student-read suites test what each stage shows, not how it is reached.
+ */
+export async function setLatestAttempt(
+  quizId: number,
+  studentUserId: number,
+  data: { status: "SUBMITTED" | "GRADED"; totalScore?: number },
+): Promise<number> {
+  const latest = await db.quizAttempt.findFirstOrThrow({
+    where: { quizId, studentUserId },
+    orderBy: { attemptNumber: "desc" },
+    select: { id: true },
+  });
+  const now = new Date();
+  const score = data.totalScore ?? 0;
+  await db.quizAttempt.update({
+    where: { id: latest.id },
+    data:
+      data.status === "GRADED"
+        ? { status: "GRADED", submittedAt: now, autoScore: score, manualScore: 0, totalScore: score, gradedAt: now }
+        : { status: "SUBMITTED", submittedAt: now },
+  });
+  return latest.id;
+}
+
+/** Stores a pick of the option labelled `label`, marked as given, and returns the option id. */
+export async function pickOption(
+  attemptId: number,
+  questionId: number,
+  label: string,
+  mark: { isCorrect: boolean; pointsAwarded: number },
+): Promise<number> {
+  const option = await db.quizOption.findFirstOrThrow({ where: { questionId, label }, select: { id: true } });
+  await db.quizAnswer.create({
+    data: { attemptId, questionId, ...mark, selections: { create: { optionId: option.id } } },
+  });
+  return option.id;
+}

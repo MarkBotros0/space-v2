@@ -1,67 +1,96 @@
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { db } from "../../db/client";
-import { studentAttemptStatus } from "../../lib/quiz-results";
+import type { Prisma } from "../../generated/prisma/client";
+import { toScore } from "../../lib/quizzes/score";
+import { seededOrder } from "../../lib/quizzes/shuffle";
+import { studentQuizStage } from "../../lib/quizzes/student-stage";
+import {
+  REVIEW_ANSWER_SELECT,
+  REVIEW_QUESTION_SELECT,
+  STUDENT_ANSWER_SELECT,
+  STUDENT_QUESTION_SELECT,
+  toStudentQuestion,
+  type StudentAnswerRow,
+  type StudentQuestionRow,
+} from "../../lib/quizzes/student-question";
 
 /**
- * The student projection.
+ * The student projection, in stages (spec "What students see"):
  *
- * NEVER SELECTS correctIndex. v1's equivalent had exactly this property and
- * said so in a comment (quiz-query.ts:373-374) — but it lived in the same file
- * as the two reads that DO return the key, so the protection was one "let's
- * reuse this query" refactor away from evaporating.
+ * - `in_progress`: every question with the student's own answers, in this
+ *   attempt's shuffled order. Loaded with the KEYLESS selects.
+ * - `submitted` / `graded`: no questions at all — no text, no options, no own
+ *   answers — only the score once graded.
+ * - `answers` (released): the best graded attempt's questions with its answers,
+ *   right/wrong per item and the correct answer. The only read that loads the key.
  *
- * What protects it here, stated exactly (no stronger claim):
- * 1. The raw-JSON integration test — the guarantee. It fails on any
- *    path by which the key reaches the response.
- * 2. `toStudentQuestion` below returns an object LITERAL typed as the shared
- *    `QuizQuestionStudent`, so TypeScript's excess-property check rejects a
- *    `correctIndex: q.correctIndex` line added to it. It does NOT catch a
- *    spread (`...q`) or a select widened and passed through some other way —
- *    structural typing allows extra keys on non-literals — which is why (1)
- *    exists and is the one that must never be weakened.
- * The loader's return type is `StudentQuizDetailRow`: the shared wire type
- * with its two timestamps as `Date` (the backend hands Dates to res.json()).
+ * What protects the key, stated exactly: (1) the raw-JSON integration tests,
+ * the guarantee; (2) no pre-release path selects `isCorrect`, `matchId` or
+ * `expected` (see lib/quizzes/student-question.ts); (3) `toStudentQuestion`
+ * reads nothing of the key unless asked for a review, and refuses a review
+ * from a keyless row. The loader's return type is the shared wire type with
+ * its two timestamps as `Date` (the backend hands Dates to res.json()).
  */
 type StudentQuizDetailRow = Omit<StudentQuizDetail, "submittedAt" | "gradedAt"> & {
   submittedAt: Date | null;
   gradedAt: Date | null;
 };
 
-interface StudentQuestionSource {
+type AttemptRow = {
   id: number;
-  order: number;
-  type: "MCQ" | "ESSAY";
-  prompt: string;
-  points: number;
-  options: string[];
-}
-interface StudentAnswerSource {
-  selectedIndex: number | null;
-  text: string | null;
-  isCorrect: boolean | null;
-  pointsAwarded: number | null;
+  attemptNumber: number;
+  status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
+  totalScore: Prisma.Decimal | null;
+  shuffleSeed: number;
+  submittedAt: Date | null;
+  gradedAt: Date | null;
+};
+
+/** Highest total among GRADED attempts; a tie goes to the later attempt. Task 8 moves this to best-attempt.ts. */
+function bestGradedOf(attempts: AttemptRow[]): AttemptRow | null {
+  let best: AttemptRow | null = null;
+  for (const a of attempts) {
+    if (a.status !== "GRADED") continue;
+    const score = toScore(a.totalScore) ?? 0;
+    const bestScore = best ? (toScore(best.totalScore) ?? 0) : -Infinity;
+    if (!best || score > bestScore || (score === bestScore && a.attemptNumber > best.attemptNumber)) best = a;
+  }
+  return best;
 }
 
-function toStudentQuestion(
-  q: StudentQuestionSource,
-  a: StudentAnswerSource | undefined,
-  released: boolean,
-): QuizQuestionStudent {
-  return {
-    id: q.id,
-    order: q.order,
-    type: q.type,
-    prompt: q.prompt,
-    points: q.points,
-    options: q.options,
-    selectedIndex: a?.selectedIndex ?? null,
-    text: a?.text ?? null,
-    // Null until submit (R52/R54), so nothing leaks mid-attempt, and until
-    // the results are released, so nothing leaks to whoever takes it later.
-    isCorrect: released ? (a?.isCorrect ?? null) : null,
-    pointsAwarded: released ? (a?.pointsAwarded ?? null) : null,
-  };
+/** Question order for an attempt: shuffled by its seed when the quiz says so, else the author's. */
+function orderFor<Q extends { id: number; order: number }>(questions: Q[], shuffle: boolean, seed: number): Q[] {
+  return shuffle ? seededOrder(questions, seed, 0) : [...questions].sort((a, b) => a.order - b.order);
+}
+
+function project(
+  questions: StudentQuestionRow[],
+  answers: (StudentAnswerRow & { questionId: number })[],
+  opts: { shuffle: boolean; seed: number; withReview: boolean },
+): QuizQuestionStudent[] {
+  const byQuestion = new Map(answers.map((a) => [a.questionId, a]));
+  return orderFor(questions, opts.shuffle, opts.seed).map((q) =>
+    toStudentQuestion(q, byQuestion.get(q.id), { seed: opts.seed, withReview: opts.withReview }),
+  );
+}
+
+/** The open attempt's questions, keyless. */
+async function inProgressQuestions(quizId: number, attempt: AttemptRow, shuffle: boolean) {
+  const [questions, answers] = await Promise.all([
+    db.quizQuestion.findMany({ where: { quizId }, select: STUDENT_QUESTION_SELECT }),
+    db.quizAnswer.findMany({ where: { attemptId: attempt.id }, select: STUDENT_ANSWER_SELECT }),
+  ]);
+  return project(questions, answers, { shuffle, seed: attempt.shuffleSeed, withReview: false });
+}
+
+/** The best graded attempt's questions with the key and the marks. Only once answers are released. */
+async function reviewQuestions(quizId: number, attempt: AttemptRow, shuffle: boolean) {
+  const [questions, answers] = await Promise.all([
+    db.quizQuestion.findMany({ where: { quizId }, select: REVIEW_QUESTION_SELECT }),
+    db.quizAnswer.findMany({ where: { attemptId: attempt.id }, select: REVIEW_ANSWER_SELECT }),
+  ]);
+  return project(questions, answers, { shuffle, seed: attempt.shuffleSeed, withReview: true });
 }
 
 export async function loadStudentQuizDetail(
@@ -78,27 +107,16 @@ export async function loadStudentQuizDetail(
       seasonId: true,
       maxScore: true,
       publishedAt: true,
+      shuffleQuestions: true,
+      // "Answers released" since the quiz-types plan; the column keeps its name.
       resultsReleasedAt: true,
       session: { select: { title: true } },
-      questions: {
-        orderBy: { order: "asc" },
-        select: {
-          id: true,
-          order: true,
-          type: true,
-          prompt: true,
-          points: true,
-          options: true,
-          // correctIndex is absent on purpose. Do not add it "for the review
-          // screen" — the student's own isCorrect/pointsAwarded is the review.
-        },
-      },
     },
   });
   // R32: a non-ONLINE or unpublished quiz simply does not exist for a student.
   if (!quiz || quiz.kind !== "ONLINE" || quiz.publishedAt === null) return null;
 
-  const attempt = await db.quizAttempt.findFirst({
+  const attempts: AttemptRow[] = await db.quizAttempt.findMany({
     where: { quizId, studentUserId },
     orderBy: { attemptNumber: "desc" },
     select: {
@@ -106,23 +124,19 @@ export async function loadStudentQuizDetail(
       attemptNumber: true,
       status: true,
       totalScore: true,
+      shuffleSeed: true,
       submittedAt: true,
       gradedAt: true,
-      answers: {
-        select: {
-          questionId: true,
-          selectedIndex: true,
-          text: true,
-          isCorrect: true,
-          pointsAwarded: true,
-        },
-      },
     },
   });
-  const answerByQuestion = new Map((attempt?.answers ?? []).map((a) => [a.questionId, a]));
-  const released = quiz.resultsReleasedAt !== null;
-  const status = studentAttemptStatus(attempt?.status ?? null, released);
-  const graded = status === "GRADED";
+  const latest = attempts[0] ?? null;
+  const best = bestGradedOf(attempts);
+  const answersReleased = quiz.resultsReleasedAt !== null;
+  const stage = studentQuizStage(latest, best !== null, answersReleased);
+
+  let questions: QuizQuestionStudent[] = [];
+  if (stage === "in_progress" && latest) questions = await inProgressQuestions(quizId, latest, quiz.shuffleQuestions);
+  if (stage === "answers" && best) questions = await reviewQuestions(quizId, best, quiz.shuffleQuestions);
 
   return {
     id: quiz.id,
@@ -131,16 +145,24 @@ export async function loadStudentQuizDetail(
     seasonId: quiz.seasonId,
     maxScore: quiz.maxScore,
     sessionTitle: quiz.session?.title ?? null,
-    attemptId: attempt?.id ?? null,
-    attemptNumber: attempt?.attemptNumber ?? 0,
-    status,
-    // autoScore/manualScore deliberately absent: v1 sent both and rendered
-    // neither. totalScore is the only score a student is shown.
-    totalScore: graded ? (attempt?.totalScore ?? null) : null,
-    submittedAt: attempt?.submittedAt ?? null,
-    gradedAt: graded ? (attempt?.gradedAt ?? null) : null,
-    questions: quiz.questions.map((q) => toStudentQuestion(q, answerByQuestion.get(q.id), released)),
+    ...attemptFields(latest, best),
+    stage,
+    questions,
     readOnly,
-    resultsReleased: released,
+    answersReleased,
+  };
+}
+
+/** The latest attempt's place, and the best graded attempt's score. */
+function attemptFields(latest: AttemptRow | null, best: AttemptRow | null) {
+  return {
+    attemptId: latest?.id ?? null,
+    attemptNumber: latest?.attemptNumber ?? 0,
+    status: latest?.status ?? null,
+    // autoScore/manualScore deliberately absent: v1 sent both and rendered
+    // neither. totalScore is the only score a student is shown — the best graded one.
+    totalScore: best ? toScore(best.totalScore) : null,
+    submittedAt: latest?.submittedAt ?? null,
+    gradedAt: best?.gradedAt ?? null,
   };
 }
