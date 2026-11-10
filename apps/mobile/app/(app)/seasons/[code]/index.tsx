@@ -1,38 +1,20 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useRouter } from "expo-router";
-import {
-  Award,
-  CalendarDays,
-  ClipboardList,
-  Copy,
-  FileQuestion,
-  Flag,
-  Pencil,
-  type LucideIcon,
-} from "lucide-react-native";
+import { Copy, Pencil } from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
-import { EditSeason } from "../../../../src/components/season/EditSeason";
-import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
+import { QueryGate, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../../src/design/lib/icon";
-import { NextStepCard } from "../../../../src/design/seasons/next-step-card";
-import { PeopleCard, type PeopleCardAdmins } from "../../../../src/design/seasons/people-card";
-import { SeasonDetailView, type SeasonAction } from "../../../../src/design/seasons/season-detail";
-import { SeasonNeeds } from "../../../../src/screens/season/season-needs";
-import {
-  seasonOverviewModel,
-  type OverviewNextStepKey,
-  type OverviewTileKey,
-} from "../../../../src/screens/season/overview-model";
 import { phoneDayKey } from "../../../../src/design/seasons/season-timeline";
 import { Button } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonRoster } from "../../../../src/hooks/use-group-admin";
 import { useSeasonAdmins } from "../../../../src/hooks/use-season-admins";
 import { useSeasonPeople } from "../../../../src/hooks/use-season-people";
-import { seasonSuggestion } from "../../../../src/screens/season-people/source";
 import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
+import { SeasonOverview } from "../../../../src/screens/season/season-overview";
+import { seasonSuggestion } from "../../../../src/screens/season-people/source";
 import { useSessionStore, useIsSuper } from "../../../../src/store/session";
 
 iconWithClassName(Pencil, Copy);
@@ -74,116 +56,35 @@ export default function SeasonDetailScreen() {
     if (suggestFor) void candidates.refetch();
   };
 
-  let body: ReactNode;
-  if (code === null) {
-    body = <SeasonLinkNotFound />;
-  } else if (detail.isPending) {
-    body = <RouteSkeleton />;
-  } else if (detail.isError) {
-    body = <RouteError onRetry={() => void detail.refetch()} />;
-  } else {
-    const s = detail.data;
-    const today = orgToday ?? phoneDayKey();
-    const model = seasonOverviewModel(s, { isSuper, today });
-    const { finished, canAdminister, manage } = model;
-    const params = { code: s.code };
-    const seasonParam = { seasonId: String(s.id) };
-    const go = {
-      people: () => router.push({ pathname: "/seasons/[code]/people", params }),
-      invite: () => router.push({ pathname: "/seasons/[code]/invite", params }),
-      start: () => router.push({ pathname: "/seasons/[code]/start", params }),
-      end: () => router.push({ pathname: "/seasons/[code]/end", params }),
-    };
-    const tileTargets: Record<OverviewTileKey, { icon: LucideIcon; onPress: () => void }> = {
-      sessions: { icon: CalendarDays, onPress: () => router.push({ pathname: "/seasons/[code]/sessions", params }) },
-      assignments: {
-        icon: ClipboardList,
-        onPress: () => router.push({ pathname: "/assignments", params: seasonParam }),
-      },
-      quizzes: { icon: FileQuestion, onPress: () => router.push({ pathname: "/quizzes", params: seasonParam }) },
-      end: { icon: Flag, onPress: go.end },
-      results: { icon: Award, onPress: () => router.push({ pathname: "/seasons/[code]/results", params }) },
-    };
-    const actions: SeasonAction[] = model.tiles.map((tile) => ({ ...tile, ...tileTargets[tile.key] }));
-    const nextStepActions: Record<OverviewNextStepKey, () => void> = {
-      start: go.start,
-      duplicate: () => setDuplicating(true),
-      end: go.end,
-    };
-    const step = model.nextStep;
-    const nextStep = step ? (
-      <NextStepCard
-        tone={step.tone}
-        title={step.title}
-        body={step.body}
-        action={{ label: step.actionLabel, onPress: nextStepActions[step.key] }}
-      />
-    ) : undefined;
-
-    let adminState: PeopleCardAdmins | undefined;
-    if (isSuper) {
-      if (admins.isPending) adminState = { state: "loading" };
-      else if (admins.isError) adminState = { state: "error" };
-      else adminState = { state: "ready", names: admins.data.map((a) => a.name) };
-    }
-
-    const suggested = suggestFor && candidates.data ? seasonSuggestion(candidates.data) : null;
-    const people = (
-      <PeopleCard
-        seasonTitle={s.title}
-        onSelectFromCommunity={canAdminister ? go.people : undefined}
-        onInviteNew={canAdminister ? go.invite : undefined}
-        suggestion={
-          suggested
-            ? {
-                title: suggested.source.title,
-                count: suggested.count,
-                onAdd: () =>
-                  router.push({
-                    pathname: "/seasons/[code]/people",
-                    params: { code: s.code, from: String(suggested.source.id) },
-                  }),
-              }
-            : null
-        }
-        groups={s.groups}
-        studentCount={s.studentCount}
-        admins={adminState}
-        roster={roster.data}
-        onManageAdmins={
-          isSuper && !finished ? () => router.push({ pathname: "/seasons/[code]/admins", params }) : undefined
-        }
-        onOpenGroup={(id) => router.push({ pathname: "/group/[id]", params: { id: String(id) } })}
-        onNewGroup={
-          canAdminister ? () => router.push({ pathname: "/group/new", params: { seasonId: String(s.id) } }) : undefined
-        }
-        onMoveStudents={canAdminister ? () => router.push({ pathname: "/seasons/[code]/roster", params }) : undefined}
-      />
+  const body =
+    code === null ? (
+      <SeasonLinkNotFound />
+    ) : (
+      <QueryGate query={detail}>
+        {(s) => (
+          <>
+            <SeasonOverview
+              season={s}
+              today={orgToday ?? phoneDayKey()}
+              isSuper={isSuper}
+              isAdmin={isAdmin}
+              admins={admins}
+              roster={roster.data}
+              suggested={suggestFor && candidates.data ? seasonSuggestion(candidates.data) : null}
+              onDuplicate={() => setDuplicating(true)}
+            />
+            {isSuper ? (
+              <DuplicateSeasonDialog
+                season={s}
+                open={duplicating}
+                onClose={() => setDuplicating(false)}
+                onDuplicated={(newCode) => router.push({ pathname: "/seasons/[code]", params: { code: newCode } })}
+              />
+            ) : null}
+          </>
+        )}
+      </QueryGate>
     );
-
-    body = (
-      <>
-        <SeasonDetailView
-          season={s}
-          today={today}
-          actions={actions}
-          nextStep={nextStep}
-          // Owner 2026-11-07: Super finds a season's work here, not on Home.
-          attention={s.status === "ACTIVE" && manage ? <SeasonNeeds seasonId={s.id} /> : undefined}
-          people={people}
-          extra={isAdmin && canAdminister ? <EditSeason season={s} /> : undefined}
-        />
-        {isSuper ? (
-          <DuplicateSeasonDialog
-            season={s}
-            open={duplicating}
-            onClose={() => setDuplicating(false)}
-            onDuplicated={(newCode) => router.push({ pathname: "/seasons/[code]", params: { code: newCode } })}
-          />
-        ) : null}
-      </>
-    );
-  }
 
   return (
     <Screen
