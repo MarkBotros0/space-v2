@@ -27,6 +27,7 @@ import { apiClient } from "../lib/api-client";
 import { apiErrorCode, isNotFoundError } from "../lib/api-error";
 import { queryKeys } from "../lib/query-keys";
 import { loadedId } from "../lib/loaded-id";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /** What `useAnnouncement` yields for a post that is gone or was never visible to this reader. */
 interface AnnouncementRemoved {
@@ -35,8 +36,7 @@ interface AnnouncementRemoved {
 
 async function fetchPage(cursor: string | null): Promise<AnnouncementPageResponse> {
   const suffix = cursor === null ? "" : `?cursor=${encodeURIComponent(cursor)}`;
-  const res = await apiClient.get(`/api/v1/announcements${suffix}`);
-  return announcementPageResponseSchema.parse(res.data.data);
+  return apiGet(`/api/v1/announcements${suffix}`, announcementPageResponseSchema);
 }
 
 /** The feed: newest first, cursor-paged by the server. */
@@ -53,10 +53,7 @@ export function useAnnouncementFeed(): UseInfiniteQueryResult<InfiniteData<Annou
 export function useAnnouncementUnread(): UseQueryResult<AnnouncementUnreadResponse> {
   return useQuery({
     queryKey: queryKeys.announcements.unread(),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/announcements/unread");
-      return announcementUnreadResponseSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet("/api/v1/announcements/unread", announcementUnreadResponseSchema),
   });
 }
 
@@ -69,8 +66,8 @@ export function useAnnouncement(id: number | null): UseQueryResult<AnnouncementD
     queryKey: queryKeys.announcements.detail(id),
     queryFn: async (): Promise<AnnouncementDetail | AnnouncementRemoved> => {
       try {
-        const res = await apiClient.get(`/api/v1/announcements/${id}`);
-        return announcementDetailSchema.parse(res.data.data);
+        // Awaited, so a 404 lands in the catch below.
+        return await apiGet(`/api/v1/announcements/${id}`, announcementDetailSchema);
       } catch (err) {
         if (isNotFoundError(err)) return { removed: true };
         throw err;
@@ -84,10 +81,7 @@ export function useAnnouncement(id: number | null): UseQueryResult<AnnouncementD
 export function useAnnouncementTargets(enabled: boolean): UseQueryResult<AnnouncementTargetsResponse> {
   return useQuery({
     queryKey: queryKeys.announcements.targets(),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/announcements/targets");
-      return announcementTargetsResponseSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet("/api/v1/announcements/targets", announcementTargetsResponseSchema),
     enabled,
   });
 }
@@ -113,10 +107,8 @@ export function useMarkAnnouncementRead() {
 export function useCreateAnnouncement() {
   const invalidate = useInvalidateAnnouncements();
   return useMutation({
-    mutationFn: async (body: CreateAnnouncementRequest) => {
-      const res = await apiClient.post("/api/v1/announcements", body);
-      return announcementDetailSchema.parse(res.data.data);
-    },
+    mutationFn: (body: CreateAnnouncementRequest) =>
+      apiSend("post", "/api/v1/announcements", body, announcementDetailSchema),
     onSuccess: invalidate,
   });
 }
@@ -124,10 +116,8 @@ export function useCreateAnnouncement() {
 export function useUpdateAnnouncement(id: number | null) {
   const invalidate = useInvalidateAnnouncements();
   return useMutation({
-    mutationFn: async (body: UpdateAnnouncementRequest) => {
-      const res = await apiClient.patch(`/api/v1/announcements/${loadedId(id)}`, body);
-      return announcementDetailSchema.parse(res.data.data);
-    },
+    mutationFn: (body: UpdateAnnouncementRequest) =>
+      apiSend("patch", `/api/v1/announcements/${loadedId(id)}`, body, announcementDetailSchema),
     onSuccess: invalidate,
   });
 }
@@ -207,10 +197,7 @@ export function useReopenPoll(postId: number) {
 export function usePollVoters(postId: number, enabled: boolean): UseQueryResult<PollVotersResponse> {
   return useQuery({
     queryKey: queryKeys.announcements.voters(postId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/announcements/${postId}/poll/voters`);
-      return pollVotersResponseSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/announcements/${postId}/poll/voters`, pollVotersResponseSchema),
     enabled,
   });
 }

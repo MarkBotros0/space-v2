@@ -17,6 +17,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 const adminListSchema = z.array(videoQuestionAdminSchema);
 
@@ -37,10 +38,8 @@ export function useStudentVideoQuiz(sessionId: number | null, enabled: boolean):
 export function useSubmitVideoAnswer(sessionId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { questionId: number; selectedIndex: number }) => {
-      const res = await apiClient.post(`/api/v1/sessions/${sessionId}/video-quiz/answers`, input);
-      return submitVideoAnswerResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (input: { questionId: number; selectedIndex: number }) =>
+      apiSend("post", `/api/v1/sessions/${sessionId}/video-quiz/answers`, input, submitVideoAnswerResponseSchema),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.videoQuiz.forSession(sessionId) }),
   });
 }
@@ -53,12 +52,15 @@ export function useSubmitVideoAnswer(sessionId: number) {
  */
 export function useSaveVideoProgress(sessionId: number) {
   return useMutation({
-    mutationFn: async (furthestSeconds: number) => {
-      const res = await apiClient.put(`/api/v1/sessions/${sessionId}/video-quiz/progress`, {
-        furthestSeconds,
-      });
-      return videoProgressResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (furthestSeconds: number) =>
+      apiSend(
+        "put",
+        `/api/v1/sessions/${sessionId}/video-quiz/progress`,
+        {
+          furthestSeconds,
+        },
+        videoProgressResponseSchema,
+      ),
   });
 }
 
@@ -82,26 +84,20 @@ export function useVideoQuestionWrites(sessionId: number) {
   };
 
   const create = useMutation({
-    mutationFn: async (input: VideoQuestionInput) => {
-      const res = await apiClient.post(`/api/v1/sessions/${sessionId}/video-questions`, input);
-      return createVideoQuestionResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (input: VideoQuestionInput) =>
+      apiSend("post", `/api/v1/sessions/${sessionId}/video-questions`, input, createVideoQuestionResponseSchema),
     onSuccess: invalidate,
   });
 
   const update = useMutation({
-    mutationFn: async (vars: { questionId: number; input: VideoQuestionInput }) => {
-      const res = await apiClient.patch(`/api/v1/video-questions/${vars.questionId}`, vars.input);
-      return updateVideoQuestionResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (vars: { questionId: number; input: VideoQuestionInput }) =>
+      apiSend("patch", `/api/v1/video-questions/${vars.questionId}`, vars.input, updateVideoQuestionResponseSchema),
     onSuccess: invalidate,
   });
 
   const remove = useMutation({
-    mutationFn: async (questionId: number) => {
-      const res = await apiClient.delete(`/api/v1/video-questions/${questionId}`);
-      return deleteVideoQuestionResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (questionId: number) =>
+      apiSend("delete", `/api/v1/video-questions/${questionId}`, undefined, deleteVideoQuestionResponseSchema),
     onSuccess: invalidate,
   });
 
@@ -111,10 +107,7 @@ export function useVideoQuestionWrites(sessionId: number) {
 export function useVideoQuizResults(sessionId: number | null, enabled: boolean): UseQueryResult<VideoQuizResults> {
   return useQuery({
     queryKey: queryKeys.videoQuiz.results(sessionId ?? -1),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/sessions/${sessionId}/video-quiz/results`);
-      return videoQuizResultsSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/sessions/${sessionId}/video-quiz/results`, videoQuizResultsSchema),
     enabled: enabled && sessionId !== null,
   });
 }

@@ -14,9 +14,9 @@ import {
   type ForumView,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /**
  * The thread, one page at a time. The first page carries `own`, `locked` and
@@ -32,8 +32,7 @@ export function useForumThread(
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       const base = `/api/v1/assignments/${assignmentId}/forum`;
-      const res = await apiClient.get(pageParam === null ? base : `${base}?cursor=${encodeURIComponent(pageParam)}`);
-      return forumViewSchema.parse(res.data.data);
+      return apiGet(pageParam === null ? base : `${base}?cursor=${encodeURIComponent(pageParam)}`, forumViewSchema);
     },
     getNextPageParam: (last) => last.nextCursor,
     // Gated on the assignment being FORUM: a STANDARD assignment has no thread
@@ -54,8 +53,7 @@ export function useForumComments(assignmentId: number, postPublicId: string, ena
     initialPageParam: null as number | null,
     queryFn: async ({ pageParam }) => {
       const base = `/api/v1/assignments/${assignmentId}/forum/posts/${postPublicId}/comments`;
-      const res = await apiClient.get(pageParam === null ? base : `${base}?cursor=${pageParam}`);
-      return forumCommentsPageSchema.parse(res.data.data);
+      return apiGet(pageParam === null ? base : `${base}?cursor=${pageParam}`, forumCommentsPageSchema);
     },
     getNextPageParam: (last) => last.nextCursor,
     enabled,
@@ -89,12 +87,15 @@ export function useSubmitForumResponse(assignmentId: number) {
     meta: DASHBOARD_META,
     // Offline, fail now into the form's error rather than sit on "Posting…".
     networkMode: "always",
-    mutationFn: async (text: string) => {
-      const res = await apiClient.put(`/api/v1/assignments/${assignmentId}/forum/response`, {
-        text,
-      });
-      return forumOwnResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (text: string) =>
+      apiSend(
+        "put",
+        `/api/v1/assignments/${assignmentId}/forum/response`,
+        {
+          text,
+        },
+        forumOwnResponseSchema,
+      ),
     onSuccess: invalidate,
   });
 }
@@ -102,13 +103,13 @@ export function useSubmitForumResponse(assignmentId: number) {
 export function usePostComment(assignmentId: number) {
   const invalidate = useInvalidateThread(assignmentId);
   return useMutation({
-    mutationFn: async (vars: { postPublicId: string; body: string }) => {
-      const res = await apiClient.post(
+    mutationFn: (vars: { postPublicId: string; body: string }) =>
+      apiSend(
+        "post",
         `/api/v1/assignments/${assignmentId}/forum/posts/${vars.postPublicId}/comments`,
         { body: vars.body },
-      );
-      return addForumCommentResponseSchema.parse(res.data.data);
-    },
+        addForumCommentResponseSchema,
+      ),
     onSuccess: invalidate,
   });
 }
@@ -116,10 +117,8 @@ export function usePostComment(assignmentId: number) {
 export function useDeleteComment(assignmentId: number) {
   const invalidate = useInvalidateThread(assignmentId);
   return useMutation({
-    mutationFn: async (commentId: number) => {
-      const res = await apiClient.delete(`/api/v1/forum/comments/${commentId}`);
-      return deleteForumCommentResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (commentId: number) =>
+      apiSend("delete", `/api/v1/forum/comments/${commentId}`, undefined, deleteForumCommentResponseSchema),
     onSuccess: invalidate,
   });
 }

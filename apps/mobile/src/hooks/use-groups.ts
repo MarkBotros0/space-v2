@@ -11,6 +11,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 import { useSeasons } from "./use-seasons";
+import { apiGet } from "../lib/api-request";
 
 const groupListSchema = z.array(groupListItemSchema);
 
@@ -33,8 +34,7 @@ export function useMyGroups(enabled: boolean): UseQueryResult<GroupListItem[]> {
 }
 
 async function fetchGroupDetail(id: number): Promise<GroupDetail> {
-  const res = await apiClient.get(`/api/v1/groups/${id}`);
-  return groupDetailSchema.parse(res.data.data);
+  return apiGet(`/api/v1/groups/${id}`, groupDetailSchema);
 }
 
 export function useGroupDetail(id: number | null): UseQueryResult<GroupDetail> {

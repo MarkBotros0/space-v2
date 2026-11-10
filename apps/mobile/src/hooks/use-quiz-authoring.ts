@@ -12,9 +12,9 @@ import {
   type QuizQuestionInput,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { apiSend } from "../lib/api-request";
 
 /** What the create form sends — the request schema's input side. */
 export type CreateQuizInput = z.input<typeof createQuizRequestSchema>;
@@ -41,10 +41,7 @@ export function useCreateQuiz() {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (body: CreateQuizInput) => {
-      const res = await apiClient.post("/api/v1/quizzes", body);
-      return quizCreatedResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: CreateQuizInput) => apiSend("post", "/api/v1/quizzes", body, quizCreatedResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -52,10 +49,8 @@ export function useCreateQuiz() {
 export function useUpdateQuiz(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
-    mutationFn: async (body: { title?: string; maxScore?: number }) => {
-      const res = await apiClient.patch(`/api/v1/quizzes/${id}`, body);
-      return quizUpdatedResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: { title?: string; maxScore?: number }) =>
+      apiSend("patch", `/api/v1/quizzes/${id}`, body, quizUpdatedResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -63,10 +58,8 @@ export function useUpdateQuiz(id: number) {
 export function useAddQuestion(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
-    mutationFn: async (body: QuizQuestionInput) => {
-      const res = await apiClient.post(`/api/v1/quizzes/${id}/questions`, body);
-      return quizQuestionAuthoringSchema.parse(res.data.data);
-    },
+    mutationFn: (body: QuizQuestionInput) =>
+      apiSend("post", `/api/v1/quizzes/${id}/questions`, body, quizQuestionAuthoringSchema),
     onSuccess: invalidate,
   });
 }
@@ -74,10 +67,8 @@ export function useAddQuestion(id: number) {
 export function useUpdateQuestion(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
-    mutationFn: async (input: { questionId: number; body: QuizQuestionInput }) => {
-      const res = await apiClient.patch(`/api/v1/quizzes/${id}/questions/${input.questionId}`, input.body);
-      return quizQuestionAuthoringSchema.parse(res.data.data);
-    },
+    mutationFn: (input: { questionId: number; body: QuizQuestionInput }) =>
+      apiSend("patch", `/api/v1/quizzes/${id}/questions/${input.questionId}`, input.body, quizQuestionAuthoringSchema),
     onSuccess: invalidate,
   });
 }
@@ -85,10 +76,8 @@ export function useUpdateQuestion(id: number) {
 export function useDeleteQuestion(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
-    mutationFn: async (questionId: number) => {
-      const res = await apiClient.delete(`/api/v1/quizzes/${id}/questions/${questionId}`);
-      return quizQuestionDeletedResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (questionId: number) =>
+      apiSend("delete", `/api/v1/quizzes/${id}/questions/${questionId}`, undefined, quizQuestionDeletedResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -97,10 +86,8 @@ export function useDeleteQuestion(id: number) {
 export function useReorderQuestions(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
-    mutationFn: async (questionIds: number[]) => {
-      const res = await apiClient.put(`/api/v1/quizzes/${id}/questions/order`, { questionIds });
-      return reorderQuestionsResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (questionIds: number[]) =>
+      apiSend("put", `/api/v1/quizzes/${id}/questions/order`, { questionIds }, reorderQuestionsResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -110,10 +97,8 @@ export function usePublishQuiz(id: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (publish: boolean) => {
-      const res = await apiClient.post(`/api/v1/quizzes/${id}/publish`, { publish });
-      return publishQuizResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (publish: boolean) =>
+      apiSend("post", `/api/v1/quizzes/${id}/publish`, { publish }, publishQuizResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -126,10 +111,7 @@ export function useReleaseQuizResults(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
     meta: DASHBOARD_META,
-    mutationFn: async () => {
-      const res = await apiClient.post(`/api/v1/quizzes/${id}/release`);
-      return releaseQuizResultsResponseSchema.parse(res.data.data);
-    },
+    mutationFn: () => apiSend("post", `/api/v1/quizzes/${id}/release`, undefined, releaseQuizResultsResponseSchema),
     onSuccess: invalidate,
   });
 }

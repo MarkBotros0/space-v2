@@ -19,6 +19,7 @@ import {
 import { apiClient } from "../../lib/api-client";
 import { DASHBOARD_META } from "../../lib/dashboard-invalidation";
 import { queryKeys } from "../../lib/query-keys";
+import { apiSend } from "../../lib/api-request";
 
 /** POST /students — the server mints and mails the invite (Plan 10 Decision 1). */
 export function useCreateStudent(): UseMutationResult<CreateStudentResponse, Error, CreateStudentBody> {
@@ -26,10 +27,7 @@ export function useCreateStudent(): UseMutationResult<CreateStudentResponse, Err
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (body) => {
-      const res = await apiClient.post("/api/v1/students", body);
-      return createStudentResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body) => apiSend("post", "/api/v1/students", body, createStudentResponseSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
@@ -44,10 +42,7 @@ export function useUpdateStudent(): UseMutationResult<
 > {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, body }) => {
-      const res = await apiClient.patch(`/api/v1/students/${id}`, body);
-      return updateStudentResponseSchema.parse(res.data.data);
-    },
+    mutationFn: ({ id, body }) => apiSend("patch", `/api/v1/students/${id}`, body, updateStudentResponseSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
     },
@@ -64,11 +59,15 @@ export function useGraduateStudent(): UseMutationResult<
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
     mutationFn: async ({ id, graduationYear, override, overrideReason }) => {
-      const res = await apiClient.post(`/api/v1/students/${id}/graduate`, {
-        graduationYear,
-        ...(override ? { override: true, overrideReason } : {}),
-      });
-      return graduateStudentResponseSchema.parse(res.data.data);
+      return apiSend(
+        "post",
+        `/api/v1/students/${id}/graduate`,
+        {
+          graduationYear,
+          ...(override ? { override: true, overrideReason } : {}),
+        },
+        graduateStudentResponseSchema,
+      );
     },
     onSuccess: () => {
       // Graduation moves the student from the active list to alumni (R62).
@@ -82,10 +81,7 @@ export function useDeleteStudent(): UseMutationResult<StudentDeletedResponse, Er
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async ({ id }) => {
-      const res = await apiClient.delete(`/api/v1/students/${id}`);
-      return studentDeletedResponseSchema.parse(res.data.data);
-    },
+    mutationFn: ({ id }) => apiSend("delete", `/api/v1/students/${id}`, undefined, studentDeletedResponseSchema),
     onSuccess: (_data, { id }) => {
       // The detail now 404s — drop it rather than refetch it.
       queryClient.removeQueries({ queryKey: queryKeys.students.detail(id) });
@@ -111,13 +107,16 @@ export function useDropEnrollment(): UseMutationResult<
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async ({ studentId, seasonId, dropReason }) => {
-      const res = await apiClient.patch(`/api/v1/students/${studentId}/enrollments/${seasonId}`, {
-        status: "WITHDRAWN",
-        dropReason,
-      });
-      return enrollmentTransitionResponseSchema.parse(res.data.data);
-    },
+    mutationFn: ({ studentId, seasonId, dropReason }) =>
+      apiSend(
+        "patch",
+        `/api/v1/students/${studentId}/enrollments/${seasonId}`,
+        {
+          status: "WITHDRAWN",
+          dropReason,
+        },
+        enrollmentTransitionResponseSchema,
+      ),
     onSuccess: (_data, { seasonId }) => invalidateSeatChange(queryClient, seasonId),
   });
 }
@@ -153,10 +152,7 @@ export function useRestoreEnrollment(): UseMutationResult<
 export function useResendStudentInvite(): UseMutationResult<InviteState, Error, { id: number }> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }) => {
-      const res = await apiClient.post(`/api/v1/students/${id}/invite`);
-      return inviteStateSchema.parse(res.data.data);
-    },
+    mutationFn: ({ id }) => apiSend("post", `/api/v1/students/${id}/invite`, undefined, inviteStateSchema),
     // Settled: a refusal (already_activated) means the cached state is stale too.
     onSettled: (_data, _err, { id }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.students.detail(id) });

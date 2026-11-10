@@ -18,6 +18,7 @@ import type { z } from "zod";
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet } from "../lib/api-request";
 
 type AuthoredNotePage = z.infer<typeof authoredNoteListResponseSchema>;
 
@@ -45,10 +46,7 @@ export function useAuthoredNotes(enabled: boolean): UseInfiniteQueryResult<Infin
   return useInfiniteQuery({
     queryKey: queryKeys.notes.authored(),
     initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      const res = await apiClient.get(withCursor("/api/v1/me/notes", pageParam));
-      return authoredNoteListResponseSchema.parse(res.data.data);
-    },
+    queryFn: ({ pageParam }) => apiGet(withCursor("/api/v1/me/notes", pageParam), authoredNoteListResponseSchema),
     getNextPageParam: (last) => last.nextCursor,
     enabled,
   });
@@ -68,8 +66,7 @@ export function useVisibleNotePages(
     queryFn: async ({ pageParam }) => {
       const path =
         withinDays === null ? "/api/v1/me/visible-notes" : `/api/v1/me/visible-notes?withinDays=${withinDays}`;
-      const res = await apiClient.get(withCursor(path, pageParam));
-      return authoredNoteListResponseSchema.parse(res.data.data);
+      return apiGet(withCursor(path, pageParam), authoredNoteListResponseSchema);
     },
     getNextPageParam: (last) => last.nextCursor,
     enabled,
@@ -101,10 +98,8 @@ export function useStudentNotes(
   return useInfiniteQuery({
     queryKey: queryKeys.notes.byStudent(studentId),
     initialPageParam: null as string | null,
-    queryFn: async ({ pageParam }) => {
-      const res = await apiClient.get(withCursor(`/api/v1/students/${studentId}/notes`, pageParam));
-      return noteListResponseSchema.parse(res.data.data);
-    },
+    queryFn: ({ pageParam }) =>
+      apiGet(withCursor(`/api/v1/students/${studentId}/notes`, pageParam), noteListResponseSchema),
     getNextPageParam: (last) => last.nextCursor,
     enabled: enabled && studentId !== null,
   });

@@ -1,9 +1,9 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { studentEngagementDetailSchema, type StudentEngagementDetail } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { apiErrorCode, apiErrorStatus } from "../lib/api-error";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet } from "../lib/api-request";
 
 /**
  * True only for the API's `404 no_season` — "this student has nothing to
@@ -33,10 +33,7 @@ export function useStudentEngagement(
 ): UseQueryResult<StudentEngagementDetail> {
   return useQuery({
     queryKey: queryKeys.engagement.student(studentId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/students/${studentId}/engagement`);
-      return studentEngagementDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/students/${studentId}/engagement`, studentEngagementDetailSchema),
     enabled: enabled && studentId !== null,
     // A 404 means "no season to score", which is a real answer, not a
     // transient failure — retrying it three times just delays the message.

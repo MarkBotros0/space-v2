@@ -16,6 +16,7 @@ import {
 import { apiClient } from "../../lib/api-client";
 import { queryKeys } from "../../lib/query-keys";
 import { useSessionStore } from "../../store/session";
+import { apiGet } from "../../lib/api-request";
 
 export type StudentDetail = StudentDetailPublic | StudentDetailPrivate | StudentDetailInternal;
 
@@ -60,10 +61,7 @@ export function useStudentAttendanceHistory(
 ): UseQueryResult<StudentAttendanceHistory> {
   return useQuery({
     queryKey: queryKeys.students.attendance(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/students/${id}/attendance`);
-      return studentAttendanceHistorySchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/students/${id}/attendance`, studentAttendanceHistorySchema),
     enabled: enabled && id !== null,
   });
 }
@@ -72,10 +70,7 @@ export function useStudentAttendanceHistory(
 export function useStudentSubmissions(id: number | null, enabled: boolean): UseQueryResult<StudentSubmissions> {
   return useQuery({
     queryKey: queryKeys.students.submissions(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/students/${id}/submissions`);
-      return studentSubmissionsSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/students/${id}/submissions`, studentSubmissionsSchema),
     enabled: enabled && id !== null,
   });
 }

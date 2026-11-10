@@ -8,6 +8,7 @@ import {
 
 import { apiClient } from "../../lib/api-client";
 import { queryKeys } from "../../lib/query-keys";
+import { apiGet } from "../../lib/api-request";
 
 /** The API's largest staff-list page (quizListQuerySchema caps `limit` at 100). */
 const QUIZ_LIST_PAGE = 100;
@@ -53,10 +54,7 @@ export function useQuizList(seasonId: number | null): UseQueryResult<QuizListPag
 export function useQuizAuthoringDetail(id: number | null, enabled: boolean): UseQueryResult<QuizAuthoringDetail> {
   return useQuery({
     queryKey: queryKeys.quizzes.staffDetail(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/quizzes/${id}`);
-      return quizAuthoringDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/quizzes/${id}`, quizAuthoringDetailSchema),
     enabled: enabled && id !== null,
   });
 }

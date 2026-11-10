@@ -1,7 +1,7 @@
 import { useMutation, type UseMutationResult } from "@tanstack/react-query";
 import { acceptInviteResponseSchema, type AcceptInviteBody, type AcceptInviteResponse } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
+import { apiSend } from "../lib/api-request";
 
 /**
  * POST /auth/accept-invite. Lives in src/hooks/ and parses the response with
@@ -10,9 +10,6 @@ import { apiClient } from "../lib/api-client";
  */
 export function useAcceptInvite(): UseMutationResult<AcceptInviteResponse, Error, AcceptInviteBody> {
   return useMutation({
-    mutationFn: async (body) => {
-      const res = await apiClient.post("/api/v1/auth/accept-invite", body);
-      return acceptInviteResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body) => apiSend("post", "/api/v1/auth/accept-invite", body, acceptInviteResponseSchema),
   });
 }

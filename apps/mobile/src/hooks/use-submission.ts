@@ -7,9 +7,9 @@ import {
   type SubmissionDetail,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /**
  * PUT /submissions/by-assignment/:id — idempotent create-or-fetch. The server
@@ -24,10 +24,8 @@ export function useEnsureSubmission(assignmentId: number) {
     // Offline, fail now into the screen's own copy rather than pause with the
     // button spinning; see useSaveSubmission.
     networkMode: "always",
-    mutationFn: async () => {
-      const res = await apiClient.put(`/api/v1/submissions/by-assignment/${assignmentId}`);
-      return ensureSubmissionResponseSchema.parse(res.data.data);
-    },
+    mutationFn: () =>
+      apiSend("put", `/api/v1/submissions/by-assignment/${assignmentId}`, undefined, ensureSubmissionResponseSchema),
     onSuccess: () => {
       // The detail's mySubmission went from null to a row, and the lists' PENDING to DRAFT.
       void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.detail(assignmentId) });
@@ -37,8 +35,7 @@ export function useEnsureSubmission(assignmentId: number) {
 }
 
 async function fetchSubmission(publicId: string) {
-  const res = await apiClient.get(`/api/v1/submissions/${publicId}`);
-  return submissionDetailSchema.parse(res.data.data);
+  return apiGet(`/api/v1/submissions/${publicId}`, submissionDetailSchema);
 }
 
 export function useSubmissionDetail(publicId: string | null): UseQueryResult<SubmissionDetail> {
@@ -73,8 +70,7 @@ export function useSaveSubmission(publicId: string, assignmentId: number) {
       // payload byte-for-byte what the test pins.
       const body: { text: string; submit?: boolean } = { text: input.text };
       if (input.submit) body.submit = true;
-      const res = await apiClient.patch(`/api/v1/submissions/${publicId}`, body);
-      return saveSubmissionResponseSchema.parse(res.data.data);
+      return apiSend("patch", `/api/v1/submissions/${publicId}`, body, saveSubmissionResponseSchema);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.submissions.detail(publicId) });
@@ -94,8 +90,7 @@ export function useReviewSubmission(publicId: string) {
         feedback: input.feedback,
       };
       if (input.returnForRevision) body.returnForRevision = true;
-      const res = await apiClient.post(`/api/v1/submissions/${publicId}/review`, body);
-      return reviewSubmissionResponseSchema.parse(res.data.data);
+      return apiSend("post", `/api/v1/submissions/${publicId}/review`, body, reviewSubmissionResponseSchema);
     },
     onSuccess: () => {
       // Read before invalidating: the detail names the student and assignment

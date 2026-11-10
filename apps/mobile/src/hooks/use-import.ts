@@ -23,6 +23,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiSend } from "../lib/api-request";
 
 /** The column schema, so the paste step can explain itself without guessing. */
 export function useImportTemplate(enabled: boolean): UseQueryResult<ImportTemplate> {
@@ -52,20 +53,14 @@ export function useStudentImportPreview(): UseMutationResult<
   { text: string; delimiter: "auto" | "comma" | "tab" }
 > {
   return useMutation({
-    mutationFn: async (input) => {
-      const res = await apiClient.post("/api/v1/imports/students/preview", input);
-      return studentImportPreviewSchema.parse(res.data.data);
-    },
+    mutationFn: (input) => apiSend("post", "/api/v1/imports/students/preview", input, studentImportPreviewSchema),
   });
 }
 
 export function useStudentImportCommit(): UseMutationResult<StudentImportResult, unknown, StudentImportCommitInput> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input) => {
-      const res = await apiClient.post("/api/v1/imports/students/commit", input);
-      return studentImportResultSchema.parse(res.data.data);
-    },
+    mutationFn: (input) => apiSend("post", "/api/v1/imports/students/commit", input, studentImportResultSchema),
     // New users, new enrolments and (via enrolment) group rosters all moved —
     // and with them the season detail's student counts and the dashboards'
     // headcounts.
@@ -85,8 +80,7 @@ export function useGroupImportPreview(
   return useMutation({
     mutationFn: async (input) => {
       if (seasonId === null) throw new Error("No season.");
-      const res = await apiClient.post(`/api/v1/seasons/${seasonId}/imports/groups/preview`, input);
-      return groupImportPreviewSchema.parse(res.data.data);
+      return apiSend("post", `/api/v1/seasons/${seasonId}/imports/groups/preview`, input, groupImportPreviewSchema);
     },
   });
 }
@@ -98,8 +92,7 @@ export function useGroupImportCommit(
   return useMutation({
     mutationFn: async (input) => {
       if (seasonId === null) throw new Error("No season.");
-      const res = await apiClient.post(`/api/v1/seasons/${seasonId}/imports/groups/commit`, input);
-      return groupImportResultSchema.parse(res.data.data);
+      return apiSend("post", `/api/v1/seasons/${seasonId}/imports/groups/commit`, input, groupImportResultSchema);
     },
     // groups.all covers bySeason and roster(seasonId); students carry their group.
     onSuccess: () => {

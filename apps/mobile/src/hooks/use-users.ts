@@ -31,6 +31,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 import { MS_PER_MINUTE } from "../lib/time";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /**
  * What an account write (create, role change, deactivate, reactivate) can
@@ -67,8 +68,7 @@ async function fetchUsersPage(filters: UserListFilters, cursor: number | null): 
   if (filters.status) params.set("status", filters.status);
   if (cursor !== null) params.set("cursor", String(cursor));
   const suffix = params.size > 0 ? `?${params.toString()}` : "";
-  const res = await apiClient.get(`/api/v1/users${suffix}`);
-  return userListResponseSchema.parse(res.data.data);
+  return apiGet(`/api/v1/users${suffix}`, userListResponseSchema);
 }
 
 /**
@@ -96,10 +96,7 @@ export function useUsers(
 export function useSendInvite(): UseMutationResult<InviteState, Error, { userId: number }> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userId }) => {
-      const res = await apiClient.post(`/api/v1/users/${userId}/invite`);
-      return inviteStateSchema.parse(res.data.data);
-    },
+    mutationFn: ({ userId }) => apiSend("post", `/api/v1/users/${userId}/invite`, undefined, inviteStateSchema),
     // Settled, not success: a refusal (already_activated, user_deleted) means
     // the cached status is stale too.
     onSettled: () => {
@@ -111,10 +108,7 @@ export function useSendInvite(): UseMutationResult<InviteState, Error, { userId:
 export function useUserDetail(id: number | null): UseQueryResult<UserDetail> {
   return useQuery({
     queryKey: queryKeys.users.detail(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/users/${id}`);
-      return userDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/users/${id}`, userDetailSchema),
     enabled: id !== null,
   });
 }
@@ -123,10 +117,7 @@ export function useUserDetail(id: number | null): UseQueryResult<UserDetail> {
 export function useUpdateUser(): UseMutationResult<UserDetail, Error, { userId: number; body: UpdateUserBody }> {
   const invalidate = useInvalidateAfterAccountWrite();
   return useMutation({
-    mutationFn: async ({ userId, body }) => {
-      const res = await apiClient.patch(`/api/v1/users/${userId}`, body);
-      return userDetailSchema.parse(res.data.data);
-    },
+    mutationFn: ({ userId, body }) => apiSend("patch", `/api/v1/users/${userId}`, body, userDetailSchema),
     onSuccess: invalidate,
   });
 }
@@ -151,10 +142,7 @@ export function useSetActivation(): UseMutationResult<
 export function useCreateUser(): UseMutationResult<CreateUserResponse, Error, CreateUserBody> {
   const invalidate = useInvalidateAfterAccountWrite();
   return useMutation({
-    mutationFn: async (body) => {
-      const res = await apiClient.post("/api/v1/users", body);
-      return createUserResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body) => apiSend("post", "/api/v1/users", body, createUserResponseSchema),
     onSuccess: invalidate,
   });
 }

@@ -16,6 +16,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /** The mentor's own follow-ups (owner, 2026-11-07). MENTOR only. */
 export function useFollowUps(enabled: boolean): UseQueryResult<FollowUp[]> {
@@ -33,10 +34,7 @@ export function useFollowUps(enabled: boolean): UseQueryResult<FollowUp[]> {
 export function useMentorSummary(enabled: boolean): UseQueryResult<MentorSummary> {
   return useQuery({
     queryKey: queryKeys.followUps.summary(),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/me/mentor-summary");
-      return mentorSummarySchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet("/api/v1/me/mentor-summary", mentorSummarySchema),
     enabled,
   });
 }
@@ -48,10 +46,8 @@ export function useCreateFollowUp(): UseMutationResult<
 > {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ studentId, body }) => {
-      const res = await apiClient.post(`/api/v1/students/${studentId}/follow-ups`, body);
-      return followUpSchema.parse(res.data.data);
-    },
+    mutationFn: ({ studentId, body }) =>
+      apiSend("post", `/api/v1/students/${studentId}/follow-ups`, body, followUpSchema),
     // Settled: a 409 (already following up) means the cached list is stale too.
     onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all }),
   });
@@ -60,10 +56,7 @@ export function useCreateFollowUp(): UseMutationResult<
 export function useMarkFollowUpDone(): UseMutationResult<FollowUp, Error, { id: number }> {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id }) => {
-      const res = await apiClient.post(`/api/v1/follow-ups/${id}/done`);
-      return followUpSchema.parse(res.data.data);
-    },
+    mutationFn: ({ id }) => apiSend("post", `/api/v1/follow-ups/${id}/done`, undefined, followUpSchema),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: queryKeys.followUps.all }),
   });
 }

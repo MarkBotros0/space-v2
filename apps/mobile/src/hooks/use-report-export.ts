@@ -2,9 +2,9 @@
 import { useMutation, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { exportFilename, exportManifestSchema, type ExportManifest } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { downloadAndShare, type DownloadAndShareOptions } from "../lib/export-download";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet } from "../lib/api-request";
 
 /**
  * The workbook's shape, without building it.
@@ -17,10 +17,7 @@ import { queryKeys } from "../lib/query-keys";
 export function useSeasonWorkbookManifest(seasonId: number | null, enabled: boolean): UseQueryResult<ExportManifest> {
   return useQuery({
     queryKey: queryKeys.reports.exportManifest(seasonId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/seasons/${seasonId}/exports/manifest`);
-      return exportManifestSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/seasons/${seasonId}/exports/manifest`, exportManifestSchema),
     enabled: enabled && seasonId !== null,
   });
 }

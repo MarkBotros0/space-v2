@@ -9,8 +9,8 @@ import {
   type OrganisationReport,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet } from "../lib/api-request";
 
 function scopeQuery(seasonId: number | null): string {
   return seasonId === null ? "" : `?seasonId=${seasonId}`;
@@ -32,10 +32,7 @@ function scopeQuery(seasonId: number | null): string {
 export function useEngagementReport(seasonId: number | null, enabled: boolean): UseQueryResult<EngagementSummary> {
   return useQuery({
     queryKey: queryKeys.reports.engagement(seasonId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/reports/engagement${scopeQuery(seasonId)}`);
-      return engagementSummarySchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/reports/engagement${scopeQuery(seasonId)}`, engagementSummarySchema),
     enabled,
   });
 }
@@ -59,8 +56,7 @@ export function useEngagementStudents(seasonId: number | null, band: EngagementB
       if (band !== null) params.set("band", band);
       if (pageParam) params.set("cursor", pageParam);
       params.set("limit", "50");
-      const res = await apiClient.get(`/api/v1/reports/engagement/students?${params.toString()}`);
-      return engagementStudentPageSchema.parse(res.data.data);
+      return apiGet(`/api/v1/reports/engagement/students?${params.toString()}`, engagementStudentPageSchema);
     },
     getNextPageParam: (last) => last.nextCursor,
     enabled,
@@ -71,10 +67,7 @@ export function useEngagementStudents(seasonId: number | null, band: EngagementB
 export function useOrganisationReport(enabled: boolean): UseQueryResult<OrganisationReport> {
   return useQuery({
     queryKey: queryKeys.reports.organisation(),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/reports/organisation");
-      return organisationReportSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet("/api/v1/reports/organisation", organisationReportSchema),
     enabled,
   });
 }

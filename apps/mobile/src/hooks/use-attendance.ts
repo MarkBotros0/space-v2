@@ -11,6 +11,7 @@ import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
 import { loadedId } from "../lib/loaded-id";
+import { apiSend } from "../lib/api-request";
 
 const rosterSchema = z.array(attendanceRosterRowSchema);
 
@@ -30,10 +31,8 @@ export function useSaveAttendance(sessionId: number | null) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (entries: AttendanceEntry[]) => {
-      const res = await apiClient.post(`/api/v1/sessions/${loadedId(sessionId)}/attendance`, { entries });
-      return saveAttendanceResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (entries: AttendanceEntry[]) =>
+      apiSend("post", `/api/v1/sessions/${loadedId(sessionId)}/attendance`, { entries }, saveAttendanceResponseSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.attendance.roster(sessionId) });
       // Session lists carry `attendanceMarked`.

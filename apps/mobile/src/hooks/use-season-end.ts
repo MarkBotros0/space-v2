@@ -16,6 +16,7 @@ import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
 import { isSeasonCheckKey, queryKeys } from "../lib/query-keys";
 import { loadedId } from "../lib/loaded-id";
+import { apiGet, apiSend } from "../lib/api-request";
 
 const resultsSchema = z.array(seasonResultRowSchema);
 
@@ -23,10 +24,7 @@ const resultsSchema = z.array(seasonResultRowSchema);
 export function useSeasonEndCheck(id: number | null): UseQueryResult<SeasonEndCheck> {
   return useQuery({
     queryKey: queryKeys.seasons.endCheck(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/seasons/${id}/end-check`);
-      return seasonEndCheckSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/seasons/${id}/end-check`, seasonEndCheckSchema),
     enabled: id !== null,
     ...LIVE_CHECK,
   });
@@ -41,10 +39,8 @@ export function useSeasonEndCheck(id: number | null): UseQueryResult<SeasonEndCh
 export function useEndSeason(id: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (body: EndSeasonRequest) => {
-      const res = await apiClient.post(`/api/v1/seasons/${loadedId(id)}/end`, body);
-      return endSeasonResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: EndSeasonRequest) =>
+      apiSend("post", `/api/v1/seasons/${loadedId(id)}/end`, body, endSeasonResponseSchema),
     onSuccess: () => {
       // Not the end-check: it is mounted on the screen that ends the season, and
       // refetching it now would answer season_not_active and flash an error

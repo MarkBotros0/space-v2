@@ -13,9 +13,9 @@ import {
   type CheckInStateResponse,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /**
  * How often an open screen re-reads a session's check-in state. v1's leader
@@ -28,10 +28,7 @@ export const LIVE_ROSTER_REFRESH_MS = 10_000;
 export function useCheckInState(id: number, enabled: boolean): UseQueryResult<CheckInStateResponse> {
   return useQuery({
     queryKey: queryKeys.sessions.checkIn(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/sessions/${id}/check-in`);
-      return checkInStateSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/sessions/${id}/check-in`, checkInStateSchema),
     enabled,
   });
 }
@@ -40,10 +37,8 @@ export function useCheckInState(id: number, enabled: boolean): UseQueryResult<Ch
 export function useRegenerateCheckIn(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const res = await apiClient.post(`/api/v1/sessions/${id}/check-in-regenerate`);
-      return checkInOpenResponseSchema.parse(res.data.data);
-    },
+    mutationFn: () =>
+      apiSend("post", `/api/v1/sessions/${id}/check-in-regenerate`, undefined, checkInOpenResponseSchema),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all }),
   });
 }
@@ -62,10 +57,7 @@ export function useCheckIn(): UseMutationResult<CheckInResponse, Error, string> 
     networkMode: "always",
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (token: string) => {
-      const res = await apiClient.post("/api/v1/sessions/check-in", { token });
-      return checkInResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (token: string) => apiSend("post", "/api/v1/sessions/check-in", { token }, checkInResponseSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.me.all });

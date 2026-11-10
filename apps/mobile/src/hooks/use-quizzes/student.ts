@@ -11,6 +11,7 @@ import {
 import { apiClient } from "../../lib/api-client";
 import { DASHBOARD_META } from "../../lib/dashboard-invalidation";
 import { queryKeys } from "../../lib/query-keys";
+import { apiGet, apiSend } from "../../lib/api-request";
 
 /**
  * Student list.
@@ -34,10 +35,7 @@ export function useStudentQuizList(seasonId: number | null): UseQueryResult<Stud
 export function useStudentQuizDetail(id: number | null): UseQueryResult<StudentQuizDetail> {
   return useQuery({
     queryKey: queryKeys.quizzes.studentDetail(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/quizzes/${id}`);
-      return studentQuizDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/quizzes/${id}`, studentQuizDetailSchema),
     enabled: id !== null,
   });
 }
@@ -46,10 +44,7 @@ export function useStudentQuizDetail(id: number | null): UseQueryResult<StudentQ
 export function useStartAttempt(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const res = await apiClient.put(`/api/v1/quizzes/${id}/attempt`);
-      return studentQuizDetailSchema.parse(res.data.data);
-    },
+    mutationFn: () => apiSend("put", `/api/v1/quizzes/${id}/attempt`, undefined, studentQuizDetailSchema),
     onSuccess: (detail) => {
       queryClient.setQueryData(queryKeys.quizzes.studentDetail(id), detail);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
@@ -78,10 +73,8 @@ function mergeSavedAnswers(
 export function useSaveAnswers(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (answers: AnswerInput[]) => {
-      const res = await apiClient.patch(`/api/v1/quizzes/${id}/attempt`, { answers });
-      return saveQuizAnswersResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (answers: AnswerInput[]) =>
+      apiSend("patch", `/api/v1/quizzes/${id}/attempt`, { answers }, saveQuizAnswersResponseSchema),
     // No invalidation — refetching mid-attempt would race the runner's local
     // draft — but the cached detail IS brought up to date with what the server
     // now holds. useStartAttempt seeds that cache with a blank attempt, and the
@@ -104,10 +97,7 @@ export function useSubmitAttempt(id: number) {
     // Offline, fail now with the runner's message rather than hang and hand the
     // quiz in on reconnect. Unlike useSaveAnswers, whose autosave may wait.
     networkMode: "always",
-    mutationFn: async () => {
-      const res = await apiClient.post(`/api/v1/quizzes/${id}/attempt/submit`);
-      return studentQuizDetailSchema.parse(res.data.data);
-    },
+    mutationFn: () => apiSend("post", `/api/v1/quizzes/${id}/attempt/submit`, undefined, studentQuizDetailSchema),
     onSuccess: (detail) => {
       queryClient.setQueryData(queryKeys.quizzes.studentDetail(id), detail);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });

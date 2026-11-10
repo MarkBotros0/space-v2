@@ -17,17 +17,14 @@ import {
   type QuizGradeEntry,
 } from "@space/shared";
 
-import { apiClient } from "../../lib/api-client";
 import { DASHBOARD_META } from "../../lib/dashboard-invalidation";
 import { queryKeys } from "../../lib/query-keys";
+import { apiGet, apiSend } from "../../lib/api-request";
 
 export function useQuizGradeSheet(id: number | null, enabled: boolean): UseQueryResult<QuizGradeSheet> {
   return useQuery({
     queryKey: queryKeys.quizzes.grades(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/quizzes/${id}/grades`);
-      return quizGradeSheetSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/quizzes/${id}/grades`, quizGradeSheetSchema),
     enabled: enabled && id !== null,
   });
 }
@@ -39,10 +36,8 @@ export function useSaveQuizGrades(id: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (entries: GradeEntryInput[]) => {
-      const res = await apiClient.post(`/api/v1/quizzes/${id}/grades`, { entries });
-      return quizGradeSheetSchema.parse(res.data.data);
-    },
+    mutationFn: (entries: GradeEntryInput[]) =>
+      apiSend("post", `/api/v1/quizzes/${id}/grades`, { entries }, quizGradeSheetSchema),
     onSuccess: (sheet) => {
       queryClient.setQueryData(queryKeys.quizzes.grades(id), sheet);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
@@ -67,8 +62,7 @@ export function useQuizAttempts(
     initialPageParam: null as number | null,
     queryFn: async ({ pageParam }) => {
       const after = pageParam === null ? "" : `?cursor=${pageParam}`;
-      const res = await apiClient.get(`/api/v1/quizzes/${id}/attempts${after}`);
-      return quizGradingPageSchema.parse(res.data.data);
+      return apiGet(`/api/v1/quizzes/${id}/attempts${after}`, quizGradingPageSchema);
     },
     getNextPageParam: (last) => last.nextCursor,
     enabled: enabled && id !== null,
@@ -96,12 +90,15 @@ export function useGradeEssays(id: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (input: { attemptId: number; awards: { questionId: number; points: number }[] }) => {
-      const res = await apiClient.post(`/api/v1/quizzes/${id}/attempts/${input.attemptId}/grade`, {
-        awards: input.awards,
-      });
-      return quizGradingAttemptSchema.parse(res.data.data);
-    },
+    mutationFn: (input: { attemptId: number; awards: { questionId: number; points: number }[] }) =>
+      apiSend(
+        "post",
+        `/api/v1/quizzes/${id}/attempts/${input.attemptId}/grade`,
+        {
+          awards: input.awards,
+        },
+        quizGradingAttemptSchema,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
@@ -114,12 +111,15 @@ export function useReopenAttempt(id: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (studentUserId: number) => {
-      const res = await apiClient.post(`/api/v1/quizzes/${id}/attempts/reopen`, {
-        studentUserId,
-      });
-      return reopenAttemptResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (studentUserId: number) =>
+      apiSend(
+        "post",
+        `/api/v1/quizzes/${id}/attempts/reopen`,
+        {
+          studentUserId,
+        },
+        reopenAttemptResponseSchema,
+      ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
       // A reopened attempt is no longer graded, so the lists' "2/2 graded" moves.

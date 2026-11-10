@@ -5,15 +5,13 @@ import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
 import { isSeasonCheckKey, queryKeys } from "../lib/query-keys";
 import { loadedId } from "../lib/loaded-id";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /** GET /seasons/:id/start-check (SUPER): who stops a draft from starting. */
 export function useSeasonStartCheck(id: number | null): UseQueryResult<SeasonStartCheck> {
   return useQuery({
     queryKey: queryKeys.seasons.startCheck(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/seasons/${id}/start-check`);
-      return seasonStartCheckSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/seasons/${id}/start-check`, seasonStartCheckSchema),
     enabled: id !== null,
     ...LIVE_CHECK,
   });
@@ -28,10 +26,7 @@ export function useSeasonStartCheck(id: number | null): UseQueryResult<SeasonSta
 export function useStartSeason(id: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const res = await apiClient.post(`/api/v1/seasons/${loadedId(id)}/start`);
-      return startSeasonResponseSchema.parse(res.data.data);
-    },
+    mutationFn: () => apiSend("post", `/api/v1/seasons/${loadedId(id)}/start`, undefined, startSeasonResponseSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.seasons.all,

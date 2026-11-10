@@ -12,6 +12,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 import { MS_PER_MINUTE } from "../lib/time";
+import { apiGet, apiSend } from "../lib/api-request";
 
 type MarkReadInput = MarkReadRequest;
 
@@ -30,8 +31,7 @@ export function useNotifications(unreadOnly = false) {
       const params = new URLSearchParams({ limit: "20" });
       if (unreadOnly) params.set("unreadOnly", "true");
       if (pageParam !== undefined) params.set("cursor", String(pageParam));
-      const res = await apiClient.get(`/api/v1/notifications?${params.toString()}`);
-      return notificationListResponseSchema.parse(res.data.data);
+      return apiGet(`/api/v1/notifications?${params.toString()}`, notificationListResponseSchema);
     },
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
@@ -70,10 +70,7 @@ export function useUnreadCount(): UseQueryResult<number> {
 export function useMarkRead() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: MarkReadInput) => {
-      const res = await apiClient.post("/api/v1/notifications/read", input);
-      return markReadResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (input: MarkReadInput) => apiSend("post", "/api/v1/notifications/read", input, markReadResponseSchema),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.lists() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });

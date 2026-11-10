@@ -10,9 +10,9 @@ import {
   type UpdateSessionInput,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /**
  * A series write touches N sessions across any number of cached lists and
@@ -31,10 +31,7 @@ export function useCreateSession() {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (body: CreateSessionInput) => {
-      const res = await apiClient.post("/api/v1/sessions", body);
-      return sessionCreatedResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: CreateSessionInput) => apiSend("post", "/api/v1/sessions", body, sessionCreatedResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -44,10 +41,8 @@ export function useUpdateSession(id: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (body: UpdateSessionInput) => {
-      const res = await apiClient.patch(`/api/v1/sessions/${id}`, body);
-      return sessionUpdatedResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: UpdateSessionInput) =>
+      apiSend("patch", `/api/v1/sessions/${id}`, body, sessionUpdatedResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -59,8 +54,7 @@ export function useDeleteSession(id: number) {
     meta: DASHBOARD_META,
     mutationFn: async (body: { scope: RecurrenceScope; force: boolean }) => {
       // Plan 3's DELETE reads a JSON body; axios sends one on DELETE only via `data`.
-      const res = await apiClient.delete(`/api/v1/sessions/${id}`, { data: body });
-      return sessionDeletedResponseSchema.parse(res.data.data);
+      return apiSend("delete", `/api/v1/sessions/${id}`, body, sessionDeletedResponseSchema);
     },
     onSuccess: invalidate,
   });
@@ -71,8 +65,7 @@ export function useSessionSeries(id: number, scope: RecurrenceScope, enabled: bo
   return useQuery({
     queryKey: queryKeys.sessions.series(id, scope),
     queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/sessions/${id}/series`, { params: { scope } });
-      return sessionSeriesResponseSchema.parse(res.data.data);
+      return apiGet(`/api/v1/sessions/${id}/series`, sessionSeriesResponseSchema, { params: { scope } });
     },
     enabled,
   });

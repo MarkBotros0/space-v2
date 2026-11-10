@@ -15,6 +15,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 import { loadedId } from "../lib/loaded-id";
+import { apiGet } from "../lib/api-request";
 
 /** GET /seasons/:id/people-candidates — season admins and SUPER, so the caller passes `enabled`. */
 export function useSeasonPeople(
@@ -23,10 +24,7 @@ export function useSeasonPeople(
 ): UseQueryResult<PeopleCandidatesResponse> {
   return useQuery({
     queryKey: queryKeys.seasons.peopleCandidates(seasonId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/seasons/${seasonId}/people-candidates`);
-      return peopleCandidatesResponseSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/seasons/${seasonId}/people-candidates`, peopleCandidatesResponseSchema),
     enabled: options.enabled && seasonId !== null,
   });
 }

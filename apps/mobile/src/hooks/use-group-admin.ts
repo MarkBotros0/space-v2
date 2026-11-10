@@ -16,6 +16,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /** Roles that browse groups by season (D-16.16). LEADER/STUDENT keep Plan 2's MY_GROUPS_ROLES branch. */
 export const SEASON_GROUPS_ROLES: readonly UserRole[] = ["ADMIN", "SUPER"];
@@ -52,10 +53,7 @@ export function useSeasonRoster(seasonId: number | null): UseQueryResult<SeasonR
 export function useGroupImpact(id: number | null): UseQueryResult<GroupImpact> {
   return useQuery({
     queryKey: queryKeys.groups.impact(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/groups/${id}/impact`);
-      return groupImpactSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/groups/${id}/impact`, groupImpactSchema),
     enabled: id !== null,
   });
 }
@@ -65,10 +63,8 @@ export function useCreateGroup(seasonId: number) {
   return useMutation({
     // Spec 19 D24: a group's leaders and members move a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (body: GroupWriteInput) => {
-      const res = await apiClient.post(`/api/v1/seasons/${seasonId}/groups`, body);
-      return groupRefResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: GroupWriteInput) =>
+      apiSend("post", `/api/v1/seasons/${seasonId}/groups`, body, groupRefResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -78,10 +74,7 @@ export function useUpdateGroup(id: number) {
   return useMutation({
     // Spec 19 D24: a group's leaders and members move a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (body: GroupWriteInput) => {
-      const res = await apiClient.patch(`/api/v1/groups/${id}`, body);
-      return groupRefResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: GroupWriteInput) => apiSend("patch", `/api/v1/groups/${id}`, body, groupRefResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -91,10 +84,7 @@ export function useDeleteGroup() {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (id: number) => {
-      const res = await apiClient.delete(`/api/v1/groups/${id}`);
-      return groupDeleteResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (id: number) => apiSend("delete", `/api/v1/groups/${id}`, undefined, groupDeleteResponseSchema),
     onSuccess: invalidate,
   });
 }
@@ -104,10 +94,8 @@ export function useSaveGroupAssignments(seasonId: number) {
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: async (body: GroupAssignmentsRequest) => {
-      const res = await apiClient.put(`/api/v1/seasons/${seasonId}/group-assignments`, body);
-      return groupAssignmentsResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (body: GroupAssignmentsRequest) =>
+      apiSend("put", `/api/v1/seasons/${seasonId}/group-assignments`, body, groupAssignmentsResponseSchema),
     onSuccess: invalidate,
   });
 }

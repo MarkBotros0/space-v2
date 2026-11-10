@@ -22,6 +22,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet, apiSend } from "../lib/api-request";
 
 /**
  * The calendars' read: every visible event, date ascending, unpaged.
@@ -43,8 +44,7 @@ export function useEvents(): UseQueryResult<JpcEventListItem[]> {
 
 async function fetchEventPage(cursor: string | null): Promise<JpcEventPageResponse> {
   const suffix = cursor === null ? "" : `&cursor=${encodeURIComponent(cursor)}`;
-  const res = await apiClient.get(`/api/v1/events?paged=true${suffix}`);
-  return jpcEventPageResponseSchema.parse(res.data.data);
+  return apiGet(`/api/v1/events?paged=true${suffix}`, jpcEventPageResponseSchema);
 }
 
 /**
@@ -68,20 +68,14 @@ export function useEventPages(): UseInfiniteQueryResult<InfiniteData<JpcEventPag
 export function useUpcomingEvents(limit: number): UseQueryResult<JpcEventListResponse> {
   return useQuery({
     queryKey: queryKeys.events.upcoming(limit),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/events?upcoming=true&limit=${limit}`);
-      return jpcEventListResponseSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/events?upcoming=true&limit=${limit}`, jpcEventListResponseSchema),
   });
 }
 
 export function useEventDetail(id: number | null): UseQueryResult<JpcEventDetail> {
   return useQuery({
     queryKey: queryKeys.events.detail(id ?? -1),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/events/${id}`);
-      return jpcEventDetailSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/events/${id}`, jpcEventDetailSchema),
     enabled: id !== null,
   });
 }
@@ -102,10 +96,7 @@ function useInvalidateEvents() {
 export function useCreateEvent() {
   const invalidate = useInvalidateEvents();
   return useMutation({
-    mutationFn: async (body: CreateJpcEventBody) => {
-      const res = await apiClient.post("/api/v1/events", body);
-      return jpcEventDetailSchema.parse(res.data.data);
-    },
+    mutationFn: (body: CreateJpcEventBody) => apiSend("post", "/api/v1/events", body, jpcEventDetailSchema),
     onSuccess: invalidate,
   });
 }
@@ -113,10 +104,7 @@ export function useCreateEvent() {
 export function useUpdateEvent(id: number) {
   const invalidate = useInvalidateEvents();
   return useMutation({
-    mutationFn: async (body: UpdateJpcEventBody) => {
-      const res = await apiClient.patch(`/api/v1/events/${id}`, body);
-      return jpcEventDetailSchema.parse(res.data.data);
-    },
+    mutationFn: (body: UpdateJpcEventBody) => apiSend("patch", `/api/v1/events/${id}`, body, jpcEventDetailSchema),
     onSuccess: invalidate,
   });
 }
@@ -124,10 +112,7 @@ export function useUpdateEvent(id: number) {
 export function useDeleteEvent() {
   const invalidate = useInvalidateEvents();
   return useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiClient.delete(`/api/v1/events/${id}`);
-      return deleteJpcEventResponseSchema.parse(res.data.data);
-    },
+    mutationFn: (id: number) => apiSend("delete", `/api/v1/events/${id}`, undefined, deleteJpcEventResponseSchema),
     onSuccess: invalidate,
   });
 }

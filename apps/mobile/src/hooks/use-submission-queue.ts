@@ -1,8 +1,8 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { submissionQueueSchema, type SubmissionQueue } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet } from "../lib/api-request";
 
 interface QueueFilters {
   pendingOnly: boolean;
@@ -16,8 +16,7 @@ async function fetchQueuePage(filters: QueueFilters, cursor?: string): Promise<S
   });
   if (filters.seasonId !== undefined) params.set("seasonId", String(filters.seasonId));
   if (cursor !== undefined) params.set("cursor", cursor);
-  const res = await apiClient.get(`/api/v1/submissions?${params.toString()}`);
-  return submissionQueueSchema.parse(res.data.data);
+  return apiGet(`/api/v1/submissions?${params.toString()}`, submissionQueueSchema);
 }
 
 export function useSubmissionQueue(filters: QueueFilters, enabled: boolean) {

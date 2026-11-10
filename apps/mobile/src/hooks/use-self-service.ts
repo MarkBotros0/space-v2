@@ -21,6 +21,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet } from "../lib/api-request";
 
 /*
  * The student's own reads (Plan 11). Every endpoint resolves its subject from
@@ -66,10 +67,7 @@ export function useMySeason(seasonId: number | null): UseQueryResult<MySeason | 
 export function useMyAttendance(seasonId: number | null): UseQueryResult<MyAttendanceResponse> {
   return useQuery({
     queryKey: queryKeys.me.attendance(seasonId),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/me/attendance");
-      return myAttendanceResponseSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet("/api/v1/me/attendance", myAttendanceResponseSchema),
     enabled: seasonId !== null,
   });
 }

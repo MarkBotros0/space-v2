@@ -6,9 +6,9 @@ import {
   type StudentDashboard,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 import { MS_PER_MINUTE } from "../lib/time";
+import { apiGet } from "../lib/api-request";
 
 /**
  * Home is every role's most-refetched screen; a minute of freshness absorbs
@@ -28,10 +28,7 @@ export const DASHBOARD_STALE_TIME = MS_PER_MINUTE;
 export function useStudentDashboard(activeSeasonId: number | null): UseQueryResult<StudentDashboard> {
   return useQuery({
     queryKey: queryKeys.dashboard.me(activeSeasonId),
-    queryFn: async () => {
-      const res = await apiClient.get("/api/v1/me/dashboard");
-      return studentDashboardSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet("/api/v1/me/dashboard", studentDashboardSchema),
     staleTime: DASHBOARD_STALE_TIME,
   });
 }
@@ -40,10 +37,7 @@ export function useStudentDashboard(activeSeasonId: number | null): UseQueryResu
 export function useSeasonStaffDashboard(seasonId: number | null): UseQueryResult<StaffSeasonDashboard> {
   return useQuery({
     queryKey: queryKeys.dashboard.me(seasonId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/me/dashboard?seasonId=${seasonId}`);
-      return staffSeasonDashboardSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/me/dashboard?seasonId=${seasonId}`, staffSeasonDashboardSchema),
     enabled: seasonId !== null,
     staleTime: DASHBOARD_STALE_TIME,
   });

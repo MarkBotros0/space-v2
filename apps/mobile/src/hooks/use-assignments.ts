@@ -13,6 +13,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { apiGet } from "../lib/api-request";
 
 const studentListSchema = z.array(studentAssignmentListItemSchema);
 
@@ -34,8 +35,7 @@ export function useStudentAssignments(seasonId: number | null): UseQueryResult<S
 }
 
 async function fetchAssignmentDetail(id: number): Promise<AssignmentDetail> {
-  const res = await apiClient.get(`/api/v1/assignments/${id}`);
-  return assignmentDetailSchema.parse(res.data.data);
+  return apiGet(`/api/v1/assignments/${id}`, assignmentDetailSchema);
 }
 
 /** `id` is null while the route param is unparsed or invalid. */
@@ -69,10 +69,7 @@ export function useStaffAssignments(seasonId: number | null): UseQueryResult<Sta
 export function useAssignmentTracker(id: number | null): UseQueryResult<AssignmentTracker> {
   return useQuery({
     queryKey: queryKeys.assignments.tracker(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/assignments/${id}/tracker`);
-      return assignmentTrackerSchema.parse(res.data.data);
-    },
+    queryFn: () => apiGet(`/api/v1/assignments/${id}/tracker`, assignmentTrackerSchema),
     enabled: id !== null,
   });
 }

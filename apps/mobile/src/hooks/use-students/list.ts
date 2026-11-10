@@ -6,8 +6,8 @@ import {
   type StudentListStatus,
 } from "@space/shared";
 
-import { apiClient } from "../../lib/api-client";
 import { queryKeys } from "../../lib/query-keys";
+import { apiGet } from "../../lib/api-request";
 
 /** The list's group filter and sort (REG-82); null leaves each to the server's default. */
 export interface StudentListView {
@@ -44,8 +44,7 @@ async function fetchStudentsPage(
     params.set("dir", view.dir);
   }
   if (cursor !== null) params.set("cursor", String(cursor));
-  const res = await apiClient.get(`/api/v1/students?${params.toString()}`);
-  return studentListResponseSchema.parse(res.data.data);
+  return apiGet(`/api/v1/students?${params.toString()}`, studentListResponseSchema);
 }
 
 /**
