@@ -6,8 +6,8 @@ with the baseline, what the owner still has to do, and every finding left alone 
 
 ## Branches
 
-Each wave is one branch built on the one before. Waves 0–4 are fast-forwarded into local `main`
-(`84a50069`); Waves 5–7 are not merged. **Nothing is pushed.**
+Each wave is one branch built on the one before. All eight are fast-forwarded into local `main` (Waves 0–4
+on 2026-11-09, Waves 5–7 on 2026-11-10). **Nothing is pushed.**
 
 | Wave | Branch | Tip | State |
 |---|---|---|---|
@@ -16,9 +16,9 @@ Each wave is one branch built on the one before. Waves 0–4 are fast-forwarded 
 | 2 shared foundations | `refactor/wave-2-foundations` | `d2a9ef88` | in local `main` |
 | 3 schema expand | `refactor/wave-3-schema-expand` | `ac0f4306` | in local `main` |
 | 4 backend per domain | `refactor/wave-4-backend` | `84a50069` | in local `main` |
-| 5 mobile per feature area | `refactor/wave-5-mobile` | `79438f0f` | branch only |
-| 6 schema contract | `refactor/wave-6-schema-contract` | `779f2027` | branch only |
-| 7 guardrails | `refactor/wave-7-guardrails` | this report | branch only |
+| 5 mobile per feature area | `refactor/wave-5-mobile` | `79438f0f` | in local `main` |
+| 6 schema contract | `refactor/wave-6-schema-contract` | `779f2027` | in local `main` |
+| 7 guardrails | `refactor/wave-7-guardrails` | this report | in local `main` |
 
 ## Baseline against the end state
 
