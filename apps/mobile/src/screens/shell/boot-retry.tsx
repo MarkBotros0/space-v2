@@ -2,9 +2,9 @@ import { RefreshCw } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 
-import { Button } from "../design/ui/button";
-import { EmptyState } from "../design/ui/empty-state";
-import { bootSession, signOutOfBoot } from "../hooks/use-session";
+import { Button } from "../../design/ui/button";
+import { EmptyState } from "../../design/ui/empty-state";
+import { bootSession, signOutOfBoot } from "../../hooks/use-session";
 
 /**
  * Cold start with a stored session the server couldn't confirm or refuse (rate

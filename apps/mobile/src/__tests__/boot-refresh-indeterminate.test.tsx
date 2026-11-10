@@ -19,7 +19,7 @@ jest.mock("../lib/push", () => ({
 import { useBootSession } from "../hooks/use-session";
 import { apiClient, __resetRefreshState } from "../lib/api-client";
 import { clearSession } from "../lib/token-storage";
-import { BootRetry } from "../screens/boot-retry";
+import { BootRetry } from "../screens/shell/boot-retry";
 import { useSessionStore } from "../store/session";
 
 const answer = (status: number, config: InternalAxiosRequestConfig, data: unknown = {}) =>

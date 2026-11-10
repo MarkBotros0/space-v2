@@ -23,7 +23,7 @@ jest.mock("../lib/push", () => ({
 
 import { apiClient } from "../lib/api-client";
 import { loadAccessToken, loadRefreshToken, savePushToken, saveSession } from "../lib/token-storage";
-import { BootRetry } from "../screens/boot-retry";
+import { BootRetry } from "../screens/shell/boot-retry";
 import { useSessionStore } from "../store/session";
 
 let axiosPost: jest.SpyInstance;

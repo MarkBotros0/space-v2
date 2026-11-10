@@ -4,8 +4,8 @@ import { router } from "expo-router";
 import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
-import { queryKeys } from "../lib/query-keys";
-import { routeForPushData } from "../lib/push-routing";
+import { queryKeys } from "../../lib/query-keys";
+import { routeForPushData } from "../../lib/push-routing";
 
 // A push that arrives while the app is open still shows as a banner; without a
 // handler iOS and Android drop it silently.

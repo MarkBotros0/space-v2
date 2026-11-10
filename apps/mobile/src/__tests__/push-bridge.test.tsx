@@ -17,7 +17,7 @@ jest.mock("expo-router", () => ({ router: { push: (...a: unknown[]) => mockPush(
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react-native";
 
-import { PushNotificationsBridge } from "../components/PushNotificationsBridge";
+import { PushNotificationsBridge } from "../screens/shell/push-notifications-bridge";
 import { queryKeys } from "../lib/query-keys";
 
 function response(id: string, data: unknown) {

@@ -10,13 +10,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useBootSession } from "../src/hooks/use-session";
-import { BootRetry } from "../src/screens/boot-retry";
+import { BootRetry } from "../src/screens/shell/boot-retry";
 import { LaunchScreen } from "../src/design/brand/launch-screen";
 import { GEIST_FONTS } from "../src/design/theme/fonts";
 import { applyStoredThemeMode } from "../src/design/theme/theme-mode";
 import { useThemeColors } from "../src/design/theme/use-theme-colors";
 import { Toaster } from "../src/design/ui/toaster";
-import { PushNotificationsBridge } from "../src/components/PushNotificationsBridge";
+import { PushNotificationsBridge } from "../src/screens/shell/push-notifications-bridge";
 import { ScreenErrorBoundary } from "../src/design/layout/error-boundary";
 import { OfflineScreen } from "../src/design/layout/offline-screen";
 import { clearCacheOnUserChange, createQueryClient } from "../src/lib/query-client";
