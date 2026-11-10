@@ -4,6 +4,7 @@ import { isMentor, isSuper } from "../../rbac";
 import { groupIdInSeason } from "../enrollment";
 import { seasonParticipant, seasonRosterMember } from "../season-participants";
 import { ledGroupIdsInSeason } from "../led-groups";
+import { liveAssignment } from "../../db/live";
 
 export interface GroupListRow {
   id: number;
@@ -185,7 +186,7 @@ export async function loadGroupImpact(groupId: number): Promise<{
     db.seasonEnrollment.count({ where: { groupId, ...seasonParticipant } }),
     db.groupLeader.count({ where: { groupId } }),
     db.assignment.findMany({
-      where: { deletedAt: null, isAllGroups: false, targets: { some: { groupId } } },
+      where: { ...liveAssignment, isAllGroups: false, targets: { some: { groupId } } },
       orderBy: { id: "asc" },
       select: { id: true, title: true, _count: { select: { targets: true } } },
     }),

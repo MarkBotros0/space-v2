@@ -18,10 +18,11 @@ import {
   loadAssignmentById,
 } from "../../lib/queries/assignments";
 import { listGroupsForSeason } from "../../lib/queries/groups";
-import { applyLeaderChange, planLeaderChange, setGroupStudents, validateGroupWrite } from "../../lib/groups/membership";
+import { validateGroupWrite } from "../../lib/groups/membership";
+import { createGroup } from "../../lib/groups/writes";
 import { listSessionsForSeason } from "../../lib/queries/sessions";
 import { isAdminOfSeason } from "../../lib/rbac";
-import { refusalStatus } from "../../lib/api-error";
+
 import { requireUser } from "../../middleware/require-auth";
 import { createAssignmentRequestSchema, groupWriteRequestSchema } from "../../../../../packages/shared/src/index";
 
@@ -61,27 +62,8 @@ export async function createSeasonGroup(req: Request, res: Response) {
   const refusal = await validateGroupWrite(seasonId, parsed.data);
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
-  const outcome = await db.$transaction(async (tx) => {
-    const plan = await planLeaderChange(tx, seasonId, null, parsed.data.leaderIds);
-    if (plan.refusal) return { refusal: plan.refusal, id: null };
-
-    const created = await tx.group.create({
-      data: {
-        seasonId,
-        name: parsed.data.name,
-        description: parsed.data.description ?? null,
-      },
-      select: { id: true },
-    });
-    await applyLeaderChange(tx, created.id, plan.change);
-    await setGroupStudents(tx, seasonId, created.id, parsed.data.studentIds);
-    return { refusal: null, id: created.id };
-  });
-
-  if (outcome.refusal) {
-    return apiError(res, outcome.refusal.code, outcome.refusal.message, refusalStatus(outcome.refusal));
-  }
-  return apiOk(res, { id: outcome.id }, 201);
+  const id = await createGroup(seasonId, parsed.data);
+  return apiOk(res, { id }, 201);
 }
 
 export async function listSeasonSessions(req: Request, res: Response) {

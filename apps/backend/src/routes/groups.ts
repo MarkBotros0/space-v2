@@ -2,17 +2,21 @@ import { Router, type Request, type Response } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
-import { markSessionsStale } from "../lib/auth/session-validity";
+
 import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
 import { listMyGroups, loadGroupImpact } from "../lib/queries/groups";
-import { applyLeaderChange, planLeaderChange, setGroupStudents, validateGroupWrite } from "../lib/groups/membership";
+import { validateGroupWrite } from "../lib/groups/membership";
+import { deleteGroup, updateGroup } from "../lib/groups/writes";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfSeason } from "../lib/rbac";
-import { lockPeople, lockSeason } from "../lib/roles";
-import { refusalStatus } from "../lib/api-error";
+
 import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
+import { idParam } from "../lib/http/params";
+import { notFound } from "../lib/http/not-found";
+import { parseOr400 } from "../lib/http/validate";
+import { liveUser } from "../lib/db/live";
 
 export const groupsRouter = Router();
 
@@ -42,50 +46,30 @@ groupsRouter.get("/", async (req, res) => {
  */
 groupsRouter.patch("/:id", async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid group id.", 400);
+  const id = idParam(res, req.params.id, "group");
+  if (id === null) return;
 
   const group = await db.group.findUnique({ where: { id }, select: { seasonId: true } });
-  if (!group) return apiError(res, "not_found", "Group not found.", 404);
+  if (!group) return notFound(res, "Group");
 
   if (!isAdminOfSeason(user, group.seasonId)) return forbidden(res);
 
-  const parsed = groupUpdateRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid group body.", 400);
+  const parsed = parseOr400(groupUpdateRequestSchema, req.body, res, "Invalid group body.");
+  if (parsed === null) return;
 
-  const { leaderIds, studentIds } = parsed.data;
-  const refusal = await validateGroupWrite(
-    group.seasonId,
-    { name: parsed.data.name, studentIds: studentIds ?? [] },
-    id,
-  );
+  const { studentIds } = parsed;
+  const refusal = await validateGroupWrite(group.seasonId, { name: parsed.name, studentIds: studentIds ?? [] }, id);
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
-  const seatRefusal = await db.$transaction(async (tx) => {
-    let change = null;
-    if (leaderIds !== undefined) {
-      const plan = await planLeaderChange(tx, group.seasonId, id, leaderIds);
-      if (plan.refusal) return plan.refusal;
-      change = plan.change;
-    }
-    await tx.group.update({
-      where: { id },
-      // Absent keeps it, null clears it: `PATCH { name }` is a rename.
-      data: { name: parsed.data.name, description: parsed.data.description },
-    });
-    if (change) await applyLeaderChange(tx, id, change);
-    if (studentIds !== undefined) await setGroupStudents(tx, group.seasonId, id, studentIds);
-    return null;
-  });
-  if (seatRefusal) return apiError(res, seatRefusal.code, seatRefusal.message, refusalStatus(seatRefusal));
+  await updateGroup(id, group.seasonId, parsed);
 
   return apiOk(res, { id });
 });
 
 groupsRouter.get("/:id", async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid group id.", 400);
+  const id = idParam(res, req.params.id, "group");
+  if (id === null) return;
 
   if (!(await canAccessGroup(user, id))) return forbidden(res);
 
@@ -105,7 +89,7 @@ groupsRouter.get("/:id", async (req, res) => {
       // while that table was global (before Plan 18 M1), a past season's
       // group lost its members the moment they moved on.
       seasonEnrollments: {
-        where: { ...seasonParticipant, studentUser: { deletedAt: null } },
+        where: { ...seasonParticipant, studentUser: liveUser },
         select: {
           seasonId: true,
           studentUser: { select: { id: true, name: true, email: true } },
@@ -114,7 +98,7 @@ groupsRouter.get("/:id", async (req, res) => {
       },
     },
   });
-  if (!group) return apiError(res, "not_found", "Group not found.", 404);
+  if (!group) return notFound(res, "Group");
 
   // canAccessGroup admits a student to their own group, which is the right
   // call — they should be able to see who is in it. But the payload below is
@@ -151,7 +135,7 @@ async function loadManagedGroup(req: Request, res: Response): Promise<number | n
   }
   const group = await db.group.findUnique({ where: { id }, select: { seasonId: true } });
   if (!group) {
-    apiError(res, "not_found", "Group not found.", 404);
+    notFound(res, "Group");
     return null;
   }
   if (!isAdminOfSeason(user, group.seasonId)) {
@@ -167,12 +151,6 @@ groupsRouter.get("/:id/impact", async (req, res) => {
   return apiOk(res, await loadGroupImpact(id));
 });
 
-class GroupHasSoleTargetsError extends Error {
-  constructor(readonly count: number) {
-    super("group has sole-target assignments");
-  }
-}
-
 /**
  * Delete a group — designed, not ported (ruling C12: v1's deleteGroupAction
  * has no caller, spec 05 R46). Refuses while any live assignment targets
@@ -186,40 +164,6 @@ groupsRouter.delete("/:id", async (req, res) => {
   const id = await loadManagedGroup(req, res);
   if (id === null) return;
 
-  try {
-    const orphanedStudentIds = await db.$transaction(async (tx) => {
-      const { seasonId } = await tx.group.findUniqueOrThrow({ where: { id }, select: { seasonId: true } });
-      await lockSeason(tx, seasonId, "share");
-      const sole = await tx.assignment.findMany({
-        where: { deletedAt: null, isAllGroups: false, targets: { some: { groupId: id } } },
-        select: { _count: { select: { targets: true } } },
-      });
-      const soleCount = sole.filter((a) => a._count.targets === 1).length;
-      if (soleCount > 0) throw new GroupHasSoleTargetsError(soleCount);
-
-      const orphaned = await tx.seasonEnrollment.findMany({ where: { groupId: id }, select: { studentUserId: true } });
-      const leaders = (await tx.groupLeader.findMany({ where: { groupId: id }, select: { userId: true } })).map(
-        (l) => l.userId,
-      );
-      await lockPeople(tx, leaders);
-      await tx.groupLeader.deleteMany({ where: { groupId: id } });
-      await markSessionsStale(tx, leaders);
-      await tx.groupStudent.deleteMany({ where: { groupId: id } });
-      await tx.seasonEnrollment.updateMany({ where: { groupId: id }, data: { groupId: null } });
-      await tx.assignmentTarget.deleteMany({ where: { groupId: id } });
-      await tx.group.delete({ where: { id } });
-      return orphaned.map((o) => o.studentUserId);
-    });
-    return apiOk(res, { deleted: true, orphanedStudentIds });
-  } catch (err) {
-    if (err instanceof GroupHasSoleTargetsError) {
-      return apiError(
-        res,
-        "group_has_sole_targets",
-        `${err.count} assignment(s) target only this group. Retarget them before deleting it.`,
-        409,
-      );
-    }
-    throw err;
-  }
+  const orphanedStudentIds = await deleteGroup(id);
+  return apiOk(res, { deleted: true, orphanedStudentIds });
 });
