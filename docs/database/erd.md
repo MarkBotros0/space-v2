@@ -461,8 +461,6 @@ erDiagram
   User ||--o{ MentorFollowUp : "mentorUser"
   User ||--o{ MentorFollowUp : "studentUser"
   User ||--o{ Notification : "user"
-  User ||--o{ StudentDocument : "studentUser"
-  User |o--o{ StudentDocument : "uploadedBy"
   User |o--o{ JpcEvent : "createdBy"
   Season |o--o{ JpcEvent : "season"
   Season |o--o{ Announcement : "season"
@@ -500,16 +498,6 @@ erDiagram
     String link "nullable"
     DateTime readAt "nullable"
     DateTime createdAt
-  }
-  StudentDocument {
-    Int id PK
-    Int studentUserId FK
-    Int uploadedById FK "nullable"
-    String originalName
-    String storagePath
-    String mimeType
-    Int sizeBytes
-    DateTime uploadedAt
   }
   JpcEvent {
     Int id PK

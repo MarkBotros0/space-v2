@@ -196,8 +196,6 @@ model User {
   notifications            Notification[]
   notificationPreference   NotificationPreference?
   deviceTokens             DeviceToken[]
-  studentDocuments         StudentDocument[]       @relation("StudentDocumentStudent")
-  studentDocumentsUploaded StudentDocument[]       @relation("StudentDocumentUploader")
   jpcEventsCreated         JpcEvent[]              @relation("JpcEventCreator")
 
   quizzesCreated Quiz[]      @relation("QuizCreatedBy")
@@ -736,21 +734,6 @@ model NotificationPreference {
 
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
-}
-
-model StudentDocument {
-  id            Int      @id @default(autoincrement())
-  studentUserId Int
-  studentUser   User     @relation("StudentDocumentStudent", fields: [studentUserId], references: [id], onDelete: Cascade)
-  uploadedById  Int?
-  uploadedBy    User?    @relation("StudentDocumentUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
-  originalName  String
-  storagePath   String
-  mimeType      String
-  sizeBytes     Int
-  uploadedAt    DateTime @default(now()) @db.Timestamptz(3)
-
-  @@index([studentUserId])
 }
 
 // ---------------------------------------------------------------------------

@@ -352,7 +352,7 @@ a backup first is optional. A rollback restores columns, not data.**
 - [ ] 6.0 Confirm Waves 3–5 deployed
 - [x] 6.1 DB-001: drop the 7 dead `StudentProfile` columns, its FK and IDX-D2 — `20261111010000_student_profile_dead_columns`: FK, index and 7 columns (activeSeasonId, year, phone, dateOfBirth, spiritualBackground, gifts, photoPath) + the Season back-relation; cycle (rollback restores the columns, not data; column order aside) + drift empty + snapshot (-7 columns, -1 FK, -1 index); test fixtures stop using the column; unit 572
 - [x] 6.2 DB-002: drop `Season.coverImagePath`, `Session.materialsPath`, `JpcEvent.imagePath` — `20261111020000_dead_path_columns`; cycle + drift empty + snapshot (-3 columns); events.ts comment updated; unit 572
-- [ ] 6.3 DB-003: drop `StudentDocument` and its User relations
+- [x] 6.3 DB-003: drop `StudentDocument` and its User relations — `20261111030000_drop_student_document` (table, sequence, index, both FKs; rollback recreates it empty) + the two User relations + the ERD group entry; cycle + drift empty + snapshot (only StudentDocument lines); unit 572
 - [ ] 6.4 DB-006: drop `RefreshToken.userAgent`
 - [ ] 6.5 DB-010: drop `StudentProfile.deletedAt`
 - [ ] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`)

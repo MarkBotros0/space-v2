@@ -41,7 +41,6 @@ export const DOMAINS: { title: string; models: string[] }[] = [
       "EngagementNote",
       "MentorFollowUp",
       "Notification",
-      "StudentDocument",
       "JpcEvent",
       "Announcement",
       "AnnouncementRead",
