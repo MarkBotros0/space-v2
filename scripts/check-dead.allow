@@ -1,0 +1,8 @@
+# Exports scripts/check-dead.mjs must not report: <file>:<name>  # why it stays exported
+# The return type of an exported function in another file (declaration emit needs the name, TS4058).
+apps/backend/src/lib/dashboard-figures.ts:StudentAssignmentSummaryFigures
+apps/backend/src/lib/dashboard-figures.ts:QuizRollupFigures
+# A schema whose only use is the exported type derived from it (`typeof`); unexported, lint calls it unused.
+packages/shared/src/import/headers.ts:IMPORT_PROFILE_FIELDS
+packages/shared/src/reports/exports.ts:exportKindSchema
+packages/shared/src/standing.ts:standingSchema

@@ -16,7 +16,8 @@
     "test:unit": "turbo run test:unit",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json}\"",
     "clean": "turbo run clean",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json}\"",
+    "check:dead": "node scripts/check-dead.mjs"
   },
   "devDependencies": {
     "prettier": "^3.2.5",
