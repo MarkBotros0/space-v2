@@ -6,6 +6,7 @@ import { seasonParticipant } from "./season-participants";
 import { ANNOUNCEMENT_UNREAD_DAYS } from "../../../../../packages/shared/src/index";
 import { MS_PER_DAY } from "../org-time";
 import { liveSeason } from "../db/live";
+import { ledGroupSeasonIds } from "./led-groups";
 
 export const ANNOUNCEMENT_PAGE_ORDER: Prisma.AnnouncementOrderByWithRelationInput[] = [
   { createdAt: "desc" },
@@ -15,19 +16,14 @@ export const ANNOUNCEMENT_PAGE_ORDER: Prisma.AnnouncementOrderByWithRelationInpu
 /** The seasons a viewer's staff scopes or enrolments reach (live or finished). */
 async function readableSeasonIds(user: SessionUser): Promise<number[]> {
   const ids = new Set<number>(user.seasonAdminIds);
-  const [groups, enrolments] = await Promise.all([
-    user.groupLeaderIds.length > 0
-      ? db.group.findMany({
-          where: { id: { in: user.groupLeaderIds } },
-          select: { seasonId: true },
-        })
-      : Promise.resolve([]),
+  const [ledSeasonIds, enrolments] = await Promise.all([
+    ledGroupSeasonIds(user),
     db.seasonEnrollment.findMany({
       where: { studentUserId: user.userId, ...seasonParticipant },
       select: { seasonId: true },
     }),
   ]);
-  for (const g of groups) ids.add(g.seasonId);
+  for (const id of ledSeasonIds) ids.add(id);
   for (const e of enrolments) ids.add(e.seasonId);
   return [...ids];
 }
@@ -59,13 +55,7 @@ async function liveSeasonIds(user: SessionUser): Promise<number[]> {
   if (isSuper(user) || isMentor(user)) return [];
   const ids = new Set<number>(user.seasonAdminIds);
   if (user.activeSeasonId != null) ids.add(user.activeSeasonId);
-  if (user.groupLeaderIds.length > 0) {
-    const groups = await db.group.findMany({
-      where: { id: { in: user.groupLeaderIds } },
-      select: { seasonId: true },
-    });
-    for (const g of groups) ids.add(g.seasonId);
-  }
+  for (const id of await ledGroupSeasonIds(user)) ids.add(id);
   return [...ids];
 }
 

@@ -3,6 +3,7 @@ import type { SessionUser } from "../../auth/tokens";
 import { isMentor, isSuper } from "../../rbac";
 import { groupIdInSeason } from "../enrollment";
 import { seasonParticipant, seasonRosterMember } from "../season-participants";
+import { ledGroupIdsInSeason } from "../led-groups";
 
 export interface GroupListRow {
   id: number;
@@ -30,11 +31,8 @@ async function scopeForSeason(user: SessionUser, seasonId: number): Promise<Grou
     return user.seasonAdminIds.includes(seasonId) ? { kind: "all" } : null;
   }
   if (user.role === "LEADER") {
-    const groups = await db.group.findMany({
-      where: { seasonId, id: { in: user.groupLeaderIds } },
-      select: { id: true },
-    });
-    return groups.length === 0 ? null : { kind: "ids", groupIds: groups.map((g) => g.id) };
+    const groupIds = await ledGroupIdsInSeason(user, seasonId);
+    return groupIds.length === 0 ? null : { kind: "ids", groupIds };
   }
   if (user.role === "STUDENT") {
     // The student's group *in this season*, from the enrolment (ruling C9).

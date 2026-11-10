@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason, isMentor, isSuper } from "../rbac";
+import { ledGroupIdsInSeason } from "../queries/led-groups";
 
 export async function canAccessSeason(user: SessionUser, seasonId: number): Promise<boolean> {
   if (isSuper(user) || isMentor(user)) return true;
@@ -59,12 +60,9 @@ export async function staffScopeForSeason(user: SessionUser, seasonId: number): 
   if (isAdminOfSeason(user, seasonId)) return { kind: "season" };
   if (user.role !== "LEADER") return null;
   if (user.groupLeaderIds.length === 0) return null;
-  const groupsInSeason = await db.group.findMany({
-    where: { seasonId, id: { in: user.groupLeaderIds } },
-    select: { id: true },
-  });
-  if (groupsInSeason.length === 0) return null;
-  return { kind: "groups", seasonId, groupIds: groupsInSeason.map((g) => g.id) };
+  const groupIds = await ledGroupIdsInSeason(user, seasonId);
+  if (groupIds.length === 0) return null;
+  return { kind: "groups", seasonId, groupIds };
 }
 
 /** The season a session belongs to, or null when it does not exist. */
