@@ -34,35 +34,43 @@ export async function listAssignmentsForSeason(seasonId: number): Promise<Assign
 
   const now = new Date();
 
-  // Expected count: students in targeted groups (or all season-enrolled if isAllGroups).
-  return Promise.all(
-    rows.map(async (a) => {
-      const targetGroupIds = a.targets.map((t) => t.groupId);
-      // Both branches count SeasonEnrollment. Counting GroupStudent instead —
-      // as this did — counts every student whose *current* group is targeted,
-      // regardless of season, so a past season's assignment was measured
-      // against this season's roster. Ruling C9.
-      const expected = await db.seasonEnrollment.count({
-        where: {
-          seasonId: a.season.id,
-          ...seasonParticipant,
-          ...(a.isAllGroups ? {} : { groupId: { in: targetGroupIds } }),
-        },
-      });
-      return {
-        id: a.id,
-        title: a.title,
-        dueAt: a.dueAt,
-        dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
-        isOverdue: isOverdue(a.dueAt, now),
-        isAllGroups: a.isAllGroups,
-        targetGroupIds,
-        submissionCount: a._count.submissions,
-        expectedCount: expected,
-        seasonCode: a.season.code,
-      };
-    }),
-  );
+  // Expected count: students in targeted groups (or all season-enrolled if
+  // isAllGroups). Both count SeasonEnrollment, never GroupStudent, which counts
+  // every student whose *current* group is targeted, regardless of season, so
+  // a past season's assignment was measured against this season's roster
+  // (ruling C9). One grouped count for the season instead of one count per
+  // assignment (refactor BE-072): a row's figure is the sum over its unique
+  // target groups, and the ungrouped bucket counts only toward the season total,
+  // just as `groupId in [...]` never matches null.
+  const perGroup =
+    rows.length === 0
+      ? []
+      : await db.seasonEnrollment.groupBy({
+          by: ["groupId"],
+          where: { seasonId, ...seasonParticipant },
+          _count: { _all: true },
+        });
+  const byGroup = new Map(perGroup.map((g) => [g.groupId, g._count._all]));
+  const seasonTotal = perGroup.reduce((sum, g) => sum + g._count._all, 0);
+
+  return rows.map((a) => {
+    const targetGroupIds = a.targets.map((t) => t.groupId);
+    const expected = a.isAllGroups
+      ? seasonTotal
+      : [...new Set(targetGroupIds)].reduce((sum, id) => sum + (byGroup.get(id) ?? 0), 0);
+    return {
+      id: a.id,
+      title: a.title,
+      dueAt: a.dueAt,
+      dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
+      isOverdue: isOverdue(a.dueAt, now),
+      isAllGroups: a.isAllGroups,
+      targetGroupIds,
+      submissionCount: a._count.submissions,
+      expectedCount: expected,
+      seasonCode: a.season.code,
+    };
+  });
 }
 
 export interface AssignmentTrackerRowData {
