@@ -374,8 +374,8 @@ a backup first is optional. A rollback restores columns, not data.**
 - [x] 7.6 CI: `pnpm check` + unit tests on `pull_request` in the existing workflows — unit-tests.yml runs on `pull_request` (and by hand) and calls `pnpm check`; integration-tests.yml stays manual (Q24)
 - [x] 7.7 `.github/pull_request_template.md` with the definition-of-done checklist — `.github/pull_request_template.md`: what and why, then the definition-of-done checklist (check, integration, behaviour kept, size, layer rules, migration rules, sweep, OpenAPI, deps and secrets, author)
 - [x] 7.8 CLAUDE.md `## Code & Data Standards` (real paths, the D8 exceptions) — CLAUDE.md `## Code & Data Standards` (size, dead code, backend and mobile layers, soft delete, schema, migrations, the D8 gaps) and `pnpm check` under Commands
-- [ ] 7.9 Prove each guardrail fails on a planted violation (401-line file, unused export, route with
-      `$transaction`, screen importing `api-client`, model without base columns), then passes once removed
+- [x] 7.9 Prove each guardrail fails on a planted violation (401-line file, unused export, route with
+      `$transaction`, screen importing `api-client`, model without base columns), then passes once removed — each planted, seen failing, removed, seen passing: a 401-line file (check:size and max-lines), an unused export (check:dead), `$transaction` in a route and a literal `deletedAt: null` in a where (no-restricted-syntax; the latter in 7.1), a screen importing api-client (no-restricted-imports), a model without createdAt/updatedAt (schema-conformance). Nothing planted was committed
 - [ ] 7.10 Phase 4: final verification vs baseline, the >400-line command, dead-code re-run,
       `docs/refactor-report.md` (incl. every D8 skip) → **STOP**
 - Skipped (D8): duplication check (`jscpd` not approved, Q10)
