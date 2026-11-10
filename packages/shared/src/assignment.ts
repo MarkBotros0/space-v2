@@ -81,7 +81,6 @@ export const assignmentDetailSchema = z.object({
   seasonId: z.number(),
   seasonCode: z.string(),
   seasonTitle: z.string(),
-  sessionTitle: z.string().nullable(),
   title: z.string(),
   description: z.string().nullable(),
   dueAt: z.string().nullable(),
@@ -89,7 +88,6 @@ export const assignmentDetailSchema = z.object({
   dueOrgDay: isoDaySchema.nullable(),
   dueOrgTime: wallTimeSchema.nullable(),
   isOverdue: z.boolean(),
-  isAllGroups: z.boolean(),
   reminder: reminderSchema,
   /** The reminder in words ("2 days before the next session"); null when it is off. */
   reminderLine: z.string().nullable(),

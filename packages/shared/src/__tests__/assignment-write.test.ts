@@ -132,8 +132,6 @@ describe("response additions", () => {
     seasonId: 7,
     seasonCode: "s7",
     seasonTitle: "Spring 2099",
-    sessionTitle: null,
-    isAllGroups: true,
     title: "Essay one",
     description: null,
     dueAt: "2099-04-01T21:59:00.000Z",
