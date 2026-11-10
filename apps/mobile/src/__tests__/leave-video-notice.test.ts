@@ -1,6 +1,6 @@
 import { leaveVideoNotice, watchedRun } from "../screens/assignment-detail/leave-video-notice";
 
-const NBSP = " ";
+const NBSP = "\u00a0";
 const watching = (over: Partial<Parameters<typeof leaveVideoNotice>[0]> = {}) => ({
   watchedSeconds: 360,
   durationSeconds: 1080,

@@ -3,9 +3,9 @@ import { plural } from "../../lib/plural";
 import { keepTogether } from "../../lib/format";
 
 /** A word joiner each side of the dash, so "150–300" never breaks after it. */
-const JOINED_DASH = "⁠–⁠";
+const JOINED_DASH = "\u2060–\u2060";
 /** A non-breaking space each side of the dot: the count and the range are one run (spec "UI and code standards"). */
-const JOINED_DOT = " · ";
+const JOINED_DOT = "\u00a0·\u00a0";
 
 /** "150–300", "at least 150", "up to 300", or null when the essay sets no limits. */
 function rangeText(min: number | null, max: number | null): string | null {

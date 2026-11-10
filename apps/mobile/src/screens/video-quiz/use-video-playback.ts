@@ -43,6 +43,8 @@ interface PlaybackOptions {
   onPoll?: (seconds: number, playing: boolean) => void;
   /** Playback stopped: paused, ended, or held at a question. */
   onStop?: () => void;
+  /** The student moved the playhead with the track: the stretch since the last poll didn't play. */
+  onSeeked?: () => void;
   /** The furthest a forward seek may land besides the barrier (the furthest point, with skipping blocked). */
   seekCeiling?: () => number;
   /** An answer landed; the server's furthest point comes with it. */
@@ -55,6 +57,7 @@ export function useVideoPlayback({
   readCurrentTime,
   onPoll,
   onStop,
+  onSeeked,
   seekCeiling,
   onAnswered,
 }: PlaybackOptions) {
@@ -87,8 +90,8 @@ export function useVideoPlayback({
   deadlockedRef.current = deadlocked;
   playingRef.current = playing;
   // The callbacks outlive the render that made them (the poll, the player's events).
-  const hooks = useRef({ onPoll, onStop, seekCeiling, onAnswered });
-  hooks.current = { onPoll, onStop, seekCeiling, onAnswered };
+  const hooks = useRef({ onPoll, onStop, onSeeked, seekCeiling, onAnswered });
+  hooks.current = { onPoll, onStop, onSeeked, seekCeiling, onAnswered };
 
   /** Every stop goes through here, so the player's own bookkeeping never misses one. */
   const setPlaying = useCallback((next: boolean | ((p: boolean) => boolean)): void => {
@@ -106,11 +109,13 @@ export function useVideoPlayback({
   // The poll starts on mount; the deadlock guard stops it only once
   // getDuration() has answered, so a player that never fires onReady still gates.
   useEffect(() => {
+    // A playhead read that lands after unmount (or a clock change) sets nothing.
+    let cancelled = false;
     const timer = setInterval(() => {
       if (openRef.current !== null || deadlockedRef.current) return;
       void clock()
         .then((t) => {
-          if (openRef.current !== null || deadlockedRef.current) return;
+          if (cancelled || openRef.current !== null || deadlockedRef.current) return;
           if (t > furthestRef.current) furthestRef.current = t;
           currentRef.current = t;
           setCurrent(t);
@@ -127,7 +132,10 @@ export function useVideoPlayback({
         })
         .catch(() => undefined);
     }, POLL_MS);
-    return () => clearInterval(timer);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [clock, setPlaying]);
 
   // A player that never becomes ready is the same dead end as an error.
@@ -197,6 +205,13 @@ export function useVideoPlayback({
     playerRef.current?.seekTo(target, true);
     currentRef.current = target;
     setCurrent(target);
+    hooks.current.onSeeked?.();
+  };
+
+  /** Closes the question sheet without answering, for an explicit exit from it. */
+  const closeQuestion = (): void => {
+    setOpen(null);
+    setFeedback(null);
   };
 
   return {
@@ -220,6 +235,7 @@ export function useVideoPlayback({
     onAnswer,
     onContinue,
     onSeek,
+    closeQuestion,
   };
 }
 

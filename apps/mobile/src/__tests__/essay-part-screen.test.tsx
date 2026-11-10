@@ -82,10 +82,10 @@ describe("essay part screen", () => {
 
     const count = countText();
     const text = String(count.props.children);
-    expect(text.replace(/[ ⁠]/g, (c) => (c === " " ? " " : ""))).toBe("142 words · 150–300");
+    expect(text.replace(/[\u00a0\u2060]/g, (c) => (c === "\u00a0" ? " " : ""))).toBe("142 words · 150–300");
     // No plain space or bare dash for a line to break at.
     expect(text).not.toMatch(/ /);
-    expect(text).toContain("⁠–⁠");
+    expect(text).toContain("\u2060–\u2060");
     expect(count.props.className).not.toMatch(/text-bad/);
 
     fireEvent.changeText(screen.getByLabelText(PROMPT), words(308));
@@ -97,7 +97,7 @@ describe("essay part screen", () => {
     serve(null);
     renderStacked(<PartScreen />);
     fireEvent.changeText(await screen.findByLabelText(PROMPT), "un<i>believ</i>able Tom &amp; Jerry");
-    expect(String(countText().props.children)).toMatch(/^4 words/);
+    expect(String(countText().props.children)).toMatch(/^4\u00a0words/);
   });
 
   it("Save draft puts the text on the part and says so", async () => {

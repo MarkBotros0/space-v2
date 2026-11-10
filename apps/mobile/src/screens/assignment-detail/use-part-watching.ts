@@ -71,6 +71,11 @@ export function usePartWatching({
     sendRef.current();
   }, []);
 
+  /** A seek with the track: the next poll starts a new range, so a short forward hop never counts. */
+  const onSeeked = useCallback((): void => {
+    lastRef.current = null;
+  }, []);
+
   useEffect(() => {
     if (!playing) return undefined;
     const timer = setInterval(() => sendRef.current(), REPORT_MS);
@@ -87,5 +92,5 @@ export function usePartWatching({
     };
   }, []);
 
-  return { watchedSeconds: watched, onPoll, onStop };
+  return { watchedSeconds: watched, onPoll, onStop, onSeeked };
 }

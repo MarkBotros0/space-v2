@@ -39,7 +39,12 @@ function VideoFallback({ youtubeUrl }: { youtubeUrl: string }) {
   return (
     <View className="gap-2">
       <Button accessibilityRole="link" className="self-start" onPress={() => void Linking.openURL(youtubeUrl)}>
-        <ExternalLink size={16} className="shrink-0 text-primary-foreground" />
+        <ExternalLink
+          size={16}
+          className="shrink-0 text-primary-foreground"
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
         Watch on YouTube
       </Button>
       <Text variant="caption" className="text-muted-foreground">
@@ -91,6 +96,7 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
     answer,
     onPoll: (t, playing) => watchingRef.current?.onPoll(t, playing),
     onStop: () => watchingRef.current?.onStop(),
+    onSeeked: () => watchingRef.current?.onSeeked(),
     // With skipping blocked, a forward seek stops at the furthest point reached; rewinding is free.
     seekCeiling: video.blockSkipping ? () => playback.furthestRef.current : undefined,
   });
@@ -122,7 +128,16 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
     blockSkipping: video.blockSkipping,
   });
   const [leaving, setLeaving] = useState<LeaveAction | null>(null);
-  usePreventRemove(record && notice !== null, ({ data }) => {
+  // The question sheet's own "Leave the video" is an explicit exit: it closes the sheet and
+  // goes, with no second modal over the first (iOS won't present one there).
+  const leaveFromSheet = useRef(false);
+  // Nothing to watch in the app (no video, a failed player, an unreachable question): nothing to warn about.
+  const playable = video.videoId !== null && !playback.failed && !playback.deadlocked;
+  usePreventRemove(record && playable && notice !== null, ({ data }) => {
+    if (leaveFromSheet.current) {
+      navigation.dispatch(data.action);
+      return;
+    }
     setPlaying(false);
     setLeaving(data.action);
   });
@@ -167,7 +182,11 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
         answerError={playback.answerError}
         onAnswer={playback.onAnswer}
         onContinue={playback.onContinue}
-        onLeave={() => router.back()}
+        onLeave={() => {
+          leaveFromSheet.current = true;
+          playback.closeQuestion();
+          router.back();
+        }}
         leaveLabel="Leave the video"
       />
       <LeaveNotice

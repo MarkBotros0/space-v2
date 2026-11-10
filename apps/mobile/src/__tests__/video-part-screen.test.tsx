@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { AppState, type AppStateStatus } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn() },
@@ -10,13 +11,14 @@ jest.mock("../design/ui/toaster", () => ({
 
 // The leave guard: the screen registers it through usePreventRemove; the test plays the navigator.
 const mockDispatch = jest.fn();
+const mockBack = jest.fn();
 const mockGuard: { prevent: boolean; onLeave: ((e: { data: { action: unknown } }) => void) | null } = {
   prevent: false,
   onLeave: null,
 };
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41", partId: "1" }),
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: jest.fn(), back: mockBack }),
   useNavigation: () => ({ dispatch: mockDispatch }),
   usePreventRemove: (prevent: boolean, onLeave: (e: { data: { action: unknown } }) => void) => {
     mockGuard.prevent = prevent;
@@ -93,7 +95,11 @@ function serve(video: ReturnType<typeof partVideo>, watched = 300, blockSkipping
   });
 }
 
-const wait = (ms: number) => act(() => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+/** One poll of the player (400 ms) at playhead `t`, on fake timers: no real time, no race. */
+async function pollAt(t: number) {
+  mockClock.now = t;
+  await act(() => jest.advanceTimersByTimeAsync(400));
+}
 
 /** Lays the track out 300 wide and taps it `fraction` of the way along. */
 function tapTrack(fraction: number) {
@@ -158,20 +164,6 @@ describe("video part screen", () => {
     expect(mockSeekTo).toHaveBeenLastCalledWith(540, true);
   });
 
-  it("reports the stretch that played when paused", async () => {
-    serve(partVideo({ furthestSeconds: 0, watchedSeconds: 0, watchedIntervals: [] }), 0);
-    renderStacked(<PartScreen />);
-    // The player waits for the part video's own read.
-    await screen.findByText(/^Watched/, {}, { timeout: 5000 });
-    fireEvent.press(screen.getByRole("button", { name: "Play" }));
-    for (const t of [10, 11, 12]) {
-      mockClock.now = t;
-      await wait(450);
-    }
-    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
-    await waitFor(() => expect(put).toHaveBeenCalledWith(PROGRESS_URL, { intervals: [[10, 12]], position: 12 }));
-  });
-
   it("leaving a part-watched video shows Not finished yet with Keep watching and Leave", async () => {
     serve(partVideo());
     renderStacked(<PartScreen />);
@@ -200,34 +192,146 @@ describe("video part screen", () => {
     expect(mockGuard.prevent).toBe(false);
   });
 
-  it("a finished season plays the video but records nothing and never asks before leaving", async () => {
-    get.mockImplementation((url: string) =>
-      Promise.resolve({
-        data: {
-          data:
-            url === "/api/v1/assignments/41"
-              ? assignmentDetail([videoWork(300)], { parts: [videoPart], readOnly: true })
-              : partVideo(),
-        },
-      }),
-    );
-    renderStacked(<PartScreen />);
-    expect(await screen.findByText(/^Watched/, {}, { timeout: 5000 })).toBeTruthy();
-    expect(mockGuard.prevent).toBe(false);
-    fireEvent.press(screen.getByRole("button", { name: "Play" }));
-    mockClock.now = 1;
-    await wait(450);
-    mockClock.now = 2;
-    await wait(450);
-    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
-    await wait(50);
-    expect(put).not.toHaveBeenCalled();
-  });
-
   it("a video that can't play in the app says so and links out", async () => {
     serve(partVideo({ videoId: null }));
     renderStacked(<PartScreen />);
     expect(await screen.findByText("Watch on YouTube", {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.getByText("This video can't be played in the app, so watching it there won't count.")).toBeTruthy();
+  });
+  it("an unplayable video never asks before leaving: there is nothing to watch in the app", async () => {
+    serve(partVideo({ videoId: null }));
+    renderStacked(<PartScreen />);
+    expect(await screen.findByText("Watch on YouTube", {}, { timeout: 5000 })).toBeTruthy();
+    expect(mockGuard.prevent).toBe(false);
+  });
+});
+
+describe("video part screen: what played, and when it is reported", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  const progress = () => put.mock.calls.filter(([u]) => u === PROGRESS_URL).map(([, body]) => body);
+
+  async function playFrom(video: ReturnType<typeof partVideo>, watched = 0, readOnly = false) {
+    get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: {
+          data:
+            url === "/api/v1/assignments/41"
+              ? assignmentDetail([videoWork(watched)], { parts: [videoPart], readOnly })
+              : video,
+        },
+      }),
+    );
+    const view = renderStacked(<PartScreen />);
+    await screen.findByText(/^Watched/);
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
+    return view;
+  }
+  const fresh = () => partVideo({ furthestSeconds: 0, watchedSeconds: 0, watchedIntervals: [] });
+
+  it("reports the stretch that played when paused", async () => {
+    await playFrom(fresh());
+    for (const t of [10, 11, 12]) await pollAt(t);
+    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    await act(() => jest.advanceTimersByTimeAsync(0));
+    expect(progress()).toEqual([{ intervals: [[10, 12]], position: 12 }]);
+  });
+
+  it("reports every 10 s while playing", async () => {
+    await playFrom(fresh());
+    // 26 polls of 400 ms (10.4 s): the 10 s report has gone out, still playing.
+    for (let i = 0; i <= 25; i++) await pollAt(i * 0.4);
+    expect(progress()).toHaveLength(1);
+    expect(progress()[0]).toMatchObject({ position: 9 });
+    expect(progress()[0]?.intervals).toEqual([[0, expect.any(Number)]]);
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+  });
+
+  it("a forward tap of 2 s or less is a seek, not watching", async () => {
+    await playFrom(fresh());
+    await pollAt(10);
+    await pollAt(11);
+    tapTrack(13 / 1080); // to 13 s
+    await pollAt(13);
+    await pollAt(14);
+    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    await act(() => jest.advanceTimersByTimeAsync(0));
+    expect(progress()).toEqual([
+      {
+        intervals: [
+          [10, 11],
+          [13, 14],
+        ],
+        position: 14,
+      },
+    ]);
+  });
+
+  it("going to the background pauses and reports", async () => {
+    // Swapped by hand, not spied: a restored spy over RN's mock leaves later mounts without remove().
+    const listeners: ((s: AppStateStatus) => void)[] = [];
+    const original = AppState.addEventListener;
+    AppState.addEventListener = ((_type: string, fn: (s: AppStateStatus) => void) => {
+      listeners.push(fn);
+      return { remove: () => undefined };
+    }) as typeof AppState.addEventListener;
+    try {
+      await playFrom(fresh());
+      await pollAt(20);
+      await pollAt(21);
+      await act(async () => {
+        for (const fn of listeners) fn("background");
+      });
+      expect(progress()).toEqual([{ intervals: [[20, 21]], position: 21 }]);
+      expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+    } finally {
+      AppState.addEventListener = original;
+    }
+  });
+
+  it("leaving reports what played since the last report", async () => {
+    const view = await playFrom(fresh());
+    await pollAt(30);
+    await pollAt(31);
+    view.unmount();
+    await act(() => jest.advanceTimersByTimeAsync(0));
+    expect(progress()).toEqual([{ intervals: [[30, 31]], position: 31 }]);
+  });
+
+  it("a finished season plays the video but records nothing and never asks before leaving", async () => {
+    await playFrom(partVideo(), 300, true);
+    expect(mockGuard.prevent).toBe(false);
+    await pollAt(1);
+    await pollAt(2);
+    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    await act(() => jest.advanceTimersByTimeAsync(0));
+    expect(put).not.toHaveBeenCalled();
+  });
+
+  it("Leave the video on the question sheet closes it and leaves without a second notice", async () => {
+    const question = {
+      id: 7,
+      atSeconds: 30,
+      prompt: "Who ran to meet him?",
+      options: ["The father", "The brother"],
+      points: 1,
+      answered: false,
+      selectedIndex: null,
+      isCorrect: null,
+    };
+    await playFrom(partVideo({ questions: [question], nextQuestionId: 7, totalPoints: 1 }), 300);
+    expect(mockGuard.prevent).toBe(true);
+    await pollAt(31);
+    expect(screen.getByText("Who ran to meet him?")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Leave the video"));
+    expect(mockBack).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Who ran to meet him?")).toBeNull();
+    // The navigator asks the guard; it lets this one through at once.
+    const action = { type: "GO_BACK" };
+    act(() => mockGuard.onLeave?.({ data: { action } }));
+    expect(mockDispatch).toHaveBeenCalledWith(action);
+    expect(screen.queryByText("Not finished yet")).toBeNull();
   });
 });

@@ -5,7 +5,7 @@
  */
 import { MessagesSquare, PenLine, PlayCircle, type LucideIcon } from "lucide-react-native";
 import { View } from "react-native";
-import { partDone, type AssignmentPart, type AssignmentPartKind, type PartWork } from "@space/shared";
+import { partsLeft, type AssignmentPart, type AssignmentPartKind, type PartWork } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { GroupedList, ListRow, Progress, Text } from "../../design/ui";
@@ -49,14 +49,16 @@ export function AssignmentChecklist({
   const ordered = [...parts].sort((a, b) => a.position - b.position);
   const workOf = (part: AssignmentPart) => works.find((w) => w.partId === part.id);
   const total = ordered.length;
-  const done = ordered.filter((p) => partDone(p, workOf(p))).length;
+  // The shared rule, as Submit's gate counts it.
+  const left = partsLeft(ordered, works);
+  const done = total - left;
   return (
     <View className="gap-4">
       <View className="gap-1.5">
         {/* No fill animation: the bar appears at its value (docs/rules/motion.md). */}
         <Progress value={(done / total) * 100} label={`${done} of ${total} done`} />
         <Text variant="caption" className="text-muted-foreground">
-          {leftLine(total - done)}
+          {leftLine(left)}
         </Text>
       </View>
       <GroupedList header="Parts">

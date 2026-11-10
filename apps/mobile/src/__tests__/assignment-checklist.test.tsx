@@ -113,6 +113,26 @@ describe("the student's assignment: a checklist of parts", () => {
     await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
   });
 
+  it("already submitted elsewhere: says so in words, reads again and drops Submit", async () => {
+    serve(finished());
+    post.mockRejectedValue(refusal("already_submitted", "You've already submitted this assignment."));
+    renderStacked(<AssignmentDetailScreen />);
+
+    fireEvent.press(await screen.findByRole("button", { name: "Submit" }));
+    const submitted = assignmentDetail([videoWork(1000), essayWork("SUBMITTED", 200), forumWork(true)], {
+      my: {
+        submittedAt: "2099-03-30T10:00:00.000Z",
+        parts: [videoWork(1000), essayWork("SUBMITTED", 200), forumWork(true)],
+      },
+    });
+    get.mockResolvedValue({ data: { data: submitted } });
+    fireEvent.press(await screen.findByText("Yes, submit"));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith("You've already submitted this assignment."));
+    expect(await screen.findByText(/^Submitted /)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Submit" })).toBeNull();
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
   it("once submitted, the page says so and offers no Submit", async () => {
     serve(
       assignmentDetail([videoWork(1000), essayWork("SUBMITTED", 200), forumWork(true)], {

@@ -43,7 +43,6 @@ function EssayCount({ part, text }: { part: EssayPart; text: string }) {
     <Text
       testID="essay-count"
       variant="caption"
-      accessibilityLiveRegion="polite"
       className={cn(line.tone === "bad" ? "text-bad" : "text-muted-foreground")}
     >
       {line.text}
