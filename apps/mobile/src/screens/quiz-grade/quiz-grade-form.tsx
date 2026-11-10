@@ -6,9 +6,9 @@
  */
 import { View } from "react-native";
 
-import { Input } from "../ui/input";
-import { Text } from "../ui/text";
-import { Textarea } from "../ui/textarea";
+import { Input } from "../../design/ui/input";
+import { Text } from "../../design/ui/text";
+import { Textarea } from "../../design/ui/textarea";
 
 export function QuizGradeFields({
   name,

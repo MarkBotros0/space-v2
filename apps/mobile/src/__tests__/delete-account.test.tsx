@@ -10,7 +10,7 @@ jest.mock("../design/ui/toaster", () => ({
   Toaster: () => null,
 }));
 
-import { useDeleteAccountFlow } from "../components/DeleteAccount";
+import { useDeleteAccountFlow } from "../screens/profile/delete-account";
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { clearSession } from "../lib/token-storage";

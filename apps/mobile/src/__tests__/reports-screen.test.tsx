@@ -10,7 +10,7 @@ jest.mock("expo-router", () => ({
 }));
 // Task 9's module reaches native file/share APIs that do not exist under Jest.
 // The screen only needs it to render a button.
-jest.mock("../components/ExportMenu", () => ({
+jest.mock("../screens/reports/export-menu", () => ({
   ExportMenu: () => null,
 }));
 

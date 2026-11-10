@@ -3,7 +3,7 @@ import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react-native";
 import { View } from "react-native";
 import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
 
-import { QuestionEditor } from "../../components/QuestionEditor";
+import { QuestionEditor } from "./question-editor";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, ConfirmDialog, StatusChip, Text } from "../../design/ui";
 import { useDeleteQuestion, useReorderQuestions, useUpdateQuestion } from "../../hooks/use-quiz-authoring";

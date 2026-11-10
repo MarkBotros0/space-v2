@@ -2,8 +2,8 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { AssignmentWriteBody, SessionListItem } from "@space/shared";
 
-import { FormScreen } from "../design/layout/form-screen";
-import { Combobox, DatePicker, FormField, Input, PillButton, RichTextEditor, TimePicker } from "../design/ui";
+import { FormScreen } from "../../design/layout/form-screen";
+import { Combobox, DatePicker, FormField, Input, PillButton, RichTextEditor, TimePicker } from "../../design/ui";
 import {
   dateToDay,
   dayToDate,
@@ -11,12 +11,12 @@ import {
   timeToParts,
   toAssignmentBody,
   type AssignmentFormValues,
-} from "../lib/assignment-form-values";
-import { firstErrorByField } from "../lib/form-errors";
+} from "../../lib/assignment-form-values";
+import { firstErrorByField } from "../../lib/form-errors";
 import { AssignmentTypeSection, FileSubmissionsSection } from "./assignment-form-sections";
-import { formatDayKey } from "../lib/format";
+import { formatDayKey } from "../../lib/format";
 
-export { NEW_ASSIGNMENT_VALUES, valuesFromDetail, type AssignmentFormValues } from "../lib/assignment-form-values";
+export { NEW_ASSIGNMENT_VALUES, valuesFromDetail, type AssignmentFormValues } from "../../lib/assignment-form-values";
 
 /** Which control each schema issue lands on; anything else goes to the bar. */
 const FIELD_OF_ISSUE: Record<string, string> = {

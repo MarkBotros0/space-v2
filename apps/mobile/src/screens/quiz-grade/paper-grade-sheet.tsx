@@ -1,6 +1,6 @@
 import type { QuizGradeSheet } from "@space/shared";
 
-import { QuizGradeFields } from "../../design/quizzes/quiz-grade-form";
+import { QuizGradeFields } from "./quiz-grade-form";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 
 type QuizGradeRow = QuizGradeSheet["rows"][number];

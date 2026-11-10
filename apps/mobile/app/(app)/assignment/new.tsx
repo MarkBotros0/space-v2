@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 
-import { AssignmentForm, NEW_ASSIGNMENT_VALUES } from "../../../src/components/assignment-form";
+import { AssignmentForm, NEW_ASSIGNMENT_VALUES } from "../../../src/screens/assignment-form/assignment-form";
 import { useCreateAssignment } from "../../../src/hooks/use-assignment-writes";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";

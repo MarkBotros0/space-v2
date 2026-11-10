@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Plus } from "lucide-react-native";
 
-import { EMPTY_EVENT_VALUES, EventForm } from "../../src/components/EventForm";
+import { EMPTY_EVENT_VALUES, EventForm } from "../../src/screens/events/event-form";
 import { NAV_ICONS } from "../../src/design/icons/nav-icon";
 import { queryStateView } from "../../src/design/layout/route-states";
 import { Screen } from "../../src/design/layout/screen";

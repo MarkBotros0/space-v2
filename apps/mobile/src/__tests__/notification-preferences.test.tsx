@@ -12,7 +12,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
-import { NotificationPreferences } from "../components/NotificationPreferences";
+import { NotificationPreferences } from "../screens/settings/notification-preferences";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;

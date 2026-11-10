@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 
-import { useDeleteAccountFlow } from "../../../src/components/DeleteAccount";
+import { useDeleteAccountFlow } from "../../../src/screens/profile/delete-account";
 import { MoreMenu } from "../../../src/design/layout/more-menu";
 import { Screen } from "../../../src/design/layout/screen";
 import { useLogout } from "../../../src/hooks/use-session";

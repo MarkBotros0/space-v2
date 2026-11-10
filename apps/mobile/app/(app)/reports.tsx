@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { ExportMenu } from "../../src/components/ExportMenu";
+import { ExportMenu } from "../../src/screens/reports/export-menu";
 import { Screen } from "../../src/design/layout/screen";
 import { EmptyState, SegmentedControl } from "../../src/design/ui";
 import { OrganisationSection } from "../../src/screens/reports/organisation-section";

@@ -3,7 +3,7 @@ import type { JpcEventListItem } from "@space/shared";
 
 import { ListRow, StatusChip, type ChipSpec } from "../../design/ui";
 import { formatEventWhen } from "../../lib/format";
-import { VISIBILITY_LABELS } from "../../components/EventForm";
+import { VISIBILITY_LABELS } from "./event-form";
 
 /** At most one chip: Past wins; otherwise who can see it when that is not everyone (Alumni only, or the season code). */
 function eventChip(e: JpcEventListItem): ChipSpec | null {

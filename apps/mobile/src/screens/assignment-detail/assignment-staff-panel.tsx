@@ -3,17 +3,17 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 import type { AssignmentDetail, AssignmentTrackerRow, UserRole } from "@space/shared";
 
-import { useAssignmentTracker } from "../hooks/use-assignments";
-import { useDeleteAssignment } from "../hooks/use-assignment-writes";
-import { useSeasonGroups } from "../hooks/use-groups";
-import { apiErrorMessage } from "../lib/api-error";
-import { configLabel, groupTrackerRows, targetLabel } from "../lib/assignment-labels";
-import { useRole } from "../store/session";
-import { FormErrorBox } from "../design/forms/form-parts";
-import { Eyebrow } from "../design/layout/page-title";
-import { RouteError } from "../design/layout/route-states";
-import { Badge, Button, DataTable, Skeleton, SubmissionStatusBadge, Text, type DataTableColumn } from "../design/ui";
-import { formatShortDateTime } from "../lib/format";
+import { useAssignmentTracker } from "../../hooks/use-assignments";
+import { useDeleteAssignment } from "../../hooks/use-assignment-writes";
+import { useSeasonGroups } from "../../hooks/use-groups";
+import { apiErrorMessage } from "../../lib/api-error";
+import { configLabel, groupTrackerRows, targetLabel } from "../../lib/assignment-labels";
+import { useRole } from "../../store/session";
+import { FormErrorBox } from "../../design/forms/form-parts";
+import { Eyebrow } from "../../design/layout/page-title";
+import { RouteError } from "../../design/layout/route-states";
+import { Badge, Button, DataTable, Skeleton, SubmissionStatusBadge, Text, type DataTableColumn } from "../../design/ui";
+import { formatShortDateTime } from "../../lib/format";
 
 /**
  * Roles GET /assignments/:id/tracker answers: SUPER and season ADMINs with

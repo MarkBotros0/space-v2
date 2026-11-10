@@ -12,7 +12,7 @@ jest.mock("../lib/api-client", () => ({
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 import { apiClient } from "../lib/api-client";
-import { ExportMenu } from "../components/ExportMenu";
+import { ExportMenu } from "../screens/reports/export-menu";
 import { renderWithProviders } from "./helpers/render";
 
 const get = apiClient.get as jest.Mock;

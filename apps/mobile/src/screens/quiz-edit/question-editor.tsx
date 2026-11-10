@@ -9,9 +9,9 @@ import {
 
 import { Check, Plus, Trash2 } from "lucide-react-native";
 
-import { cn } from "../design/lib/cn";
-import { iconWithClassName } from "../design/lib/icon";
-import { Button, Input, Text, Textarea } from "../design/ui";
+import { cn } from "../../design/lib/cn";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Button, Input, Text, Textarea } from "../../design/ui";
 
 iconWithClassName(Check, Plus, Trash2);
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { createJpcEventRequestSchema, type CreateJpcEventBody, type JpcVisibility } from "@space/shared";
 
-import { FormErrorBox } from "../design/forms/form-parts";
+import { FormErrorBox } from "../../design/forms/form-parts";
 import {
   Button,
   DatePicker,
@@ -14,13 +14,13 @@ import {
   SelectValue,
   Text,
   Textarea,
-} from "../design/ui";
-import { FormField } from "../design/ui/form-field";
-import { Sheet, SheetSaveBar } from "../design/ui/sheet";
-import { useSeasons } from "../hooks/use-seasons";
-import { firstErrorByField } from "../lib/form-errors";
-import { dateToDay, dayToDate } from "../lib/day-key";
-import { blankToNull } from "../lib/form-values";
+} from "../../design/ui";
+import { FormField } from "../../design/ui/form-field";
+import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
+import { useSeasons } from "../../hooks/use-seasons";
+import { firstErrorByField } from "../../lib/form-errors";
+import { dateToDay, dayToDate } from "../../lib/day-key";
+import { blankToNull } from "../../lib/form-values";
 
 export interface EventFormValues {
   title: string;

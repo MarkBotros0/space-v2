@@ -3,12 +3,12 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { NotificationPreferences as Prefs, UserRole } from "@space/shared";
 
-import { Section } from "../design/ui/settings-section";
-import { Button, Skeleton, Switch, Text } from "../design/ui";
-import { GroupedList, ListRow, ListSectionHeader } from "../design/ui/grouped-list";
-import { useNotificationPreferences, useUpdateNotificationPreferences } from "../hooks/use-notifications";
-import { enablePush, type PushStatus } from "../lib/push";
-import { useSessionStore, useRole } from "../store/session";
+import { Section } from "../../design/ui/settings-section";
+import { Button, Skeleton, Switch, Text } from "../../design/ui";
+import { GroupedList, ListRow, ListSectionHeader } from "../../design/ui/grouped-list";
+import { useNotificationPreferences, useUpdateNotificationPreferences } from "../../hooks/use-notifications";
+import { enablePush, type PushStatus } from "../../lib/push";
+import { useSessionStore, useRole } from "../../store/session";
 
 type ShownKey = keyof Prefs;
 

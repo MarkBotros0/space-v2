@@ -1,12 +1,12 @@
 import { useRouter } from "expo-router";
 import { useState, type ReactNode } from "react";
 
-import { toast } from "../design/ui";
-import { ConfirmDialog } from "../design/ui/confirm-dialog";
-import { useDeleteAccount } from "../hooks/use-account";
-import { apiErrorCode, apiErrorMessage } from "../lib/api-error";
-import { clearSession } from "../lib/token-storage";
-import { useSessionStore } from "../store/session";
+import { toast } from "../../design/ui";
+import { ConfirmDialog } from "../../design/ui/confirm-dialog";
+import { useDeleteAccount } from "../../hooks/use-account";
+import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
+import { clearSession } from "../../lib/token-storage";
+import { useSessionStore } from "../../store/session";
 
 /**
  * "Delete account" behind a confirmation (owner, 2026-11-06: it lives on More,

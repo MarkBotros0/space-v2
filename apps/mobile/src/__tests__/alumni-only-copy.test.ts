@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import { VISIBILITY_LABELS } from "../components/EventForm";
+import { VISIBILITY_LABELS } from "../screens/events/event-form";
 
 const walk = (dir: string): string[] =>
   readdirSync(dir).flatMap((f) => {

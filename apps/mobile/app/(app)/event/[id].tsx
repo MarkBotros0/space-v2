@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import type { JpcEventDetail } from "@space/shared";
 
-import { EventForm, VISIBILITY_LABELS, type EventFormValues } from "../../../src/components/EventForm";
+import { EventForm, VISIBILITY_LABELS, type EventFormValues } from "../../../src/screens/events/event-form";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../src/design/lib/icon";

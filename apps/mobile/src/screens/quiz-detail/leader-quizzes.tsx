@@ -2,16 +2,16 @@ import { useRouter } from "expo-router";
 import { View } from "react-native";
 import type { QuizSummary } from "@space/shared";
 
-import { NAV_ICONS } from "../design/icons/nav-icon";
-import { RouteError, RouteSkeleton } from "../design/layout/route-states";
-import { Screen } from "../design/layout/screen";
-import { EmptyState } from "../design/ui/empty-state";
-import { GroupedList, ListRow } from "../design/ui/grouped-list";
-import { StatusChip, type ChipSpec } from "../design/ui/status-chip";
-import { useQuizList } from "../hooks/use-quizzes";
-import { useCurrentSeasonId } from "../hooks/use-seasons";
-import { formatDate, unbreakable } from "../lib/format";
-import { bySessionDate } from "../lib/quiz-order";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
+import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { Screen } from "../../design/layout/screen";
+import { EmptyState } from "../../design/ui/empty-state";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { StatusChip, type ChipSpec } from "../../design/ui/status-chip";
+import { useQuizList } from "../../hooks/use-quizzes";
+import { useCurrentSeasonId } from "../../hooks/use-seasons";
+import { formatDate, unbreakable } from "../../lib/format";
+import { bySessionDate } from "../../lib/quiz-order";
 
 /** v1's three-way graded state over the server's counts (C4, D10). */
 function gradedChip(row: QuizSummary): ChipSpec {

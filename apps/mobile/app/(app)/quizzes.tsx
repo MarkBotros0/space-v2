@@ -12,7 +12,7 @@ import { useQuizList } from "../../src/hooks/use-quizzes";
 import { useSeasonDetail } from "../../src/hooks/use-seasons";
 import { formatDate } from "../../src/lib/format";
 import { bySessionDate } from "../../src/lib/quiz-order";
-import { LeaderQuizzes } from "../../src/screens/leader-quizzes";
+import { LeaderQuizzes } from "../../src/screens/quiz-detail/leader-quizzes";
 import { WorkScreen } from "../../src/screens/work/work-screen";
 import { useSeasonParamOrCurrent } from "../../src/hooks/use-season-param";
 import { useRole } from "../../src/store/session";

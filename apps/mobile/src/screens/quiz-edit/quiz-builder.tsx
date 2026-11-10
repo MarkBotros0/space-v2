@@ -4,7 +4,7 @@ import { View } from "react-native";
 import { useRouter } from "expo-router";
 import type { QuizAuthoringDetail } from "@space/shared";
 
-import { QuestionEditor } from "../../components/QuestionEditor";
+import { QuestionEditor } from "./question-editor";
 import { FormErrorBox } from "../../design/forms/form-parts";
 import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { SaveBar } from "../../design/layout/save-bar";

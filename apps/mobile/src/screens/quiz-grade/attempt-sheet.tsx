@@ -2,7 +2,7 @@ import type { QuizGradingAttempt } from "@space/shared";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
-import { initialAwards, parseAwards, QuizAttemptAnswers, ReopenButton } from "../../design/quizzes/quiz-essay-grader";
+import { initialAwards, parseAwards, QuizAttemptAnswers, ReopenButton } from "./quiz-essay-grader";
 import { haptic } from "../../design/motion";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Text } from "../../design/ui/text";

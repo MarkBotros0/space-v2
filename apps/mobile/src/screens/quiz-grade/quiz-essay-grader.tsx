@@ -9,11 +9,11 @@ import type { QuizGradingAttempt } from "@space/shared";
 import { Check, RotateCcw, X } from "lucide-react-native";
 import { View } from "react-native";
 
-import { cn } from "../lib/cn";
-import { iconWithClassName } from "../lib/icon";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Text } from "../ui/text";
+import { cn } from "../../design/lib/cn";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Button } from "../../design/ui/button";
+import { Input } from "../../design/ui/input";
+import { Text } from "../../design/ui/text";
 
 iconWithClassName(Check, X, RotateCcw);
 

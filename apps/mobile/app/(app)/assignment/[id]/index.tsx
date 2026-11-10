@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
-import { AssignmentStaffPanel } from "../../../../src/components/assignment-staff-panel";
+import { AssignmentStaffPanel } from "../../../../src/screens/assignment-detail/assignment-staff-panel";
 import { ForumThread } from "../../../../src/screens/forum";
 import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";

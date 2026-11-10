@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { MimeCategory } from "@space/shared";
 
-import { cn } from "../design/lib/cn";
-import { Checkbox, FormField, Input, MultiSelect, Switch, Text } from "../design/ui";
-import type { AssignmentFormValues } from "../lib/assignment-form-values";
-import { MIME_CATEGORY_LABELS } from "../lib/assignment-labels";
+import { cn } from "../../design/lib/cn";
+import { Checkbox, FormField, Input, MultiSelect, Switch, Text } from "../../design/ui";
+import type { AssignmentFormValues } from "../../lib/assignment-form-values";
+import { MIME_CATEGORY_LABELS } from "../../lib/assignment-labels";
 
 interface SectionProps {
   v: AssignmentFormValues;

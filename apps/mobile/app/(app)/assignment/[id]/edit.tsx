@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { AssignmentDetail } from "@space/shared";
 
-import { AssignmentForm, valuesFromDetail } from "../../../../src/components/assignment-form";
+import { AssignmentForm, valuesFromDetail } from "../../../../src/screens/assignment-form/assignment-form";
 import { useAssignmentDetail } from "../../../../src/hooks/use-assignments";
 import { useUpdateAssignment } from "../../../../src/hooks/use-assignment-writes";
 import { useSeasonSessions } from "../../../../src/hooks/use-sessions";

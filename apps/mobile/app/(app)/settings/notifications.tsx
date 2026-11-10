@@ -1,4 +1,4 @@
-import { NotificationPreferences } from "../../../src/components/NotificationPreferences";
+import { NotificationPreferences } from "../../../src/screens/settings/notification-preferences";
 import { Screen } from "../../../src/design/layout/screen";
 
 /** Notification settings: opened from More's Settings and the gear on Notifications. */
