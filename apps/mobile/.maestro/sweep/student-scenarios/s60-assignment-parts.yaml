@@ -25,7 +25,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s60-02-checklist-bottom
-# The video part. Its row reads "Video: Luke 15 talk", then its status.
+# The video part. Its row reads "Video: Placeholder video", then its status.
 - openLink: spacev2://assignment/3
 - extendedWaitUntil:
     visible: 'Submit'
@@ -33,7 +33,7 @@ appId: com.jpc.space
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: '(?s)Video: Luke 15 talk.*'
+      TARGET: '(?s)Video: Placeholder video.*'
 - extendedWaitUntil:
     visible: 'Watched .*'
     timeout: 40000
