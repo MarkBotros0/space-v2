@@ -1,7 +1,15 @@
-import { isSeasonFinished } from "@space/shared";
 import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Award, CalendarDays, ClipboardList, Copy, FileQuestion, Flag, Pencil } from "lucide-react-native";
+import {
+  Award,
+  CalendarDays,
+  ClipboardList,
+  Copy,
+  FileQuestion,
+  Flag,
+  Pencil,
+  type LucideIcon,
+} from "lucide-react-native";
 
 import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
 import { EditSeason } from "../../../../src/components/season/EditSeason";
@@ -12,6 +20,11 @@ import { NextStepCard } from "../../../../src/design/seasons/next-step-card";
 import { PeopleCard, type PeopleCardAdmins } from "../../../../src/design/seasons/people-card";
 import { SeasonDetailView, type SeasonAction } from "../../../../src/design/seasons/season-detail";
 import { SeasonNeeds } from "../../../../src/screens/season/season-needs";
+import {
+  seasonOverviewModel,
+  type OverviewNextStepKey,
+  type OverviewTileKey,
+} from "../../../../src/screens/season/overview-model";
 import { phoneDayKey } from "../../../../src/design/seasons/season-timeline";
 import { Button } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
@@ -20,7 +33,6 @@ import { useSeasonAdmins } from "../../../../src/hooks/use-season-admins";
 import { useSeasonPeople } from "../../../../src/hooks/use-season-people";
 import { seasonSuggestion } from "../../../../src/screens/season-people/source";
 import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
-import { countOf } from "../../../../src/lib/plural";
 import { useSessionStore, useIsSuper } from "../../../../src/store/session";
 
 iconWithClassName(Pencil, Copy);
@@ -71,86 +83,42 @@ export default function SeasonDetailScreen() {
     body = <RouteError onRetry={() => void detail.refetch()} />;
   } else {
     const s = detail.data;
-    // A finished season is locked (owner, 2026-11-07): its people, groups and
-    // sessions can be read, nothing changed; Duplicate starts a draft from it.
-    const finished = isSeasonFinished(s.status);
-    const canAdminister = s.canAdminister && !finished;
-    const manage = (s.canAdminister || isSuper) && !finished;
+    const today = orgToday ?? phoneDayKey();
+    const model = seasonOverviewModel(s, { isSuper, today });
+    const { finished, canAdminister, manage } = model;
     const params = { code: s.code };
+    const seasonParam = { seasonId: String(s.id) };
     const go = {
       people: () => router.push({ pathname: "/seasons/[code]/people", params }),
       invite: () => router.push({ pathname: "/seasons/[code]/invite", params }),
       start: () => router.push({ pathname: "/seasons/[code]/start", params }),
       end: () => router.push({ pathname: "/seasons/[code]/end", params }),
     };
-    const today = orgToday ?? phoneDayKey();
-    const pastEnd = s.status === "ACTIVE" && today > s.endDate.slice(0, 10);
-
-    // Each tile names what it opens (owner, 2026-11-07: not "Manage ..." on every card).
-    const actions: SeasonAction[] = [
-      {
-        label: "Sessions",
-        hint: s.sessionCount === 0 ? "None yet" : countOf(s.sessionCount, "session"),
-        icon: CalendarDays,
-        onPress: () => router.push({ pathname: "/seasons/[code]/sessions", params }),
+    const tileTargets: Record<OverviewTileKey, { icon: LucideIcon; onPress: () => void }> = {
+      sessions: { icon: CalendarDays, onPress: () => router.push({ pathname: "/seasons/[code]/sessions", params }) },
+      assignments: {
+        icon: ClipboardList,
+        onPress: () => router.push({ pathname: "/assignments", params: seasonParam }),
       },
-    ];
-    if (manage) {
-      const seasonParam = { seasonId: String(s.id) };
-      actions.push(
-        {
-          label: "Assignments",
-          hint: "Set work and review it",
-          icon: ClipboardList,
-          onPress: () => router.push({ pathname: "/assignments", params: seasonParam }),
-        },
-        {
-          label: "Quizzes",
-          hint: "Write, give and grade",
-          icon: FileQuestion,
-          onPress: () => router.push({ pathname: "/quizzes", params: seasonParam }),
-        },
-      );
-    }
-    // Past its end date, End season is the next step instead of a tile.
-    if (s.status === "ACTIVE" && manage && !pastEnd) {
-      actions.push({ label: "End season", hint: "Results and graduation", icon: Flag, onPress: go.end });
-    }
-    if (isSuper && isSeasonFinished(s.status)) {
-      actions.push({
-        label: "Results",
-        icon: Award,
-        onPress: () => router.push({ pathname: "/seasons/[code]/results", params }),
-      });
-    }
-
-    let nextStep: ReactNode;
-    if (isSuper && s.status === "DRAFT") {
-      nextStep = (
-        <NextStepCard
-          title="This season is a draft"
-          body="Nobody sees it until it starts. Set up its groups and people, then start it."
-          action={{ label: "Start season", onPress: go.start }}
-        />
-      );
-    } else if (isSuper && finished) {
-      nextStep = (
-        <NextStepCard
-          title="This season has finished"
-          body="It's read-only now. Duplicate it to start the next one as a draft."
-          action={{ label: "Duplicate as a draft", onPress: () => setDuplicating(true) }}
-        />
-      );
-    } else if (pastEnd && manage) {
-      nextStep = (
-        <NextStepCard
-          tone="warn"
-          title="The end date has passed"
-          body="End the season to record who passed and lock it."
-          action={{ label: "End season", onPress: go.end }}
-        />
-      );
-    }
+      quizzes: { icon: FileQuestion, onPress: () => router.push({ pathname: "/quizzes", params: seasonParam }) },
+      end: { icon: Flag, onPress: go.end },
+      results: { icon: Award, onPress: () => router.push({ pathname: "/seasons/[code]/results", params }) },
+    };
+    const actions: SeasonAction[] = model.tiles.map((tile) => ({ ...tile, ...tileTargets[tile.key] }));
+    const nextStepActions: Record<OverviewNextStepKey, () => void> = {
+      start: go.start,
+      duplicate: () => setDuplicating(true),
+      end: go.end,
+    };
+    const step = model.nextStep;
+    const nextStep = step ? (
+      <NextStepCard
+        tone={step.tone}
+        title={step.title}
+        body={step.body}
+        action={{ label: step.actionLabel, onPress: nextStepActions[step.key] }}
+      />
+    ) : undefined;
 
     let adminState: PeopleCardAdmins | undefined;
     if (isSuper) {
