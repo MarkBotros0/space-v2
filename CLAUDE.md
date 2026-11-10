@@ -748,6 +748,12 @@ is the definition of done.
   DB-008's small tables listed) and link tables keyed by their pair; `schema-snapshot.test.ts` and
   `erd.test.ts` hold the database itself and `docs/database/erd.md`. Integer ids and
   PascalCase/camelCase stay (Q1, Q2).
+- **Query indexes.** A new query that filters or sorts on a non-key column of a table that grows
+  (sessions, attendance, submissions, notifications, enrolments…) adds a matching index in its own
+  migration, leading with the equality columns and then the sort or range one (e.g.
+  `Session(startsAt)`, `SeasonEnrollment(groupId, status)`). A filter that targets a small subset of
+  rows uses a partial index, noted on the model as `// SQL-only`. Don't add an index another one
+  already covers by its leading columns: Wave 6 dropped two like that.
 - **Migrations.** One concern per migration, `BEGIN; … COMMIT;` unless it is `CONCURRENTLY`, which
   goes one statement per file (D10). A `rollback.sql` beside it, cycled apply → rollback → apply on a
   throwaway database. A data check a real database needs first ships as a read-only script in
