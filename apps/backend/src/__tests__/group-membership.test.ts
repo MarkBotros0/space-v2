@@ -81,6 +81,28 @@ describe("per-season GroupStudent writes (Plan 18 M1)", () => {
   it("unassignStudentsFromGroups removes this season's row by its own seasonId", async () => {
     tx.seasonEnrollment.findMany.mockResolvedValue([{ studentUserId: 1 }]);
     await expect(unassignStudentsFromGroups(asTx, 7, [1])).resolves.toEqual({ unassigned: 1, skippedStudentIds: [] });
-    expect(tx.groupStudent.deleteMany).toHaveBeenCalledWith({ where: { studentUserId: 1, seasonId: 7 } });
+    expect(tx.groupStudent.deleteMany).toHaveBeenCalledWith({ where: { studentUserId: { in: [1] }, seasonId: 7 } });
+    expect(tx.seasonEnrollment.updateMany).toHaveBeenCalledWith({
+      where: { studentUserId: { in: [1] }, seasonId: 7 },
+      data: { groupId: null },
+    });
+  });
+
+  it("unassignStudentsFromGroups takes a batch in two statements and skips the ineligible", async () => {
+    tx.seasonEnrollment.findMany.mockResolvedValue([{ studentUserId: 1 }, { studentUserId: 3 }]);
+    await expect(unassignStudentsFromGroups(asTx, 7, [1, 2, 3])).resolves.toEqual({
+      unassigned: 2,
+      skippedStudentIds: [2],
+    });
+    expect(tx.groupStudent.deleteMany).toHaveBeenCalledTimes(1);
+    expect(tx.groupStudent.deleteMany).toHaveBeenCalledWith({ where: { studentUserId: { in: [1, 3] }, seasonId: 7 } });
+    expect(tx.seasonEnrollment.updateMany).toHaveBeenCalledTimes(1);
+    expect(tx.seasonEnrollment.update).not.toHaveBeenCalled();
+  });
+
+  it("unassignStudentsFromGroups writes nothing when nobody is eligible", async () => {
+    await expect(unassignStudentsFromGroups(asTx, 7, [9])).resolves.toEqual({ unassigned: 0, skippedStudentIds: [9] });
+    expect(tx.groupStudent.deleteMany).not.toHaveBeenCalled();
+    expect(tx.seasonEnrollment.updateMany).not.toHaveBeenCalled();
   });
 });

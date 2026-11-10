@@ -265,19 +265,17 @@ export async function unassignStudentsFromGroups(
   studentIds: number[],
 ): Promise<{ unassigned: number; skippedStudentIds: number[] }> {
   const eligible = await eligibleStudentIds(tx, seasonId, studentIds);
-  const skippedStudentIds: number[] = [];
-  let unassigned = 0;
-  for (const studentUserId of studentIds) {
-    if (!eligible.has(studentUserId)) {
-      skippedStudentIds.push(studentUserId);
-      continue;
-    }
-    await tx.groupStudent.deleteMany({ where: { studentUserId, seasonId } });
-    await tx.seasonEnrollment.update({
-      where: { studentUserId_seasonId: { studentUserId, seasonId } },
+  const taken = studentIds.filter((id) => eligible.has(id));
+  const skippedStudentIds = studentIds.filter((id) => !eligible.has(id));
+  // Two statements for the whole batch, not two per student (refactor BE-073).
+  // Every eligible id has an enrolment here, so the updateMany touches the
+  // same rows the per-student update did.
+  if (taken.length > 0) {
+    await tx.groupStudent.deleteMany({ where: { studentUserId: { in: taken }, seasonId } });
+    await tx.seasonEnrollment.updateMany({
+      where: { studentUserId: { in: taken }, seasonId },
       data: { groupId: null },
     });
-    unassigned += 1;
   }
-  return { unassigned, skippedStudentIds };
+  return { unassigned: taken.length, skippedStudentIds };
 }
