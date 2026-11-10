@@ -1,17 +1,12 @@
 import type { Request, Response } from "express";
-import type { SeasonStatus, SeasonWriteBody } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { seasonPeopleIds } from "../../lib/auth/season-people";
-import { markSessionsStale } from "../../lib/auth/session-validity";
-import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
-import { loadSeasonDetail } from "../../lib/queries/seasons";
+import { findLiveSeason, loadSeasonDetail } from "../../lib/queries/seasons";
 import { canAccessSeason } from "../../lib/permissions";
 import { isAdminOfSeason, isMentor, isSuper } from "../../lib/rbac";
-import { lockPeople, lockSeason, type SeatRefusal } from "../../lib/roles";
 import { requireUser, requireRole } from "../../middleware/require-auth";
 import {
   SEASON_ADMIN_EDITABLE_FIELDS,
@@ -21,6 +16,12 @@ import {
   seasonWriteRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { isSeasonFinished, liveSeasonStatus } from "../../lib/seasons/status";
+import { seasonColumns, statusChangeError } from "../../lib/seasons/status-change";
+import { deleteSeasonNow } from "../../lib/seasons/delete";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
+import { liveSeason } from "../../lib/db/live";
 
 export async function listSeasons(req: Request, res: Response) {
   const user = requireUser(req);
@@ -35,20 +36,20 @@ export async function listSeasons(req: Request, res: Response) {
   // mistyped filter key here rather than at runtime.
   const where: Prisma.SeasonWhereInput =
     isSuper(user) || isMentor(user)
-      ? { deletedAt: null }
+      ? { ...liveSeason }
       : user.role === "ADMIN"
-        ? { deletedAt: null, id: { in: user.seasonAdminIds } }
+        ? { ...liveSeason, id: { in: user.seasonAdminIds } }
         : user.role === "LEADER"
           ? {
               // A former leader has no access to a finished season, so it must
               // not be listed: Today would pick it and get a 403 on every open.
               // The claim, not the rows: loadScopes hides a draft from someone
               // leading in an ACTIVE season, and canAccessSeason reads it too.
-              deletedAt: null,
+              ...liveSeason,
               status: liveSeasonStatus,
               groups: { some: { id: { in: user.groupLeaderIds } } },
             }
-          : { deletedAt: null, enrollments: { some: { studentUserId: user.userId } } };
+          : { ...liveSeason, enrollments: { some: { studentUserId: user.userId } } };
 
   const seasons = await db.season.findMany({
     where,
@@ -81,24 +82,24 @@ export async function getSeasonByCode(req: Request, res: Response) {
   const code = String(req.params.code);
   if (code.length === 0 || code.length > 200) return apiError(res, "bad_request", "Invalid season code.", 400);
 
-  const found = await db.season.findFirst({ where: { code, deletedAt: null }, select: { id: true } });
-  if (!found) return apiError(res, "not_found", "Season not found.", 404);
+  const found = await db.season.findFirst({ where: { code, ...liveSeason }, select: { id: true } });
+  if (!found) return notFound(res, "Season");
   if (!(await canAccessSeason(user, found.id))) return forbidden(res);
 
   const season = await loadSeasonDetail(user, found.id);
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  if (!season) return notFound(res, "Season");
   return apiOk(res, season);
 }
 
 export async function getSeason(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const id = idParam(res, req.params.id, "season");
+  if (id === null) return;
 
   if (!(await canAccessSeason(user, id))) return forbidden(res);
 
   const season = await loadSeasonDetail(user, id);
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  if (!season) return notFound(res, "Season");
   return apiOk(res, season);
 }
 
@@ -106,34 +107,14 @@ const ADMIN_EDITABLE = new Set<string>(SEASON_ADMIN_EDITABLE_FIELDS);
 
 export const codeTaken = (res: Response) => apiError(res, "code_taken", "A season with that code already exists.", 409);
 
-/** The columns a SUPER's full-body write sets; the title is always re-derived (R10). */
-function seasonColumns(body: SeasonWriteBody) {
-  return {
-    code: body.code,
-    title: `${body.program} ${body.year}`,
-    program: body.program,
-    // Undefined leaves the column alone on an update; create takes the default (null).
-    requiredProgram: body.requiredProgram,
-    graduatesOnPass: body.graduatesOnPass,
-    isCommunityWide: body.isCommunityWide,
-    year: body.year,
-    description: body.description ?? null,
-    startDate: new Date(body.startDate),
-    endDate: new Date(body.endDate),
-    status: body.status,
-    absenceBudgetMinutes: body.absenceBudgetMinutes,
-    absenceWeightMinutes: body.absenceWeightMinutes,
-  };
-}
-
 export async function createSeason(req: Request, res: Response) {
   // Spec 02 D3: creation is SUPER-only (v1's canCreateSeason).
   const user = requireRole(req, res, isSuper);
   if (!user) return;
 
-  const parsed = seasonWriteRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(seasonWriteRequestSchema, req.body, res, "Invalid season body.");
+  if (parsed === null) return;
+  const body = parsed;
   // No season skips Start: it runs the checks and moves the people.
   if (body.status !== "DRAFT") return apiError(res, "bad_request", "A new season is created as a draft.", 400);
 
@@ -158,42 +139,25 @@ export async function createSeason(req: Request, res: Response) {
   }
 }
 
-/**
- * The only moves are an unchanged status and COMPLETED to or from ARCHIVED. A
- * season only starts through Start, which runs the checks, and only finishes
- * through End season, which completes its enrolments: any other way (ACTIVE back
- * to DRAFT, then COMPLETED) strands them ACTIVE in a finished season. A finished
- * season never reopens.
- */
-function statusChangeError(from: SeasonStatus, to: SeasonStatus): SeatRefusal | null {
-  if (from === to) return null;
-  if (from === "DRAFT") {
-    if (to === "ACTIVE") return { code: "use_start_season", message: "Start the season from its Start button." };
-    return { code: "invalid_status_change", message: "A draft season can only be started." };
-  }
-  if (from === "ACTIVE") {
-    return { code: "use_end_season", message: "End the season instead of changing its status." };
-  }
-  if (isSeasonFinished(to)) return null;
-  return { code: "season_finished", message: "A finished season cannot be reopened." };
-}
-
 export async function updateSeason(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const id = idParam(res, req.params.id, "season");
+  if (id === null) return;
 
-  const existing = await db.season.findFirst({
-    where: { id, deletedAt: null },
-    select: { id: true, status: true, requiredProgram: true, graduatesOnPass: true, isCommunityWide: true },
+  const existing = await findLiveSeason(id, {
+    id: true,
+    status: true,
+    requiredProgram: true,
+    graduatesOnPass: true,
+    isCommunityWide: true,
   });
-  if (!existing) return apiError(res, "not_found", "Season not found.", 404);
+  if (!existing) return notFound(res, "Season");
 
   if (isSuper(user)) {
     // SUPER: v1's full-body update, title re-derived (R10).
-    const parsed = seasonWriteRequestSchema.safeParse(req.body);
-    if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
-    const body = parsed.data;
+    const parsed = parseOr400(seasonWriteRequestSchema, req.body, res, "Invalid season body.");
+    if (parsed === null) return;
+    const body = parsed;
     const clash = await db.season.findFirst({ where: { code: body.code, NOT: { id } }, select: { id: true } });
     if (clash) return codeTaken(res);
     // The program may have changed under a requirement already set.
@@ -244,7 +208,7 @@ export async function updateSeason(req: Request, res: Response) {
       // Only if the status is still the one checked above: this body carries a
       // status, so a Start landing in between would otherwise be undone.
       const { count } = await db.season.updateMany({
-        where: { id, status: existing.status, deletedAt: null },
+        where: { id, status: existing.status, ...liveSeason },
         data: { ...seasonColumns(body), updatedById: user.userId },
       });
       if (count === 0) {
@@ -266,12 +230,12 @@ export async function updateSeason(req: Request, res: Response) {
   if (Object.keys(raw).some((key) => !ADMIN_EDITABLE.has(key))) {
     return apiError(res, "forbidden_field", "Season identity fields are SUPER-only.", 403);
   }
-  const parsed = seasonAdminPatchSchema.safeParse(raw);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid season body.", 400);
+  const parsed = parseOr400(seasonAdminPatchSchema, raw, res, "Invalid season body.");
+  if (parsed === null) return;
 
   const season = await db.season.update({
     where: { id },
-    data: { ...parsed.data, updatedById: user.userId },
+    data: { ...parsed, updatedById: user.userId },
     select: { id: true, code: true },
   });
   return apiOk(res, season);
@@ -280,35 +244,14 @@ export async function updateSeason(req: Request, res: Response) {
 export async function deleteSeason(req: Request, res: Response) {
   const user = requireRole(req, res, isSuper);
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const id = idParam(res, req.params.id, "season");
+  if (id === null) return;
 
   // Product decision on spec 02 D4 (recorded in the Revision note): v1
   // checked nothing and stranded children. v2 refuses while the season has
   // ANY enrollment or session — archive it (status ARCHIVED) instead. D4's
   // `force` escape hatch is not offered: a soft-deleted season with sessions
   // stays reachable by id everywhere (R50), which is the state D4 objects to.
-  // The check and the delete share the season's lock, so a seat going in lands
-  // wholly before the check or finds the season gone.
-  const outcome = await db.$transaction(async (tx) => {
-    await lockSeason(tx, id, "update");
-    const existing = await tx.season.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
-    if (!existing) return "not_found" as const;
-    const enrollments = await tx.seasonEnrollment.count({ where: { seasonId: id } });
-    const sessions = await tx.session.count({ where: { seasonId: id } });
-    if (enrollments > 0 || sessions > 0) return "in_use" as const;
-
-    // The current season is derived from live seasons, so a deleted one drops
-    // out of every scope on its own; its staff's next refresh picks that up now.
-    const people = await seasonPeopleIds(tx, id);
-    await lockPeople(tx, people);
-    await tx.season.update({ where: { id }, data: { deletedAt: new Date(), updatedById: user.userId } });
-    await markSessionsStale(tx, people);
-    return "deleted" as const;
-  });
-  if (outcome === "not_found") return apiError(res, "not_found", "Season not found.", 404);
-  if (outcome === "in_use") {
-    return apiError(res, "season_in_use", "This season has sessions or enrollments; archive it instead.", 409);
-  }
+  await deleteSeasonNow(id, user.userId);
   return apiOk(res, { deleted: true });
 }
