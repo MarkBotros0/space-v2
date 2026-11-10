@@ -285,3 +285,35 @@ describe("OverdueCallout", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/seasons/[code]/end", params: { code: "gbv-2026" } });
   });
 });
+
+// Refactor FE-003: the end-check failing as the screen loads, through endGate.
+describe("End season screen, when the end-check fails on load", () => {
+  const failCheck = (error: unknown) =>
+    get.mockImplementation((url: string) =>
+      url === BY_CODE
+        ? Promise.resolve({ data: { data: detail() } })
+        : url === "/api/v1/seasons/7/end-check"
+          ? Promise.reject(error)
+          : Promise.reject(new Error(`not served: ${url}`)),
+    );
+
+  it("reads as already ended when the check says the season isn't active", async () => {
+    failCheck({
+      isAxiosError: true,
+      response: { status: 409, data: { error: { code: "season_not_active", message: "Not active." } } },
+    });
+    renderStacked(<EndSeasonScreen />);
+    expect(await screen.findByText("Someone else already ended this season.")).toBeTruthy();
+  });
+
+  it("offers Try again for any other failure, and retries the check", async () => {
+    failCheck(new Error("offline"));
+    renderStacked(<EndSeasonScreen />);
+    const retry = await screen.findByRole("button", { name: "Try again" });
+    const before = get.mock.calls.filter(([u]) => u === "/api/v1/seasons/7/end-check").length;
+    fireEvent.press(retry);
+    await waitFor(() =>
+      expect(get.mock.calls.filter(([u]) => u === "/api/v1/seasons/7/end-check").length).toBeGreaterThan(before),
+    );
+  });
+});

@@ -2,7 +2,12 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import type { SeasonEndCheck } from "@space/shared";
 
-import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
+import {
+  RouteError,
+  RouteSkeleton,
+  SeasonLinkNotFound,
+  type GateQuery,
+} from "../../../../src/design/layout/route-states";
 import { SaveBar } from "../../../../src/design/layout/save-bar";
 import { Screen } from "../../../../src/design/layout/screen";
 import { Button, ConfirmDialog, EmptyState, toast } from "../../../../src/design/ui";
@@ -28,6 +33,41 @@ const PASSED: ResultDraft = { result: "PASSED", reason: "" };
  * server, so a season admin loses this season at once: they go to Today, a
  * super admin stays and sees it finished.
  */
+/**
+ * What the screen shows instead of the review, in this order: a bad link, already ended (by this
+ * screen's own refused end, or the check), the season failed, either query loading (the check's
+ * failure wins), the check failed. Null once the check is in (refactor FE-003).
+ */
+function endGate(p: {
+  code: string | null;
+  alreadyEnded: boolean;
+  season: GateQuery;
+  check: GateQuery & { error: unknown };
+  onDone: () => void;
+}): ReactNode | null {
+  const failedCode = p.check.isError ? apiErrorCode(p.check.error) : null;
+  if (p.code === null) return <SeasonLinkNotFound />;
+  if (p.alreadyEnded || failedCode === "season_not_active") {
+    return (
+      <EmptyState
+        title="Already ended"
+        description="Someone else already ended this season."
+        action={
+          <Button variant="secondary" onPress={p.onDone}>
+            Done
+          </Button>
+        }
+      />
+    );
+  }
+  if (p.season.isError) return <RouteError onRetry={() => void p.season.refetch()} />;
+  if (p.season.isPending || p.check.isPending) {
+    return p.check.isError ? <RouteError onRetry={() => void p.check.refetch()} /> : <RouteSkeleton />;
+  }
+  if (p.check.isError) return <RouteError onRetry={() => void p.check.refetch()} />;
+  return null;
+}
+
 export default function EndSeasonScreen() {
   const router = useRouter();
   const { code, season } = useSeasonRoute();
@@ -87,59 +127,45 @@ export default function EndSeasonScreen() {
     setEditing(null);
   };
 
-  let body: ReactNode;
+  const gate = endGate({
+    code,
+    alreadyEnded,
+    season,
+    check,
+    onDone: () => (isSuper ? router.back() : router.dismissAll()),
+  });
+  const blockers = check.data?.blockers;
+  const blocked =
+    !!blockers && blockers.submissions.length + blockers.quizAttempts.length + blockers.attendance.length > 0;
+
+  let body: ReactNode = gate;
   let footer: ReactNode = undefined;
-  const failedCode = check.isError ? apiErrorCode(check.error) : null;
-  if (code === null) {
-    body = <SeasonLinkNotFound />;
-  } else if (alreadyEnded || failedCode === "season_not_active") {
+  if (gate === null && blockers && blocked) {
+    body = <BlockersList blockers={blockers} />;
+  } else if (gate === null && check.data) {
     body = (
-      <EmptyState
-        title="Already ended"
-        description="Someone else already ended this season."
-        action={
-          <Button variant="secondary" onPress={() => (isSuper ? router.back() : router.dismissAll())}>
-            Done
-          </Button>
+      <ReviewList
+        students={check.data.students}
+        staged={staged}
+        graduating={check.data.graduatesOnPass}
+        year={season.data?.year ?? null}
+        onOpen={setEditing}
+      />
+    );
+    footer = (
+      <SaveBar
+        label="End season"
+        variant="destructive"
+        loading={end.isPending}
+        disabled={end.isSuccess}
+        onPress={() => setConfirming(true)}
+        hint={
+          notPassed.length > 0
+            ? `${plural(notPassed.length, "student", "students")} will not pass.`
+            : "Everyone will pass."
         }
       />
     );
-  } else if (season.isError) {
-    body = <RouteError onRetry={() => void season.refetch()} />;
-  } else if (season.isPending || check.isPending) {
-    body = check.isError ? <RouteError onRetry={() => void check.refetch()} /> : <RouteSkeleton />;
-  } else if (check.isError) {
-    body = <RouteError onRetry={() => void check.refetch()} />;
-  } else {
-    const { blockers, students } = check.data;
-    const blocked = blockers.submissions.length + blockers.quizAttempts.length + blockers.attendance.length > 0;
-    if (blocked) {
-      body = <BlockersList blockers={blockers} />;
-    } else {
-      body = (
-        <ReviewList
-          students={students}
-          staged={staged}
-          graduating={check.data.graduatesOnPass}
-          year={season.data?.year ?? null}
-          onOpen={setEditing}
-        />
-      );
-      footer = (
-        <SaveBar
-          label="End season"
-          variant="destructive"
-          loading={end.isPending}
-          disabled={end.isSuccess}
-          onPress={() => setConfirming(true)}
-          hint={
-            notPassed.length > 0
-              ? `${plural(notPassed.length, "student", "students")} will not pass.`
-              : "Everyone will pass."
-          }
-        />
-      );
-    }
   }
 
   const total = check.data?.students.length ?? 0;
