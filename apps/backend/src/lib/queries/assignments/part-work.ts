@@ -13,8 +13,8 @@ import {
 /*
  * One student's work on each part, as the student and the leader read it. The
  * completion rule is the shared `partDone`; this file only turns rows into the
- * wire shape and adds what the rule leaves to the reader (a returned essay is
- * not done, and a draft is the student's alone).
+ * wire shape and names a returned essay's state, and keeps a draft the
+ * student's alone.
  */
 
 /** The columns a part's wire shape needs, with its video's question count. */
@@ -178,9 +178,9 @@ function essayWork(p: PartRow, row: WorkRow | undefined): PartWork {
     feedback: row.feedback,
   };
   const work: PartWork = { partId: p.id, kind: p.kind, status: "IN_PROGRESS", essay };
-  // Not done when returned, until it is handed in again (spec "Completion rules").
-  if (row.status === "RETURNED") return { ...work, status: "RETURNED" };
-  return partDone(toAssignmentPart(p), work) ? { ...work, status: "DONE" } : work;
+  // The shared rule says done; RETURNED is only the word for a returned essay.
+  if (partDone(toAssignmentPart(p), work)) return { ...work, status: "DONE" };
+  return row.status === "RETURNED" ? { ...work, status: "RETURNED" } : work;
 }
 
 /** How far a student is through one assignment, from their part works. */

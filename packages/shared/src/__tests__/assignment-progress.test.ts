@@ -1,5 +1,6 @@
 import {
   canSubmit,
+  partDone,
   isWatched,
   mergeIntervals,
   partsLeft,
@@ -113,4 +114,32 @@ it("submitBlockerLine joins three with commas and numbers several essays", () =>
   );
   const two: AssignmentPart[] = [parts[1]!, { ...parts[1]!, id: 4, position: 1 } as AssignmentPart];
   expect(submitBlockerLine(two, [])).toBe("Finish the essay 1 and the essay 2 to submit");
+});
+
+describe("partDone for an essay", () => {
+  const part = parts[1]!;
+  const at = (reviewStatus: "DRAFT" | "SUBMITTED" | "REVIEWED" | "RETURNED", wordCount: number): PartWork => ({
+    partId: 2,
+    kind: "ESSAY",
+    status: "IN_PROGRESS",
+    essay: { publicId: "e", wordCount, reviewStatus, feedback: null },
+  });
+
+  it("a returned essay is not done, even inside the range", () => {
+    expect(partDone(part, at("RETURNED", 5))).toBe(false);
+  });
+
+  it("a draft inside the range is done, so Submit can unlock", () => {
+    expect(partDone(part, at("DRAFT", 5))).toBe(true);
+  });
+
+  it("a draft outside the range is not done", () => {
+    expect(partDone(part, at("DRAFT", 2))).toBe(false);
+    expect(partDone(part, at("DRAFT", 11))).toBe(false);
+  });
+
+  it("a handed-in or reviewed essay inside the range is done", () => {
+    expect(partDone(part, at("SUBMITTED", 5))).toBe(true);
+    expect(partDone(part, at("REVIEWED", 5))).toBe(true);
+  });
 });

@@ -51,7 +51,7 @@ function workFor(part: AssignmentPart, works: PartWork[]): PartWork | undefined 
   return works.find((w) => w.partId === part.id);
 }
 
-/** Done: video 90% watched with every question answered; essay written within range; forum posted. */
+/** Done: video 90% watched with every question answered; essay within range and not returned; forum posted. */
 export function partDone(part: AssignmentPart, work: PartWork | undefined): boolean {
   if (work === undefined) return false;
   switch (part.kind) {
@@ -60,8 +60,12 @@ export function partDone(part: AssignmentPart, work: PartWork | undefined): bool
       return v !== undefined && isWatched(v.watchedSeconds, v.durationSeconds) && v.answered >= v.questionCount;
     }
     case "ESSAY": {
+      // Handed in (SUBMITTED, REVIEWED) or a draft, inside the range: a draft
+      // counts so Submit can unlock, since Submit is what hands essays in. A
+      // returned essay is not done until it is handed in again.
       const e = work.essay;
-      return e !== undefined && e.wordCount > 0 && wordCountIssue(e.wordCount, part.minWords, part.maxWords) === null;
+      if (e === undefined || e.reviewStatus === "RETURNED") return false;
+      return e.wordCount > 0 && wordCountIssue(e.wordCount, part.minWords, part.maxWords) === null;
     }
     case "FORUM":
       return work.forum?.posted === true;
