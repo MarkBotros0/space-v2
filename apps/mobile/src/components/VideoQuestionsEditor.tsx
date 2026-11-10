@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, type TextInputProps } from "react-native";
-import { formatTimestamp, parseTimestamp, videoQuestionInputSchema, type VideoQuestionAdmin } from "@space/shared";
+import { formatTimestamp, type VideoQuestionAdmin } from "@space/shared";
 
 import { useVideoQuestions, useVideoQuestionWrites, useVideoQuizResults } from "../hooks/use-video-quiz";
 import { FormErrorBox } from "../design/forms/form-parts";
@@ -13,28 +13,15 @@ import { Skeleton } from "../design/ui/skeleton";
 import { Text } from "../design/ui/text";
 import { apiErrorMessage } from "../lib/api-error";
 import { ChoiceChips } from "./ChoiceChips";
+import {
+  EMPTY_VIDEO_QUESTION_FORM,
+  formFromQuestion,
+  updatedQuestionStatus,
+  videoQuestionBody,
+  type VideoQuestionFormState,
+} from "../lib/video-question-form";
 
 const MAX_OPTIONS = 6;
-const TIMESTAMP_HINT = "Use m:ss or h:mm:ss (for example 2:30).";
-
-interface FormState {
-  /** Null while adding. */
-  editingId: number | null;
-  timestamp: string;
-  prompt: string;
-  options: string[];
-  correctIndex: number;
-  points: string;
-}
-
-const EMPTY_FORM: FormState = {
-  editingId: null,
-  timestamp: "",
-  prompt: "",
-  options: ["", ""],
-  correctIndex: 0,
-  points: "1",
-};
 
 /** A labelled text field; the label doubles as the input's accessibility label. */
 function LabelledInput({
@@ -90,61 +77,41 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
   const questions = useVideoQuestions(sessionId, true);
   const { create, update, remove } = useVideoQuestionWrites(sessionId);
 
-  const [form, setForm] = useState<FormState | null>(null);
+  const [form, setForm] = useState<VideoQuestionFormState | null>(null);
   const [timestampError, setTimestampError] = useState<string | undefined>(undefined);
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [armedDelete, setArmedDelete] = useState<number | null>(null);
 
-  const patch = (changes: Partial<FormState>): void => setForm((f) => (f === null ? f : { ...f, ...changes }));
+  const patch = (changes: Partial<VideoQuestionFormState>): void =>
+    setForm((f) => (f === null ? f : { ...f, ...changes }));
 
   const openAdd = (): void => {
     setStatus(null);
     setFormError(null);
     setTimestampError(undefined);
-    setForm(EMPTY_FORM);
+    setForm(EMPTY_VIDEO_QUESTION_FORM);
   };
 
   const openEdit = (q: VideoQuestionAdmin): void => {
     setStatus(null);
     setFormError(null);
     setTimestampError(undefined);
-    setForm({
-      editingId: q.id,
-      timestamp: formatTimestamp(q.atSeconds),
-      prompt: q.prompt,
-      options: [...q.options],
-      correctIndex: q.correctIndex,
-      points: String(q.points),
-    });
+    setForm(formFromQuestion(q));
   };
 
   const onSave = (): void => {
     if (form === null) return;
     setFormError(null);
-    // Parsed where the input is: v1 sent the raw string, the server rejected it
-    // with a generic message and the editor discarded the field errors (R28).
-    const atSeconds = parseTimestamp(form.timestamp);
-    if (atSeconds === null) {
-      setTimestampError(TIMESTAMP_HINT);
-      return;
-    }
-    setTimestampError(undefined);
-
-    const parsed = videoQuestionInputSchema.safeParse({
-      atSeconds,
-      prompt: form.prompt,
-      options: form.options,
-      correctIndex: form.correctIndex,
-      points: Number(form.points),
-    });
-    if (!parsed.success) {
-      setFormError(parsed.error.issues[0]?.message ?? "Check the question and try again.");
+    const body = videoQuestionBody(form);
+    setTimestampError(body.ok || body.field !== "timestamp" ? undefined : body.message);
+    if (!body.ok) {
+      if (body.field === "form") setFormError(body.message);
       return;
     }
 
     if (form.editingId === null) {
-      create.mutate(parsed.data, {
+      create.mutate(body.input, {
         onSuccess: () => {
           setForm(null);
           setStatus("Question added.");
@@ -154,18 +121,11 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
       return;
     }
     update.mutate(
-      { questionId: form.editingId, input: parsed.data },
+      { questionId: form.editingId, input: body.input },
       {
         onSuccess: (res) => {
           setForm(null);
-          const lines: string[] = [];
-          if (res.regradedCount > 0) {
-            lines.push(`${res.regradedCount} recorded answers were re-graded.`);
-          }
-          if (res.pointsChanged) {
-            lines.push("Points changed — every student's score for this question moved.");
-          }
-          setStatus(lines.length > 0 ? lines.join(" ") : "Question updated.");
+          setStatus(updatedQuestionStatus(res));
         },
         onError: (err) => setFormError(apiErrorMessage(err, "Couldn't save the question.")),
       },
