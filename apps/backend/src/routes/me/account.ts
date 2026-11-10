@@ -6,9 +6,7 @@ import { updateProfileRequestSchema } from "../../../../../packages/shared/src/i
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-
 import { dateFromDay, dayFromDate } from "../../lib/org-time";
-
 import { deleteOwnAccount } from "../../lib/me/account";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
 

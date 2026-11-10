@@ -3,7 +3,6 @@ import { Router } from "express";
 import { OWN_PROFILE_FIELDS, updateOwnProfileInputSchema } from "../../../../../packages/shared/src/index";
 
 import { apiOk, apiError } from "../../lib/api-response";
-
 import { loadMyProfile } from "../../lib/queries/me";
 import { isAlumnusNotStudying } from "../../lib/rbac";
 import { saveOwnProfile } from "../../lib/me/account";

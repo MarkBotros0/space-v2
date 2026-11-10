@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { forbidden } from "../../lib/api-response";
-
 import { canEditStudent } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
 import { answerResend } from "../users/invites";

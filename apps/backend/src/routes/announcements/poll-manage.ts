@@ -1,10 +1,8 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-
 import { announcementFlags, canManagePoll, canSeePollNames } from "../../lib/permissions";
 import { findReadableAnnouncement } from "../../lib/queries/announcements";
 import { setPollClosed } from "../../lib/announcements/poll-close";

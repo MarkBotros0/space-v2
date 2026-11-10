@@ -3,12 +3,10 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { deliverInvite, type IssuedInvite } from "../../lib/invites";
-
 import { canEditStudent } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { createStudentWithInvite, saveStudentRecord } from "../../lib/students/profile";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
-
 import { requireUser } from "../../middleware/require-auth";
 import { createStudentRequestSchema, updateStudentRequestSchema } from "../../../../../packages/shared/src/index";
 import { isSeasonFinished } from "../../lib/seasons/status";

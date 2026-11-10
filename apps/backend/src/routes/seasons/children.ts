@@ -9,7 +9,6 @@ import {
   targetedStudentIds,
   validateAssignmentRefs,
 } from "../../lib/assignment-writes";
-
 import { canAccessSeason, canManageAssignment } from "../../lib/permissions";
 import {
   assignmentDetailPayload,
@@ -22,7 +21,6 @@ import { validateGroupWrite } from "../../lib/groups/membership";
 import { createGroup } from "../../lib/groups/writes";
 import { listSessionsForSeason } from "../../lib/queries/sessions";
 import { isAdminOfSeason } from "../../lib/rbac";
-
 import { requireUser } from "../../middleware/require-auth";
 import { createAssignmentRequestSchema, groupWriteRequestSchema } from "../../../../../packages/shared/src/index";
 import { idParam } from "../../lib/http/params";

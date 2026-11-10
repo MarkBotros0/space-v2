@@ -3,12 +3,9 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-
 import { findExistingByEmail } from "../../lib/imports/students/validation";
 import { deliverInvite } from "../../lib/invites";
-
 import { isUniqueViolation } from "../../lib/prisma-errors";
-
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { createUserRequestSchema, updateUserRequestSchema } from "../../../../../packages/shared/src/index";
 import { loadUserDetail } from "./views";

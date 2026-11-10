@@ -2,7 +2,6 @@ import { Router, type Request, type Response } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
-
 import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
 import { listMyGroups, loadGroupImpact } from "../lib/queries/groups";
@@ -10,7 +9,6 @@ import { validateGroupWrite } from "../lib/groups/membership";
 import { deleteGroup, updateGroup } from "../lib/groups/writes";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfSeason } from "../lib/rbac";
-
 import { groupUpdateRequestSchema } from "../../../../packages/shared/src/index";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { idParam } from "../lib/http/params";

@@ -1,21 +1,17 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
-
 import { requireUser, requireRole } from "../../middleware/require-auth";
 import {
   createEnrollmentRequestSchema,
   restoreEnrollmentRequestSchema,
   updateEnrollmentRequestSchema,
 } from "../../../../../packages/shared/src/index";
-
 import { idParam } from "../../lib/http/params";
 import { parseOr400 } from "../../lib/http/validate";
 import {

@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
-
 import { announcementFlags, canVotePoll, isPollClosed } from "../../lib/permissions";
 import { findReadableAnnouncement } from "../../lib/queries/announcements";
 import { replaceVote } from "../../lib/announcements/poll-vote";

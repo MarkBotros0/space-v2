@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-
 import { listSeasonRoster } from "../../lib/queries/groups";
 import { GroupOutsideSeasonError, saveRosterAssignments } from "../../lib/groups/membership";
 import { idParam } from "../../lib/http/params";

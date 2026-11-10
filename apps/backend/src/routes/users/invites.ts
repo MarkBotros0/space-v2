@@ -4,7 +4,6 @@ import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { isEmailConfigured } from "../../lib/email";
 import { listPendingInviteUserIds, resendInvite as resendInviteNow, sendPendingInviteBatch } from "../../lib/invites";
-
 import { makeLimiter } from "../../lib/rate-limit";
 import { loadUserDetail } from "./views";
 import { requireRole } from "../../middleware/require-auth";
