@@ -163,7 +163,8 @@ export const assignmentWriteRequestSchema = z
     confirm: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
-    if (value.reminder.anchor === "DUE_DATE" && value.dueDay === null) {
+    // An off reminder keeps its settings for when it is turned back on; only a live one needs its anchor.
+    if (value.reminder.enabled && value.reminder.anchor === "DUE_DATE" && value.dueDay === null) {
       ctx.addIssue({ code: "custom", path: ["reminder", "anchor"], message: "Set a due date first" });
     }
   });

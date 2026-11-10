@@ -213,6 +213,11 @@ export const queryKeys = {
     attendance: (seasonId: number | null) => [...queryKeys.me.all, "attendance", { seasonId }] as const,
     profile: () => [...queryKeys.me.all, "profile"] as const,
   },
+  youtube: {
+    all: ["youtube"] as const,
+    /** What YouTube says about a video (its title), for the part editor. */
+    meta: (videoId: string) => [...queryKeys.youtube.all, "meta", videoId] as const,
+  },
   videoQuiz: {
     all: ["video-quiz"] as const,
     forSession: (sessionId: number) => [...queryKeys.videoQuiz.all, "student", sessionId] as const,

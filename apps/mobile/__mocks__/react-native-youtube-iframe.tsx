@@ -25,3 +25,6 @@ const MockPlayer = forwardRef<YoutubeIframeRef, object>((_props, ref) => {
 MockPlayer.displayName = "MockYoutubePlayer";
 
 export default MockPlayer;
+
+/** YouTube's oEmbed, as getYoutubeMeta answers it; a suite overrides it to test a title. */
+export const getYoutubeMeta = jest.fn((_id: string) => Promise.resolve({ title: "A YouTube video" }));

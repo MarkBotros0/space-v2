@@ -2,7 +2,12 @@ import { useState } from "react";
 import { View, type TextInputProps } from "react-native";
 import { formatTimestamp, type VideoQuestionAdmin } from "@space/shared";
 
-import { useVideoQuestions, useVideoQuestionWrites, useVideoQuizResults } from "../../hooks/use-video-quiz";
+import {
+  useVideoQuestions,
+  useVideoQuestionWrites,
+  useVideoQuizResults,
+  type VideoOwner,
+} from "../../hooks/use-video-quiz";
 import { FormErrorBox } from "../../design/forms/form-parts";
 import { InlineError } from "../../design/layout/route-states";
 import { Button } from "../../design/ui/button";
@@ -73,9 +78,12 @@ export function VideoQuizResultsTable({ sessionId }: { sessionId: number }) {
   );
 }
 
-export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
-  // Task 10 makes the editor take a VideoOwner; a session's editor names its own for now.
-  const owner = { kind: "session", sessionId } as const;
+/**
+ * The timed questions on a video: a session's, or a video part's of an
+ * assignment. Each question saves on its own. A session's editor also shows
+ * its results; a part's results are on the assignment's progress.
+ */
+export function VideoQuestionsEditor({ owner }: { owner: VideoOwner }) {
   const questions = useVideoQuestions(owner, true);
   const { create, update, remove } = useVideoQuestionWrites(owner);
 
@@ -243,7 +251,7 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
           )}
         </>
       )}
-      <VideoQuizResultsTable sessionId={sessionId} />
+      {owner.kind === "session" ? <VideoQuizResultsTable sessionId={owner.sessionId} /> : null}
     </View>
   );
 }

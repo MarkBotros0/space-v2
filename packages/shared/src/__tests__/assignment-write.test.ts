@@ -74,6 +74,16 @@ describe("assignmentWriteRequestSchema", () => {
     expect(firstMessage({ ...valid, parts: [] })).toBe("Add at least one part");
   });
 
+  it("an off reminder needs no due date, whatever its anchor", () => {
+    expect(
+      assignmentWriteRequestSchema.safeParse({
+        ...valid,
+        dueDay: null,
+        reminder: { ...reminder, enabled: false, anchor: "DUE_DATE" },
+      }).success,
+    ).toBe(true);
+  });
+
   it("needs a due date for a due-date reminder", () => {
     expect(firstMessage({ ...valid, reminder: { ...reminder, anchor: "DUE_DATE" } })).toBe("Set a due date first");
     expect(

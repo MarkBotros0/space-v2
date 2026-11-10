@@ -17,12 +17,15 @@ function TimePicker({
   className,
   disabled,
   minuteStep = 5,
+  label,
 }: {
   value: { hour: number; minute: number };
   onChange: (next: { hour: number; minute: number }) => void;
   className?: string;
   disabled?: boolean;
   minuteStep?: 5 | 10 | 15 | 30;
+  /** Names the two selects for screen readers when a form has more than one time ("Due" → "Due hour"). */
+  label?: string;
 }) {
   const hours = useMemo(() => Array.from({ length: 24 }, (_, i) => i), []);
   const minutes = useMemo(() => Array.from({ length: 60 / minuteStep }, (_, i) => i * minuteStep), [minuteStep]);
@@ -33,7 +36,7 @@ function TimePicker({
         onValueChange={(v) => onChange({ ...value, hour: Number(v) })}
         disabled={disabled}
       >
-        <SelectTrigger className="w-[88px]" accessibilityLabel="Hour">
+        <SelectTrigger className="w-[88px]" accessibilityLabel={label ? `${label} hour` : "Hour"}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -50,7 +53,7 @@ function TimePicker({
         onValueChange={(v) => onChange({ ...value, minute: Number(v) })}
         disabled={disabled}
       >
-        <SelectTrigger className="w-[88px]" accessibilityLabel="Minute">
+        <SelectTrigger className="w-[88px]" accessibilityLabel={label ? `${label} minute` : "Minute"}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

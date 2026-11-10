@@ -1,5 +1,6 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 import { format } from "date-fns";
+import type { AssignmentDetail } from "@space/shared";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
@@ -8,13 +9,11 @@ const mockReplace = jest.fn();
 const mockBack = jest.fn();
 let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-    replace: mockReplace,
-    back: mockBack,
-  }),
+  useRouter: () => ({ push: jest.fn(), replace: mockReplace, back: mockBack }),
   useLocalSearchParams: () => mockParams,
 }));
+const mockToast = jest.fn();
+jest.mock("../design/ui/toaster", () => ({ toast: { success: (m: string) => mockToast(m), error: jest.fn() } }));
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -37,243 +36,219 @@ const season = {
   startDate: "2099-01-01T00:00:00.000Z",
   endDate: "2099-12-31T00:00:00.000Z",
 };
-const group = (id: number, name: string) => ({
-  id,
-  name,
-  description: null,
-  studentCount: 2,
-  leaderNames: [],
-  seasonId: 7,
-  seasonCode: "s7",
-  seasonTitle: "Spring 2099",
-});
-const sessionRow = {
-  id: 12,
-  title: "Week 4",
-  startsAt: "2099-03-01T18:00:00.000Z",
-  dayKey: "2099-03-01",
-  durationMinutes: 60,
-  location: null,
-  recurrenceGroupId: null,
-  attendanceMarked: false,
-  seasonId: 7,
-  seasonCode: "s7",
-  seasonTitle: "Spring 2099",
-  checkInToken: null,
-  checkInOpenAt: null,
-  checkInClosedAt: null,
-  startTime: "20:00",
-};
-const detail = {
+const SAVED_LINE = "Mon 30 Mar, around 9:00 AM — students who haven't finished";
+const detail: AssignmentDetail = {
   id: 55,
   seasonId: 7,
   seasonCode: "s7",
   seasonTitle: "Spring 2099",
-  sessionId: null,
-  sessionTitle: null,
-  title: "Essay one",
-  description: "Write about the thing.",
+  title: "Luke 15",
+  description: "Read and watch",
   dueAt: "2099-04-01T21:59:00.000Z",
   dueOrgDay: "2099-04-01",
   dueOrgTime: "23:59",
   isOverdue: false,
-  isAllGroups: false,
-  type: "STANDARD" as const,
-  forumMinWords: null,
-  forumAllowComments: false,
-  forumPostToRead: true,
-  maxFileSizeMb: 10,
-  allowedMimeCategories: ["pdf" as const],
-  groupIds: [3],
-  mySubmission: null,
+  reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+  reminderLine: SAVED_LINE,
+  parts: [
+    {
+      id: 11,
+      position: 0,
+      kind: "VIDEO",
+      title: "Luke 15 talk",
+      youtubeUrl: "https://youtu.be/dQw4w9WgXcQ",
+      videoId: "dQw4w9WgXcQ",
+      blockSkipping: true,
+      durationSeconds: 1080,
+    },
+    {
+      id: 12,
+      position: 1,
+      kind: "ESSAY",
+      prompt: "What did the father do?",
+      minWords: 100,
+      maxWords: 300,
+      maxFileSizeMb: null,
+      allowedMimeCategories: [],
+    },
+  ],
+  my: null,
   canManage: true,
   readOnly: false,
 };
-const tracker = {
-  assignmentId: 55,
-  dueAt: detail.dueAt,
-  isOverdue: false,
-  submittedCount: 1,
-  expectedCount: 2,
-  rows: [
-    {
-      studentUserId: 9,
-      name: "Sara Student",
-      email: "sara@jpc.test",
-      groupId: 3,
-      groupName: "Group A",
-      status: "SUBMITTED" as const,
-      isLate: false,
-      submittedAt: "2099-03-30T10:00:00.000Z",
-      reviewedAt: null,
-      submissionPublicId: "abc123defg",
-    },
-    {
-      studentUserId: 10,
-      name: "Nadia",
-      email: "nadia@jpc.test",
-      groupId: 3,
-      groupName: "Group A",
-      status: "PENDING" as const,
-      isLate: false,
-      submittedAt: null,
-      reviewedAt: null,
-      submissionPublicId: null,
-    },
-  ],
-};
+/** The write body the saved assignment comes back as, unchanged. */
+const bodyOf = (d: AssignmentDetail) => ({
+  title: d.title,
+  description: d.description,
+  dueDay: d.dueOrgDay,
+  dueTime: d.dueOrgTime,
+  reminder: d.reminder,
+  parts: d.parts.map(({ position: _p, ...p }) => {
+    if (p.kind !== "VIDEO") return p;
+    const { videoId: _v, ...video } = p;
+    return video;
+  }),
+});
 
 const ok = (data: unknown) => Promise.resolve({ data: { data } });
-
 function serve(extra: Record<string, unknown> = {}) {
-  const table: Record<string, unknown> = {
-    "/api/v1/seasons": { seasons: [season] },
-    "/api/v1/seasons/7/groups": { groups: [group(3, "Group A"), group(4, "Group B")] },
-    "/api/v1/seasons/7/sessions": { sessions: [sessionRow] },
-    ...extra,
-  };
+  const table: Record<string, unknown> = { "/api/v1/seasons": { seasons: [season] }, ...extra };
   get.mockImplementation((url: string) =>
     url in table ? ok(table[url]) : Promise.reject(new Error(`unexpected GET ${url}`)),
   );
 }
-
-const STANDARD_DEFAULTS = {
-  description: null,
-  dueDay: null,
-  dueTime: null,
-  sessionId: null,
-  type: "STANDARD",
-  forumMinWords: null,
-  forumAllowComments: false,
-  forumPostToRead: true,
-  maxFileSizeMb: null,
-  allowedMimeCategories: [],
-  isAllGroups: true,
-  groupIds: [],
-};
+const conflict = (students: number) =>
+  Object.assign(new Error("409"), {
+    isAxiosError: true,
+    response: { status: 409, data: { error: { code: "needs_confirmation", message: "Confirm" }, students } },
+  });
+const footer = () => within(screen.getByTestId("screen-footer"));
+const sheetBar = () => within(screen.getByTestId("sheet-save-bar"));
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
+  useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
 });
 
 describe("NewAssignmentScreen", () => {
-  beforeEach(() => useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] })));
+  it("Details has Title, Instructions, Due, Reminder and no Session or Groups", async () => {
+    serve();
+    renderWithProviders(<NewAssignmentScreen />);
+    expect(await screen.findByLabelText("Title")).toBeTruthy();
+    expect(screen.getByText("Instructions")).toBeTruthy();
+    expect(screen.getByLabelText("Due date")).toBeTruthy();
+    expect(screen.getByLabelText("Remind students")).toBeTruthy();
+    expect(screen.queryByLabelText("Linked session")).toBeNull();
+    expect(screen.queryByText("Assign to")).toBeNull();
+    expect(screen.queryByLabelText("Specific groups")).toBeNull();
+    expect(screen.queryByText("Type")).toBeNull();
+    // It never asks for the season's sessions.
+    expect(get).not.toHaveBeenCalledWith("/api/v1/seasons/7/sessions");
+  });
 
-  it("creates a whole-season assignment due at an org-clock time, then opens it", async () => {
+  it("the reminder line updates with days, anchor and time", async () => {
+    serve();
+    renderWithProviders(<NewAssignmentScreen />);
+    const line = () => screen.getByTestId("reminder-line").props.children;
+    await screen.findByLabelText("Title");
+    expect(line()).toBe("2 days before the next session, around 9:00 AM — students who haven't finished");
+
+    fireEvent.press(screen.getByLabelText("How long before"));
+    fireEvent.press(screen.getByRole("menuitem", { name: "5 days" }));
+    fireEvent.press(screen.getByLabelText("Reminder hour"));
+    fireEvent.press(screen.getByRole("menuitem", { name: "18" }));
+    expect(line()).toBe("5 days before the next session, around 6:00 PM — students who haven't finished");
+
+    // A due date ten days from today lets the line give the day itself.
+    const due = new Date();
+    due.setDate(due.getDate() + 10);
+    fireEvent.press(screen.getByLabelText("Due date"));
+    if (due.getMonth() !== new Date().getMonth()) fireEvent.press(screen.getByLabelText("Next month"));
+    fireEvent.press(screen.getByLabelText(format(due, "PPP")));
+    fireEvent.press(screen.getByLabelText("Before"));
+    fireEvent.press(screen.getByRole("menuitem", { name: "The due date" }));
+    const send = new Date(due);
+    send.setDate(send.getDate() - 5);
+    expect(line()).toBe(`${format(send, "EEE d MMM")}, around 6:00 PM — students who haven't finished`);
+
+    fireEvent.press(screen.getByLabelText("Remind students"));
+    expect(line()).toBe("No reminder goes out for this assignment.");
+    expect(screen.queryByLabelText("How long before")).toBeNull();
+  });
+
+  it("'The due date' is disabled without a due date", async () => {
+    serve();
+    renderWithProviders(<NewAssignmentScreen />);
+    await screen.findByLabelText("Title");
+    fireEvent.press(screen.getByLabelText("Before"));
+    expect(screen.getByRole("menuitem", { name: "The due date" }).props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    expect(screen.getByRole("menuitem", { name: "The next session" }).props.accessibilityState).toMatchObject({
+      disabled: false,
+    });
+  });
+
+  it("Parts shows the YouTube player once the link parses and an inline error when it doesn't", async () => {
+    serve();
+    renderWithProviders(<NewAssignmentScreen />);
+    await screen.findByLabelText("Title");
+    fireEvent.press(screen.getByRole("tab", { name: "Parts, 0 parts" }));
+    expect(screen.getByText("No parts yet")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Add a video"));
+
+    fireEvent.changeText(screen.getByLabelText("YouTube link"), "https://example.com/watch");
+    expect(screen.getByLabelText("YouTube link").props.accessibilityHint).toBe("That isn't a YouTube link");
+    expect(screen.queryByTestId("part-video-player")).toBeNull();
+    fireEvent.changeText(screen.getByLabelText("YouTube link"), "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    expect(screen.getByLabelText("YouTube link").props.accessibilityHint).toBeUndefined();
+    expect(screen.getByTestId("part-video-player")).toBeTruthy();
+  });
+
+  it("adds an essay question on Parts and creates the assignment with it", async () => {
     serve();
     post.mockResolvedValue({ data: { data: { ...detail, id: 77 } } });
     renderWithProviders(<NewAssignmentScreen />);
-
     fireEvent.changeText(await screen.findByLabelText("Title"), "Week 4 reflection");
-    // Today is always on screen in the open month grid.
-    fireEvent.press(screen.getByLabelText("Due date"));
-    fireEvent.press(screen.getByLabelText(format(new Date(), "PPP")));
-    const day = format(new Date(), "yyyy-MM-dd");
-    // R19's 23:59 default -> 18:30
-    fireEvent.press(screen.getByLabelText("Hour"));
-    fireEvent.press(screen.getByRole("menuitem", { name: "18" }));
-    fireEvent.press(screen.getByLabelText("Minute"));
-    fireEvent.press(screen.getByRole("menuitem", { name: "30" }));
-    // An assignment always goes to the whole season: there is no "Assign to" choice.
-    expect(screen.queryByText("Assign to")).toBeNull();
-    expect(screen.queryByLabelText("Specific groups")).toBeNull();
-    fireEvent.press(screen.getByText("Create assignment"));
+    fireEvent.press(screen.getByRole("tab", { name: "Parts, 0 parts" }));
+    fireEvent.press(screen.getByLabelText("Add an essay question"));
+    fireEvent.changeText(screen.getByLabelText("Question"), "Who are you in the story?");
+    fireEvent.changeText(screen.getByLabelText("Minimum words"), "150");
+    fireEvent.changeText(screen.getByLabelText("Maximum words"), "300");
+    fireEvent.press(sheetBar().getByText("Add question"));
 
-    // The device composes no instant: it sends the day and time it was given.
+    expect(await screen.findByText("1. Essay question")).toBeTruthy();
+    expect(screen.getByText("150⁠–⁠300 words")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Parts, 1 part" })).toBeTruthy();
+    fireEvent.press(footer().getByText("Create assignment"));
+
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/assignments", {
-        ...STANDARD_DEFAULTS,
         title: "Week 4 reflection",
-        dueDay: day,
-        dueTime: "18:30",
-        isAllGroups: true,
-        groupIds: [],
-      }),
-    );
-    await waitFor(() =>
-      expect(mockReplace).toHaveBeenCalledWith({
-        pathname: "/assignment/[id]",
-        params: { id: "77" },
-      }),
-    );
-  });
-
-  it("FORUM hides file settings and sends forum config (R14, R21, R25)", async () => {
-    serve();
-    post.mockResolvedValue({ data: { data: { ...detail, id: 78 } } });
-    renderWithProviders(<NewAssignmentScreen />);
-
-    fireEvent.changeText(await screen.findByLabelText("Title"), "Discuss");
-    expect(screen.getByLabelText("Accept file uploads")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText(/^Forum — /));
-    expect(screen.queryByLabelText("Accept file uploads")).toBeNull();
-    expect(screen.getByDisplayValue("50")).toBeTruthy(); // R21 default
-    fireEvent.press(screen.getByLabelText("Allow peer comments"));
-    fireEvent.press(screen.getByLabelText("Post before reading others"));
-    fireEvent.press(screen.getByText("Create assignment"));
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/assignments", {
-        ...STANDARD_DEFAULTS,
-        title: "Discuss",
-        type: "FORUM",
-        forumMinWords: 50,
-        forumAllowComments: true,
-        forumPostToRead: false,
-      }),
-    );
-  });
-
-  it("accepts files at the 10 MB default with the ticked types, and links a session (R10, R22)", async () => {
-    serve();
-    post.mockResolvedValue({ data: { data: { ...detail, id: 79 } } });
-    renderWithProviders(<NewAssignmentScreen />);
-
-    fireEvent.changeText(await screen.findByLabelText("Title"), "Upload it");
-    fireEvent.press(screen.getByLabelText("Accept file uploads"));
-    expect(screen.getByDisplayValue("10")).toBeTruthy();
-    fireEvent.press(screen.getByLabelText("Allowed types"));
-    fireEvent.press(screen.getByRole("checkbox", { name: /PDFs/ }));
-    fireEvent.press(screen.getByLabelText("Linked session"));
-    fireEvent.press(screen.getByRole("menuitem", { name: /Week 4/ }));
-    fireEvent.press(screen.getByText("Create assignment"));
-
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/assignments", {
-        ...STANDARD_DEFAULTS,
-        title: "Upload it",
-        sessionId: 12,
-        maxFileSizeMb: 10,
-        allowedMimeCategories: ["pdf"],
-      }),
-    );
-  });
-
-  it("shows the server's refusal verbatim and stays on the form", async () => {
-    serve();
-    post.mockRejectedValue(
-      Object.assign(new Error("400"), {
-        isAxiosError: true,
-        response: {
-          status: 400,
-          data: {
-            error: {
-              code: "invalid_group",
-              message: "Every group must belong to this assignment's season.",
-            },
+        description: null,
+        dueDay: null,
+        dueTime: null,
+        reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+        parts: [
+          {
+            kind: "ESSAY",
+            prompt: "Who are you in the story?",
+            minWords: 150,
+            maxWords: 300,
+            maxFileSizeMb: null,
+            allowedMimeCategories: [],
           },
-        },
+        ],
       }),
     );
+    await waitFor(() =>
+      expect(mockReplace).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "77" } }),
+    );
+  });
+
+  it("allows one forum: + Forum is disabled once there is one, with the reason beside it", async () => {
+    serve();
     renderWithProviders(<NewAssignmentScreen />);
+    await screen.findByLabelText("Title");
+    fireEvent.press(screen.getByRole("tab", { name: "Parts, 0 parts" }));
+    fireEvent.press(screen.getByLabelText("Add a forum"));
+    fireEvent.changeText(screen.getByLabelText("Prompt"), "Share one thing you learnt");
+    fireEvent.press(sheetBar().getByText("Add forum"));
+    expect(await screen.findByText("1. Forum")).toBeTruthy();
+    expect(screen.getByLabelText("Add a forum").props.accessibilityState).toEqual({ disabled: true });
+    expect(screen.getByText("One forum per assignment")).toBeTruthy();
+  });
 
+  it("a Save with no part opens Parts, which says why", async () => {
+    serve();
+    renderWithProviders(<NewAssignmentScreen />);
     fireEvent.changeText(await screen.findByLabelText("Title"), "Week 4 reflection");
-    fireEvent.press(screen.getByText("Create assignment"));
-
-    expect(await screen.findByText("Every group must belong to this assignment's season.")).toBeTruthy();
-    expect(mockReplace).not.toHaveBeenCalled();
+    fireEvent.press(footer().getByText("Create assignment"));
+    expect(await screen.findByText("Add at least one part")).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Parts, 0 parts" }).props.accessibilityState).toEqual({ selected: true });
+    expect(post).not.toHaveBeenCalled();
   });
 
   it("is not offered to a LEADER, whose device fetches nothing", async () => {
@@ -286,68 +261,65 @@ describe("NewAssignmentScreen", () => {
 
 describe("EditAssignmentScreen", () => {
   beforeEach(() => {
-    useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { id: "55" };
   });
 
-  it("goes back to the detail it was opened from instead of stacking a second copy", async () => {
-    serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
-    patch.mockResolvedValue({ data: { data: { ...detail, title: "Essay two" } } });
+  it("pre-fills both tabs, shows the server's reminder line, and PATCHes the whole assignment", async () => {
+    serve({ "/api/v1/assignments/55": detail });
+    patch.mockResolvedValue({ data: { data: { ...detail, title: "Luke 15, again", reopened: 0 } } });
     renderWithProviders(<EditAssignmentScreen />);
 
-    fireEvent.changeText(await screen.findByDisplayValue("Essay one"), "Essay two");
-    fireEvent.press(screen.getByText("Save changes"));
+    fireEvent.changeText(await screen.findByDisplayValue("Luke 15"), "Luke 15, again");
+    expect(screen.getByTestId("reminder-line").props.children).toBe(SAVED_LINE);
+    fireEvent.press(screen.getByRole("tab", { name: "Parts, 2 parts" }));
+    expect(screen.getByText("1. Video")).toBeTruthy();
+    expect(screen.getByText("2. Essay question")).toBeTruthy();
+    expect(screen.getByTestId("part-video-player")).toBeTruthy();
 
-    await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
-    expect(mockReplace).not.toHaveBeenCalled();
-  });
+    fireEvent.press(screen.getByLabelText("Move Essay question up"));
+    expect(screen.getByText("1. Essay question")).toBeTruthy();
+    fireEvent.press(footer().getByText("Save changes"));
 
-  it("pre-fills from the server's org fields and PATCHes the whole assignment, to the whole season (R67)", async () => {
-    serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
-    patch.mockResolvedValue({ data: { data: { ...detail, title: "Essay two" } } });
-    renderWithProviders(<EditAssignmentScreen />);
-
-    const title = await screen.findByDisplayValue("Essay one");
-    expect(screen.getByText(format(new Date(2099, 3, 1), "PP"))).toBeTruthy();
-    expect(screen.getByDisplayValue("10")).toBeTruthy(); // acceptsFiles re-derived from the size (R10)
-    fireEvent.changeText(title, "Essay two");
-    fireEvent.press(screen.getByText("Save changes"));
-
+    const saved = bodyOf(detail);
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/assignments/55", {
-        ...STANDARD_DEFAULTS,
-        title: "Essay two",
-        description: "Write about the thing.",
-        dueDay: "2099-04-01",
-        dueTime: "23:59",
-        maxFileSizeMb: 10,
-        allowedMimeCategories: ["pdf"],
-        // An older group-targeted assignment saves as whole-season: the form has no groups.
-        isAllGroups: true,
-        groupIds: [],
+        ...saved,
+        title: "Luke 15, again",
+        parts: [saved.parts[1], saved.parts[0]],
       }),
     );
     await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+    expect(mockToast).not.toHaveBeenCalled();
   });
 
-  it("clears the due date", async () => {
-    serve({ "/api/v1/assignments/55": detail, "/api/v1/assignments/55/tracker": tracker });
-    patch.mockResolvedValue({
-      data: { data: { ...detail, dueAt: null, dueOrgDay: null, dueOrgTime: null } },
-    });
+  it("removes a part only once the dialog's Remove is pressed", async () => {
+    serve({ "/api/v1/assignments/55": detail });
     renderWithProviders(<EditAssignmentScreen />);
+    await screen.findByDisplayValue("Luke 15");
+    fireEvent.press(screen.getByRole("tab", { name: "Parts, 2 parts" }));
+    fireEvent.press(screen.getByLabelText("Remove Video"));
+    expect(screen.getByText("Remove this video?")).toBeTruthy();
+    expect(screen.getByText("1. Video")).toBeTruthy();
+    fireEvent.press(screen.getByText("Remove part"));
+    await waitFor(() => expect(screen.queryByText("Luke 15 talk")).toBeNull());
+    expect(screen.getByText("1. Essay question")).toBeTruthy();
+  });
 
-    await screen.findByDisplayValue("Essay one");
-    fireEvent.press(screen.getByText("Clear due date"));
-    expect(screen.queryByText("Clear due date")).toBeNull();
-    fireEvent.press(screen.getByText("Save changes"));
+  it("a 409 needs_confirmation opens the confirm dialog with the count", async () => {
+    serve({ "/api/v1/assignments/55": detail });
+    patch.mockRejectedValueOnce(conflict(3)).mockResolvedValueOnce({ data: { data: { ...detail, reopened: 2 } } });
+    renderWithProviders(<EditAssignmentScreen />);
+    await screen.findByDisplayValue("Luke 15");
+    fireEvent.press(footer().getByText("Save changes"));
 
-    await waitFor(() =>
-      expect(patch).toHaveBeenCalledWith(
-        "/api/v1/assignments/55",
-        expect.objectContaining({ dueDay: null, dueTime: null }),
-      ),
-    );
+    expect(await screen.findByText("This changes work 3 students have done. Save anyway?")).toBeTruthy();
+    expect(mockBack).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Save anyway"));
+
+    await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
+    expect(patch).toHaveBeenLastCalledWith("/api/v1/assignments/55", { ...bodyOf(detail), confirm: true });
+    await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
+    expect(mockToast).toHaveBeenCalledWith("Saved. 2 students have to submit again.");
   });
 
   it("refuses the form when the server says this caller cannot manage it", async () => {
