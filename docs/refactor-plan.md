@@ -338,7 +338,7 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 - [x] 5.9 Calendar: FE-060 (`calendarBranchFor`), FE-010 (`season-calendars` split) — FE-060 calendarBranchFor (3 tests) + switch; FE-010 season-calendars/{student,leader,super,admin,shared}; mobile 283/2358
 - [x] 5.10 Reports & exports: FE-012 — useReportExport().exportEngagement / exportWorkbook; paths in the hook; mobile 283/2358
 - [x] 5.11 Announcements & polls: FE-080 (poll-diff rule pinned first), FE-081 — FE-080 usePollDraft + pure pollPatch (5 tests) and post-form-sections (AudienceSection, MessageField); FE-081 PollActions; mobile 284/2363
-- [ ] 5.12 Remaining screens: FE-020 / FE-032 leftovers
+- [x] 5.12 Remaining screens: FE-020 / FE-032 leftovers — FE-032: 112 request-then-parse pairs on apiGet / apiSend in 37 hook files (53 irregular calls stay on apiClient; the one inside a try is awaited); FE-020: queryStateView on 4 more screens; the irregular ladders stay (combined conditions, error-first order, data narrowing). Mobile 284/2363
 - [ ] 5.13 Full verification + **UI sweep** + wave summary + PR → **STOP**
 - Skipped (D8): FE-004 player part (YouTube timing), FE-017 + FE-073 (mass moves and renames that
   collide with the active redesign 02–05 branches), FE-071 part 2 and FE-072 (visual changes that the
