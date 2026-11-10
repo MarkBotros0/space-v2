@@ -63,14 +63,14 @@ appId: com.jpc.space
 # The poll post: back to the feed, open it, shoot the choices. No Vote tap.
 - openLink: spacev2://announcements
 - extendedWaitUntil:
-    visible: 'Which evening suits the retreat.*'
+    visible: '\[Sweep\] Which evening suits the retreat.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Which evening suits the retreat.*'
+      TARGET: '\[Sweep\] Which evening suits the retreat.*'
 - extendedWaitUntil:
     visible: 'Poll · Pick any'
     timeout: 40000
