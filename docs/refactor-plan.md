@@ -370,7 +370,7 @@ a backup first is optional. A rollback restores columns, not data.**
 - [x] 7.3 Dead-code check: in-repo TS-API script `pnpm check:dead` — `scripts/check-dead.mjs` (`pnpm check:dead`, TS compiler API, no new dependency): an export in production source whose name no other tracked file names (tests, flows, JSON included) fails it; `scripts/check-dead.allow` holds the 5 that must stay (2 declaration-emit names, 3 schemas behind exported types). First run found 40; 35 lost their `export`, nothing was fully dead. Unit 340/572/2363
 - [x] 7.4 Schema conformance test: base columns per Q4, every FK indexed (minus the documented audit-FK
       exceptions), link tables keyed by their pair — `src/__tests__/schema-conformance.test.ts` (unit, reads schema.prisma): createdAt/updatedAt unless listed append-only (7) or link/event (7); every FK indexed by its leading column except 18 audit FKs to User and 5 small unfiltered ones (DB-008), with a stale-list check both ways; composite PKs made of FK columns; link-shaped models keyed by their pair. 7 tests
-- [ ] 7.5 One command `pnpm check` (lint, typecheck, unit tests, dead-code, size)
+- [x] 7.5 One command `pnpm check` (lint, typecheck, unit tests, dead-code, size) — `pnpm check` = lint → typecheck → test:unit → check:dead → check:size; `scripts/check-size.mjs` holds every tracked .ts/.tsx/.js/.mjs/.cjs (scripts and tools too; generated, migrations, dist, .d.ts out) to 400 lines. Green: unit 340/579/2363, 0 dead, 0 over (log ~/logs/space-v2-refactor-check.log)
 - [ ] 7.6 CI: `pnpm check` + unit tests on `pull_request` in the existing workflows
 - [ ] 7.7 `.github/pull_request_template.md` with the definition-of-done checklist
 - [ ] 7.8 CLAUDE.md `## Code & Data Standards` (real paths, the D8 exceptions)

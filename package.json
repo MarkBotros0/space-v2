@@ -17,7 +17,9 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json}\"",
     "clean": "turbo run clean",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json}\"",
-    "check:dead": "node scripts/check-dead.mjs"
+    "check:dead": "node scripts/check-dead.mjs",
+    "check:size": "node scripts/check-size.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm check:dead && pnpm check:size"
   },
   "devDependencies": {
     "prettier": "^3.2.5",
