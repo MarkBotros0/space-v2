@@ -10,7 +10,7 @@ import { Button, FormField, GroupedList, Input, ListRow, Text, Textarea } from "
 import { useSeasonRoster, type GroupWriteInput } from "../hooks/use-group-admin";
 import { useSeasonDetail } from "../hooks/use-seasons";
 import { useSeasonAdmins, useStaffCandidates } from "../hooks/use-season-admins";
-import { firstErrorByField } from "../lib/form-errors";
+import { useSchemaErrors } from "../lib/form-errors";
 import { MembersField } from "../screens/group-form/members-field";
 import { StaffPickerSheet } from "../screens/season-people/staff-picker-sheet";
 import { useIsAdminOfSeason, useSessionStore } from "../store/session";
@@ -81,7 +81,7 @@ export function GroupForm({
   const router = useRouter();
   const seasonTitle = season.data?.title ?? "this season";
   const [values, setValues] = useState(initial);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, validate } = useSchemaErrors(groupWriteRequestSchema);
   // The "Fix the fields" hint belongs to the values that failed; any edit makes a new object.
   const [failedValues, setFailedValues] = useState<typeof initial | null>(null);
 
@@ -92,13 +92,10 @@ export function GroupForm({
       leaderIds: values.leaderIds,
       studentIds: values.studentIds,
     };
-    const parsed = groupWriteRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      setErrors(firstErrorByField(parsed.error));
+    if (!validate(body)) {
       setFailedValues(values);
       return;
     }
-    setErrors({});
     onSubmit(body);
   };
 

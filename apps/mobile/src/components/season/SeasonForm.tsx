@@ -7,7 +7,7 @@ import { FormScreen } from "../../design/layout/form-screen";
 import { SegmentedControl, Textarea } from "../../design/ui";
 import { FormField } from "../../design/ui/form-field";
 import { useSeasons } from "../../hooks/use-seasons";
-import { firstErrorByField } from "../../lib/form-errors";
+import { useSchemaErrors } from "../../lib/form-errors";
 import { autoSeasonCode } from "../../lib/season-defaults";
 import { useIsSuper } from "../../store/session";
 import type { SeasonIdentityInput } from "../../hooks/use-season-writes";
@@ -58,7 +58,7 @@ export function SeasonForm({
   children?: ReactNode;
 }) {
   const [v, setV] = useState(initial);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const { errors, validate } = useSchemaErrors(seasonWriteRequestSchema);
   // The "Fix the fields" hint belongs to the values that failed; any edit makes a new object.
   const [failedValues, setFailedValues] = useState<typeof initial | null>(null);
   // v1: an edit never auto-fills the code.
@@ -87,13 +87,10 @@ export function SeasonForm({
 
   const submit = () => {
     const body = toBody(v, canSetRequired, canSetGraduating, canSetCommunity);
-    const parsed = seasonWriteRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      setErrors(firstErrorByField(parsed.error));
+    if (!validate(body)) {
       setFailedValues(v);
       return;
     }
-    setErrors({});
     onSubmit(body);
   };
 
