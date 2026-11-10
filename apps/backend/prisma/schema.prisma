@@ -392,7 +392,6 @@ model GroupStudent {
 
   @@id([groupId, studentUserId])
   @@unique([seasonId, studentUserId])
-  @@index([groupId])
   @@index([studentUserId])
 }
 
@@ -687,7 +686,6 @@ model MentorFollowUp {
   doneAt        DateTime? @db.Timestamptz(3)
 
   @@index([mentorUserId, doneAt])
-  @@index([dueAt])
 
   // SQL-only (prisma/migrations; not expressible in this file):
   // SQL-only UNIQUE INDEX MentorFollowUp_one_open: (mentorUserId, studentUserId) WHERE doneAt IS NULL

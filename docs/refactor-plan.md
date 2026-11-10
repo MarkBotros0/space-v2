@@ -123,7 +123,8 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
   (the probe kept its first index). So every Wave 3/6 migration that is not CONCURRENTLY is wrapped in an
   explicit `BEGIN; … COMMIT;` (the pattern three existing migrations already use; verified to roll back
   entirely on error), and a CONCURRENTLY index goes in its own file without `BEGIN`, using `IF NOT EXISTS` so
-  a retry is safe. `rollback.sql` sits beside `migration.sql` (Prisma ignores it), undoes the change and ends
+  a retry is safe. **Correction (step 6.6):** one CONCURRENTLY statement per file. Postgres runs a multi-statement
+  file as one implicit transaction block, so two `DROP INDEX CONCURRENTLY` in one file failed (P3018, nothing applied). `rollback.sql` sits beside `migration.sql` (Prisma ignores it), undoes the change and ends
   with `DELETE FROM "_prisma_migrations" WHERE migration_name = '…'`, so the migration can be applied again.
   The psql fallback in audit §2.11 is not needed.
 
@@ -355,7 +356,7 @@ a backup first is optional. A rollback restores columns, not data.**
 - [x] 6.3 DB-003: drop `StudentDocument` and its User relations — `20261111030000_drop_student_document` (table, sequence, index, both FKs; rollback recreates it empty) + the two User relations + the ERD group entry; cycle + drift empty + snapshot (only StudentDocument lines); unit 572
 - [x] 6.4 DB-006: drop `RefreshToken.userAgent` — `20261111040000_refresh_token_user_agent`; cycle + drift empty + snapshot (-1 column); the 'no longer written' comment and assertion go with it; unit 572
 - [x] 6.5 DB-010: drop `StudentProfile.deletedAt` — `20261111050000_student_profile_deleted_at`; `liveStudentProfile` removed; the role-convert script's profile upsert no longer copies the stamp (the User row keeps it); schema header, OpenAPI text and tests updated; cycle + drift empty + snapshot (-1 column); unit 572
-- [ ] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`)
+- [x] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`) — `20261111060000_drop_group_student_group_idx` (IDX-D1) and `20261111070000_drop_mentor_follow_up_due_idx` (IDX-D3), one CONCURRENTLY statement per file (D10 corrected: two in one file failed with nothing applied); cycle each + drift empty + snapshot (-2 indexes); unit 572
 - [ ] 6.7 ERD final; full verification + wave summary + PR → **STOP**
 - Skipped (D8): DB-012 table drop, DB-005, IDX-D4 (kept: the device prune reads `lastSeenAt`), DB-011b
 
