@@ -3,7 +3,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { View } from "react-native";
 import type { AssignmentDetail } from "@space/shared";
 
-import { ForumThread } from "../../components/ForumThread";
+import { ForumThread } from "../forum";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";

@@ -2,7 +2,7 @@ import { useLocalSearchParams } from "expo-router";
 import { View } from "react-native";
 
 import { AssignmentStaffPanel } from "../../../../src/components/assignment-staff-panel";
-import { ForumThread } from "../../../../src/components/ForumThread";
+import { ForumThread } from "../../../../src/screens/forum";
 import { PageTitle } from "../../../../src/design/layout/page-title";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { ShellFrame } from "../../../../src/design/layout/shell-frame";
