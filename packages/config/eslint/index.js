@@ -16,15 +16,17 @@ module.exports = [
       "@typescript-eslint/consistent-type-imports": "error",
     },
   },
-  // Size rules (refactor Wave 2), warnings only for now. max-lines holds every
-  // file, tests included, to the 400-line rule; the per-function rules skip
-  // tests, where a describe callback is long by design. Generated code,
-  // migrations and the hand-written OpenAPI data are out of scope.
+  // Size rules (refactor Wave 2; errors since Wave 7). max-lines holds every file,
+  // tests included, to the 400-line rule, and max-depth caps nesting at 3. The
+  // per-function rules skip tests, where a describe callback is long by design,
+  // and stay warnings: getting them to zero needs refactors the owner skipped
+  // (D8). Generated code, migrations and the hand-written OpenAPI data are out of
+  // scope.
   {
     files: ["**/*.ts", "**/*.tsx"],
     ignores: ["**/src/generated/**", "**/prisma/migrations/**"],
     rules: {
-      "max-lines": ["warn", { max: 400, skipBlankLines: false, skipComments: false }],
+      "max-lines": ["error", { max: 400, skipBlankLines: false, skipComments: false }],
     },
   },
   {
@@ -32,7 +34,7 @@ module.exports = [
     ignores: ["**/src/generated/**", "**/prisma/migrations/**", "**/__tests__/**", "**/src/docs/**"],
     rules: {
       "max-lines-per-function": ["warn", { max: 50, skipBlankLines: true, skipComments: true, IIFEs: true }],
-      "max-depth": ["warn", 3],
+      "max-depth": ["error", 3],
       complexity: ["warn", 15],
     },
   },
