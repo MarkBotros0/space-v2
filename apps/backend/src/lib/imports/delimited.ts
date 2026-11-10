@@ -94,6 +94,7 @@ function splitRecords(text: string, delimiter: string): string[][] {
 
     if (inQuotes) {
       if (ch === '"') {
+        // eslint-disable-next-line max-depth -- CSV state machine (refactor 4.15)
         if (text[i + 1] === '"') {
           field += '"';
           i += 2;

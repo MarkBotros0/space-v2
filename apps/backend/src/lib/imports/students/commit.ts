@@ -201,8 +201,7 @@ export async function commitStudentImport(
             outcomes.set(rowNumber, {
               ...prior,
               outcome: "skipped",
-              message:
-                refusal.code === "in_season" ? "Already enrolled in this season — left unchanged." : refusal.message,
+              message: seatRefusalMessage(refusal),
             });
           }
         }
@@ -223,6 +222,11 @@ export async function commitStudentImport(
     enrolled: rows.filter((r) => r.outcome === "enrolled").length,
     rows,
   };
+}
+
+/** A seat refusal as an import row's message: already in this season reads as left unchanged. */
+function seatRefusalMessage(refusal: { code: string; message: string }): string {
+  return refusal.code === "in_season" ? "Already enrolled in this season — left unchanged." : refusal.message;
 }
 
 /**
