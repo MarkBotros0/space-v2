@@ -1,28 +1,18 @@
 import { MS_PER_MINUTE } from "../org-time";
 import { reportError } from "../sentry";
 import { claimLease, releaseLease } from "./lease";
+import { clearHandlersForTests, getHandlers, registerHandler, type ScheduledHandler } from "./registry";
+import "./handlers"; // registers the built-in handlers
 
-/** One kind of due work. `run` returns how many items it sent. */
-export type ScheduledHandler = { name: string; run: (now: Date) => Promise<number> };
+export { clearHandlersForTests, registerHandler, type ScheduledHandler };
 
 const LEASE_NAME = "main";
 const LEASE_HOLD_MS = 5 * MS_PER_MINUTE;
 
-const handlers: ScheduledHandler[] = [];
-
-export function registerHandler(h: ScheduledHandler): void {
-  handlers.push(h);
-}
-
-/** Empties the registry so a unit test starts clean. */
-export function clearHandlersForTests(): void {
-  handlers.length = 0;
-}
-
 /** Runs every handler in registration order; a failure is reported and never stops the rest. */
 export async function runDueWork(now: Date = new Date()): Promise<Record<string, number | "failed">> {
   const results: Record<string, number | "failed"> = {};
-  for (const h of handlers) {
+  for (const h of getHandlers()) {
     try {
       results[h.name] = await h.run(now);
     } catch (err) {

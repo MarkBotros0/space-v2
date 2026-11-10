@@ -2,14 +2,7 @@ import { Router } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError } from "../lib/api-response";
-import { config } from "../lib/config";
-import {
-  createFollowUp,
-  isCronAuthorized,
-  listFollowUps,
-  sendDueFollowUpReminders,
-  toFollowUp,
-} from "../lib/follow-ups";
+import { createFollowUp, listFollowUps, toFollowUp } from "../lib/follow-ups";
 import { parseId } from "../lib/parse-id";
 import { isUniqueViolation as isPrismaUniqueViolation } from "../lib/prisma-errors";
 import { requireAuth, requireRole } from "../middleware/require-auth";
@@ -21,16 +14,15 @@ import { parseOr400 } from "../lib/http/validate";
 import { liveUser } from "../lib/db/live";
 
 /**
- * A mentor's follow-ups (owner, 2026-11-07). Three routers on three prefixes,
+ * A mentor's follow-ups (owner, 2026-11-07). Two routers on two prefixes,
  * mounted after the domains whose prefixes they share, as the notes routers are:
  * - `/follow-ups`: the mentor's own list and Mark done;
- * - `/students/:id/follow-ups`: flag a student (studentsRouter has no such path);
- * - `/internal/follow-ups/remind`: Vercel Cron's daily reminder, behind CRON_SECRET.
+ * - `/students/:id/follow-ups`: flag a student (studentsRouter has no such path).
+ * The reminder itself runs on the scheduler (lib/scheduler), not here.
  * MENTOR only, and a mentor touches only their own.
  */
 export const followUpsRouter = Router();
 export const studentFollowUpsRouter = Router();
-export const internalRouter = Router();
 
 followUpsRouter.get("/", requireAuth, async (req, res) => {
   const user = requireRole(req, res, isMentor);
@@ -90,14 +82,4 @@ studentFollowUpsRouter.post("/:id/follow-ups", requireAuth, async (req, res) => 
     }
     throw err;
   }
-});
-
-/** Vercel Cron calls this daily with GET (vercel.json). A 404 while CRON_SECRET is unset. */
-internalRouter.get("/follow-ups/remind", async (req, res) => {
-  const secret = config.cronSecret;
-  if (!secret) return apiError(res, "not_found", "Not found.", 404);
-  if (!isCronAuthorized(req.get("authorization"), secret)) {
-    return apiError(res, "unauthorized", "Not authorized.", 401);
-  }
-  return apiOk(res, { sent: await sendDueFollowUpReminders() });
 });

@@ -6,5 +6,3 @@ apps/backend/src/lib/dashboard-figures.ts:QuizRollupFigures
 packages/shared/src/import/headers.ts:IMPORT_PROFILE_FIELDS
 packages/shared/src/reports/exports.ts:exportKindSchema
 packages/shared/src/standing.ts:standingSchema
-# The handler shape for lib/scheduler/handlers.ts (assignment-reminder plan); drop this line once a handler file names it.
-apps/backend/src/lib/scheduler/index.ts:ScheduledHandler
