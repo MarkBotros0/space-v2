@@ -4,8 +4,8 @@ import { View } from "react-native";
 import { XCircle as InvalidIcon } from "lucide-react-native";
 import { parseCheckInCode } from "@space/shared";
 
-import { CheckInIcon, CheckInMessage, CheckInResult } from "../../src/components/check-in/CheckInResult";
-import { CheckInSuccess } from "../../src/components/check-in/check-in-success";
+import { CheckInIcon, CheckInMessage, CheckInResult } from "../../src/screens/check-in/check-in-result";
+import { CheckInSuccess } from "../../src/screens/check-in/check-in-success";
 import { Screen } from "../../src/design/layout/screen";
 import { Button } from "../../src/design/ui";
 import { useCheckIn } from "../../src/hooks/use-check-in";

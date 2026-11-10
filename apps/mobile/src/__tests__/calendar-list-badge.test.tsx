@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react-native";
 
-import { CalendarList } from "../design/sessions/calendar-list";
+import { CalendarList } from "../screens/calendar/calendar-list";
 import { session } from "./helpers/calendar-fixtures";
 import { renderWithProviders } from "./helpers/render";
 

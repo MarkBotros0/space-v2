@@ -5,14 +5,14 @@ import { useRouter } from "expo-router";
 import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
 import type { StudentVideoQuestion, StudentVideoQuiz } from "@space/shared";
 
-import { useSaveVideoProgress, useSubmitVideoAnswer } from "../hooks/use-video-quiz";
-import { apiErrorMessage } from "../lib/api-error";
-import { iconWithClassName } from "../design/lib/icon";
-import { Eyebrow } from "../design/layout/page-title";
-import { InlineError } from "../design/layout/route-states";
-import { Button, Text } from "../design/ui";
-import { VideoProgressTrack } from "./video-quiz/video-progress-track";
-import { VideoQuestionModal, type AnswerFeedback } from "./video-quiz/video-question-modal";
+import { useSaveVideoProgress, useSubmitVideoAnswer } from "../../hooks/use-video-quiz";
+import { apiErrorMessage } from "../../lib/api-error";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Eyebrow } from "../../design/layout/page-title";
+import { InlineError } from "../../design/layout/route-states";
+import { Button, Text } from "../../design/ui";
+import { VideoProgressTrack } from "./video-progress-track";
+import { VideoQuestionModal, type AnswerFeedback } from "./video-question-modal";
 
 iconWithClassName(Pause, Play, Video);
 

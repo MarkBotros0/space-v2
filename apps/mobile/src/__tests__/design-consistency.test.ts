@@ -44,7 +44,7 @@ const EVERYWHERE: [RegExp, string][] = [
 
 /** Light-mode teal shades too pale for a white card; `dark:` variants are fine. */
 const PALE_TEAL = /^text-brand-teal-(?:50|[1-6]00)$/;
-const PALE_TEAL_OK = `src${sep}design${sep}sessions${sep}season-colors.ts`;
+const PALE_TEAL_OK = `src${sep}design${sep}calendar${sep}season-colors.ts`;
 
 function paleTeal(text: string): string[] {
   return text

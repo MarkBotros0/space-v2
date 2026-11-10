@@ -2,24 +2,24 @@ import { useState } from "react";
 import { View, type TextInputProps } from "react-native";
 import { formatTimestamp, type VideoQuestionAdmin } from "@space/shared";
 
-import { useVideoQuestions, useVideoQuestionWrites, useVideoQuizResults } from "../hooks/use-video-quiz";
-import { FormErrorBox } from "../design/forms/form-parts";
-import { InlineError } from "../design/layout/route-states";
-import { Button } from "../design/ui/button";
-import { Card } from "../design/ui/card";
-import { FormField } from "../design/ui/form-field";
-import { Input } from "../design/ui/input";
-import { Skeleton } from "../design/ui/skeleton";
-import { Text } from "../design/ui/text";
-import { apiErrorMessage } from "../lib/api-error";
-import { ChoiceChips } from "../design/ui/choice-chips";
+import { useVideoQuestions, useVideoQuestionWrites, useVideoQuizResults } from "../../hooks/use-video-quiz";
+import { FormErrorBox } from "../../design/forms/form-parts";
+import { InlineError } from "../../design/layout/route-states";
+import { Button } from "../../design/ui/button";
+import { Card } from "../../design/ui/card";
+import { FormField } from "../../design/ui/form-field";
+import { Input } from "../../design/ui/input";
+import { Skeleton } from "../../design/ui/skeleton";
+import { Text } from "../../design/ui/text";
+import { apiErrorMessage } from "../../lib/api-error";
+import { ChoiceChips } from "../../design/ui/choice-chips";
 import {
   EMPTY_VIDEO_QUESTION_FORM,
   formFromQuestion,
   updatedQuestionStatus,
   videoQuestionBody,
   type VideoQuestionFormState,
-} from "../lib/video-question-form";
+} from "../../lib/video-question-form";
 
 const MAX_OPTIONS = 6;
 

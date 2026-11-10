@@ -14,7 +14,7 @@ import {
   sessionTypeFor,
   sessionWriteFields,
   type SessionFormValues,
-} from "../../../../src/components/SessionForm";
+} from "../../../../src/screens/session-form/session-form";
 import { FormErrorBox } from "../../../../src/design/forms/form-parts";
 import { FormScreen } from "../../../../src/design/layout/form-screen";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";

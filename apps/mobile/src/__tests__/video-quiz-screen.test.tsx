@@ -26,7 +26,7 @@ jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { VideoQuizPlayer } from "../components/VideoQuizPlayer";
+import { VideoQuizPlayer } from "../screens/video-quiz/video-quiz-player";
 import { renderWithProviders } from "./helpers/render";
 
 import SessionDetailScreen from "../../app/(app)/session/[id]/index";

@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { View } from "react-native";
 import type { SessionDetail } from "@space/shared";
 
-import { StudentCheckInCard } from "../../components/check-in/StudentCheckInCard";
-import { VideoQuizPlayer, WatchRecordingButton } from "../../components/VideoQuizPlayer";
+import { StudentCheckInCard } from "../check-in/student-check-in-card";
+import { VideoQuizPlayer, WatchRecordingButton } from "../video-quiz/video-quiz-player";
 import { InlineError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { GroupedList, ListRow, StatusChip, Text, statusChip } from "../../design/ui";

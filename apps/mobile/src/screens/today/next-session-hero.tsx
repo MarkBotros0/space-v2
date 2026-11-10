@@ -2,7 +2,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { Linking, View } from "react-native";
 import type { DashboardSession, SessionDetail } from "@space/shared";
 
-import { CheckInWatcher, StudentCheckInCard, checkInVisible } from "../../components/check-in/StudentCheckInCard";
+import { CheckInWatcher, StudentCheckInCard, checkInVisible } from "../check-in/student-check-in-card";
 import { SessionHomeCard } from "../home/session-card";
 import { Button } from "../../design/ui";
 

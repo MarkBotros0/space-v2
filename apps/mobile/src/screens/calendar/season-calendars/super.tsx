@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { RouteError, RouteSkeleton } from "../../../design/layout/route-states";
 import { Screen } from "../../../design/layout/screen";
-import { buildSeasonColors } from "../../../design/sessions/season-calendar";
+import { buildSeasonColors } from "../../../design/calendar/season-calendar";
 import { useStaffOrgToday } from "../../../hooks/use-dashboard";
 import { useEvents } from "../../../hooks/use-events";
 import { useSeasons } from "../../../hooks/use-seasons";

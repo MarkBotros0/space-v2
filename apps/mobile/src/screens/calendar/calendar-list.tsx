@@ -11,11 +11,11 @@ import { Calendar as CalendarIcon, MapPin } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
 import { formatWallTime, formatWeekdayDayYear, formatMinutes } from "../../lib/format";
-import { iconWithClassName } from "../lib/icon";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { EmptyState } from "../ui/empty-state";
-import { Text } from "../ui/text";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Badge } from "../../design/ui/badge";
+import { Button } from "../../design/ui/button";
+import { EmptyState } from "../../design/ui/empty-state";
+import { Text } from "../../design/ui/text";
 
 iconWithClassName(MapPin);
 

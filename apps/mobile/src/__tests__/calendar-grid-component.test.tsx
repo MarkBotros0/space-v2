@@ -4,8 +4,8 @@ import type { JpcEventListItem, SessionListItem } from "@space/shared";
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush }) }));
 
-import { CalendarGrid } from "../components/calendar/CalendarGrid";
-import { DayEntries, Legend, entriesFor } from "../components/calendar/CalendarEntries";
+import { CalendarGrid } from "../screens/calendar/calendar-grid";
+import { DayEntries, Legend, entriesFor } from "../screens/calendar/calendar-entries";
 import { renderWithProviders } from "./helpers/render";
 
 const ctx = { today: "2099-03-10", slots: null, isStaff: false };

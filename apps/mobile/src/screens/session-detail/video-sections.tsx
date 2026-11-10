@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import type { SessionDetail } from "@space/shared";
 
-import { VideoQuestionsEditor, VideoQuizResultsTable } from "../../components/VideoQuestionsEditor";
+import { VideoQuestionsEditor, VideoQuizResultsTable } from "../video-quiz/video-questions-editor";
 import { InlineError } from "../../design/layout/route-states";
 import { Badge, Card as CardV1, CardContent, CardHeader, CardTitle, DataTable, Text as TextV1 } from "../../design/ui";
 import { useVideoQuizResults } from "../../hooks/use-video-quiz";

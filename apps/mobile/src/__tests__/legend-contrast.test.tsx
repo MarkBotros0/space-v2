@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react-native";
 
-import { Legend } from "../components/calendar/CalendarEntries";
+import { Legend } from "../screens/calendar/calendar-entries";
 
 const { colors, semantic } = require("../design/theme/tailwind-theme.js") as {
   colors: Record<string, Record<string, string> | string>;

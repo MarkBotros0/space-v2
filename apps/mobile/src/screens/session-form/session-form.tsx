@@ -1,8 +1,8 @@
 import { View } from "react-native";
 import type { RecurrenceScope } from "@space/shared";
 
-import { FormField } from "../design/ui/form-field";
-import { ToggleButtons } from "../design/forms/form-parts";
+import { FormField } from "../../design/ui/form-field";
+import { ToggleButtons } from "../../design/forms/form-parts";
 import {
   DatePicker,
   Input,
@@ -13,9 +13,9 @@ import {
   SelectValue,
   Textarea,
   TimePicker,
-} from "../design/ui";
-import { dateToDay, dayToDate, partsToTime, timeToParts } from "../lib/day-key";
-import { blankToNull } from "../lib/form-values";
+} from "../../design/ui";
+import { dateToDay, dayToDate, partsToTime, timeToParts } from "../../lib/day-key";
+import { blankToNull } from "../../lib/form-values";
 
 type SessionType = "inperson" | "online";
 

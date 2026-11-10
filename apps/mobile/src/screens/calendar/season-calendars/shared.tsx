@@ -2,7 +2,7 @@ import { useRouter } from "expo-router";
 import { Calendar as CalendarIcon } from "lucide-react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
-import { SeasonCalendar, type SeasonColors } from "../../../design/sessions/season-calendar";
+import { SeasonCalendar, type SeasonColors } from "../../../design/calendar/season-calendar";
 import { EmptyState } from "../../../design/ui";
 import { deviceTodayKey, initialAnchor } from "../../../lib/calendar-grid";
 

@@ -7,7 +7,7 @@ import { formatDayKey, formatWeekdayDay } from "../../lib/format";
 import { cn } from "../../design/lib/cn";
 import { Text } from "../../design/ui/text";
 import type { CalendarEntry } from "../../lib/day-groups";
-import { DayEntries, entriesFor, eventTint, sessionTint, type CalendarContext } from "./CalendarEntries";
+import { DayEntries, entriesFor, eventTint, sessionTint, type CalendarContext } from "./calendar-entries";
 
 const MAX_DOTS = 3;
 

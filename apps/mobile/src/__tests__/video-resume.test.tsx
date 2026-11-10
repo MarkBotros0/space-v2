@@ -24,7 +24,7 @@ jest.mock("react-native-youtube-iframe", () => {
   return { __esModule: true, default: Player };
 });
 
-import { VideoQuizPlayer } from "../components/VideoQuizPlayer";
+import { VideoQuizPlayer } from "../screens/video-quiz/video-quiz-player";
 import { renderWithProviders } from "./helpers/render";
 
 const question = (id: number, atSeconds: number) => ({

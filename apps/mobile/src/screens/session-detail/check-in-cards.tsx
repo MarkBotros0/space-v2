@@ -9,7 +9,7 @@ import { FormErrorBox } from "../../design/forms/form-parts";
 import { haptic } from "../../design/motion";
 import { InlineError } from "../../design/layout/route-states";
 import { iconWithClassName } from "../../design/lib/icon";
-import { CheckInAttendanceList } from "../../design/sessions/check-in-attendance-list";
+import { CheckInAttendanceList } from "./check-in-attendance-list";
 import {
   Button as ButtonV1,
   Card as CardV1,

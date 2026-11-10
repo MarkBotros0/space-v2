@@ -3,8 +3,8 @@ import { StyleSheet } from "react-native";
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
-import { CalendarGrid } from "../components/calendar/CalendarGrid";
-import { CalendarGrid as SeasonCalendarGrid } from "../design/sessions/season-calendar-grid";
+import { CalendarGrid } from "../screens/calendar/calendar-grid";
+import { CalendarGrid as SeasonCalendarGrid } from "../design/calendar/season-calendar-grid";
 import { renderWithProviders } from "./helpers/render";
 
 const ctx = { today: "2099-03-10", slots: null, isStaff: false };

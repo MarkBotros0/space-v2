@@ -13,13 +13,13 @@ import type { AttendanceRosterRow, AttendanceStatus } from "@space/shared";
 import { Check, Clock, X, type LucideIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
-import { haptic } from "../motion";
-import { cn } from "../lib/cn";
-import { iconWithClassName } from "../lib/icon";
-import { Button } from "../ui/button";
-import { GroupedList } from "../ui/grouped-list";
-import { Input } from "../ui/input";
-import { Text } from "../ui/text";
+import { haptic } from "../../design/motion";
+import { cn } from "../../design/lib/cn";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Button } from "../../design/ui/button";
+import { GroupedList } from "../../design/ui/grouped-list";
+import { Input } from "../../design/ui/input";
+import { Text } from "../../design/ui/text";
 
 iconWithClassName(Check, Clock, X);
 

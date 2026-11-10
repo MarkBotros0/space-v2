@@ -1,8 +1,8 @@
 // Calendar Upcoming (sweep R5): the season tag and the status chip wrap under the title, never beside it.
 import { screen, within } from "@testing-library/react-native";
 
-import { AgendaView } from "../design/sessions/season-calendar-agenda";
-import { buildSeasonColors } from "../design/sessions/season-colors";
+import { AgendaView } from "../design/calendar/season-calendar-agenda";
+import { buildSeasonColors } from "../design/calendar/season-colors";
 import { renderWithProviders } from "./helpers/render";
 import { session } from "./helpers/calendar-fixtures";
 

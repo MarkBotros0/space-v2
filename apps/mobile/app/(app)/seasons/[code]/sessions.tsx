@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { phoneDayKey } from "../../../../src/screens/season/season-timeline";
-import { CalendarList } from "../../../../src/design/sessions/calendar-list";
+import { CalendarList } from "../../../../src/screens/calendar/calendar-list";
 
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonRoute } from "../../../../src/hooks/use-season-route";

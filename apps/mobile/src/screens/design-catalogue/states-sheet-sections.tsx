@@ -3,7 +3,7 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { InlineError, RouteError } from "../../design/layout/route-states";
-import { CheckInSuccess } from "../../components/check-in/check-in-success";
+import { CheckInSuccess } from "../check-in/check-in-success";
 import { Button } from "../../design/ui/button";
 import { EmptyState } from "../../design/ui/empty-state";
 import { Input } from "../../design/ui/input";

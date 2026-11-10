@@ -7,7 +7,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { SaveBar } from "../../../../src/design/layout/save-bar";
 import { Screen } from "../../../../src/design/layout/screen";
 import { haptic } from "../../../../src/design/motion";
-import { AttendanceRosterForm } from "../../../../src/design/sessions/attendance-form";
+import { AttendanceRosterForm } from "../../../../src/screens/session-detail/attendance-form";
 import { EmptyState } from "../../../../src/design/ui";
 import { toast } from "../../../../src/design/ui/toaster";
 import { useAttendanceRoster, useSaveAttendance } from "../../../../src/hooks/use-attendance";

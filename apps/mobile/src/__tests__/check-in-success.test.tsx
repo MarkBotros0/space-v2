@@ -18,8 +18,8 @@ jest.mock("expo-router", () => ({
 const mockHaptic = jest.fn();
 jest.mock("../design/motion/haptics", () => ({ haptic: (k: string) => mockHaptic(k) }));
 
-import { CheckInSuccess } from "../components/check-in/check-in-success";
-import { StudentCheckInCard } from "../components/check-in/StudentCheckInCard";
+import { CheckInSuccess } from "../screens/check-in/check-in-success";
+import { StudentCheckInCard } from "../screens/check-in/student-check-in-card";
 
 beforeEach(() => {
   mockHaptic.mockClear();

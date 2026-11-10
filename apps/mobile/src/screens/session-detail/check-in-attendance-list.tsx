@@ -12,11 +12,11 @@ import type { AttendanceRosterRow, AttendanceStatus } from "@space/shared";
 import { useState } from "react";
 import { View } from "react-native";
 
-import { Button } from "../ui/button";
-import { Sheet } from "../ui/sheet";
-import { StatusChip, statusChip } from "../ui/status-chip";
-import { Text } from "../ui/text";
-import { LocalStudentList } from "../students/local-student-list";
+import { Button } from "../../design/ui/button";
+import { Sheet } from "../../design/ui/sheet";
+import { StatusChip, statusChip } from "../../design/ui/status-chip";
+import { Text } from "../../design/ui/text";
+import { LocalStudentList } from "../../design/students/local-student-list";
 
 const ORDER: AttendanceStatus[] = ["PRESENT", "LATE", "ABSENT"];
 

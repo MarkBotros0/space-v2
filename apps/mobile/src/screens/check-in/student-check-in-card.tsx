@@ -13,9 +13,9 @@ import { useSessionDetail } from "../../hooks/use-session-detail";
 import { deviceTodayKey } from "../../lib/calendar-grid";
 import { checkInCopy, checkInRefusalCode, type CheckInOutcome } from "../../lib/check-in-result";
 import { formatSessionTime } from "../../lib/format";
-import { CheckInResult } from "./CheckInResult";
+import { CheckInResult } from "./check-in-result";
 import { CheckInSuccess } from "./check-in-success";
-import { QrScanner } from "./QrScanner";
+import { QrScanner } from "./qr-scanner";
 
 iconWithClassName(QrCode);
 

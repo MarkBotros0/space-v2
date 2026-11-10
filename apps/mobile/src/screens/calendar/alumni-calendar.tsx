@@ -3,8 +3,8 @@ import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
-import { CalendarGrid } from "../../components/calendar/CalendarGrid";
-import { Legend, type CalendarContext } from "../../components/calendar/CalendarEntries";
+import { CalendarGrid } from "./calendar-grid";
+import { Legend, type CalendarContext } from "./calendar-entries";
 import { useEvents } from "../../hooks/use-events";
 import { deviceTodayKey, initialAnchor, rangeLabel, stepAnchor, type CalendarView } from "../../lib/calendar-grid";
 import { groupCalendarByDay } from "../../lib/day-groups";

@@ -17,7 +17,7 @@ jest.mock("expo-router", () => ({
   useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 
-import { StudentCheckInCard } from "../components/check-in/StudentCheckInCard";
+import { StudentCheckInCard } from "../screens/check-in/student-check-in-card";
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";

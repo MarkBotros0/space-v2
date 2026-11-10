@@ -5,7 +5,7 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: mockPush, back: jest.fn() }) }));
 
 import CalendarScreen from "../../app/(app)/(tabs)/calendar";
-import { sessionChip } from "../design/sessions/session-chip";
+import { sessionChip } from "../design/calendar/session-chip";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { seasonRow, session, studentSession } from "./helpers/calendar-fixtures";
@@ -218,7 +218,7 @@ describe("calendar agenda rows", () => {
 
 describe("calendar chip (K5)", () => {
   it("keeps a long label on one line with an ellipsis and may shrink inside its row", () => {
-    const { Chip } = require("../components/calendar/CalendarEntries");
+    const { Chip } = require("../screens/calendar/calendar-entries");
     const { render } = require("@testing-library/react-native");
     const utils = render(
       <Chip label="Opening night with the whole cohort" tint={{ box: "bg-muted", text: "text-foreground" }} />,

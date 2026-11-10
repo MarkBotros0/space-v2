@@ -8,7 +8,7 @@ import {
   emptySessionValues,
   sessionWriteFields,
   type SessionFormValues,
-} from "../../../src/components/SessionForm";
+} from "../../../src/screens/session-form/session-form";
 import { FormScreen } from "../../../src/design/layout/form-screen";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState, FormField, Input } from "../../../src/design/ui";
