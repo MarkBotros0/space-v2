@@ -100,7 +100,7 @@ export const seasonPaths = {
       tags: ["Seasons"],
       summary: "Duplicate a season's structure",
       description:
-        "SUPER only. Creates a DRAFT season copying program, `requiredProgram`, `graduatesOnPass`, `isCommunityWide`, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments, every date shifted by (startDate − source.startDate), assignment sessionIds and group targets remapped to the clones. Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
+        "SUPER only. Creates a DRAFT season copying program, `requiredProgram`, `graduatesOnPass`, `isCommunityWide`, description and the budget fields; groups (name/description only — leaders and students are NOT copied), sessions and non-deleted assignments (their settings and reminder, parts in order, each video's timed questions; no student work), every date shifted by (startDate − source.startDate). Recurrence series get FRESH ids (v1 copied them, letting series edits cross seasons — ruling C10). `code` defaults to slugify('<program> <year>'). A soft-deleted source is 404.",
       parameters: [idParam],
       requestBody: {
         required: true,

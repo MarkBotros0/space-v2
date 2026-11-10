@@ -24,7 +24,7 @@ async function count(sql: TemplateStringsArray): Promise<number> {
   return Number(rows[0]?.n ?? 0);
 }
 
-export const CHECKS: Check[] = [
+const CHECKS: Check[] = [
   {
     step: "3.7",
     title: "the app's connections use the UTC session time zone",

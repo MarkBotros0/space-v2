@@ -2,14 +2,7 @@ import { Router } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
-import {
-  assignmentColumns,
-  bodyErrorMessage,
-  notifyAssignmentCreated,
-  replaceAssignment,
-  targetedStudentIds,
-  validateAssignmentRefs,
-} from "../lib/assignment-writes";
+import { bodyErrorMessage, replaceAssignment } from "../lib/assignments/writes";
 import { canAccessSeason, canManageAssignment, hasActiveEnrollment, staffScopeForSeason } from "../lib/permissions";
 import {
   assignmentDetailPayload,
@@ -127,11 +120,11 @@ assignmentsRouter.get("/:id/tracker", async (req, res) => {
 });
 
 /**
- * Full replace (spec 07 R67): the body is the whole assignment. Targeting is
- * deleted and recreated inside the same transaction as the field update (R69,
- * R85). Students newly brought into scope get ASSIGNMENT_CREATED — v1 told
- * nobody (R74), which spec §10 item 5 calls a bug; students already targeted
- * are never notified again.
+ * Full replace (spec 07 R67): the body is the whole assignment, its parts in
+ * order. Wording, dates and the reminder change freely; a change to students'
+ * work answers 409 `needs_confirmation` with `students` until the body is
+ * re-sent with `confirm: true` (lib/assignments/writes.ts). Nobody is told
+ * again: the whole season was told when it was created.
  */
 assignmentsRouter.patch("/:id", async (req, res) => {
   const user = requireUser(req);
@@ -141,7 +134,7 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   // v1's canEditAssignment read the row without a deletedAt filter (R79).
   const existing = await db.assignment.findFirst({
     where: { id, ...liveAssignment },
-    select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },
+    select: { seasonId: true },
   });
   if (!existing) return notFound(res, "Assignment");
   if (!canManageAssignment(user, existing.seasonId)) return forbidden(res);
@@ -150,31 +143,9 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   if (!parsed.success) {
     return apiError(res, "bad_request", bodyErrorMessage(parsed.error, "Invalid assignment body."), 400);
   }
-  const body = parsed.data;
 
-  const refusal = await validateAssignmentRefs(existing.seasonId, body);
-  if (refusal) return apiError(res, refusal.code, refusal.message, 400);
-
-  const before = new Set(
-    await targetedStudentIds(
-      existing.seasonId,
-      existing.isAllGroups,
-      existing.targets.map((t) => t.groupId),
-    ),
-  );
-
-  const columns = assignmentColumns(body);
-  await replaceAssignment(id, columns, body, user.userId);
-
-  const after = await targetedStudentIds(existing.seasonId, body.isAllGroups, body.groupIds);
-  await notifyAssignmentCreated(
-    { id, title: body.title, dueAt: columns.dueAt },
-    after.filter((studentId) => !before.has(studentId)),
-  );
-
-  const detail = await loadAssignmentById(id);
-  if (!detail) return notFound(res, "Assignment");
-  return apiOk(res, assignmentDetailPayload(detail, { isStudent: false, canManage: true, mySubmission: null }));
+  const { reopened } = await replaceAssignment(id, parsed.data, user.userId);
+  return apiOk(res, { id, reopened });
 });
 
 assignmentsRouter.delete("/:id", async (req, res) => {

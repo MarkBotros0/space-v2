@@ -26,7 +26,7 @@ afterAll(async () => {
 });
 
 describe("POST /api/v1/seasons/:id/duplicate", () => {
-  it("clones structure faithfully to v1: shifted dates, remapped ids, no people, FRESH recurrence ids", async () => {
+  it("clones structure: shifted dates, assignments with their parts, no people, FRESH recurrence ids", async () => {
     const source = await createTestSeason();
     // Explicit start so the offset is visible: 2099-01-01 → 2100-01-04 is
     // 365 + 3 = 368 days.
@@ -41,7 +41,7 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
 
     const leader = await createTestUser("dupleader", "LEADER");
     const member = await createTestUser("dupstudent", "STUDENT");
-    const group = await db.group.create({
+    await db.group.create({
       data: {
         seasonId: source.id,
         name: "Dup Group",
@@ -52,7 +52,7 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
       select: { id: true },
     });
 
-    const s1 = await db.session.create({
+    await db.session.create({
       data: {
         seasonId: source.id,
         title: "Series A",
@@ -60,7 +60,6 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
         durationMinutes: 60,
         recurrenceGroupId: "space-v2-test-rgrp",
       },
-      select: { id: true },
     });
     await db.session.create({
       data: {
@@ -75,15 +74,30 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     await db.assignment.create({
       data: {
         seasonId: source.id,
-        sessionId: s1.id,
-        title: "Linked",
-        isAllGroups: false,
+        title: "Parts",
         dueAt: new Date("2099-02-01T21:59:00.000Z"),
-        targets: { create: { groupId: group.id } },
+        reminderDays: 3,
+        reminderAnchor: "DUE_DATE",
+        reminderTime: "18:30",
+        parts: {
+          create: [
+            {
+              position: 0,
+              kind: "VIDEO",
+              title: "Watch",
+              youtubeUrl: "https://youtu.be/dQw4w9WgXcQ",
+              youtubeId: "dQw4w9WgXcQ",
+              durationSeconds: 600,
+              blockSkipping: true,
+              videoQuestions: { create: { atSeconds: 30, prompt: "Who?", options: ["A", "B"], correctIndex: 1 } },
+            },
+            { position: 1, kind: "ESSAY", prompt: "Reflect", minWords: 50, maxWords: 300, maxFileSizeMb: 5 },
+          ],
+        },
       },
     });
     await db.assignment.create({
-      data: { seasonId: source.id, title: "Gone", isAllGroups: true, deletedAt: new Date() },
+      data: { seasonId: source.id, title: "Gone", deletedAt: new Date() },
     });
 
     const code = testSeasonCode();
@@ -123,16 +137,69 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
 
     const assignments = await db.assignment.findMany({
       where: { seasonId: newId },
-      select: { title: true, sessionId: true, dueAt: true, targets: { select: { groupId: true } } },
+      select: {
+        title: true,
+        dueAt: true,
+        reminderEnabled: true,
+        reminderDays: true,
+        reminderAnchor: true,
+        reminderTime: true,
+        parts: {
+          orderBy: { position: "asc" },
+          select: {
+            position: true,
+            kind: true,
+            title: true,
+            youtubeId: true,
+            durationSeconds: true,
+            blockSkipping: true,
+            prompt: true,
+            minWords: true,
+            maxWords: true,
+            maxFileSizeMb: true,
+            videoQuestions: { select: { atSeconds: true, prompt: true, options: true, correctIndex: true } },
+          },
+        },
+      },
     });
-    // The soft-deleted one is not copied (R59); the linked one points at the
-    // CLONED session and the CLONED group, with dueAt shifted 368 days.
+    // The soft-deleted one is not copied (R59); the other keeps its parts in
+    // order, the video's timed questions and the reminder, with dueAt shifted 368 days.
     expect(assignments).toEqual([
       {
-        title: "Linked",
-        sessionId: cloned[0]?.id,
+        title: "Parts",
         dueAt: new Date("2100-02-04T21:59:00.000Z"),
-        targets: [{ groupId: groups[0]?.id }],
+        reminderEnabled: true,
+        reminderDays: 3,
+        reminderAnchor: "DUE_DATE",
+        reminderTime: "18:30",
+        parts: [
+          {
+            position: 0,
+            kind: "VIDEO",
+            title: "Watch",
+            youtubeId: "dQw4w9WgXcQ",
+            durationSeconds: 600,
+            blockSkipping: true,
+            prompt: null,
+            minWords: null,
+            maxWords: null,
+            maxFileSizeMb: null,
+            videoQuestions: [{ atSeconds: 30, prompt: "Who?", options: ["A", "B"], correctIndex: 1 }],
+          },
+          {
+            position: 1,
+            kind: "ESSAY",
+            title: null,
+            youtubeId: null,
+            durationSeconds: null,
+            blockSkipping: false,
+            prompt: "Reflect",
+            minWords: 50,
+            maxWords: 300,
+            maxFileSizeMb: 5,
+            videoQuestions: [],
+          },
+        ],
       },
     ]);
 

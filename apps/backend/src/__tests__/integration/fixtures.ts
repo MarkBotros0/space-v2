@@ -154,11 +154,11 @@ export async function cleanupTestData(): Promise<void> {
     // fixtures in the shared database. Removing them explicitly first means the
     // cleanup never depends on cascade ordering being right.
     await db.sessionVideoQuestionResponse.deleteMany({
-      where: { question: { session: inSeasons } },
+      where: { question: { OR: [{ session: inSeasons }, { assignmentPart: { assignment: inSeasons } }] } },
     });
     await db.sessionVideoProgress.deleteMany({ where: { session: inSeasons } });
     await db.sessionVideoQuestion.deleteMany({ where: { session: inSeasons } });
-    await db.forumComment.deleteMany({ where: { submission: { assignment: inSeasons } } });
+    await db.forumComment.deleteMany({ where: { partWork: { submission: { assignment: inSeasons } } } });
     // Quiz graph. Quiz.season is onDelete: Cascade so season.deleteMany below
     // would usually reach these, but QuizGrade.studentUserId and
     // QuizAttempt.studentUserId are onDelete: Restrict against User - if the
@@ -172,10 +172,10 @@ export async function cleanupTestData(): Promise<void> {
     await db.quiz.deleteMany({ where: inSeasons });
     await db.attendance.deleteMany({ where: { session: inSeasons } });
     await db.submissionFile.deleteMany({
-      where: { submission: { assignment: inSeasons } },
+      where: { partWork: { submission: { assignment: inSeasons } } },
     });
+    await db.assignmentPartWork.deleteMany({ where: { part: { assignment: inSeasons } } });
     await db.submission.deleteMany({ where: { assignment: inSeasons } });
-    await db.assignmentTarget.deleteMany({ where: { assignment: inSeasons } });
     await db.assignment.deleteMany({ where: inSeasons });
     await db.seasonEnrollment.deleteMany({ where: inSeasons });
     await db.groupLeader.deleteMany({ where: { group: inSeasons } });

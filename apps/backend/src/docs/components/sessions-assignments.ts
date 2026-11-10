@@ -255,9 +255,9 @@ export const sessionsAssignmentsSchemas = {
   },
   AssignmentWriteRequest: {
     type: "object",
-    required: ["title", "isAllGroups"],
+    required: ["title", "description", "dueDay", "dueTime", "reminder", "parts"],
     description:
-      "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season.",
+      "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season. There is no session and no group targeting: an assignment is for the whole season.",
     properties: {
       title: { type: "string", minLength: 2, maxLength: 160 },
       description: { type: ["string", "null"], maxLength: 20000 },
@@ -265,57 +265,87 @@ export const sessionsAssignmentsSchemas = {
         type: ["string", "null"],
         format: "date",
         description:
-          "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2) — a client never sends an instant.",
+          "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2): a client never sends an instant.",
       },
       dueTime: {
         type: ["string", "null"],
         pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
-        default: "23:59",
         description: "Organisation wall-clock time, 24-hour. Ignored when `dueDay` is null.",
       },
-      sessionId: {
-        type: ["integer", "null"],
-        description: "Must be a session of the assignment's season (400 `invalid_session`).",
+      reminder: {
+        type: "object",
+        required: ["enabled", "days", "anchor", "time"],
+        description: "`days` before the anchor at `time` (org clock). `DUE_DATE` needs a due date (400).",
+        properties: {
+          enabled: { type: "boolean" },
+          days: { type: "integer", minimum: 1, maximum: 14 },
+          anchor: { type: "string", enum: ["NEXT_SESSION", "DUE_DATE"] },
+          time: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        },
       },
-      type: { $ref: "#/components/schemas/AssignmentType" },
-      forumMinWords: {
-        type: ["integer", "null"],
-        minimum: 0,
-        maximum: 2000,
-        description: "Kept only for FORUM; forced null for STANDARD.",
-      },
-      forumAllowComments: {
-        type: "boolean",
-        default: false,
-        description: "Kept only for FORUM; forced false for STANDARD.",
-      },
-      forumPostToRead: {
-        type: "boolean",
-        default: true,
-        description:
-          "FORUM only: a student reads group-mates' responses only after posting their own. Forced true for STANDARD.",
-      },
-      maxFileSizeMb: {
-        type: ["integer", "null"],
-        minimum: 1,
-        maximum: 100,
-        description: "Null = accepts no files. Forced null for FORUM.",
-      },
-      allowedMimeCategories: {
+      parts: {
         type: "array",
-        items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
-        default: [],
-        description: "Empty = any type. Forced empty for FORUM.",
-      },
-      isAllGroups: { type: "boolean" },
-      groupIds: {
-        type: "array",
-        items: { type: "integer" },
-        default: [],
+        minItems: 1,
+        maxItems: 20,
+        items: { $ref: "#/components/schemas/AssignmentPartInput" },
         description:
-          "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
+          "Every part, in order; at most one FORUM. On PATCH a part with an `id` keeps its row and the students' work on it, one without is new, a stored part left out is removed. An `id` this assignment doesn't have is 400 `unknown_part`; a part can't change kind (400).",
+      },
+      confirm: {
+        type: "boolean",
+        description: "PATCH: re-sent as true to apply an edit the server answered with 409 `needs_confirmation`.",
       },
     },
+  },
+  AssignmentPartInput: {
+    oneOf: [
+      {
+        type: "object",
+        required: ["kind", "title", "youtubeUrl", "blockSkipping", "durationSeconds"],
+        properties: {
+          id: { type: "integer" },
+          kind: { type: "string", enum: ["VIDEO"] },
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          youtubeUrl: { type: "string", description: "Must parse as a YouTube video; its id is stored." },
+          blockSkipping: { type: "boolean" },
+          durationSeconds: {
+            type: "integer",
+            minimum: 1,
+            maximum: 43200,
+            description: "The length the form's player reports; the server has no YouTube API key.",
+          },
+        },
+      },
+      {
+        type: "object",
+        required: ["kind", "prompt", "minWords", "maxWords", "maxFileSizeMb", "allowedMimeCategories"],
+        properties: {
+          id: { type: "integer" },
+          kind: { type: "string", enum: ["ESSAY"] },
+          prompt: { type: "string", minLength: 1, maxLength: 2000 },
+          minWords: { type: ["integer", "null"], minimum: 1, maximum: 5000 },
+          maxWords: { type: ["integer", "null"], minimum: 1, maximum: 5000, description: "At least `minWords`." },
+          maxFileSizeMb: { type: ["integer", "null"], minimum: 1, maximum: 100, description: "Null = no files." },
+          allowedMimeCategories: {
+            type: "array",
+            items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
+            description: "Empty = any type.",
+          },
+        },
+      },
+      {
+        type: "object",
+        required: ["kind", "prompt", "minWords", "postToRead", "allowComments"],
+        properties: {
+          id: { type: "integer" },
+          kind: { type: "string", enum: ["FORUM"] },
+          prompt: { type: "string", minLength: 1, maxLength: 2000 },
+          minWords: { type: ["integer", "null"], minimum: 1, maximum: 5000 },
+          postToRead: { type: "boolean", description: "Group-mates' posts show only after the student's own." },
+          allowComments: { type: "boolean" },
+        },
+      },
+    ],
   },
   AssignmentTracker: {
     type: "object",

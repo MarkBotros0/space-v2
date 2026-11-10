@@ -2,22 +2,10 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import {
-  assignmentColumns,
-  bodyErrorMessage,
-  insertAssignment,
-  notifyAssignmentCreated,
-  targetedStudentIds,
-  validateAssignmentRefs,
-} from "../../lib/assignment-writes";
+import { bodyErrorMessage, createAssignment } from "../../lib/assignments/writes";
 import { findLiveSeason } from "../../lib/queries/seasons";
 import { canAccessSeason, canManageAssignment } from "../../lib/permissions";
-import {
-  assignmentDetailPayload,
-  listAssignmentsForSeason,
-  listAssignmentsForStudent,
-  loadAssignmentById,
-} from "../../lib/queries/assignments";
+import { listAssignmentsForSeason, listAssignmentsForStudent } from "../../lib/queries/assignments";
 import { listGroupsForSeason } from "../../lib/queries/groups";
 import { validateGroupWrite } from "../../lib/groups/membership";
 import { createGroup } from "../../lib/groups/writes";
@@ -114,22 +102,8 @@ export async function createSeasonAssignment(req: Request, res: Response) {
   if (!parsed.success) {
     return apiError(res, "bad_request", bodyErrorMessage(parsed.error, "Invalid assignment body."), 400);
   }
-  const body = parsed.data;
 
-  const refusal = await validateAssignmentRefs(seasonId, body);
-  if (refusal) return apiError(res, refusal.code, refusal.message, 400);
-
-  const columns = assignmentColumns(body);
-  const created = await insertAssignment(seasonId, columns, body, user.userId);
-
-  // R65: fan-out after the commit, never inside it.
-  await notifyAssignmentCreated(
-    { id: created.id, title: body.title, dueAt: columns.dueAt },
-    await targetedStudentIds(seasonId, body.isAllGroups, body.groupIds),
-  );
-
-  const detail = await loadAssignmentById(created.id);
-  // Unreachable — the row was written above — but the loader is nullable.
-  if (!detail) return notFound(res, "Assignment");
-  return apiOk(res, assignmentDetailPayload(detail, { isStudent: false, canManage: true, mySubmission: null }), 201);
+  // The row, its parts and the season's notifications (after the commit, R65).
+  const created = await createAssignment(seasonId, parsed.data, user.userId);
+  return apiOk(res, created, 201);
 }

@@ -160,20 +160,15 @@ export const seasonContentPaths = {
       tags: ["Assignments"],
       summary: "Create an assignment in a season",
       description:
-        "Season admins (SUPER passes). Row and targets commit in one transaction. Afterwards, in an ACTIVE season (a draft's roster is not told), every ACTIVE enrolled student the assignment targets — resolved through SeasonEnrollment (ruling C9), opted-out students skipped — gets ASSIGNMENT_CREATED titled `New assignment: <title>`, body `Due <org time>` (omitted with no due date), link `/student/assignments/<id>` (v1's path, ruling X1). A notification failure never fails the create.",
+        "Season admins (SUPER passes). The row and its parts, in the body's order, commit together. Afterwards, in an ACTIVE season (a draft's roster is not told), every live student with an ACTIVE enrolment gets ASSIGNMENT_CREATED once, titled `New assignment: <title>`, body `Due <org time>` (omitted with no due date), link `/student/assignments/<id>` (v1's path, ruling X1). A notification failure never fails the create.",
       parameters: [idParam],
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
       },
       responses: {
-        201: ok(
-          { $ref: "#/components/schemas/AssignmentDetail" },
-          "Created — the same shape GET /assignments/{id} returns.",
-        ),
-        400: conflict(
-          "`bad_request` (body; message names the first failing field), `invalid_group`, or `invalid_session`.",
-        ),
+        201: ok({ type: "object", properties: { id: { type: "integer" } } }, "Created: the new id."),
+        400: conflict("`bad_request` (body; message names the first failing field)."),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),

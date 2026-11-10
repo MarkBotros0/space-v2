@@ -22,25 +22,29 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Assignments"],
       summary: "Replace an assignment",
       description:
-        "Season admins of the assignment's season (SUPER passes). A full replace — send every field; omitted optional fields are cleared, exactly like v1's edit form. Targeting is replaced in the same transaction. The season never changes (any `seasonId` in the body is ignored). Students newly targeted by the edit get ASSIGNMENT_CREATED (same text and link as create); students already targeted are not notified again. Editing is allowed after submissions exist (v1 R72). A soft-deleted assignment is 404.",
+        "Season admins of the assignment's season (SUPER passes). A full replace of the fields and the parts, in one transaction; the season never changes (any `seasonId` in the body is ignored). Wording, dates and the reminder change freely after students have started (v1 R72). An edit that changes students' work answers 409 `needs_confirmation` with `students` (each student once) and writes nothing, until re-sent with `confirm: true`: removing a part (its work goes), changing a video's link to another video (its watch progress and answers go), or adding a part (whoever had submitted is reopened: `submittedAt` and `completedAt` cleared). A word-range change never reopens essays already handed in. Nobody is notified. A soft-deleted assignment is 404.",
       parameters: [idParam],
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
       },
       responses: {
-        200: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "The updated assignment."),
-        400: conflict("`bad_request`, `invalid_group`, or `invalid_session`."),
+        200: ok(
+          { type: "object", properties: { id: { type: "integer" }, reopened: { type: "integer" } } },
+          "Saved; `reopened` counts the students whose submitted work went back to To do.",
+        ),
+        400: conflict("`bad_request` or `unknown_part`."),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
+        409: conflict("`needs_confirmation`, with `students` beside `error`."),
       },
     },
     delete: {
       tags: ["Assignments"],
       summary: "Soft-delete an assignment nobody has started",
       description:
-        "Season admins of the assignment's season. Designed rather than ported: v1's soft-delete action had no caller (ruling C12). Sets `deletedAt`; targets and any history stay. Refused with 409 `has_submissions` while any Submission row exists (any status, drafts included) — there is no force option. Notifies nobody. Deleting twice is 404. Returns 200 with `{ deleted: true }` (the response envelope), not 204.",
+        "Season admins of the assignment's season. Designed rather than ported: v1's soft-delete action had no caller (ruling C12). Sets `deletedAt`; parts and any history stay. Refused with 409 `has_submissions` while any Submission row exists (any status, drafts included) — there is no force option. Notifies nobody. Deleting twice is 404. Returns 200 with `{ deleted: true }` (the response envelope), not 204.",
       parameters: [idParam],
       responses: {
         200: ok({ type: "object", properties: { deleted: { type: "boolean", enum: [true] } } }, "Deleted."),

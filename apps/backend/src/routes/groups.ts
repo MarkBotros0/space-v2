@@ -147,10 +147,8 @@ groupsRouter.get("/:id/impact", async (req, res) => {
 
 /**
  * Delete a group — designed, not ported (ruling C12: v1's deleteGroupAction
- * has no caller, spec 05 R46). Refuses while any live assignment targets
- * only this group (R44 — it would become visible to nobody). Otherwise, in
- * one interactive transaction that RE-CHECKS that condition: leaders,
- * memberships and target rows go; every SeasonEnrollment pointing at the
+ * has no caller, spec 05 R46). In one interactive transaction: leaders and
+ * memberships go; every SeasonEnrollment pointing at the
  * group loses the pointer (all seasons — R43's FK SetNull made explicit);
  * the group is hard-deleted (Group has no deletedAt).
  */
