@@ -30,24 +30,13 @@ const season = {
   startDate: "2099-01-01T00:00:00.000Z",
   endDate: "2099-12-31T00:00:00.000Z",
 };
-const group = (id: number, name: string) => ({
-  id,
-  name,
-  description: null,
-  studentCount: 2,
-  leaderNames: [],
-  seasonId: 7,
-  seasonCode: "s7",
-  seasonTitle: "Spring 2099",
-});
 const row = (over: Record<string, unknown> = {}) => ({
   id: 41,
   title: "Essay one",
   dueAt: "2099-04-01T21:59:00.000Z",
   dueOrgDay: "2099-04-01",
   isOverdue: false,
-  isAllGroups: false,
-  targetGroupIds: [3],
+  partsCount: 3,
   submissionCount: 1,
   expectedCount: 2,
   seasonCode: "s7",
@@ -57,9 +46,6 @@ const row = (over: Record<string, unknown> = {}) => ({
 function serve(assignments: unknown[] | Error) {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/seasons") return Promise.resolve({ data: { data: { seasons: [season] } } });
-    if (url === "/api/v1/seasons/7/groups") {
-      return Promise.resolve({ data: { data: { groups: [group(3, "Group A"), group(4, "Group B")] } } });
-    }
     if (url === "/api/v1/seasons/7/assignments") {
       return assignments instanceof Error
         ? Promise.reject(assignments)
@@ -75,7 +61,7 @@ beforeEach(() => {
 });
 
 describe("AssignmentsScreen (staff)", () => {
-  it("lists the current season's assignments with the org due day, targets and counts", async () => {
+  it("lists the current season's assignments with the org due day, parts and counts", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     serve([
       row(),
@@ -84,24 +70,23 @@ describe("AssignmentsScreen (staff)", () => {
         title: "Everyone",
         dueAt: null,
         dueOrgDay: null,
-        isAllGroups: true,
-        targetGroupIds: [],
+        partsCount: 1,
         submissionCount: 0,
         expectedCount: 3,
       }),
-      row({ id: 43, title: "Late one", isOverdue: true, targetGroupIds: [3, 4], submissionCount: 2, expectedCount: 4 }),
+      row({ id: 43, title: "Late one", isOverdue: true, partsCount: 2, submissionCount: 2, expectedCount: 4 }),
     ]);
 
     renderWithProviders(<AssignmentsScreen />);
 
     expect(await screen.findByText("Essay one")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/seasons/7/assignments");
-    // Names arrive with the groups query; until then the label counts groups.
-    expect(await screen.findByText("Group A")).toBeTruthy();
+    // Always the whole season: no Scope, the parts count instead.
+    expect(screen.getByText("3 parts")).toBeTruthy();
     expect(screen.getByText("1/2 submitted")).toBeTruthy();
-    expect(screen.getByText("All students")).toBeTruthy();
+    expect(screen.getByText("1 part")).toBeTruthy();
     expect(screen.getByText("0/3 submitted")).toBeTruthy();
-    expect(screen.getByText("Group A, Group B")).toBeTruthy();
+    expect(screen.getByText("2 parts")).toBeTruthy();
     expect(screen.getByText("2/4 submitted")).toBeTruthy();
     expect(screen.getByText("3 assignments")).toBeTruthy();
     expect(screen.getByText("No due date")).toBeTruthy();
@@ -117,9 +102,7 @@ describe("AssignmentsScreen (staff)", () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/seasons/9/assignments"
         ? Promise.resolve({ data: { data: { assignments: [row({ title: "Season nine" })] } } })
-        : url === "/api/v1/seasons/9/groups"
-          ? Promise.resolve({ data: { data: { groups: [] } } })
-          : Promise.resolve({ data: { data: { seasons: [] } } }),
+        : Promise.resolve({ data: { data: { seasons: [] } } }),
     );
     renderWithProviders(<AssignmentsScreen />);
     expect(await screen.findByText("Season nine")).toBeTruthy();

@@ -34,7 +34,7 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
   const hasQuizzes = quizzes.total > 0 || quizzes.drafts > 0;
   const tiles: CountTileProps[] = [
     {
-      label: "Submissions to review",
+      label: "Essays to review",
       value: submissions.pendingReview,
       icon: FileText,
       tone: "info",

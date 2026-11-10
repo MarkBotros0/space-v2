@@ -26,6 +26,7 @@ function item(publicId: string, studentName: string | null, over: Record<string,
     submittedAt: "2099-03-30T10:00:00.000Z",
     isLate: false,
     reviewStatus: "SUBMITTED" as const,
+    reviewedAt: null,
     ...over,
   };
 }

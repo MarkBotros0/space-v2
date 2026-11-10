@@ -133,7 +133,6 @@ function routeGets(extra: Record<string, unknown> = {}) {
       "/api/v1/groups/3/impact": {
         studentCount: 1,
         leaderCount: 1,
-        soleTargetAssignments: [{ id: 70, title: "Only A" }],
       },
       ...extra,
     };

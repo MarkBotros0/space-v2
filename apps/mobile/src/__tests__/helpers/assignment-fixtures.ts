@@ -113,6 +113,8 @@ export function essayDetail(
     assignmentId: 41,
     assignmentTitle: "The lost son",
     assignmentDueAt: null,
+    dueOrgDay: null,
+    dueOrgTime: null,
     assignmentDescription: null,
     seasonCode: "S26",
     studentUserId: 9,

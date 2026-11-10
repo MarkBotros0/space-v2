@@ -47,7 +47,10 @@ const detail = {
   isLate: true,
   assignmentId: 41,
   assignmentTitle: "Week four",
-  assignmentDueAt: "2099-03-29T00:00:00.000Z",
+  assignmentDueAt: "2099-03-29T00:00:00.000Z" as string | null,
+  // 00:00Z is 02:00 in Cairo: the org's day and clock, as the server names them.
+  dueOrgDay: "2099-03-29" as string | null,
+  dueOrgTime: "02:00" as string | null,
   assignmentDescription: null,
   seasonCode: "S26",
   studentUserId: 9,
@@ -197,6 +200,14 @@ it("shows a returned essay as waiting on the student, with no verdicts", async (
   expect(screen.queryByTestId("save-bar")).toBeNull();
 });
 
+it("says when a returned essay was returned, not when it was handed in", async () => {
+  serve({ status: "RETURNED", feedback: "Another pass.", reviewedAt: "2099-03-31T10:00:00.000Z" });
+  renderStacked(<SubmissionReviewScreen />);
+
+  expect(await screen.findByText(/^Returned [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2} [AP]M$/)).toBeTruthy();
+  expect(screen.queryByText(/^Handed in /)).toBeNull();
+});
+
 it("hides the verdicts when the contract says this caller cannot review (a mentor reads, never reviews)", async () => {
   useSessionStore.setState(makeSession("MENTOR"));
   serve({ canReview: false, feedback: "Nice." });
@@ -257,9 +268,15 @@ it("says the essay isn't there, in words, for a link that no longer leads to one
   expect(await screen.findByText("This essay isn't here")).toBeTruthy();
 });
 
-it("shows no due date read on the device's clock (the detail carries no org-clock due day)", async () => {
+it("names the due date by the org's day and clock, never the device's", async () => {
   serve();
   renderStacked(<SubmissionReviewScreen />);
-  expect(await screen.findByText("Late")).toBeTruthy();
+  expect(await screen.findByText("Due Mar 29, 2099, 2:00 AM")).toBeTruthy();
+});
+
+it("shows no due chip when the assignment has no due date", async () => {
+  serve({ dueOrgDay: null, dueOrgTime: null, assignmentDueAt: null, isLate: false });
+  renderStacked(<SubmissionReviewScreen />);
+  expect(await screen.findByText("the student's work")).toBeTruthy();
   expect(screen.queryByText(/^Due /)).toBeNull();
 });

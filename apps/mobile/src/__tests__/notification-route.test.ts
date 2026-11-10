@@ -8,6 +8,14 @@ describe("routeForTarget", () => {
     });
   });
 
+  it("opens the assignment from its reminder (ASSIGNMENT_REMINDER links /student/assignments/:id)", () => {
+    // The server parses that link to an assignment target (notification-target.ts), the same as a new assignment's.
+    expect(routeForTarget({ entityType: "assignment", entityId: 42 })).toEqual({
+      pathname: "/assignment/[id]",
+      params: { id: "42" },
+    });
+  });
+
   it("falls back to the list when the target names no specific row", () => {
     expect(routeForTarget({ entityType: "assignment", entityId: null })).toEqual({
       pathname: "/assignments",

@@ -16,7 +16,10 @@ import type { NotificationTarget } from "@space/shared";
  * still falls back to the roster rather than asserting, so a future null
  * cannot crash the inbox.
  *
- * The `submission` arm (SUBMISSION_RECEIVED) carries the submission's
+ * The `assignment` arm serves ASSIGNMENT_CREATED and ASSIGNMENT_REMINDER alike:
+ * both link the assignment, so a reminder opens the student's checklist.
+ *
+ * The `submission` arm (SUBMISSION_RECEIVED) carries the essay work's
  * publicId, which is the review screen's own route param.
  */
 export type NotificationRoute =

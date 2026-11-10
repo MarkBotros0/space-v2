@@ -1,6 +1,13 @@
 import type { DashboardDueItem, StudentQuizResult } from "@space/shared";
 
-import { assignmentRow, isOpenQuiz, quizRow, todayWork } from "../screens/work/work-model";
+import {
+  assignmentRow,
+  isOpenQuiz,
+  quizRow,
+  submittedSections,
+  todayWork,
+  todoGroups,
+} from "../screens/work/work-model";
 
 const TODAY = "2099-03-01";
 
@@ -11,6 +18,11 @@ const assignment = (over: Partial<DashboardDueItem> & { id: number }): Dashboard
   isOverdue: false,
   status: "PENDING",
   reviewedAt: null,
+  submittedAt: null,
+  partsTotal: 3,
+  partsDone: 0,
+  returned: false,
+  hasEssay: true,
   ...over,
 });
 
@@ -43,16 +55,29 @@ describe("assignmentRow", () => {
     });
   });
 
-  it("a draft keeps the due chip and says it is in progress", () => {
-    const row = assignmentRow(assignment({ id: 1, status: "DRAFT" }), TODAY);
+  it("an open row counts its parts instead of a single status", () => {
+    const row = assignmentRow(assignment({ id: 1, status: "DRAFT", partsDone: 2 }), TODAY);
     expect(row.chip?.label).toBe("Due in 2 days");
-    expect(row.subtitle).toBe("In progress · Due Mar 3, 2099");
+    expect(row.subtitle).toBe("2 of 3 done · Due Mar 3, 2099");
+    expect(assignmentRow(assignment({ id: 2 }), TODAY).subtitle).toBe("3 parts · Due Mar 3, 2099");
+    expect(assignmentRow(assignment({ id: 3, partsTotal: 1 }), TODAY).subtitle).toBe("1 part · Due Mar 3, 2099");
+  });
+
+  it("every part done but not submitted says Submit is what is left", () => {
+    const row = assignmentRow(assignment({ id: 1, status: "DRAFT", partsDone: 3 }), TODAY);
+    expect(row.subtitle).toBe("Every part done, not submitted yet · Due Mar 3, 2099");
   });
 
   it("a returned row says so, even past its due date", () => {
-    const row = assignmentRow(assignment({ id: 1, status: "RETURNED", isOverdue: true }), TODAY);
+    const row = assignmentRow(assignment({ id: 1, status: "RETURNED", returned: true, isOverdue: true }), TODAY);
     expect(row.chip).toEqual({ tone: "warn", label: "Returned" });
-    expect(row.subtitle).toBe("Returned with comments · Due Mar 3, 2099");
+    expect(row.subtitle).toBe("Returned — needs changes · Due Mar 3, 2099");
+  });
+
+  it("any returned essay makes the row returned, however many parts are done", () => {
+    const row = assignmentRow(assignment({ id: 1, status: "DRAFT", returned: true, partsDone: 2 }), TODAY);
+    expect(row.chip?.label).toBe("Returned");
+    expect(row.subtitle).toBe("Returned — needs changes · Due Mar 3, 2099");
   });
 
   it.each([
@@ -70,30 +95,30 @@ describe("assignmentRow", () => {
       TODAY,
     );
     expect(row.chip?.label).toBe("Overdue");
-    expect(row.subtitle).toBe("Due Feb 20, 2099");
+    expect(row.subtitle).toBe("3 parts · Due Feb 20, 2099");
   });
 
   it("a chip that already names the date does not repeat it in the subtitle", () => {
     const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Mar 20");
-    expect(row.subtitle).toBeUndefined();
+    expect(row.subtitle).toBe("3 parts");
     const draft = assignmentRow(
       assignment({ id: 2, status: "DRAFT", dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
       TODAY,
     );
-    expect(draft.subtitle).toBe("In progress");
+    expect(draft.subtitle).toBe("3 parts");
   });
 
   it("a date chip across a year boundary keeps the year in the subtitle", () => {
     const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2100-01-20", dueAt: "2100-01-20T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Jan 20");
-    expect(row.subtitle).toBe("Due Jan 20, 2100");
+    expect(row.subtitle).toBe("3 parts · Due Jan 20, 2100");
   });
 
   it("a weekday chip is relative wording, so the date stays", () => {
     const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2099-03-06", dueAt: "2099-03-06T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Friday");
-    expect(row.subtitle).toBe("Due Mar 6, 2099");
+    expect(row.subtitle).toBe("3 parts · Due Mar 6, 2099");
   });
 
   it("the date comes from the org day, never dueAt: the two can name different days", () => {
@@ -101,17 +126,18 @@ describe("assignmentRow", () => {
       assignment({ id: 1, isOverdue: true, dueOrgDay: "2099-02-01", dueAt: "2099-01-31T22:30:00.000Z" }),
       TODAY,
     );
-    expect(row.subtitle).toBe("Due Feb 1, 2099");
+    expect(row.subtitle).toBe("3 parts · Due Feb 1, 2099");
   });
 
   it.each([
-    ["PENDING", undefined],
+    ["PENDING", "3 parts"],
     ["SUBMITTED", undefined],
     ["REVIEWED", undefined],
-    ["DRAFT", "In progress"],
-    ["RETURNED", "Returned with comments"],
+    ["DRAFT", "3 parts"],
+    ["RETURNED", "Returned — needs changes"],
   ] as const)("an undated %s row names no date", (status, subtitle) => {
-    const row = assignmentRow(assignment({ id: 1, status, dueOrgDay: null, dueAt: null }), TODAY);
+    const returned = status === "RETURNED";
+    const row = assignmentRow(assignment({ id: 1, status, returned, dueOrgDay: null, dueAt: null }), TODAY);
     expect(row.subtitle).toBe(subtitle);
   });
 });
@@ -241,5 +267,26 @@ describe("todayWork (P2-5)", () => {
   it("leaves out quizzes that are not open", () => {
     const rows = todayWork([], [quiz({ quizId: 1, kind: "PAPER" }), quiz({ quizId: 2, score: 5 })], TODAY);
     expect(rows).toEqual([]);
+  });
+});
+
+describe("todoGroups and submittedSections (multi-part)", () => {
+  it("files any assignment with a returned essay under Returned — needs changes", () => {
+    const groups = todoGroups([assignment({ id: 1, status: "DRAFT", returned: true })], [], TODAY);
+    expect(groups.map((g) => [g.header, g.rows.map((r) => r.id)])).toEqual([["Returned — needs changes", [1]]]);
+  });
+
+  it("a submitted assignment with no essay is Done, never waiting for review", () => {
+    const { assignments } = submittedSections(
+      [
+        assignment({ id: 1, status: "SUBMITTED", hasEssay: false, submittedAt: "2099-02-27T10:00:00.000Z" }),
+        assignment({ id: 2, status: "SUBMITTED", submittedAt: "2099-02-26T10:00:00.000Z" }),
+      ],
+      [],
+    );
+    expect(assignments.map((r) => [r.id, r.chip?.label, r.subtitle])).toEqual([
+      [1, "Done", "Submitted\u00A0Feb\u00A027,\u00A02099"],
+      [2, "Waiting for review", "Your leader hasn't reviewed it yet"],
+    ]);
   });
 });

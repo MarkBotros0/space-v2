@@ -19,7 +19,7 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 }
 
 /**
- * What stops the season from ending: submissions, quiz attempts and sessions
+ * What stops the season from ending: essays, quiz attempts and sessions
  * that still need a staff member. Each row opens the place to finish it. There
  * is deliberately no way past them: the server refuses the end too.
  */
@@ -34,7 +34,7 @@ export function BlockersList({ blockers }: { blockers: SeasonEndCheck["blockers"
         description="A season can't end while work is still waiting. Open each one, finish it, then come back."
       />
       {submissions.length > 0 ? (
-        <Group title={`${plural(submissions.length, "submission", "submissions")} not reviewed`}>
+        <Group title={`${plural(submissions.length, "essay")} waiting review`}>
           {submissions.map((s) => (
             <ListRow
               key={s.publicId}

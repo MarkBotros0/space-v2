@@ -12,8 +12,8 @@ import { essayStatusChip } from "../submission-review/essay-status";
 
 /**
  * One essay waiting in a reviewer's queue: the student, the assignment, the
- * essay's question, then its status, Late and (unless returned) when it was handed in as chips
- * that wrap under the text. Opens that essay (its work's publicId).
+ * essay's question, then its status, Late and when it was handed in (or, once returned,
+ * when it was returned) as chips that wrap under the text. Opens that essay (its work's publicId).
  */
 type QueueCounts = { pending: number; total: number; late: number };
 
@@ -23,11 +23,15 @@ export function EssayQueueRow({ item }: { item: SubmissionQueueItem }) {
   const chips: ChipSpec[] = [
     essayStatusChip(item.reviewStatus),
     ...(item.isLate ? [{ tone: "warn" as const, label: "Late" }] : []),
-    // A returned essay is back with the student: its old hand-in date would mislead,
-    // and the item carries no return date, so it shows none.
-    ...(item.submittedAt && item.reviewStatus !== "RETURNED"
-      ? [{ tone: "neutral" as const, label: `Handed in ${formatShortDateTime(item.submittedAt)}` }]
-      : []),
+    // A returned essay is back with the student: its old hand-in date would mislead, so it
+    // says when it was returned.
+    ...(item.reviewStatus === "RETURNED"
+      ? item.reviewedAt
+        ? [{ tone: "neutral" as const, label: `Returned ${formatShortDateTime(item.reviewedAt)}` }]
+        : []
+      : item.submittedAt
+        ? [{ tone: "neutral" as const, label: `Handed in ${formatShortDateTime(item.submittedAt)}` }]
+        : []),
   ];
   return (
     <ListRow

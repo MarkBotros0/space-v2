@@ -32,7 +32,7 @@ export function RankedBars({ bars }: { bars: RankedBar[] }) {
           accessible
           accessibilityLabel={
             bar.value === null
-              ? `${bar.label}: no students targeted`
+              ? `${bar.label}: ${bar.caption ?? "no figure"}`
               : `${bar.label}: ${bar.value}%${bar.caption ? `, ${bar.caption}` : ""}`
           }
         >

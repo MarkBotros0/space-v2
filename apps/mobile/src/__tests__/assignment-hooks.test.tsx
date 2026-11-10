@@ -87,6 +87,7 @@ const studentRow = {
   partsTotal: 3,
   partsDone: 1,
   returned: false,
+  hasEssay: true,
 };
 
 beforeEach(() => {

@@ -19,7 +19,7 @@ describe("row line caps", () => {
         onRetry={() => undefined}
       />,
     );
-    expect(screen.getByText("Submissions to review").props.numberOfLines).toBe(2);
+    expect(screen.getByText("Essays to review").props.numberOfLines).toBe(2);
   });
 
   it("lets a season row's code and dates take three lines", () => {

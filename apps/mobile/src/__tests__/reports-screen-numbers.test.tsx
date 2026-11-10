@@ -78,7 +78,7 @@ describe("ReportsScreen — the numbers it renders", () => {
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Reflection one")).toBeTruthy();
-    expect(screen.getByLabelText("Targeted at nobody: no students targeted")).toBeTruthy();
+    expect(screen.getByLabelText("Nobody expected: No students in the season")).toBeTruthy();
   });
 
   it("describes the trend for a screen reader from the served values", async () => {
@@ -138,7 +138,9 @@ describe("ReportsScreen — the numbers it renders", () => {
 
     // The notes are folded away until asked for.
     fireEvent.press(await screen.findByText("How are these calculated?"));
-    expect(screen.getByText(/Submission % counts only assignments assigned to that student/)).toBeTruthy();
+    expect(
+      screen.getByText(/Submission % counts the assignments of the student's season that they have submitted/),
+    ).toBeTruthy();
   });
 
   it("warns when the requested scope was narrowed", async () => {

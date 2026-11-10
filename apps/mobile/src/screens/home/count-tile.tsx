@@ -32,7 +32,7 @@ const TONE: Record<CountTone | "ok", { box: string; icon: string }> = {
 };
 
 export type CountTileProps = {
-  /** "Submissions to review" — what the number counts. */
+  /** "Essays to review" — what the number counts. */
   label: string;
   value: number;
   icon: LucideIcon;

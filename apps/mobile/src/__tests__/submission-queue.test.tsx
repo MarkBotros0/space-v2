@@ -34,6 +34,8 @@ function queueItem(
     submittedAt: "2099-03-30T10:00:00.000Z",
     isLate: over.isLate ?? false,
     reviewStatus: over.reviewStatus ?? "SUBMITTED",
+    reviewedAt:
+      over.reviewStatus === "RETURNED" || over.reviewStatus === "REVIEWED" ? "2099-03-31T10:00:00.000Z" : null,
   };
 }
 
@@ -135,10 +137,11 @@ it("marks a late hand-in from the contract flag, and when it was handed in, as c
   expect(row.props.accessibilityLabel).not.toMatch(/ · /);
 });
 
-it("shows no hand-in date on a returned essay: the student has it back", async () => {
+it("says when a returned essay was returned, not its old hand-in date: the student has it back", async () => {
   get.mockResolvedValue(page([queueItem("aaa1111111", "Essay one", { reviewStatus: "RETURNED" })]));
   renderWithProviders(<SubmissionsScreen />);
   expect(await screen.findByText("Returned")).toBeTruthy();
+  expect(screen.getByText(/^Returned [A-Z][a-z]{2} \d{1,2}, \d{1,2}:\d{2} [AP]M$/)).toBeTruthy();
   expect(screen.queryByText(/^Handed in /)).toBeNull();
 });
 

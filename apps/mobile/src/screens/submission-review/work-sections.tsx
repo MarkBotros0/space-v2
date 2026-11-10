@@ -7,7 +7,7 @@ import { RichTextView } from "../../design/ui/rich-text-view";
 import { StatusChip } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
-import { formatKb, formatShortDateTime } from "../../lib/format";
+import { formatKb, formatOrgDue, formatShortDateTime } from "../../lib/format";
 import { plural } from "../../lib/plural";
 import { essayStatusChip } from "./essay-status";
 
@@ -22,21 +22,35 @@ function Section({ header, children }: { header: string; children: React.ReactNo
   );
 }
 
-type ChipFields = "status" | "isLate" | "groupName" | "submittedAt";
+type ChipFields = "status" | "isLate" | "groupName" | "submittedAt" | "reviewedAt" | "dueOrgDay" | "dueOrgTime";
 
-/** The essay's status, Late, the student's group, and when it was handed in: one chip each, wrapping. */
+/**
+ * When the essay last changed hands: a returned essay is back with the student, so it
+ * says when it was returned; otherwise when it was handed in.
+ */
+function handOffLabel(data: Pick<SubmissionDetail, ChipFields>): string | null {
+  if (data.status === "RETURNED") {
+    return data.reviewedAt ? `Returned ${formatShortDateTime(data.reviewedAt)}` : null;
+  }
+  return data.submittedAt ? `Handed in ${formatShortDateTime(data.submittedAt)}` : null;
+}
+
+/**
+ * The essay's status, Late, the student's group, when it was handed in (or returned) and
+ * when it is due: one chip each, wrapping. The due date is the org's day and clock, never
+ * the device's.
+ */
 export function EssayChips({ data }: { data: Pick<SubmissionDetail, ChipFields> }) {
+  const handOff = handOffLabel(data);
   return (
     <View className="flex-row flex-wrap gap-2">
       <StatusChip {...essayStatusChip(data.status)} />
       {data.isLate ? <StatusChip tone="warn" label="Late" /> : null}
       {data.groupName ? <StatusChip tone="neutral" label={data.groupName} /> : null}
-      {data.submittedAt ? (
-        <StatusChip tone="neutral" label={`Handed in ${formatShortDateTime(data.submittedAt)}`} />
+      {handOff ? <StatusChip tone="neutral" label={handOff} /> : null}
+      {data.dueOrgDay ? (
+        <StatusChip tone="neutral" label={`Due ${formatOrgDue(data.dueOrgDay, data.dueOrgTime)}`} />
       ) : null}
-      {/* No due chip: the detail carries only dueAt, and a date read on the device's clock can
-          disagree with the org-clock one the staff page shows (formatOrgDue needs dueOrgDay and
-          dueOrgTime, which SubmissionDetail lacks). Late is the server's own verdict. */}
     </View>
   );
 }
