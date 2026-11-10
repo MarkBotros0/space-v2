@@ -1,79 +1,90 @@
-import { MIME_CATEGORY_LABELS, configLabel, groupTrackerRows, targetLabel } from "../lib/assignment-labels";
+import type { AssignmentPart, PartWork } from "@space/shared";
 
-const groups = [
-  { id: 3, name: "Group A" },
-  { id: 4, name: "Group B" },
-];
+import { MIME_CATEGORY_LABELS, partKindLabel, partStatusLine } from "../lib/assignment-labels";
 
-describe("targetLabel", () => {
-  it("names the whole season, or the targeted groups by name", () => {
-    expect(targetLabel(true, [], groups)).toBe("All students");
-    expect(targetLabel(false, [3, 4], groups)).toBe("Group A, Group B");
-  });
+const video: AssignmentPart = {
+  id: 1,
+  position: 0,
+  kind: "VIDEO",
+  title: "Luke 15 talk",
+  youtubeUrl: "https://youtu.be/dQw4w9WgXcQ",
+  videoId: "dQw4w9WgXcQ",
+  blockSkipping: false,
+  durationSeconds: 18 * 60,
+};
+const essay: AssignmentPart = {
+  id: 2,
+  position: 1,
+  kind: "ESSAY",
+  prompt: "What did the father do?",
+  minWords: 100,
+  maxWords: 300,
+  maxFileSizeMb: null,
+  allowedMimeCategories: [],
+};
+const forum: AssignmentPart = {
+  id: 3,
+  position: 2,
+  kind: "FORUM",
+  prompt: "Discuss",
+  minWords: null,
+  postToRead: true,
+  allowComments: true,
+};
 
-  it("counts groups it cannot name (not loaded yet, or a leader's narrowed list)", () => {
-    expect(targetLabel(false, [3, 9], groups)).toBe("Group A + 1 more");
-    expect(targetLabel(false, [3, 4], undefined)).toBe("2 groups");
-    expect(targetLabel(false, [9], [])).toBe("1 group");
+const videoWork = (watchedSeconds: number, answered = 0, questionCount = 0): PartWork => ({
+  partId: 1,
+  kind: "VIDEO",
+  status: "IN_PROGRESS",
+  video: { watchedSeconds, durationSeconds: 18 * 60, answered, questionCount, correct: 0 },
+});
+const essayWork = (reviewStatus: "DRAFT" | "SUBMITTED" | "REVIEWED" | "RETURNED", wordCount = 120): PartWork => ({
+  partId: 2,
+  kind: "ESSAY",
+  status: reviewStatus === "RETURNED" ? "RETURNED" : "IN_PROGRESS",
+  essay: { publicId: "e1", wordCount, reviewStatus, feedback: null },
+});
+
+describe("partKindLabel", () => {
+  it("names each kind", () => {
+    expect(partKindLabel("VIDEO")).toBe("Video");
+    expect(partKindLabel("ESSAY")).toBe("Essay");
+    expect(partKindLabel("FORUM")).toBe("Forum");
   });
 });
 
-describe("configLabel", () => {
-  const standard = {
-    type: "STANDARD" as const,
-    forumMinWords: null,
-    forumAllowComments: false,
-    forumPostToRead: true,
-    maxFileSizeMb: null,
-    allowedMimeCategories: [] as ("pdf" | "image")[],
-  };
-
-  it("describes a standard assignment's file settings (null size = no files, R10)", () => {
-    expect(configLabel(standard)).toBe("Standard · no file uploads");
-    expect(configLabel({ ...standard, maxFileSizeMb: 10 })).toBe("Standard · files up to 10 MB (any type)");
-    expect(configLabel({ ...standard, maxFileSizeMb: 10, allowedMimeCategories: ["pdf", "image"] })).toBe(
-      `Standard · files up to 10 MB (${MIME_CATEGORY_LABELS.pdf}, ${MIME_CATEGORY_LABELS.image})`,
-    );
+describe("partStatusLine", () => {
+  it("says Watched 6 of 18 min / Draft, 120 words / Returned — needs changes / Posted / Not started", () => {
+    expect(partStatusLine(video, videoWork(6 * 60 + 20))).toBe("Watched 6 of 18 min");
+    expect(partStatusLine(essay, essayWork("DRAFT"))).toBe("Draft, 120 words");
+    expect(partStatusLine(essay, essayWork("RETURNED"))).toBe("Returned — needs changes");
+    expect(partStatusLine(forum, { partId: 3, kind: "FORUM", status: "DONE", forum: { posted: true } })).toBe("Posted");
+    expect(partStatusLine(video, undefined)).toBe("Not started");
+    expect(partStatusLine(essay, undefined)).toBe("Not started");
   });
 
-  it("describes a forum assignment", () => {
-    expect(configLabel({ ...standard, type: "FORUM", forumMinWords: 50, forumAllowComments: true })).toBe(
-      "Forum · at least 50 words · peer comments on",
-    );
-    expect(configLabel({ ...standard, type: "FORUM" })).toBe("Forum · at least 0 words");
-    expect(configLabel({ ...standard, type: "FORUM", forumPostToRead: false })).toBe(
-      "Forum · at least 0 words · open before posting",
+  it("words a watched video, and the questions still open on it", () => {
+    expect(partStatusLine(video, videoWork(17 * 60))).toBe("Watched");
+    expect(partStatusLine(video, videoWork(17 * 60, 2, 3))).toBe("Watched, 2 of 3 questions answered");
+    expect(partStatusLine(video, videoWork(17 * 60, 3, 3))).toBe("Watched");
+    expect(partStatusLine(video, { ...videoWork(0), status: "NOT_STARTED" })).toBe("Not started");
+  });
+
+  it("words a handed-in, a reviewed and an empty essay", () => {
+    expect(partStatusLine(essay, essayWork("SUBMITTED"))).toBe("Handed in");
+    expect(partStatusLine(essay, essayWork("REVIEWED"))).toBe("Reviewed");
+    expect(partStatusLine(essay, essayWork("DRAFT", 1))).toBe("Draft, 1 word");
+    expect(partStatusLine(essay, essayWork("DRAFT", 0))).toBe("Not started");
+  });
+
+  it("says Not posted for a forum with no post yet", () => {
+    expect(partStatusLine(forum, undefined)).toBe("Not posted");
+    expect(partStatusLine(forum, { partId: 3, kind: "FORUM", status: "NOT_STARTED", forum: { posted: false } })).toBe(
+      "Not posted",
     );
   });
 });
 
-describe("groupTrackerRows", () => {
-  const row = (id: number, groupId: number | null, groupName: string | null) =>
-    ({
-      studentUserId: id,
-      name: null,
-      email: `${id}@x`,
-      groupId,
-      groupName,
-      status: "PENDING",
-      isLate: false,
-      submittedAt: null,
-      reviewedAt: null,
-      submissionPublicId: null,
-    }) as const;
-
-  it("makes one section per consecutive group, with No group for unplaced students", () => {
-    const out = groupTrackerRows([
-      row(1, 3, "Group A"),
-      row(2, 3, "Group A"),
-      row(3, 4, "Group B"),
-      row(4, null, null),
-    ]);
-    expect(out.map((g) => [g.groupName, g.rows.length])).toEqual([
-      ["Group A", 2],
-      ["Group B", 1],
-      ["No group", 1],
-    ]);
-  });
-  it("is empty for no rows", () => expect(groupTrackerRows([])).toEqual([]));
+describe("MIME_CATEGORY_LABELS", () => {
+  it("keeps v1's labels", () => expect(MIME_CATEGORY_LABELS.doc).toBe("Documents (Word, ODF)"));
 });

@@ -49,7 +49,7 @@ describe("NotificationPreferences", () => {
     useSessionStore.setState({ pushToken: null });
     renderWithProviders(<NotificationPreferences />);
     expect(await screen.findByRole("button", { name: "Enable push" })).toBeTruthy();
-    expect(screen.queryByLabelText("New assignments")).toBeNull();
+    expect(screen.queryByLabelText("New assignments and reminders")).toBeNull();
     expect(screen.queryByText(/Changes save automatically/)).toBeNull();
   });
 
@@ -67,7 +67,7 @@ describe("NotificationPreferences", () => {
   it("shows a student their seven switches and none of the staff ones", async () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
     renderWithProviders(<NotificationPreferences />);
-    expect(await screen.findByLabelText("New assignments")).toBeTruthy();
+    expect(await screen.findByLabelText("New assignments and reminders")).toBeTruthy();
     for (const label of [
       "Submission reviewed",
       "New quizzes",

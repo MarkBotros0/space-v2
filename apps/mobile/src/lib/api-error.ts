@@ -1,4 +1,5 @@
 import axios from "axios";
+import { z } from "zod";
 import { API_ERROR_CODES, apiErrorBodySchema, pollVotesLostSchema, type ApiErrorCode } from "@space/shared";
 
 const REFRESH_INDETERMINATE = Symbol("refresh-indeterminate");
@@ -62,4 +63,14 @@ export function pollVotesLost(err: unknown): number | null {
   if (apiErrorCode(err) !== "poll_votes_lost") return null;
   const parsed = pollVotesLostSchema.safeParse(err.response?.data);
   return parsed.success ? parsed.data.votes : null;
+}
+
+const needsConfirmationSchema = z.object({ students: z.number().int().min(0) });
+
+/** How many students' work a save would change, read off a 409 `needs_confirmation` (its `students` field); null for any other error. */
+export function needsConfirmation(err: unknown): number | null {
+  if (!axios.isAxiosError(err) || err.response?.status !== 409) return null;
+  if (apiErrorCode(err) !== "needs_confirmation") return null;
+  const parsed = needsConfirmationSchema.safeParse(err.response?.data);
+  return parsed.success ? parsed.data.students : null;
 }

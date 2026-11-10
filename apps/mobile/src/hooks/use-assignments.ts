@@ -2,74 +2,56 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { z } from "zod";
 import {
   assignmentDetailSchema,
-  assignmentTrackerSchema,
+  assignmentProgressSchema,
   staffAssignmentListItemSchema,
   studentAssignmentListItemSchema,
   type AssignmentDetail,
-  type AssignmentTracker,
+  type AssignmentProgress,
   type StaffAssignmentListItem,
   type StudentAssignmentListItem,
 } from "@space/shared";
 
-import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
 import { apiGet } from "../lib/api-request";
 
-const studentListSchema = z.array(studentAssignmentListItemSchema);
-
-async function fetchStudentAssignments(seasonId: number): Promise<StudentAssignmentListItem[]> {
-  const res = await apiClient.get(`/api/v1/seasons/${seasonId}/assignments`);
-  // The endpoint returns a different row shape per role; this hook is the
-  // student's, so it parses the student arm specifically — a union parse
-  // would quietly accept the staff shape and hide a role-routing bug.
-  return studentListSchema.parse(res.data.data.assignments);
-}
+// GET /seasons/:id/assignments returns a different row shape per role. Each
+// hook parses its own role's arm specifically: a union parse would quietly
+// accept the other role's rows and hide a role-routing bug.
+const studentListSchema = z.object({ assignments: z.array(studentAssignmentListItemSchema) });
+const staffListSchema = z.object({ assignments: z.array(staffAssignmentListItemSchema) });
 
 /** Dependent query — same nullable-season contract as useSeasonSessions. */
 export function useStudentAssignments(seasonId: number | null): UseQueryResult<StudentAssignmentListItem[]> {
   return useQuery({
     queryKey: queryKeys.assignments.bySeason(seasonId),
-    queryFn: () => fetchStudentAssignments(seasonId as number),
+    queryFn: async () => (await apiGet(`/api/v1/seasons/${seasonId}/assignments`, studentListSchema)).assignments,
     enabled: seasonId !== null,
   });
 }
 
-async function fetchAssignmentDetail(id: number): Promise<AssignmentDetail> {
-  return apiGet(`/api/v1/assignments/${id}`, assignmentDetailSchema);
+/** The staff arm of GET /seasons/:id/assignments. */
+export function useStaffAssignments(seasonId: number | null): UseQueryResult<StaffAssignmentListItem[]> {
+  return useQuery({
+    queryKey: queryKeys.assignments.staffBySeason(seasonId),
+    queryFn: async () => (await apiGet(`/api/v1/seasons/${seasonId}/assignments`, staffListSchema)).assignments,
+    enabled: seasonId !== null,
+  });
 }
 
-/** `id` is null while the route param is unparsed or invalid. */
+/** The assignment, its parts in order, and (for a student) their work on each. `id` is null while the route param is unparsed. */
 export function useAssignmentDetail(id: number | null): UseQueryResult<AssignmentDetail> {
   return useQuery({
     queryKey: queryKeys.assignments.detail(id),
-    queryFn: () => fetchAssignmentDetail(id as number),
+    queryFn: () => apiGet(`/api/v1/assignments/${id}`, assignmentDetailSchema),
     enabled: id !== null,
   });
 }
 
-const staffListSchema = z.array(staffAssignmentListItemSchema);
-
-/**
- * The staff arm of GET /seasons/:id/assignments. Parsed against the staff
- * schema specifically — the same reasoning as fetchStudentAssignments: a union
- * parse would accept the wrong role's rows and hide a routing bug.
- */
-export function useStaffAssignments(seasonId: number | null): UseQueryResult<StaffAssignmentListItem[]> {
+/** GET /assignments/:id/progress — season admins see every student, a leader their own groups'. */
+export function useAssignmentProgress(id: number | null): UseQueryResult<AssignmentProgress> {
   return useQuery({
-    queryKey: queryKeys.assignments.staffBySeason(seasonId),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/seasons/${seasonId}/assignments`);
-      return staffListSchema.parse(res.data.data.assignments);
-    },
-    enabled: seasonId !== null,
-  });
-}
-
-/** GET /assignments/:id/tracker — season admins see everyone, a leader their own groups. */
-export function useAssignmentTracker(id: number | null): UseQueryResult<AssignmentTracker> {
-  return useQuery({
-    queryKey: queryKeys.assignments.tracker(id),
-    queryFn: () => apiGet(`/api/v1/assignments/${id}/tracker`, assignmentTrackerSchema),
+    queryKey: queryKeys.assignments.progress(id),
+    queryFn: () => apiGet(`/api/v1/assignments/${id}/progress`, assignmentProgressSchema),
     enabled: id !== null,
   });
 }

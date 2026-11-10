@@ -1,5 +1,13 @@
-// Assignment wording shared by the staff list, detail and tracker (Plan 5).
-import type { AssignmentDetail, AssignmentTrackerRow, MimeCategory } from "@space/shared";
+// Assignment wording shared by the checklist, the part screens and the leader's progress.
+import {
+  isWatched,
+  type AssignmentPart,
+  type AssignmentPartKind,
+  type MimeCategory,
+  type PartWork,
+} from "@space/shared";
+
+import { plural } from "./plural";
 
 /** v1's labels, verbatim (`assignment-form.tsx:24-31`). */
 export const MIME_CATEGORY_LABELS: Record<MimeCategory, string> = {
@@ -11,66 +19,52 @@ export const MIME_CATEGORY_LABELS: Record<MimeCategory, string> = {
   text: "Plain text",
 };
 
-/**
- * Who an assignment is given to, in words. Names come from the season's group
- * list; ids it cannot name (list still loading, or a leader whose list the
- * server narrowed to their own groups) are counted rather than shown as ids.
- */
-export function targetLabel(
-  isAllGroups: boolean,
-  groupIds: number[],
-  groups: { id: number; name: string }[] | undefined,
-): string {
-  if (isAllGroups) return "All students";
-  const byId = new Map((groups ?? []).map((g) => [g.id, g.name]));
-  const names = groupIds.flatMap((id) => {
-    const name = byId.get(id);
-    return name === undefined ? [] : [name];
-  });
-  if (names.length === 0) return `${groupIds.length} group${groupIds.length === 1 ? "" : "s"}`;
-  const unnamed = groupIds.length - names.length;
-  return unnamed > 0 ? `${names.join(", ")} + ${unnamed} more` : names.join(", ");
+const KIND_LABELS: Record<AssignmentPartKind, string> = { VIDEO: "Video", ESSAY: "Essay", FORUM: "Forum" };
+
+/** "Video", "Essay", "Forum". */
+export function partKindLabel(kind: AssignmentPartKind): string {
+  return KIND_LABELS[kind];
 }
 
-/** The type-specific settings in one line (v1 showed them only inside the form). */
-export function configLabel(
-  d: Pick<
-    AssignmentDetail,
-    "type" | "forumMinWords" | "forumAllowComments" | "forumPostToRead" | "maxFileSizeMb" | "allowedMimeCategories"
-  >,
-): string {
-  if (d.type === "FORUM") {
-    const parts = [`Forum · at least ${d.forumMinWords ?? 0} words`];
-    if (d.forumAllowComments) parts.push("peer comments on");
-    if (!d.forumPostToRead) parts.push("open before posting");
-    return parts.join(" · ");
+function videoLine(part: Extract<AssignmentPart, { kind: "VIDEO" }>, work: PartWork): string {
+  const v = work.video;
+  if (v === undefined || work.status === "NOT_STARTED") return "Not started";
+  const duration = v.durationSeconds > 0 ? v.durationSeconds : part.durationSeconds;
+  if (!isWatched(v.watchedSeconds, duration)) {
+    return `Watched ${Math.floor(v.watchedSeconds / 60)} of ${Math.max(1, Math.round(duration / 60))} min`;
   }
-  // R10: a null size IS the "accepts no files" flag.
-  if (d.maxFileSizeMb === null) return "Standard · no file uploads";
-  const types =
-    d.allowedMimeCategories.length === 0
-      ? "any type"
-      : d.allowedMimeCategories.map((c) => MIME_CATEGORY_LABELS[c]).join(", ");
-  return `Standard · files up to ${d.maxFileSizeMb} MB (${types})`;
+  if (v.answered < v.questionCount) return `Watched, ${v.answered} of ${plural(v.questionCount, "question")} answered`;
+  return "Watched";
 }
 
-interface TrackerGroup {
-  groupId: number | null;
-  groupName: string;
-  rows: AssignmentTrackerRow[];
+function essayLine(work: PartWork): string {
+  const e = work.essay;
+  if (e === undefined) return "Not started";
+  switch (e.reviewStatus) {
+    case "RETURNED":
+      return "Returned — needs changes";
+    case "SUBMITTED":
+      return "Handed in";
+    case "REVIEWED":
+      return "Reviewed";
+    case "DRAFT":
+      return e.wordCount === 0 ? "Not started" : `Draft, ${plural(e.wordCount, "word")}`;
+  }
 }
 
 /**
- * Buckets the tracker's rows by group for section headers (REG-84). The server
- * orders rows group then student, so consecutive rows with one groupId are one
- * section; the no-group rows come last and are headed "No group".
+ * One part's state in words, for the checklist row and the part screen
+ * (spec "Student checklist"): "Watched 6 of 18 min", "Draft, 120 words",
+ * "Returned — needs changes", "Posted". Never "—": a part with no work says
+ * "Not started" ("Not posted" for the forum).
  */
-export function groupTrackerRows(rows: AssignmentTrackerRow[]): TrackerGroup[] {
-  const groups: TrackerGroup[] = [];
-  for (const row of rows) {
-    const last = groups[groups.length - 1];
-    if (last && last.groupId === row.groupId) last.rows.push(row);
-    else groups.push({ groupId: row.groupId, groupName: row.groupName ?? "No group", rows: [row] });
+export function partStatusLine(part: AssignmentPart, work: PartWork | undefined): string {
+  switch (part.kind) {
+    case "VIDEO":
+      return work === undefined ? "Not started" : videoLine(part, work);
+    case "ESSAY":
+      return work === undefined ? "Not started" : essayLine(work);
+    case "FORUM":
+      return work?.forum?.posted === true ? "Posted" : "Not posted";
   }
-  return groups;
 }

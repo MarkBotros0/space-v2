@@ -74,8 +74,10 @@ export function VideoQuizResultsTable({ sessionId }: { sessionId: number }) {
 }
 
 export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
-  const questions = useVideoQuestions(sessionId, true);
-  const { create, update, remove } = useVideoQuestionWrites(sessionId);
+  // Task 10 makes the editor take a VideoOwner; a session's editor names its own for now.
+  const owner = { kind: "session", sessionId } as const;
+  const questions = useVideoQuestions(owner, true);
+  const { create, update, remove } = useVideoQuestionWrites(owner);
 
   const [form, setForm] = useState<VideoQuestionFormState | null>(null);
   const [timestampError, setTimestampError] = useState<string | undefined>(undefined);
