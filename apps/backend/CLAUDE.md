@@ -11,7 +11,7 @@ places; open them in this order.
 | Layer | Where | Holds |
 |---|---|---|
 | Route table | `routes/<domain>.ts`, or `routes/<domain>/index.ts` for a folder | paths and middleware in registration order; handlers in the sibling files |
-| Service | `lib/<domain>/` | writes and transactions (`seasons/`, `students/`, `users/`, `groups/`, `quizzes/`, `sessions/`, `announcements/`, `roles/`, `enrolment/`, `imports/`, `exports/`, `video-quiz/`, `me/`) |
+| Service | `lib/<domain>/` | writes and transactions (`seasons/`, `students/`, `users/`, `groups/`, `quizzes/`, `sessions/`, `announcements/`, `assignments/`, `roles/`, `enrolment/`, `imports/`, `exports/`, `video-quiz/`, `me/`) |
 | Reads | `lib/queries/` | named selects and loaders shared by routes (`season-participants.ts`, `students/list.ts`, `dashboard/`, `reports/`, …) |
 | Gates | `lib/permissions/<domain>.ts` (re-exported from `index.ts`) over `lib/rbac.ts` | row-level access checks over the token's claims |
 | Contract | `packages/shared/src/<domain>.ts` | Zod request/response schemas, shared with the app |
@@ -26,6 +26,7 @@ Cross-cutting pieces:
 | Errors and responses | `lib/api-error.ts`, `lib/api-response.ts`, `lib/http/` (`idParam`, `notFound`, `parseOr400`), `lib/pagination.ts` |
 | Notifications, push, email | `lib/notifications.ts`, `lib/*-notifications.ts`, `lib/push.ts`, `lib/email.ts`, `lib/email-templates.ts` |
 | Org time and dates | `lib/org-time.ts` |
+| Scheduled work (reminders), request-driven | `lib/scheduler/` (`SCHEDULER_TICK`); handlers in `lib/scheduler/handlers.ts` |
 | Config (the only `process.env` reader) | `lib/config.ts` |
 | OpenAPI | `src/docs/` (`openapi.ts` plus a file per path group) |
 | Schema | `apps/backend/prisma/schema.prisma`, migrations in `apps/backend/prisma/migrations/`, diagram `docs/database/erd.md` |
@@ -162,6 +163,22 @@ Two endpoints here are **not** ports and deliberately diverge from v1:
   `multer`/`busboy` decode multipart filenames as latin1; v1 used the web
   `formData()` API, which decodes UTF-8. Without this, a non-ASCII filename is
   stored mojibake'd. Do not "simplify" it back to `file.originalname`.
+
+**Assignments are made of parts** (`docs/rules/assignments.md`). Routes: `GET|POST
+/seasons/:id/assignments`, `GET|PATCH|DELETE /assignments/:id` (PATCH is a full replace with
+`parts`; a change that touches students' work answers 409 until resent with `confirm: true`),
+`GET /assignments/:id/progress` (staff, per part), `POST /assignments/:id/submit` (every part done,
+videos watched), `PUT /assignments/:id/parts/:partId/essay` (draft), the video part's
+`GET …/video`, `PUT …/video/progress`, `POST …/video/answers` and `GET|POST …/video-questions`
+(`routes/assignments/`), the forum part's `…/parts/:partId/forum…` (`routes/forum.ts`), and per
+essay `GET /submissions` (the queue, one item per essay), `GET /submissions/:publicId`,
+`POST /submissions/:publicId/hand-in` and `POST /submissions/:publicId/review`. A `publicId` under
+`/submissions/` is an essay work's (`AssignmentPartWork`), not a Submission's. Gone: the old
+`PATCH /submissions/:publicId` draft/submit, an assignment's `sessionId`, `type` and group
+targeting (`isAllGroups`, `AssignmentTarget`), and the cron route `GET
+/internal/follow-ups/remind` with `CRON_SECRET` and `vercel.json`'s `crons`: reminders (assignment
+and mentor follow-up) are sent by the request-driven scheduler, `lib/scheduler/`, switched by
+`SCHEDULER_TICK`. Nothing on Vercel is a cron.
 
 **Uploads are switched off.** `ENABLE_UPLOADS` defaults to `false`, so
 `POST /api/v1/submissions/:publicId/files` returns `503 uploads_disabled`

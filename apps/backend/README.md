@@ -20,7 +20,8 @@ All paths below are relative to the server root. Everything except
 | GET | `/api/v1/seasons/:id` | |
 | GET | `/api/v1/seasons/:id/groups` | |
 | GET | `/api/v1/seasons/:id/sessions` | |
-| GET | `/api/v1/seasons/:id/assignments` | |
+| GET | `/api/v1/seasons/:id/assignments` | Staff: each assignment with `partsCount`, `submissionCount`, `expectedCount`. A student: their standing on each (`partsTotal`, `partsDone`, `returned`, `hasEssay`). |
+| POST | `/api/v1/seasons/:id/assignments` | Season admin or SUPER. Title, due day and time, reminder, and `parts` (VIDEO / ESSAY / FORUM, at least one, at most one FORUM). Always for the whole season. |
 | GET | `/api/v1/seasons/:id/admins` | SUPER only. Not a port — v1 had no way to create `SeasonAdmin` rows. |
 | POST | `/api/v1/seasons/:id/admins` | SUPER only. `{ userId }`; ADMIN-role, active users only; idempotent. |
 | DELETE | `/api/v1/seasons/:id/admins/:userId` | SUPER only. Idempotent. Add and remove revoke the user's refresh tokens. |
@@ -41,9 +42,24 @@ All paths below are relative to the server root. Everything except
 | POST | `/api/v1/sessions/:id/check-in-open` | |
 | POST | `/api/v1/sessions/:id/check-in-close` | |
 | POST | `/api/v1/sessions/check-in` | Student self-check-in. |
-| GET | `/api/v1/assignments/:id` | |
-| GET | `/api/v1/submissions/:publicId` | |
-| PATCH | `/api/v1/submissions/:publicId` | Draft save / submit. |
+| GET | `/api/v1/assignments/:id` | The parts; a student's own work on each in `my`. |
+| PATCH | `/api/v1/assignments/:id` | A full replace. A change that touches students' work answers 409 with how many; resend with `confirm: true`. |
+| DELETE | `/api/v1/assignments/:id` | Soft delete. |
+| GET | `/api/v1/assignments/:id/progress` | Staff: every expected student with their work on each part. |
+| POST | `/api/v1/assignments/:id/submit` | A student, once every part is done (videos watched); hands in the draft essays. 409 `not_finished`, `already_submitted`. |
+| PUT | `/api/v1/assignments/:id/parts/:partId/essay` | Save an essay's draft; never hands it in. |
+| GET | `/api/v1/assignments/:id/parts/:partId/video` | A video part's player state, questions and the student's progress. |
+| PUT | `/api/v1/assignments/:id/parts/:partId/video/progress` | Watched ranges, merged; clamped to wall-clock time. |
+| POST | `/api/v1/assignments/:id/parts/:partId/video/answers` | Answer a timed question. |
+| GET, POST | `/api/v1/assignments/:id/parts/:partId/video-questions` | Staff: a video part's timed questions. |
+| GET | `/api/v1/assignments/:id/parts/:partId/forum` | The forum part's posts (the student's group). |
+| PUT | `/api/v1/assignments/:id/parts/:partId/forum/response` | Post or edit the student's forum post. |
+| GET, POST | `/api/v1/assignments/:id/parts/:partId/forum/posts/:publicId/comments` | Comments on a forum post, when the part allows them. |
+| DELETE | `/api/v1/forum/comments/:commentId` | |
+| GET | `/api/v1/submissions` | The review queue: one item per essay, scoped to the caller's students. |
+| GET | `/api/v1/submissions/:publicId` | One essay (an essay work's publicId), with its question, limits and the org due day and time. |
+| POST | `/api/v1/submissions/:publicId/hand-in` | A returned essay, handed in again. |
+| POST | `/api/v1/submissions/:publicId/review` | `{ action: "reviewed" \| "return", feedback }`; Return needs a note. |
 | POST | `/api/v1/submissions/:publicId/files` | **Disabled by default** — `503 uploads_disabled` unless `ENABLE_UPLOADS=true`. |
 | DELETE | `/api/v1/submissions/:publicId/files` | `?fileId=` — author only. |
 | GET | `/api/v1/submissions/:publicId/files/:fileId` | Streams the file. Not a port of v1 — see below. |
@@ -86,7 +102,7 @@ read outside that file). See `.env.example` for the full list.
 | `IMPORT_PREVIEW_RATE_LIMIT` | No | `30` | Import preview requests per 15 minutes per IP. |
 | `IMPORT_COMMIT_RATE_LIMIT` | No | `10` | Import commit requests per 15 minutes per IP. |
 | `RATE_LIMIT_STORE` | No | `postgres` (`memory` when `NODE_ENV=test`) | Where every rate limiter keeps its counters. `postgres` shares them across instances through the `RateLimitHit` table (migration `20261105130000_rate_limit_store` must be applied); `memory` is per process, which on serverless means per instance. |
-| `CRON_SECRET` | No | unset | The bearer secret Vercel Cron sends to `GET /api/v1/internal/follow-ups/remind` (daily, `vercel.json`). Unset: the endpoint is a 404 and no mentor follow-up reminder is sent. Set it in Vercel as a Sensitive variable named exactly `CRON_SECRET`; Vercel adds it to the cron request itself. |
+| `SCHEDULER_TICK` | No | `on` | The request-driven scheduler (`src/lib/scheduler/`): any request may start a sweep of due work (assignment reminders, mentor follow-up reminders) after its response, guarded by a database lease. `off` disables it. There are no Vercel crons. |
 | `GOOGLE_CLIENT_IDS` | No | unset | Comma-separated Google OAuth client IDs whose ID tokens `POST /api/v1/auth/google` accepts (the Web client and the iOS client). Unset: that endpoint is a 404 and nobody signs in with Google. Google sign-in only signs in an existing account whose address Google has verified; it never creates one. Client IDs are not secrets. |
 | `SENTRY_DSN` | No | unset | Turns on Sentry error reporting. Unset means Sentry is never initialised. See "Turning on Sentry" below. |
 | `SENTRY_ENVIRONMENT` | No | `NODE_ENV` | Environment tag on each event. |
