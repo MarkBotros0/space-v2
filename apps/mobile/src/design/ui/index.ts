@@ -27,6 +27,7 @@ export * from "./progress-ring";
 export * from "./rich-text-editor";
 export * from "./rich-text-view";
 export * from "./search-field";
+export * from "./search-filter-row";
 export * from "./segmented-control";
 export * from "./sheet";
 export * from "./select";

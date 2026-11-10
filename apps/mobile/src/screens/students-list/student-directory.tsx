@@ -4,7 +4,7 @@ import type { StudentListStatus, UserRole } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { EmptyState, FilterButton, GroupedList, SearchField } from "../../design/ui";
+import { EmptyState, GroupedList, SearchFilterRow } from "../../design/ui";
 import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../../hooks/use-students";
 import { StudentFilterSheet, activeFilterCount } from "./student-filter-sheet";
 import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "./student-rows";
@@ -108,17 +108,15 @@ export function StudentDirectory({
   const content = (
     <View className="flex-col gap-3">
       {/* Owner 2026-11-07: Filter is an icon button in the search row. */}
-      <View className="flex-row items-center gap-2">
-        <SearchField
-          accessibilityLabel={copy.searchLabel}
-          value={search}
-          onChangeText={setSearch}
-          placeholder={copy.searchLabel}
-          onSubmitEditing={commit}
-          className="min-w-0 flex-1"
-        />
-        <FilterButton active={filters} onPress={() => setFiltering(true)} />
-      </View>
+      <SearchFilterRow
+        accessibilityLabel={copy.searchLabel}
+        value={search}
+        onChangeText={setSearch}
+        placeholder={copy.searchLabel}
+        onSubmitEditing={commit}
+        activeFilters={filters}
+        onFilter={() => setFiltering(true)}
+      />
       <StudentFilterSheet
         open={filtering}
         onClose={() => setFiltering(false)}

@@ -7,6 +7,7 @@ import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { ChoiceChip } from "../../design/ui/choice-chip";
 import { HeroCard } from "../../design/ui/hero-card";
 import { SearchField } from "../../design/ui/search-field";
+import { SearchFilterRow } from "../../design/ui/search-filter-row";
 import { SegmentedControl } from "../../design/ui/segmented-control";
 import { StatTile } from "../../design/ui/stat-tile";
 import { StatusChip } from "../../design/ui/status-chip";
@@ -148,6 +149,20 @@ export function ControlsSection() {
         onChange={setFour}
       />
       <SearchField value={query} onChangeText={setQuery} placeholder="Search students" />
+      <SearchFilterRow
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search members"
+        activeFilters={0}
+        onFilter={() => {}}
+      />
+      <SearchFilterRow
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search students"
+        activeFilters={2}
+        onFilter={() => {}}
+      />
       <View testID="catalogue-choice-chips" className="flex-row flex-wrap gap-2">
         {["Student", "Mentor", "Group leader"].map((label) => (
           <ChoiceChip key={label} label={label} selected={chip === label} onPress={() => setChip(label)} />

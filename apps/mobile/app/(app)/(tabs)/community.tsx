@@ -6,16 +6,7 @@ import { BULK_INVITE_BATCH_SIZE, type BulkInviteResponse } from "@space/shared";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { UsersList, parseUserStatus } from "../../../src/design/users/users-list";
-import {
-  Button,
-  EmptyState,
-  FilterButton,
-  GroupedList,
-  ListRow,
-  PillButton,
-  SearchField,
-  toast,
-} from "../../../src/design/ui";
+import { Button, EmptyState, GroupedList, ListRow, PillButton, SearchFilterRow, toast } from "../../../src/design/ui";
 import { usePendingInviteCount, useSendInvite, useSendPendingInvites, useUsers } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { useDebouncedSearch } from "../../../src/hooks/use-debounced-search";
@@ -136,17 +127,15 @@ export default function CommunityScreen() {
           />
         </GroupedList>
         {/* Owner 2026-11-07: Filter is an icon button in the search row. */}
-        <View className="flex-row items-center gap-2">
-          <SearchField
-            accessibilityLabel="Search"
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search name or email"
-            onSubmitEditing={commit}
-            className="min-w-0 flex-1"
-          />
-          <FilterButton active={communityFilterCount(filters)} onPress={() => setFiltering(true)} />
-        </View>
+        <SearchFilterRow
+          accessibilityLabel="Search"
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search name or email"
+          onSubmitEditing={commit}
+          activeFilters={communityFilterCount(filters)}
+          onFilter={() => setFiltering(true)}
+        />
         <CommunityFilterSheet
           open={filtering}
           onClose={() => setFiltering(false)}
