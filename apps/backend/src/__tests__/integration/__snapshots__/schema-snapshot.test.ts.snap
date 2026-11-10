@@ -213,7 +213,6 @@ exports[`database schema has exactly these columns 1`] = `
   "RefreshToken.id integer NOT NULL DEFAULT nextval('"RefreshToken_id_seq"'::regclass)",
   "RefreshToken.revokedAt timestamp with time zone",
   "RefreshToken.tokenHash text NOT NULL",
-  "RefreshToken.userAgent text",
   "RefreshToken.userId integer NOT NULL",
   "Season.absenceBudgetMinutes integer NOT NULL DEFAULT 180",
   "Season.absenceWeightMinutes integer NOT NULL DEFAULT 90",

@@ -121,7 +121,6 @@ describe("issueSession", () => {
     const data = mockDb.refreshToken.create.mock.calls[0][0].data;
     expect(data.tokenHash).toBe(hashToken(issued!.session.refreshToken));
     expect(data.tokenHash).not.toBe(issued!.session.refreshToken);
-    expect(data).not.toHaveProperty("userAgent");
     expect(data.expiresAt.getTime()).toBeGreaterThan(Date.now());
   });
 });

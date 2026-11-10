@@ -54,7 +54,6 @@ erDiagram
     Int userId FK
     DateTime expiresAt
     DateTime revokedAt "nullable"
-    String userAgent "nullable"
     DateTime createdAt
   }
   PasswordResetToken {

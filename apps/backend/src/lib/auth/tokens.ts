@@ -80,8 +80,6 @@ export function hashToken(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
-// RefreshToken.userAgent is no longer written: no screen ever read it, and it is
-// identifying data (refactor DB-006; the column is dropped in Wave 6).
 async function issueRefreshToken(userId: number): Promise<{ token: string; expiresAt: Date }> {
   const raw = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + REFRESH_TTL_MS);
