@@ -2,12 +2,15 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
 import { hasActiveEnrollment } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { loadStudentVideoQuiz } from "../../lib/queries/video-quiz";
 import { requireUser } from "../../middleware/require-auth";
+import { recordVideoAnswer, saveVideoProgressSeconds } from "../../lib/video-quiz/answer";
 import { submitVideoAnswerRequestSchema, videoProgressRequestSchema } from "../../../../../packages/shared/src/index";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 
 /**
  * The student gate, in one place: STUDENT role, session exists, ACTIVE
@@ -25,7 +28,7 @@ async function requireStudentOnSession(
     select: { seasonId: true },
   });
   if (!session) {
-    apiError(res, "not_found", "Session not found.", 404);
+    notFound(res, "Session");
     return null;
   }
   // Role first, then enrolment. v1 looked the question up before checking the
@@ -40,14 +43,14 @@ async function requireStudentOnSession(
 
 export async function getVideoQuiz(req: Request, res: Response) {
   const user = requireUser(req);
-  const sessionId = parseId(req.params.id);
-  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const sessionId = idParam(res, req.params.id, "session");
+  if (sessionId === null) return;
 
   const gate = await requireStudentOnSession(req, res, sessionId);
   if (gate === null) return undefined;
 
   const data = await loadStudentVideoQuiz(sessionId, user.userId);
-  if (data === null) return apiError(res, "not_found", "Session not found.", 404);
+  if (data === null) return notFound(res, "Session");
 
   return apiOk(res, {
     videoId: data.videoId,
@@ -64,15 +67,15 @@ export async function getVideoQuiz(req: Request, res: Response) {
 
 export async function answerVideoQuestion(req: Request, res: Response) {
   const user = requireUser(req);
-  const sessionId = parseId(req.params.id);
-  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const sessionId = idParam(res, req.params.id, "session");
+  if (sessionId === null) return;
 
   const gate = await requireStudentOnSession(req, res, sessionId);
   if (gate === null) return undefined;
 
-  const parsed = submitVideoAnswerRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid answer.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(submitVideoAnswerRequestSchema, req.body, res, "Invalid answer.");
+  if (parsed === null) return;
+  const body = parsed;
 
   // Scoping the lookup by sessionId is what makes a mismatched pair a 404
   // rather than a silent success (spec 13 §7).
@@ -80,7 +83,7 @@ export async function answerVideoQuestion(req: Request, res: Response) {
     where: { id: body.questionId, sessionId },
     select: { id: true, atSeconds: true, options: true, correctIndex: true },
   });
-  if (!question) return apiError(res, "not_found", "Question not found.", 404);
+  if (!question) return notFound(res, "Question");
 
   // Range from the row, never from the client (v1 R53).
   if (body.selectedIndex >= question.options.length) {
@@ -88,7 +91,7 @@ export async function answerVideoQuestion(req: Request, res: Response) {
   }
 
   const data = await loadStudentVideoQuiz(sessionId, user.userId);
-  if (data === null) return apiError(res, "not_found", "Session not found.", 404);
+  if (data === null) return notFound(res, "Session");
 
   // Replay before ordering: re-answering an earlier question must replay the
   // recorded verdict, not 409.
@@ -118,33 +121,13 @@ export async function answerVideoQuestion(req: Request, res: Response) {
 
   let progress: { furthestSeconds: number; completedAt: Date | null };
   try {
-    progress = await db.$transaction(async (tx) => {
-      await tx.sessionVideoQuestionResponse.create({
-        data: {
-          questionId: question.id,
-          studentUserId: user.userId,
-          selectedIndex: body.selectedIndex,
-          isCorrect,
-        },
-      });
-      const current = await tx.sessionVideoProgress.findUnique({
-        where: { sessionId_studentUserId: { sessionId, studentUserId: user.userId } },
-        select: { furthestSeconds: true, completedAt: true },
-      });
-      // Math.max, never `{ set: ... }`. v1 wrote the question's atSeconds
-      // absolutely (spec 13 R57), twenty lines above a comment promising
-      // furthestSeconds "only ever moves forward" — unreachable through its own
-      // UI because the barrier forced ascending order, trivially reachable
-      // through an API.
-      const furthestSeconds = Math.max(current?.furthestSeconds ?? 0, question.atSeconds);
-      // Completion is derived here and asserted nowhere (spec 13 D3).
-      const completedAt = current?.completedAt ?? (isLast ? new Date() : null);
-      return tx.sessionVideoProgress.upsert({
-        where: { sessionId_studentUserId: { sessionId, studentUserId: user.userId } },
-        create: { sessionId, studentUserId: user.userId, furthestSeconds, completedAt },
-        update: { furthestSeconds, completedAt },
-        select: { furthestSeconds: true, completedAt: true },
-      });
+    progress = await recordVideoAnswer({
+      sessionId,
+      studentUserId: user.userId,
+      question,
+      selectedIndex: body.selectedIndex,
+      isCorrect,
+      isLast,
     });
   } catch (err) {
     // The unique index on (questionId, studentUserId) IS the "one answer, no
@@ -187,36 +170,21 @@ export async function answerVideoQuestion(req: Request, res: Response) {
 
 export async function saveVideoProgress(req: Request, res: Response) {
   const user = requireUser(req);
-  const sessionId = parseId(req.params.id);
-  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const sessionId = idParam(res, req.params.id, "session");
+  if (sessionId === null) return;
 
   const gate = await requireStudentOnSession(req, res, sessionId);
   if (gate === null) return undefined;
 
-  const parsed = videoProgressRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid progress.", 400);
+  const parsed = parseOr400(videoProgressRequestSchema, req.body, res, "Invalid progress.");
+  if (parsed === null) return;
 
   // PUT, not PATCH: the write is idempotent and monotone, so repeating it with
   // the same value is a no-op — which matters under React Query's
   // refetch-on-focus behaviour. Read-then-write inside a transaction, because
   // v1 did it outside one and two concurrent saves (visibilitychange and
   // unmount fire together) could persist the lower value (spec 13 R64).
-  const progress = await db.$transaction(async (tx) => {
-    const current = await tx.sessionVideoProgress.findUnique({
-      where: { sessionId_studentUserId: { sessionId, studentUserId: user.userId } },
-      select: { furthestSeconds: true, completedAt: true },
-    });
-    const furthestSeconds = Math.max(current?.furthestSeconds ?? 0, parsed.data.furthestSeconds);
-    return tx.sessionVideoProgress.upsert({
-      where: { sessionId_studentUserId: { sessionId, studentUserId: user.userId } },
-      // completedAt is untouched on both branches. This endpoint cannot set it
-      // and cannot clear it: the answer endpoint derives it (spec 13 D3), and
-      // v1's client-asserted boolean does not exist on the contract at all.
-      create: { sessionId, studentUserId: user.userId, furthestSeconds },
-      update: { furthestSeconds },
-      select: { furthestSeconds: true, completedAt: true },
-    });
-  });
+  const progress = await saveVideoProgressSeconds(sessionId, user.userId, parsed.furthestSeconds);
 
   return apiOk(res, progress);
 }
