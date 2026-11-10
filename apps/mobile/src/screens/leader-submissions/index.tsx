@@ -1,40 +1,25 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { View } from "react-native";
-import type { SubmissionQueueItem } from "@space/shared";
 
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { Button } from "../../design/ui/button";
 import { EmptyState } from "../../design/ui/empty-state";
-import { GroupedList, ListRow } from "../../design/ui/grouped-list";
-import { StatusChip, statusChip } from "../../design/ui/status-chip";
-import { Text } from "../../design/ui/text";
-import { usePrefetchSubmission } from "../../hooks/use-submission";
-import { useSubmissionQueue } from "../../hooks/use-submission-queue";
-import { formatShortDateTime, unbreakable } from "../../lib/format";
-import { seasonParam } from "../../lib/season-param";
-import { queueSections } from "./queue-sections";
+import { GroupedList } from "../../design/ui/grouped-list";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
+import { Text } from "../../design/ui/text";
+import { useSubmissionQueue } from "../../hooks/use-submission-queue";
+import { seasonParam } from "../../lib/season-param";
+import { EssayQueueRow, queueCountsLine } from "../staff-queue/essay-queue-row";
+import { queueSections } from "./queue-sections";
 
-// v1 lists every SUBMITTED, REVIEWED and RETURNED row, in that order (B3-8).
+// v1 lists every essay handed in: waiting first, then reviewed and returned (B3-8).
 const ALL = { pendingOnly: false } as const;
 
-function subtitleOf(item: SubmissionQueueItem): string {
-  return [
-    item.assignmentTitle,
-    item.groupName,
-    item.isLate ? "Late" : null,
-    item.submittedAt ? unbreakable(formatShortDateTime(item.submittedAt)) : null,
-  ]
-    .filter((part): part is string => !!part)
-    .join(" · ");
-}
-
-/** LEADER — v1 app/leader/submissions/page.tsx, the review queue. */
+/** LEADER: the review queue (v1 app/leader/submissions/page.tsx), one row per student per essay. */
 export function LeaderQueue() {
   const router = useRouter();
-  const prefetch = usePrefetchSubmission();
   // Set when opened from the dashboard's Assignments card, whose figures are
   // one season's: the queue narrows to match. From the tab bar it is absent
   // and the queue is v1's cross-season list.
@@ -46,29 +31,11 @@ export function LeaderQueue() {
   // Counts ignore paging and pendingOnly; only the first page carries them.
   const counts = data?.pages[0]?.counts;
   const { waiting, done } = queueSections(items);
-  const open = (publicId: string) => router.push({ pathname: "/submission/[publicId]", params: { publicId } });
-  const row = (item: SubmissionQueueItem) => (
-    <ListRow
-      key={item.publicId}
-      title={item.studentName ?? "Student"}
-      titleLines={2}
-      subtitle={subtitleOf(item)}
-      subtitleLines={3}
-      trailing={<StatusChip {...statusChip("submission", item.status)} />}
-      chevron
-      onPress={() => open(item.publicId)}
-      onPressIn={() => prefetch(item.publicId)}
-    />
-  );
 
   return (
     <Screen
       title="Submissions"
-      subtitle={
-        counts
-          ? `${counts.pending} pending review · ${counts.total} total${counts.late > 0 ? ` · ${counts.late} late` : ""}`
-          : undefined
-      }
+      subtitle={counts ? queueCountsLine(counts) : undefined}
       refreshing={isRefetching}
       onRefresh={() => void refetch()}
     >
@@ -98,13 +65,25 @@ export function LeaderQueue() {
           {items.length === 0 ? (
             <EmptyState
               icon={NAV_ICONS.submissions}
-              title="No submissions yet"
-              description="Submissions from students in your groups will appear here."
+              title="No essays yet"
+              description="Essays from students in your groups appear here once they submit."
             />
           ) : (
             <>
-              {waiting.length > 0 ? <GroupedList header="Waiting for review">{waiting.map(row)}</GroupedList> : null}
-              {done.length > 0 ? <GroupedList header="Reviewed">{done.map(row)}</GroupedList> : null}
+              {waiting.length > 0 ? (
+                <GroupedList header="Waiting for review">
+                  {waiting.map((item) => (
+                    <EssayQueueRow key={item.publicId} item={item} />
+                  ))}
+                </GroupedList>
+              ) : null}
+              {done.length > 0 ? (
+                <GroupedList header="Reviewed">
+                  {done.map((item) => (
+                    <EssayQueueRow key={item.publicId} item={item} />
+                  ))}
+                </GroupedList>
+              ) : null}
             </>
           )}
           {/* Paging is v2's (spec 08 D12); v1 loaded every row. */}

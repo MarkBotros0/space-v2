@@ -143,7 +143,9 @@ export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
             subtitle={caption(s.seasonTitle, s.submittedAt && `submitted ${formatDate(s.submittedAt)}`)}
             subtitleLines={null}
             chevron
-            onPress={() => router.push({ pathname: "/submission/[publicId]", params: { publicId: s.publicId } })}
+            // A history row is the whole Submission, not one essay: the review screen reads an
+            // essay's publicId, so the row opens the assignment, where its progress lists each part.
+            onPress={() => router.push({ pathname: "/assignment/[id]", params: { id: String(s.assignmentId) } })}
             trailing={
               <View className="items-end gap-1">
                 {s.isLate ? <StatusChip tone="warn" label="Late" /> : null}

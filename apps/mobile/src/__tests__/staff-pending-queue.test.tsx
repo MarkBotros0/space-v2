@@ -19,17 +19,13 @@ const get = apiClient.get as jest.Mock;
 function item(publicId: string, studentName: string | null, over: Record<string, unknown> = {}) {
   return {
     publicId,
-    status: "SUBMITTED" as const,
+    assignmentId: 41,
+    assignmentTitle: "Week four",
+    prompt: "Who are you in the story?",
+    studentName,
     submittedAt: "2099-03-30T10:00:00.000Z",
     isLate: false,
-    assignmentId: 41,
-    assignmentTitle: "Essay one",
-    assignmentDueAt: null,
-    seasonCode: "S26",
-    studentUserId: 9,
-    studentName,
-    groupId: 3,
-    groupName: "Group A",
+    reviewStatus: "SUBMITTED" as const,
     ...over,
   };
 }
@@ -45,26 +41,37 @@ beforeEach(() => {
 });
 
 describe("staff pending queue (/submissions for ADMIN, SUPER, MENTOR)", () => {
-  it("titles the screen, shows a header count equal to the rows, and opens a submission", async () => {
-    get.mockResolvedValue(page([item("aaa1111111", "Sara"), item("bbb2222222", "Omar", { isLate: true })], 2));
+  it("lists one row per essay waiting, with its assignment and question, and opens that essay", async () => {
+    get.mockResolvedValue(
+      page(
+        [
+          item("aaa1111111", "Sara"),
+          item("bbb2222222", "Sara", { prompt: "What would you change?" }),
+          item("ccc3333333", "Omar", { isLate: true }),
+        ],
+        3,
+      ),
+    );
     renderWithProviders(<SubmissionsScreen />);
 
-    expect(await screen.findByText("Sara")).toBeTruthy();
-    expect(screen.getByText("Omar")).toBeTruthy();
-    expect(screen.getByText("2 waiting for review · 9 total")).toBeTruthy();
-    expect(screen.getAllByText("Essay one · Group A")).toHaveLength(2);
-    expect(screen.getAllByText("Submitted")).toHaveLength(2);
+    expect(await screen.findByText("Omar")).toBeTruthy();
+    expect(screen.getAllByText("Sara")).toHaveLength(2);
+    expect(screen.getAllByText("Week four")).toHaveLength(3);
+    expect(screen.getAllByText("Who are you in the story?")).toHaveLength(2);
+    expect(screen.getByText("What would you change?")).toBeTruthy();
+    expect(screen.getByText("3 essays waiting review · 9 handed in")).toBeTruthy();
+    expect(screen.getAllByText("Waiting review")).toHaveLength(3);
     expect(screen.getAllByText("Late")).toHaveLength(1);
     expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
 
-    fireEvent.press(screen.getByText("Sara"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "aaa1111111" } });
+    fireEvent.press(screen.getByRole("button", { name: /What would you change\?/ }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "bbb2222222" } });
   });
 
-  it("adds the late count to the header only when there are late submissions", async () => {
+  it("adds the late count to the header only when there are late essays", async () => {
     get.mockResolvedValue(page([item("aaa1111111", "Sara", { isLate: true })], 1, null, 4));
     renderWithProviders(<SubmissionsScreen />);
-    expect(await screen.findByText("1 waiting for review · 9 total · 4 late")).toBeTruthy();
+    expect(await screen.findByText("1 essay waiting review · 9 handed in · 4 late")).toBeTruthy();
   });
 
   it("passes a valid seasonId into the request and ignores a non-numeric one", async () => {
@@ -82,11 +89,12 @@ describe("staff pending queue (/submissions for ADMIN, SUPER, MENTOR)", () => {
     expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
   });
 
-  it("ignores a stray pending param: the staff branch is always the pending queue", async () => {
+  it("says All caught up when no essay is waiting", async () => {
     mockParams = { pending: "0" };
     get.mockResolvedValue(page([], 0));
     renderWithProviders(<SubmissionsScreen />);
     expect(await screen.findByText("All caught up")).toBeTruthy();
+    expect(screen.getByText("No essays waiting for review.")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
   });
 
@@ -107,10 +115,9 @@ describe("staff pending queue (/submissions for ADMIN, SUPER, MENTOR)", () => {
     renderWithProviders(<SubmissionsScreen />);
     const retry = await screen.findByText("Try again");
 
-    get.mockResolvedValueOnce(page([item("aaa1111111", null, { groupName: null })], 2, "aaa1111111"));
+    get.mockResolvedValueOnce(page([item("aaa1111111", null)], 2, "aaa1111111"));
     fireEvent.press(retry);
-    expect(await screen.findByText("Unnamed")).toBeTruthy();
-    expect(screen.getByText("Essay one")).toBeTruthy();
+    expect(await screen.findByText("Unnamed student")).toBeTruthy();
     expect(screen.getByText("Load more")).toBeTruthy();
   });
 });
