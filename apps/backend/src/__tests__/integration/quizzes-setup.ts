@@ -215,6 +215,29 @@ export async function setLatestAttempt(
   return latest.id;
 }
 
+/** A question's option and blank rows with their key, in author order, for building answers and marks. */
+export async function keyOf(questionId: number) {
+  const [options, blanks] = await Promise.all([
+    db.quizOption.findMany({
+      where: { questionId },
+      orderBy: { position: "asc" },
+      select: { id: true, label: true, isCorrect: true, side: true, matchId: true },
+    }),
+    db.quizBlank.findMany({ where: { questionId }, orderBy: { position: "asc" }, select: { id: true } }),
+  ]);
+  const optionId = (label: string) => {
+    const found = options.find((o) => o.label === label);
+    if (!found) throw new Error(`No option "${label}" on question ${questionId}`);
+    return found.id;
+  };
+  return {
+    optionId,
+    lefts: options.filter((o) => o.side === "LEFT"),
+    rights: options.filter((o) => o.side === "RIGHT"),
+    blankIds: blanks.map((b) => b.id),
+  };
+}
+
 /** Stores a pick of the option labelled `label`, marked as given, and returns the option id. */
 export async function pickOption(
   attemptId: number,

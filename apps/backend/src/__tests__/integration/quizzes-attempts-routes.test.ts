@@ -3,7 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { cleanupTestData } from "./fixtures";
-import { buildPublishedQuizIn, pickOption, seedQuizFixtures, setLatestAttempt } from "./quizzes-setup";
+import { buildPublishedQuizIn, keyOf, pickOption, seedQuizFixtures, setLatestAttempt } from "./quizzes-setup";
 
 // Same reason as the submissions suite: the shared Neon staging Postgres
 // autosuspends, and the first query after idling has been measured at ~18s.
@@ -170,36 +170,40 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
       .set("authorization", `Bearer ${studentToken}`)
       .send({
         answers: [
-          { questionId: mcqId, selectedIndex: 1, text: null },
-          { questionId: essayId, selectedIndex: null, text: "Because." },
+          { type: "SINGLE_CHOICE", questionId: mcqId, optionId: (await keyOf(mcqId)).optionId("Paris") },
+          { type: "ESSAY", questionId: essayId, text: "Because." },
         ],
       });
     expect(save.status).toBe(200);
     expect(save.body.data.saved).toBe(2);
 
     // Saving twice is an upsert on (attemptId, questionId) — one row per
-    // question per attempt (R53), and no grading happens on save (R54).
+    // question per attempt (R53), its selection replaced, and no marking on save (R54).
+    const london = (await keyOf(mcqId)).optionId("London");
     const again = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
-      .send({ answers: [{ questionId: mcqId, selectedIndex: 0, text: null }] });
+      .send({ answers: [{ type: "SINGLE_CHOICE", questionId: mcqId, optionId: london }] });
     expect(again.status).toBe(200);
     const answers = await db.quizAnswer.findMany({
       where: { question: { quizId: onlineQuizId } },
-      select: { questionId: true, selectedIndex: true, isCorrect: true, pointsAwarded: true },
+      select: { questionId: true, isCorrect: true, pointsAwarded: true, selections: { select: { optionId: true } } },
     });
     expect(answers).toHaveLength(2);
     expect(answers.every((a) => a.isCorrect === null && a.pointsAwarded === null)).toBe(true);
+    expect(answers.find((a) => a.questionId === mcqId)?.selections).toEqual([{ optionId: london }]);
   });
 
-  it("bounds selectedIndex against THIS question's options, not a constant (R51)", async () => {
+  it("refuses an option of another question (R51)", async () => {
     await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
+    const other = await buildPublishedQuiz({ withEssay: false });
     const res = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
-      // The MCQ has 2 options. v1's schema allowed 0-5 and checked nothing, so
-      // an out-of-range index stored fine and simply scored 0 later.
-      .send({ answers: [{ questionId: mcqId, selectedIndex: 4, text: null }] });
+      // A real option id, but of another quiz's question.
+      .send({
+        answers: [{ type: "SINGLE_CHOICE", questionId: mcqId, optionId: (await keyOf(other.mcqId)).optionId("Paris") }],
+      });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("answer_out_of_range");
   });
@@ -209,7 +213,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     const res = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
-      .send({ answers: [{ questionId: essayId, selectedIndex: 1, text: null }] });
+      .send({ answers: [{ type: "SINGLE_CHOICE", questionId: essayId, optionId: null }] });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("wrong_answer_type");
   });
@@ -220,7 +224,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     const res = await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
-      .send({ answers: [{ questionId: other.mcqId, selectedIndex: 0, text: null }] });
+      .send({ answers: [{ type: "SINGLE_CHOICE", questionId: other.mcqId, optionId: null }] });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("question_not_in_quiz");
   });
@@ -230,7 +234,9 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
       .set("authorization", `Bearer ${studentToken}`)
-      .send({ answers: [{ questionId: mcqId, selectedIndex: 1, text: null }] });
+      .send({
+        answers: [{ type: "SINGLE_CHOICE", questionId: mcqId, optionId: (await keyOf(mcqId)).optionId("Paris") }],
+      });
 
     const res = await request(app)
       .post(`/api/v1/quizzes/${onlineQuizId}/attempt/submit`)

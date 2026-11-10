@@ -6,9 +6,12 @@ import { parseId } from "../../lib/parse-id";
 import { canGradeQuiz } from "../../lib/permissions";
 import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
-import { recordEssayGrades } from "../../lib/quizzes/grading";
+import { planLeaderMarks, recordLeaderMarks } from "../../lib/quizzes/grading";
+import { GRADING_ANSWER_SELECT, GRADING_QUESTION_SELECT, gradingAnswers } from "../../lib/quizzes/grading-view";
+import { isLeaderMarked, MARKABLE_QUESTION_SELECT, toMarkable } from "../../lib/quizzes/marking";
+import { round2, toScore } from "../../lib/quizzes/score";
 import {
-  gradeEssayAnswersRequestSchema,
+  markAttemptRequestSchema,
   quizAttemptsQuerySchema,
   reopenAttemptRequestSchema,
 } from "../../../../../packages/shared/src/index";
@@ -41,17 +44,11 @@ export async function listAttempts(req: Request, res: Response) {
   const remaining = cursor === undefined ? studentIds : studentIds.filter((sid) => sid > cursor);
   const pageIds = remaining.slice(0, limit);
 
+  // Staff-only (canGradeQuiz above): the key is loaded on purpose (R103).
   const questions = await db.quizQuestion.findMany({
     where: { quizId: id },
     orderBy: { order: "asc" },
-    select: {
-      id: true,
-      type: true,
-      prompt: true,
-      points: true,
-      options: true,
-      correctIndex: true,
-    },
+    select: GRADING_QUESTION_SELECT,
   });
 
   const attempts = await db.quizAttempt.findMany({
@@ -73,15 +70,7 @@ export async function listAttempts(req: Request, res: Response) {
       studentUser: { select: { name: true } },
       // D13: the audit column v1 wrote and never read anywhere.
       gradedBy: { select: { name: true } },
-      answers: {
-        select: {
-          questionId: true,
-          selectedIndex: true,
-          text: true,
-          isCorrect: true,
-          pointsAwarded: true,
-        },
-      },
+      answers: { select: GRADING_ANSWER_SELECT },
     },
   });
 
@@ -100,42 +89,24 @@ export async function listAttempts(req: Request, res: Response) {
     title: quiz.title,
     kind: quiz.kind,
     maxScore: quiz.maxScore,
-    hasEssays: questions.some((q) => q.type === "ESSAY"),
+    // Kept name, wider meaning: the quiz has leader-marked questions (FILL_BLANK or ESSAY).
+    hasEssays: questions.some((q) => isLeaderMarked(q.type)),
     studentCount: studentIds.length,
-    items: scored.map((att) => {
-      const answerBy = new Map(att.answers.map((a) => [a.questionId, a]));
-      return {
-        attemptId: att.id,
-        studentUserId: att.studentUserId,
-        studentName: att.studentUser.name,
-        attemptNumber: att.attemptNumber,
-        status: att.status,
-        autoScore: att.autoScore,
-        manualScore: att.manualScore,
-        totalScore: att.totalScore,
-        submittedAt: att.submittedAt,
-        gradedByName: att.gradedBy?.name ?? null,
-        // Projected over the quiz's CURRENT questions (R104): a question added
-        // after this attempt was submitted shows with every answer field null.
-        // Under D3's freeze that can no longer happen going forward, but rows
-        // v1 already produced still look like this.
-        answers: questions.map((q) => {
-          const a = answerBy.get(q.id);
-          return {
-            questionId: q.id,
-            type: q.type,
-            prompt: q.prompt,
-            points: q.points,
-            options: q.options,
-            correctIndex: q.correctIndex,
-            selectedIndex: a?.selectedIndex ?? null,
-            isCorrect: a?.isCorrect ?? null,
-            text: a?.text ?? null,
-            pointsAwarded: a?.pointsAwarded ?? null,
-          };
-        }),
-      };
-    }),
+    items: scored.map((att) => ({
+      attemptId: att.id,
+      studentUserId: att.studentUserId,
+      studentName: att.studentUser.name,
+      attemptNumber: att.attemptNumber,
+      status: att.status,
+      autoScore: toScore(att.autoScore),
+      manualScore: toScore(att.manualScore),
+      totalScore: toScore(att.totalScore),
+      submittedAt: att.submittedAt,
+      gradedByName: att.gradedBy?.name ?? null,
+      // Projected over the quiz's CURRENT questions (R104), in the author's
+      // order: a question with no answer row shows with empty answer fields.
+      answers: gradingAnswers(questions, att.answers),
+    })),
     waiting: [
       ...inProgress.map((att) => ({
         studentUserId: att.studentUserId,
@@ -162,7 +133,7 @@ export async function gradeAttempt(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { id: true, title: true, seasonId: true, resultsReleasedAt: true },
+    select: { id: true, title: true, seasonId: true },
   });
   if (!quiz) return notFound(res, "Quiz");
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
@@ -195,44 +166,31 @@ export async function gradeAttempt(req: Request, res: Response) {
     return apiError(res, "attempt_not_submitted", "This attempt has not been submitted.", 409);
   }
 
-  const parsed = parseOr400(gradeEssayAnswersRequestSchema, req.body, res, "Invalid awards.");
+  const parsed = parseOr400(markAttemptRequestSchema, req.body, res, "Invalid marks.");
   if (parsed === null) return;
 
-  const essays = await db.quizQuestion.findMany({
-    where: { quizId: id, type: "ESSAY" },
-    select: { id: true, points: true },
+  // Leaders mark right or wrong; the points follow from the admin's per-question points.
+  const leaderQuestions = await db.quizQuestion.findMany({
+    where: { quizId: id, type: { in: ["FILL_BLANK", "ESSAY"] } },
+    select: MARKABLE_QUESTION_SELECT,
   });
-  const maxBy = new Map(essays.map((q) => [q.id, q.points]));
+  const plan = planLeaderMarks(leaderQuestions.map(toMarkable), parsed.marks);
+  if ("refusal" in plan) return apiError(res, plan.refusal.code, plan.refusal.message, plan.refusal.status);
 
-  // Every essay, exactly once. v1 recomputed manualScore from only the awards
-  // present, so an omitted essay contributed 0 and silently lowered the total.
-  const sent = new Set(parsed.awards.map((a) => a.questionId));
-  if (sent.size !== parsed.awards.length || sent.size !== essays.length || !essays.every((q) => sent.has(q.id))) {
-    return apiError(res, "awards_incomplete", "Send a mark for every essay question.", 400);
-  }
-  for (const award of parsed.awards) {
-    const max = maxBy.get(award.questionId) as number;
-    // D8: reject rather than clamp, matching D7's rule for paper scores.
-    if (award.points > max) {
-      return apiError(res, "score_exceeds_max", `That question is out of ${max}.`, 400);
-    }
-  }
-
-  const manualScore = parsed.awards.reduce((sum, a) => sum + a.points, 0);
+  const { manualScore } = plan;
   // autoScore is trusted as stored and never recomputed (R73) — recomputing it
   // would need the questions as they were when taken, which nothing records.
-  const totalScore = (attempt.autoScore ?? 0) + manualScore;
-  const scoreChanged = attempt.totalScore !== totalScore;
+  const totalScore = round2((toScore(attempt.autoScore) ?? 0) + manualScore);
+  const scoreChanged = attempt.status !== "GRADED" || toScore(attempt.totalScore) !== totalScore;
   const now = new Date();
 
-  await recordEssayGrades(attemptId, parsed.awards, { manualScore, totalScore }, user.userId, now);
+  await recordLeaderMarks(attemptId, plan.rows, { manualScore, totalScore }, user.userId, now);
 
-  // Held results stay quiet: the release notifies everyone graded by then.
-  if (scoreChanged && quiz.resultsReleasedAt !== null) {
-    // D8's single rule for both grading paths: notify on a first grade and on
-    // any score change, silent on a no-op re-save. v1's two paths disagreed —
-    // ONLINE notified on every call (R75), PAPER never re-notified (R92).
-    await notifyQuizGraded([attempt.studentUserId], `Quiz graded: ${quiz.title}`, "Your quiz has been graded.");
+  // The score shows once graded, released answers or not (spec "What students
+  // see"), so the student hears now. D8's single rule for both grading paths:
+  // notify on a first grade and on any score change, silent on a no-op re-save.
+  if (scoreChanged) {
+    await notifyQuizGraded([attempt.studentUserId], `Quiz graded: ${quiz.title}`, "Your score is in.");
   }
 
   const page = await db.quizAttempt.findUnique({
@@ -256,9 +214,9 @@ export async function gradeAttempt(req: Request, res: Response) {
     studentName: page?.studentUser.name ?? null,
     attemptNumber: page?.attemptNumber,
     status: page?.status,
-    autoScore: page?.autoScore ?? null,
-    manualScore: page?.manualScore ?? null,
-    totalScore: page?.totalScore ?? null,
+    autoScore: toScore(page?.autoScore ?? null),
+    manualScore: toScore(page?.manualScore ?? null),
+    totalScore: toScore(page?.totalScore ?? null),
     submittedAt: page?.submittedAt ?? null,
     gradedByName: page?.gradedBy?.name ?? null,
     answers: [],

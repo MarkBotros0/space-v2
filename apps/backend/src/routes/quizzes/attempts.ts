@@ -8,6 +8,7 @@ import { isAlumnusNotStudying } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { answerRefusal, saveAnswers, submitAnswers } from "../../lib/quizzes/attempts";
 import { saveQuizAnswersRequestSchema } from "../../../../../packages/shared/src/index";
+import { MARKABLE_QUESTION_SELECT, toMarkable } from "../../lib/quizzes/marking";
 import { notifyQuizGraded } from "../../lib/quizzes/notify";
 import { newShuffleSeed } from "../../lib/quizzes/shuffle";
 import { loadStudentQuizDetail } from "./student-detail";
@@ -33,7 +34,7 @@ async function canTakeQuizIn(user: SessionUser, seasonId: number): Promise<boole
 async function loadTakeableQuiz(res: Response, user: SessionUser, quizId: number) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
-    select: { title: true, seasonId: true, resultsReleasedAt: true },
+    select: { title: true, seasonId: true },
   });
   if (!quiz) {
     notFound(res, "Quiz");
@@ -149,11 +150,9 @@ export async function saveAttemptAnswers(req: Request, res: Response) {
   const attempt = await resolveOpenAttempt(res, id, user.userId);
   if (!attempt) return undefined;
 
-  const questions = await db.quizQuestion.findMany({
-    where: { quizId: id },
-    select: { id: true, type: true, options: true },
-  });
-  const byId = new Map(questions.map((q) => [q.id, q]));
+  // Loads the key server-side to count "Choose N"; nothing of it is answered.
+  const questions = await db.quizQuestion.findMany({ where: { quizId: id }, select: MARKABLE_QUESTION_SELECT });
+  const byId = new Map(questions.map((q) => [q.id, toMarkable(q)]));
 
   const refusal = answerRefusal(byId, parsed.answers);
   if (refusal) return apiError(res, refusal.code, refusal.message, 400);
@@ -177,13 +176,14 @@ export async function submitAttempt(req: Request, res: Response) {
   const attempt = await resolveOpenAttempt(res, id, user.userId);
   if (!attempt) return undefined;
 
-  const { hasEssays } = await submitAnswers(id, attempt.id);
+  const { graded } = await submitAnswers(id, attempt.id);
 
-  // Held results stay quiet: the student hears once they are released.
-  if (!hasEssays && quiz.resultsReleasedAt !== null) {
+  // The score shows as soon as the attempt is GRADED, answers released or not
+  // (spec "What students see"), so the student hears now.
+  if (graded) {
     // Best-effort, outside the transaction (spec D6). A mail failure must not
     // report a submitted quiz as failed.
-    await notifyQuizGraded([user.userId], `Quiz graded: ${quiz.title}`, "Your quiz was graded automatically.");
+    await notifyQuizGraded([user.userId], `Quiz graded: ${quiz.title}`, "Your score is in.");
   }
 
   const detail = await loadStudentQuizDetail(id, user.userId, false);

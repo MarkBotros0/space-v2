@@ -1,3 +1,4 @@
+import type { Prisma } from "../../generated/prisma/client";
 import type { QuizQuestionType } from "../../generated/prisma/enums";
 import { round2 } from "./score";
 
@@ -15,6 +16,21 @@ export type StoredAnswer = {
   text: string | null;
   isCorrect: boolean | null;
 };
+
+/** What marking and answer validation load: server-side only, never a student response. */
+export const MARKABLE_QUESTION_SELECT = {
+  id: true,
+  type: true,
+  points: true,
+  quizOptions: { select: { id: true, isCorrect: true, side: true, matchId: true } },
+  quizBlanks: { select: { id: true } },
+} as const satisfies Prisma.QuizQuestionSelect;
+
+export function toMarkable(
+  row: Prisma.QuizQuestionGetPayload<{ select: typeof MARKABLE_QUESTION_SELECT }>,
+): MarkableQuestion {
+  return { id: row.id, type: row.type, points: row.points, options: row.quizOptions, blanks: row.quizBlanks };
+}
 
 const hasText = (s: string | null | undefined): boolean => (s ?? "").trim().length > 0;
 

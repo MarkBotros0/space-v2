@@ -48,7 +48,7 @@ function call(handler: (req: Request, res: Response) => Promise<unknown>, user: 
   return handler(req, res as unknown as Response).then(() => res);
 }
 
-const saveBody = { answers: [{ questionId: 1, selectedIndex: 0, text: null }] };
+const saveBody = { answers: [{ type: "ESSAY", questionId: 1, text: "Because." }] };
 
 beforeEach(() => {
   jest.clearAllMocks();
