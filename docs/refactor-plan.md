@@ -9,6 +9,10 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 - **Current phase:** Wave 7 (guardrails) on `refactor/wave-7-guardrails`. Owner, 2026-11-10: finish the
   remaining waves without stopping between them, then run the missing UI sweeps. Waves 5 and 6 are finished
   on their branches (each built on the one before, from local `main` @ `84a50069`); nothing is pushed.
+- UI sweep (2026-11-10): student, leader and admin were compared on two cells, refactor APK against `main`
+  @ `edc1fad0`, with no regression (`docs/refactor-report.md` "UI sweep"). At 11:21 the emulator was
+  killed by the out-of-memory killer (55 GB after 9.5 h). The rest of the sweep is not run yet: super `base`,
+  mentor, alumni and 14 more cells.
 - Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
   again. Tests run only on the throwaway DB (see Working setup).
 - Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`

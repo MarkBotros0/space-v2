@@ -110,4 +110,42 @@ Earlier waves had no device sweep: Waves 1–2 had no emulator, and Wave 5's was
 2026-11-10 the owner asked for every missing sweep to run after the last wave. The result is recorded
 below.
 
-_Pending: filled in once the sweep has run._
+**Method.** Both sides ran on one Android emulator (`jpc-ui`), each with its own release APK pointed at a
+local backend. One side was this branch (`refactor`) and the other was `main` @ `edc1fad0`, from before the
+refactor (`base`). The backend ran the refactored code on a throwaway database (`refactor_sweep`), seeded
+with fake `sweep.jpc.test` users. No shared database was touched and no real user's password was changed.
+Before every run the database was dropped, re-migrated and re-seeded, so both sides saw the same data. The
+flows only look; they never save. Every pair of screenshots was pixel-compared, with the status bar masked
+and small anti-aliasing differences ignored, and every shot that differed was checked by eye.
+
+**What ran (2026-11-10, 07:49–11:21).**
+
+| Module | `small-1.3-3btn-light` | `iphone-1.0-gesture-dark` |
+|---|---|---|
+| student, leader, admin | refactor + base, compared | refactor + base, compared |
+| super | refactor only (166 shots, no failures) | not run |
+| mentor, alumni | not run | not run |
+
+There were 13 complete runs with no failed flow. At 11:21 the kernel's out-of-memory killer stopped the
+emulator: its memory had grown to 55 GB over about 9.5 hours of runs. The rest was not run. Those are the
+super `base` side, super's dark cell, mentor, alumni, and the other 14 device cells.
+
+**Result: no visual regression.** 86 shots were above the 0.2% threshold. Each one fell into one of these
+groups:
+
+- `s90-*`: the design catalogue. Wave 5 added a `SearchFilterRow` demo, which moves everything below it down.
+  This is expected.
+- Scroll offsets of a few pixels on `*-mid` and `*-bottom` shots, and the scroll indicator at the right edge.
+  The content is the same.
+- Times that depend on the seed (e.g. "10:04 AM" against "9:50 AM" in notifications), and a blinking text
+  cursor.
+
+**Found on both sides (already there before the refactor; not fixed here):**
+
+- The admin season page's "Assignments" tile breaks mid-word as "Assignment / s" at font scale 1.3.
+- A notification titled "New submission: …" carries the kind "Submission reviewed".
+- The earlier student review found more small layout issues at font scale 1.3, all present on `base` too:
+  dangling "·" separators, dates split across lines, submit buttons half under the keyboard, and "1 pts".
+
+**What the sweep can't show:** iOS, the camera and file pickers, push delivery, and anything that saves.
+The unit and integration suites cover those paths.
