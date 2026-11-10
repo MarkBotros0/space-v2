@@ -2,11 +2,11 @@ import { Router } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
-import { parseId } from "../lib/parse-id";
 import {
   assignmentColumns,
   bodyErrorMessage,
   notifyAssignmentCreated,
+  replaceAssignment,
   targetedStudentIds,
   validateAssignmentRefs,
 } from "../lib/assignment-writes";
@@ -20,6 +20,9 @@ import {
 } from "../lib/queries/assignments";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { updateAssignmentRequestSchema } from "../../../../packages/shared/src/index";
+import { idParam } from "../lib/http/params";
+import { notFound } from "../lib/http/not-found";
+import { liveAssignment } from "../lib/db/live";
 
 export const assignmentsRouter = Router();
 
@@ -27,14 +30,14 @@ assignmentsRouter.use(requireAuth);
 
 assignmentsRouter.get("/:id", async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
+  const id = idParam(res, req.params.id, "assignment");
+  if (id === null) return;
 
   const assignment = await db.assignment.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, ...liveAssignment },
     select: { seasonId: true },
   });
-  if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!assignment) return notFound(res, "Assignment");
 
   // A student reads an assignment of any season they hold an enrolment in,
   // whatever its status: a finished, dropped or alumni student keeps their own
@@ -56,7 +59,7 @@ assignmentsRouter.get("/:id", async (req, res) => {
   const detail = await loadAssignmentById(id);
   // Unreachable in practice — the existence check above already passed — but
   // loadAssignmentById is nullable, so narrow it rather than asserting.
-  if (!detail) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!detail) return notFound(res, "Assignment");
 
   // Season access is not enough for a targeted assignment: a student must also
   // be in one of the groups it targets, in this season. Resolved through
@@ -105,20 +108,20 @@ assignmentsRouter.get("/:id", async (req, res) => {
  */
 assignmentsRouter.get("/:id/tracker", async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
+  const id = idParam(res, req.params.id, "assignment");
+  if (id === null) return;
 
   const assignment = await db.assignment.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, ...liveAssignment },
     select: { seasonId: true },
   });
-  if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!assignment) return notFound(res, "Assignment");
 
   const scope = await staffScopeForSeason(user, assignment.seasonId);
   if (scope === null) return forbidden(res);
 
   const tracker = await loadAssignmentTracker(id, scope.kind === "groups" ? scope.groupIds : undefined);
-  if (!tracker) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!tracker) return notFound(res, "Assignment");
 
   return apiOk(res, tracker);
 });
@@ -132,15 +135,15 @@ assignmentsRouter.get("/:id/tracker", async (req, res) => {
  */
 assignmentsRouter.patch("/:id", async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
+  const id = idParam(res, req.params.id, "assignment");
+  if (id === null) return;
 
   // v1's canEditAssignment read the row without a deletedAt filter (R79).
   const existing = await db.assignment.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, ...liveAssignment },
     select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },
   });
-  if (!existing) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!existing) return notFound(res, "Assignment");
   if (!canManageAssignment(user, existing.seasonId)) return forbidden(res);
 
   const parsed = updateAssignmentRequestSchema.safeParse(req.body);
@@ -161,16 +164,7 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   );
 
   const columns = assignmentColumns(body);
-  await db.$transaction(async (tx) => {
-    // seasonId and createdById are never written here (R68).
-    await tx.assignment.update({ where: { id }, data: { ...columns, updatedById: user.userId } });
-    await tx.assignmentTarget.deleteMany({ where: { assignmentId: id } });
-    if (!body.isAllGroups) {
-      await tx.assignmentTarget.createMany({
-        data: body.groupIds.map((groupId) => ({ assignmentId: id, groupId })),
-      });
-    }
-  });
+  await replaceAssignment(id, columns, body, user.userId);
 
   const after = await targetedStudentIds(existing.seasonId, body.isAllGroups, body.groupIds);
   await notifyAssignmentCreated(
@@ -179,20 +173,20 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   );
 
   const detail = await loadAssignmentById(id);
-  if (!detail) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!detail) return notFound(res, "Assignment");
   return apiOk(res, assignmentDetailPayload(detail, { isStudent: false, canManage: true, mySubmission: null }));
 });
 
 assignmentsRouter.delete("/:id", async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
+  const id = idParam(res, req.params.id, "assignment");
+  if (id === null) return;
 
   const existing = await db.assignment.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, ...liveAssignment },
     select: { seasonId: true },
   });
-  if (!existing) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!existing) return notFound(res, "Assignment");
   if (!canManageAssignment(user, existing.seasonId)) return forbidden(res);
 
   // Designed, not ported (ruling C12, spec 07 §10 item 4): a deleted
@@ -200,7 +194,7 @@ assignmentsRouter.delete("/:id", async (req, res) => {
   // The "no submissions" condition is in the UPDATE's own WHERE, so a draft
   // created after the lookup above still blocks the delete.
   const { count } = await db.assignment.updateMany({
-    where: { id, deletedAt: null, submissions: { none: {} } },
+    where: { id, ...liveAssignment, submissions: { none: {} } },
     data: { deletedAt: new Date(), updatedById: user.userId },
   });
   if (count === 0) {

@@ -5,10 +5,12 @@ import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import {
   assignmentColumns,
   bodyErrorMessage,
+  insertAssignment,
   notifyAssignmentCreated,
   targetedStudentIds,
   validateAssignmentRefs,
 } from "../../lib/assignment-writes";
+import { findLiveSeason } from "../../lib/queries/seasons";
 import { canAccessSeason, canManageAssignment } from "../../lib/permissions";
 import {
   assignmentDetailPayload,
@@ -105,10 +107,7 @@ export async function createSeasonAssignment(req: Request, res: Response) {
   // v1 canCreateAssignment = isAdminOfSeason (SUPER passes) — permissions.ts:273-278.
   if (!canManageAssignment(user, seasonId)) return forbidden(res);
 
-  const season = await db.season.findFirst({
-    where: { id: seasonId, deletedAt: null },
-    select: { id: true },
-  });
+  const season = await findLiveSeason(seasonId, { id: true });
   if (!season) return notFound(res, "Season");
 
   const parsed = createAssignmentRequestSchema.safeParse(req.body);
@@ -121,19 +120,7 @@ export async function createSeasonAssignment(req: Request, res: Response) {
   if (refusal) return apiError(res, refusal.code, refusal.message, 400);
 
   const columns = assignmentColumns(body);
-  // R84: the row and its targets commit together.
-  const created = await db.$transaction(async (tx) => {
-    const assignment = await tx.assignment.create({
-      data: { seasonId, ...columns, createdById: user.userId, updatedById: user.userId },
-      select: { id: true },
-    });
-    if (!body.isAllGroups) {
-      await tx.assignmentTarget.createMany({
-        data: body.groupIds.map((groupId) => ({ assignmentId: assignment.id, groupId })),
-      });
-    }
-    return assignment;
-  });
+  const created = await insertAssignment(seasonId, columns, body, user.userId);
 
   // R65: fan-out after the commit, never inside it.
   await notifyAssignmentCreated(

@@ -119,3 +119,48 @@ export function bodyErrorMessage(err: ZodError, fallback: string): string {
   if (!issue) return fallback;
   return issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message;
 }
+
+type AssignmentColumns = ReturnType<typeof assignmentColumns>;
+
+/** POST /seasons/:id/assignments' write. R84: the row and its targets commit together. */
+export async function insertAssignment(
+  seasonId: number,
+  columns: AssignmentColumns,
+  body: Pick<AssignmentWriteBody, "isAllGroups" | "groupIds">,
+  actorId: number,
+): Promise<{ id: number }> {
+  return db.$transaction(async (tx) => {
+    const assignment = await tx.assignment.create({
+      data: { seasonId, ...columns, createdById: actorId, updatedById: actorId },
+      select: { id: true },
+    });
+    if (!body.isAllGroups) {
+      await tx.assignmentTarget.createMany({
+        data: body.groupIds.map((groupId) => ({ assignmentId: assignment.id, groupId })),
+      });
+    }
+    return assignment;
+  });
+}
+
+/**
+ * PATCH /assignments/:id's write: every field replaced, and the targets deleted
+ * and recreated in the same transaction (R69, R85). seasonId and createdById
+ * are never written here (R68).
+ */
+export async function replaceAssignment(
+  id: number,
+  columns: AssignmentColumns,
+  body: Pick<AssignmentWriteBody, "isAllGroups" | "groupIds">,
+  actorId: number,
+): Promise<void> {
+  await db.$transaction(async (tx) => {
+    await tx.assignment.update({ where: { id }, data: { ...columns, updatedById: actorId } });
+    await tx.assignmentTarget.deleteMany({ where: { assignmentId: id } });
+    if (!body.isAllGroups) {
+      await tx.assignmentTarget.createMany({
+        data: body.groupIds.map((groupId) => ({ assignmentId: id, groupId })),
+      });
+    }
+  });
+}
