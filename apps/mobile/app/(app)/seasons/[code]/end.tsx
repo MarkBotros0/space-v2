@@ -34,7 +34,7 @@ export default function EndSeasonScreen() {
   const isSuper = useIsSuper();
   const seasonId = season.data?.id ?? null;
   const check = useSeasonEndCheck(seasonId);
-  const end = useEndSeason(seasonId ?? 0);
+  const end = useEndSeason(seasonId);
   const [staged, setStaged] = useState<Record<number, ResultDraft>>({});
   const [editing, setEditing] = useState<Student | null>(null);
   const [confirming, setConfirming] = useState(false);

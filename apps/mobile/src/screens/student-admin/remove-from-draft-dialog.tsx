@@ -21,7 +21,7 @@ export function RemoveFromDraftDialog({
   enrollment: EnrollmentHistoryItem | null;
   onClose: () => void;
 }) {
-  const remove = useRemoveSeasonPerson(enrollment?.seasonId ?? 0);
+  const remove = useRemoveSeasonPerson(enrollment?.seasonId ?? null);
   return (
     <ConfirmDialog
       open={enrollment !== null}

@@ -23,7 +23,7 @@ export default function SeasonResultsScreen() {
   const isSuper = useIsSuper();
   const seasonId = isSuper ? (season.data?.id ?? null) : null;
   const results = useSeasonResults(seasonId);
-  const update = useUpdateSeasonResult(seasonId ?? 0);
+  const update = useUpdateSeasonResult(seasonId);
   const [editing, setEditing] = useState<SeasonResultRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 

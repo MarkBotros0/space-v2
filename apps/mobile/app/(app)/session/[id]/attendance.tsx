@@ -34,7 +34,7 @@ export default function AttendanceScreen() {
 
   const session = useSessionDetail(sessionId);
   const { data: roster, isPending, isError, refetch, isRefetching } = useAttendanceRoster(sessionId);
-  const save = useSaveAttendance(sessionId ?? 0);
+  const save = useSaveAttendance(sessionId);
   const [marks, setMarks] = useState<AttendanceMarks>({});
   const [lateText, setLateText] = useState<LateMinutesText>({});
   const [formError, setFormError] = useState<string | null>(null);

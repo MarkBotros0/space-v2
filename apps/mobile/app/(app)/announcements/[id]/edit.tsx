@@ -14,7 +14,7 @@ export default function EditAnnouncementScreen() {
   const { id: raw } = useLocalSearchParams<{ id: string }>();
   const id = parsePositiveInt(raw);
   const post = useAnnouncement(id);
-  const update = useUpdateAnnouncement(id ?? 0);
+  const update = useUpdateAnnouncement(id);
 
   const lost = update.isError ? pollVotesLost(update.error) : null;
 

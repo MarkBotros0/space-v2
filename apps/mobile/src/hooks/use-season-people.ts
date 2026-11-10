@@ -14,6 +14,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { loadedId } from "../lib/loaded-id";
 
 /** GET /seasons/:id/people-candidates — season admins and SUPER, so the caller passes `enabled`. */
 export function useSeasonPeople(
@@ -55,11 +56,11 @@ export function useAddSeasonPeople(seasonId: number): UseMutationResult<number, 
  * (409 `has_work` once they have work or attendance). Refreshes the roster,
  * the candidates, the season's student count and the student's own record.
  */
-export function useRemoveSeasonPerson(seasonId: number): UseMutationResult<void, Error, { userId: number }> {
+export function useRemoveSeasonPerson(seasonId: number | null): UseMutationResult<void, Error, { userId: number }> {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId }: { userId: number }) => {
-      await apiClient.delete(`/api/v1/seasons/${seasonId}/enrollments/${userId}`);
+      await apiClient.delete(`/api/v1/seasons/${loadedId(seasonId)}/enrollments/${userId}`);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });

@@ -26,6 +26,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { apiErrorCode, isNotFoundError } from "../lib/api-error";
 import { queryKeys } from "../lib/query-keys";
+import { loadedId } from "../lib/loaded-id";
 
 /** What `useAnnouncement` yields for a post that is gone or was never visible to this reader. */
 interface AnnouncementRemoved {
@@ -120,11 +121,11 @@ export function useCreateAnnouncement() {
   });
 }
 
-export function useUpdateAnnouncement(id: number) {
+export function useUpdateAnnouncement(id: number | null) {
   const invalidate = useInvalidateAnnouncements();
   return useMutation({
     mutationFn: async (body: UpdateAnnouncementRequest) => {
-      const res = await apiClient.patch(`/api/v1/announcements/${id}`, body);
+      const res = await apiClient.patch(`/api/v1/announcements/${loadedId(id)}`, body);
       return announcementDetailSchema.parse(res.data.data);
     },
     onSuccess: invalidate,

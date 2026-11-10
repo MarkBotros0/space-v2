@@ -10,6 +10,7 @@ import {
 import { apiClient } from "../lib/api-client";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
+import { loadedId } from "../lib/loaded-id";
 
 const rosterSchema = z.array(attendanceRosterRowSchema);
 
@@ -24,13 +25,13 @@ export function useAttendanceRoster(sessionId: number | null): UseQueryResult<At
   });
 }
 
-export function useSaveAttendance(sessionId: number) {
+export function useSaveAttendance(sessionId: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
     mutationFn: async (entries: AttendanceEntry[]) => {
-      const res = await apiClient.post(`/api/v1/sessions/${sessionId}/attendance`, { entries });
+      const res = await apiClient.post(`/api/v1/sessions/${loadedId(sessionId)}/attendance`, { entries });
       return saveAttendanceResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {

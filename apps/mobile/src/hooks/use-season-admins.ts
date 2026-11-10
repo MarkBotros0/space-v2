@@ -14,6 +14,7 @@ import {
 
 import { apiClient } from "../lib/api-client";
 import { queryKeys } from "../lib/query-keys";
+import { loadedId } from "../lib/loaded-id";
 
 /**
  * What a season admin add or remove can change beyond the admins list: the
@@ -56,7 +57,7 @@ export function useStaffCandidates(
 }
 
 function useSeasonAdminWrite<TVars>(
-  seasonId: number,
+  seasonId: number | null,
   send: (vars: TVars) => Promise<{ data: { data: unknown } }>,
 ): UseMutationResult<SeasonAdminItem[], Error, TVars> {
   const queryClient = useQueryClient();
@@ -84,8 +85,8 @@ export function useAddSeasonAdmin(seasonId: number) {
 }
 
 /** DELETE /seasons/:id/admins/:userId — idempotent server-side. */
-export function useRemoveSeasonAdmin(seasonId: number) {
+export function useRemoveSeasonAdmin(seasonId: number | null) {
   return useSeasonAdminWrite<{ userId: number }>(seasonId, ({ userId }) =>
-    apiClient.delete(`/api/v1/seasons/${seasonId}/admins/${userId}`),
+    apiClient.delete(`/api/v1/seasons/${loadedId(seasonId)}/admins/${userId}`),
   );
 }

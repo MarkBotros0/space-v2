@@ -4,6 +4,7 @@ import { seasonStartCheckSchema, startSeasonResponseSchema, type SeasonStartChec
 import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
 import { isSeasonCheckKey, queryKeys } from "../lib/query-keys";
+import { loadedId } from "../lib/loaded-id";
 
 /** GET /seasons/:id/start-check (SUPER): who stops a draft from starting. */
 export function useSeasonStartCheck(id: number | null): UseQueryResult<SeasonStartCheck> {
@@ -24,11 +25,11 @@ export function useSeasonStartCheck(id: number | null): UseQueryResult<SeasonSta
  * so the roots are invalidated, not one leaf. Not the start-check: it is mounted
  * on the screen that starts the season and would answer not_draft.
  */
-export function useStartSeason(id: number) {
+export function useStartSeason(id: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post(`/api/v1/seasons/${id}/start`);
+      const res = await apiClient.post(`/api/v1/seasons/${loadedId(id)}/start`);
       return startSeasonResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
@@ -45,11 +46,11 @@ export function useStartSeason(id: number) {
 }
 
 /** POST /seasons/:id/enrollments/:userId/override (SUPER, draft row). Refreshes the check. */
-export function useOverrideEnrollment(seasonId: number) {
+export function useOverrideEnrollment(seasonId: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId }: { userId: number }) => {
-      await apiClient.post(`/api/v1/seasons/${seasonId}/enrollments/${userId}/override`);
+      await apiClient.post(`/api/v1/seasons/${loadedId(seasonId)}/enrollments/${userId}/override`);
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.all }),
   });

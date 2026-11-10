@@ -28,10 +28,10 @@ export default function StartSeasonScreen() {
   const seasonId = season.data?.id ?? null;
   const isDraft = season.data?.status === "DRAFT";
   const check = useSeasonStartCheck(isSuper && isDraft ? seasonId : null);
-  const start = useStartSeason(seasonId ?? 0);
-  const removePerson = useRemoveSeasonPerson(seasonId ?? 0);
-  const removeAdmin = useRemoveSeasonAdmin(seasonId ?? 0);
-  const override = useOverrideEnrollment(seasonId ?? 0);
+  const start = useStartSeason(seasonId);
+  const removePerson = useRemoveSeasonPerson(seasonId);
+  const removeAdmin = useRemoveSeasonAdmin(seasonId);
+  const override = useOverrideEnrollment(seasonId);
   const [confirming, setConfirming] = useState(false);
   const [overriding, setOverriding] = useState<StartIssue | null>(null);
 

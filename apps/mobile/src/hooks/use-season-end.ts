@@ -15,6 +15,7 @@ import { z } from "zod";
 import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
 import { isSeasonCheckKey, queryKeys } from "../lib/query-keys";
+import { loadedId } from "../lib/loaded-id";
 
 const resultsSchema = z.array(seasonResultRowSchema);
 
@@ -37,11 +38,11 @@ export function useSeasonEndCheck(id: number | null): UseQueryResult<SeasonEndCh
  * re-reads /me) and every figure built from the season, so the roots are
  * invalidated, not one leaf.
  */
-export function useEndSeason(id: number) {
+export function useEndSeason(id: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (body: EndSeasonRequest) => {
-      const res = await apiClient.post(`/api/v1/seasons/${id}/end`, body);
+      const res = await apiClient.post(`/api/v1/seasons/${loadedId(id)}/end`, body);
       return endSeasonResponseSchema.parse(res.data.data);
     },
     onSuccess: () => {
@@ -73,11 +74,11 @@ export function useSeasonResults(id: number | null): UseQueryResult<SeasonResult
   });
 }
 
-export function useUpdateSeasonResult(id: number) {
+export function useUpdateSeasonResult(id: number | null) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ userId, ...body }: UpdateSeasonResultRequest & { userId: number }) => {
-      await apiClient.patch(`/api/v1/seasons/${id}/results/${userId}`, body);
+      await apiClient.patch(`/api/v1/seasons/${loadedId(id)}/results/${userId}`, body);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.seasons.results(id) });
