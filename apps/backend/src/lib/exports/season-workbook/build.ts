@@ -1,12 +1,10 @@
-// apps/backend/src/lib/exports/season-workbook.ts
 import ExcelJS from "exceljs";
 
-import type { SubmissionStatus } from "../../generated/prisma/enums";
-import { db } from "../../db/client";
-import { formatDayInOrgTime } from "../org-time";
-import { computeEngagementForSeasons } from "../queries/engagement";
-import { seasonParticipant } from "../queries/season-participants";
-import { COLLATOR, addKeySheet, columnWidths, freezeFirstRowAndColumns, styleHeader } from "./workbook-style";
+import type { SubmissionStatus } from "../../../generated/prisma/enums";
+import { formatDayInOrgTime } from "../../org-time";
+import { addKeySheet, columnWidths, freezeFirstRowAndColumns, styleHeader } from "../workbook-style";
+import { loadSeasonExportData } from "./load";
+import { estimateBytes, KEY_SYMBOLS, NOT_ASSIGNED, type SeasonWorkbookSummary, type SheetSummary } from "./summary";
 
 const SUBMISSION_LABEL: Record<SubmissionStatus, string> = {
   // A draft is the student's private work in progress, hidden from staff
@@ -18,31 +16,6 @@ const SUBMISSION_LABEL: Record<SubmissionStatus, string> = {
   REVIEWED: "Reviewed",
   RETURNED: "Returned",
 };
-
-/** Blank means "assigned, nothing submitted"; n/a means "not assigned" (D-17.15). */
-const NOT_ASSIGNED = "n/a";
-
-const KEY_SYMBOLS: Array<[string, string]> = [
-  ["P", "Present"],
-  ["A", "Absent"],
-  ["L", "Late — see the note about recorded minutes below"],
-  ["(blank)", "No record for this student and session / assignment"],
-  [NOT_ASSIGNED, "This assignment was not assigned to this student"],
-];
-
-interface SheetSummary {
-  name: string;
-  columnCount: number;
-  rowCount: number;
-}
-
-interface SeasonWorkbookSummary {
-  seasonCode: string;
-  seasonTitle: string;
-  rowCount: number;
-  sheets: SheetSummary[];
-  estimatedBytes: number;
-}
 
 interface SeasonWorkbookResult extends SeasonWorkbookSummary {
   workbook: ExcelJS.Workbook;
@@ -197,155 +170,4 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
     sheets,
     estimatedBytes: estimateBytes(sheets),
   };
-}
-
-/**
- * The manifest's numbers, without building anything.
- *
- * Four counts and a season lookup. The point is that a phone can be told "38
- * students × 14 sessions, about 40 kB" before it commits to a download on a
- * cellular connection (spec §7).
- */
-export async function summariseSeasonWorkbook(seasonId: number): Promise<SeasonWorkbookSummary | null> {
-  const season = await db.season.findFirst({
-    where: { id: seasonId, deletedAt: null },
-    select: { code: true, title: true },
-  });
-  if (!season) return null;
-
-  const now = new Date();
-  const [rowCount, sessionCount, quizCount, assignmentCount] = await Promise.all([
-    db.seasonEnrollment.count({ where: { seasonId, ...seasonParticipant } }),
-    db.session.count({ where: { seasonId, startsAt: { lte: now } } }),
-    db.quiz.count({ where: quizWhere(seasonId) }),
-    db.assignment.count({ where: { seasonId, deletedAt: null } }),
-  ]);
-
-  const sheets: SheetSummary[] = [
-    { name: "Attendance", columnCount: 4 + sessionCount, rowCount },
-    { name: "Grades", columnCount: 4 + quizCount, rowCount },
-    { name: "Assignments", columnCount: 4 + assignmentCount, rowCount },
-    { name: "Key", columnCount: 2, rowCount: KEY_SYMBOLS.length + 8 },
-  ];
-
-  return {
-    seasonCode: season.code,
-    seasonTitle: season.title,
-    rowCount,
-    sheets,
-    estimatedBytes: estimateBytes(sheets),
-  };
-}
-
-/**
- * A heuristic, and labelled as one on the contract.
- *
- * XLSX is a zip of XML, so the only honest way to know the size is to build the
- * file — which is the thing the manifest exists to avoid. ~12 bytes of
- * compressed XML per cell plus a fixed overhead has been close enough to warn a
- * user before a multi-megabyte download, which is all it is for.
- */
-function estimateBytes(sheets: SheetSummary[]): number {
-  const cells = sheets.reduce((n, s) => n + s.columnCount * (s.rowCount + 1), 0);
-  return 8 * 1024 + cells * 12;
-}
-
-/**
- * Quizzes worth a column.
- *
- * publishedAt is documented in the schema as the draft marker for ONLINE
- * quizzes ("students only see published quizzes",
- * prisma/schema.prisma:653-654) and v1's export ignored it (R74), so an
- * unpublished quiz became a column of blanks that reads as a cohort-wide
- * failure to sit it. PAPER quizzes have no publish concept and stay.
- * maxScore = 0 is not a grade (R77). Both exclusions live in the `where` so the
- * column never exists, rather than existing and being skipped.
- */
-function quizWhere(seasonId: number) {
-  return {
-    seasonId,
-    maxScore: { gt: 0 },
-    OR: [{ kind: "PAPER" as const }, { kind: "ONLINE" as const, publishedAt: { not: null } }],
-  };
-}
-
-async function loadSeasonExportData(seasonId: number) {
-  // 1 — the season, with the soft-delete check v1 omitted.
-  const season = await db.season.findFirst({
-    where: { id: seasonId, deletedAt: null },
-    select: { code: true, title: true },
-  });
-  if (!season) return null;
-
-  // 2 — the roster. groupId comes from the ENROLMENT (R66, ruling C9); the
-  // group NAME comes with it so the sheet needs no second lookup.
-  const enrollments = await db.seasonEnrollment.findMany({
-    where: { seasonId, ...seasonParticipant },
-    select: {
-      studentUserId: true,
-      groupId: true,
-      studentUser: { select: { name: true, email: true } },
-      group: { select: { name: true } },
-    },
-  });
-  const students = enrollments
-    .map((e) => ({
-      studentUserId: e.studentUserId,
-      name: e.studentUser.name,
-      email: e.studentUser.email,
-      groupId: e.groupId,
-      groupName: e.group?.name ?? "",
-    }))
-    .sort((a, b) => COLLATOR.compare(a.name, b.name));
-
-  const now = new Date();
-
-  // 3 — past sessions with their attendance rows.
-  const sessions = await db.session.findMany({
-    where: { seasonId, startsAt: { lte: now } },
-    orderBy: { startsAt: "asc" },
-    select: {
-      id: true,
-      title: true,
-      startsAt: true,
-      // lateMinutes is deliberately NOT selected. Nothing in v2 renders it, and
-      // not fetching it is the cheapest possible guarantee that nobody
-      // "restores" the cell by reaching for a field that is already in hand.
-      attendance: { select: { studentUserId: true, status: true } },
-    },
-  });
-
-  // 4 — quizzes worth a column, with their grades.
-  const quizzes = await db.quiz.findMany({
-    where: quizWhere(seasonId),
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      title: true,
-      maxScore: true,
-      grades: { select: { studentUserId: true, score: true } },
-    },
-  });
-
-  // 5 — assignments with their targets and submissions.
-  const assignments = await db.assignment.findMany({
-    where: { seasonId, deletedAt: null },
-    orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      title: true,
-      isAllGroups: true,
-      targets: { select: { groupId: true } },
-      submissions: {
-        where: { status: { not: "DRAFT" } },
-        select: { studentUserId: true, status: true },
-      },
-    },
-  });
-
-  // 6..10 — the two percentage columns, from the one definition.
-  const engagement = await computeEngagementForSeasons([seasonId]);
-  const engagementBy = new Map(engagement.map((r) => [r.studentUserId, r]));
-
-  return { season, students, sessions, quizzes, assignments, engagementBy };
 }
