@@ -6,7 +6,7 @@ import { auditLog } from "../../lib/audit";
 import { invalidateSessions } from "../../lib/auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { parseId } from "../../lib/parse-id";
-import { graduatePerson, passedGraduatingYears } from "../../lib/queries/students/writes";
+import { graduatePerson, passedGraduatingYears } from "../../lib/students/graduation";
 import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
 import { requireRole } from "../../middleware/require-auth";

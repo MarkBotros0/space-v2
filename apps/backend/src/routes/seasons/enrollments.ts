@@ -6,7 +6,7 @@ import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
-import { deleteDraftRow, hasWorkInSeason } from "../../lib/queries/students/writes";
+import { deleteDraftRow, hasWorkInSeason } from "../../lib/students/graduation";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { lockPeople, readSeatSeason, seatStudents, type SeatRefusal, type SeatStudentsResult } from "../../lib/roles";
 import { refusalStatus } from "../../lib/api-error";

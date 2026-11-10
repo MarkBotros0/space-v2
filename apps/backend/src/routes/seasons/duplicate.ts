@@ -110,7 +110,7 @@ export async function duplicateSeason(req: Request, res: Response) {
         // only groups an assignment targets and sessions an assignment points
         // at are created row by row, because their new ids must be mapped back
         // and createManyAndReturn's row order is not part of its contract (see
-        // lib/queries/students/writes.ts). Assignment targets go in one
+        // lib/students/create.ts). Assignment targets go in one
         // createMany at the end.
         const targetedGroupIds = new Set(
           source.assignments.filter((a) => !a.isAllGroups).flatMap((a) => a.targets.map((t) => t.groupId)),

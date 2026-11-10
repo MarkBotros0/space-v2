@@ -2,7 +2,7 @@ import type { Standing } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonStatus } from "../../generated/prisma/enums";
 import { markSessionsStale } from "../auth/session-validity";
-import { enrollStudentsInSeason, type NewEnrollment } from "../queries/students/writes";
+import { enrollStudentsInSeason, type NewEnrollment } from "../students/create";
 import { activeRolesFor, lockPeople, lockSeason, type ActiveRole, type SeasonLockMode } from "./active-role";
 import { seatRefusal, type SeatPerson, type SeatRefusal } from "./seat-rules";
 import { describeBlock, loadStandings, standingsFrom, type StandingSeason } from "./standing";

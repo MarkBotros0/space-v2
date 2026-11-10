@@ -8,7 +8,7 @@ import { seasonPeopleIds } from "../../lib/auth/season-people";
 import { markSessionsStale } from "../../lib/auth/session-validity";
 import { parseId } from "../../lib/parse-id";
 import { loadSeasonEndCheck } from "../../lib/queries/season-end";
-import { graduatePassed } from "../../lib/queries/students/writes";
+import { graduatePassed } from "../../lib/students/graduation";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { lockPeople, lockSeason } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";

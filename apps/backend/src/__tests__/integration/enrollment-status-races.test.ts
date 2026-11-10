@@ -4,7 +4,7 @@ import request from "supertest";
 
 import { db } from "../../db/client";
 import { lockSeason, lockPeople } from "../../lib/roles";
-import { graduatePerson } from "../../lib/queries/students/writes";
+import { graduatePerson } from "../../lib/students/graduation";
 import { behind, holdTransaction, untilBlockedBehind, untilWaiting } from "./lock-holds";
 import { reviewedOf } from "./fixtures";
 import {

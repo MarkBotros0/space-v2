@@ -9,7 +9,7 @@ import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
 import { loadSeasonResults } from "../../lib/queries/season-results";
 import { findLiveSeason } from "../../lib/queries/seasons";
-import { graduatePerson } from "../../lib/queries/students/writes";
+import { graduatePerson } from "../../lib/students/graduation";
 import { isSuper } from "../../lib/rbac";
 import { lockPeople } from "../../lib/roles";
 import { requireUser, requireRole } from "../../middleware/require-auth";
