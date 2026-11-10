@@ -25,11 +25,12 @@ export async function runDueWork(now: Date = new Date()): Promise<Record<string,
 
 /** Runs the sweep if this instance wins the lease; "busy" when another holds it. */
 export async function maybeRunScheduler(now: Date = new Date()): Promise<"ran" | "busy"> {
-  if (!(await claimLease(LEASE_NAME, now, LEASE_HOLD_MS))) return "busy";
+  const held = await claimLease(LEASE_NAME, now, LEASE_HOLD_MS);
+  if (held === null) return "busy";
   try {
     await runDueWork(now);
     return "ran";
   } finally {
-    await releaseLease(LEASE_NAME, new Date());
+    await releaseLease(LEASE_NAME, held, new Date());
   }
 }

@@ -38,7 +38,7 @@ describe("scheduler runner", () => {
   });
 
   it("does nothing and says busy when the lease is held", async () => {
-    mockClaimLease.mockResolvedValue(false);
+    mockClaimLease.mockResolvedValue(null);
     const run = jest.fn().mockResolvedValue(1);
     registerHandler({ name: "a", run });
     await expect(maybeRunScheduler()).resolves.toBe("busy");
@@ -47,7 +47,7 @@ describe("scheduler runner", () => {
   });
 
   it("releases the lease even when a handler throws", async () => {
-    mockClaimLease.mockResolvedValue(true);
+    mockClaimLease.mockResolvedValue(new Date("2026-11-12T07:05:00Z"));
     registerHandler({
       name: "a",
       run: async () => {
@@ -56,6 +56,8 @@ describe("scheduler runner", () => {
     });
     await expect(maybeRunScheduler()).resolves.toBe("ran");
     expect(mockReleaseLease).toHaveBeenCalledTimes(1);
+    // It frees only the hold it took (review M7).
+    expect(mockReleaseLease).toHaveBeenCalledWith("main", new Date("2026-11-12T07:05:00Z"), expect.any(Date));
   });
 });
 
