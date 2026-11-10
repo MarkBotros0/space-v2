@@ -54,6 +54,7 @@ export const notificationTypeSchema = z.enum([
   "SUBMISSION_RECEIVED",
   "SESSION_CANCELLED",
   "ANNOUNCEMENT",
+  "ASSIGNMENT_REMINDER",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 

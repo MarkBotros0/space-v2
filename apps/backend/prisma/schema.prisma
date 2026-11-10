@@ -93,6 +93,7 @@ enum NotificationType {
   SUBMISSION_RECEIVED
   SESSION_CANCELLED
   ANNOUNCEMENT
+  ASSIGNMENT_REMINDER
 }
 
 enum AnnouncementAudience {
