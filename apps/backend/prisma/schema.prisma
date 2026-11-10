@@ -15,6 +15,8 @@
 //   - `publicId` (nanoid, 10 chars) only on Submission, per the per-entity URL strategy.
 //   - Rules Prisma cannot express (CHECKs, partial indexes) are listed at the end of their model
 //     as `// SQL-only <kind> <name>: <definition>`; schema-snapshot.test.ts fails on one missing.
+//   - src/__tests__/schema-conformance.test.ts holds the base columns, an index on every foreign key
+//     (the audit trail to User excepted) and link tables keyed by their pair; its lists name the exceptions.
 
 generator client {
   provider = "prisma-client"
