@@ -83,11 +83,11 @@ export async function graduateStudent(req: Request, res: Response) {
 
 /**
  * Soft delete (Plan 10 Decision 3; spec 06 D13 "keep soft delete as
- * DELETE /students/:id"). SUPER-only. One transaction — v1 stamped User and
- * StudentProfile in two separate statements (R86) — that also revokes every
- * refresh token (spec 11 D6: deactivation revokes). Nothing cascades (R87):
- * enrollments, attendance, submissions and notes are history. A SUPER undoes
- * this through POST /users/:id/reactivate, which clears both stamps.
+ * DELETE /students/:id"). SUPER-only. One transaction that stamps the user
+ * and revokes every refresh token (spec 11 D6: deactivation revokes); the
+ * profile's own stamp is no longer written (refactor DB-010). Nothing cascades
+ * (R87): enrollments, attendance, submissions and notes are history. A SUPER
+ * undoes this through POST /users/:id/reactivate.
  */
 export async function deleteStudent(req: Request, res: Response) {
   const user = requireRole(req, res, isSuper, "Only a super user can delete students.");
@@ -102,7 +102,6 @@ export async function deleteStudent(req: Request, res: Response) {
       data: { deletedAt },
     });
     if (marked.count === 0) return false;
-    await tx.studentProfile.updateMany({ where: { userId: id }, data: { deletedAt } });
     await revokeAllRefreshTokensForUser(tx, id);
     await invalidateSessions(tx, id); // Plan 18 M13: live access tokens end too
     return true;

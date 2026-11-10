@@ -249,8 +249,8 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
       },
     });
     expect(row?.deletedAt).not.toBeNull();
-    // R86 fixed: v1 wrote these two in separate statements.
-    expect(row?.studentProfile?.deletedAt).not.toBeNull();
+    // DB-010: only the user carries the stamp now.
+    expect(row?.studentProfile?.deletedAt).toBeNull();
     // R87 kept: soft delete cascades to nothing.
     expect(row?.seasonEnrollments).toEqual([{ status: "ACTIVE" }]);
     // Spec 11 D6: deactivation revokes. (A refresh would 401 anyway via
