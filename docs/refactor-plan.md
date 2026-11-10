@@ -6,9 +6,9 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-10)
 
-- **Current phase:** Wave 4 (backend per domain) is **finished on `refactor/wave-4-backend`** (from `main` @
-  `ac0f4306`, which holds Waves 0–3) and stopped for the owner's review. Nothing is pushed. Wave 4 code needs
-  the Wave 3 migrations first on any environment it reaches (see the Wave 3 summary).
+- **Current phase:** Wave 5 (mobile per feature area) is **finished on `refactor/wave-5-mobile`** (from local
+  `main` @ `84a50069`, which holds Waves 0–4) and stopped for the owner's review. Nothing is pushed. Wave 5 is
+  mobile-only; it needs no migration and changes no API.
 - Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
   again. Tests run only on the throwaway DB (see Working setup).
 - Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
@@ -339,7 +339,7 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 - [x] 5.10 Reports & exports: FE-012 — useReportExport().exportEngagement / exportWorkbook; paths in the hook; mobile 283/2358
 - [x] 5.11 Announcements & polls: FE-080 (poll-diff rule pinned first), FE-081 — FE-080 usePollDraft + pure pollPatch (5 tests) and post-form-sections (AudienceSection, MessageField); FE-081 PollActions; mobile 284/2363
 - [x] 5.12 Remaining screens: FE-020 / FE-032 leftovers — FE-032: 112 request-then-parse pairs on apiGet / apiSend in 37 hook files (53 irregular calls stay on apiClient; the one inside a try is awaited); FE-020: queryStateView on 4 more screens; the irregular ladders stay (combined conditions, error-first order, data narrowing). Mobile 284/2363
-- [ ] 5.13 Full verification + **UI sweep** + wave summary + PR → **STOP**
+- [x] 5.13 Full verification + **UI sweep** + wave summary + PR → **STOP** — verified (log ~/logs/space-v2-refactor-wave5.log); device sweep skipped on the owner's ruling (its sign-in flows need the shared test DB and its reference passwords); summary written; PR and push wait for the owner
 - Skipped (D8): FE-004 player part (YouTube timing), FE-017 + FE-073 (mass moves and renames that
   collide with the active redesign 02–05 branches), FE-071 part 2 and FE-072 (visual changes that the
   redesign plans own), FE-007
@@ -453,3 +453,22 @@ _(one paragraph per finished wave)_
   61 backend, down from 75, and 214 mobile), typecheck, build, unit 340 / 572 / 2,317, integration 137 / 1,587.
   **Deploy (owner):** Wave 3's migrations first, then this code; expect everyone signed in on two devices to be
   signed out of one.
+- **Wave 5** (`refactor/wave-5-mobile`, 39 commits, not merged or pushed): mobile only, no API or copy change.
+  Season overview as a pure `seasonOverviewModel` behind a 13-case role × status tile snapshot taken first
+  (FE-001); start/end gates as early returns (FE-003); no placeholder ids: eight write hooks take `number | null`
+  through `loadedId` (FE-018); `usePeopleSelection` reducer (FE-002); the roster import flow, the quiz grade screen
+  (282 → 43 lines), the forum thread and the season calendars split into `src/screens/` parts (FE-005, FE-008,
+  FE-009, FE-010); `use-quizzes/` and `use-students/` folders, importers unchanged (FE-010); `videoQuestionBody`
+  (FE-004 editor part); `studentListCopy` with its cast gone (FE-061), `StudentDirectory` / `LocalStudentList`
+  renames (FE-034), `SearchFilterRow` in the kit and catalogue (FE-029); `calendarBranchFor` (FE-060);
+  `useReportExport` (FE-012); `usePollDraft` / pure `pollPatch` pinned first, post-form sections and `PollActions`
+  (FE-080, FE-081); `useSchemaErrors` in GroupForm and SeasonForm (FE-006); 112 request-then-parse pairs on
+  `apiGet` / `apiSend` in 37 hook files (FE-032; the one inside a `try` is awaited so a 404 still reaches its
+  catch); `queryStateView` on 4 more screens (FE-020). Left as they are (D8): 53 irregular `apiClient` calls
+  (no schema, blobs, custom config), the irregular form validators and long form bodies, state ladders with
+  combined conditions, error-first order or data narrowing, FE-004 player part, FE-007, FE-071 part 2, FE-072.
+  **For the owner:** FE-017 / FE-073 were skipped as colliding with the redesign 02–05 branches, but those are
+  all merged into `main` now, so that reason no longer holds; they stay skipped unless you say otherwise.
+  Verified: lint (0 errors; warnings 61 backend, 217 mobile), typecheck, build, unit 340 / 572 / 2,363 (284 mobile
+  suites), integration 137 / 1,587. No device UI sweep (owner's call: its signed-in flows run against the shared
+  test DB and change six reference passwords); Wave 5 moved code and changed no styles or class names.
