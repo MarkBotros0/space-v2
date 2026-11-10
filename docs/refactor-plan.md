@@ -6,9 +6,9 @@ below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices i
 
 ## Status (2026-11-10)
 
-- **Current phase:** Wave 5 (mobile per feature area) is **finished on `refactor/wave-5-mobile`** (from local
-  `main` @ `84a50069`, which holds Waves 0–4) and stopped for the owner's review. Nothing is pushed. Wave 5 is
-  mobile-only; it needs no migration and changes no API.
+- **Current phase:** Wave 7 (guardrails) on `refactor/wave-7-guardrails`. Owner, 2026-11-10: finish the
+  remaining waves without stopping between them, then run the missing UI sweeps. Waves 5 and 6 are finished
+  on their branches (each built on the one before, from local `main` @ `84a50069`); nothing is pushed.
 - Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
   again. Tests run only on the throwaway DB (see Working setup).
 - Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
@@ -350,15 +350,15 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 **Deploy only after Waves 3–5 are live (a running build must not break). Data loss is acceptable (D9);
 a backup first is optional. A rollback restores columns, not data.**
 
-- [ ] 6.0 Confirm Waves 3–5 deployed
+- [x] 6.0 Confirm Waves 3–5 deployed — **not deployed**: nothing is pushed yet. Written and verified on the throwaway DB only; the deploy order below gates it
 - [x] 6.1 DB-001: drop the 7 dead `StudentProfile` columns, its FK and IDX-D2 — `20261111010000_student_profile_dead_columns`: FK, index and 7 columns (activeSeasonId, year, phone, dateOfBirth, spiritualBackground, gifts, photoPath) + the Season back-relation; cycle (rollback restores the columns, not data; column order aside) + drift empty + snapshot (-7 columns, -1 FK, -1 index); test fixtures stop using the column; unit 572
 - [x] 6.2 DB-002: drop `Season.coverImagePath`, `Session.materialsPath`, `JpcEvent.imagePath` — `20261111020000_dead_path_columns`; cycle + drift empty + snapshot (-3 columns); events.ts comment updated; unit 572
 - [x] 6.3 DB-003: drop `StudentDocument` and its User relations — `20261111030000_drop_student_document` (table, sequence, index, both FKs; rollback recreates it empty) + the two User relations + the ERD group entry; cycle + drift empty + snapshot (only StudentDocument lines); unit 572
 - [x] 6.4 DB-006: drop `RefreshToken.userAgent` — `20261111040000_refresh_token_user_agent`; cycle + drift empty + snapshot (-1 column); the 'no longer written' comment and assertion go with it; unit 572
 - [x] 6.5 DB-010: drop `StudentProfile.deletedAt` — `20261111050000_student_profile_deleted_at`; `liveStudentProfile` removed; the role-convert script's profile upsert no longer copies the stamp (the User row keeps it); schema header, OpenAPI text and tests updated; cycle + drift empty + snapshot (-1 column); unit 572
 - [x] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`) — `20261111060000_drop_group_student_group_idx` (IDX-D1) and `20261111070000_drop_mentor_follow_up_due_idx` (IDX-D3), one CONCURRENTLY statement per file (D10 corrected: two in one file failed with nothing applied); cycle each + drift empty + snapshot (-2 indexes); unit 572
-- [ ] 6.7 ERD final; full verification + wave summary + PR → **STOP**
-- Skipped (D8): DB-012 table drop, DB-005, IDX-D4 (kept: the device prune reads `lastSeenAt`), DB-011b
+- [x] 6.7 ERD final; full verification + wave summary + PR → **STOP**
+- Skipped (D8): DB-012 table drop, DB-005, IDX-D4 (kept: the device prune reads `lastSeenAt`), DB-011b — ERD regenerated at every step; verified (log ~/logs/space-v2-refactor-wave6.log); summary written; on the owner's 2026-11-10 instruction no stop here, straight on to Wave 7; PR and push wait for the owner
 
 ### Wave 7 — guardrails (`refactor/wave-7-guardrails`)
 
@@ -473,3 +473,18 @@ _(one paragraph per finished wave)_
   Verified: lint (0 errors; warnings 61 backend, 217 mobile), typecheck, build, unit 340 / 572 / 2,363 (284 mobile
   suites), integration 137 / 1,587. No device UI sweep (owner's call: its signed-in flows run against the shared
   test DB and change six reference passwords); Wave 5 moved code and changed no styles or class names.
+- **Wave 6** (`refactor/wave-6-schema-contract`, 9 commits, not merged or pushed): seven contract migrations,
+  each with a `rollback.sql` cycled apply → rollback → apply on the throwaway DB (a dropped column comes back
+  empty and at the end of its table, so the cycle compares dumps with column order aside) and `migrate diff`
+  empty after each. Dropped: StudentProfile's 7 dead columns with the `activeSeasonId` FK and index (DB-001,
+  IDX-D2), `Season.coverImagePath` / `Session.materialsPath` / `JpcEvent.imagePath` (DB-002), the
+  `StudentDocument` table (DB-003), `RefreshToken.userAgent` (DB-006), `StudentProfile.deletedAt` with
+  `liveStudentProfile` (DB-010; the role-convert script no longer copies the stamp onto a new profile), and
+  `GroupStudent_groupId_idx` / `MentorFollowUp_dueAt_idx` (IDX-D1, IDX-D3). D10 corrected: one CONCURRENTLY
+  statement per file (two in one file failed with nothing applied). D8 skips unchanged: DB-012, DB-005,
+  IDX-D4, DB-011b. Verified: lint (0 errors; warnings 61 backend, 217 mobile, 1 shared), typecheck, build,
+  unit 340 / 572 / 2,363, integration 137 / 1,587.
+  **Deploy (owner), the reverse of Wave 3:** Waves 3–5 live first; then **this code before these
+  migrations** (a running build whose client still knows a dropped column fails on every read of that model;
+  this build runs fine on a database that still has them); then `db:migrate:deploy`. The data in the dropped
+  columns and table is lost (D9); a rollback restores columns, not data.
