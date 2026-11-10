@@ -48,7 +48,7 @@ followUpsRouter.post("/:id/done", requireAuth, async (req, res) => {
     where: { id, mentorUserId: user.userId },
     select: { id: true, doneAt: true },
   });
-  if (!row) return apiError(res, "not_found", "Follow-up not found.", 404);
+  if (!row) return notFound(res, "Follow-up");
   // Done twice is still done: answer with the row as it stands.
   const updated = await db.mentorFollowUp.update({
     where: { id },

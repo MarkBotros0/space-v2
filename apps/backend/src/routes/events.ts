@@ -226,9 +226,8 @@ eventsRouter.patch("/:id", async (req, res) => {
   };
   // Drop undefined keys so an omitted field keeps its stored value.
   const patch = Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined));
-  const merged = mergedEventSchema.safeParse({ ...stored, ...patch });
-  if (!merged.success) return apiError(res, "bad_request", "Invalid event.", 400);
-  const m = merged.data;
+  const m = parseOr400(mergedEventSchema, { ...stored, ...patch }, res, "Invalid event.");
+  if (m === null) return;
 
   const seasonId = m.visibility === "SEASON" ? m.seasonId : null;
   // Only a season being newly attached must be live: an event already on a

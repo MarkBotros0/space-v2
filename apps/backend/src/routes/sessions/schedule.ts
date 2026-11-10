@@ -5,7 +5,6 @@ import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
 import { addWeeksInOrgTime, formatInOrgTime, orgDayKey, orgWallTime } from "../../lib/org-time";
-import { parseId } from "../../lib/parse-id";
 import { newPublicId } from "../../lib/public-id";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { prepareSessionCancelledNotice, sendSessionCancelledNotice } from "../../lib/session-notifications";
@@ -22,6 +21,7 @@ import { findLiveSeason } from "../../lib/queries/seasons";
 import { createSessionSeries, deleteSessionsWithRecords, editSessions } from "../../lib/sessions/schedule";
 import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
+import { idParam } from "../../lib/http/params";
 
 export async function createSession(req: Request, res: Response) {
   const user = requireUser(req);
@@ -65,11 +65,8 @@ export async function createSession(req: Request, res: Response) {
  */
 async function loadAnchorForSeasonAdmin(req: Request, res: Response): Promise<SeriesAnchor | null> {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) {
-    apiError(res, "bad_request", "Invalid session id.", 400);
-    return null;
-  }
+  const id = idParam(res, req.params.id, "session");
+  if (id === null) return null;
 
   const anchor = await db.session.findUnique({
     where: { id },
@@ -177,10 +174,10 @@ export async function previewSeries(req: Request, res: Response) {
   const anchor = await loadAnchorForSeasonAdmin(req, res);
   if (!anchor) return undefined;
 
-  const scope = recurrenceScopeSchema.safeParse(req.query.scope);
-  if (!scope.success) return apiError(res, "bad_request", "Pass scope=one|future|all.", 400);
+  const scope = parseOr400(recurrenceScopeSchema, req.query.scope, res, "Pass scope=one|future|all.");
+  if (scope === null) return;
 
-  const targetIds = (await resolveSeriesTargets(anchor, scope.data)).map((t) => t.id);
+  const targetIds = (await resolveSeriesTargets(anchor, scope)).map((t) => t.id);
   const inTargets = { sessionId: { in: targetIds } };
   const [rows, attendanceCount, videoProgressCount] = await Promise.all([
     db.session.findMany({
@@ -193,7 +190,7 @@ export async function previewSeries(req: Request, res: Response) {
   ]);
 
   return apiOk(res, {
-    scope: scope.data,
+    scope: scope,
     sessions: rows.map((r) => ({
       id: r.id,
       title: r.title,

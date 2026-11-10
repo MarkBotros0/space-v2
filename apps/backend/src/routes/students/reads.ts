@@ -1,9 +1,8 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
+import { apiOk, forbidden } from "../../lib/api-response";
 import type { SessionUser } from "../../lib/auth/tokens";
-import { parseId } from "../../lib/parse-id";
 import { canViewStudent } from "../../lib/permissions";
 import {
   listStudents,
@@ -74,11 +73,8 @@ export async function getStudent(req: Request, res: Response) {
  */
 async function resolveHistoryTarget(req: Request, res: Response): Promise<{ user: SessionUser; id: number } | null> {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) {
-    apiError(res, "bad_request", "Invalid student id.", 400);
-    return null;
-  }
+  const id = idParam(res, req.params.id, "student");
+  if (id === null) return null;
   if (user.role === "STUDENT" || !(await canViewStudent(user, id))) {
     forbidden(res);
     return null;

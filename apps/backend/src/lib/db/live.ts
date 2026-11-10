@@ -19,5 +19,8 @@ export const liveSeason = { deletedAt: null } as const;
 export const liveAssignment = { deletedAt: null } as const;
 export const liveStudentProfile = { deletedAt: null } as const;
 
+/** Only soft-deleted rows: the inactive-accounts list, End closing a deleted student's place. */
+export const deletedOnly = { deletedAt: { not: null } } as const;
+
 /** Deliberately include soft-deleted rows. An empty filter, named for the reader. */
 export const withDeleted = {} as const;

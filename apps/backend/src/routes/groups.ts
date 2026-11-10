@@ -2,7 +2,6 @@ import { Router, type Request, type Response } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
-import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
 import { listMyGroups, loadGroupImpact } from "../lib/queries/groups";
 import { validateGroupWrite } from "../lib/groups/membership";
@@ -126,11 +125,8 @@ groupsRouter.get("/:id", async (req, res) => {
 
 async function loadManagedGroup(req: Request, res: Response): Promise<number | null> {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) {
-    apiError(res, "bad_request", "Invalid group id.", 400);
-    return null;
-  }
+  const id = idParam(res, req.params.id, "group");
+  if (id === null) return null;
   const group = await db.group.findUnique({ where: { id }, select: { seasonId: true } });
   if (!group) {
     notFound(res, "Group");

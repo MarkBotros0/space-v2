@@ -42,8 +42,8 @@ forumRouter.get("/assignments/:id/forum", requireAuth, async (req, res) => {
   const assignmentId = idParam(res, req.params.id, "assignment");
   if (assignmentId === null) return;
 
-  const parsedQuery = forumFeedQuerySchema.safeParse(req.query);
-  if (!parsedQuery.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  const parsedQuery = parseOr400(forumFeedQuerySchema, req.query, res, "Invalid query.");
+  if (parsedQuery === null) return;
 
   if ((await loadForumAssignment(assignmentId)) === null) {
     return notFound(res, "Assignment");
@@ -52,7 +52,7 @@ forumRouter.get("/assignments/:id/forum", requireAuth, async (req, res) => {
   const audience = await forumAudienceFor(user, assignmentId);
   if (audience === null) return forbidden(res);
 
-  const view = await loadForumView(assignmentId, user, audience, parsedQuery.data);
+  const view = await loadForumView(assignmentId, user, audience, parsedQuery);
   if (view === null) return notFound(res, "Assignment");
   return apiOk(res, view);
 });
@@ -133,8 +133,8 @@ forumRouter.get("/assignments/:id/forum/posts/:publicId/comments", requireAuth, 
   const assignmentId = idParam(res, req.params.id, "assignment");
   if (assignmentId === null) return;
 
-  const parsedQuery = forumCommentsQuerySchema.safeParse(req.query);
-  if (!parsedQuery.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  const parsedQuery = parseOr400(forumCommentsQuerySchema, req.query, res, "Invalid query.");
+  if (parsedQuery === null) return;
 
   const assignment = await loadForumAssignment(assignmentId);
   if (assignment === null) return notFound(res, "Assignment");
@@ -163,7 +163,7 @@ forumRouter.get("/assignments/:id/forum/posts/:publicId/comments", requireAuth, 
     }
   }
 
-  return apiOk(res, await listForumComments(post, assignment.seasonId, user, parsedQuery.data));
+  return apiOk(res, await listForumComments(post, assignment.seasonId, user, parsedQuery));
 });
 
 forumRouter.post("/assignments/:id/forum/posts/:publicId/comments", requireAuth, async (req, res) => {

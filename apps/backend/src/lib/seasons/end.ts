@@ -4,7 +4,7 @@ import { db } from "../../db/client";
 import { ApiError } from "../api-error";
 import { seasonPeopleIds } from "../auth/season-people";
 import { markSessionsStale } from "../auth/session-validity";
-import { liveSeason, liveUser } from "../db/live";
+import { deletedOnly, liveSeason, liveUser } from "../db/live";
 import { loadSeasonEndCheck } from "../queries/season-end";
 import { lockPeople, lockSeason } from "../roles";
 import { graduatePassed } from "../students/graduation";
@@ -85,7 +85,7 @@ export async function endSeasonNow(
       }
       // A deleted account is neither passed nor failed: close its enrolment with no result.
       await tx.seasonEnrollment.updateMany({
-        where: { seasonId: id, status: "ACTIVE", studentUser: { deletedAt: { not: null } } },
+        where: { seasonId: id, status: "ACTIVE", studentUser: deletedOnly },
         data: { status: "COMPLETED", completedAt: now },
       });
       // A live student enrolled between the check and here was never reviewed: refuse.

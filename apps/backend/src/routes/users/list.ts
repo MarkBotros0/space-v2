@@ -12,7 +12,7 @@ import { LIST_SELECT, toListItem } from "./views";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
 import { parseOr400 } from "../../lib/http/validate";
-import { liveUser } from "../../lib/db/live";
+import { deletedOnly, liveUser } from "../../lib/db/live";
 
 export async function listUsers(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
@@ -43,7 +43,7 @@ export async function listUsers(req: Request, res: Response) {
   // the database instead of over an unbounded in-memory array (R84's fix).
   const unactivated = { passwordHash: null, lastLoginAt: null } as const;
   const statusWhere: Record<UserStatus, object> = {
-    inactive: { deletedAt: { not: null } },
+    inactive: deletedOnly,
     active: {
       ...liveUser,
       OR: [{ passwordHash: { not: null } }, { lastLoginAt: { not: null } }],
