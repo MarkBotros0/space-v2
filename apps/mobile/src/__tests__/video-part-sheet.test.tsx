@@ -122,5 +122,9 @@ describe("VideoPartSheet", () => {
     expect(bar().getByText("Save video")).toBeTruthy();
     await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/assignments/55/parts/11/video-questions"));
     expect(await screen.findByText("No questions yet.")).toBeTruthy();
+    // Ruling (I1): no confirm dialog; the editor says inline what a new question does.
+    expect(
+      screen.getByText("Students who already finished this video will need to answer new questions."),
+    ).toBeTruthy();
   });
 });

@@ -158,6 +158,12 @@ export function VideoQuestionsEditor({ owner }: { owner: VideoOwner }) {
   return (
     <View className="mt-4 flex-col gap-4">
       <Text className="text-lg font-semibold">Video questions</Text>
+      {/* Ruling (I1): a part's question changes who is done with it; no dialog, this line says so. */}
+      {owner.kind === "part" ? (
+        <Text className="text-muted-foreground">
+          Students who already finished this video will need to answer new questions.
+        </Text>
+      ) : null}
       {questions.isPending ? (
         <View accessible accessibilityLabel="Loading">
           <Skeleton className="h-24 rounded-group" />

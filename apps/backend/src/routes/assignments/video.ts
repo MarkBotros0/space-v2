@@ -11,7 +11,8 @@ import { studentCanSeeAssignment } from "../../lib/queries/assignments";
 import { loadStudentVideoQuiz } from "../../lib/queries/video-quiz";
 import { answerVideoQuestionFor } from "../../lib/video-quiz/answer";
 import { saveVideoPartProgress } from "../../lib/video-quiz/part-progress";
-import { assertInsideVideo, createQuestionFor, listQuestionsFor } from "../../lib/video-quiz/questions";
+import { listQuestionsFor } from "../../lib/video-quiz/questions";
+import { addPartQuestion } from "../../lib/assignments/part-questions";
 import { requireAuth, requireUser } from "../../middleware/require-auth";
 import {
   submitVideoAnswerRequestSchema,
@@ -132,7 +133,7 @@ assignmentVideoRouter.post("/:id/parts/:partId/video-questions", requireAuth, as
   if (part === null) return;
   const parsed = parseOr400(videoQuestionInputSchema, req.body, res, "Invalid question.");
   if (parsed === null) return;
-  assertInsideVideo(parsed.atSeconds, part.durationSeconds);
-  const question = await createQuestionFor({ partId: part.partId }, parsed, requireUser(req).userId);
+  // A new question changes who is done with the video: the service settles them.
+  const question = await addPartQuestion(part.partId, parsed, requireUser(req).userId);
   return apiOk(res, { question }, 201);
 });

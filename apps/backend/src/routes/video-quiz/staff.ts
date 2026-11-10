@@ -14,6 +14,7 @@ import {
   toAdminRow,
   updateAndRegrade,
 } from "../../lib/video-quiz/questions";
+import { deletePartQuestion } from "../../lib/assignments/part-questions";
 import { videoQuestionInputSchema } from "../../../../../packages/shared/src/index";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
@@ -128,9 +129,13 @@ export async function deleteVideoQuestion(req: Request, res: Response) {
   if ((await questionGate(user, existing)) === null) return forbidden(res);
 
   // The database cascade removes the responses; the count exists so the client
-  // can warn before and confirm after. SessionVideoProgress is deliberately left
-  // alone (v1 R11): there is no soft-delete column to do better with.
-  const responsesRemoved = await deleteQuestionCountingResponses(questionId);
+  // can warn before and confirm after. A session's SessionVideoProgress is
+  // deliberately left alone (v1 R11). A video part's students are settled under
+  // the assignment's lock (ruling I1): the question changed who is done.
+  const responsesRemoved =
+    existing.assignmentPartId === null
+      ? await deleteQuestionCountingResponses(questionId)
+      : await deletePartQuestion(questionId, existing.assignmentPartId);
 
   return apiOk(res, { deleted: true as const, responsesRemoved });
 }

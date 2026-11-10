@@ -14,6 +14,8 @@ const ADMIN_SELECT = {
   _count: { select: { responses: true } },
 } as const;
 
+type Client = Prisma.TransactionClient | typeof db;
+
 type QuestionInput = { atSeconds: number; prompt: string; options: string[]; correctIndex: number; points: number };
 
 /** A part's question must come before its video ends; a session's length isn't stored (null). */
@@ -51,10 +53,16 @@ export async function listQuestionsFor(owner: VideoOwner) {
 /**
  * Adds a question to a session's video or a video part. createdById is stamped
  * on create only — there is no updatedById column, so it means "who first
- * authored this".
+ * authored this". A video part's question is written inside the transaction
+ * that settles its students (lib/assignments/part-questions.ts).
  */
-export async function createQuestionFor(owner: VideoOwner, body: QuestionInput, createdById: number) {
-  const created = await db.sessionVideoQuestion.create({
+export async function createQuestionFor(
+  owner: VideoOwner,
+  body: QuestionInput,
+  createdById: number,
+  client: Client = db,
+) {
+  const created = await client.sessionVideoQuestion.create({
     data: {
       ...ownerColumns(owner),
       atSeconds: body.atSeconds,
@@ -116,14 +124,20 @@ export async function updateAndRegrade(questionId: number, body: QuestionInput, 
 }
 
 /**
- * Deletes a video question; the database cascade removes the responses. The
- * count is returned so the client can warn before and confirm after.
- * SessionVideoProgress is deliberately left alone (v1 R11).
+ * Deletes a video question inside the caller's transaction; the database
+ * cascade removes the responses. Returns how many there were.
+ */
+export async function deleteQuestionIn(tx: Prisma.TransactionClient, questionId: number): Promise<number> {
+  const count = await tx.sessionVideoQuestionResponse.count({ where: { questionId } });
+  await tx.sessionVideoQuestion.delete({ where: { id: questionId } });
+  return count;
+}
+
+/**
+ * Deletes a session's video question; the database cascade removes the
+ * responses. The count is returned so the client can warn before and confirm
+ * after. SessionVideoProgress is deliberately left alone (v1 R11).
  */
 export async function deleteQuestionCountingResponses(questionId: number): Promise<number> {
-  return db.$transaction(async (tx) => {
-    const count = await tx.sessionVideoQuestionResponse.count({ where: { questionId } });
-    await tx.sessionVideoQuestion.delete({ where: { id: questionId } });
-    return count;
-  });
+  return db.$transaction((tx) => deleteQuestionIn(tx, questionId));
 }

@@ -71,6 +71,11 @@ an essay's word range once any student has work on it asks for confirmation that
 students it touches. Removing a part removes the students' work on it. Adding a part reopens the
 assignment for students who had submitted. Changing a video's link resets watch progress and answers
 on that part. Changing an essay's word range never reopens essays already handed in.
+Adding or deleting a video's timed question asks nothing (the question editor says
+"Students who already finished this video will need to answer new questions."), but it settles
+every student under the assignment's lock: a submitted student it leaves short of the video is
+reopened, and one it finishes (every part done, every essay reviewed) is complete
+(`lib/assignments/part-questions.ts`, ruling I1).
 
 ## Reminders
 
