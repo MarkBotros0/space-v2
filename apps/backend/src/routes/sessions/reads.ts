@@ -4,7 +4,6 @@ import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { isCheckInOpen, isCheckInOpenForStudent } from "../../lib/check-in";
 import { MS_PER_DAY, addWeeksInOrgTime, orgDayKey, orgWallClockToInstant, orgWallTime } from "../../lib/org-time";
-import { parseId } from "../../lib/parse-id";
 import {
   attendanceScopeFor,
   calendarScopeFor,
@@ -20,6 +19,9 @@ import {
   SESSION_RANGE_MAX_DAYS,
   sessionRangeQuerySchema,
 } from "../../../../../packages/shared/src/index";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 
 /**
  * The multi-season calendar (Plan 6 D-16.7, G17). The season set comes from
@@ -29,9 +31,9 @@ import {
  */
 export async function listSessions(req: Request, res: Response) {
   const user = requireUser(req);
-  const parsed = sessionRangeQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid calendar window.", 400);
-  const q = parsed.data;
+  const parsed = parseOr400(sessionRangeQuerySchema, req.query, res, "Invalid calendar window.");
+  if (parsed === null) return;
+  const q = parsed;
 
   let from: Date;
   let to: Date;
@@ -54,7 +56,7 @@ export async function listSessions(req: Request, res: Response) {
   }
 
   const scope = await calendarScopeFor(user, q.seasonId ?? null);
-  if (scope === "not_found") return apiError(res, "not_found", "Season not found.", 404);
+  if (scope === "not_found") return notFound(res, "Season");
   if (scope === "forbidden") return forbidden(res);
 
   // Tokens only for seasons the caller can actually run check-in for (spec
@@ -71,8 +73,8 @@ export async function listSessions(req: Request, res: Response) {
 
 export async function getSession(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const id = idParam(res, req.params.id, "session");
+  if (id === null) return;
 
   // checkInToken is deliberately absent from this select — see
   // lib/queries/sessions.ts. Detail is readable by every season member, so
@@ -94,14 +96,14 @@ export async function getSession(req: Request, res: Response) {
       checkInClosedAt: true,
     },
   });
-  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!session) return notFound(res, "Session");
 
   // REG-77 (v1 student/sessions/[id]/page.tsx): a student sees the session only
   // with an ACTIVE enrolment, and is told 404 — not 403 — otherwise. This is
   // stricter than canAccessSeason, whose student branch admits any enrolment row.
   if (user.role === "STUDENT") {
     if (!(await hasActiveEnrollment(user, session.seasonId))) {
-      return apiError(res, "not_found", "Session not found.", 404);
+      return notFound(res, "Session");
     }
   } else if (!(await canAccessSeason(user, session.seasonId))) {
     return forbidden(res);
@@ -148,11 +150,11 @@ export async function getSession(req: Request, res: Response) {
  */
 export async function listSessionQuizzes(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const id = idParam(res, req.params.id, "session");
+  if (id === null) return;
 
   const exists = await db.session.findUnique({ where: { id }, select: { id: true } });
-  if (!exists) return apiError(res, "not_found", "Session not found.", 404);
+  if (!exists) return notFound(res, "Session");
   if ((await attendanceScopeFor(user, id)) === null) return forbidden(res);
 
   const quizzes = await db.quiz.findMany({

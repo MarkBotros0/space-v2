@@ -4,6 +4,7 @@ import { isSessionInProgress, progressFrom, type ProgressFigures } from "../dash
 import { orgDayKey, orgWallTime } from "../org-time";
 import type { CalendarScope } from "../permissions";
 import { seasonParticipant } from "./season-participants";
+import { liveSeason } from "../db/live";
 
 interface SessionListRow {
   id: number;
@@ -92,7 +93,7 @@ export async function listSessionsInRange(
   const where: Prisma.SessionWhereInput = {
     startsAt: { gte: window.from, lt: window.to },
     ...(scope.kind === "active"
-      ? { season: { status: "ACTIVE", deletedAt: null } }
+      ? { season: { status: "ACTIVE", ...liveSeason } }
       : { seasonId: { in: scope.seasonIds } }),
   };
   const rows = await db.session.findMany({ where, orderBy: { startsAt: "asc" }, select: SESSION_LIST_SELECT });

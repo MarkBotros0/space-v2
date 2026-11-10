@@ -18,18 +18,19 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { resolveSeriesTargets, sessionStartFrom, type SeriesAnchor } from "./series";
 import { notificationLink } from "../../lib/notification-target";
+import { findLiveSeason } from "../../lib/queries/seasons";
+import { createSessionSeries, deleteSessionsWithRecords, editSessions } from "../../lib/sessions/schedule";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 
 export async function createSession(req: Request, res: Response) {
   const user = requireUser(req);
-  const parsed = createSessionRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid session body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(createSessionRequestSchema, req.body, res, "Invalid session body.");
+  if (parsed === null) return;
+  const body = parsed;
 
-  const season = await db.season.findFirst({
-    where: { id: body.seasonId, deletedAt: null },
-    select: { id: true },
-  });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  const season = await findLiveSeason(body.seasonId, { id: true });
+  if (!season) return notFound(res, "Season");
   if (!isAdminOfSeason(user, body.seasonId)) return forbidden(res);
 
   // X13 / C2: calendar-week steps in the org zone, so a series keeps its
@@ -41,22 +42,17 @@ export async function createSession(req: Request, res: Response) {
   // free string and nothing compares lengths.
   const recurrenceGroupId = body.repeatWeeks > 1 ? newPublicId() : null;
 
-  const created = await db.$transaction(
-    dates.map((startsAt) =>
-      db.session.create({
-        data: {
-          seasonId: body.seasonId,
-          title: body.title,
-          startsAt,
-          durationMinutes: body.durationMinutes,
-          location: body.location ?? null,
-          youtubeUrl: body.youtubeUrl ?? null,
-          description: body.description ?? null,
-          recurrenceGroupId,
-        },
-        select: { id: true },
-      }),
-    ),
+  const created = await createSessionSeries(
+    dates,
+    {
+      seasonId: body.seasonId,
+      title: body.title,
+      durationMinutes: body.durationMinutes,
+      location: body.location ?? null,
+      youtubeUrl: body.youtubeUrl ?? null,
+      description: body.description ?? null,
+    },
+    recurrenceGroupId,
   );
 
   return apiOk(res, { id: created[0]?.id ?? null, recurrenceGroupId }, 201);
@@ -80,7 +76,7 @@ async function loadAnchorForSeasonAdmin(req: Request, res: Response): Promise<Se
     select: { id: true, seasonId: true, recurrenceGroupId: true, startsAt: true },
   });
   if (!anchor) {
-    apiError(res, "not_found", "Session not found.", 404);
+    notFound(res, "Session");
     return null;
   }
   if (!isAdminOfSeason(user, anchor.seasonId)) {
@@ -94,9 +90,9 @@ export async function updateSession(req: Request, res: Response) {
   const existing = await loadAnchorForSeasonAdmin(req, res);
   if (!existing) return undefined;
 
-  const parsed = updateSessionRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid session body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(updateSessionRequestSchema, req.body, res, "Invalid session body.");
+  if (parsed === null) return;
+  const body = parsed;
 
   const targets = await resolveSeriesTargets(existing, body.scope);
   const newStart = sessionStartFrom(body);
@@ -109,18 +105,7 @@ export async function updateSession(req: Request, res: Response) {
     description: body.description ?? null,
   };
 
-  await db.$transaction(
-    targets.map((t) =>
-      db.session.update({
-        where: { id: t.id },
-        // scope "one": the anchor gets newStart (t.startsAt + delta). Series:
-        // every sibling shifts by the same delta (v1's semantics, spec 03
-        // item 3's anchoring quirk and all). A fixed delta preserves the
-        // siblings' existing org-time spacing.
-        data: { ...fields, startsAt: new Date(t.startsAt.getTime() + delta) },
-      }),
-    ),
-  );
+  await editSessions(targets, fields, delta);
 
   if (delta !== 0) {
     const enrolled = await db.seasonEnrollment.findMany({
@@ -153,10 +138,10 @@ export async function deleteSession(req: Request, res: Response) {
 
   // express.json() parses DELETE bodies too; the schema's defaults make an
   // absent body and `{}` the same request.
-  const parsed = deleteSessionRequestSchema.safeParse(req.body ?? {});
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid delete body.", 400);
+  const parsed = parseOr400(deleteSessionRequestSchema, req.body ?? {}, res, "Invalid delete body.");
+  if (parsed === null) return;
 
-  const targets = await resolveSeriesTargets(existing, parsed.data.scope);
+  const targets = await resolveSeriesTargets(existing, parsed.scope);
   const targetIds = targets.map((t) => t.id);
   const inTargets = { sessionId: { in: targetIds } };
 
@@ -164,7 +149,7 @@ export async function deleteSession(req: Request, res: Response) {
     db.attendance.count({ where: inTargets }),
     db.sessionVideoProgress.count({ where: inTargets }),
   ]);
-  if ((attendance > 0 || progress > 0) && !parsed.data.force) {
+  if ((attendance > 0 || progress > 0) && !parsed.force) {
     return apiError(
       res,
       "has_student_records",
@@ -177,14 +162,7 @@ export async function deleteSession(req: Request, res: Response) {
   // after it commits. Never throws into the delete.
   const notice = await prepareSessionCancelledNotice(existing.seasonId, targetIds);
 
-  // Explicit deletes (the FKs cascade anyway) so the transaction states what
-  // it destroys. Video questions cascade; assignments/quizzes keep their rows
-  // with sessionId set null.
-  const [, , removed] = await db.$transaction([
-    db.attendance.deleteMany({ where: inTargets }),
-    db.sessionVideoProgress.deleteMany({ where: inTargets }),
-    db.session.deleteMany({ where: { id: { in: targetIds } } }),
-  ]);
+  const removed = await deleteSessionsWithRecords(targetIds);
 
   if (removed.count > 0) await sendSessionCancelledNotice(notice);
   return apiOk(res, { deleted: removed.count });

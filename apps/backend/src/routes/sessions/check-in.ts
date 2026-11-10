@@ -1,100 +1,37 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { CHECK_IN_WINDOW_MS, checkInState, isCheckInOpen, isStudentCheckInWindow } from "../../lib/check-in";
-import { MS_PER_MINUTE, orgWallTime } from "../../lib/org-time";
-import { parseId } from "../../lib/parse-id";
+import { apiOk, forbidden } from "../../lib/api-response";
+import { CHECK_IN_WINDOW_MS, checkInState } from "../../lib/check-in";
+import { orgWallTime } from "../../lib/org-time";
 import { newPublicId } from "../../lib/public-id";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
+import { checkInStudent } from "../../lib/sessions/check-in";
 import { checkInRequestSchema } from "../../../../../packages/shared/src/index";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 
 export async function studentCheckIn(req: Request, res: Response) {
   const user = requireUser(req);
 
-  const parsed = checkInRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Missing check-in token.", 400);
+  const parsed = parseOr400(checkInRequestSchema, req.body, res, "Missing check-in token.");
+  if (parsed === null) return;
 
-  const session = await db.session.findUnique({
-    where: { checkInToken: parsed.data.token },
-    select: {
-      id: true,
-      seasonId: true,
-      startsAt: true,
-      checkInOpenAt: true,
-      checkInClosedAt: true,
-    },
-  });
-  if (!session) return apiError(res, "invalid_token", "Check-in token is invalid.", 404);
-
-  const now = new Date();
-  // Checked separately from isCheckInOpen so "never opened" stays distinguishable from "opened and since expired".
-  if (!session.checkInOpenAt) return apiError(res, "not_open", "Check-in is not open yet.", 409);
-  if (!isCheckInOpen(session, now)) return apiError(res, "closed", "Check-in has closed.", 409);
-
-  const enrollment = await db.seasonEnrollment.findUnique({
-    where: { studentUserId_seasonId: { studentUserId: user.userId, seasonId: session.seasonId } },
-    select: { status: true, season: { select: { status: true } } },
-  });
-  // A draft's roster doesn't count yet, and the session's existence says nothing.
-  if (!enrollment || enrollment.status !== "ACTIVE" || enrollment.season.status !== "ACTIVE") {
-    return apiError(res, "not_enrolled", "You're not enrolled in this season.", 403);
-  }
-
-  // Opened early by an admin, but students wait for the hour before the start (owner, 2026-11-08).
-  if (!isStudentCheckInWindow(session.startsAt, now)) {
-    return apiError(res, "not_open", "Check-in opens an hour before the session.", 409);
-  }
-
-  const existing = await db.attendance.findUnique({
-    where: { sessionId_studentUserId: { sessionId: session.id, studentUserId: user.userId } },
-    select: { checkedInAt: true, status: true },
-  });
-  if (existing?.checkedInAt) {
-    return apiError(res, "already_checked_in", "Already checked in.", 409);
-  }
-
-  // Ruling C3: lateness is measured from the session's START — not from when
-  // an admin pressed "Open check-in" (spec 04 R63, D1), which made a punctual
-  // student LATE whenever the console opened early. The threshold is zero:
-  // there is no `Season.lateThresholdMinutes` (C3 over spec 04 D1's
-  // 15-minute grace). Rows v1 wrote still mean "minutes since opening";
-  // C3 accepts that divergence (the workbook withholds those minutes).
-  const minutesLate = Math.max(0, Math.floor((now.getTime() - session.startsAt.getTime()) / MS_PER_MINUTE));
-  const status: "PRESENT" | "LATE" = minutesLate > 0 ? "LATE" : "PRESENT";
-
-  await db.attendance.upsert({
-    where: { sessionId_studentUserId: { sessionId: session.id, studentUserId: user.userId } },
-    create: {
-      sessionId: session.id,
-      studentUserId: user.userId,
-      status,
-      checkedInAt: now,
-      lateMinutes: status === "LATE" ? minutesLate : null,
-      markedById: user.userId,
-      markedAt: now,
-    },
-    update: {
-      status,
-      checkedInAt: now,
-      lateMinutes: status === "LATE" ? minutesLate : null,
-    },
-  });
-
-  return apiOk(res, { status, minutesLate });
+  return apiOk(res, await checkInStudent(user.userId, parsed.token, new Date()));
 }
 
 export async function openCheckIn(req: Request, res: Response) {
   const user = requireUser(req);
-  const sessionId = parseId(req.params.id);
-  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const sessionId = idParam(res, req.params.id, "session");
+  if (sessionId === null) return;
 
   const session = await db.session.findUnique({
     where: { id: sessionId },
     select: { seasonId: true, checkInToken: true },
   });
-  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!session) return notFound(res, "Session");
   // Season admins only — not group leaders. Opening check-in is what makes
   // self-marking possible for a whole season's roster.
   if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
@@ -112,14 +49,14 @@ export async function openCheckIn(req: Request, res: Response) {
 
 export async function closeCheckIn(req: Request, res: Response) {
   const user = requireUser(req);
-  const sessionId = parseId(req.params.id);
-  if (sessionId === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const sessionId = idParam(res, req.params.id, "session");
+  if (sessionId === null) return;
 
   const session = await db.session.findUnique({
     where: { id: sessionId },
     select: { seasonId: true },
   });
-  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!session) return notFound(res, "Session");
   if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
 
   await db.session.update({
@@ -137,14 +74,14 @@ export async function closeCheckIn(req: Request, res: Response) {
  */
 export async function getCheckIn(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const id = idParam(res, req.params.id, "session");
+  if (id === null) return;
 
   const session = await db.session.findUnique({
     where: { id },
     select: { seasonId: true, checkInToken: true, checkInOpenAt: true, checkInClosedAt: true },
   });
-  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!session) return notFound(res, "Session");
   if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
 
   const state = checkInState(session);
@@ -168,11 +105,11 @@ export async function getCheckIn(req: Request, res: Response) {
  */
 export async function regenerateCheckIn(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid session id.", 400);
+  const id = idParam(res, req.params.id, "session");
+  if (id === null) return;
 
   const session = await db.session.findUnique({ where: { id }, select: { seasonId: true } });
-  if (!session) return apiError(res, "not_found", "Session not found.", 404);
+  if (!session) return notFound(res, "Session");
   if (!isAdminOfSeason(user, session.seasonId)) return forbidden(res);
 
   const checkInToken = newPublicId();
