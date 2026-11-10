@@ -12,6 +12,7 @@ import { db } from "../../db/client";
 import { seasonRosterMember } from "../queries/season-participants";
 import { ImportParseError, type ParsedSheet } from "./delimited";
 import { normaliseEmail } from "./students";
+import { assignStudentsToGroups } from "../groups/membership";
 
 const emailSchema = z.string().trim().email();
 
@@ -152,4 +153,15 @@ export async function buildGroupImportPreview(sheet: ParsedSheet, seasonId: numb
   for (const row of rows) counts[row.status] += 1;
 
   return { rows, delimiter: sheet.delimiter, counts };
+}
+
+/**
+ * Commits a group import in one transaction. v1's group import is already
+ * transactional (spec R79) and stays that way. The write independently
+ * re-derives every scope it needs — every group must belong to this season,
+ * every student must hold an enrolment in it — which is why posting resolved
+ * ids is safe here in a way it is not for the student importer (spec §4).
+ */
+export function commitGroupImport(seasonId: number, assignments: { studentUserId: number; groupId: number }[]) {
+  return db.$transaction((tx) => assignStudentsToGroups(tx, seasonId, assignments), { timeout: 30_000 });
 }

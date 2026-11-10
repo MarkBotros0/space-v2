@@ -53,7 +53,7 @@ export function createApp(): Express {
     }),
   );
   // The import routes parse their own bodies with a larger, explicit limit
-  // (routes/imports.ts -> importJsonParser). body-parser skips a body that is
+  // (routes/imports/limits.ts -> importJsonParser). body-parser skips a body that is
   // already parsed but NOT one that already failed, so these must run before
   // the global 100 KB parser can reject a legal 256 KB paste. seasonImportsRouter
   // defines only POST /:id/imports/groups/* and carries no router-level

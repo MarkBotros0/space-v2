@@ -71,7 +71,7 @@ const envSchema = z.object({
     .string()
     .regex(/^[a-z][a-z0-9+.-]*$/, "must be a bare URL scheme, e.g. spacev2")
     .default("spacev2"),
-  // Body limit for the import routes only (routes/imports.ts). The global
+  // Body limit for the import routes only (routes/imports/limits.ts). The global
   // parser keeps body-parser's 100 KB default; a 256 KB paste and a 2000-row
   // commit resubmitting every cell need more. Any body-parser size string.
   IMPORT_BODY_LIMIT: z.string().default("2mb"),
