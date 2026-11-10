@@ -53,6 +53,9 @@ the merged redesign branches over the same period, so file counts are not the re
 
 ## For the owner
 
+0. **Deployed (2026-11-10).** `main` @ `811a57f5` is pushed to `jpc` and `origin` and live on Vercel. The one
+   database (staging, `db.prisma.io`; production runs on it) has every migration: Wave 3 before the push and
+   Wave 6 after it, 53 in all, with no invalid index. Backups taken before each step are in `~/backups/`.
 1. **Review and push.** One PR per wave, in order. Push commands are in CLAUDE.md "Git"; nothing has
    left this machine.
 2. **Deploy order.**
