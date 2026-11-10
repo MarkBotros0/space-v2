@@ -78,7 +78,7 @@ describe("ReportsScreen — the numbers it renders", () => {
     renderWithProviders(<ReportsScreen />);
 
     expect(await screen.findByText("Reflection one")).toBeTruthy();
-    expect(screen.getByLabelText("Nobody expected: No students in the season")).toBeTruthy();
+    expect(screen.getByLabelText("Nobody expected: no students in the season")).toBeTruthy();
   });
 
   it("describes the trend for a screen reader from the served values", async () => {

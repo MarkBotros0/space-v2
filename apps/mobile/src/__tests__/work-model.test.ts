@@ -55,29 +55,40 @@ describe("assignmentRow", () => {
     });
   });
 
+  it("never joins the parts note and the due date on one line: they wrap apart at 1.3", () => {
+    const row = assignmentRow(assignment({ id: 1, status: "DRAFT", partsDone: 2 }), TODAY);
+    expect(`${row.detail} ${row.subtitle}`).not.toContain(" · ");
+  });
+
   it("an open row counts its parts instead of a single status", () => {
     const row = assignmentRow(assignment({ id: 1, status: "DRAFT", partsDone: 2 }), TODAY);
     expect(row.chip?.label).toBe("Due in 2 days");
-    expect(row.subtitle).toBe("2 of 3 done · Due Mar 3, 2099");
-    expect(assignmentRow(assignment({ id: 2 }), TODAY).subtitle).toBe("3 parts · Due Mar 3, 2099");
-    expect(assignmentRow(assignment({ id: 3, partsTotal: 1 }), TODAY).subtitle).toBe("1 part · Due Mar 3, 2099");
+    expect(row.detail).toBe("2 of 3 done");
+    expect(row.subtitle).toBe("Due Mar 3, 2099");
+    expect(assignmentRow(assignment({ id: 2 }), TODAY).detail).toBe("3 parts");
+    expect(assignmentRow(assignment({ id: 2 }), TODAY).subtitle).toBe("Due Mar 3, 2099");
+    expect(assignmentRow(assignment({ id: 3, partsTotal: 1 }), TODAY).detail).toBe("1 part");
+    expect(assignmentRow(assignment({ id: 3, partsTotal: 1 }), TODAY).subtitle).toBe("Due Mar 3, 2099");
   });
 
   it("every part done but not submitted says Submit is what is left", () => {
     const row = assignmentRow(assignment({ id: 1, status: "DRAFT", partsDone: 3 }), TODAY);
-    expect(row.subtitle).toBe("Every part done, not submitted yet · Due Mar 3, 2099");
+    expect(row.detail).toBe("Ready to submit");
+    expect(row.subtitle).toBe("Due Mar 3, 2099");
   });
 
   it("a returned row says so, even past its due date", () => {
     const row = assignmentRow(assignment({ id: 1, status: "RETURNED", returned: true, isOverdue: true }), TODAY);
     expect(row.chip).toEqual({ tone: "warn", label: "Returned" });
-    expect(row.subtitle).toBe("Returned — needs changes · Due Mar 3, 2099");
+    expect(row.detail).toBe("Returned — needs changes");
+    expect(row.subtitle).toBe("Due Mar 3, 2099");
   });
 
   it("any returned essay makes the row returned, however many parts are done", () => {
     const row = assignmentRow(assignment({ id: 1, status: "DRAFT", returned: true, partsDone: 2 }), TODAY);
     expect(row.chip?.label).toBe("Returned");
-    expect(row.subtitle).toBe("Returned — needs changes · Due Mar 3, 2099");
+    expect(row.detail).toBe("Returned — needs changes");
+    expect(row.subtitle).toBe("Due Mar 3, 2099");
   });
 
   it.each([
@@ -95,30 +106,35 @@ describe("assignmentRow", () => {
       TODAY,
     );
     expect(row.chip?.label).toBe("Overdue");
-    expect(row.subtitle).toBe("3 parts · Due Feb 20, 2099");
+    expect(row.detail).toBe("3 parts");
+    expect(row.subtitle).toBe("Due Feb 20, 2099");
   });
 
   it("a chip that already names the date does not repeat it in the subtitle", () => {
     const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Mar 20");
-    expect(row.subtitle).toBe("3 parts");
+    expect(row.detail).toBe("3 parts");
+    expect(row.subtitle).toBeUndefined();
     const draft = assignmentRow(
       assignment({ id: 2, status: "DRAFT", dueOrgDay: "2099-03-20", dueAt: "2099-03-20T10:00:00.000Z" }),
       TODAY,
     );
-    expect(draft.subtitle).toBe("3 parts");
+    expect(draft.detail).toBe("3 parts");
+    expect(draft.subtitle).toBeUndefined();
   });
 
   it("a date chip across a year boundary keeps the year in the subtitle", () => {
     const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2100-01-20", dueAt: "2100-01-20T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Jan 20");
-    expect(row.subtitle).toBe("3 parts · Due Jan 20, 2100");
+    expect(row.detail).toBe("3 parts");
+    expect(row.subtitle).toBe("Due Jan 20, 2100");
   });
 
   it("a weekday chip is relative wording, so the date stays", () => {
     const row = assignmentRow(assignment({ id: 1, dueOrgDay: "2099-03-06", dueAt: "2099-03-06T10:00:00.000Z" }), TODAY);
     expect(row.chip?.label).toBe("Due Friday");
-    expect(row.subtitle).toBe("3 parts · Due Mar 6, 2099");
+    expect(row.detail).toBe("3 parts");
+    expect(row.subtitle).toBe("Due Mar 6, 2099");
   });
 
   it("the date comes from the org day, never dueAt: the two can name different days", () => {
@@ -126,7 +142,8 @@ describe("assignmentRow", () => {
       assignment({ id: 1, isOverdue: true, dueOrgDay: "2099-02-01", dueAt: "2099-01-31T22:30:00.000Z" }),
       TODAY,
     );
-    expect(row.subtitle).toBe("3 parts · Due Feb 1, 2099");
+    expect(row.detail).toBe("3 parts");
+    expect(row.subtitle).toBe("Due Feb 1, 2099");
   });
 
   it.each([
@@ -135,10 +152,11 @@ describe("assignmentRow", () => {
     ["REVIEWED", undefined],
     ["DRAFT", "3 parts"],
     ["RETURNED", "Returned — needs changes"],
-  ] as const)("an undated %s row names no date", (status, subtitle) => {
+  ] as const)("an undated %s row names no date", (status, detail) => {
     const returned = status === "RETURNED";
     const row = assignmentRow(assignment({ id: 1, status, returned, dueOrgDay: null, dueAt: null }), TODAY);
-    expect(row.subtitle).toBe(subtitle);
+    expect(row.detail).toBe(detail);
+    expect(row.subtitle).toBeUndefined();
   });
 });
 

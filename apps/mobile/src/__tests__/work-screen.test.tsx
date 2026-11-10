@@ -142,7 +142,9 @@ describe("My work: what to do", () => {
     serve(routes([assignment(1), assignment(2, { status: "DRAFT", isOverdue: true, partsTotal: 3, partsDone: 1 })]));
     renderWithProviders(<WorkScreen />);
     expect(await screen.findByText("Due in 2 days")).toBeTruthy();
-    expect(screen.getByText("1 of 3 done · Due Mar 3, 2099")).toBeTruthy();
+    // The parts note and the due date each take their own line.
+    expect(screen.getByText("1 of 3 done")).toBeTruthy();
+    expect(screen.getAllByText("Due Mar 3, 2099").length).toBeGreaterThan(0);
   });
 
   it("rows open the assignment and the quiz", async () => {

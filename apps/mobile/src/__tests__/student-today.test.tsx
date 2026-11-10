@@ -192,7 +192,9 @@ describe("StudentToday: To do", () => {
     expect(screen.getByText("Overdue")).toBeTruthy();
     expect(screen.getByText("Due in 2 days")).toBeTruthy();
     // A row counts its parts (multi-part assignments), not one status.
-    expect(screen.getByText("2 of 3 done · Due Mar 3, 2099")).toBeTruthy();
+    // The parts note and the due date each take their own line.
+    expect(screen.getByText("2 of 3 done")).toBeTruthy();
+    expect(screen.getAllByText("Due Mar 3, 2099").length).toBeGreaterThan(0);
     expect(screen.getByText("Take quiz")).toBeTruthy();
     fireEvent.press(screen.getByText("Essay 1"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "1" } });

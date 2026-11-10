@@ -100,7 +100,7 @@ const BASELINE: Record<string, Record<string, number>> = {
     "src/screens/student-detail/grouped-tabs.tsx": 1,
     "src/screens/students-list/student-filter-sheet.tsx": 1,
     "src/screens/user-import/import-result-step.tsx": 1,
-    "src/screens/work/work-model.ts": 3,
+    "src/screens/work/work-model.ts": 2,
   },
   // An empty value says so in words ("Not answered"), never "—".
   emDashEmpty: {

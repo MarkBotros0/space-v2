@@ -22,6 +22,8 @@ export type WorkRow = {
   kind: "assignment" | "quiz";
   id: number;
   title: string;
+  /** One line of its own above the subtitle: an assignment's parts or its returned note. */
+  detail?: string;
   subtitle?: string;
   chip?: ChipSpec;
   score?: string;
@@ -37,22 +39,22 @@ function chipNamesDate(chip: ChipSpec): boolean {
 }
 
 /**
- * The note, then the date it was due: a status chip or a relative deadline chip
- * ("Overdue", "Due Fri") does not say when, so the date follows. A chip that
- * already names the date does not get it repeated, except across a year
- * boundary, since the chip has no year. From the org day, so it is zone-safe.
+ * The note on its own line (`detail`), then the date it was due (`subtitle`): two lines,
+ * never one dotted line, which wraps apart at 1.3. A status chip or a relative deadline
+ * chip ("Overdue", "Due Fri") does not say when, so the date follows. A chip that
+ * already names the date does not get it repeated, except across a year boundary,
+ * since the chip has no year. From the org day, so it is zone-safe.
  */
-function assignmentSubtitle(
+function assignmentLines(
   note: string | null,
   dueOrgDay: string | null,
   chip: ChipSpec,
   todayOrgDay: string,
-): { subtitle?: string } {
+): { detail?: string; subtitle?: string } {
   const chipHasDate = chipNamesDate(chip);
   const sameYear = dueOrgDay !== null && dueOrgDay.slice(0, 4) === todayOrgDay.slice(0, 4);
   const due = dueOrgDay !== null && !(chipHasDate && sameYear) ? `Due ${formatDayKey(dueOrgDay)}` : null;
-  const subtitle = [note, due].filter((part) => part !== null).join(" · ");
-  return subtitle ? { subtitle } : {};
+  return { ...(note !== null ? { detail: note } : {}), ...(due !== null ? { subtitle: due } : {}) };
 }
 
 /**
@@ -63,7 +65,7 @@ function assignmentSubtitle(
 function partsNote(a: StudentAssignmentListItem): string | null {
   if (a.partsTotal === 0) return null;
   if (a.partsDone === 0) return plural(a.partsTotal, "part");
-  if (a.partsDone >= a.partsTotal) return "Every part done, not submitted yet";
+  if (a.partsDone >= a.partsTotal) return "Ready to submit";
   return `${a.partsDone} of ${a.partsTotal} done`;
 }
 
@@ -78,18 +80,18 @@ export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string)
   // Any returned essay makes the whole row "Returned — needs changes", whatever else is done.
   if (a.returned || a.status === "RETURNED") {
     const chip = statusChip("submission", "RETURNED");
-    return { ...row, chip, ...assignmentSubtitle("Returned — needs changes", a.dueOrgDay, chip, todayOrgDay) };
+    return { ...row, chip, ...assignmentLines("Returned — needs changes", a.dueOrgDay, chip, todayOrgDay) };
   }
   switch (a.status) {
     case "SUBMITTED":
     case "REVIEWED": {
       const chip = statusChip("submission", a.status);
-      return { ...row, chip, ...assignmentSubtitle(null, a.dueOrgDay, chip, todayOrgDay) };
+      return { ...row, chip, ...assignmentLines(null, a.dueOrgDay, chip, todayOrgDay) };
     }
     default: {
       // PENDING or DRAFT: still to do.
       const chip = dueChip({ ...a, todayOrgDay });
-      return { ...row, chip, ...assignmentSubtitle(partsNote(a), a.dueOrgDay, chip, todayOrgDay) };
+      return { ...row, chip, ...assignmentLines(partsNote(a), a.dueOrgDay, chip, todayOrgDay) };
     }
   }
 }

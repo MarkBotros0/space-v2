@@ -17,6 +17,6 @@ haven't checked in, the session leads. There is no attendance streak anywhere.
 **Multi-part assignments (spec 2026-11-10, `docs/rules/assignments.md`).** On My work and Home an
 assignment row "shows its parts count ("2 of 3 done") instead of a single status", and "Returned —
 needs changes" groups an assignment with any returned essay. Builder's wording, for the owner to
-check: "3 parts" before any part is done, "Every part done, not submitted yet" once only Submit is
+check: "3 parts" before any part is done, "Ready to submit" once only Submit is
 left; handed in, an assignment with an essay reads Waiting for review or Reviewed, and one with no
 essay (videos and forum posts are never reviewed) reads Done.
