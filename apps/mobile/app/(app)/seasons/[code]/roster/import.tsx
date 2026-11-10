@@ -1,46 +1,19 @@
 import { useLocalSearchParams } from "expo-router";
-import { CheckCircle2 } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { View } from "react-native";
-import type { GroupImportPreview, GroupImportResult } from "@space/shared";
-import { IMPORT_MAX_PASTE_CHARS } from "@space/shared";
 
 import { FormErrorBox } from "../../../../../src/design/forms/form-parts";
 import { FormScreen } from "../../../../../src/design/layout/form-screen";
 import { RouteError, RouteSkeleton } from "../../../../../src/design/layout/route-states";
 import { Screen } from "../../../../../src/design/layout/screen";
-import { iconWithClassName } from "../../../../../src/design/lib/icon";
-import {
-  Badge,
-  Button,
-  DataTable,
-  EmptyState,
-  FormField,
-  Text,
-  Textarea,
-  type DataTableColumn,
-} from "../../../../../src/design/ui";
-import { useGroupImportCommit, useGroupImportPreview } from "../../../../../src/hooks/use-import";
+import { EmptyState, FormField, Textarea } from "../../../../../src/design/ui";
 import { useSeasons } from "../../../../../src/hooks/use-seasons";
-import { importErrorMessage } from "../../../../../src/lib/import-error";
+import { GroupImportPreviewStep } from "../../../../../src/screens/group-import/preview-step";
+import { GroupImportResultStep } from "../../../../../src/screens/group-import/result-step";
+import { useGroupImportFlow } from "../../../../../src/screens/group-import/use-group-import-flow";
 import { useSessionStore, useRole } from "../../../../../src/store/session";
 
-iconWithClassName(CheckCircle2);
-
 const TITLE = "Import group assignments";
-
-type GroupImportPreviewRow = GroupImportPreview["rows"][number];
-
-const STATUS_BADGE: Record<
-  GroupImportPreviewRow["status"],
-  { variant: "success" | "warning" | "error" | "outline"; label: string }
-> = {
-  assign: { variant: "success", label: "Assign" },
-  unchanged: { variant: "outline", label: "Unchanged" },
-  no_student: { variant: "error", label: "No match" },
-  no_group: { variant: "warning", label: "No group" },
-  invalid: { variant: "error", label: "Invalid" },
-};
 
 /**
  * v1 admin/season/[code]/roster/import (group-import-form.tsx). v1 uploads a
@@ -60,22 +33,8 @@ export default function GroupImportScreen() {
   const season = useMemo(() => (seasons.data ?? []).find((s) => s.code === code) ?? null, [seasons.data, code]);
   const seasonId = season?.id ?? null;
   const allowed = role === "SUPER" || (role === "ADMIN" && seasonId !== null && adminIds.includes(seasonId));
-
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<GroupImportPreview | null>(null);
-  const [result, setResult] = useState<GroupImportResult | null>(null);
-
-  const previewMutation = useGroupImportPreview(seasonId);
-  const commitMutation = useGroupImportCommit(seasonId);
-  const toAssign = useMemo(
-    () =>
-      (preview?.rows ?? []).filter(
-        (r): r is typeof r & { studentUserId: number; groupId: number } =>
-          r.status === "assign" && r.studentUserId !== null && r.groupId !== null,
-      ),
-    [preview],
-  );
+  const flow = useGroupImportFlow(seasonId);
+  const { text, preview, result, toAssign, previewMutation, commitMutation } = flow;
 
   if (seasons.isPending) {
     return (
@@ -99,102 +58,16 @@ export default function GroupImportScreen() {
     );
   }
 
-  async function runPreview() {
-    setError(null);
-    if (text.trim() === "") return setError("Paste a header row and at least one data row first.");
-    if (text.length > IMPORT_MAX_PASTE_CHARS) return setError("That paste is too long. Import it in smaller batches.");
-    try {
-      setPreview(await previewMutation.mutateAsync({ text, delimiter: "auto" }));
-    } catch (err) {
-      setPreview(null);
-      setError(importErrorMessage(err));
-    }
-  }
-
-  async function runCommit() {
-    setError(null);
-    if (toAssign.length === 0) return;
-    try {
-      setResult(
-        await commitMutation.mutateAsync({
-          assignments: toAssign.map((r) => ({
-            studentUserId: r.studentUserId,
-            groupId: r.groupId,
-          })),
-        }),
-      );
-    } catch (err) {
-      setError(importErrorMessage(err));
-    }
-  }
-
   const subtitle = `${season.title}. Paste rows with email and group columns. Students in this season are matched by email and moved into the named group; a blank group cell is left alone.`;
 
   if (result && preview) {
-    const skipped = new Set(result.skippedStudentIds);
-    const skippedRows = preview.rows.filter((r) => r.studentUserId !== null && skipped.has(r.studentUserId));
     return (
       <Screen title={TITLE} subtitle={subtitle}>
-        <View className="flex-col gap-4">
-          <View className="flex-row items-start gap-3 rounded-control bg-ok-soft px-4 py-3">
-            <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-success-600" />
-            <View className="min-w-0 flex-1">
-              <Text className="text-sm font-semibold text-success-800 dark:text-success-200">Assignments applied</Text>
-              {/* The APPLIED count from the server (spec R80/D5), never the request. */}
-              <Text className="text-sm text-success-700 dark:text-success-300">
-                {`${result.assigned} assigned · ${result.skipped} skipped`}
-              </Text>
-            </View>
-          </View>
-          {skippedRows.map((r) => (
-            <View key={r.rowNumber} className="rounded-group bg-surface p-3 dark:border dark:border-separator">
-              <Text className="text-sm font-medium">{`Row ${r.rowNumber} · ${r.email}`}</Text>
-              <Text className="text-xs text-muted-foreground">Not placed — no active enrolment in this season.</Text>
-            </View>
-          ))}
-          <Button
-            variant="secondary"
-            className="self-end"
-            onPress={() => {
-              setResult(null);
-              setPreview(null);
-              setText("");
-            }}
-          >
-            Import another file
-          </Button>
-        </View>
+        <GroupImportResultStep preview={preview} result={result} onImportAnother={flow.reset} />
       </Screen>
     );
   }
 
-  const columns: DataTableColumn<GroupImportPreviewRow>[] = [
-    {
-      key: "row",
-      header: "Row",
-      cell: (r) => <Text className="text-muted-foreground">{String(r.rowNumber)}</Text>,
-    },
-    { key: "email", header: "Email", cell: (r) => r.email || "—" },
-    {
-      key: "group",
-      header: "Group",
-      cell: (r) => r.group || "—",
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (r) => (
-        <View className="flex-col gap-0.5">
-          <Badge variant={STATUS_BADGE[r.status].variant} className="self-start">
-            {STATUS_BADGE[r.status].label}
-          </Badge>
-          {r.message ? <Text className="text-xs text-muted-foreground">{r.message}</Text> : null}
-        </View>
-      ),
-    },
-  ];
-
-  const c = preview?.counts;
   const applyLabel = commitMutation.isPending
     ? "Applying…"
     : toAssign.length === 0
@@ -214,7 +87,7 @@ export default function GroupImportScreen() {
             : undefined
       }
       disabled={preview ? toAssign.length === 0 : text.trim() === ""}
-      onSave={preview ? runCommit : runPreview}
+      onSave={preview ? flow.runCommit : flow.runPreview}
     >
       <View className="flex-col gap-4">
         <FormField label="Paste your spreadsheet">
@@ -222,30 +95,18 @@ export default function GroupImportScreen() {
             accessibilityLabel="Paste your spreadsheet"
             className="min-h-40"
             value={text}
-            onChangeText={(t) => {
-              setText(t);
-              setPreview(null);
-            }}
+            onChangeText={flow.setText}
             placeholder="email | group"
             autoCapitalize="none"
           />
         </FormField>
-        <FormErrorBox message={error} />
-        {preview && c ? (
-          <View className="flex-col gap-3">
-            <Text className="text-sm text-muted-foreground">
-              {`${c.total} rows · ${c.assign} to assign · ${c.unchanged} unchanged · ${c.no_student} no match · ${c.no_group} no group · ${c.invalid} invalid`}
-            </Text>
-            <DataTable columns={columns} rows={preview.rows} rowKey={(r) => r.rowNumber} />
-            <Button
-              variant="secondary"
-              className="self-start"
-              disabled={previewMutation.isPending}
-              onPress={runPreview}
-            >
-              Preview again
-            </Button>
-          </View>
+        <FormErrorBox message={flow.error} />
+        {preview ? (
+          <GroupImportPreviewStep
+            preview={preview}
+            rereading={previewMutation.isPending}
+            onPreviewAgain={flow.runPreview}
+          />
         ) : null}
       </View>
     </FormScreen>
