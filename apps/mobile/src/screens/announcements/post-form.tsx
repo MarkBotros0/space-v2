@@ -28,7 +28,8 @@ import { PillButton } from "../../design/ui/pill-button";
 import { ConfirmEditSheet } from "./confirm-edit-sheet";
 import { ConfirmPostSheet } from "./confirm-post-sheet";
 import { editWarnings } from "./poll/edit-warnings";
-import { EMPTY_POLL, PollEditor, pollErrors, type PollErrors } from "./poll/poll-editor";
+import { PollEditor, pollErrors, type PollErrors } from "./poll/poll-editor";
+import { pollPatch, usePollDraft } from "./poll/use-poll-draft";
 
 /** The counter shows once the message is this long. */
 const COUNTER_FROM = 4000;
@@ -52,16 +53,6 @@ function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Fields
   const poll = pollErrors(issues);
   if (Object.keys(poll).length > 0) out.poll = poll;
   return out;
-}
-
-/** Same multi-pick setting, then the same option ids and labels in order. */
-function samePoll(a: PollInput | null, b: PollInput | null): boolean {
-  if (a === null || b === null) return a === b;
-  return (
-    a.allowsMultiple === b.allowsMultiple &&
-    a.options.length === b.options.length &&
-    a.options.every((o, i) => o.id === b.options[i]!.id && o.label === b.options[i]!.label)
-  );
 }
 
 type Props = {
@@ -97,10 +88,8 @@ export function PostForm(props: Props) {
   const { screenTitle, saveLabel, error, pending, initial } = props;
   const targets = props.mode === "create" ? props.targets : null;
   const [body, setBody] = useState(initial?.body ?? "");
-  const [poll, setPoll] = useState<PollInput | null>(initial?.poll ?? null);
-  // The poll as the screen opened. `initial` is rebuilt from every refetch, so comparing against it
-  // would treat another manager's later edit as ours and send it back.
-  const [openedPoll] = useState<PollInput | null>(() => initial?.poll ?? null);
+  const draft = usePollDraft(initial?.poll ?? null);
+  const { poll } = draft;
   const [errors, setErrors] = useState<Fields>({});
   const [confirming, setConfirming] = useState(false);
 
@@ -157,19 +146,14 @@ export function PostForm(props: Props) {
    * message-only save can't undo another manager's poll edit made in the meantime.
    */
   function buildUpdate(): UpdateAnnouncementRequest | null {
-    const changed = pollChanged;
-    const parsed = updateAnnouncementRequestSchema.safeParse({
-      body,
-      ...(changed ? { poll } : {}),
-    });
+    const parsed = updateAnnouncementRequestSchema.safeParse({ body, ...pollPatch(draft.opened, poll) });
     const errs = parsed.success ? {} : fieldErrors(parsed.error.issues);
     setErrors(errs);
     return parsed.success ? parsed.data : null;
   }
 
-  const pollChanged = !samePoll(openedPoll, poll);
   // Warn only about a poll change that will actually be sent.
-  const warnings = props.mode === "edit" && pollChanged ? editWarnings(props.currentPoll ?? null, poll) : null;
+  const warnings = props.mode === "edit" && draft.changed ? editWarnings(props.currentPoll ?? null, poll) : null;
 
   function submit(): void {
     if (props.mode === "edit") {
@@ -247,9 +231,9 @@ export function PostForm(props: Props) {
         </FormField>
 
         {poll ? (
-          <PollEditor value={poll} onChange={setPoll} errors={errors.poll ?? {}} onRemove={() => setPoll(null)} />
+          <PollEditor value={poll} onChange={draft.setPoll} errors={errors.poll ?? {}} onRemove={draft.remove} />
         ) : (
-          <PillButton label="Add a poll" onPress={() => setPoll(EMPTY_POLL)} className="self-start" />
+          <PillButton label="Add a poll" onPress={draft.add} className="self-start" />
         )}
       </View>
 
