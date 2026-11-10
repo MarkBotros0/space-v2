@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react-native";
 import type { NoteSummary } from "@space/shared";
 
-import { GroupedNotesTab } from "../design/students/grouped-tabs";
-import { StudentDetails } from "../design/students/student-details";
+import { GroupedNotesTab } from "../screens/student-detail/grouped-tabs";
+import { StudentDetails } from "../screens/student-detail/student-details";
 
 const mockNotes: { current: NoteSummary[] } = { current: [] };
 
@@ -86,7 +86,7 @@ describe("Academic rows", () => {
 
 describe("Seasons row (M1)", () => {
   it("never cuts a long drop reason", () => {
-    const { GroupedSeasonsTab } = jest.requireActual("../design/students/grouped-tabs");
+    const { GroupedSeasonsTab } = jest.requireActual("../screens/student-detail/grouped-tabs");
     render(
       <GroupedSeasonsTab
         enrollments={[
@@ -108,7 +108,7 @@ describe("Seasons row (M1)", () => {
   });
 
   it("keeps the group name in one piece so it cannot orphan its last word", () => {
-    const { GroupedSeasonsTab } = jest.requireActual("../design/students/grouped-tabs");
+    const { GroupedSeasonsTab } = jest.requireActual("../screens/student-detail/grouped-tabs");
     render(
       <GroupedSeasonsTab
         enrollments={[

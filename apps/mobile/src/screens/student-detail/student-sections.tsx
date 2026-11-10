@@ -9,8 +9,8 @@
 import { type ReactNode, useState } from "react";
 import { View } from "react-native";
 
-import { ListSectionHeader } from "../ui/grouped-list";
-import { SegmentedControl } from "../ui/segmented-control";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
+import { SegmentedControl } from "../../design/ui/segmented-control";
 
 export type StudentSection = { value: string; label: string; render: () => ReactNode };
 

@@ -14,7 +14,7 @@ jest.mock("../design/motion", () => ({
 }));
 
 import { toast } from "../design/ui/toaster";
-import { NoteSheet } from "../design/students/note-sheet";
+import { NoteSheet } from "../screens/student-detail/note-sheet";
 import { apiClient } from "../lib/api-client";
 import { renderWithProviders } from "./helpers/render";
 import { Text } from "react-native";

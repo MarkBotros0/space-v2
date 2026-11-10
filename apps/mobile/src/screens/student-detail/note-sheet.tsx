@@ -12,13 +12,13 @@ import { View } from "react-native";
 import { useCreateNote } from "../../hooks/use-notes";
 import { apiErrorMessage } from "../../lib/api-error";
 import { VISIBILITY_DESCRIPTION } from "../../lib/note-visibility";
-import { haptic } from "../motion";
-import { SegmentedControl } from "../ui/segmented-control";
-import { Sheet, SheetSaveBar } from "../ui/sheet";
-import { Switch } from "../ui/switch";
-import { Text } from "../ui/text";
-import { Textarea } from "../ui/textarea";
-import { toast } from "../ui/toaster";
+import { haptic } from "../../design/motion";
+import { SegmentedControl } from "../../design/ui/segmented-control";
+import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
+import { Switch } from "../../design/ui/switch";
+import { Text } from "../../design/ui/text";
+import { Textarea } from "../../design/ui/textarea";
+import { toast } from "../../design/ui/toaster";
 
 const VISIBILITY_OPTIONS: { value: NoteVisibility; label: string; accessibilityLabel?: string }[] = [
   { value: "LEADERS", label: "Leaders" },

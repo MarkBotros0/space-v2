@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { graduateStudentRequestSchema } from "@space/shared";
 
-import { useGraduateStudent } from "../hooks/use-students";
-import { apiErrorCode, apiErrorMessage } from "../lib/api-error";
-import { Button } from "../design/ui/button";
-import { FormField } from "../design/ui/form-field";
-import { Input } from "../design/ui/input";
-import { Sheet, SheetSaveBar } from "../design/ui/sheet";
-import { Switch } from "../design/ui/switch";
-import { Text } from "../design/ui/text";
-import { Textarea } from "../design/ui/textarea";
+import { useGraduateStudent } from "../../hooks/use-students";
+import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
+import { Button } from "../../design/ui/button";
+import { FormField } from "../../design/ui/form-field";
+import { Input } from "../../design/ui/input";
+import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
+import { Switch } from "../../design/ui/switch";
+import { Text } from "../../design/ui/text";
+import { Textarea } from "../../design/ui/textarea";
 
 interface GraduateStudentSheetProps {
   visible: boolean;

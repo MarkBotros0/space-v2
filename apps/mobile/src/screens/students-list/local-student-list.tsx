@@ -10,12 +10,12 @@ import { type ReactNode, useMemo, useState } from "react";
 import { View } from "react-native";
 
 import { initialsOf } from "../../lib/initials";
-import { NAV_ICONS } from "../icons/nav-icon";
-import { EmptyState } from "../ui/empty-state";
-import { GroupedList, ListRow } from "../ui/grouped-list";
-import { PillButton } from "../ui/pill-button";
-import { SearchField } from "../ui/search-field";
-import { Text } from "../ui/text";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
+import { EmptyState } from "../../design/ui/empty-state";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { PillButton } from "../../design/ui/pill-button";
+import { SearchField } from "../../design/ui/search-field";
+import { Text } from "../../design/ui/text";
 
 /** How many rows show before "Show more", and how many each press adds. */
 const STUDENT_PAGE = 20;

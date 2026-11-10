@@ -15,9 +15,9 @@ import { formatDate, keepTogether } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
 import { USER_ROLE_LABELS } from "../../lib/user-role-labels";
-import { Avatar, AvatarFallback } from "../ui/avatar";
-import { GroupedList, ListRow } from "../ui/grouped-list";
-import { StatusChip, statusChip } from "../ui/status-chip";
+import { Avatar, AvatarFallback } from "../../design/ui/avatar";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { StatusChip, statusChip } from "../../design/ui/status-chip";
 
 /** "No invite" is what users see for `pending`; the shared table says "Pending". Call site only. */
 function userStatusChip(status: UserStatus) {

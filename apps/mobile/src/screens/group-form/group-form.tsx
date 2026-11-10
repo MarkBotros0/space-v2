@@ -4,17 +4,17 @@ import { useRouter } from "expo-router";
 import { Trash2, UserPlus } from "lucide-react-native";
 import { groupWriteRequestSchema, type GroupDetail } from "@space/shared";
 
-import { FormScreen } from "../design/layout/form-screen";
-import { iconWithClassName } from "../design/lib/icon";
-import { Button, FormField, GroupedList, Input, ListRow, Text, Textarea } from "../design/ui";
-import { useSeasonRoster, type GroupWriteInput } from "../hooks/use-group-admin";
-import { useSeasonDetail } from "../hooks/use-seasons";
-import { useSeasonAdmins, useStaffCandidates } from "../hooks/use-season-admins";
-import { useSchemaErrors } from "../lib/form-errors";
-import { MembersField } from "../screens/group-form/members-field";
-import { StaffPickerSheet } from "../screens/season-people/staff-picker-sheet";
-import { useIsAdminOfSeason, useSessionStore } from "../store/session";
-import { blankToNull } from "../lib/form-values";
+import { FormScreen } from "../../design/layout/form-screen";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Button, FormField, GroupedList, Input, ListRow, Text, Textarea } from "../../design/ui";
+import { useSeasonRoster, type GroupWriteInput } from "../../hooks/use-group-admin";
+import { useSeasonDetail } from "../../hooks/use-seasons";
+import { useSeasonAdmins, useStaffCandidates } from "../../hooks/use-season-admins";
+import { useSchemaErrors } from "../../lib/form-errors";
+import { MembersField } from "./members-field";
+import { StaffPickerSheet } from "../season-people/staff-picker-sheet";
+import { useIsAdminOfSeason, useSessionStore } from "../../store/session";
+import { blankToNull } from "../../lib/form-values";
 
 iconWithClassName(Trash2, UserPlus);
 

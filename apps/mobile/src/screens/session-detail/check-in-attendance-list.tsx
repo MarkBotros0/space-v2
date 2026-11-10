@@ -16,7 +16,7 @@ import { Button } from "../../design/ui/button";
 import { Sheet } from "../../design/ui/sheet";
 import { StatusChip, statusChip } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
-import { LocalStudentList } from "../../design/students/local-student-list";
+import { LocalStudentList } from "../students-list/local-student-list";
 
 const ORDER: AttendanceStatus[] = ["PRESENT", "LATE", "ABSENT"];
 

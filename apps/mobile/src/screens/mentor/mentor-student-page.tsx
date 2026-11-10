@@ -7,10 +7,10 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { GroupedAttendanceTab, GroupedNotesTab } from "../../design/students/grouped-tabs";
-import { NoteSheet } from "../../design/students/note-sheet";
-import { StudentDetails } from "../../design/students/student-details";
-import { type StudentSection, StudentSections } from "../../design/students/student-sections";
+import { GroupedAttendanceTab, GroupedNotesTab } from "../student-detail/grouped-tabs";
+import { NoteSheet } from "../student-detail/note-sheet";
+import { StudentDetails } from "../student-detail/student-details";
+import { type StudentSection, StudentSections } from "../student-detail/student-sections";
 import { StatusChip } from "../../design/ui/status-chip";
 import type { StudentDetail } from "../../hooks/use-students";
 import { FollowUpCard } from "./follow-up-card";

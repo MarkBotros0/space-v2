@@ -6,7 +6,7 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { haptic } from "../../design/motion";
 import { Text, toast } from "../../design/ui";
-import { LocalStudentList } from "../../design/students/local-student-list";
+import { LocalStudentList } from "../students-list/local-student-list";
 import { StatusChip } from "../../design/ui/status-chip";
 import { useQuizGradeSheet, useSaveQuizGrades, type GradeEntryInput } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";

@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { Linking, Text } from "react-native";
 
-import { StudentDetails } from "../design/students/student-details";
-import { StudentSections } from "../design/students/student-sections";
+import { StudentDetails } from "../screens/student-detail/student-details";
+import { StudentSections } from "../screens/student-detail/student-sections";
 
 const base = {
   university: "Cairo Uni",

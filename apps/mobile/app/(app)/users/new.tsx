@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import type { CreateUserBody } from "@space/shared";
 
-import { NEW_USER_VALUES, UserForm } from "../../../src/components/UserForm";
+import { NEW_USER_VALUES, UserForm } from "../../../src/screens/user-form/user-form";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState, toast } from "../../../src/design/ui";
 import { useCreateUser } from "../../../src/hooks/use-users";

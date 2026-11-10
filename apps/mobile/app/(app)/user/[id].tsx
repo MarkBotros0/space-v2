@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Alert } from "react-native";
 import type { UserDetail } from "@space/shared";
 
-import { UserForm } from "../../../src/components/UserForm";
+import { UserForm } from "../../../src/screens/user-form/user-form";
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState, GroupedList, ListRow, Text, toast } from "../../../src/design/ui";

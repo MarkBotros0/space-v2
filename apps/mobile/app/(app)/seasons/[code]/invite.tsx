@@ -4,7 +4,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { StudentForm } from "../../../../src/components/StudentForm";
+import { StudentForm } from "../../../../src/screens/student-admin/student-form";
 import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState, PillButton, Text, toast } from "../../../../src/design/ui";

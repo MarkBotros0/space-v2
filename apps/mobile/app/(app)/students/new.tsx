@@ -2,7 +2,7 @@ import { isSeasonLive } from "@space/shared";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 
-import { StudentForm } from "../../../src/components/StudentForm";
+import { StudentForm } from "../../../src/screens/student-admin/student-form";
 import { useSeasons } from "../../../src/hooks/use-seasons";
 import { useCreateStudent } from "../../../src/hooks/use-students";
 import { apiErrorMessage } from "../../../src/lib/api-error";

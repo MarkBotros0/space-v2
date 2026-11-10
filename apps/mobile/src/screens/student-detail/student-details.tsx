@@ -12,9 +12,9 @@ import { Linking, View } from "react-native";
 
 import type { StudentDetail } from "../../hooks/use-students";
 import { formatDayKey } from "../../lib/format";
-import { ListSectionHeader } from "../ui/grouped-list";
-import { PillButton } from "../ui/pill-button";
-import { Text } from "../ui/text";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
+import { PillButton } from "../../design/ui/pill-button";
+import { Text } from "../../design/ui/text";
 
 type Row = { label: string; value: string; trailing?: ReactNode };
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { GroupForm } from "../../../src/components/GroupForm";
+import { GroupForm } from "../../../src/screens/group-form/group-form";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState } from "../../../src/design/ui";
 import { useCreateGroup } from "../../../src/hooks/use-group-admin";

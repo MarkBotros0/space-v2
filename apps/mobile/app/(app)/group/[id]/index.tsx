@@ -6,7 +6,7 @@ import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-s
 import { Screen } from "../../../../src/design/layout/screen";
 import { Button, EmptyState } from "../../../../src/design/ui";
 import { GroupedList, ListRow } from "../../../../src/design/ui/grouped-list";
-import { LocalStudentList } from "../../../../src/design/students/local-student-list";
+import { LocalStudentList } from "../../../../src/screens/students-list/local-student-list";
 import { useGroupDetail } from "../../../../src/hooks/use-groups";
 import { useRole } from "../../../../src/store/session";
 

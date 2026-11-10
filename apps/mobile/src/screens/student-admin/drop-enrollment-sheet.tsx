@@ -2,12 +2,12 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { EnrollmentHistoryItem } from "@space/shared";
 
-import { useDropEnrollment } from "../hooks/use-students";
-import { apiErrorMessage } from "../lib/api-error";
-import { FormField } from "../design/ui/form-field";
-import { Sheet, SheetSaveBar } from "../design/ui/sheet";
-import { Text } from "../design/ui/text";
-import { Textarea } from "../design/ui/textarea";
+import { useDropEnrollment } from "../../hooks/use-students";
+import { apiErrorMessage } from "../../lib/api-error";
+import { FormField } from "../../design/ui/form-field";
+import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
+import { Text } from "../../design/ui/text";
+import { Textarea } from "../../design/ui/textarea";
 
 interface DropEnrollmentSheetProps {
   studentId: number;

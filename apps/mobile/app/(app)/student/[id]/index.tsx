@@ -4,7 +4,7 @@ import type { UserRole } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
-import { StudentDetailGrouped, studentSubtitle } from "../../../../src/design/students/student-detail-grouped";
+import { StudentDetailGrouped, studentSubtitle } from "../../../../src/screens/student-detail/student-detail-grouped";
 import { MentorStudentPage } from "../../../../src/screens/mentor/mentor-student-page";
 import { AdminStudentDetail } from "../../../../src/screens/student-admin/admin-student-detail";
 import { EmptyState } from "../../../../src/design/ui";

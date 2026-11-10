@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { GroupDetail, SeasonRosterRow } from "@space/shared";
 
-import { GroupForm } from "../../../../src/components/GroupForm";
+import { GroupForm } from "../../../../src/screens/group-form/group-form";
 import { FormErrorBox } from "../../../../src/design/forms/form-parts";
 import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";

@@ -6,7 +6,7 @@ import type { GroupDetail, GroupListItem } from "@space/shared";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { LocalStudentList } from "../../design/students/local-student-list";
+import { LocalStudentList } from "../students-list/local-student-list";
 import { EmptyState } from "../../design/ui/empty-state";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { Text } from "../../design/ui/text";

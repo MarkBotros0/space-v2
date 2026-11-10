@@ -13,15 +13,15 @@ import { flattenNotePages, useStudentNotes } from "../../hooks/use-notes";
 import { useStudentAttendanceHistory, useStudentSubmissions } from "../../hooks/use-students";
 import { formatDate, formatDateTime, formatSeasonDay, unbreakable } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
-import { NAV_ICONS } from "../icons/nav-icon";
-import { InlineError } from "../layout/route-states";
-import { Button } from "../ui/button";
-import { EmptyState } from "../ui/empty-state";
-import { GroupedList, ListRow } from "../ui/grouped-list";
-import { StatusChip, statusChip } from "../ui/status-chip";
-import { Text } from "../ui/text";
+import { NAV_ICONS } from "../../design/icons/nav-icon";
+import { InlineError } from "../../design/layout/route-states";
+import { Button } from "../../design/ui/button";
+import { EmptyState } from "../../design/ui/empty-state";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { StatusChip, statusChip } from "../../design/ui/status-chip";
+import { Text } from "../../design/ui/text";
 import { USER_ROLE_LABELS } from "../../lib/user-role-labels";
-import { LoadMoreButton } from "../ui/load-more-button";
+import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 function Loading() {
   return (

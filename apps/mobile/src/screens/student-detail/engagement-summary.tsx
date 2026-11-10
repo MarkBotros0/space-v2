@@ -10,9 +10,9 @@ import { Fragment } from "react";
 import { View } from "react-native";
 
 import { isNoSeasonError, useStudentEngagement } from "../../hooks/use-engagement";
-import { InlineError } from "../layout/route-states";
-import { StatusChip } from "../ui/status-chip";
-import { Text } from "../ui/text";
+import { InlineError } from "../../design/layout/route-states";
+import { StatusChip } from "../../design/ui/status-chip";
+import { Text } from "../../design/ui/text";
 
 type Figure = { label: string; pct: number; detail?: string };
 

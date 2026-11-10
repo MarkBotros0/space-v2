@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 
-import { StudentForm } from "../../../../src/components/StudentForm";
+import { StudentForm } from "../../../../src/screens/student-admin/student-form";
 import { useStudentDetail, useUpdateStudent } from "../../../../src/hooks/use-students";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
 import { studentActionsFor } from "../../../../src/lib/student-actions";

@@ -10,12 +10,12 @@ import {
   type UserRole,
 } from "@space/shared";
 
-import { FormScreen } from "../design/layout/form-screen";
-import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../design/ui";
-import { FormField } from "../design/ui/form-field";
-import { Text } from "../design/ui/text";
-import { firstErrorByField } from "../lib/form-errors";
-import { USER_ROLE_LABELS as ROLE_LABELS } from "../lib/user-role-labels";
+import { FormScreen } from "../../design/layout/form-screen";
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../design/ui";
+import { FormField } from "../../design/ui/form-field";
+import { Text } from "../../design/ui/text";
+import { firstErrorByField } from "../../lib/form-errors";
+import { USER_ROLE_LABELS as ROLE_LABELS } from "../../lib/user-role-labels";
 
 interface UserFormValues {
   name: string;

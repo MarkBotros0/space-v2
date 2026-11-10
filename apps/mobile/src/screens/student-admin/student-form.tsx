@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 
-import { FormScreen } from "../design/layout/form-screen";
-import { Combobox, DatePicker, Input, Text, Textarea, type ComboboxOption } from "../design/ui";
-import { FormField } from "../design/ui/form-field";
-import { validateStudentForm, type StudentFormErrors, type StudentFormValues } from "../lib/student-form";
-import { dateToDay, dayToDate } from "../lib/day-key";
+import { FormScreen } from "../../design/layout/form-screen";
+import { Combobox, DatePicker, Input, Text, Textarea, type ComboboxOption } from "../../design/ui";
+import { FormField } from "../../design/ui/form-field";
+import { validateStudentForm, type StudentFormErrors, type StudentFormValues } from "../../lib/student-form";
+import { dateToDay, dayToDate } from "../../lib/day-key";
 
 interface StudentFormProps {
   title: string;

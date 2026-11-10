@@ -5,7 +5,7 @@ import { BULK_INVITE_BATCH_SIZE, type BulkInviteResponse } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
-import { UsersList, parseUserStatus } from "../../../src/design/users/users-list";
+import { UsersList, parseUserStatus } from "../../../src/screens/community/users-list";
 import { Button, EmptyState, GroupedList, ListRow, PillButton, SearchFilterRow, toast } from "../../../src/design/ui";
 import { usePendingInviteCount, useSendInvite, useSendPendingInvites, useUsers } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";

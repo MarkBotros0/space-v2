@@ -11,7 +11,7 @@ import { useState, type ComponentProps } from "react";
 import { View } from "react-native";
 
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
-import { StatusChip } from "../ui/status-chip";
+import { StatusChip } from "../../design/ui/status-chip";
 import { EngagementSummary } from "./engagement-summary";
 import { GroupedAttendanceTab, GroupedNotesTab, GroupedSeasonsTab, GroupedSubmissionsTab } from "./grouped-tabs";
 import { NoteSheet } from "./note-sheet";
