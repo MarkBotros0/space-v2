@@ -37,14 +37,7 @@ export const DOMAINS: { title: string; models: string[] }[] = [
   { title: "Quizzes", models: ["Quiz", "QuizGrade", "QuizQuestion", "QuizAttempt", "QuizAnswer"] },
   {
     title: "Notes, follow-ups, notifications, announcements, events",
-    models: [
-      "EngagementNote",
-      "MentorFollowUp",
-      "Notification",
-      "JpcEvent",
-      "Announcement",
-      "AnnouncementRead",
-    ],
+    models: ["EngagementNote", "MentorFollowUp", "Notification", "JpcEvent", "Announcement", "AnnouncementRead"],
   },
   { title: "Announcement polls", models: ["AnnouncementPoll", "AnnouncementPollOption", "AnnouncementPollVote"] },
 ];
