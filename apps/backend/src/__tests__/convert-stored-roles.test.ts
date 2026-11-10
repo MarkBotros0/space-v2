@@ -67,7 +67,7 @@ describe("applyConversion", () => {
     expect(mockTx.studentProfile.upsert).not.toHaveBeenCalled();
   });
 
-  it("sets the role and upserts each profile, keeping a deleted account's deletion", async () => {
+  it("sets the role and upserts each profile (a deleted account stays deleted on its User row)", async () => {
     const gone = new Date("2026-01-01T00:00:00.000Z");
     mockTx.user.findMany.mockResolvedValue([person(1, "ADMIN", 2020), person(2, "LEADER", 2021, gone)]);
     await expect(applyConversion()).resolves.toMatchObject({ converted: 2 });
@@ -78,12 +78,12 @@ describe("applyConversion", () => {
     expect(mockTx.studentProfile.upsert).toHaveBeenCalledWith({
       where: { userId: 1 },
       update: {},
-      create: { userId: 1, deletedAt: null },
+      create: { userId: 1 },
     });
     expect(mockTx.studentProfile.upsert).toHaveBeenCalledWith({
       where: { userId: 2 },
       update: {},
-      create: { userId: 2, deletedAt: gone },
+      create: { userId: 2 },
     });
   });
 

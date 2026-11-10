@@ -238,7 +238,7 @@ export const studentPaths = {
       tags: ["Students"],
       summary: "Soft-delete a student (SUPER only)",
       description:
-        "SUPER only. One transaction stamps `User.deletedAt` and `StudentProfile.deletedAt` and revokes every refresh token. Nothing cascades: enrollments, attendance, submissions and notes survive as history. Reversible only through `POST /users/{id}/reactivate`. `not_found` covers a non-student, an unknown id and an already-deleted student. Writes a server-side audit line (ids only).",
+        "SUPER only. One transaction stamps `User.deletedAt` and revokes every refresh token. Nothing cascades: enrollments, attendance, submissions and notes survive as history. Reversible only through `POST /users/{id}/reactivate`. `not_found` covers a non-student, an unknown id and an already-deleted student. Writes a server-side audit line (ids only).",
       parameters: [idParam],
       responses: {
         200: ok(

@@ -1,8 +1,8 @@
-import { liveAssignment, liveSeason, liveStudentProfile, liveUser, withDeleted } from "../lib/db/live";
+import { liveAssignment, liveSeason, liveUser, withDeleted } from "../lib/db/live";
 
 describe("soft-delete fragments", () => {
   it("each live fragment is exactly deletedAt: null", () => {
-    for (const fragment of [liveUser, liveSeason, liveAssignment, liveStudentProfile]) {
+    for (const fragment of [liveUser, liveSeason, liveAssignment]) {
       expect(fragment).toEqual({ deletedAt: null });
     }
   });

@@ -52,7 +52,6 @@ describe("DELETE /api/v1/me", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.deletedAt).toEqual(expect.any(String));
     expect(tx.user.update).toHaveBeenCalledWith({ where: { id: 7 }, data: { deletedAt: expect.any(Date) } });
-    // StudentProfile.deletedAt is no longer written (DB-010).
     expect(tx.studentProfile.updateMany).not.toHaveBeenCalled();
     expect(tx.deviceToken.deleteMany).toHaveBeenCalledWith({ where: { userId: 7 } });
     expect(revokeAllRefreshTokensForUser).toHaveBeenCalledWith(tx, 7);

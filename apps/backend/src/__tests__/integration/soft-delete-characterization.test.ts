@@ -64,9 +64,7 @@ describe("deleting your own account (DELETE /api/v1/me)", () => {
     const user = await db.user.findUnique({ where: { id: student.id } });
     expect(user).not.toBeNull();
     expect(user!.deletedAt).not.toBeNull();
-    const profile = await db.studentProfile.findUnique({ where: { userId: student.id } });
-    expect(profile).not.toBeNull();
-    expect(profile!.deletedAt).toBeNull();
+    expect(await db.studentProfile.count({ where: { userId: student.id } })).toBe(1);
     expect(await db.deviceToken.count({ where: { userId: student.id } })).toBe(0);
   });
 
@@ -92,8 +90,6 @@ describe("deleting your own account (DELETE /api/v1/me)", () => {
 
     const user = await db.user.findUnique({ where: { id: student.id } });
     expect(user!.deletedAt).toBeNull();
-    const profile = await db.studentProfile.findUnique({ where: { userId: student.id } });
-    expect(profile!.deletedAt).toBeNull();
     expect(await listIds("active")).toContain(student.id);
   });
 });

@@ -8,8 +8,7 @@ import { isLastActiveSuper, lockActiveSuperIds } from "../super-guard";
 /**
  * The account holder deletes their own account: the same soft delete as a
  * SUPER's deactivation (deletedAt on the user, every session revoked) plus this
- * account's push devices. StudentProfile.deletedAt is no longer written: nothing
- * reads it, User.deletedAt is the one flag (DB-010; the column goes in Wave 6). Throws 404 for an account
+ * account's push devices. User.deletedAt is the one flag (DB-010). Throws 404 for an account
  * already gone and 409 `last_super` for the last active SUPER; nothing is
  * written then.
  */

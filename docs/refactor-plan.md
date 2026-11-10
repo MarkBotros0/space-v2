@@ -354,7 +354,7 @@ a backup first is optional. A rollback restores columns, not data.**
 - [x] 6.2 DB-002: drop `Season.coverImagePath`, `Session.materialsPath`, `JpcEvent.imagePath` — `20261111020000_dead_path_columns`; cycle + drift empty + snapshot (-3 columns); events.ts comment updated; unit 572
 - [x] 6.3 DB-003: drop `StudentDocument` and its User relations — `20261111030000_drop_student_document` (table, sequence, index, both FKs; rollback recreates it empty) + the two User relations + the ERD group entry; cycle + drift empty + snapshot (only StudentDocument lines); unit 572
 - [x] 6.4 DB-006: drop `RefreshToken.userAgent` — `20261111040000_refresh_token_user_agent`; cycle + drift empty + snapshot (-1 column); the 'no longer written' comment and assertion go with it; unit 572
-- [ ] 6.5 DB-010: drop `StudentProfile.deletedAt`
+- [x] 6.5 DB-010: drop `StudentProfile.deletedAt` — `20261111050000_student_profile_deleted_at`; `liveStudentProfile` removed; the role-convert script's profile upsert no longer copies the stamp (the User row keeps it); schema header, OpenAPI text and tests updated; cycle + drift empty + snapshot (-1 column); unit 572
 - [ ] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`)
 - [ ] 6.7 ERD final; full verification + wave summary + PR → **STOP**
 - Skipped (D8): DB-012 table drop, DB-005, IDX-D4 (kept: the device prune reads `lastSeenAt`), DB-011b

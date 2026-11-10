@@ -71,7 +71,6 @@ erDiagram
     String faculty "nullable"
     Int universityGraduationYear "nullable"
     String notes "nullable"
-    DateTime deletedAt "nullable"
     DateTime createdAt
     DateTime updatedAt
   }

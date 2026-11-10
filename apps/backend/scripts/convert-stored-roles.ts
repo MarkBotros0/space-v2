@@ -75,7 +75,7 @@ export async function applyConversion(): Promise<{ converted: number }> {
         await tx.studentProfile.upsert({
           where: { userId: person.id },
           update: {},
-          create: { userId: person.id, deletedAt: person.deletedAt },
+          create: { userId: person.id },
         });
       }
       return { converted: convert.length };

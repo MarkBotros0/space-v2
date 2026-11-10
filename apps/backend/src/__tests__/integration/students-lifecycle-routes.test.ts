@@ -243,14 +243,11 @@ describe("DELETE /api/v1/students/:id (Plan 10 Decision 3)", () => {
       where: { id: s.id },
       select: {
         deletedAt: true,
-        studentProfile: { select: { deletedAt: true } },
         seasonEnrollments: { select: { status: true } },
         refreshTokens: { select: { revokedAt: true } },
       },
     });
     expect(row?.deletedAt).not.toBeNull();
-    // DB-010: only the user carries the stamp now.
-    expect(row?.studentProfile?.deletedAt).toBeNull();
     // R87 kept: soft delete cascades to nothing.
     expect(row?.seasonEnrollments).toEqual([{ status: "ACTIVE" }]);
     // Spec 11 D6: deactivation revokes. (A refresh would 401 anyway via

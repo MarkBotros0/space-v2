@@ -291,7 +291,6 @@ exports[`database schema has exactly these columns 1`] = `
   "SessionVideoQuestionResponse.selectedIndex integer NOT NULL",
   "SessionVideoQuestionResponse.studentUserId integer NOT NULL",
   "StudentProfile.createdAt timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP",
-  "StudentProfile.deletedAt timestamp with time zone",
   "StudentProfile.faculty text",
   "StudentProfile.id integer NOT NULL DEFAULT nextval('"StudentProfile_id_seq"'::regclass)",
   "StudentProfile.notes text",

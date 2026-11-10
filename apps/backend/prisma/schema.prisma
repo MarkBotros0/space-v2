@@ -9,8 +9,7 @@
 //   - Timestamps are timestamptz(3), written in UTC; a calendar day is `date` (User.dateOfBirth).
 //   - `createdAt` / `updatedAt` on entities whose rows are updated. Append-only rows (tokens,
 //     notifications, responses, files) have no `updatedAt`; pure links have neither.
-//   - Soft delete (`deletedAt`) on User, Season, Assignment and StudentProfile (the last is
-//     redundant with User's, DB-010). Everything else is hard-deleted.
+//   - Soft delete (`deletedAt`) on User, Season and Assignment. Everything else is hard-deleted.
 //   - Audit columns: createdById on Season, Assignment, Quiz, JpcEvent, SessionVideoQuestion;
 //     updatedById on Season and Assignment.
 //   - `publicId` (nanoid, 10 chars) only on Submission, per the per-entity URL strategy.
@@ -277,7 +276,6 @@ model StudentProfile {
   // User.graduationYear, which is the JPCS-alumni marker.
   universityGraduationYear Int?
   notes               String?
-  deletedAt           DateTime? @db.Timestamptz(3)
   createdAt           DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
 }

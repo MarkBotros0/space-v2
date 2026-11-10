@@ -1,7 +1,7 @@
 /**
- * The soft-delete filters, named once (refactor DB-024). User, Season,
- * Assignment and StudentProfile are soft-deleted (`deletedAt` set); a "live"
- * row is one whose `deletedAt` is null. Prisma 7 has no query middleware that
+ * The soft-delete filters, named once (refactor DB-024). User, Season and
+ * Assignment are soft-deleted (`deletedAt` set); a "live" row is one whose
+ * `deletedAt` is null. Prisma 7 has no query middleware that
  * reaches nested selects and relation filters, so every read spells the filter
  * itself: spell it with these, never a literal `deletedAt: null`.
  *
@@ -17,7 +17,6 @@
 export const liveUser = { deletedAt: null } as const;
 export const liveSeason = { deletedAt: null } as const;
 export const liveAssignment = { deletedAt: null } as const;
-export const liveStudentProfile = { deletedAt: null } as const;
 
 /** Only soft-deleted rows: the inactive-accounts list, End closing a deleted student's place. */
 export const deletedOnly = { deletedAt: { not: null } } as const;

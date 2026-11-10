@@ -87,8 +87,6 @@ export async function reactivateUser(req: Request, res: Response) {
   const target = await db.user.findUnique({ where: { id }, select: { id: true } });
   if (!target) return notFound(res, "User");
 
-  // Only the user: StudentProfile.deletedAt is no longer read or kept in step
-  // (refactor DB-010; the column goes in Wave 6).
   await db.user.update({ where: { id }, data: { deletedAt: null } });
   auditLog("user.reactivate", user.userId, id);
   return apiOk(res, { deletedAt: null });
