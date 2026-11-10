@@ -14,3 +14,6 @@ tools/ui-reference/node_modules/
 
 # Local-only credentials (e.g. the FCM service-account key for eas credentials)
 .secrets/
+
+# Personal Claude Code overrides
+.claude/settings.local.json

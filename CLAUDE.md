@@ -114,10 +114,12 @@ is the definition of done.
 - **Soft delete.** User, Season and Assignment only. Filter with `liveUser` / `liveSeason` /
   `liveAssignment` (`lib/db/live.ts`); lint bans a literal `deletedAt: null` inside a `where`.
   `withDeleted` and `deletedOnly` name the paths that must see deleted rows.
-- **Mobile layers.** `app/`, `src/screens`, `src/components` and `src/design` never import axios,
+- **Mobile layers.** `app/`, `src/screens` and `src/design` never import axios,
   `lib/api-client` or `lib/api-request` (lint); data goes through `src/hooks/` with `apiGet` /
   `apiSend`. A screen's model or state machine is pure and tested apart (`overview-model.ts`,
-  `use-people-selection.ts`, `use-poll-draft.ts`, `calendar-branch.ts`).
+  `use-people-selection.ts`, `use-poll-draft.ts`, `calendar-branch.ts`). Files live by feature in
+  `src/screens/<feature>/`, kebab-case; `src/design/` is only the domain-free kit and lint stops it
+  importing hooks, the store or screens (`apps/mobile/CLAUDE.md` "Where a new file goes").
 - **Schema.** `src/__tests__/schema-conformance.test.ts` holds `createdAt` / `updatedAt` on every model
   (append-only rows and links listed), an index on every foreign key (the audit trail to User and
   DB-008's small tables listed) and link tables keyed by their pair; `schema-snapshot.test.ts` and
@@ -134,9 +136,15 @@ is the definition of done.
   throwaway database. A data check a real database needs first ships as a read-only script in
   `apps/backend/scripts/refactor-checks/`. A contract migration (a drop) deploys after the code
   that stops using the column.
-- **Known gaps (D8, kept on purpose).** No duplication check (`jscpd` not approved); FE-017 / FE-073
-  moves and renames; the irregular form validators and state ladders; 53 `apiClient` calls that don't
-  fit `apiGet` / `apiSend`; DB-012, DB-014, DB-018, DB-026, DB-031, BE-050. The full list is in each
+- **Claude Code hooks** (`.claude/settings.json`, scripts in `.claude/hooks/`) hold every Claude session
+  to these rules, whoever drives it: after each edit Prettier fixes the file and ESLint's errors go back to
+  Claude; before a command or write they refuse `prisma migrate dev` / `reset` / `db push`, printing a
+  secret or `.env`, writing to jpc-space, force-push, `vercel deploy`, editing `.env`, `src/generated`
+  or a committed migration; when Claude finishes, `check:size`, `check:docs`, `check:dead` and the
+  typecheck of each touched app run, and a failure sends it back to fix. `pnpm check` in CI covers
+  everyone else.
+- **Known gaps (D8, kept on purpose).** No duplication check (`jscpd` not approved); the irregular
+  form validators and state ladders; 53 `apiClient` calls that don't fit `apiGet` / `apiSend`; DB-012, DB-014, DB-018, DB-026, DB-031, BE-050. The full list is in each
   wave's "Skipped (D8)" in the plan.
 
 ## Git
