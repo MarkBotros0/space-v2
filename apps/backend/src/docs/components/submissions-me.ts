@@ -43,6 +43,15 @@ export const submissionsMeSchemas = {
       assignmentId: { type: "integer" },
       assignmentTitle: { type: "string" },
       assignmentDueAt: { type: ["string", "null"], format: "date-time" },
+      dueOrgDay: {
+        type: ["string", "null"],
+        format: "date",
+        description: "Organisation-calendar day of the assignment's due date (ORG_TIMEZONE); null with no due date.",
+      },
+      dueOrgTime: {
+        type: ["string", "null"],
+        description: "Organisation wall-clock time (HH:mm) of the due date; null with no due date.",
+      },
       assignmentDescription: { type: ["string", "null"] },
       seasonCode: { type: "string" },
       studentUserId: { type: "integer" },
@@ -78,6 +87,11 @@ export const submissionsMeSchemas = {
       submittedAt: { type: ["string", "null"], format: "date-time", description: "When the essay was handed in." },
       isLate: { type: "boolean", description: "Handed in after the assignment's due date." },
       reviewStatus: { $ref: "#/components/schemas/SubmissionStatus" },
+      reviewedAt: {
+        type: ["string", "null"],
+        format: "date-time",
+        description: "When the essay was last reviewed or returned; null before any verdict.",
+      },
     },
   },
   SubmissionQueue: {

@@ -90,7 +90,7 @@ const WORK_SELECT = {
 
 export type WorkRow = Prisma.AssignmentPartWorkGetPayload<{ select: typeof WORK_SELECT }>;
 
-interface AnswerTally {
+export interface AnswerTally {
   answered: number;
   correct: number;
 }
@@ -194,6 +194,8 @@ interface AssignmentStanding {
   partsTotal: number;
   partsDone: number;
   returned: boolean;
+  /** An essay part exists, so a submitted assignment waits for review. */
+  hasEssay: boolean;
 }
 
 export function standingOf(works: PartWork[]): AssignmentStanding {
@@ -201,6 +203,7 @@ export function standingOf(works: PartWork[]): AssignmentStanding {
     partsTotal: works.length,
     partsDone: works.filter((w) => w.status === "DONE").length,
     returned: works.some((w) => w.status === "RETURNED"),
+    hasEssay: works.some((w) => w.kind === "ESSAY"),
   };
 }
 

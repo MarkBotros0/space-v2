@@ -206,11 +206,22 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
+const assignmentBody = (title: string) => ({
+  title,
+  description: null,
+  dueDay: null,
+  dueTime: null,
+  reminder: { enabled: false, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+  parts: [
+    { kind: "ESSAY", prompt: "Why?", minWords: null, maxWords: null, maxFileSizeMb: null, allowedMimeCategories: [] },
+  ],
+});
+
 describe("a finished season is locked to its former staff", () => {
   const writes = (): [Method, string, object?][] => [
     ["patch", `/seasons/${w.seasonId}`, { description: "x" }],
     ["post", `/seasons/${w.seasonId}/groups`, { name: "Late group" }],
-    ["post", `/seasons/${w.seasonId}/assignments`, { title: "Late", isAllGroups: true, type: "TEXT" }],
+    ["post", `/seasons/${w.seasonId}/assignments`, assignmentBody("Late")],
     [
       "put",
       `/seasons/${w.seasonId}/group-assignments`,
@@ -233,7 +244,7 @@ describe("a finished season is locked to its former staff", () => {
       { entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }] },
     ],
     ["post", `/sessions/${w.sessionId}/check-in-open`],
-    ["patch", `/assignments/${w.assignmentId}`, { title: "Renamed", isAllGroups: true }],
+    ["patch", `/assignments/${w.assignmentId}`, assignmentBody("Renamed")],
     ["post", `/submissions/${reviewedPublicId}/review`, { action: "reviewed", feedback: "late" }],
     ["post", `/quizzes`, { seasonId: w.seasonId, title: "Late quiz", kind: "PAPER", maxScore: 5 }],
     ["post", `/quizzes/${w.quizId}/grades`, { entries: [{ studentUserId: w.ids.studentA, score: 5 }] }],
@@ -272,8 +283,12 @@ describe("a finished season is locked to its former staff", () => {
 
   it("still lets the super admin write, and a mentor read, in the finished season", async () => {
     expect(
-      (await call("patch", `/assignments/${w.assignmentId}`, t.super, { title: "Super edit", isAllGroups: true }))
-        .status,
+      (
+        await call("patch", `/assignments/${w.assignmentId}`, t.super, {
+          ...assignmentBody("Super edit"),
+          confirm: true,
+        })
+      ).status,
     ).toBe(200);
     expect(
       (

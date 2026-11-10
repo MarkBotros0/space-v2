@@ -60,6 +60,21 @@ describe("GET /api/v1/submissions/:publicId — one essay", () => {
     });
   });
 
+  it("names the due date by the org's day and clock, and null without one", async () => {
+    // 2098-03-01T21:30Z is 23:30 on the 1st in Cairo (UTC+2).
+    const pid = await seedSubmissionFor(f.seasonId, f.studentUserId, "SUBMITTED", "Due late", {
+      dueAt: new Date("2098-03-01T21:30:00Z"),
+    });
+    const dated = await request(app).get(`/api/v1/submissions/${pid}`).set(auth(f.leaderToken));
+    expect(submissionDetailSchema.parse(dated.body.data)).toMatchObject({
+      dueOrgDay: "2098-03-01",
+      dueOrgTime: "23:30",
+    });
+    const undatedId = await seedSubmissionFor(f.seasonId, f.studentUserId, "SUBMITTED", "No due date");
+    const undated = await request(app).get(`/api/v1/submissions/${undatedId}`).set(auth(f.leaderToken));
+    expect(undated.body.data).toMatchObject({ dueOrgDay: null, dueOrgTime: null });
+  });
+
   it("allows the student's group leader and the season admin; refuses a peer", async () => {
     const pid = await seedSubmission("SUBMITTED", "Staff read");
     expect((await request(app).get(`/api/v1/submissions/${pid}`).set(auth(f.leaderToken))).status).toBe(200);

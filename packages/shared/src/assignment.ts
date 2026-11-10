@@ -69,6 +69,8 @@ export const studentAssignmentListItemSchema = z.object({
   partsDone: z.number(),
   /** A reviewer returned one of the essays: the row groups under "Returned — needs changes". */
   returned: z.boolean(),
+  /** The assignment has an essay part: once submitted it waits for review; without one it is done. */
+  hasEssay: z.boolean(),
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 

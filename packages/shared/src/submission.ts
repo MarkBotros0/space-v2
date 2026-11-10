@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { submissionStatusSchema } from "./enums";
+import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 //
@@ -106,6 +107,9 @@ export const submissionDetailSchema = z.object({
   assignmentId: z.number(),
   assignmentTitle: z.string(),
   assignmentDueAt: z.string().nullable(),
+  /** Org-calendar day and org wall-clock time of the assignment's due date; null with no due date. */
+  dueOrgDay: isoDaySchema.nullable(),
+  dueOrgTime: wallTimeSchema.nullable(),
   assignmentDescription: z.string().nullable(),
   seasonCode: z.string(),
   studentUserId: z.number(),
@@ -141,6 +145,8 @@ const submissionQueueItemSchema = z.object({
   submittedAt: z.string().nullable(),
   isLate: z.boolean(),
   reviewStatus: submissionStatusSchema,
+  /** When the essay was last reviewed or returned; null before any verdict. */
+  reviewedAt: z.string().nullable(),
 });
 export type SubmissionQueueItem = z.infer<typeof submissionQueueItemSchema>;
 

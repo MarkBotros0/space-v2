@@ -47,6 +47,7 @@ const row = (over: Partial<StudentAssignmentStateRow>): StudentAssignmentStateRo
   partsTotal: 3,
   partsDone: 0,
   returned: false,
+  hasEssay: true,
   ...over,
 });
 

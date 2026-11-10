@@ -97,6 +97,7 @@ export async function loadSeasonRecord(
       partsTotal: a.partsTotal,
       partsDone: a.partsDone,
       returned: a.returned,
+      hasEssay: a.hasEssay,
     })),
     quizzes: quizzes.map((q): RecordQuiz => {
       const attempt = q.attempts[0];

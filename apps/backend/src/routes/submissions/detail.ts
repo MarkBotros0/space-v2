@@ -9,6 +9,7 @@ import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
 import { essayWordCount, htmlToPlainText } from "../../../../../packages/shared/src/index";
 import { notFound } from "../../lib/http/not-found";
+import { orgDayKey, orgWallTime } from "../../lib/org-time";
 
 /** One essay work (not a video's progress or a forum post), with its part and assignment. */
 async function loadEssayForApi(publicId: string) {
@@ -106,6 +107,9 @@ export async function getSubmission(req: Request<{ publicId: string }>, res: Res
     assignmentId: part.assignmentId,
     assignmentTitle: assignment.title,
     assignmentDueAt: assignment.dueAt,
+    // The org day and wall time of the due date, so the chip never formats it in the device zone.
+    dueOrgDay: assignment.dueAt ? orgDayKey(assignment.dueAt) : null,
+    dueOrgTime: assignment.dueAt ? orgWallTime(assignment.dueAt) : null,
     assignmentDescription: assignment.description,
     seasonCode: assignment.season.code,
     studentUserId: work.studentUserId,

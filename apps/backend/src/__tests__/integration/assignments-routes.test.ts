@@ -164,6 +164,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
       partsTotal: 3,
       partsDone: 2,
       returned: false,
+      hasEssay: true,
     });
     expect(res.body.data.assignments[1]).toMatchObject({ status: "PENDING", partsTotal: 1, partsDone: 0 });
   });

@@ -60,6 +60,7 @@ describe("GET /api/v1/submissions — the review queue", () => {
         submittedAt: late.toISOString(),
         isLate: true,
         reviewStatus: "SUBMITTED",
+        reviewedAt: null,
       },
       expect.objectContaining({ publicId: two.publicId, prompt: "Second question", isLate: false }),
     ]);
@@ -104,6 +105,18 @@ describe("GET /api/v1/submissions — the review queue", () => {
     expect(p2.body.data.nextCursor).toBeNull();
     expect(p1.body.data.counts).toEqual(res.body.data.counts);
     expect(p2.body.data.counts).toBeNull();
+  });
+
+  it("carries when a returned essay was returned, so its row can say so", async () => {
+    const pid = await seedSubmissionFor(f.seasonId, f.studentUserId, "SUBMITTED", "Q returned");
+    const returnedAt = new Date("2098-02-03T09:00:00Z");
+    await db.assignmentPartWork.update({
+      where: { publicId: pid },
+      data: { status: "RETURNED", reviewedAt: returnedAt, feedback: "Say more" },
+    });
+    const res = await queue(`pendingOnly=false&seasonId=${f.seasonId}&limit=100`);
+    const item = submissionQueueSchema.parse(res.body.data).items.find((i) => i.publicId === pid);
+    expect(item).toMatchObject({ reviewStatus: "RETURNED", reviewedAt: returnedAt.toISOString() });
   });
 
   it("scopes a leader's queue to their own students", async () => {

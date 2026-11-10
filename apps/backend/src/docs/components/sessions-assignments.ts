@@ -158,6 +158,10 @@ export const sessionsAssignmentsSchemas = {
       partsTotal: { type: "integer" },
       partsDone: { type: "integer", description: "Parts done by the completion rules; a returned essay is not done." },
       returned: { type: "boolean", description: "A reviewer returned one of the essays." },
+      hasEssay: {
+        type: "boolean",
+        description: "The assignment has an essay part, so a submitted one waits for review; without one it is done.",
+      },
     },
   },
   AssignmentDetail: {

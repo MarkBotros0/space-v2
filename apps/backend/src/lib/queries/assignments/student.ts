@@ -20,6 +20,8 @@ export interface StudentAssignmentRow {
   partsTotal: number;
   partsDone: number;
   returned: boolean;
+  /** An essay part exists, so a submitted assignment waits for review. */
+  hasEssay: boolean;
 }
 
 /**

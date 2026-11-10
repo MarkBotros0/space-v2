@@ -77,6 +77,7 @@ export async function listSubmissionQueue(req: Request, res: Response) {
       publicId: true,
       status: true,
       submittedAt: true,
+      reviewedAt: true,
       part: {
         select: { assignmentId: true, prompt: true, assignment: { select: { title: true, dueAt: true } } },
       },
@@ -95,6 +96,8 @@ export async function listSubmissionQueue(req: Request, res: Response) {
       submittedAt: r.submittedAt,
       isLate: isLate(r.submittedAt, r.part.assignment.dueAt),
       reviewStatus: r.status,
+      // When the last verdict was given: a RETURNED row says "Returned <date>".
+      reviewedAt: r.reviewedAt,
     })),
     counts,
     nextCursor: rows.length > limit ? (page[page.length - 1]?.publicId ?? null) : null,
