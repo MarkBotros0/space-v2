@@ -171,7 +171,8 @@ async function applyPartChanges(tx: Tx, assignmentId: number, plan: PartChangePl
  * PATCH /assignments/:id's write: a full replace of the fields and the parts,
  * in one transaction holding the assignment's row lock, so the impact counted
  * is the impact applied. An edit that changes students' work (a removed part,
- * a video's new link, an added part reopening submitted work) is refused with
+ * a video's new link, an essay's new word range, an added part reopening
+ * submitted work) is refused with
  * 409 `needs_confirmation` and the student count until the body says
  * `confirm: true`. seasonId and createdById are never written here (R68).
  */
@@ -185,7 +186,10 @@ export async function replaceAssignment(
     // Re-read under the lock: a delete that landed after the route's check wins.
     const current = await tx.assignment.findFirst({
       where: { id, ...liveAssignment },
-      select: { seasonId: true, parts: { select: { id: true, kind: true, youtubeId: true } } },
+      select: {
+        seasonId: true,
+        parts: { select: { id: true, kind: true, youtubeId: true, minWords: true, maxWords: true } },
+      },
     });
     if (!current) throw new ApiError("not_found", "Assignment not found.", 404);
     const { seasonId, parts } = current;

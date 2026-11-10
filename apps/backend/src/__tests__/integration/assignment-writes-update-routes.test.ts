@@ -157,11 +157,17 @@ describe("PATCH /api/v1/assignments/:id", () => {
     expect(await inconsistentWorks(made.id)).toEqual([]);
   });
 
-  it("a word-range change keeps handed-in essays", async () => {
+  it("a word-range change asks first and keeps handed-in essays", async () => {
     const made = await create({ parts: [essayPart({ minWords: 50, maxWords: 500 })] });
     await seedWork(made.id, made.parts[0]!.id, studentAId, { submitted: true });
+    const parts = asSent(made.parts, [essayPart({ minWords: 300, maxWords: 400 })]);
 
-    const res = await patch(made.id, { parts: asSent(made.parts, [essayPart({ minWords: 300, maxWords: 400 })]) });
+    const asked = await patch(made.id, { parts });
+    expect(asked.status).toBe(409);
+    expect(asked.body).toMatchObject({ students: 1, error: { code: "needs_confirmation" } });
+    expect((await storedParts(made.id))[0]).toMatchObject({ minWords: 50, maxWords: 500 }); // nothing written
+
+    const res = await patch(made.id, { parts, confirm: true });
     expect(res.status).toBe(200);
     expect(res.body.data.reopened).toBe(0);
     const work = await db.assignmentPartWork.findUniqueOrThrow({
@@ -171,6 +177,13 @@ describe("PATCH /api/v1/assignments/:id", () => {
     expect(work.status).toBe("SUBMITTED");
     expect(work.submission.submittedAt).not.toBeNull();
     expect((await storedParts(made.id))[0]).toMatchObject({ minWords: 300, maxWords: 400 });
+    expect(await inconsistentWorks(made.id)).toEqual([]);
+  });
+
+  it("a word-range change on an essay nobody has started saves without asking", async () => {
+    const made = await create({ parts: [essayPart()] });
+    const res = await patch(made.id, { parts: asSent(made.parts, [essayPart({ minWords: null, maxWords: 80 })]) });
+    expect(res.status).toBe(200);
   });
 
   it("changing a video link resets its progress", async () => {

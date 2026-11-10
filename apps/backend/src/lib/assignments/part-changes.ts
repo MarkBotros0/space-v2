@@ -12,6 +12,8 @@ interface PartRow {
   id: number;
   kind: AssignmentPartKind;
   youtubeId: string | null;
+  minWords: number | null;
+  maxWords: number | null;
 }
 
 export interface PartChangePlan {
@@ -23,6 +25,8 @@ export interface PartChangePlan {
   remove: number[];
   /** Kept videos whose link now names another video: their progress and answers are reset. */
   resetVideo: number[];
+  /** Kept essays whose word range changed: asked about, but handed-in essays stay handed in. */
+  wordRangeChanged: number[];
   /** A part was added, so whoever had submitted has something left to do. */
   reopensSubmitted: boolean;
 }
@@ -35,12 +39,20 @@ export interface PartChangePlan {
  * would leave the students' work on it meaning something else.
  *
  * A video counts as changed when its link names another YouTube video, not
- * when the same video is written another way. A word-range change is a plain
+ * when the same video is written another way. A changed essay word range is
+ * asked about (spec, "Editing after students started") but applied as a plain
  * update: essays already handed in stay handed in.
  */
 export function planPartChanges(existing: PartRow[], incoming: AssignmentPartInput[]): PartChangePlan {
   const stored = new Map(existing.map((p) => [p.id, p]));
-  const plan: PartChangePlan = { create: [], update: [], remove: [], resetVideo: [], reopensSubmitted: false };
+  const plan: PartChangePlan = {
+    create: [],
+    update: [],
+    remove: [],
+    resetVideo: [],
+    wordRangeChanged: [],
+    reopensSubmitted: false,
+  };
   const kept = new Set<number>();
 
   incoming.forEach((input, position) => {
@@ -60,6 +72,9 @@ export function planPartChanges(existing: PartRow[], incoming: AssignmentPartInp
     if (input.kind === "VIDEO" && parseYouTubeId(input.youtubeUrl) !== row.youtubeId) {
       plan.resetVideo.push(input.id);
     }
+    if (input.kind === "ESSAY" && (input.minWords !== row.minWords || input.maxWords !== row.maxWords)) {
+      plan.wordRangeChanged.push(input.id);
+    }
   });
 
   plan.remove = existing.filter((p) => !kept.has(p.id)).map((p) => p.id);
@@ -70,25 +85,26 @@ export function planPartChanges(existing: PartRow[], incoming: AssignmentPartInp
 type Client = Prisma.TransactionClient | typeof db;
 
 /**
- * How many students an edit touches: those with work on a removed part or on a
- * video being reset (an answered timed question counts as work on its video),
- * and, when a part is added, those who had submitted. Each student once.
+ * How many students an edit touches: those with work on a removed part, on a
+ * video being reset (an answered timed question counts as work on its video)
+ * or on an essay whose word range changed, and, when a part is added, those
+ * who had submitted. Each student once.
  */
 export async function partChangeImpact(
   assignmentId: number,
   plan: PartChangePlan,
   client: Client = db,
 ): Promise<{ students: number }> {
-  const lostParts = [...plan.remove, ...plan.resetVideo];
+  const touchedParts = [...plan.remove, ...plan.resetVideo, ...plan.wordRangeChanged];
   const students = new Set<number>();
-  if (lostParts.length > 0) {
+  if (touchedParts.length > 0) {
     const [works, answers] = await Promise.all([
       client.assignmentPartWork.findMany({
-        where: { partId: { in: lostParts }, part: { assignmentId } },
+        where: { partId: { in: touchedParts }, part: { assignmentId } },
         select: { studentUserId: true },
       }),
       client.sessionVideoQuestionResponse.findMany({
-        where: { question: { assignmentPartId: { in: lostParts }, assignmentPart: { assignmentId } } },
+        where: { question: { assignmentPartId: { in: touchedParts }, assignmentPart: { assignmentId } } },
         select: { studentUserId: true },
       }),
     ]);
