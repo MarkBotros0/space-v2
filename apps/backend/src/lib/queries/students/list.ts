@@ -1,126 +1,26 @@
-import type { StudentListItem, StudentListQuery } from "@space/shared";
-
+import type { StudentListQuery } from "@space/shared";
 import { db } from "../../../db/client";
 import type { Prisma } from "../../../generated/prisma/client";
 import type { SessionUser } from "../../auth/tokens";
 import { staffRosterWhere } from "../../permissions";
-import { canReadAllStudents, isMentor, isSuper } from "../../rbac";
+import { isMentor, isSuper } from "../../rbac";
 import { seasonParticipant } from "../season-participants";
-import { currentSeasonEnrollmentSelect } from "./current-season";
-import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
+import { studentIdsWithCurrentGroup } from "./current-group";
 import { withLastSeason } from "./last-season";
 import { absentLatelyStudentIds } from "./absent-lately";
 import { liveUser } from "../../db/live";
+import { studentListScope } from "./list-scope";
+import {
+  emptyList,
+  searchFilter,
+  currentFactsSelect,
+  listSelect,
+  toListItem,
+  type StudentListResult,
+} from "./list-row";
+import { listDroppedEnrollments } from "./dropped";
 
-export interface StudentListResult {
-  students: StudentListItem[];
-  nextCursor: number | null;
-  total: number;
-}
-
-type StudentScope = { kind: "all" } | { kind: "ids"; ids: number[] };
-
-/**
- * D6's single implementation of "which students may this caller see".
- *
- * SUPER and MENTOR read all (canReadAllStudents). ADMIN gets the distinct
- * students EVER enrolled in their seasons, regardless of enrollment status —
- * v1's semantics (R30/R31), kept: the list answers "ever mine", not
- * "currently mine". LEADER gets the distinct students whose ENROLLMENT names
- * one of their groups — ruling C9; v1's (unreachable — no leader list page
- * ever existed, R28) branch read GroupStudent instead, which (while that table
- * was global) forgot a leader's students the moment a later season
- * reassigned them.
- *
- * null = this caller has no student-list surface at all (STUDENT) → 403.
- */
-async function studentListScope(user: SessionUser): Promise<StudentScope | null> {
-  if (canReadAllStudents(user)) return { kind: "all" };
-  if (user.role === "ADMIN") {
-    if (user.seasonAdminIds.length === 0) return { kind: "ids", ids: [] };
-    return { kind: "ids", ids: await enrolledStudentIds({ seasonId: { in: user.seasonAdminIds } }) };
-  }
-  if (user.role === "LEADER") {
-    if (user.groupLeaderIds.length === 0) return { kind: "ids", ids: [] };
-    return { kind: "ids", ids: await enrolledStudentIds({ groupId: { in: user.groupLeaderIds } }) };
-  }
-  return null;
-}
-
-/** The distinct students with an enrolment matching `where`, any status. */
-async function enrolledStudentIds(where: Prisma.SeasonEnrollmentWhereInput): Promise<number[]> {
-  const enrollments = await db.seasonEnrollment.findMany({
-    where,
-    select: { studentUserId: true },
-    distinct: ["studentUserId"],
-  });
-  return enrollments.map((e) => e.studentUserId);
-}
-
-const emptyList = (): StudentListResult => ({ students: [], nextCursor: null, total: 0 });
-
-function searchFilter(q: string | undefined): Prisma.UserWhereInput {
-  if (!q) return {};
-  return {
-    OR: [
-      { name: { contains: q, mode: "insensitive" } },
-      { email: { contains: q, mode: "insensitive" } },
-      { studentProfile: { university: { contains: q, mode: "insensitive" } } },
-    ],
-  };
-}
-
-/**
- * The two per-row season facts, limited to the seasons this caller may read:
- * staff never see a group or a season they don't serve in, as with the detail.
- */
-function currentFactsSelect(user: SessionUser) {
-  const roster = staffRosterWhere(user) ?? {};
-  return {
-    seasonEnrollments: {
-      ...currentSeasonEnrollmentSelect,
-      where: { ...currentSeasonEnrollmentSelect.where, ...roster },
-    },
-    // Advisory current group — the one question GroupStudent may answer (C9).
-    groupStudentMemberships: { ...currentMembershipSelect({ name: true }), where: roster },
-  };
-}
-
-function listSelect(user: SessionUser) {
-  return {
-    id: true,
-    name: true,
-    email: true,
-    avatarPath: true,
-    graduationYear: true,
-    studentProfile: {
-      select: {
-        university: true,
-        faculty: true,
-        universityGraduationYear: true,
-      },
-    },
-    ...currentFactsSelect(user),
-  } as const;
-}
-
-type ListRow = Prisma.UserGetPayload<{ select: ReturnType<typeof listSelect> }>;
-
-function toListItem(u: ListRow): StudentListItem {
-  return {
-    id: u.id,
-    name: u.name,
-    email: u.email,
-    avatarPath: u.avatarPath,
-    university: u.studentProfile?.university ?? null,
-    faculty: u.studentProfile?.faculty ?? null,
-    universityGraduationYear: u.studentProfile?.universityGraduationYear ?? null,
-    graduationYear: u.graduationYear,
-    activeSeasonTitle: u.seasonEnrollments[0]?.season.title ?? null,
-    currentGroupName: u.groupStudentMemberships[0]?.group.name ?? null,
-    droppedEnrollment: null,
-  };
-}
+export type { StudentListResult } from "./list-row";
 
 /**
  * REG-82: v1's sort keys, server-side. `name` and the unsorted defaults are
@@ -274,67 +174,6 @@ export async function listStudents(user: SessionUser, query: StudentListQuery): 
   const page = rows.slice(0, query.limit);
   return {
     students: await withLastSeason(page.map(toListItem), user),
-    nextCursor: rows.length > query.limit ? (page[page.length - 1]?.id ?? null) : null,
-    total,
-  };
-}
-
-/**
- * The dropped list is a list of ENROLLMENTS, not students (R43): its row key
- * is the enrollment id and a student dropped from three seasons appears three
- * times. SUPER and ADMIN only — v1's gate also admitted MENTOR but no mentor
- * page ever called it; as an endpoint that would hand every drop reason in
- * the database to read-all (spec 06 §4.3), so the surface narrows (§7).
- */
-async function listDroppedEnrollments(user: SessionUser, query: StudentListQuery): Promise<StudentListResult | null> {
-  if (!isSuper(user) && user.role !== "ADMIN") return null;
-  if (user.role === "ADMIN" && user.seasonAdminIds.length === 0) return emptyList();
-
-  const where: Prisma.SeasonEnrollmentWhereInput = {
-    AND: [
-      { status: "WITHDRAWN" },
-      // D12: v1 filtered neither deletedAt nor role here, so a soft-deleted
-      // student's name, email and drop reason stayed listed forever, with a
-      // click-through that 404s.
-      { studentUser: { role: "STUDENT", ...liveUser, ...searchFilter(query.q) } },
-      ...(user.role === "ADMIN" ? [{ seasonId: { in: user.seasonAdminIds } }] : []),
-      ...(query.seasonId ? [{ seasonId: query.seasonId }] : []),
-    ],
-  };
-
-  const [rows, total] = await Promise.all([
-    db.seasonEnrollment.findMany({
-      where,
-      orderBy: [{ droppedAt: "desc" }, { id: "desc" }], // R46
-      take: query.limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-      select: {
-        id: true,
-        seasonId: true,
-        droppedAt: true,
-        dropReason: true,
-        season: { select: { title: true } },
-        studentUser: { select: listSelect(user) },
-      },
-    }),
-    db.seasonEnrollment.count({ where }),
-  ]);
-
-  const page = rows.slice(0, query.limit);
-  return {
-    students: page.map((r) => ({
-      ...toListItem(r.studentUser),
-      droppedEnrollment: {
-        enrollmentId: r.id,
-        seasonId: r.seasonId,
-        seasonTitle: r.season.title,
-        // Nullable on the contract: only dropEnrollment sets it today, but
-        // nothing in the schema guarantees that (spec 06 §2's warning about
-        // v1's non-null assertion at students-query.ts:196).
-        droppedAt: r.droppedAt?.toISOString() ?? null,
-        dropReason: r.dropReason,
-      },
-    })),
     nextCursor: rows.length > query.limit ? (page[page.length - 1]?.id ?? null) : null,
     total,
   };
