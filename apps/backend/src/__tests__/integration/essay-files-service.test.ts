@@ -1,8 +1,10 @@
 import { db } from "../../db/client";
 import { ApiError } from "../../lib/api-error";
 import { attachEssayFile, removeEssayFile } from "../../lib/assignments/essay-files";
+import { replaceAssignment } from "../../lib/assignments/writes";
 import { FileNotFoundError, getStorage } from "../../lib/storage";
 import { createAssignmentWithParts, seedTextWork } from "./assignment-reads-setup";
+import { body, forumPart } from "./assignment-writes-setup";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 
 // The file writes under the essay's locks: the route's checks ran on a row
@@ -124,5 +126,20 @@ describe("removeEssayFile", () => {
     expect((error as ApiError).code).toBe("submission_locked");
     expect(await db.submissionFile.count({ where: { id: row.id } })).toBe(1);
     expect(await blobGone(storagePath)).toBe(false);
+  });
+});
+
+describe("removing an essay part", () => {
+  it("drops its files' blobs once the edit has committed", async () => {
+    const { assignmentId, work } = await essayWithFiles("Part removed with files");
+    const row = await attachEssayFile(work.publicId, studentUserId, file());
+    const { storagePath } = await db.submissionFile.findUniqueOrThrow({ where: { id: row.id } });
+    stored.push(storagePath);
+
+    const edit = body({ parts: [forumPart()], confirm: true }) as Parameters<typeof replaceAssignment>[1];
+    await replaceAssignment(assignmentId, edit, studentUserId);
+
+    expect(await db.submissionFile.count({ where: { id: row.id } })).toBe(0);
+    expect(await blobGone(storagePath)).toBe(true);
   });
 });

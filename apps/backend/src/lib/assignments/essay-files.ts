@@ -52,6 +52,11 @@ async function dropBlob(path: string): Promise<void> {
     .catch((): void => undefined);
 }
 
+/** Drops blobs whose rows are gone (a removed part's files), best-effort, after the commit. */
+export async function dropBlobs(paths: string[]): Promise<void> {
+  for (const path of paths) await dropBlob(path);
+}
+
 /**
  * Stores the file, then records it on the student's essay under the locks,
  * re-checking that the part is a live essay's, the essay is still editable

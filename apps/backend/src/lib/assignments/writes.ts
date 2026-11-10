@@ -12,6 +12,7 @@ import { notificationLink } from "../notification-target";
 import { createNotificationsBulk } from "../notifications";
 import { formatInOrgTime, orgWallClockToInstant } from "../org-time";
 import { liveStudentIds } from "../queries/season-participants";
+import { dropBlobs } from "./essay-files";
 import { partChangeImpact, planPartChanges, type PartChangePlan } from "./part-changes";
 import { resolveRemindAt } from "./reminder";
 import { settleSubmitted } from "./standing";
@@ -133,8 +134,32 @@ function confirmMessage(students: number): string {
   return students === 1 ? "This changes work 1 student has done." : `This changes work ${students} students have done.`;
 }
 
-/** Applies a confirmed plan's part changes. Returns how many submitted students were reopened. */
-async function applyPartChanges(tx: Tx, assignmentId: number, plan: PartChangePlan, now: Date): Promise<number> {
+/**
+ * Applies a confirmed plan's part changes. Returns how many submitted students
+ * were reopened, and the storage paths of the removed parts' essay files: the
+ * cascade drops their rows, and the caller drops the blobs after the commit.
+ */
+async function applyPartChanges(
+  tx: Tx,
+  assignmentId: number,
+  plan: PartChangePlan,
+  now: Date,
+): Promise<{ reopened: number; blobs: string[] }> {
+  const blobs = await removedPartBlobs(tx, assignmentId, plan.remove);
+  return { reopened: await applyPartRows(tx, assignmentId, plan, now), blobs };
+}
+
+/** The storage paths of the files on these parts' work, read before the parts go. */
+async function removedPartBlobs(tx: Tx, assignmentId: number, partIds: number[]): Promise<string[]> {
+  if (partIds.length === 0) return [];
+  const files = await tx.submissionFile.findMany({
+    where: { partWork: { partId: { in: partIds }, part: { assignmentId } } },
+    select: { storagePath: true },
+  });
+  return files.map((f) => f.storagePath);
+}
+
+async function applyPartRows(tx: Tx, assignmentId: number, plan: PartChangePlan, now: Date): Promise<number> {
   const changesStanding = plan.resetVideo.length > 0 || plan.remove.length > 0 || plan.create.length > 0;
   // Lock order (lib/assignments/essay.ts): this edit holds the Assignment FOR
   // UPDATE; the students' Submissions come next, before any work row goes.
@@ -199,7 +224,7 @@ export async function replaceAssignment(
   body: AssignmentWriteBody,
   actorId: number,
 ): Promise<{ reopened: number }> {
-  return db.$transaction(async (tx) => {
+  const { reopened, blobs } = await db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Assignment" WHERE "id" = ${id} FOR UPDATE`;
     // Re-read under the lock: a delete that landed after the route's check wins.
     const current = await tx.assignment.findFirst({
@@ -220,12 +245,15 @@ export async function replaceAssignment(
       throw new ApiError("needs_confirmation", confirmMessage(students), 409, { students });
     }
     const now = new Date();
-    const reopened = await applyPartChanges(tx, id, plan, now);
+    const changed = await applyPartChanges(tx, id, plan, now);
     const columns = assignmentColumns(body);
     const remindAt = await resolveRemindAt({ ...stored, ...columns }, now, tx);
     await tx.assignment.update({ where: { id }, data: { ...columns, remindAt, updatedById: actorId } });
-    return { reopened };
+    return changed;
   });
+  // Best-effort, as removeEssayFile: an orphaned blob is recoverable, a row pointing at nothing is not.
+  await dropBlobs(blobs);
+  return { reopened };
 }
 
 /** The first schema issue as a sentence the client can show, prefixed with its field. */
