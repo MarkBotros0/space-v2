@@ -35,11 +35,13 @@ function videoChip(
       : { tone: "ok", label: `${name}: watched` };
   }
   if (v === undefined || v.watchedSeconds <= 0) return { tone: "neutral", label: `${name}: not started` };
-  const duration = v.durationSeconds > 0 ? v.durationSeconds : part.durationSeconds;
-  if (isWatched(v.watchedSeconds, duration)) {
+  // Watched by exactly the length shared partDone reads (the work's), so this chip and partsLeft agree.
+  if (isWatched(v.watchedSeconds, v.durationSeconds)) {
     return { tone: "warn", label: `${name}: ${v.answered} of ${v.questionCount} answered` };
   }
-  const minutes = `${Math.floor(v.watchedSeconds / 60)}/${Math.max(1, Math.round(duration / 60))} min`;
+  // Only the words fall back to the part's length, for a work that has none yet.
+  const shown = v.durationSeconds > 0 ? v.durationSeconds : part.durationSeconds;
+  const minutes = `${Math.floor(v.watchedSeconds / 60)}/${Math.max(1, Math.round(shown / 60))} min`;
   // "Video 6/18 min" (brief); a numbered one keeps its number apart: "Video 2: 6/18 min".
   return { tone: "warn", label: numbered ? `${name}: ${minutes}` : `${name} ${minutes}` };
 }
@@ -109,15 +111,20 @@ export function progressLine(parts: AssignmentPart[], row: ProgressRow): string 
   return `Submitted ${formatShortDateTime(row.submittedAt)}`;
 }
 
+export type HandedInEssay = { publicId: string; label: string };
+
 /**
- * The essay a row opens: the first waiting review, else the first handed in
- * (reviewed or returned), else none. Always the essay work's publicId, which is
- * what the review screen reads.
+ * The essays a row can open, in the admin's order, each named as its chip is
+ * ("Essay 2: waiting review"): every essay handed in (waiting, reviewed or
+ * returned). Always the essay work's publicId, which the review screen reads.
+ * One opens directly; two or more open a list.
  */
-export function essayToOpen(parts: AssignmentPart[], row: ProgressRow): string | null {
-  const essays = byPosition(parts)
-    .filter((p) => p.kind === "ESSAY")
-    .map((p) => workFor(p, row.parts)?.essay)
-    .filter((e) => e !== undefined && e.reviewStatus !== "DRAFT");
-  return (essays.find((e) => e?.reviewStatus === "SUBMITTED") ?? essays[0])?.publicId ?? null;
+export function handedInEssays(parts: AssignmentPart[], row: ProgressRow): HandedInEssay[] {
+  const ordered = byPosition(parts);
+  const chips = partChips(ordered, row.parts);
+  return ordered.flatMap((part, i) => {
+    const essay = part.kind === "ESSAY" ? workFor(part, row.parts)?.essay : undefined;
+    if (essay === undefined || essay.reviewStatus === "DRAFT") return [];
+    return [{ publicId: essay.publicId, label: chips[i]!.label }];
+  });
 }

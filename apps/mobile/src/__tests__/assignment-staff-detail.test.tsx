@@ -169,6 +169,46 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(screen.getByLabelText(/^Omar Student, 3 parts left, Video 6\/18 min/)).toBeTruthy();
   });
 
+  it("opens a list of the essays for a student with more than one handed in, each to its own review", async () => {
+    useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
+    const twoEssays = [parts[1]!, { ...parts[1]!, id: 4, position: 3, prompt: "What would you change?" }];
+    const lina = {
+      studentUserId: 11,
+      name: "Lina Student",
+      avatarPath: null,
+      submittedAt: "2099-03-30T10:00:00.000Z",
+      parts: [
+        {
+          partId: 2,
+          kind: "ESSAY" as const,
+          status: "DONE" as const,
+          essay: { publicId: "essayLina1", wordCount: 210, reviewStatus: "SUBMITTED" as const, feedback: null },
+        },
+        {
+          partId: 4,
+          kind: "ESSAY" as const,
+          status: "DONE" as const,
+          essay: { publicId: "essayLina2", wordCount: 190, reviewStatus: "REVIEWED" as const, feedback: null },
+        },
+      ],
+    };
+    serve({ canManage: false, parts: twoEssays as typeof parts }, () => ok({ rows: [lina] }));
+    renderWithProviders(<AssignmentDetailScreen />);
+
+    // The row says honestly what it opens.
+    const row = await screen.findByRole("button", { name: /^Lina Student/ });
+    expect(row.props.accessibilityLabel).toMatch(/opens a list of 2 essays$/);
+    fireEvent.press(row);
+    expect(mockPush).not.toHaveBeenCalled();
+
+    // One row per essay in the sheet, named as its chip.
+    const sheet = within(await screen.findByTestId("sheet"));
+    expect(sheet.getByText("Essays by Lina Student")).toBeTruthy();
+    expect(sheet.getByRole("button", { name: "Essay 1: waiting review" })).toBeTruthy();
+    fireEvent.press(sheet.getByRole("button", { name: "Essay 2: reviewed" }));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "essayLina2" } });
+  });
+
   it("shows an admin the deadline, the instructions, the parts and the reminder line", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     serve();

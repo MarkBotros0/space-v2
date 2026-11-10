@@ -89,7 +89,11 @@ it("lists every essay handed in (v1, B3-8) and loads the next page from the curs
   expect(await screen.findByText("Essay two")).toBeTruthy();
   expect(get).toHaveBeenLastCalledWith("/api/v1/submissions?pendingOnly=false&limit=25&cursor=aaa1111111");
   expect(screen.queryByText("Load more")).toBeNull();
-  expect(screen.getByText("2 essays waiting review · 5 handed in")).toBeTruthy();
+  // One fact per line, never a " · " line: the screen's subtitle, then the totals under it.
+  expect(screen.getByText("2 essays waiting review")).toBeTruthy();
+  expect(screen.getByText("5 in all")).toBeTruthy();
+  expect(screen.queryByText(/handed in late/)).toBeNull();
+  expect(screen.queryByText(/ · /)).toBeNull();
 });
 
 it("narrows to the dashboard's season when opened with one, and says so", async () => {
@@ -129,6 +133,13 @@ it("marks a late hand-in from the contract flag, and when it was handed in, as c
   expect(row.props.accessibilityLabel).toMatch(/Waiting review, Late, Handed in /);
   // The row has no line built by hand with " · ".
   expect(row.props.accessibilityLabel).not.toMatch(/ · /);
+});
+
+it("shows no hand-in date on a returned essay: the student has it back", async () => {
+  get.mockResolvedValue(page([queueItem("aaa1111111", "Essay one", { reviewStatus: "RETURNED" })]));
+  renderWithProviders(<SubmissionsScreen />);
+  expect(await screen.findByText("Returned")).toBeTruthy();
+  expect(screen.queryByText(/^Handed in /)).toBeNull();
 });
 
 it("names an unnamed student as such", async () => {
@@ -208,10 +219,12 @@ it("keeps the tab an empty state for a student, without a request", async () => 
   expect(get).not.toHaveBeenCalled();
 });
 
-it("counts the header in words, with late only when there are some", async () => {
+it("counts the header in words, one fact per line, with late only when there are some", async () => {
   get.mockResolvedValueOnce(page([queueItem("aaa1111111", "Essay one")], { pending: 1, total: 9, late: 2 }));
   renderWithProviders(<SubmissionsScreen />);
-  expect(await screen.findByText("1 essay waiting review · 9 handed in · 2 late")).toBeTruthy();
+  expect(await screen.findByText("1 essay waiting review")).toBeTruthy();
+  expect(screen.getByText("9 in all")).toBeTruthy();
+  expect(screen.getByText("2 handed in late")).toBeTruthy();
   expect(screen.getByRole("header", { name: "Submissions" })).toBeTruthy();
 });
 

@@ -1,7 +1,7 @@
 import type { AssignmentPart, PartWork } from "@space/shared";
 
 import {
-  essayToOpen,
+  handedInEssays,
   orderProgress,
   partChips,
   progressLine,
@@ -117,11 +117,30 @@ describe("orderProgress and progressLine", () => {
   });
 });
 
-describe("essayToOpen", () => {
-  const parts = [essay(1), essay(2)];
-  it("opens the first essay waiting review, else the first handed in, else none", () => {
-    expect(essayToOpen(parts, row("A", null, [essayWork(1, "REVIEWED"), essayWork(2, "SUBMITTED")]))).toBe("e2");
-    expect(essayToOpen(parts, row("A", null, [essayWork(1, "RETURNED"), essayWork(2, "REVIEWED")]))).toBe("e1");
-    expect(essayToOpen(parts, row("A", null, []))).toBeNull();
+describe("handedInEssays", () => {
+  const parts = [essay(1), essay(2), essay(3)];
+  it("lists every essay handed in, in the admin's order, named as its chip", () => {
+    const works = [essayWork(2, "SUBMITTED"), essayWork(1, "RETURNED"), essayWork(3, "REVIEWED")];
+    expect(handedInEssays(parts, row("A", null, works))).toEqual([
+      { publicId: "e1", label: "Essay 1: returned" },
+      { publicId: "e2", label: "Essay 2: waiting review" },
+      { publicId: "e3", label: "Essay 3: reviewed" },
+    ]);
+    expect(handedInEssays(parts, row("A", null, []))).toEqual([]);
+  });
+});
+
+describe("the video chip agrees with partsLeft", () => {
+  it("judges watched by the work's own length, as shared partDone does", () => {
+    const parts = [video(1, 1080)];
+    // The work has no length yet: partDone says not watched, so the chip shows minutes, not questions.
+    const work: PartWork = {
+      partId: 1,
+      kind: "VIDEO",
+      status: "IN_PROGRESS",
+      video: { watchedSeconds: 1000, durationSeconds: 0, answered: 0, questionCount: 2, correct: 0 },
+    };
+    expect(labels(parts, [work])).toEqual(["Video 16/18 min"]);
+    expect(progressLine(parts, row("A", null, [work]))).toBe("1 part left");
   });
 });

@@ -256,3 +256,10 @@ it("says the essay isn't there, in words, for a link that no longer leads to one
   renderStacked(<SubmissionReviewScreen />);
   expect(await screen.findByText("This essay isn't here")).toBeTruthy();
 });
+
+it("shows no due date read on the device's clock (the detail carries no org-clock due day)", async () => {
+  serve();
+  renderStacked(<SubmissionReviewScreen />);
+  expect(await screen.findByText("Late")).toBeTruthy();
+  expect(screen.queryByText(/^Due /)).toBeNull();
+});

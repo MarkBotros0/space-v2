@@ -11,7 +11,7 @@ import { LoadMoreButton } from "../../design/ui/load-more-button";
 import { Text } from "../../design/ui/text";
 import { useSubmissionQueue } from "../../hooks/use-submission-queue";
 import { seasonParam } from "../../lib/season-param";
-import { EssayQueueRow, queueCountsLine } from "../staff-queue/essay-queue-row";
+import { EssayQueueRow, pendingLine, QueueTotals } from "../staff-queue/essay-queue-row";
 import { queueSections } from "./queue-sections";
 
 // v1 lists every essay handed in: waiting first, then reviewed and returned (B3-8).
@@ -35,7 +35,7 @@ export function LeaderQueue() {
   return (
     <Screen
       title="Submissions"
-      subtitle={counts ? queueCountsLine(counts) : undefined}
+      subtitle={counts ? pendingLine(counts) : undefined}
       refreshing={isRefetching}
       onRefresh={() => void refetch()}
     >
@@ -45,6 +45,7 @@ export function LeaderQueue() {
         <RouteError onRetry={() => void refetch()} />
       ) : (
         <View className="flex-col gap-4">
+          {counts && counts.total > 0 ? <QueueTotals counts={counts} /> : null}
           {seasonId !== undefined ? (
             // The tab keeps its params, so a season filter set from the
             // dashboard must be visible and removable, not a silent state.

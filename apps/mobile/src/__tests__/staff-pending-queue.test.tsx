@@ -59,7 +59,9 @@ describe("staff pending queue (/submissions for ADMIN, SUPER, MENTOR)", () => {
     expect(screen.getAllByText("Week four")).toHaveLength(3);
     expect(screen.getAllByText("Who are you in the story?")).toHaveLength(2);
     expect(screen.getByText("What would you change?")).toBeTruthy();
-    expect(screen.getByText("3 essays waiting review · 9 handed in")).toBeTruthy();
+    expect(screen.getByText("3 essays waiting review")).toBeTruthy();
+    expect(screen.getByText("9 in all")).toBeTruthy();
+    expect(screen.queryByText(/ · /)).toBeNull();
     expect(screen.getAllByText("Waiting review")).toHaveLength(3);
     expect(screen.getAllByText("Late")).toHaveLength(1);
     expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
@@ -71,7 +73,8 @@ describe("staff pending queue (/submissions for ADMIN, SUPER, MENTOR)", () => {
   it("adds the late count to the header only when there are late essays", async () => {
     get.mockResolvedValue(page([item("aaa1111111", "Sara", { isLate: true })], 1, null, 4));
     renderWithProviders(<SubmissionsScreen />);
-    expect(await screen.findByText("1 essay waiting review · 9 handed in · 4 late")).toBeTruthy();
+    expect(await screen.findByText("1 essay waiting review")).toBeTruthy();
+    expect(screen.getByText("4 handed in late")).toBeTruthy();
   });
 
   it("passes a valid seasonId into the request and ignores a non-numeric one", async () => {

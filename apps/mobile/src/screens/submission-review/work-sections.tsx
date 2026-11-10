@@ -22,9 +22,9 @@ function Section({ header, children }: { header: string; children: React.ReactNo
   );
 }
 
-type ChipFields = "status" | "isLate" | "groupName" | "submittedAt" | "assignmentDueAt";
+type ChipFields = "status" | "isLate" | "groupName" | "submittedAt";
 
-/** The essay's status, Late, the student's group, and its dates: one chip each, wrapping. */
+/** The essay's status, Late, the student's group, and when it was handed in: one chip each, wrapping. */
 export function EssayChips({ data }: { data: Pick<SubmissionDetail, ChipFields> }) {
   return (
     <View className="flex-row flex-wrap gap-2">
@@ -34,9 +34,9 @@ export function EssayChips({ data }: { data: Pick<SubmissionDetail, ChipFields> 
       {data.submittedAt ? (
         <StatusChip tone="neutral" label={`Handed in ${formatShortDateTime(data.submittedAt)}`} />
       ) : null}
-      {data.assignmentDueAt ? (
-        <StatusChip tone="neutral" label={`Due ${formatShortDateTime(data.assignmentDueAt)}`} />
-      ) : null}
+      {/* No due chip: the detail carries only dueAt, and a date read on the device's clock can
+          disagree with the org-clock one the staff page shows (formatOrgDue needs dueOrgDay and
+          dueOrgTime, which SubmissionDetail lacks). Late is the server's own verdict. */}
     </View>
   );
 }

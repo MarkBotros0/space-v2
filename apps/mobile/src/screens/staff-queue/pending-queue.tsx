@@ -6,7 +6,7 @@ import { Screen } from "../../design/layout/screen";
 import { EmptyState, GroupedList } from "../../design/ui";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
 import { useSubmissionQueue } from "../../hooks/use-submission-queue";
-import { EssayQueueRow, queueCountsLine } from "./essay-queue-row";
+import { EssayQueueRow, pendingLine, QueueTotals } from "./essay-queue-row";
 
 /**
  * ADMIN / SUPER / MENTOR on /submissions: essays waiting for review, one row
@@ -30,6 +30,7 @@ export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }
   else
     body = (
       <View className="flex-col gap-4">
+        {counts && counts.total > 0 ? <QueueTotals counts={counts} /> : null}
         <GroupedList>
           {items.map((item) => (
             <EssayQueueRow key={item.publicId} item={item} />
@@ -42,7 +43,7 @@ export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }
   return (
     <Screen
       title="Submissions"
-      subtitle={counts ? queueCountsLine(counts) : undefined}
+      subtitle={counts ? pendingLine(counts) : undefined}
       refreshing={q.isRefetching}
       onRefresh={refetch}
     >
