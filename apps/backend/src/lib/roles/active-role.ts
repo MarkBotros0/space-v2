@@ -1,4 +1,5 @@
 import type { Prisma } from "../../generated/prisma/client";
+import { liveSeason } from "../db/live";
 
 export type ActiveRole = {
   kind: "admin" | "leader" | "student";
@@ -9,7 +10,7 @@ export type ActiveRole = {
 };
 
 /** Only an ACTIVE season gives a role: a draft hasn't started, a finished one has ended. */
-export const ACTIVE_SEASON = { status: "ACTIVE", deletedAt: null } as const;
+export const ACTIVE_SEASON = { status: "ACTIVE", ...liveSeason } as const;
 const SEASON_FIELDS = { id: true, code: true, title: true } as const;
 
 /**

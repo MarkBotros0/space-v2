@@ -1,14 +1,17 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
+import { apiOk, forbidden } from "../../lib/api-response";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { freeAlumni } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { liveSeason } from "../../lib/db/live";
+import { findLiveSeason } from "../../lib/queries/seasons";
 
 /** A season someone was part of: started, whatever came of it. */
-const PAST_OR_CURRENT = { deletedAt: null, status: { not: "DRAFT" } } as const;
+const PAST_OR_CURRENT = { ...liveSeason, status: { not: "DRAFT" } } as const;
 const SEASON_FIELDS = { select: { id: true, title: true, startDate: true } } as const;
 
 type SeasonRef = { id: number; title: string; startDate: Date };
@@ -52,12 +55,12 @@ async function lastSeasons(userIds: number[]): Promise<Map<number, SeasonRef>> {
  */
 export async function listStaffCandidates(req: Request, res: Response) {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
-  const season = await db.season.findFirst({ where: { id: seasonId, deletedAt: null }, select: { id: true } });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  const season = await findLiveSeason(seasonId, { id: true });
+  if (!season) return notFound(res, "Season");
 
   const people = await db.user.findMany({
     where: freeAlumni,

@@ -1,12 +1,13 @@
 import { db } from "../../db/client";
 import type { SeasonResultRow } from "../../../../../packages/shared/src/index";
 import { attendancePct } from "./attendance-pct";
+import { liveUser } from "../db/live";
 
 /** Finished students of a season with their result; WITHDRAWN students have none and are left out. */
 export async function loadSeasonResults(seasonId: number): Promise<SeasonResultRow[]> {
   const [enrollments, sessionCount, marks] = await Promise.all([
     db.seasonEnrollment.findMany({
-      where: { seasonId, status: "COMPLETED", studentUser: { deletedAt: null } },
+      where: { seasonId, status: "COMPLETED", studentUser: liveUser },
       orderBy: { studentUser: { name: "asc" } },
       select: {
         studentUserId: true,

@@ -35,7 +35,7 @@ interface SeasonDetailRow {
  */
 export async function loadSeasonDetail(user: SessionUser, id: number): Promise<SeasonDetailRow | null> {
   const season = await db.season.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, ...liveSeason },
     select: {
       id: true,
       code: true,

@@ -3,6 +3,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import type { SeasonEndCheck } from "../../../../../packages/shared/src/index";
 import { attendancePct } from "./attendance-pct";
 import { MS_PER_MINUTE } from "../org-time";
+import { liveAssignment, liveUser } from "../db/live";
 
 /**
  * What stops a season from ending, and the students it would end for.
@@ -17,13 +18,13 @@ export async function loadSeasonEndCheck(
 ): Promise<SeasonEndCheck> {
   // Only students still ACTIVE in this season hold the season open.
   const activeStudentInSeason = {
-    deletedAt: null,
+    ...liveUser,
     seasonEnrollments: { some: { seasonId, status: "ACTIVE" as const } },
   };
   const [season, enrollments, sessions, submissions, attempts] = await Promise.all([
     client.season.findUniqueOrThrow({ where: { id: seasonId }, select: { graduatesOnPass: true } }),
     client.seasonEnrollment.findMany({
-      where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
+      where: { seasonId, status: "ACTIVE", studentUser: liveUser },
       orderBy: { studentUser: { name: "asc" } },
       select: {
         studentUserId: true,
@@ -40,7 +41,7 @@ export async function loadSeasonEndCheck(
     client.submission.findMany({
       where: {
         status: "SUBMITTED",
-        assignment: { seasonId, deletedAt: null },
+        assignment: { seasonId, ...liveAssignment },
         studentUser: activeStudentInSeason,
       },
       orderBy: { id: "asc" },

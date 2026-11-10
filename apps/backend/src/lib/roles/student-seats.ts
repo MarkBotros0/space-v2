@@ -6,6 +6,7 @@ import { enrollStudentsInSeason, type NewEnrollment } from "../students/create";
 import { activeRolesFor, lockPeople, lockSeason, type ActiveRole, type SeasonLockMode } from "./active-role";
 import { seatRefusal, type SeatPerson, type SeatRefusal } from "./seat-rules";
 import { describeBlock, loadStandings, standingsFrom, type StandingSeason } from "./standing";
+import { liveSeason } from "../db/live";
 
 type StudentSeatSeason = StandingSeason & { status: SeasonStatus; isCommunityWide: boolean };
 
@@ -25,7 +26,7 @@ export async function readSeatSeason(
 ): Promise<StudentSeatSeason | null> {
   await lockSeason(tx, seasonId, mode);
   return tx.season.findFirst({
-    where: { id: seasonId, deletedAt: null },
+    where: { id: seasonId, ...liveSeason },
     select: { id: true, status: true, program: true, requiredProgram: true, isCommunityWide: true },
   });
 }

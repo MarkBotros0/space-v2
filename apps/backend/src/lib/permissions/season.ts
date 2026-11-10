@@ -2,6 +2,7 @@ import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason, isMentor, isSuper } from "../rbac";
 import { ledGroupIdsInSeason } from "../queries/led-groups";
+import { liveSeason } from "../db/live";
 
 export async function canAccessSeason(user: SessionUser, seasonId: number): Promise<boolean> {
   if (isSuper(user) || isMentor(user)) return true;
@@ -144,7 +145,7 @@ export async function calendarScopeFor(
   seasonId: number | null,
 ): Promise<CalendarScope | "forbidden" | "not_found"> {
   if (seasonId !== null) {
-    const live = await db.season.findFirst({ where: { id: seasonId, deletedAt: null }, select: { id: true } });
+    const live = await db.season.findFirst({ where: { id: seasonId, ...liveSeason }, select: { id: true } });
     if (!live) return "not_found";
   }
 
@@ -157,7 +158,7 @@ export async function calendarScopeFor(
       return isAdminOfSeason(user, seasonId) ? { kind: "seasons", seasonIds: [seasonId] } : "forbidden";
     }
     const live = await db.season.findMany({
-      where: { id: { in: user.seasonAdminIds }, deletedAt: null },
+      where: { id: { in: user.seasonAdminIds }, ...liveSeason },
       select: { id: true },
     });
     return { kind: "seasons", seasonIds: live.map((s) => s.id) };
@@ -166,7 +167,7 @@ export async function calendarScopeFor(
   if (user.role === "LEADER") {
     // One query instead of v1's per-season N+1 (spec 03 R85).
     const groups = await db.group.findMany({
-      where: { id: { in: user.groupLeaderIds }, season: { deletedAt: null } },
+      where: { id: { in: user.groupLeaderIds }, season: liveSeason },
       select: { seasonId: true },
     });
     const led = [...new Set(groups.map((g) => g.seasonId))];

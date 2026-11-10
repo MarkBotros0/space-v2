@@ -1,5 +1,6 @@
 import type { Prisma } from "../../generated/prisma/client";
 import { finishedSeasonStatus } from "../seasons/status";
+import { liveSeason, liveUser } from "../db/live";
 
 /**
  * The season a season normally follows, for "the people who passed it join
@@ -19,7 +20,7 @@ export async function findPreviousSeasonId(
       id: { not: season.id },
       program: season.requiredProgram ?? season.program,
       status: finishedSeasonStatus,
-      deletedAt: null,
+      ...liveSeason,
     },
     orderBy: [{ endDate: "desc" }, { id: "desc" }],
     select: { id: true },
@@ -42,7 +43,7 @@ export async function listSourceSeasons(
   listedIds: number[],
 ): Promise<SourceSeason[]> {
   const seasons = await tx.season.findMany({
-    where: { id: { not: seasonId }, status: finishedSeasonStatus, deletedAt: null },
+    where: { id: { not: seasonId }, status: finishedSeasonStatus, ...liveSeason },
     orderBy: [{ endDate: "desc" }, { id: "desc" }],
     select: { id: true, code: true, title: true },
   });
@@ -54,7 +55,7 @@ export async function listSourceSeasons(
       status: "COMPLETED",
       result: "PASSED",
       studentUserId: { notIn: listedIds },
-      studentUser: { deletedAt: null, role: "STUDENT", graduationYear: { not: null } },
+      studentUser: { ...liveUser, role: "STUDENT", graduationYear: { not: null } },
     },
     _count: { _all: true },
   });

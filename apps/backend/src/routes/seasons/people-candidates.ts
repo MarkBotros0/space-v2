@@ -3,8 +3,7 @@ import type { PeopleCandidate } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
+import { apiOk, forbidden } from "../../lib/api-response";
 import { findPreviousSeasonId, listSourceSeasons } from "../../lib/queries/previous-season";
 import { attendancePctForEnrollments } from "../../lib/queries/students/history";
 import { isAdminOfSeason } from "../../lib/rbac";
@@ -17,6 +16,9 @@ import {
   type HistoryEntry,
 } from "../../lib/roles";
 import { requireUser } from "../../middleware/require-auth";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { liveSeason, liveUser } from "../../lib/db/live";
 
 /**
  * Who a season's people picker lists: non-alumni student accounts, or in a
@@ -25,8 +27,8 @@ import { requireUser } from "../../middleware/require-auth";
  */
 function poolFor(season: { isCommunityWide: boolean }): Prisma.UserWhereInput {
   return season.isCommunityWide
-    ? { deletedAt: null, role: "STUDENT" }
-    : { deletedAt: null, role: "STUDENT", graduationYear: null };
+    ? { ...liveUser, role: "STUDENT" }
+    : { ...liveUser, role: "STUDENT", graduationYear: null };
 }
 
 type Availability = PeopleCandidate["availability"];
@@ -70,15 +72,15 @@ function outcomeOf(h: HistoryEntry): NonNullable<PeopleCandidate["last"]>["outco
  */
 export async function listPeopleCandidates(req: Request, res: Response) {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   const season = await db.season.findFirst({
-    where: { id: seasonId, deletedAt: null },
+    where: { id: seasonId, ...liveSeason },
     select: { id: true, title: true, program: true, status: true, requiredProgram: true, isCommunityWide: true },
   });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  if (!season) return notFound(res, "Season");
 
   const people = await db.user.findMany({
     where: poolFor(season),

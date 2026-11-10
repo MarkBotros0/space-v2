@@ -9,6 +9,7 @@ import {
   loadStandings,
   type StandingSeason,
 } from "../roles";
+import { liveSeason } from "../db/live";
 
 /** A role held elsewhere only clashes once this season is live, so judge it as though it were. */
 const AS_STARTED = "ACTIVE" as const;
@@ -36,7 +37,7 @@ export async function loadSeasonStartCheck(
   const inTheWay = await client.season.findMany({
     where: {
       status: "ACTIVE",
-      deletedAt: null,
+      ...liveSeason,
       id: { not: season.id },
       ...(season.isCommunityWide ? {} : { isCommunityWide: true }),
     },

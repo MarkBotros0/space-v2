@@ -2,6 +2,7 @@ import type { SeasonStatus } from "@space/shared";
 import { standingFor, type Standing, type StandingHistoryRow } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
 import { isSeasonFinished } from "../seasons/status";
+import { liveSeason } from "../db/live";
 
 /** One finished or dropped enrolment, with what the picker needs to show it. */
 export type HistoryEntry = StandingHistoryRow & {
@@ -31,7 +32,7 @@ export async function loadHistory(
       studentUserId: { in: userIds },
       status: { in: ["COMPLETED", "WITHDRAWN"] },
       seasonId: { not: exceptSeasonId },
-      season: { deletedAt: null, status: { in: ["ACTIVE", "COMPLETED", "ARCHIVED"] } },
+      season: { ...liveSeason, status: { in: ["ACTIVE", "COMPLETED", "ARCHIVED"] } },
     },
     select: {
       id: true,

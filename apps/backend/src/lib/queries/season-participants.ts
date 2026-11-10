@@ -1,5 +1,6 @@
 import type { Prisma } from "../../generated/prisma/client";
 import { finishedSeasonStatus } from "../seasons/status";
+import { liveUser } from "../db/live";
 
 /**
  * "The season's participants": who a staff roster, count or report lists.
@@ -31,5 +32,5 @@ export const seasonParticipant: Prisma.SeasonEnrollmentWhereInput = {
  */
 export const seasonRosterMember: Prisma.SeasonEnrollmentWhereInput = {
   ...seasonParticipant,
-  studentUser: { role: "STUDENT", deletedAt: null },
+  studentUser: { role: "STUDENT", ...liveUser },
 };

@@ -2,6 +2,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import { ACTIVE_SEASON, activeRolesFor, lockPeople } from "./active-role";
 import { seatRefusal, type Seat, type SeatRefusal } from "./seat-rules";
 import { liveSeasonStatus } from "../seasons/status";
+import { liveSeason, liveUser } from "../db/live";
 
 /** The HTTP status of a refusal: only "that person doesn't exist" isn't a 409. */
 /**
@@ -31,7 +32,7 @@ export async function refuseNewSeats(
 }
 
 /** A season that hasn't finished: a draft's rows are held even though they don't clash yet. */
-const UNFINISHED_SEASON = { status: liveSeasonStatus, deletedAt: null };
+const UNFINISHED_SEASON = { status: liveSeasonStatus, ...liveSeason };
 const SEASON_TITLE = { season: { select: { title: true } } } as const;
 
 /** A season this person holds a row in, if any, whatever the row. For a change to the account's role. */
@@ -58,7 +59,7 @@ export async function liveSeasonRole(
 
 /** Live alumni with no active role: who can be picked to serve. A draft's rows don't count. */
 export const freeAlumni: Prisma.UserWhereInput = {
-  deletedAt: null,
+  ...liveUser,
   graduationYear: { not: null },
   role: { notIn: ["SUPER", "MENTOR"] },
   seasonAdminAssignments: { none: { season: ACTIVE_SEASON } },
