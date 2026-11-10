@@ -51,3 +51,27 @@ it("skips a student with no group in that season, as v1 did", async () => {
   expect(mockDb.groupLeader.findMany).not.toHaveBeenCalled();
   expect(mockNotify).not.toHaveBeenCalled();
 });
+
+it("reads the season's admins once however many students are flagged (BE-070)", async () => {
+  mockDb.seasonEnrollment.findUnique.mockResolvedValue({ groupId: 3 });
+  mockDb.seasonAdmin.findMany.mockResolvedValue([{ userId: 50 }]);
+  await flagLowAttendance(5, [
+    { studentUserId: 11, status: "ABSENT" },
+    { studentUserId: 12, status: "ABSENT" },
+  ]);
+  expect(mockDb.seasonAdmin.findMany).toHaveBeenCalledTimes(1);
+  expect(mockDb.seasonAdmin.findMany).toHaveBeenCalledWith({
+    where: { seasonId: 7, season: { status: { in: ["DRAFT", "ACTIVE"] } }, user: { deletedAt: null } },
+    select: { userId: true },
+  });
+  // Each student still gets their own pair: admins, then leaders who aren't admins.
+  expect(mockNotify).toHaveBeenCalledTimes(4);
+  expect(mockNotify).toHaveBeenNthCalledWith(1, [50], expect.objectContaining({ link: expect.stringContaining("11") }));
+  expect(mockNotify).toHaveBeenNthCalledWith(3, [50], expect.objectContaining({ link: expect.stringContaining("12") }));
+});
+
+it("reads no admins when nobody is flagged", async () => {
+  mockDb.attendance.findMany.mockResolvedValue([{ status: "ABSENT" }, { status: "PRESENT" }]);
+  await flagLowAttendance(5, [{ studentUserId: 11, status: "ABSENT" }]);
+  expect(mockDb.seasonAdmin.findMany).not.toHaveBeenCalled();
+});

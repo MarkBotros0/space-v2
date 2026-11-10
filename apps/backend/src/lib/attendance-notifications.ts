@@ -5,6 +5,7 @@ import { createNotificationsBulk } from "./notifications";
 import { groupIdInSeason } from "./queries/enrollment";
 import { liveSeasonStatus } from "./seasons/status";
 import { notificationLink } from "./notification-target";
+import { liveUser } from "./db/live";
 
 /** If a student has 2+ consecutive ABSENTs in this season, flag them as high-risk
  *  to their group leaders and season admins (each with a link they can actually open). */
@@ -20,6 +21,22 @@ export async function flagLowAttendance(
     select: { id: true, seasonId: true, startsAt: true },
   });
   if (!session) return;
+
+  // Former staff have no access to a finished season, so a Super correcting
+  // its attendance must not name the student to them.
+  const openSeason = { status: liveSeasonStatus };
+  // The season's admins are the same for every student: read once, and only
+  // when someone is flagged (refactor BE-070).
+  let adminIds: number[] | null = null;
+  const seasonAdminIds = async () => {
+    adminIds ??= (
+      await db.seasonAdmin.findMany({
+        where: { seasonId: session.seasonId, season: openSeason, user: liveUser },
+        select: { userId: true },
+      })
+    ).map((a) => a.userId);
+    return adminIds;
+  };
 
   for (const studentUserId of absentStudents) {
     const recent = await db.attendance.findMany({
@@ -41,19 +58,12 @@ export async function flagLowAttendance(
     const groupId = await groupIdInSeason(studentUserId, session.seasonId);
     if (groupId === null) continue;
 
-    // Former staff have no access to a finished season, so a Super correcting
-    // its attendance must not name the student to them.
-    const liveSeason = { status: liveSeasonStatus };
     const leaders = await db.groupLeader.findMany({
-      where: { groupId, group: { season: liveSeason }, user: { deletedAt: null } },
+      where: { groupId, group: { season: openSeason }, user: liveUser },
       select: { userId: true },
     });
-    const admins = await db.seasonAdmin.findMany({
-      where: { seasonId: session.seasonId, season: liveSeason, user: { deletedAt: null } },
-      select: { userId: true },
-    });
-    const adminIds = admins.map((a) => a.userId);
-    const leaderOnlyIds = leaders.map((l) => l.userId).filter((id) => !adminIds.includes(id));
+    const admins = await seasonAdminIds();
+    const leaderOnlyIds = leaders.map((l) => l.userId).filter((id) => !admins.includes(id));
     const student = await db.user.findUnique({
       where: { id: studentUserId },
       select: { name: true },
@@ -61,8 +71,8 @@ export async function flagLowAttendance(
     const title = `${student?.name ?? "A student"} is at high risk — 2 consecutive absences`;
     const body = "Consider reaching out for a check-in.";
     // Each recipient gets a link they can actually open: admins → admin view, leaders → leader view.
-    if (adminIds.length > 0) {
-      await createNotificationsBulk(adminIds, {
+    if (admins.length > 0) {
+      await createNotificationsBulk(admins, {
         type: "LOW_ATTENDANCE_FLAG",
         title,
         body,
