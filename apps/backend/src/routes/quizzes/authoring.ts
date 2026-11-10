@@ -2,11 +2,14 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
 import { canManageQuiz } from "../../lib/permissions";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
+import { findLiveSeason } from "../../lib/queries/seasons";
 import { createQuizRequestSchema, updateQuizRequestSchema } from "../../../../../packages/shared/src/index";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 
 /**
  * Create a quiz.
@@ -20,19 +23,16 @@ import { createQuizRequestSchema, updateQuizRequestSchema } from "../../../../..
 export async function createQuiz(req: Request, res: Response) {
   const user = requireUser(req);
 
-  const parsed = createQuizRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid quiz body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(createQuizRequestSchema, req.body, res, "Invalid quiz body.");
+  if (parsed === null) return;
+  const body = parsed;
 
   // R1: creating is a season-admin power. isAdminOfSeason short-circuits SUPER
   // and pairs the claim with the role that can hold it (ruling C7).
   if (!isAdminOfSeason(user, body.seasonId)) return forbidden(res);
 
-  const season = await db.season.findFirst({
-    where: { id: body.seasonId, deletedAt: null },
-    select: { id: true },
-  });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  const season = await findLiveSeason(body.seasonId, { id: true });
+  if (!season) return notFound(res, "Season");
 
   if (body.sessionId !== null) {
     // R7: v1 wrote both ids side by side and checked nothing — the pair was
@@ -41,7 +41,7 @@ export async function createQuiz(req: Request, res: Response) {
       where: { id: body.sessionId },
       select: { seasonId: true },
     });
-    if (!session) return apiError(res, "not_found", "Session not found.", 404);
+    if (!session) return notFound(res, "Session");
     if (session.seasonId !== body.seasonId) {
       return apiError(res, "session_not_in_season", "That session is in another season.", 400);
     }
@@ -66,19 +66,19 @@ export async function createQuiz(req: Request, res: Response) {
 
 export async function updateQuiz(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
 
   const quiz = await db.quiz.findUnique({
     where: { id },
     select: { id: true, seasonId: true, kind: true },
   });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
   if (!(await canManageQuiz(user, id))) return forbidden(res);
 
-  const parsed = updateQuizRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid quiz body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(updateQuizRequestSchema, req.body, res, "Invalid quiz body.");
+  if (parsed === null) return;
+  const body = parsed;
 
   if (body.maxScore !== undefined) {
     if (quiz.kind !== "PAPER") {
@@ -95,7 +95,7 @@ export async function updateQuiz(req: Request, res: Response) {
       where: { id: body.sessionId },
       select: { seasonId: true },
     });
-    if (!session) return apiError(res, "not_found", "Session not found.", 404);
+    if (!session) return notFound(res, "Session");
     if (session.seasonId !== quiz.seasonId) {
       return apiError(res, "session_not_in_season", "That session is in another season.", 400);
     }

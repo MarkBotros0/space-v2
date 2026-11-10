@@ -2,12 +2,16 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
 import { canGradeQuiz } from "../../lib/permissions";
 import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
+import { saveQuizGrades } from "../../lib/quizzes/paper-grades";
 import { saveQuizGradesRequestSchema } from "../../../../../packages/shared/src/index";
 import { notifyQuizGraded } from "../../lib/quizzes/notify";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
+import { liveUser } from "../../lib/db/live";
 
 /** Build the sheet for a scope. Shared by the GET and by the POST's response. */
 async function buildGradeSheet(quizId: number, studentIds: number[]) {
@@ -27,7 +31,7 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
   const [students, grades, enrollments] = await Promise.all([
     db.user.findMany({
       // R100: deleted users are not on the sheet; ordered by name.
-      where: { id: { in: studentIds }, deletedAt: null },
+      where: { id: { in: studentIds }, ...liveUser },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
@@ -75,18 +79,18 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
 
 export async function getGradeSheet(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
 
   const quiz = await db.quiz.findUnique({ where: { id }, select: { seasonId: true } });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
   if (studentIds === null) return forbidden(res);
 
   const sheet = await buildGradeSheet(id, studentIds);
-  if (!sheet) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!sheet) return notFound(res, "Quiz");
   return apiOk(res, sheet);
 }
 
@@ -115,14 +119,14 @@ export async function getGradeSheet(req: Request, res: Response) {
  */
 export async function saveGrades(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
 
   const quiz = await db.quiz.findUnique({
     where: { id },
     select: { id: true, title: true, kind: true, maxScore: true, seasonId: true, resultsReleasedAt: true },
   });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
 
   // (a) One gate, no role-conditional branch.
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
@@ -133,8 +137,8 @@ export async function saveGrades(req: Request, res: Response) {
     return apiError(res, "wrong_quiz_kind", "This is an online quiz — grade its attempts.", 409);
   }
 
-  const parsed = saveQuizGradesRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid grade entries.", 400);
+  const parsed = parseOr400(saveQuizGradesRequestSchema, req.body, res, "Invalid grade entries.");
+  if (parsed === null) return;
 
   // (b) Derived here, never taken from the request.
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
@@ -142,7 +146,7 @@ export async function saveGrades(req: Request, res: Response) {
   const visible = new Set(studentIds);
 
   // (c) Validate the WHOLE batch before writing any of it.
-  for (const entry of parsed.data.entries) {
+  for (const entry of parsed.entries) {
     if (!visible.has(entry.studentUserId)) {
       return apiError(res, "student_not_in_scope", `Student ${entry.studentUserId} is not in your groups.`, 403);
     }
@@ -155,43 +159,16 @@ export async function saveGrades(req: Request, res: Response) {
   }
 
   const existing = await db.quizGrade.findMany({
-    where: { quizId: id, studentUserId: { in: parsed.data.entries.map((e) => e.studentUserId) } },
+    where: { quizId: id, studentUserId: { in: parsed.entries.map((e) => e.studentUserId) } },
     select: { studentUserId: true, score: true },
   });
   const previousScore = new Map(existing.map((g) => [g.studentUserId, g.score]));
 
-  // One `now` for the whole batch, as v1 did (R91) — a batch is one act.
-  const now = new Date();
-  const writes = parsed.data.entries.map((entry) =>
-    entry.score === null
-      ? // Null CLEARS the row. v1 skipped null entries, so an existing grade
-        // could never be removed — a typo was correctable, a grade against the
-        // wrong student was not. deleteMany (not delete) so clearing an
-        // already-absent row is a no-op rather than a P2025.
-        db.quizGrade.deleteMany({ where: { quizId: id, studentUserId: entry.studentUserId } })
-      : db.quizGrade.upsert({
-          where: { quizId_studentUserId: { quizId: id, studentUserId: entry.studentUserId } },
-          create: {
-            quizId: id,
-            studentUserId: entry.studentUserId,
-            score: entry.score,
-            notes: entry.notes,
-            gradedById: user.userId,
-            gradedAt: now,
-          },
-          update: {
-            score: entry.score,
-            notes: entry.notes,
-            gradedById: user.userId,
-            gradedAt: now,
-          },
-        }),
-  );
-  await db.$transaction(writes);
+  await saveQuizGrades(id, parsed.entries, user.userId);
 
   // D8's single rule, shared with the essay path: a first grade or a changed
   // score notifies; a no-op re-save is silent. v1's two paths disagreed.
-  const notifyIds = parsed.data.entries
+  const notifyIds = parsed.entries
     .filter((e) => e.score !== null && previousScore.get(e.studentUserId) !== e.score)
     .map((e) => e.studentUserId);
   // Held results stay quiet: the release notifies everyone graded by then.
@@ -203,6 +180,6 @@ export async function saveGrades(req: Request, res: Response) {
   }
 
   const sheet = await buildGradeSheet(id, studentIds);
-  if (!sheet) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!sheet) return notFound(res, "Quiz");
   return apiOk(res, sheet);
 }

@@ -2,10 +2,11 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { notifyQuizResultsReleased } from "../../lib/quizzes/notify";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
 
 /** The season's admin, or a super: the only people who release results (owner, 2026-11-07). */
 export function canReleaseQuizResults(user: Parameters<typeof isSuper>[0], seasonId: number): boolean {
@@ -21,14 +22,14 @@ export function canReleaseQuizResults(user: Parameters<typeof isSuper>[0], seaso
  */
 export async function releaseQuizResults(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
 
   const quiz = await db.quiz.findUnique({
     where: { id },
     select: { id: true, title: true, kind: true, seasonId: true, publishedAt: true },
   });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
   if (!canReleaseQuizResults(user, quiz.seasonId)) return forbidden(res);
   if (quiz.kind === "ONLINE" && quiz.publishedAt === null) {
     return apiError(res, "quiz_not_published", "Publish the quiz before releasing its results.", 409);

@@ -1,5 +1,6 @@
 import { db } from "../../db/client";
 import { liveStudentIds } from "../queries/season-participants";
+import { liveUser } from "../db/live";
 import { bestEffort } from "../best-effort";
 import { createNotificationsBulk } from "../notifications";
 import { notificationLink } from "../notification-target";
@@ -68,18 +69,17 @@ export async function notifyQuizResultsReleased(quiz: {
   kind: "PAPER" | "ONLINE";
 }): Promise<void> {
   await bestEffort("notify:QUIZ_GRADED", async () => {
-    const live = { deletedAt: null } as const;
     const ids =
       quiz.kind === "PAPER"
         ? (
             await db.quizGrade.findMany({
-              where: { quizId: quiz.id, score: { not: null }, studentUser: live },
+              where: { quizId: quiz.id, score: { not: null }, studentUser: liveUser },
               select: { studentUserId: true },
             })
           ).map((g) => g.studentUserId)
         : latestGraded(
             await db.quizAttempt.findMany({
-              where: { quizId: quiz.id, studentUser: live },
+              where: { quizId: quiz.id, studentUser: liveUser },
               orderBy: { attemptNumber: "desc" },
               select: { studentUserId: true, status: true },
             }),

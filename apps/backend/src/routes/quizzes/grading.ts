@@ -6,28 +6,32 @@ import { parseId } from "../../lib/parse-id";
 import { canGradeQuiz } from "../../lib/permissions";
 import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
+import { recordEssayGrades } from "../../lib/quizzes/grading";
 import {
   gradeEssayAnswersRequestSchema,
   quizAttemptsQuerySchema,
   reopenAttemptRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizGraded } from "../../lib/quizzes/notify";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 
 export async function listAttempts(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
 
   const quiz = await db.quiz.findUnique({
     where: { id },
     select: { id: true, title: true, kind: true, maxScore: true, seasonId: true },
   });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
-  const parsed = quizAttemptsQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { cursor, limit } = parsed.data;
+  const parsed = parseOr400(quizAttemptsQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
+  const { cursor, limit } = parsed;
 
   // Derived, never accepted (R105). visibleStudentIdsForQuiz returns them
   // sorted, so paging over the ids is stable and needs no second sort.
@@ -159,7 +163,7 @@ export async function gradeAttempt(req: Request, res: Response) {
     where: { id },
     select: { id: true, title: true, seasonId: true, resultsReleasedAt: true },
   });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
   const attempt = await db.quizAttempt.findUnique({
@@ -175,7 +179,7 @@ export async function gradeAttempt(req: Request, res: Response) {
   });
   // Addressed through its quiz: a bare attempt id can never reach another quiz.
   if (!attempt || attempt.quizId !== id) {
-    return apiError(res, "not_found", "Attempt not found.", 404);
+    return notFound(res, "Attempt");
   }
 
   // R68: v1 checked the season and stopped. A leader could grade a student in
@@ -190,8 +194,8 @@ export async function gradeAttempt(req: Request, res: Response) {
     return apiError(res, "attempt_not_submitted", "This attempt has not been submitted.", 409);
   }
 
-  const parsed = gradeEssayAnswersRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid awards.", 400);
+  const parsed = parseOr400(gradeEssayAnswersRequestSchema, req.body, res, "Invalid awards.");
+  if (parsed === null) return;
 
   const essays = await db.quizQuestion.findMany({
     where: { quizId: id, type: "ESSAY" },
@@ -201,11 +205,11 @@ export async function gradeAttempt(req: Request, res: Response) {
 
   // Every essay, exactly once. v1 recomputed manualScore from only the awards
   // present, so an omitted essay contributed 0 and silently lowered the total.
-  const sent = new Set(parsed.data.awards.map((a) => a.questionId));
-  if (sent.size !== parsed.data.awards.length || sent.size !== essays.length || !essays.every((q) => sent.has(q.id))) {
+  const sent = new Set(parsed.awards.map((a) => a.questionId));
+  if (sent.size !== parsed.awards.length || sent.size !== essays.length || !essays.every((q) => sent.has(q.id))) {
     return apiError(res, "awards_incomplete", "Send a mark for every essay question.", 400);
   }
-  for (const award of parsed.data.awards) {
+  for (const award of parsed.awards) {
     const max = maxBy.get(award.questionId) as number;
     // D8: reject rather than clamp, matching D7's rule for paper scores.
     if (award.points > max) {
@@ -213,31 +217,14 @@ export async function gradeAttempt(req: Request, res: Response) {
     }
   }
 
-  const manualScore = parsed.data.awards.reduce((sum, a) => sum + a.points, 0);
+  const manualScore = parsed.awards.reduce((sum, a) => sum + a.points, 0);
   // autoScore is trusted as stored and never recomputed (R73) — recomputing it
   // would need the questions as they were when taken, which nothing records.
   const totalScore = (attempt.autoScore ?? 0) + manualScore;
   const scoreChanged = attempt.totalScore !== totalScore;
   const now = new Date();
 
-  await db.$transaction([
-    ...parsed.data.awards.map((award) =>
-      db.quizAnswer.update({
-        where: { attemptId_questionId: { attemptId, questionId: award.questionId } },
-        data: { pointsAwarded: award.points },
-      }),
-    ),
-    db.quizAttempt.update({
-      where: { id: attemptId },
-      data: {
-        manualScore,
-        totalScore,
-        status: "GRADED",
-        gradedById: user.userId,
-        gradedAt: now,
-      },
-    }),
-  ]);
+  await recordEssayGrades(attemptId, parsed.awards, { manualScore, totalScore }, user.userId, now);
 
   // Held results stay quiet: the release notifies everyone graded by then.
   if (scoreChanged && quiz.resultsReleasedAt !== null) {
@@ -289,21 +276,21 @@ export async function gradeAttempt(req: Request, res: Response) {
  */
 export async function reopenAttempt(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
 
   const quiz = await db.quiz.findUnique({
     where: { id },
     select: { id: true, title: true, seasonId: true, kind: true, publishedAt: true },
   });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
 
-  const parsed = reopenAttemptRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid body.", 400);
+  const parsed = parseOr400(reopenAttemptRequestSchema, req.body, res, "Invalid body.");
+  if (parsed === null) return;
 
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
-  if (studentIds === null || !studentIds.includes(parsed.data.studentUserId)) {
+  if (studentIds === null || !studentIds.includes(parsed.studentUserId)) {
     return apiError(res, "student_not_in_scope", "That student is not in your groups.", 403);
   }
 
@@ -314,7 +301,7 @@ export async function reopenAttempt(req: Request, res: Response) {
   }
 
   const latest = await db.quizAttempt.findFirst({
-    where: { quizId: id, studentUserId: parsed.data.studentUserId },
+    where: { quizId: id, studentUserId: parsed.studentUserId },
     orderBy: { attemptNumber: "desc" },
     select: { attemptNumber: true, status: true },
   });
@@ -326,7 +313,7 @@ export async function reopenAttempt(req: Request, res: Response) {
   const created = await db.quizAttempt.create({
     data: {
       quizId: id,
-      studentUserId: parsed.data.studentUserId,
+      studentUserId: parsed.studentUserId,
       // R81: a NEW attempt; the previous one and its answers stay intact.
       attemptNumber: latest.attemptNumber + 1,
     },
@@ -338,7 +325,7 @@ export async function reopenAttempt(req: Request, res: Response) {
   // QUIZ_GRADED is reused with copy that says what actually happened — D5's
   // explicit second option.
   await notifyQuizGraded(
-    [parsed.data.studentUserId],
+    [parsed.studentUserId],
     `You can retake: ${quiz.title}`,
     "Your quiz has been reopened, so you can take it again.",
   );

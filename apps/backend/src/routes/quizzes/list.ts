@@ -1,12 +1,13 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
+import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason } from "../../lib/permissions";
 import { studentAttemptStatus } from "../../lib/quiz-results";
 import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
 import { quizListQuerySchema } from "../../../../../packages/shared/src/index";
+import { parseOr400 } from "../../lib/http/validate";
 
 /**
  * The student's own results — v1's listQuizResultsForStudent, ported.
@@ -104,9 +105,9 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
 export async function listQuizzes(req: Request, res: Response) {
   const user = requireUser(req);
 
-  const parsed = quizListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { seasonId, sessionId, cursor, limit } = parsed.data;
+  const parsed = parseOr400(quizListQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
+  const { seasonId, sessionId, cursor, limit } = parsed;
 
   const resolvedSeasonId = seasonId ?? user.activeSeasonId;
   if (resolvedSeasonId === null || resolvedSeasonId === undefined) {

@@ -1,12 +1,13 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
+import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason, canGradeQuiz, canManageQuiz, hasActiveEnrollment } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
 import { canReleaseQuizResults } from "./release";
 import { loadStudentQuizDetail } from "./student-detail";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
 
 /** The authoring/grading projection — the answer key, for the audience that needs it. */
 async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRelease: (seasonId: number) => boolean) {
@@ -74,21 +75,21 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
  */
 export async function getQuiz(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
 
   const quiz = await db.quiz.findUnique({ where: { id }, select: { seasonId: true } });
-  if (!quiz) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!quiz) return notFound(res, "Quiz");
 
   if (user.role === "STUDENT") {
     if (!(await canAccessSeason(user, quiz.seasonId))) {
       // R35's ordering, kept deliberately: a student outside the season and a
       // quiz that does not exist are indistinguishable from the response.
-      return apiError(res, "not_found", "Quiz not found.", 404);
+      return notFound(res, "Quiz");
     }
     const readOnly = !(await hasActiveEnrollment(user, quiz.seasonId));
     const detail = await loadStudentQuizDetail(id, user.userId, readOnly);
-    if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
+    if (!detail) return notFound(res, "Quiz");
     return apiOk(res, detail);
   }
 
@@ -98,6 +99,6 @@ export async function getQuiz(req: Request, res: Response) {
   const detail = await loadQuizAuthoringDetail(id, await canManageQuiz(user, id), (seasonId) =>
     canReleaseQuizResults(user, seasonId),
   );
-  if (!detail) return apiError(res, "not_found", "Quiz not found.", 404);
+  if (!detail) return notFound(res, "Quiz");
   return apiOk(res, detail);
 }

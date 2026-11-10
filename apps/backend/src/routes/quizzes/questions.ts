@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import type { Prisma } from "../../generated/prisma/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canManageQuiz } from "../../lib/permissions";
@@ -12,30 +11,15 @@ import {
   reorderQuestionsRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizPublished } from "../../lib/quizzes/notify";
-
-/** The authoring view of a question — the answer key included. */
-const AUTHORING_QUESTION_SELECT = {
-  id: true,
-  order: true,
-  type: true,
-  prompt: true,
-  points: true,
-  options: true,
-  correctIndex: true,
-} as const;
-
-/**
- * Recompute an ONLINE quiz's maxScore as the sum of its question points (R11).
- *
- * Takes the transaction client, because in v1 this ran as a separate update
- * *after* the question write with nothing tying the two together (R14) — a
- * failure between them left maxScore stale, silently changing the denominator
- * of every score the quiz had produced.
- */
-async function recomputeMaxScore(tx: Prisma.TransactionClient, quizId: number): Promise<void> {
-  const agg = await tx.quizQuestion.aggregate({ where: { quizId }, _sum: { points: true } });
-  await tx.quiz.update({ where: { id: quizId }, data: { maxScore: agg._sum.points ?? 0 } });
-}
+import {
+  addQuizQuestion,
+  deleteQuizQuestion,
+  reorderQuizQuestions,
+  updateQuizQuestion,
+} from "../../lib/quizzes/questions";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
 
 /**
  * Spec D3: a quiz with attempts is structurally frozen.
@@ -65,7 +49,7 @@ async function loadAuthorableQuiz(
   const user = requireUser(req);
   const quiz = await db.quiz.findUnique({ where: { id: quizId }, select: { id: true, kind: true } });
   if (!quiz) {
-    apiError(res, "not_found", "Quiz not found.", 404);
+    notFound(res, "Quiz");
     return null;
   }
   if (!(await canManageQuiz(user, quizId))) {
@@ -87,25 +71,15 @@ async function loadAuthorableQuiz(
 }
 
 export async function addQuestion(req: Request, res: Response) {
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
   const quiz = await loadAuthorableQuiz(req, res, id);
   if (!quiz) return undefined;
 
-  const parsed = quizQuestionRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
+  const parsed = parseOr400(quizQuestionRequestSchema, req.body, res, "Invalid question.");
+  if (parsed === null) return;
 
-  const created = await db.$transaction(async (tx) => {
-    // R20: order is the current count. It stays that way, but a real reorder
-    // endpoint exists now, and delete renumbers, so `order` is a position.
-    const count = await tx.quizQuestion.count({ where: { quizId: id } });
-    const question = await tx.quizQuestion.create({
-      data: { quizId: id, order: count, ...parsed.data },
-      select: AUTHORING_QUESTION_SELECT,
-    });
-    await recomputeMaxScore(tx, id);
-    return question;
-  });
+  const created = await addQuizQuestion(id, parsed);
 
   return apiOk(res, created, 201);
 }
@@ -129,20 +103,10 @@ export async function updateQuestion(req: Request, res: Response) {
     return apiError(res, "question_not_in_quiz", "Question not found.", 404);
   }
 
-  const parsed = quizQuestionRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid question.", 400);
+  const parsed = parseOr400(quizQuestionRequestSchema, req.body, res, "Invalid question.");
+  if (parsed === null) return;
 
-  const updated = await db.$transaction(async (tx) => {
-    // `order` is deliberately not writable here — reordering has its own
-    // endpoint, so a question edit cannot silently move a question.
-    const question = await tx.quizQuestion.update({
-      where: { id: questionId },
-      data: parsed.data,
-      select: AUTHORING_QUESTION_SELECT,
-    });
-    await recomputeMaxScore(tx, id);
-    return question;
-  });
+  const updated = await updateQuizQuestion(id, questionId, parsed);
 
   return apiOk(res, updated);
 }
@@ -164,20 +128,7 @@ export async function deleteQuestion(req: Request, res: Response) {
     return apiError(res, "question_not_in_quiz", "Question not found.", 404);
   }
 
-  await db.$transaction(async (tx) => {
-    await tx.quizQuestion.delete({ where: { id: questionId } });
-    // R21: v1 left `order` sparse. Renumbering keeps it a position, which is
-    // what the reorder endpoint and the runner's numbering both assume.
-    const survivors = await tx.quizQuestion.findMany({
-      where: { quizId: id },
-      orderBy: { order: "asc" },
-      select: { id: true },
-    });
-    for (const [index, row] of survivors.entries()) {
-      await tx.quizQuestion.update({ where: { id: row.id }, data: { order: index } });
-    }
-    await recomputeMaxScore(tx, id);
-  });
+  await deleteQuizQuestion(id, questionId);
 
   return apiOk(res, { deleted: true });
 }
@@ -188,14 +139,14 @@ export async function deleteQuestion(req: Request, res: Response) {
  * and re-add it, which under D3's freeze would now be impossible.
  */
 export async function reorderQuestions(req: Request, res: Response) {
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
   const quiz = await loadAuthorableQuiz(req, res, id);
   if (!quiz) return undefined;
 
-  const parsed = reorderQuestionsRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid order body.", 400);
-  const { questionIds } = parsed.data;
+  const parsed = parseOr400(reorderQuestionsRequestSchema, req.body, res, "Invalid order body.");
+  if (parsed === null) return;
+  const { questionIds } = parsed;
 
   const current = await db.quizQuestion.findMany({ where: { quizId: id }, select: { id: true } });
   const currentIds = new Set(current.map((q) => q.id));
@@ -210,33 +161,24 @@ export async function reorderQuestions(req: Request, res: Response) {
     return apiError(res, "invalid_order", "Send every question id exactly once.", 400);
   }
 
-  const questions = await db.$transaction(async (tx) => {
-    for (const [index, questionId] of questionIds.entries()) {
-      await tx.quizQuestion.update({ where: { id: questionId }, data: { order: index } });
-    }
-    return tx.quizQuestion.findMany({
-      where: { quizId: id },
-      orderBy: { order: "asc" },
-      select: AUTHORING_QUESTION_SELECT,
-    });
-  });
+  const questions = await reorderQuizQuestions(id, questionIds);
 
   return apiOk(res, { questions });
 }
 
 export async function publishQuiz(req: Request, res: Response) {
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid quiz id.", 400);
+  const id = idParam(res, req.params.id, "quiz");
+  if (id === null) return;
   // Publishing IS allowed with attempts — republishing a live quiz changes
   // nothing structural (R31 only moves the timestamp, which is read as a
   // boolean everywhere). Unpublishing is the guarded direction, below.
   const quiz = await loadAuthorableQuiz(req, res, id, { allowWithAttempts: true });
   if (!quiz) return undefined;
 
-  const parsed = publishQuizRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid publish body.", 400);
+  const parsed = parseOr400(publishQuizRequestSchema, req.body, res, "Invalid publish body.");
+  if (parsed === null) return;
 
-  if (parsed.data.publish) {
+  if (parsed.publish) {
     const questions = await db.quizQuestion.findMany({
       where: { quizId: id },
       select: { type: true, correctIndex: true, options: true },
@@ -273,7 +215,7 @@ export async function publishQuiz(req: Request, res: Response) {
   // actually flips it notifies: a republish (which only moves the timestamp)
   // and the loser of two racing publishes stay silent.
   const firstPublish =
-    parsed.data.publish &&
+    parsed.publish &&
     (await db.quiz.updateMany({ where: { id, publishedAt: null }, data: { publishedAt: new Date() } })).count === 1;
 
   const select = { publishedAt: true, seasonId: true, title: true } as const;
@@ -281,7 +223,7 @@ export async function publishQuiz(req: Request, res: Response) {
     ? await db.quiz.findUniqueOrThrow({ where: { id }, select })
     : await db.quiz.update({
         where: { id },
-        data: { publishedAt: parsed.data.publish ? new Date() : null },
+        data: { publishedAt: parsed.publish ? new Date() : null },
         select,
       });
 
