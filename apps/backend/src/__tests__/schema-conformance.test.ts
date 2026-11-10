@@ -65,12 +65,11 @@ const scalarFields = (m: Model, all: Set<string>) =>
 const models = parseModels(schema);
 const modelNames = new Set(models.map((m) => m.name));
 
-/** Rows written once and never updated (tokens, notifications, targets, votes): createdAt only. */
+/** Rows written once and never updated (tokens, notifications, votes): createdAt only. */
 const APPEND_ONLY = new Set([
   "InviteToken",
   "RefreshToken",
   "PasswordResetToken",
-  "AssignmentTarget",
   "Notification",
   "DeviceToken",
   "AnnouncementPollVote",
@@ -102,7 +101,6 @@ const AUDIT_FKS = new Set([
   "Attendance.markedById",
   "Assignment.createdById",
   "Assignment.updatedById",
-  "Submission.reviewedById",
   "Quiz.createdById",
   "Quiz.resultsReleasedById",
   "QuizGrade.gradedById",

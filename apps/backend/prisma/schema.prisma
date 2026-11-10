@@ -12,7 +12,8 @@
 //   - Soft delete (`deletedAt`) on User, Season and Assignment. Everything else is hard-deleted.
 //   - Audit columns: createdById on Season, Assignment, Quiz, JpcEvent, SessionVideoQuestion;
 //     updatedById on Season and Assignment.
-//   - `publicId` (nanoid, 10 chars) only on Submission, per the per-entity URL strategy.
+//   - `publicId` (nanoid, 10 chars) only on Submission and AssignmentPartWork, per the per-entity
+//     URL strategy.
 //   - Rules Prisma cannot express (CHECKs, partial indexes) are listed at the end of their model
 //     as `// SQL-only <kind> <name>: <definition>`; schema-snapshot.test.ts fails on one missing.
 //   - src/__tests__/schema-conformance.test.ts holds the base columns, an index on every foreign key
@@ -105,9 +106,16 @@ enum JpcVisibility {
   SEASON
 }
 
-enum AssignmentType {
-  STANDARD
+enum AssignmentPartKind {
+  VIDEO
+  ESSAY
   FORUM
+}
+
+// What an assignment's reminder counts back from.
+enum ReminderAnchor {
+  NEXT_SESSION
+  DUE_DATE
 }
 
 enum QuizKind {
@@ -181,12 +189,13 @@ model User {
   seasonsUpdated          Season[]         @relation("SeasonUpdatedBy")
   assignmentsCreated      Assignment[]     @relation("AssignmentCreatedBy")
   assignmentsUpdated      Assignment[]     @relation("AssignmentUpdatedBy")
-  submissionsReviewed     Submission[]     @relation("SubmissionReviewedBy")
+  partWorkReviewed        AssignmentPartWork[] @relation("PartWorkReviewedBy")
   attendanceMarked        Attendance[]     @relation("AttendanceMarkedBy")
   engagementNotesAuthored EngagementNote[] @relation("EngagementNoteAuthor")
 
   attendanceRecords    Attendance[]       @relation("AttendanceStudent")
   submissionsAsStudent Submission[]       @relation("SubmissionStudent")
+  partWorkAsStudent    AssignmentPartWork[] @relation("PartWorkStudent")
   seasonEnrollments    SeasonEnrollment[] @relation("EnrollmentStudent")
   enrollmentOverrides  SeasonEnrollment[] @relation("EnrollmentOverrideBy")
   graduationOverrides  User[]             @relation("GraduationOverrideBy")
@@ -359,7 +368,6 @@ model Group {
   leaders           GroupLeader[]
   students          GroupStudent[]
   seasonEnrollments SeasonEnrollment[]
-  assignmentTargets AssignmentTarget[]
 
   // Target of GroupStudent's composite foreign key (Plan 18 M1).
   @@unique([id, seasonId])
@@ -450,7 +458,6 @@ model Session {
   updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
 
   attendance     Attendance[]
-  assignments    Assignment[]
   quizzes        Quiz[]
   videoQuestions SessionVideoQuestion[]
   videoProgress  SessionVideoProgress[]
@@ -464,11 +471,14 @@ model Session {
 }
 
 // Interactive video quizzes: admin places timed MCQ questions on a session's
-// video; students answer inline while watching (graded, gated, no retries).
+// video or on an assignment's Video part (exactly one of the two); students
+// answer inline while watching (graded, gated, no retries).
 model SessionVideoQuestion {
-  id           Int      @id @default(autoincrement())
-  sessionId    Int
-  session      Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id               Int             @id @default(autoincrement())
+  sessionId        Int?
+  session          Session?        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  assignmentPartId Int?
+  assignmentPart   AssignmentPart? @relation(fields: [assignmentPartId], references: [id], onDelete: Cascade)
   atSeconds    Int
   prompt       String
   options      String[]
@@ -482,10 +492,12 @@ model SessionVideoQuestion {
   responses SessionVideoQuestionResponse[]
 
   @@index([sessionId, atSeconds])
+  @@index([assignmentPartId, atSeconds])
 
   // SQL-only (prisma/migrations; not expressible in this file):
   // SQL-only CHECK SessionVideoQuestion_points_check: points >= 0
   // SQL-only CHECK SessionVideoQuestion_correctIndex_check: 0 <= correctIndex < cardinality(options)
+  // SQL-only CHECK SessionVideoQuestion_owner_check: num_nonnulls(sessionId, assignmentPartId) = 1
 }
 
 model SessionVideoQuestionResponse {
@@ -540,28 +552,23 @@ model Attendance {
 // Assignments & submissions
 // ---------------------------------------------------------------------------
 
+// An assignment reaches its whole season; its work is the ordered list of parts.
 model Assignment {
   id          Int       @id @default(autoincrement())
   seasonId    Int
   season      Season    @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  sessionId   Int?
-  session     Session?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   title       String
   description String?
   dueAt       DateTime? @db.Timestamptz(3)
-  // When true, the assignment targets every group in the season (no AssignmentTarget rows).
-  isAllGroups Boolean   @default(false)
 
-  type AssignmentType @default(STANDARD)
-
-  // FORUM-type config (ignored for STANDARD assignments).
-  forumMinWords      Int? // minimum word count required to post a response
-  forumAllowComments Boolean @default(false) // whether students may comment on peers' responses
-  forumPostToRead    Boolean @default(true) // students see group-mates' responses only after posting their own
-
-  // File upload constraints (optional — null means no file uploads accepted).
-  maxFileSizeMb         Int?
-  allowedMimeCategories String[] @default([])
+  // Reminder: `reminderDays` before the anchor at `reminderTime` (HH:MM). `remindAt` is resolved
+  // on save; the scheduler's sweep sets `remindedAt` when it sends.
+  reminderEnabled Boolean        @default(true)
+  reminderDays    Int            @default(2)
+  reminderAnchor  ReminderAnchor @default(NEXT_SESSION)
+  reminderTime    String         @default("09:00")
+  remindAt        DateTime?      @db.Timestamptz(3)
+  remindedAt      DateTime?      @db.Timestamptz(3)
 
   createdById Int?
   createdBy   User?     @relation("AssignmentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
@@ -571,80 +578,149 @@ model Assignment {
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 
-  targets     AssignmentTarget[]
+  parts       AssignmentPart[]
   submissions Submission[]
 
   @@index([seasonId])
-  @@index([sessionId])
   @@index([dueAt])
 
   // SQL-only (prisma/migrations; not expressible in this file):
-  // SQL-only CHECK Assignment_allowedMimeCategories_check: allowedMimeCategories <@ {image, pdf, doc, audio, video, text}
+  // SQL-only CHECK Assignment_reminderDays_check: reminderDays BETWEEN 1 AND 14
+  // SQL-only CHECK Assignment_reminderTime_check: reminderTime ~ '^[0-2][0-9]:[0-5][0-9]$'
+  // SQL-only INDEX Assignment_remind_due_idx: (remindAt) WHERE remindedAt IS NULL AND deletedAt IS NULL
 }
 
-model AssignmentTarget {
+// One part of an assignment: a Video, an Essay or a Forum, with that kind's settings.
+model AssignmentPart {
+  id           Int                @id @default(autoincrement())
   assignmentId Int
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  groupId      Int
-  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  assignment   Assignment         @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  position     Int
+  kind         AssignmentPartKind
+  title        String?
 
-  @@id([assignmentId, groupId])
-  @@index([groupId])
+  // VIDEO
+  youtubeId       String?
+  youtubeUrl      String?
+  durationSeconds Int?
+  blockSkipping   Boolean @default(false)
+
+  // ESSAY and FORUM (minWords); ESSAY only (maxWords, files). No file limit means no uploads.
+  prompt                String?
+  minWords              Int?
+  maxWords              Int?
+  maxFileSizeMb         Int?
+  allowedMimeCategories String[] @default([])
+
+  // FORUM: group-mates' posts show only after the student's own; peers may comment.
+  postToRead    Boolean @default(true)
+  allowComments Boolean @default(false)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  work           AssignmentPartWork[]
+  videoQuestions SessionVideoQuestion[]
+
+  @@index([assignmentId, position])
+
+  // SQL-only (prisma/migrations; not expressible in this file):
+  // SQL-only CHECK AssignmentPart_video_check: kind <> VIDEO OR youtubeId IS NOT NULL
+  // SQL-only CHECK AssignmentPart_prompt_check: kind NOT IN (ESSAY, FORUM) OR prompt IS NOT NULL
+  // SQL-only CHECK AssignmentPart_words_check: minWords <= maxWords
+  // SQL-only CHECK AssignmentPart_allowedMimeCategories_check: allowedMimeCategories <@ {image, pdf, doc, audio, video, text}
+  // SQL-only UNIQUE INDEX AssignmentPart_one_forum: (assignmentId) WHERE kind = FORUM
 }
 
+// A student's one row per assignment; the work itself is per part (AssignmentPartWork).
 model Submission {
-  id            Int              @id @default(autoincrement())
-  // URL identifier — only this entity uses publicId per the per-entity strategy.
-  publicId      String           @unique
+  id            Int        @id @default(autoincrement())
+  // URL identifier, per the per-entity strategy.
+  publicId      String     @unique
   assignmentId  Int
-  assignment    Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   studentUserId Int
-  studentUser   User             @relation("SubmissionStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
-  text          String?
-  status        SubmissionStatus @default(DRAFT)
-  submittedAt   DateTime? @db.Timestamptz(3)
-  reviewedAt    DateTime? @db.Timestamptz(3)
-  feedback      String?
-  reviewedById  Int?
-  reviewedBy    User?            @relation("SubmissionReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
+  studentUser   User       @relation("SubmissionStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
+  submittedAt   DateTime?  @db.Timestamptz(3)
+  // Every part done.
+  completedAt   DateTime?  @db.Timestamptz(3)
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime   @updatedAt @db.Timestamptz(3)
+
+  partWork AssignmentPartWork[]
+
+  @@unique([assignmentId, studentUserId])
+  @@index([studentUserId])
+}
+
+// One student's work on one part: a video's progress, an essay and its review, or a forum post.
+model AssignmentPartWork {
+  id            Int              @id @default(autoincrement())
+  // URL identifier, per the per-entity strategy.
+  publicId      String           @unique
+  partId        Int
+  part          AssignmentPart   @relation(fields: [partId], references: [id], onDelete: Cascade)
+  submissionId  Int
+  submission    Submission       @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  studentUserId Int
+  studentUser   User             @relation("PartWorkStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
+
+  // ESSAY and FORUM
+  text         String?
+  status       SubmissionStatus @default(DRAFT)
+  submittedAt  DateTime?        @db.Timestamptz(3)
+  reviewedAt   DateTime?        @db.Timestamptz(3)
+  feedback     String?
+  reviewedById Int?
+  reviewedBy   User?            @relation("PartWorkReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  // VIDEO: merged [start, end] second intervals watched.
+  watchedIntervals Json      @default("[]")
+  watchedSeconds   Int       @default(0)
+  furthestSeconds  Int       @default(0)
+  lastReportAt     DateTime? @db.Timestamptz(3)
+
+  doneAt    DateTime? @db.Timestamptz(3)
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @db.Timestamptz(3)
 
   files         SubmissionFile[]
   forumComments ForumComment[]
 
-  @@unique([assignmentId, studentUserId])
+  @@unique([partId, studentUserId])
+  @@index([submissionId])
   @@index([studentUserId])
-  @@index([assignmentId, status])
+  @@index([partId, status])
+  @@index([reviewedById])
 }
 
+// A file attached to an essay part's work.
 model SubmissionFile {
-  id           Int        @id @default(autoincrement())
-  submissionId Int
-  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  id           Int                @id @default(autoincrement())
+  partWorkId   Int
+  partWork     AssignmentPartWork @relation(fields: [partWorkId], references: [id], onDelete: Cascade)
   originalName String
   storagePath  String
   mimeType     String
   sizeBytes    Int
-  uploadedAt   DateTime   @default(now()) @db.Timestamptz(3)
+  uploadedAt   DateTime           @default(now()) @db.Timestamptz(3)
 
-  @@index([submissionId])
+  @@index([partWorkId])
 }
 
-// Peer comments on a forum-type assignment response (the parent Submission).
-// Only created when the assignment has `forumAllowComments = true`.
+// Peer comments on a forum part's post (the parent AssignmentPartWork).
+// Only created when the part has `allowComments = true`.
 model ForumComment {
-  id           Int        @id @default(autoincrement())
-  submissionId Int
-  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  id           Int                @id @default(autoincrement())
+  partWorkId   Int
+  partWork     AssignmentPartWork @relation(fields: [partWorkId], references: [id], onDelete: Cascade)
   authorUserId Int
-  authorUser   User       @relation("ForumCommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+  authorUser   User               @relation("ForumCommentAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
   body         String
-  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
+  createdAt    DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime           @updatedAt @db.Timestamptz(3)
 
-  @@index([submissionId])
+  @@index([partWorkId])
   @@index([authorUserId])
 }
 
