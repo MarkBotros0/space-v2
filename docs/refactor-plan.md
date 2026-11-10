@@ -333,7 +333,7 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 - [x] 5.4 Forms: FE-006 (assignment, group, event, user, student, session, quiz) — useSchemaErrors in GroupForm and SeasonForm (the exact pattern); assignment form's two fieldsets split into assignment-form-sections.tsx. Left as they are (D8): the irregular validators (assignment, quiz, user, both profile forms merge their own errors; EventForm sends the parsed output), and the other forms' bodies (177-255 lines, no self-contained field groups to lift)
 - [x] 5.5 Quizzes: FE-008 (grade screen), FE-010 (`use-quizzes/` split) — FE-008 quiz-grade/{paper-grid,online-grading}.tsx, route 282 -> 43; FE-010 use-quizzes/{staff,student,grading}
 - [x] 5.6 Forum: FE-009 — screens/forum/{compose-card,post-card,comments,shared,index}; components/ForumThread.tsx removed; mobile 280/2347
-- [ ] 5.7 Video questions editor: FE-004 editor part (`video-question-form.ts`)
+- [x] 5.7 Video questions editor: FE-004 editor part (`video-question-form.ts`) — lib/video-question-form.ts (5 tests); editor onSave is the two writes; mobile 281/2352
 - [ ] 5.8 Students lists: FE-034 (renames), FE-061 (`studentListCopy`), FE-029, FE-010 (`use-students` split)
 - [ ] 5.9 Calendar: FE-060 (`calendarBranchFor`), FE-010 (`season-calendars` split)
 - [ ] 5.10 Reports & exports: FE-012
