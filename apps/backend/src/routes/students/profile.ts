@@ -2,18 +2,21 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { deliverInvite, mintInvite, type IssuedInvite } from "../../lib/invites";
-import { parseId } from "../../lib/parse-id";
+import { deliverInvite, type IssuedInvite } from "../../lib/invites";
+
 import { canEditStudent } from "../../lib/permissions";
 import { isUniqueViolation } from "../../lib/prisma-errors";
-import { createStudentRows } from "../../lib/queries/students";
+import { createStudentWithInvite, saveStudentRecord } from "../../lib/students/profile";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
-import { newPersonRefusal, readSeatSeason, type SeatRefusal } from "../../lib/roles";
-import { refusalStatus } from "../../lib/api-error";
+
 import { requireUser } from "../../middleware/require-auth";
 import { createStudentRequestSchema, updateStudentRequestSchema } from "../../../../../packages/shared/src/index";
 import { isSeasonFinished } from "../../lib/seasons/status";
 import { EMAIL_EXISTS } from "../../lib/error-messages";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
+import { liveSeason, liveUser } from "../../lib/db/live";
 
 /**
  * Per-role PATCH allowlists, checked against the RAW body keys before the
@@ -36,9 +39,9 @@ const ADMIN_EDITABLE = new Set([...SELF_EDITABLE, "name", "email", "notes"]);
 
 export async function createStudent(req: Request, res: Response) {
   const user = requireUser(req);
-  const parsed = createStudentRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid student body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(createStudentRequestSchema, req.body, res, "Invalid student body.");
+  if (parsed === null) return;
+  const body = parsed;
 
   // A Super creates anyone, with or without a season. A season's admin invites
   // a new person into that season only (owner, 2026-11-07), never seasonless:
@@ -51,10 +54,10 @@ export async function createStudent(req: Request, res: Response) {
 
   if (body.seasonId != null) {
     const season = await db.season.findFirst({
-      where: { id: body.seasonId, deletedAt: null },
+      where: { id: body.seasonId, ...liveSeason },
       select: { id: true, status: true },
     });
-    if (!season) return apiError(res, "not_found", "Season not found.", 404);
+    if (!season) return notFound(res, "Season");
     if (isSeasonFinished(season.status)) {
       return apiError(res, "season_finished", "This season has finished.", 409);
     }
@@ -70,51 +73,7 @@ export async function createStudent(req: Request, res: Response) {
   let created: { id: number; email: string };
   let invite: IssuedInvite;
   try {
-    type Created = { student: { id: number; email: string }; issued: IssuedInvite };
-    const result = await db.$transaction(async (tx): Promise<{ refusal: SeatRefusal } | Created> => {
-      if (body.seasonId != null) {
-        const season = await readSeatSeason(tx, body.seasonId);
-        if (!season) return { refusal: { code: "not_found", message: "Season not found." } };
-        const refusal = await newPersonRefusal(tx, body.name, season);
-        if (refusal) return { refusal };
-      }
-      // One writer for these rows (D-16.8): the bulk importer calls exactly
-      // this function, so the two paths cannot drift apart the way v1's did.
-      // Plan 10's invite stays below, in the route — the importer never mints one.
-      const [student] = await createStudentRows(
-        tx,
-        [
-          {
-            name: body.name,
-            email: body.email,
-            university: body.university ?? null,
-            faculty: body.faculty ?? null,
-            universityGraduationYear: body.universityGraduationYear ?? null,
-            phone: body.phone ?? null,
-            dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-            notes: body.notes ?? null,
-          },
-        ],
-        body.seasonId != null ? { kind: "season", seasonId: body.seasonId } : { kind: "none" },
-      );
-      if (!student) throw new Error("createStudentRows returned no row for one input");
-      // Plan 10 Decision 1 — spec 06 D7 / spec 11 §7: creation and
-      // invitation are ONE operation, exactly as POST /users does it. The
-      // invite is minted in this transaction (a rolled-back student can't
-      // have an invite) and mailed after commit (a mail failure can't roll
-      // back the student). This line stays in the ROUTE, after the row
-      // writes: Plan 17 extracts the block above into createStudentRows, and
-      // its importer must keep sending nothing (its R55). mintInvite, not
-      // issueInvite: a brand-new account holds no older invite to expire.
-      const issued = await mintInvite(tx, student.id, user.userId);
-      return { student, issued };
-    });
-    if ("refusal" in result) {
-      const { code, message } = result.refusal;
-      return apiError(res, code, message, refusalStatus(result.refusal));
-    }
-    created = result.student;
-    invite = result.issued;
+    ({ student: created, issued: invite } = await createStudentWithInvite(user.userId, body));
   } catch (err) {
     if (isUniqueViolation(err)) {
       return apiError(res, "email_taken", EMAIL_EXISTS, 409);
@@ -134,17 +93,17 @@ export async function createStudent(req: Request, res: Response) {
 
 export async function updateStudent(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const id = idParam(res, req.params.id, "student");
+  if (id === null) return;
   if (typeof req.body !== "object" || req.body === null || Array.isArray(req.body)) {
     return apiError(res, "bad_request", "Invalid student body.", 400);
   }
 
   const student = await db.user.findFirst({
-    where: { id, role: "STUDENT", deletedAt: null },
+    where: { id, role: "STUDENT", ...liveUser },
     select: { id: true },
   });
-  if (!student) return apiError(res, "not_found", "Student not found.", 404);
+  if (!student) return notFound(res, "Student");
 
   if (!(await canEditStudent(user, id))) return forbidden(res);
 
@@ -162,9 +121,9 @@ export async function updateStudent(req: Request, res: Response) {
     }
   }
 
-  const parsed = updateStudentRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid student body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(updateStudentRequestSchema, req.body, res, "Invalid student body.");
+  if (parsed === null) return;
+  const body = parsed;
 
   if (body.email !== undefined) {
     const clash = await db.user.findUnique({ where: { email: body.email }, select: { id: true } });
@@ -191,27 +150,7 @@ export async function updateStudent(req: Request, res: Response) {
   };
 
   try {
-    await db.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id },
-        data: userData,
-      });
-      // Upsert, not update: every creation path makes a profile row today,
-      // but v1's unconditional update throws for a STUDENT without one
-      // (spec 06 §2's flagged hazard) — the upsert closes that hole without
-      // a schema change.
-      await tx.studentProfile.upsert({
-        where: { userId: id },
-        update: profileData,
-        create: {
-          userId: id,
-          university: body.university ?? null,
-          faculty: body.faculty ?? null,
-          universityGraduationYear: body.universityGraduationYear ?? null,
-          notes: body.notes ?? null,
-        },
-      });
-    });
+    await saveStudentRecord(id, userData, profileData, body);
   } catch (err) {
     if (isUniqueViolation(err)) {
       return apiError(res, "email_taken", EMAIL_EXISTS, 409);

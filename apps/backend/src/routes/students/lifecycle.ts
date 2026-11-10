@@ -1,16 +1,14 @@
 import type { Request, Response } from "express";
 
-import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { invalidateSessions } from "../../lib/auth/session-validity";
-import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
-import { parseId } from "../../lib/parse-id";
-import { graduatePerson, passedGraduatingYears } from "../../lib/students/graduation";
+
+import { graduateStudentAccount, softDeleteStudent } from "../../lib/students/lifecycle";
 import { isSuper } from "../../lib/rbac";
-import { lockPeople } from "../../lib/roles";
+
 import { requireRole } from "../../middleware/require-auth";
 import { graduateStudentRequestSchema } from "../../../../../packages/shared/src/index";
+import { idParam } from "../../lib/http/params";
 
 /**
  * Graduation (Plan 10 Decision 2). SUPER-only — gated on isSuper alone (R55).
@@ -34,8 +32,8 @@ import { graduateStudentRequestSchema } from "../../../../../packages/shared/src
 export async function graduateStudent(req: Request, res: Response) {
   const user = requireRole(req, res, isSuper, "Only a super user can graduate students.");
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const id = idParam(res, req.params.id, "student");
+  if (id === null) return;
 
   const parsed = graduateStudentRequestSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -43,39 +41,7 @@ export async function graduateStudent(req: Request, res: Response) {
   }
   const { graduationYear, override, overrideReason } = parsed.data;
 
-  const outcome = await db.$transaction(async (tx) => {
-    await lockPeople(tx, [id]);
-    const student = await tx.user.findFirst({
-      where: { id, role: "STUDENT", deletedAt: null },
-      select: { name: true, graduationYear: true },
-    });
-    if (!student) return "not_found" as const;
-    if (student.graduationYear !== null) return "already_graduated" as const;
-    const passedYears = await passedGraduatingYears(tx, id);
-    const qualified = passedYears.length > 0;
-    if (!qualified && !override) return { notQualified: student.name };
-    // A pass decides the class: a typed year can't put them in a different School.
-    if (qualified && !passedYears.includes(graduationYear)) {
-      return { wrongClass: { name: student.name, year: Math.max(...passedYears) } };
-    }
-    // The reason is kept only when the exception was needed, and only here.
-    const exception = qualified ? undefined : { byId: user.userId, reason: overrideReason ?? "" };
-    const done = await graduatePerson(tx, id, graduationYear, exception);
-    return typeof done === "string" ? done : { ...done, overridden: !qualified };
-  });
-
-  if (outcome === "not_found") return apiError(res, "not_found", "Student not found.", 404);
-  if (outcome === "already_graduated") {
-    return apiError(res, "already_graduated", "This student has already graduated.", 409);
-  }
-  if ("notQualified" in outcome) {
-    return apiError(res, "not_qualified", `${outcome.notQualified} hasn't passed a graduating season.`, 409);
-  }
-
-  if ("wrongClass" in outcome && outcome.wrongClass) {
-    const { name, year } = outcome.wrongClass;
-    return apiError(res, "wrong_class", `${name} passed the ${year} season, so they're School of ${year}.`, 409);
-  }
+  const outcome = await graduateStudentAccount(user.userId, id, { graduationYear, override, overrideReason });
 
   auditLog("student.graduate", user.userId, id, outcome.overridden ? { override: true } : {});
   return apiOk(res, { id, graduationYear, enrollmentsCompleted: outcome.enrollmentsCompleted });
@@ -92,21 +58,11 @@ export async function graduateStudent(req: Request, res: Response) {
 export async function deleteStudent(req: Request, res: Response) {
   const user = requireRole(req, res, isSuper, "Only a super user can delete students.");
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const id = idParam(res, req.params.id, "student");
+  if (id === null) return;
 
   const deletedAt = new Date();
-  const deleted = await db.$transaction(async (tx) => {
-    const marked = await tx.user.updateMany({
-      where: { id, role: "STUDENT", deletedAt: null },
-      data: { deletedAt },
-    });
-    if (marked.count === 0) return false;
-    await revokeAllRefreshTokensForUser(tx, id);
-    await invalidateSessions(tx, id); // Plan 18 M13: live access tokens end too
-    return true;
-  });
-  if (!deleted) return apiError(res, "not_found", "Student not found.", 404);
+  await softDeleteStudent(id, deletedAt);
 
   auditLog("student.delete", user.userId, id);
   return apiOk(res, { id, deletedAt: deletedAt.toISOString() });
