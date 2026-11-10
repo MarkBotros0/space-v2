@@ -15,8 +15,8 @@ is the check for everything the v1 match can't see: it screenshots every state o
 The harness exists. Read these before starting:
 - `tools/ui-reference/README.md` → **"UI sweep"** (runner, matrix, flags, output) and **"v2 capture
   rig"** (emulator, Metro, backend, reference users).
-- `CLAUDE.md` → **"Mobile conventions"** → "UI matches v1 exactly", and **"Rules from the UI sweep"**
-  once it has entries. The checklist in step 4 is the starting point; rules learned from findings
+- `apps/mobile/CLAUDE.md` → **"Conventions"** (the redesign spec is the UI reference) and **"Rules from
+  the UI sweep"**. The checklist in step 4 is the starting point; rules learned from findings
   are added there.
 
 ## 1. List what the screen puts on screen
@@ -163,7 +163,7 @@ and the screenshot path. Then say what the sweep could not show:
 - any state your flow didn't reach.
 
 If a finding exposes a new class of bug, add a one-line rule to **"Rules from the UI sweep"** in
-`CLAUDE.md` so the next screen doesn't repeat it.
+`apps/mobile/CLAUDE.md` so the next screen doesn't repeat it.
 
 **Privacy:** shots show real users from the test database, the same as `.v1-reference/`. Never commit
 them, never publish them as an Artifact or anywhere public. To show the user, send the contact sheet
