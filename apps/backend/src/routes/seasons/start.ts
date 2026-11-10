@@ -11,7 +11,7 @@ import { loadSeasonStartCheck } from "../../lib/queries/season-start";
 import { lockPeople, lockSeasonStart, readSeatSeason, type SeatRefusal } from "../../lib/roles";
 import { refusalStatus } from "../../lib/api-error";
 import type { SeasonStartCheck } from "../../../../../packages/shared/src/index";
-import { NOT_DRAFT, SEASON_NOT_FOUND } from "./enrollments";
+import { NOT_DRAFT, SEASON_NOT_FOUND } from "../../lib/enrolment/season-roster";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
 

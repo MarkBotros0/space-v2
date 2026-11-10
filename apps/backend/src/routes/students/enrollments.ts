@@ -1,25 +1,29 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import type { Prisma } from "../../generated/prisma/client";
+
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
-import { markSessionsStale } from "../../lib/auth/session-validity";
+
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { isUniqueViolation } from "../../lib/prisma-errors";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
-import { lockPeople, readSeatSeason, restoreStudentSeat, seatStudents, type SeatRefusal } from "../../lib/roles";
-import { refusalStatus } from "../../lib/api-error";
+
 import { requireUser, requireRole } from "../../middleware/require-auth";
 import {
   createEnrollmentRequestSchema,
   restoreEnrollmentRequestSchema,
   updateEnrollmentRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { isSeasonFinished } from "../../lib/seasons/status";
+
 import { idParam } from "../../lib/http/params";
 import { parseOr400 } from "../../lib/http/validate";
-import { liveUser } from "../../lib/db/live";
+import {
+  ALREADY_ENROLLED,
+  dropEnrolment,
+  enrolStudent,
+  restoreEnrolment,
+} from "../../lib/enrolment/student-enrolments";
 
 /**
  * Explicit enrollment — the endpoint v1 never had (spec 06 §7): its only
@@ -42,8 +46,7 @@ export async function createEnrollment(req: Request, res: Response) {
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   try {
-    const refusal = await db.$transaction((tx) => enrollOne(tx, id, seasonId));
-    if (refusal) return apiError(res, refusal.code, refusal.message, refusalStatus(refusal));
+    await enrolStudent(id, seasonId);
     const enrollment = await db.seasonEnrollment.findUniqueOrThrow({
       where: { studentUserId_seasonId: { studentUserId: id, seasonId } },
       select: { id: true, seasonId: true, status: true },
@@ -55,32 +58,8 @@ export async function createEnrollment(req: Request, res: Response) {
   }
 }
 
-const ALREADY_ENROLLED = "This student already has an enrollment in that season.";
-
 function alreadyEnrolled(res: Response) {
   return apiError(res, "already_enrolled", ALREADY_ENROLLED, 409);
-}
-
-/**
- * R2 / R47 / D1 live in enrollStudentsInSeason, which the bulk importer reaches too
- * (Plan 17 D-16.8): one enrolment per student per season, EVER (a WITHDRAWN row
- * is history, not an obstacle); entry always ACTIVE; the student's sessions go
- * stale so the derived current season is re-read. Who may join is `seatStudents`.
- */
-async function enrollOne(tx: Prisma.TransactionClient, id: number, seasonId: number): Promise<SeatRefusal | null> {
-  const season = await readSeatSeason(tx, seasonId);
-  if (!season) return { code: "not_found", message: "Season not found." };
-  if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
-
-  const student = await tx.user.findFirst({
-    where: { id, role: "STUDENT", ...liveUser },
-    select: { id: true },
-  });
-  if (!student) return { code: "not_found", message: "Student not found." };
-
-  const { refused } = await seatStudents(tx, season, [id]);
-  const refusal = refused[0]?.refusal ?? null;
-  return refusal?.code === "in_season" ? { code: "already_enrolled", message: ALREADY_ENROLLED } : refusal;
 }
 
 /**
@@ -120,35 +99,7 @@ export async function updateEnrollment(req: Request, res: Response) {
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   const { dropReason } = parsed;
-  const outcome = await db.$transaction(async (tx): Promise<SeatRefusal | { id: number; status: string }> => {
-    const season = await readSeatSeason(tx, seasonId);
-    if (!season) return { code: "not_found", message: "Enrollment not found." };
-    if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
-    // A draft's row is a plan: dropping would leave a "Did not finish" for a season they were never in.
-    if (season.status === "DRAFT") {
-      return { code: "season_draft", message: "This season hasn't started. Remove them from it instead." };
-    }
-    await lockPeople(tx, [id]);
-
-    const where = { studentUserId: id, seasonId };
-    // Conditional, so a row that moved on since it was last read is never overwritten.
-    const [row] = await tx.seasonEnrollment.updateManyAndReturn({
-      where: { ...where, status: "ACTIVE" },
-      data: { status: "WITHDRAWN", droppedAt: new Date(), dropReason: dropReason ?? null },
-      select: { id: true, status: true },
-    });
-    if (!row) {
-      const exists = await tx.seasonEnrollment.count({ where });
-      // R49: only an active row can be dropped; a restore is the one way back (R50).
-      return exists > 0
-        ? { code: "not_active", message: "Only an active enrollment can be dropped." }
-        : { code: "not_found", message: "Enrollment not found." };
-    }
-    // The student's derived current season may have just changed.
-    await markSessionsStale(tx, [id]);
-    return row;
-  });
-  if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
+  const outcome = await dropEnrolment(id, seasonId, dropReason);
   auditLog("enrollment.drop", user.userId, id);
   return apiOk(res, outcome);
 }
@@ -168,15 +119,7 @@ export async function restoreEnrollment(req: Request, res: Response) {
   const parsed = parseOr400(restoreEnrollmentRequestSchema, req.body ?? {}, res, "Invalid restore body.");
   if (parsed === null) return;
 
-  const outcome = await db.$transaction(async (tx) => {
-    const season = await readSeatSeason(tx, seasonId);
-    if (!season) return { code: "not_found", message: "Season not found." } satisfies SeatRefusal;
-    if (isSeasonFinished(season.status)) {
-      return { code: "season_finished", message: "This season has finished." } satisfies SeatRefusal;
-    }
-    return restoreStudentSeat(tx, season, id, { id: user.userId, override: parsed.override ?? false });
-  });
-  if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
+  const outcome = await restoreEnrolment(id, seasonId, { id: user.userId, override: parsed.override ?? false });
 
   auditLog("enrollment.restore", user.userId, id, { season: seasonId });
   return apiOk(res, { id: outcome.id, status: outcome.status });
