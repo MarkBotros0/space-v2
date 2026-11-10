@@ -4,12 +4,11 @@ Source of truth for the clean-code + schema refactor. **A new session reads this
 resumes from the first unchecked step.** Update it after every step. Evidence for every finding ID
 below is in `docs/refactor-audit.md` (merged, deduplicated) and its appendices in `docs/refactor-audit/`.
 
-## Status (2026-11-09)
+## Status (2026-11-10)
 
-- **Current phase:** Wave 3 (schema expand) is **finished on `refactor/wave-3-schema-expand`** (from `main` @
-  `d2a9ef88`) and stopped for the owner's review. Waves 0–2 are merged to `main` locally (fast-forward, no
-  PR, at the owner's request); Waves 1–3 are **not pushed**. No Wave 3 migration has run anywhere but the
-  throwaway DB; deploying them needs `check:wave-3` on each environment first (see the Wave 3 summary).
+- **Current phase:** Wave 4 (backend per domain) is **finished on `refactor/wave-4-backend`** (from `main` @
+  `ac0f4306`, which holds Waves 0–3) and stopped for the owner's review. Nothing is pushed. Wave 4 code needs
+  the Wave 3 migrations first on any environment it reaches (see the Wave 3 summary).
 - Both databases were migrated once on the owner's instruction (Q28); this session never connects to them
   again. Tests run only on the throwaway DB (see Working setup).
 - Secrets leak (2026-11-09): a command printed `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
@@ -317,10 +316,10 @@ Each commit: the domain's integration suites + backend unit tests + typecheck + 
 - [x] 4.15 Imports: BE-011; `commitStudentImport` transaction nesting 4 → 3; `splitRecords` keeps depth 4
       with a documented lint exception (CSV state machine) — routes/imports/{limits,students,season-groups,index}; commitGroupImport in lib/imports/groups.ts (30 s timeout kept); seatRefusalMessage; splitRecords max-depth exception
 - [x] 4.16 Events, dev, health, scripts: remaining call sites (BE-02D adoption); BE-006 left as is — events + dev helpers, pageOf, findLiveSeason, liveSeason/liveUser; health had nothing to convert; BE-006 left as is
-- [ ] 4.17 Sweep: no `deletedAt` literal outside `lib/db/live.ts`, no `$transaction` in `routes/`, no
+- [x] 4.17 Sweep: no `deletedAt` literal outside `lib/db/live.ts`, no `$transaction` in `routes/`, no
       inline `apiError` with a catalogued code; full verification + wave summary + PR → **STOP**
 - Skipped (D8): DB-012 read switch, DB-026 (a bounded query changes the result), BE-050 (authz scopes
-  across domains), BE-052, BE-076, BE-02B, BE-027 variants that differ
+  across domains), BE-052, BE-076, BE-02B, BE-027 variants that differ — deletedOnly fragment (users inactive list, End's deleted-student close), so no deletedAt filter literal outside live.ts (writes, the DTO and the dev switch's mocked select remain); no $transaction in routes/; every fixed-message 400/404 a helper expresses uses it — left inline: compound-id 400s, events' 400 'Season not found.', the exports ?format guard, parses answering the first Zod issue. Verified (log ~/logs/space-v2-refactor-full.log); summary written; PR and push wait for the owner
 
 ### Wave 5 — mobile per feature area (`refactor/wave-5-mobile`)
 
@@ -431,3 +430,26 @@ _(one paragraph per finished wave)_
   **Deploy (owner):** run `pnpm --filter @space/backend check:wave-3` against each environment; deploy
   only if nothing is BLOCKED (TimeZone must be UTC; no case-duplicate emails); then `db:migrate:deploy`
   before any Wave 4 code. The timestamptz step rewrites every table under a lock: instant at today's size.
+- **Wave 4** (`refactor/wave-4-backend`, 77 commits, not merged or pushed): every domain moved to the 4.1
+  pattern. No `$transaction` is left in `routes/`: each lives in a `lib/<domain>/` service (announcements,
+  users, students, groups, enrolment, seasons start/end/delete/duplicate/admins/results, sessions, attendance,
+  check-in, assignments, quizzes, video quiz, imports), and a refusal that used to be a returned outcome is a
+  thrown `ApiError` with the same code, message, status and extra, only where nothing had been written. Reads
+  share named selects and loaders in `lib/queries/` (forum, dashboard, students, announcements, season
+  workbook as folders); `idParam` / `notFound` / `parseOr400` / `pageOf` wherever the message is the helper's
+  own; soft-delete filters only through `lib/db/live.ts` (`deletedOnly` added for the two deleted-only
+  filters). Behaviour changes, each its own commit and asked for: **one device per person** (DB-007, owner:
+  a new refresh token deletes every other one, so signing in elsewhere signs the old phone out on its next
+  refresh); **Q9** a deleted account is no longer notified about an assignment (tests red first); reactivate
+  clears only `User.deletedAt` and delete no longer stamps `StudentProfile.deletedAt` (DB-010); the seed stops
+  writing `year` (DB-001). Performance: unassign in two statements (BE-073), the attendance save reads the
+  season's admins once (BE-070, narrowed under D8), the staff assignment list counts the roster once (BE-072).
+  Folds apart from reads in engagement and the report summary (BE-005); forum deletes share one rule with a
+  six-role list-vs-DELETE parity test (BE-071; a comment deleted mid-list now reads `canDelete` true). D8 skips:
+  batching the last-two-marks read, the link constants (BE-044), DB-012, DB-026, BE-050, BE-052, BE-076,
+  BE-02B, the BE-027 variants that differ; `splitRecords` keeps depth 4 with a named lint exception. Left
+  inline: compound-id 400s, events' 400 "Season not found.", the exports `?format` guard, parses whose message
+  is the first Zod issue, and the dev switch's read (a unit test mocks it). Verified: lint (0 errors; warnings
+  61 backend, down from 75, and 214 mobile), typecheck, build, unit 340 / 572 / 2,317, integration 137 / 1,587.
+  **Deploy (owner):** Wave 3's migrations first, then this code; expect everyone signed in on two devices to be
+  signed out of one.
