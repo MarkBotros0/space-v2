@@ -8,7 +8,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { View } from "react-native";
-import { canSubmit, submitBlockerLine, type AssignmentDetail } from "@space/shared";
+import { canSubmit, submitBlockerLine, type AssignmentDetail, type PartWork } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { SaveBar } from "../../design/layout/save-bar";
@@ -25,7 +25,42 @@ import { AssignmentChecklist } from "./assignment-checklist";
 import { waitForDraftWrites } from "./use-draft-flush";
 
 const READ_ONLY = "This season has finished. You can read your work but not change it.";
-const SUBMIT_HINT = "Your essays go to your leader when you submit.";
+
+/**
+ * Submit's words, by the essays it hands in (review M5): the hint above the
+ * enabled button and the confirmation. With no essay nothing goes to review.
+ */
+function submitCopy(essays: number): { hint: string; confirm: string } {
+  if (essays === 0) {
+    return {
+      hint: "Every part is done. Submit to finish the assignment.",
+      confirm: "This marks the assignment as finished.",
+    };
+  }
+  if (essays === 1) {
+    return {
+      hint: "Your essay goes to your leader when you submit.",
+      confirm: "Your essay goes to your leader for review, and you can't change it after you submit.",
+    };
+  }
+  return {
+    hint: "Your essays go to your leader when you submit.",
+    confirm: "Your essays go to your leader for review, and you can't change them after you submit.",
+  };
+}
+
+/**
+ * Why Submit is disabled. A returned essay is not finished by Submit but by
+ * "Hand in again" on its own screen, so the caption points there; otherwise
+ * the shared blocker line names what is left.
+ */
+function submitBlocker(detail: AssignmentDetail, works: PartWork[]): string | null {
+  if (canSubmit(detail.parts, works)) return null;
+  const returned = works.filter((w) => w.kind === "ESSAY" && w.essay?.reviewStatus === "RETURNED").length;
+  if (returned > 1) return "Open each returned essay and tap Hand in again";
+  if (returned === 1) return "Open the returned essay and tap Hand in again";
+  return submitBlockerLine(detail.parts, works);
+}
 
 /** The due date in words, with "Overdue" beside it while there is still something to hand in. */
 function DueLine({ detail }: { detail: AssignmentDetail }) {
@@ -72,7 +107,8 @@ function StudentAssignment({ detail, refresh }: { detail: AssignmentDetail; refr
   const works = detail.my?.parts ?? [];
   const submittedAt = detail.my?.submittedAt ?? null;
   const ready = canSubmit(detail.parts, works);
-  const blocker = ready ? null : submitBlockerLine(detail.parts, works);
+  const blocker = submitBlocker(detail, works);
+  const copy = submitCopy(detail.parts.filter((p) => p.kind === "ESSAY").length);
   const offerSubmit = !detail.readOnly && submittedAt === null && detail.parts.length > 0;
 
   const footer = offerSubmit ? (
@@ -82,7 +118,7 @@ function StudentAssignment({ detail, refresh }: { detail: AssignmentDetail; refr
       loading={submit.isPending}
       disabled={!ready || submit.isPending}
       disabledReason={blocker ?? undefined}
-      hint={blocker ?? SUBMIT_HINT}
+      hint={blocker ?? copy.hint}
     />
   ) : undefined;
 
@@ -128,7 +164,7 @@ function StudentAssignment({ detail, refresh }: { detail: AssignmentDetail; refr
         open={confirming}
         onOpenChange={setConfirming}
         title="Submit this assignment?"
-        description="Your essays go to your leader for review, and you can't change them after you submit."
+        description={copy.confirm}
         confirmLabel="Yes, submit"
         cancelLabel="Not yet"
         pending={submit.isPending}

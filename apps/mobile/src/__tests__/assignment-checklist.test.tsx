@@ -17,7 +17,7 @@ jest.mock("expo-router", () => ({
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
-import { assignmentDetail, essayWork, forumWork, videoWork } from "./helpers/assignment-fixtures";
+import { assignmentDetail, essayWork, forumPart, forumWork, videoPart, videoWork } from "./helpers/assignment-fixtures";
 import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
@@ -146,5 +146,39 @@ describe("the student's assignment: a checklist of parts", () => {
     expect(await screen.findByText(/^Submitted /)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Submit" })).toBeNull();
     expect(screen.getByText("Handed in")).toBeTruthy();
+  });
+});
+
+describe("Submit's words follow the parts (review M5)", () => {
+  it("with one essay: the hint and the confirmation speak of the essay", async () => {
+    serve(finished());
+    renderStacked(<AssignmentDetailScreen />);
+    const bar = within(await screen.findByTestId("save-bar"));
+    expect(bar.getByText("Your essay goes to your leader when you submit.")).toBeTruthy();
+    fireEvent.press(bar.getByRole("button", { name: "Submit" }));
+    expect(
+      await screen.findByText("Your essay goes to your leader for review, and you can't change it after you submit."),
+    ).toBeTruthy();
+  });
+
+  it("with no essay: nothing about essays or review", async () => {
+    serve(assignmentDetail([videoWork(1000), forumWork(true)], { parts: [videoPart, forumPart] }));
+    renderStacked(<AssignmentDetailScreen />);
+    const bar = within(await screen.findByTestId("save-bar"));
+    expect(bar.getByText("Every part is done. Submit to finish the assignment.")).toBeTruthy();
+    expect(screen.queryByText(/essay/i)).toBeNull();
+    fireEvent.press(bar.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByText("This marks the assignment as finished.")).toBeTruthy();
+  });
+
+  it("with a returned essay: the disabled Submit points to Hand in again on the essay", async () => {
+    serve(assignmentDetail([videoWork(1000), essayWork("RETURNED", 200, "More."), forumWork(true)]));
+    renderStacked(<AssignmentDetailScreen />);
+    const bar = within(await screen.findByTestId("save-bar"));
+    const submit = bar.getByRole("button", { name: "Submit" });
+    const caption = "Open the returned essay and tap Hand in again";
+    expect(submit.props.accessibilityState).toMatchObject({ disabled: true });
+    expect(submit.props.accessibilityHint).toBe(caption);
+    expect(bar.getByText(caption)).toBeTruthy();
   });
 });
