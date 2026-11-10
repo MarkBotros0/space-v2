@@ -1,17 +1,17 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
-import { markSessionsStale } from "../../lib/auth/session-validity";
-import { parseId } from "../../lib/parse-id";
-import { isUniqueViolation } from "../../lib/prisma-errors";
-import { lockPeople, readSeatSeason, refuseNewSeats, type SeatRefusal } from "../../lib/roles";
-import { refusalStatus } from "../../lib/api-error";
+import { findLiveSeason } from "../../lib/queries/seasons";
+import { notFound } from "../../lib/http/not-found";
+import { seatSeasonAdmin, unseatSeasonAdmin } from "../../lib/seasons/admins";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { addSeasonAdminRequestSchema } from "../../../../../packages/shared/src/index";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
+import { idParam } from "../../lib/http/params";
+import { parseOr400 } from "../../lib/http/validate";
 
 /**
  * SUPER-only management of a season's SeasonAdmin rows (owner decision): v1
@@ -22,12 +22,6 @@ import { canManageUsers } from "../../lib/rbac";
  * A change marks the person's sessions stale, so their next refresh re-reads
  * `seasonAdminIds` without signing them out.
  */
-
-function liveSeason(id: number) {
-  return db.season.findFirst({ where: { id, deletedAt: null }, select: { id: true, status: true } });
-}
-
-const seasonNotFound = (res: Response) => apiError(res, "not_found", "Season not found.", 404);
 
 /** The list as it stands — what all three routes answer with. */
 async function loadSeasonAdmins(seasonId: number) {
@@ -53,50 +47,23 @@ async function loadSeasonAdmins(seasonId: number) {
 
 export async function listSeasonAdmins(req: Request, res: Response) {
   if (!requireRole(req, res, canManageUsers)) return;
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
-  if (!(await liveSeason(seasonId))) return seasonNotFound(res);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
+  if (!(await findLiveSeason(seasonId, { id: true }))) return notFound(res, "Season");
   return apiOk(res, await loadSeasonAdmins(seasonId));
 }
 
 export async function addSeasonAdmin(req: Request, res: Response) {
   const actor = requireRole(req, res, canManageUsers);
   if (!actor) return;
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
-  const parsed = addSeasonAdminRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid body: userId is required.", 400);
-  const { userId } = parsed.data;
+  const parsed = parseOr400(addSeasonAdminRequestSchema, req.body, res, "Invalid body: userId is required.");
+  if (parsed === null) return;
+  const { userId } = parsed;
 
-  let outcome: "created" | "exists" | SeatRefusal;
-  try {
-    outcome = await db.$transaction(async (tx) => {
-      const season = await readSeatSeason(tx, seasonId);
-      if (!season) return { code: "not_found", message: "Season not found." };
-      await lockPeople(tx, [userId]);
-      const existing = await tx.seasonAdmin.findUnique({
-        where: { seasonId_userId: { seasonId, userId } },
-        select: { userId: true },
-      });
-      if (existing) return "exists" as const;
-
-      const refusal = await refuseNewSeats(tx, [userId], { kind: "admin", season });
-      if (refusal) return refusal;
-
-      await tx.seasonAdmin.create({ data: { seasonId, userId, assignedById: actor.userId } });
-      await markSessionsStale(tx, [userId]);
-      return "created" as const;
-    });
-  } catch (err) {
-    // The race the pre-read can lose: someone else just added the same row.
-    if (!isUniqueViolation(err)) throw err;
-    outcome = "exists";
-  }
-
-  if (typeof outcome !== "string") {
-    return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
-  }
+  const outcome = await seatSeasonAdmin(seasonId, userId, actor.userId);
   if (outcome === "created") auditLog("season.admin_add", actor.userId, userId, { season: seasonId });
   // Idempotent: adding an existing admin is a 200 with the unchanged list.
   return apiOk(res, await loadSeasonAdmins(seasonId), outcome === "created" ? 201 : 200);
@@ -105,20 +72,14 @@ export async function addSeasonAdmin(req: Request, res: Response) {
 export async function removeSeasonAdmin(req: Request, res: Response) {
   const actor = requireRole(req, res, canManageUsers);
   if (!actor) return;
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
-  const userId = parseId(req.params.userId);
-  if (userId === null) return apiError(res, "bad_request", "Invalid user id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
+  const userId = idParam(res, req.params.userId, "user");
+  if (userId === null) return;
 
-  if (!(await liveSeason(seasonId))) return seasonNotFound(res);
+  if (!(await findLiveSeason(seasonId, { id: true }))) return notFound(res, "Season");
 
-  // No role or activation check: removing a stale row (a deactivated admin's,
-  // say) is exactly the clean-up this route exists for.
-  const removed = await db.$transaction(async (tx) => {
-    const { count } = await tx.seasonAdmin.deleteMany({ where: { seasonId, userId } });
-    if (count > 0) await markSessionsStale(tx, [userId]);
-    return count > 0;
-  });
+  const removed = await unseatSeasonAdmin(seasonId, userId);
 
   if (removed) auditLog("season.admin_remove", actor.userId, userId, { season: seasonId });
   // Idempotent: removing someone who is not an admin answers the same list.

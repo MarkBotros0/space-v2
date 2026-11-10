@@ -9,9 +9,9 @@ import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
 import { loadSeasonResults } from "../../lib/queries/season-results";
 import { findLiveSeason } from "../../lib/queries/seasons";
-import { graduatePerson } from "../../lib/students/graduation";
+import { liveSeason } from "../../lib/db/live";
+import { correctSeasonResult } from "../../lib/seasons/results";
 import { isSuper } from "../../lib/rbac";
-import { lockPeople } from "../../lib/roles";
 import { requireUser, requireRole } from "../../middleware/require-auth";
 import { updateSeasonResultRequestSchema } from "../../../../../packages/shared/src/index";
 import { isSeasonFinished } from "../../lib/seasons/status";
@@ -50,7 +50,7 @@ export async function updateSeasonResult(req: Request, res: Response) {
     where: { studentUserId_seasonId: { studentUserId, seasonId: id } },
     select: { status: true },
   });
-  if (!enrolment) return apiError(res, "not_found", "Enrolment not found.", 404);
+  if (!enrolment) return notFound(res, "Enrolment");
   if (enrolment.status !== "COMPLETED") {
     return apiError(res, "no_result", "This student has no result for the season.", 409);
   }
@@ -58,16 +58,7 @@ export async function updateSeasonResult(req: Request, res: Response) {
   const { result } = body;
   const reason = result === "NOT_PASSED" ? body.reason?.trim() || null : null;
   const now = new Date();
-  const graduated = await db.$transaction(async (tx) => {
-    await lockPeople(tx, [studentUserId]);
-    await tx.seasonEnrollment.update({
-      where: { studentUserId_seasonId: { studentUserId, seasonId: id } },
-      data: { result, resultReason: reason, resultSetAt: now },
-    });
-    if (result !== "PASSED" || !season.graduatesOnPass) return false;
-    const outcome = await graduatePerson(tx, studentUserId, season.year);
-    return typeof outcome !== "string";
-  });
+  const graduated = await correctSeasonResult(id, studentUserId, { result, reason, at: now }, season);
   auditLog("season.result_correct", user.userId, studentUserId, { season: id });
   if (graduated) auditLog("student.graduate", user.userId, studentUserId, { season: id });
   return apiOk(res, { userId: studentUserId, result, reason, graduated });
@@ -79,7 +70,7 @@ export async function listOverdueSeasons(req: Request, res: Response) {
   const scope = isSuper(user) ? {} : user.role === "ADMIN" ? { id: { in: user.seasonAdminIds } } : null;
   if (scope === null) return apiOk(res, { seasons: [] });
   const rows = await db.season.findMany({
-    where: { ...scope, status: "ACTIVE", deletedAt: null, endDate: { lt: new Date() } },
+    where: { ...scope, status: "ACTIVE", ...liveSeason, endDate: { lt: new Date() } },
     orderBy: { endDate: "asc" },
     select: { id: true, code: true, title: true, endDate: true },
   });
