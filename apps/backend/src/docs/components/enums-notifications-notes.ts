@@ -7,7 +7,6 @@ export const enumsNotificationsNotesSchemas = {
   SeasonStatus: { type: "string", enum: ["DRAFT", "ACTIVE", "COMPLETED", "ARCHIVED"] },
   AttendanceStatus: { type: "string", enum: ["PRESENT", "ABSENT", "LATE"] },
   SubmissionStatus: { type: "string", enum: ["DRAFT", "SUBMITTED", "REVIEWED", "RETURNED"] },
-  AssignmentType: { type: "string", enum: ["STANDARD", "FORUM"] },
 
   QuizKind: { type: "string", enum: ["PAPER", "ONLINE"] },
   QuizQuestionType: { type: "string", enum: ["MCQ", "ESSAY"] },

@@ -5,7 +5,11 @@ import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { bodyErrorMessage, createAssignment } from "../../lib/assignments/writes";
 import { findLiveSeason } from "../../lib/queries/seasons";
 import { canAccessSeason, canManageAssignment } from "../../lib/permissions";
-import { listAssignmentsForSeason, listAssignmentsForStudent } from "../../lib/queries/assignments";
+import {
+  listAssignmentsForSeason,
+  listAssignmentsForStudent,
+  loadAssignmentDetail,
+} from "../../lib/queries/assignments";
 import { listGroupsForSeason } from "../../lib/queries/groups";
 import { validateGroupWrite } from "../../lib/groups/membership";
 import { createGroup } from "../../lib/groups/writes";
@@ -104,6 +108,6 @@ export async function createSeasonAssignment(req: Request, res: Response) {
   }
 
   // The row, its parts and the season's notifications (after the commit, R65).
-  const created = await createAssignment(seasonId, parsed.data, user.userId);
-  return apiOk(res, created, 201);
+  const { id } = await createAssignment(seasonId, parsed.data, user.userId);
+  return apiOk(res, await loadAssignmentDetail(id, { studentUserId: null, canManage: true, readOnly: false }), 201);
 }

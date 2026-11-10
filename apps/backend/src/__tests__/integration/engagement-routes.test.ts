@@ -2,14 +2,15 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 
 jest.setTimeout(60000);
 
 const app = createApp();
 
 let seasonId: number;
+let lateJoinerId: number;
 let earlyStudentId: number;
 let otherSeasonId: number;
 let superToken: string;
@@ -90,38 +91,17 @@ beforeAll(async () => {
     ],
   });
 
-  // Two assignments: one for everyone, one targeted at Group A only.
-  const allGroups = await db.assignment.create({
-    data: { seasonId, title: "For all", isAllGroups: true },
-    select: { id: true },
-  });
-  const groupAOnly = await db.assignment.create({
-    data: {
-      seasonId,
-      title: "For group A",
-      isAllGroups: false,
-      targets: { create: { groupId: groupA.id } },
-    },
-    select: { id: true },
-  });
+  // Two assignments, both the whole season's (no targeting): the late joiner in
+  // Group B has both too.
+  const first = await createAssignmentWithParts({ seasonId, title: "First" });
+  const second = await createAssignmentWithParts({ seasonId, title: "Second" });
 
-  // early completes both → 100%. late completes neither → 0%.
-  await db.submission.createMany({
-    data: [
-      {
-        assignmentId: allGroups.id,
-        studentUserId: early.id,
-        publicId: newPublicId(),
-        status: "SUBMITTED",
-      },
-      {
-        assignmentId: groupAOnly.id,
-        studentUserId: early.id,
-        publicId: newPublicId(),
-        status: "REVIEWED",
-      },
-    ],
-  });
+  // early submits both → 100%. late submits neither → 0%.
+  await seedEssays([
+    { assignmentId: first.id, studentUserId: early.id, status: "SUBMITTED" },
+    { assignmentId: second.id, studentUserId: early.id, status: "REVIEWED" },
+  ]);
+  lateJoinerId = late.id;
 
   // Quizzes (owner, 2026-11-07: the student's page shows them). Given: the
   // published ONLINE quiz and the PAPER quiz someone was graded on. Not given:
@@ -205,6 +185,14 @@ describe("GET /api/v1/students/:id/engagement", () => {
     // decision nobody has made; the components are facts they can act on.
     expect(res.body.data.score).toBeUndefined();
     expect(res.body.data.atRisk).toBeUndefined();
+  });
+
+  it("counts every assignment of the season as expected, done once submitted", async () => {
+    const res = await request(app)
+      .get(`/api/v1/students/${lateJoinerId}/engagement`)
+      .set("authorization", `Bearer ${superToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ submissionsExpected: 2, submissionsCompleted: 0, submissionPct: 0 });
   });
 
   it("refuses a student another student's engagement", async () => {

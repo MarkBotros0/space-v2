@@ -41,13 +41,11 @@ export const staffAssignmentListItemSchema = z.object({
    * badge its leader is looking at.
    */
   isOverdue: z.boolean(),
-  isAllGroups: z.boolean(),
-  /**
-   * The groups this assignment targets. Empty when `isAllGroups` — v1's list
-   * could say "Some groups" but not which, because it never selected them.
-   */
-  targetGroupIds: z.array(z.number()),
+  /** How many parts the assignment has. */
+  partsCount: z.number(),
+  /** Season participants who have tapped Submit (`Submission.submittedAt` set). */
   submissionCount: z.number(),
+  /** Every participant of the season: an assignment is for the whole season. */
   expectedCount: z.number(),
   seasonCode: z.string(),
 });
@@ -62,9 +60,15 @@ export const studentAssignmentListItemSchema = z.object({
   dueOrgDay: isoDaySchema.nullable(),
   isOverdue: z.boolean(),
   status: assignmentStudentStatusSchema,
+  /** When every essay was last reviewed; null until then. */
   reviewedAt: z.string().nullable(),
-  /** When they last handed it in. Optional: a backend from before 2026-11-07 doesn't send it. */
-  submittedAt: z.string().nullable().optional(),
+  /** When they tapped Submit; null before they have, or since an essay was returned. */
+  submittedAt: z.string().nullable(),
+  partsTotal: z.number(),
+  /** Parts done by the completion rules (a returned essay is not done). */
+  partsDone: z.number(),
+  /** A reviewer returned one of the essays: the row groups under "Returned — needs changes". */
+  returned: z.boolean(),
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 
@@ -100,6 +104,14 @@ export const assignmentDetailSchema = z.object({
   readOnly: z.boolean(),
 });
 export type AssignmentDetail = z.infer<typeof assignmentDetailSchema>;
+
+/**
+ * `PATCH /assignments/:id`: the assignment as staff read it, and how many
+ * students' submitted work the save sent back to To do.
+ */
+export const assignmentSavedResponseSchema = assignmentDetailSchema.extend({
+  reopened: z.number().int().nonnegative(),
+});
 
 /** The leader's view: every expected student with their work on each part. */
 export const assignmentProgressSchema = z.object({

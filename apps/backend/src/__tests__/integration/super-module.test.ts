@@ -33,7 +33,7 @@ describe("super reads", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/check-in`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/video-questions`, 200],
       ["get", `/api/v1/assignments/${w.otherAssignmentId}`, 200],
-      ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 200],
+      ["get", `/api/v1/assignments/${w.assignmentId}/progress`, 200],
       ["get", `/api/v1/groups/${w.groupBId}/impact`, 200],
       ["get", `/api/v1/students/${w.ids.studentB}/notes`, 200],
       ["get", `/api/v1/submissions/${w.submissionBPublicId}`, 200],

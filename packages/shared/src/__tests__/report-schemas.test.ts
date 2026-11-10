@@ -145,7 +145,6 @@ describe("assignmentCompletionRowSchema", () => {
       assignmentId: 2,
       seasonId: 7,
       title: "Reflection 1",
-      targeting: "targeted",
       completed: 4,
       expected: 8,
       completionRate: 50,
@@ -154,9 +153,8 @@ describe("assignmentCompletionRowSchema", () => {
     expect("submittedPct" in row).toBe(false);
   });
 
-  it("distinguishes an all-groups assignment from a targeted one", () => {
-    expect(assignmentCompletionRowSchema.shape.targeting.parse("all_groups")).toBe("all_groups");
-    expect(assignmentCompletionRowSchema.shape.targeting.safeParse("group").success).toBe(false);
+  it("has no targeting: an assignment is for the whole season", () => {
+    expect("targeting" in assignmentCompletionRowSchema.shape).toBe(false);
   });
 });
 

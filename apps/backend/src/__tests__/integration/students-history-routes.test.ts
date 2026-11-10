@@ -4,6 +4,7 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 
 jest.setTimeout(60000);
 
@@ -86,38 +87,31 @@ beforeAll(async () => {
   });
 
   const asg = async (seasonId: number, title: string, dueAt: Date | null) =>
-    (
-      await db.assignment.create({
-        data: { seasonId, title, isAllGroups: true, dueAt },
-        select: { id: true },
-      })
-    ).id;
+    (await createAssignmentWithParts({ seasonId, title, dueAt })).id;
   const sa = await asg(seasonAId, "A late essay", at("2000-01-01T00:00:00.000Z"));
   const sb = await asg(seasonBId, "B essay", null);
   const sd = await asg(seasonAId, "A draft", null);
-  await db.submission.createMany({
-    data: [
-      {
-        assignmentId: sa,
-        studentUserId: s1,
-        publicId: newPublicId(),
-        status: "SUBMITTED",
-        text: "x",
-        submittedAt: at("2000-02-01T00:00:00.000Z"),
-        createdAt: at("2000-02-01T00:00:00.000Z"),
-      },
-      {
-        assignmentId: sb,
-        studentUserId: s1,
-        publicId: newPublicId(),
-        status: "REVIEWED",
-        text: "y",
-        submittedAt: at("2000-04-01T00:00:00.000Z"),
-        createdAt: at("2000-04-01T00:00:00.000Z"),
-      },
-      { assignmentId: sd, studentUserId: s1, publicId: newPublicId(), status: "DRAFT", text: "z" },
-    ],
-  });
+  await seedEssays([
+    {
+      assignmentId: sa,
+      studentUserId: s1,
+      status: "SUBMITTED",
+      text: "x",
+      submittedAt: at("2000-02-01T00:00:00.000Z"),
+      createdAt: at("2000-02-01T00:00:00.000Z"),
+    },
+    {
+      assignmentId: sb,
+      studentUserId: s1,
+      status: "REVIEWED",
+      text: "y",
+      submittedAt: at("2000-04-01T00:00:00.000Z"),
+      reviewedAt: at("2000-04-02T00:00:00.000Z"),
+      createdAt: at("2000-04-01T00:00:00.000Z"),
+    },
+    // Not submitted: the student's own, never listed.
+    { assignmentId: sd, studentUserId: s1, status: "DRAFT", text: "z" },
+  ]);
 
   superToken = await login(app, superUser.email);
   adminToken = await login(app, admin.email);
@@ -259,8 +253,17 @@ describe("GET /api/v1/students/:id/submissions (REG-83)", () => {
     const subs = res.body.data.submissions;
     expect(subs.map((s: { assignmentTitle: string }) => s.assignmentTitle)).toEqual(["B essay", "A late essay"]);
     expect(subs[1]).toMatchObject({ status: "SUBMITTED", isLate: true, seasonId: seasonAId });
-    expect(subs[0]).toMatchObject({ status: "REVIEWED", isLate: false });
+    expect(subs[0]).toMatchObject({ status: "REVIEWED", isLate: false, reviewedAt: "2000-04-02T00:00:00.000Z" });
     expect(JSON.stringify(res.body)).not.toContain("A draft");
+  });
+
+  it("lists an assignment whose essay was returned, and one only submitted, not one in progress", async () => {
+    const returned = await createAssignmentWithParts({ seasonId: seasonAId, title: "A returned" });
+    await seedEssays([{ assignmentId: returned.id, studentUserId: s1, status: "RETURNED" }]);
+    const res = await get(`/api/v1/students/${s1}/submissions`, superToken);
+    const row = res.body.data.submissions.find((s: { assignmentTitle: string }) => s.assignmentTitle === "A returned");
+    expect(row).toMatchObject({ status: "RETURNED", submittedAt: null });
+    await db.assignment.update({ where: { id: returned.id }, data: { deletedAt: new Date() } });
   });
 
   it("applies the same row scope as submission detail: admin their season, leader their group's", async () => {
@@ -309,20 +312,16 @@ describe("history scope when the student is in a season through a different grou
     await db.attendance.create({
       data: { sessionId: sessionC.id, studentUserId: s1, status: "PRESENT", markedById: s1 },
     });
-    const asgC = await db.assignment.create({
-      data: { seasonId: seasonCId, title: "C essay", isAllGroups: true },
-      select: { id: true },
-    });
-    await db.submission.create({
-      data: {
+    const asgC = await createAssignmentWithParts({ seasonId: seasonCId, title: "C essay" });
+    await seedEssays([
+      {
         assignmentId: asgC.id,
         studentUserId: s1,
-        publicId: newPublicId(),
         status: "SUBMITTED",
         text: "c",
         submittedAt: at("2000-05-02T00:00:00.000Z"),
       },
-    });
+    ]);
 
     const attendanceFor = async (token: string) =>
       (await get(`/api/v1/students/${s1}/attendance`, token)).body.data.history.map(

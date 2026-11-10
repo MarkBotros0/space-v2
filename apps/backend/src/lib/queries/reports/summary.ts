@@ -97,7 +97,7 @@ export async function buildEngagementSummary(
   // Q2 — EVERY enrolment in scope, whatever its status, with the two columns
   // that make a historical roster possible. Withdrawn and completed students
   // were on the roster at the time and must count in a past session's
-  // denominator (spec D3). This one fetch also serves the targeting map and the
+  // denominator (spec D3). This one fetch also serves the completion bars and the
   // cohort counts below — the replacement for v1's per-season count loop (R10)
   // and per-assignment count fan-out (R24).
   const enrollments = await db.seasonEnrollment.findMany({
@@ -128,28 +128,23 @@ export async function buildEngagementSummary(
   const seasonTitleById = new Map(scope.seasons.map((s) => [s.id, s.title]));
   const attendanceTrend = attendanceTrendPoints(sessions, enrollmentsBySeason, presentBySession, seasonTitleById);
 
-  // Q4 — assignments and their targets.
+  // Q4 — the scope's assignments.
   const assignments = await db.assignment.findMany({
     where: { seasonId: { in: seasonIds }, ...liveAssignment },
     orderBy: { createdAt: "asc" },
-    select: {
-      id: true,
-      seasonId: true,
-      title: true,
-      isAllGroups: true,
-      targets: { select: { groupId: true } },
-    },
+    select: { id: true, seasonId: true, title: true },
   });
 
-  // Q5 — non-DRAFT submissions on them. Two columns; the studentUserId is what
-  // makes the numerator intersectable with the expected set.
+  // Q5 — who has submitted each (every part done and Submit tapped). Two
+  // columns; the studentUserId is what makes the numerator intersectable with
+  // the expected set.
   const submissions =
     assignments.length === 0
       ? []
       : await db.submission.findMany({
           where: {
             assignmentId: { in: assignments.map((a) => a.id) },
-            status: { not: "DRAFT" },
+            submittedAt: { not: null },
           },
           select: { assignmentId: true, studentUserId: true },
         });

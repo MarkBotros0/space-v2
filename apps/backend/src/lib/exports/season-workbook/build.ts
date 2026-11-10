@@ -1,21 +1,22 @@
 import ExcelJS from "exceljs";
 
-import type { SubmissionStatus } from "../../../generated/prisma/enums";
+import type { PartWork } from "../../../../../../packages/shared/src/index";
 import { formatDayInOrgTime } from "../../org-time";
 import { addKeySheet, columnWidths, freezeFirstRowAndColumns, styleHeader } from "../workbook-style";
+import { partWorksFor, standingOf } from "../../queries/assignments";
 import { loadSeasonExportData } from "./load";
-import { estimateBytes, KEY_SYMBOLS, NOT_ASSIGNED, type SeasonWorkbookSummary, type SheetSummary } from "./summary";
+import { estimateBytes, KEY_SYMBOLS, type SeasonWorkbookSummary, type SheetSummary } from "./summary";
 
-const SUBMISSION_LABEL: Record<SubmissionStatus, string> = {
-  // A draft is the student's private work in progress, hidden from staff
-  // everywhere else (the queue, the submission page). In the export it reads
-  // as what it is to staff: nothing submitted yet, i.e. blank. Drafts are
-  // also filtered out of the query; this label is the backstop.
-  DRAFT: "",
-  SUBMITTED: "Submitted",
-  REVIEWED: "Reviewed",
-  RETURNED: "Returned",
-};
+/**
+ * One student's cell for one assignment: "Submitted", how many parts are done
+ * ("2 of 3 done"), or "Not submitted" when none is. Drafts are the student's
+ * own: a part written but not handed in doesn't count as done here.
+ */
+function assignmentCell(submitted: boolean, works: PartWork[]): string {
+  if (submitted) return "Submitted";
+  const { partsTotal, partsDone } = standingOf(works);
+  return partsDone > 0 ? `${partsDone} of ${partsTotal} done` : "Not submitted";
+}
 
 interface SeasonWorkbookResult extends SeasonWorkbookSummary {
   workbook: ExcelJS.Workbook;
@@ -31,18 +32,17 @@ interface SeasonWorkbookResult extends SeasonWorkbookSummary {
  * That is a data-retention hole v1 has by oversight; leaving it out of v2 is a
  * one-line divergence nobody will miss (spec D14).
  *
- * Ten queries: five for the grid (the shape v1 already had right — R89, the
+ * Twelve queries: seven for the grid (v1 had five, the shape right — R89, the
  * best-behaved read in the domain) plus the five inside
  * computeEngagementForSeasons, which supplies the two percentage columns. Five
  * extra round trips buy the guarantee that a spreadsheet cell and the chart on
  * the screen above it are the same number (ruling C4). v1's five queries
- * produced percentages that disagreed with its own reports page for any season
- * containing a group-targeted assignment (spec D2).
+ * produced percentages that disagreed with its own reports page (spec D2).
  */
 export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkbookResult | null> {
   const data = await loadSeasonExportData(seasonId);
   if (!data) return null;
-  const { season, students, sessions, quizzes, assignments, engagementBy } = data;
+  const { season, students, sessions, quizzes, assignments, works, engagementBy } = data;
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "JPC Space";
@@ -131,19 +131,16 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
   assignmentSheet.addRow(assignmentHeader);
   assignmentSheet.columns = columnWidths(assignmentHeader.length, 20);
 
-  const statusByAssignment = assignments.map((a) => new Map(a.submissions.map((s) => [s.studentUserId, s.status])));
+  const submittedBy = assignments.map((a) => new Set(a.submissions.map((s) => s.studentUserId)));
 
   for (const student of students) {
-    const cells = assignments.map((a, i) => {
-      const assigned =
-        a.isAllGroups || (student.groupId !== null && a.targets.some((t) => t.groupId === student.groupId));
-      // Ruling C9: the enrolment's group for THIS season, never GroupStudent.
-      if (!assigned) return NOT_ASSIGNED;
-      const status = statusByAssignment[i]!.get(student.studentUserId);
-      // Blank, not v1's em dash: "—" and blank both meant "no row found" and
-      // nothing distinguished "not applicable" from "missing" (R79, R82).
-      return status ? SUBMISSION_LABEL[status] : "";
-    });
+    // Every assignment is the whole season's: no "not assigned" cell any more.
+    const cells = assignments.map((a, i) =>
+      assignmentCell(
+        submittedBy[i]!.has(student.studentUserId),
+        partWorksFor(a.parts, student.studentUserId, works, { forStaff: true }),
+      ),
+    );
     const pct = engagementBy.get(student.studentUserId)?.submissionPct ?? 0;
     assignmentSheet.addRow([student.name, student.email, student.groupName, ...cells, pct]);
   }

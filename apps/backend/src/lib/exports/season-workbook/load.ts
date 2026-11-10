@@ -1,5 +1,6 @@
 import { db } from "../../../db/client";
 import { liveAssignment } from "../../db/live";
+import { loadWorkIndex, PART_SELECT } from "../../queries/assignments";
 import { computeEngagementForSeasons } from "../../queries/engagement";
 import { seasonParticipant } from "../../queries/season-participants";
 import { findLiveSeason } from "../../queries/seasons";
@@ -79,25 +80,26 @@ export async function loadSeasonExportData(seasonId: number) {
     },
   });
 
-  // 5 — assignments with their targets and submissions.
+  // 5 — assignments with their parts and who submitted, then 5b — every
+  // student's work on those parts (two queries, see loadWorkIndex).
   const assignments = await db.assignment.findMany({
     where: { seasonId, ...liveAssignment },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
       title: true,
-      isAllGroups: true,
-      targets: { select: { groupId: true } },
-      submissions: {
-        where: { status: { not: "DRAFT" } },
-        select: { studentUserId: true, status: true },
-      },
+      parts: { orderBy: { position: "asc" }, select: PART_SELECT },
+      submissions: { where: { submittedAt: { not: null } }, select: { studentUserId: true } },
     },
   });
+  const works = await loadWorkIndex(
+    assignments.flatMap((a) => a.parts.map((p) => p.id)),
+    students.map((s) => s.studentUserId),
+  );
 
   // 6..10 — the two percentage columns, from the one definition.
   const engagement = await computeEngagementForSeasons([seasonId]);
   const engagementBy = new Map(engagement.map((r) => [r.studentUserId, r]));
 
-  return { season, students, sessions, quizzes, assignments, engagementBy };
+  return { season, students, sessions, quizzes, assignments, works, engagementBy };
 }

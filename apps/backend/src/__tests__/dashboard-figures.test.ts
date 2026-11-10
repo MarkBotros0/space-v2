@@ -44,54 +44,65 @@ const row = (over: Partial<StudentAssignmentStateRow>): StudentAssignmentStateRo
   status: "PENDING",
   reviewedAt: null,
   submittedAt: null,
+  partsTotal: 3,
+  partsDone: 0,
+  returned: false,
   ...over,
 });
 
+const submitted = new Date("2099-02-20T10:00:00.000Z");
+
 describe("summarizeStudentAssignments (C5, D15, D16, R73)", () => {
   const rows = [
-    row({ id: 1, status: "PENDING", dueAt: new Date("2099-04-01T10:00:00.000Z"), dueOrgDay: "2099-04-01" }),
+    row({ id: 1, dueAt: new Date("2099-04-01T10:00:00.000Z"), dueOrgDay: "2099-04-01" }),
+    row({ id: 2, isOverdue: true, dueAt: new Date("2020-01-05T10:00:00.000Z"), dueOrgDay: "2020-01-05" }),
+    // Two of three parts done, not submitted.
+    row({ id: 3, status: "DRAFT", partsDone: 2 }),
+    // An essay came back: outstanding again, its overdue flag counts.
     row({
-      id: 2,
-      status: "PENDING",
+      id: 4,
+      status: "RETURNED",
+      partsDone: 2,
+      returned: true,
       isOverdue: true,
-      dueAt: new Date("2020-01-05T10:00:00.000Z"),
-      dueOrgDay: "2020-01-05",
+      dueAt: new Date("2020-01-01T10:00:00.000Z"),
     }),
-    row({ id: 3, status: "DRAFT" }),
-    // RETURNED is completed under C5: its overdue flag must not count.
-    row({ id: 4, status: "RETURNED", isOverdue: true, isLate: true, dueAt: new Date("2020-01-01T10:00:00.000Z") }),
-    row({ id: 5, status: "SUBMITTED", isLate: true }),
-    row({ id: 6, status: "REVIEWED" }),
-    row({ id: 7, status: "PENDING", dueAt: new Date("2099-02-01T10:00:00.000Z"), dueOrgDay: "2099-02-01" }),
+    row({ id: 5, status: "SUBMITTED", partsDone: 3, submittedAt: submitted, isLate: true }),
+    row({ id: 6, status: "REVIEWED", partsDone: 3, submittedAt: submitted }),
+    row({ id: 7, dueAt: new Date("2099-02-01T10:00:00.000Z"), dueOrgDay: "2099-02-01" }),
   ];
 
-  it("counts outstanding = PENDING | DRAFT, overdue among them, late among turned-in rows", () => {
+  it("counts outstanding = not submitted, parts left or returned; overdue among them; late among submitted", () => {
     const s = summarizeStudentAssignments(rows, 3);
-    expect(s.outstandingCount).toBe(4);
-    expect(s.overdueCount).toBe(1);
-    expect(s.lateSubmittedCount).toBe(2);
+    expect(s.outstandingCount).toBe(5);
+    expect(s.overdueCount).toBe(2);
+    expect(s.lateSubmittedCount).toBe(1);
   });
 
-  it("open holds every PENDING | DRAFT | RETURNED row, uncapped, dueAt asc nulls last then id", () => {
+  it("every part done but Submit not tapped is still outstanding", () => {
+    const s = summarizeStudentAssignments([row({ id: 9, status: "DRAFT", partsDone: 3 })], 3);
+    expect(s.outstandingCount).toBe(1);
+  });
+
+  it("open holds every outstanding row, uncapped, dueAt asc nulls last then id", () => {
     const many = [
       ...rows,
-      row({ id: 8, status: "RETURNED", dueAt: new Date("2099-01-01T10:00:00.000Z"), dueOrgDay: "2099-01-01" }),
-      row({ id: 9, status: "PENDING" }),
+      row({ id: 8, status: "RETURNED", returned: true, dueAt: new Date("2099-01-01T10:00:00.000Z") }),
+      row({ id: 9 }),
     ];
     const s = summarizeStudentAssignments(many, 3);
-    expect(s.open.length).toBeGreaterThan(3);
     // 4 (2020-01-01), 2 (2020-01-05), 8, 7, 1, then undated by id: 3, 9
     expect(s.open.map((r) => r.id)).toEqual([4, 2, 8, 7, 1, 3, 9]);
     expect(s.open.some((r) => r.status === "SUBMITTED" || r.status === "REVIEWED")).toBe(false);
     expect(s.open.every((r) => !("isLate" in r))).toBe(true);
-    expect(s.outstandingCount).toBe(5);
+    expect(s.outstandingCount).toBe(7);
     expect(s.dueSoon).toHaveLength(3);
   });
 
   it("lists outstanding rows by dueAt ascending, nulls last, overdue included, capped", () => {
     const s = summarizeStudentAssignments(rows, 3);
-    expect(s.dueSoon.map((r) => r.id)).toEqual([2, 7, 1]);
-    expect(summarizeStudentAssignments(rows, 10).dueSoon.map((r) => r.id)).toEqual([2, 7, 1, 3]);
+    expect(s.dueSoon.map((r) => r.id)).toEqual([4, 2, 7]);
+    expect(summarizeStudentAssignments(rows, 10).dueSoon.map((r) => r.id)).toEqual([4, 2, 7, 1, 3]);
   });
 
   it("never ships isLate on a due-soon row (the wire row is the student list row)", () => {

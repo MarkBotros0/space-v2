@@ -5,7 +5,7 @@
  * of the season; Student B is in Group B. The rules under test:
  *  - a student reads their own season, group, sessions, assignments and record;
  *  - never another student's record or submission, another group, or another season;
- *  - never staff-only data (notes, roster, tracker, attendance sheets, reports);
+ *  - never staff-only data (notes, roster, progress, attendance sheets, reports);
  *  - never any staff write.
  */
 import request from "supertest";
@@ -98,7 +98,7 @@ describe("reads a student is refused", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/video-quiz/results`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/roster`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/exports/manifest`, 403],
-      ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 403],
+      ["get", `/api/v1/assignments/${w.assignmentId}/progress`, 403],
       ["get", "/api/v1/submissions", 403],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 403],
       ["get", `/api/v1/quizzes/${w.quizId}/grades`, 403],

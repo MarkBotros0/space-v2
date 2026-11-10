@@ -1,23 +1,13 @@
 /**
  * Assignment reads. `rules` holds the derived facts (overdue, late), `staff`
- * the season list and the tracker, `detail` the one-assignment payload, and
- * `student` what a student was given. Import from this index.
+ * the season list and the leader's progress, `detail` the one-assignment
+ * payload, `student` what a student has, and `part-work` a student's work on
+ * each part. Import from this index.
  */
 export { groupIdInSeason } from "../enrollment";
 export { isLate, isOverdue } from "./rules";
-export {
-  listAssignmentsForSeason,
-  loadAssignmentTracker,
-  type AssignmentListRow,
-  type AssignmentTrackerData,
-  type AssignmentTrackerRowData,
-} from "./staff";
-export {
-  assignmentDetailPayload,
-  loadAssignmentById,
-  type AssignmentDetailData,
-  type MySubmissionData,
-} from "./detail";
+export { listAssignmentsForSeason, loadAssignmentProgress, type AssignmentListRow } from "./staff";
+export { loadAssignmentDetail, type AssignmentViewer } from "./detail";
 export {
   listAssignmentStatesForStudent,
   listAssignmentsForStudent,
@@ -25,3 +15,14 @@ export {
   type StudentAssignmentRow,
   type StudentAssignmentStateRow,
 } from "./student";
+export {
+  assignmentStatusOf,
+  loadPartWorks,
+  loadWorkIndex,
+  partWorksFor,
+  PART_SELECT,
+  reviewedAtOf,
+  standingOf,
+  type PartRow,
+  type WorkIndex,
+} from "./part-work";

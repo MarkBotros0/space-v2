@@ -93,6 +93,10 @@ export async function loadSeasonRecord(
       isOverdue: a.isOverdue,
       status: a.status,
       reviewedAt: a.reviewedAt?.toISOString() ?? null,
+      submittedAt: a.submittedAt?.toISOString() ?? null,
+      partsTotal: a.partsTotal,
+      partsDone: a.partsDone,
+      returned: a.returned,
     })),
     quizzes: quizzes.map((q): RecordQuiz => {
       const attempt = q.attempts[0];

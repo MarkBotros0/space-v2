@@ -1,9 +1,10 @@
 import { db } from "../../../db/client";
 import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import { orgDayKey } from "../../org-time";
-import { groupIdInSeason } from "../enrollment";
+import { seasonParticipant } from "../season-participants";
 import { isLate, isOverdue } from "./rules";
 import { liveAssignment } from "../../db/live";
+import { assignmentStatusOf, loadWorkIndex, partWorksFor, PART_SELECT, reviewedAtOf, standingOf } from "./part-work";
 
 export interface StudentAssignmentRow {
   id: number;
@@ -14,26 +15,25 @@ export interface StudentAssignmentRow {
   isOverdue: boolean;
   status: SubmissionStatus | "PENDING";
   reviewedAt: Date | null;
-  /** When they last handed it in; null before they ever have. */
+  /** When they tapped Submit; null before they have, or since an essay came back. */
   submittedAt: Date | null;
+  partsTotal: number;
+  partsDone: number;
+  returned: boolean;
 }
 
 /**
- * Whether this assignment is targeted at this student, for this season.
- *
- * The single definition of the visibility rule. v1 spelled it out separately in
- * the list query, the detail page and the tracker; exporting it here means the
- * route and the list cannot drift into disagreeing about who may see what.
+ * Whether this student may see this season's assignments: they are one of its
+ * participants (`seasonParticipant`). An assignment is for the whole season, so
+ * there is nothing narrower to check. The one definition, shared by the work
+ * routes, so they cannot drift into disagreeing about who may see what.
  */
-export async function studentCanSeeAssignment(
-  studentUserId: number,
-  seasonId: number,
-  isAllGroups: boolean,
-  targetGroupIds: number[],
-): Promise<boolean> {
-  if (isAllGroups) return true;
-  const groupId = await groupIdInSeason(studentUserId, seasonId);
-  return groupId !== null && targetGroupIds.includes(groupId);
+export async function studentCanSeeAssignment(studentUserId: number, seasonId: number): Promise<boolean> {
+  const row = await db.seasonEnrollment.findFirst({
+    where: { studentUserId, seasonId, ...seasonParticipant },
+    select: { id: true },
+  });
+  return row !== null;
 }
 
 /**
@@ -45,9 +45,10 @@ export interface StudentAssignmentStateRow extends StudentAssignmentRow {
 }
 
 /**
- * Every assignment targeted at this student in this season, with their state.
- * The ONE query behind both the student list and the student dashboard, so
- * the two cannot disagree about which assignments a student was given (C9).
+ * Every assignment of this season, with this student's standing on it. The ONE
+ * query behind the student list, the student dashboard and the season record,
+ * so they cannot disagree about which assignments a student has or how far
+ * they are through them. Constant in queries: four however many assignments.
  */
 export async function listAssignmentStatesForStudent(
   studentUserId: number,
@@ -56,38 +57,37 @@ export async function listAssignmentStatesForStudent(
 ): Promise<StudentAssignmentStateRow[]> {
   if (!seasonId) return [];
 
-  const groupId = await groupIdInSeason(studentUserId, seasonId);
-
   const assignments = await db.assignment.findMany({
-    where: {
-      seasonId,
-      ...liveAssignment,
-      OR: [{ isAllGroups: true }, ...(groupId !== null ? [{ targets: { some: { groupId } } }] : [])],
-    },
+    where: { seasonId, ...liveAssignment },
     orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
     select: {
       id: true,
       title: true,
       dueAt: true,
-      submissions: {
-        where: { studentUserId },
-        select: { status: true, reviewedAt: true, submittedAt: true },
-      },
+      parts: { orderBy: { position: "asc" }, select: PART_SELECT },
+      submissions: { where: { studentUserId }, select: { submittedAt: true } },
     },
   });
+  const index = await loadWorkIndex(
+    assignments.flatMap((a) => a.parts.map((p) => p.id)),
+    [studentUserId],
+  );
 
   return assignments.map((a) => {
     const sub = a.submissions[0];
+    const works = partWorksFor(a.parts, studentUserId, index, { forStaff: false });
+    const submittedAt = sub?.submittedAt ?? null;
     return {
       id: a.id,
       title: a.title,
       dueAt: a.dueAt,
       dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
       isOverdue: isOverdue(a.dueAt, now),
-      isLate: isLate(sub?.submittedAt ?? null, a.dueAt),
-      status: sub?.status ?? "PENDING",
-      reviewedAt: sub?.reviewedAt ?? null,
-      submittedAt: sub?.submittedAt ?? null,
+      isLate: isLate(submittedAt, a.dueAt),
+      status: assignmentStatusOf(submittedAt, works, sub !== undefined),
+      reviewedAt: reviewedAtOf(a.parts, studentUserId, index),
+      submittedAt,
+      ...standingOf(works),
     };
   });
 }

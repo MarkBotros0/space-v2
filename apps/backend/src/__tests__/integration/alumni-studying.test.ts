@@ -18,6 +18,7 @@ import {
   teardownEnrollmentFixtures,
 } from "./season-enrollments-setup";
 import { createTestUser, login, PASSWORD, reviewedOf, testEventTitle } from "./fixtures";
+import { createAssignmentWithParts } from "./assignment-reads-setup";
 
 jest.setTimeout(120000);
 
@@ -70,15 +71,11 @@ beforeAll(async () => {
     })
   ).id;
   assignmentId = (
-    await db.assignment.create({
-      data: {
-        seasonId: wideId,
-        title: "Wide essay",
-        description: "Write it",
-        isAllGroups: true,
-        dueAt: new Date("2099-04-01T00:00:00.000Z"),
-      },
-      select: { id: true },
+    await createAssignmentWithParts({
+      seasonId: wideId,
+      title: "Wide essay",
+      description: "Write it",
+      dueAt: new Date("2099-04-01T00:00:00.000Z"),
     })
   ).id;
 
@@ -191,7 +188,7 @@ describe("their work", () => {
 describe("what staff read for the season", () => {
   it.each([
     ["attendance roster", () => `/sessions/${sessionId}/attendance`],
-    ["assignment tracker", () => `/assignments/${assignmentId}/tracker`],
+    ["assignment progress", () => `/assignments/${assignmentId}/progress`],
     ["season roster", () => `/seasons/${wideId}/roster`],
     ["End's review", () => `/seasons/${wideId}/end-check`],
     ["engagement report", () => `/reports/engagement/students?seasonId=${wideId}`],

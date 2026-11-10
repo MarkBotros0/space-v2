@@ -63,7 +63,7 @@ describe("mentor reads", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/quizzes`, 403],
       ["get", `/api/v1/sessions/${w.sessionId}/video-questions`, 403],
       ["get", `/api/v1/sessions/${w.sessionId}/video-quiz/results`, 403],
-      ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 403],
+      ["get", `/api/v1/assignments/${w.assignmentId}/progress`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/roster`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/exports/manifest`, 403],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 403],

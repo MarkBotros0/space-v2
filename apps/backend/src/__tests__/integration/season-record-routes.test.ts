@@ -3,9 +3,9 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 
-import { newPublicId } from "../../lib/public-id";
 import { seasonHistoryResponseSchema, seasonRecordSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 
 jest.setTimeout(180000);
 
@@ -63,21 +63,16 @@ beforeAll(async () => {
     where: { studentUserId_seasonId: { studentUserId: s.id, seasonId: sid } },
     data: { groupId: g.id },
   });
-  const a1 = await db.assignment.create({
-    data: {
-      seasonId: sid,
-      title: "Rec A1",
-      isAllGroups: true,
-      createdById: admin.id,
-      dueAt: new Date("2099-02-01T00:00:00Z"),
-    },
-  });
-  await db.assignment.create({
-    data: { seasonId: sid, title: "Rec A2", isAllGroups: true, createdById: admin.id },
-  });
-  await db.submission.create({
-    data: {
-      publicId: newPublicId(),
+  // A1 has an essay and a video: the essay reviewed, the video not watched,
+  // the assignment submitted all the same (seeded, not through the gate).
+  const a1 = await createAssignmentWithParts(
+    { seasonId: sid, title: "Rec A1", dueAt: new Date("2099-02-01T00:00:00Z") },
+    [{ kind: "ESSAY" }, { kind: "VIDEO" }],
+  );
+  await db.assignment.update({ where: { id: a1.id }, data: { createdById: admin.id } });
+  await createAssignmentWithParts({ seasonId: sid, title: "Rec A2" });
+  await seedEssays([
+    {
       assignmentId: a1.id,
       studentUserId: s.id,
       text: "x",
@@ -86,7 +81,7 @@ beforeAll(async () => {
       reviewedAt: new Date(),
       feedback: SECRET_NOTE,
     },
-  });
+  ]);
   const sessionIds: number[] = [];
   for (const n of [1, 2, 3, 4]) {
     const created = await db.session.create({
@@ -182,9 +177,10 @@ describe("GET /me/seasons/:seasonId", () => {
     expect(parsed.season.code).toBe(seasons.passed.code);
     expect(parsed.groupName).toBe("Rec Group");
     expect(parsed.attendancePct).toBe(50); // 2 of 4 sessions
-    expect(parsed.assignments.map((a) => [a.title, a.status]).sort()).toEqual([
-      ["Rec A1", "REVIEWED"],
-      ["Rec A2", "PENDING"],
+    // Each row counts its parts: the reviewed essay is done, the unwatched video is not.
+    expect(parsed.assignments.map((a) => [a.title, a.status, a.partsDone, a.partsTotal]).sort()).toEqual([
+      ["Rec A1", "REVIEWED", 1, 2],
+      ["Rec A2", "PENDING", 0, 1],
     ]);
     expect(parsed.attendance.map((a) => a.status)).toEqual(["PRESENT", "LATE", "ABSENT", null]);
     const text = JSON.stringify(res.body);

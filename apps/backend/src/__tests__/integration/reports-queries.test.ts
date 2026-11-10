@@ -1,8 +1,8 @@
 // apps/backend/src/__tests__/integration/reports-queries.test.ts
 import { db } from "../../db/client";
-import { newPublicId } from "../../lib/public-id";
 import { buildEngagementSummary, listEngagementRows, resolveReportScope } from "../../lib/queries/reports";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 
 // The shared Neon staging Postgres autosuspends; the first query after idle has
 // been measured around 18s.
@@ -12,8 +12,8 @@ let seasonId: number;
 let otherSeasonId: number;
 let deletedSeasonId: number;
 let allGroupsAssignmentId: number;
-let groupAAssignmentId: number;
-let untargetedAssignmentId: number;
+let secondAssignmentId: number;
+let emptyAssignmentId: number;
 
 const S = ["2020-01-01", "2020-01-08", "2020-01-15", "2020-01-22"] as const;
 const at = (d: string) => new Date(`${d}T18:00:00.000Z`);
@@ -102,42 +102,25 @@ beforeAll(async () => {
     ],
   });
 
-  const allGroups = await db.assignment.create({
-    data: { seasonId, title: "For everyone", isAllGroups: true },
-    select: { id: true },
-  });
+  // Every assignment is the whole season's: there is no targeting.
+  const allGroups = await createAssignmentWithParts({ seasonId, title: "For everyone" });
   allGroupsAssignmentId = allGroups.id;
+  const second = await createAssignmentWithParts({ seasonId, title: "Second" });
+  secondAssignmentId = second.id;
+  // In a season nobody is enrolled in: v1 reported 0 % submitted for this (R22).
+  emptyAssignmentId = (await createAssignmentWithParts({ seasonId: otherSeasonId, title: "Nobody here" })).id;
 
-  const groupAOnly = await db.assignment.create({
-    data: {
-      seasonId,
-      title: "Group A only",
-      isAllGroups: false,
-      targets: { create: { groupId: gA.id } },
-    },
-    select: { id: true },
-  });
-  groupAAssignmentId = groupAOnly.id;
-
-  // Targeted at nothing at all — v1 reported 0 % submitted for this (R22).
-  const untargeted = await db.assignment.create({
-    data: { seasonId, title: "Targeted at nobody", isAllGroups: false },
-    select: { id: true },
-  });
-  untargetedAssignmentId = untargeted.id;
-
-  await db.submission.createMany({
-    data: [
-      { assignmentId: allGroups.id, studentUserId: early.id, publicId: newPublicId(), status: "SUBMITTED" },
-      { assignmentId: groupAOnly.id, studentUserId: early.id, publicId: newPublicId(), status: "REVIEWED" },
-      // A DRAFT never counts as turned in (R19).
-      { assignmentId: allGroups.id, studentUserId: late.id, publicId: newPublicId(), status: "DRAFT" },
-      // A withdrawn student's submission: v1 counted it in the bar chart's
-      // numerator while the denominator counted only current students (R23).
-      { assignmentId: allGroups.id, studentUserId: gone.id, publicId: newPublicId(), status: "SUBMITTED" },
-      { assignmentId: allGroups.id, studentUserId: groupB.id, publicId: newPublicId(), status: "RETURNED" },
-    ],
-  });
+  await seedEssays([
+    { assignmentId: allGroups.id, studentUserId: early.id, status: "SUBMITTED" },
+    { assignmentId: second.id, studentUserId: early.id, status: "REVIEWED" },
+    // A part written but not submitted never counts (R19).
+    { assignmentId: allGroups.id, studentUserId: late.id, status: "DRAFT" },
+    // A withdrawn student's submission: v1 counted it in the bar chart's
+    // numerator while the denominator counted only current students (R23).
+    { assignmentId: allGroups.id, studentUserId: gone.id, status: "SUBMITTED" },
+    // A returned essay reopens the assignment: not submitted until handed back.
+    { assignmentId: allGroups.id, studentUserId: groupB.id, status: "RETURNED" },
+  ]);
 });
 
 afterAll(async () => {
@@ -256,38 +239,31 @@ describe("buildEngagementSummary — attendance trend", () => {
 });
 
 describe("buildEngagementSummary — assignment completion", () => {
-  it("intersects the numerator with the expected set, so a bar cannot exceed 100 (R23)", async () => {
+  it("expects every participant and counts only those who submitted; a bar cannot exceed 100 (R23)", async () => {
     const scope = await resolveReportScope({ kind: "seasons", seasonIds: [seasonId] }, []);
     const summary = await buildEngagementSummary(scope, { trendLimit: 26 });
     const byId = new Map(summary.completion.map((r) => [r.assignmentId, r]));
 
-    // isAllGroups: expected = the 3 ACTIVE enrolments (the withdrawn student is
-    // not expected). Non-DRAFT submissions exist from early, gone and groupB —
-    // but `gone` is not in the expected set, so 2 of 3.
-    expect(byId.get(allGroupsAssignmentId)).toMatchObject({
-      targeting: "all_groups",
+    // Expected = the 3 ACTIVE enrolments (the withdrawn student is not
+    // expected). Submitted: early, and `gone`, who is not in the expected set.
+    // groupB's essay was returned and late only has a draft: neither counts.
+    expect(byId.get(allGroupsAssignmentId)).toEqual({
+      assignmentId: allGroupsAssignmentId,
+      seasonId,
+      title: "For everyone",
       expected: 3,
-      completed: 2,
-      completionRate: 67,
+      completed: 1,
+      completionRate: 33,
     });
+    // No targeting: the second assignment is everyone's too.
+    expect(byId.get(secondAssignmentId)).toMatchObject({ expected: 3, completed: 1, completionRate: 33 });
   });
 
-  it("resolves targeting through SeasonEnrollment, not GroupStudent (ruling C9)", async () => {
-    const scope = await resolveReportScope({ kind: "seasons", seasonIds: [seasonId] }, []);
+  it("returns null, not 0 %, for a season with nobody in it (R22)", async () => {
+    const scope = await resolveReportScope({ kind: "seasons", seasonIds: [otherSeasonId] }, []);
     const summary = await buildEngagementSummary(scope, { trendLimit: 26 });
-    const row = summary.completion.find((r) => r.assignmentId === groupAAssignmentId)!;
-    // Group A's ACTIVE enrolments are early and late. GroupStudent has no rows
-    // at all in this fixture — v1's denominator would have been 0 here, and
-    // SeasonEnrollment, not GroupStudent, is the authority (R21, ruling C9).
-    expect(row).toMatchObject({ targeting: "targeted", expected: 2, completed: 1, completionRate: 50 });
-  });
-
-  it("returns null, not 0 %, for an assignment targeted at nobody (R22)", async () => {
-    const scope = await resolveReportScope({ kind: "seasons", seasonIds: [seasonId] }, []);
-    const summary = await buildEngagementSummary(scope, { trendLimit: 26 });
-    const row = summary.completion.find((r) => r.assignmentId === untargetedAssignmentId)!;
-    // "0 % submitted" reads as total cohort failure; it is a mis-configured
-    // assignment. null renders as "—".
+    const row = summary.completion.find((r) => r.assignmentId === emptyAssignmentId)!;
+    // "0 % submitted" reads as total cohort failure. null renders as "—".
     expect(row).toMatchObject({ expected: 0, completed: 0, completionRate: null });
   });
 });

@@ -118,19 +118,16 @@ export const sessionsAssignmentsSchemas = {
         description:
           "Derived server-side. Do not recompute from `dueAt` on the client — a device in another timezone would disagree with the badge its leader is looking at.",
       },
-      isAllGroups: { type: "boolean" },
-      targetGroupIds: {
-        type: "array",
-        items: { type: "integer" },
-        description: "Empty when `isAllGroups`.",
-      },
+      partsCount: { type: "integer", description: "How many parts the assignment has." },
       submissionCount: {
         type: "integer",
-        description: "Submissions that are not DRAFT. The one definition of 'submitted'.",
+        description:
+          "Season participants who have tapped Submit (`submittedAt` set). The one definition of 'submitted'.",
       },
       expectedCount: {
         type: "integer",
-        description: "ACTIVE season enrolments in the targeted groups (SeasonEnrollment is the authority, ruling C9).",
+        description:
+          "Every participant of the season (SeasonEnrollment is the authority, ruling C9): an assignment is for the whole season.",
       },
       seasonCode: { type: "string" },
     },
@@ -156,8 +153,11 @@ export const sessionsAssignmentsSchemas = {
       submittedAt: {
         type: ["string", "null"],
         format: "date-time",
-        description: "When they last handed it in; null before they ever have.",
+        description: "When they tapped Submit; null before they have, or since an essay was returned.",
       },
+      partsTotal: { type: "integer" },
+      partsDone: { type: "integer", description: "Parts done by the completion rules; a returned essay is not done." },
+      returned: { type: "boolean", description: "A reviewer returned one of the essays." },
     },
   },
   AssignmentDetail: {
@@ -167,8 +167,6 @@ export const sessionsAssignmentsSchemas = {
       seasonId: { type: "integer" },
       seasonCode: { type: "string" },
       seasonTitle: { type: "string" },
-      sessionId: { type: ["integer", "null"] },
-      sessionTitle: { type: ["string", "null"] },
       title: { type: "string" },
       description: { type: ["string", "null"] },
       dueAt: { type: ["string", "null"], format: "date-time" },
@@ -183,26 +181,28 @@ export const sessionsAssignmentsSchemas = {
         description:
           "Organisation wall-clock time of `dueAt`, 24-hour `HH:mm`; null when there is no due date. With `dueOrgDay`, exactly what the write body's `dueDay`/`dueTime` take.",
       },
-      isAllGroups: { type: "boolean" },
-      type: { $ref: "#/components/schemas/AssignmentType" },
-      forumMinWords: { type: ["integer", "null"] },
-      forumAllowComments: { type: "boolean" },
-      forumPostToRead: {
-        type: "boolean",
-        description: "True: a student sees group-mates' responses only after posting their own.",
-      },
-      maxFileSizeMb: { type: ["integer", "null"] },
-      allowedMimeCategories: {
-        type: "array",
-        items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
-        description: "Empty means any MIME type is accepted.",
-      },
       isOverdue: { type: "boolean", description: "Derived server-side." },
-      groupIds: {
-        type: ["array", "null"],
-        items: { type: "integer" },
-        description:
-          "**Null for a STUDENT.** v1 sent the authoring shape so its own page could re-check targeting; that check now runs server-side, so the ids need not travel to the one role that should not enumerate them.",
+      reminder: {
+        type: "object",
+        properties: {
+          enabled: { type: "boolean" },
+          days: { type: "integer", minimum: 1, maximum: 14 },
+          anchor: { type: "string", enum: ["NEXT_SESSION", "DUE_DATE"] },
+          time: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        },
+      },
+      reminderLine: {
+        type: ["string", "null"],
+        description: 'The reminder in words ("2 days before the next session"); null when it is off.',
+      },
+      parts: { type: "array", items: { $ref: "#/components/schemas/AssignmentPart" } },
+      my: {
+        type: ["object", "null"],
+        description: "Populated only for a STUDENT: when they submitted, and their work on each part in order.",
+        properties: {
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          parts: { type: "array", items: { $ref: "#/components/schemas/PartWork" } },
+        },
       },
       canManage: {
         type: "boolean",
@@ -214,43 +214,48 @@ export const sessionsAssignmentsSchemas = {
         description:
           "True for a student whose enrolment is no longer ACTIVE (finished, dropped, alumnus): they can read the assignment and their own work, not change it. False for everyone else.",
       },
-      mySubmission: {
-        type: ["object", "null"],
-        description: "Populated only for a STUDENT.",
-        properties: {
-          publicId: { type: "string" },
-          status: { $ref: "#/components/schemas/SubmissionStatus" },
-          submittedAt: { type: ["string", "null"], format: "date-time" },
-          reviewedAt: { type: ["string", "null"], format: "date-time" },
-          feedback: { type: ["string", "null"] },
-          isLate: {
-            type: "boolean",
-            description:
-              "submittedAt is after dueAt. Derived server-side once; v1 recomputed this comparison at five separate render sites.",
-          },
-        },
-      },
     },
   },
-  AssignmentTrackerRow: {
+  AssignmentPart: {
     type: "object",
+    description:
+      "A stored part: `id`, `position` and `kind`, then the kind's fields as in `AssignmentPartInput`. A VIDEO also carries `videoId`, the YouTube id.",
     properties: {
-      studentUserId: { type: "integer" },
-      name: { type: ["string", "null"] },
-      email: { type: "string", format: "email" },
-      groupId: { type: ["integer", "null"] },
-      groupName: { type: ["string", "null"] },
-      status: {
-        oneOf: [{ $ref: "#/components/schemas/SubmissionStatus" }, { type: "string", enum: ["PENDING"] }],
-        description: "PENDING means no Submission row exists.",
+      id: { type: "integer" },
+      position: { type: "integer" },
+      kind: { type: "string", enum: ["VIDEO", "ESSAY", "FORUM"] },
+      videoId: { type: ["string", "null"] },
+    },
+    additionalProperties: true,
+  },
+  PartWork: {
+    type: "object",
+    description:
+      "One student's work on one part. VIDEO: done once 90% is watched and every timed question answered. ESSAY: done when written within the word range, until a reviewer returns it. FORUM: done once posted. A draft essay or forum post is the student's alone and reads as NOT_STARTED to staff.",
+    properties: {
+      partId: { type: "integer" },
+      kind: { type: "string", enum: ["VIDEO", "ESSAY", "FORUM"] },
+      status: { type: "string", enum: ["NOT_STARTED", "IN_PROGRESS", "DONE", "RETURNED"] },
+      essay: {
+        type: "object",
+        properties: {
+          publicId: { type: "string", description: "The essay's handle into the review screen." },
+          wordCount: { type: "integer" },
+          reviewStatus: { $ref: "#/components/schemas/SubmissionStatus" },
+          feedback: { type: ["string", "null"] },
+        },
       },
-      isLate: { type: "boolean" },
-      submittedAt: { type: ["string", "null"], format: "date-time" },
-      reviewedAt: { type: ["string", "null"], format: "date-time" },
-      submissionPublicId: {
-        type: ["string", "null"],
-        description: "The handle into the review screen; null when nothing was started.",
+      video: {
+        type: "object",
+        properties: {
+          watchedSeconds: { type: "integer" },
+          durationSeconds: { type: "integer" },
+          answered: { type: "integer" },
+          questionCount: { type: "integer" },
+          correct: { type: "integer" },
+        },
       },
+      forum: { type: "object", properties: { posted: { type: "boolean" } } },
     },
   },
   AssignmentWriteRequest: {
@@ -347,15 +352,22 @@ export const sessionsAssignmentsSchemas = {
       },
     ],
   },
-  AssignmentTracker: {
+  AssignmentProgress: {
     type: "object",
     properties: {
-      assignmentId: { type: "integer" },
-      dueAt: { type: ["string", "null"], format: "date-time" },
-      isOverdue: { type: "boolean" },
-      submittedCount: { type: "integer" },
-      expectedCount: { type: "integer" },
-      rows: { type: "array", items: { $ref: "#/components/schemas/AssignmentTrackerRow" } },
+      rows: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            studentUserId: { type: "integer" },
+            name: { type: ["string", "null"] },
+            avatarPath: { type: ["string", "null"] },
+            submittedAt: { type: ["string", "null"], format: "date-time" },
+            parts: { type: "array", items: { $ref: "#/components/schemas/PartWork" } },
+          },
+        },
+      },
     },
   },
 } as const;

@@ -7,6 +7,7 @@ import { db } from "../../db/client";
 
 import { hasActiveEnrollment } from "../../lib/permissions";
 import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
+import { createAssignmentWithParts } from "./assignment-reads-setup";
 
 jest.setTimeout(120000);
 
@@ -29,10 +30,7 @@ async function world(status: "DRAFT" | "ACTIVE", label: string) {
   const season = await createTestSeason({ status });
   const student = await createTestUser(`draft-${label}`, "STUDENT");
   await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: student.id, status: "ACTIVE" } });
-  const assignment = await db.assignment.create({
-    data: { seasonId: season.id, title: "Set work", isAllGroups: true },
-    select: { id: true },
-  });
+  const assignment = await createAssignmentWithParts({ seasonId: season.id, title: "Set work" });
   return { seasonId: season.id, studentId: student.id, assignmentId: assignment.id, token: await tokenFor(student.id) };
 }
 const notices = (userId: number) => db.notification.count({ where: { userId } });
@@ -100,8 +98,11 @@ describe("a student on a draft's roster", () => {
     const w = await world(status, `assign-${status.toLowerCase()}`);
     const res = await call("post", `/seasons/${w.seasonId}/assignments`, adminT).send({
       title: "New work",
-      isAllGroups: true,
-      groupIds: [],
+      description: null,
+      dueDay: null,
+      dueTime: null,
+      reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+      parts: [{ kind: "FORUM", prompt: "Say hello", minWords: null, postToRead: true, allowComments: false }],
     });
     expect(res.status).toBe(201);
     expect(await notices(w.studentId)).toBe(expected);

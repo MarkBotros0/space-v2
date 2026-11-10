@@ -131,7 +131,7 @@ export const seasonContentPaths = {
       tags: ["Seasons"],
       summary: "Assignments in a season",
       description:
-        "**The row shape depends on the caller's role.** Staff receive `StaffAssignmentListItem` (season-wide counts); a STUDENT receives `StudentAssignmentListItem` (their own status), filtered to assignments that target them.",
+        "**The row shape depends on the caller's role.** Staff receive `StaffAssignmentListItem` (season-wide counts); a STUDENT receives `StudentAssignmentListItem` (their own status and how many parts are done) for every assignment of the season.",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -167,7 +167,10 @@ export const seasonContentPaths = {
         content: { "application/json": { schema: { $ref: "#/components/schemas/AssignmentWriteRequest" } } },
       },
       responses: {
-        201: ok({ type: "object", properties: { id: { type: "integer" } } }, "Created: the new id."),
+        201: ok(
+          { $ref: "#/components/schemas/AssignmentDetail" },
+          "Created: the assignment as GET returns it to staff.",
+        ),
         400: conflict("`bad_request` (body; message names the first failing field)."),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),

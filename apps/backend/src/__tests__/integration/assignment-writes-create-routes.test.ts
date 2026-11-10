@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { assignmentDetailSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestUser } from "./fixtures";
 import {
   body,
@@ -73,7 +74,10 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
     });
 
     expect(res.status).toBe(201);
-    expect(res.body.data).toEqual({ id: expect.any(Number) });
+    // The full detail, as GET returns it to staff: the app shows it without a refetch.
+    const detail = assignmentDetailSchema.parse(res.body.data);
+    expect(detail.parts.map((p) => p.kind)).toEqual(["VIDEO", "ESSAY", "FORUM"]);
+    expect(detail).toMatchObject({ my: null, canManage: true, reminderLine: "3 days before the due date" });
     const row = await db.assignment.findUnique({
       where: { id: res.body.data.id },
       select: {

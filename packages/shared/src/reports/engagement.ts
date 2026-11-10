@@ -74,18 +74,16 @@ export type AttendancePoint = z.infer<typeof attendancePointSchema>;
  * it is a property of an assignment, and v1 calling both by one name is spec
  * D2's most consequential ambiguity (D-17.1).
  *
- * `targeting` exists because the denominator means two different things (R20)
- * and a reader currently cannot tell which they are looking at.
+ * `expected` is every participant of the assignment's season (an assignment
+ * is for the whole season); `completed` those of them who have tapped Submit.
  *
- * `completionRate` is null when `expected` is 0 — a targeted assignment with no
- * AssignmentTarget rows. v1 showed 0 %, which reads as total cohort failure and
- * is actually a mis-configured assignment (R22, D-17.13).
+ * `completionRate` is null when `expected` is 0 — a season with nobody in it
+ * yet. v1 showed 0 %, which reads as total cohort failure (R22, D-17.13).
  */
 export const assignmentCompletionRowSchema = z.object({
   assignmentId: z.number().int(),
   seasonId: z.number().int(),
   title: z.string(),
-  targeting: z.enum(["all_groups", "targeted"]),
   completed: z.number().int().min(0),
   expected: z.number().int().min(0),
   completionRate: z.number().int().min(0).max(100).nullable(),

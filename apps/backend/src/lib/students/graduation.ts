@@ -10,8 +10,11 @@ export async function hasWorkInSeason(
   seasonId: number,
 ): Promise<boolean> {
   const select = { id: true };
-  const submission = await tx.submission.findFirst({ where: { studentUserId, assignment: { seasonId } }, select });
-  if (submission) return true;
+  const work = await tx.assignmentPartWork.findFirst({
+    where: { studentUserId, part: { assignment: { seasonId } } },
+    select,
+  });
+  if (work) return true;
   const attempt = await tx.quizAttempt.findFirst({ where: { studentUserId, quiz: { seasonId } }, select });
   if (attempt) return true;
   const attendance = await tx.attendance.findFirst({ where: { studentUserId, session: { seasonId } }, select });

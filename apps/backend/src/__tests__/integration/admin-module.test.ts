@@ -42,7 +42,7 @@ describe("reads a season admin is allowed", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/check-in`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/video-questions`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/video-quiz/results`, 200],
-      ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 200],
+      ["get", `/api/v1/assignments/${w.assignmentId}/progress`, 200],
       ["get", `/api/v1/groups/${w.groupAId}`, 200],
       ["get", `/api/v1/groups/${w.groupBId}`, 200],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 200],

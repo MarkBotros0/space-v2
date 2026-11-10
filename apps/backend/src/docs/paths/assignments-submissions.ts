@@ -8,7 +8,7 @@ export const assignmentsSubmissionsPaths = {
       tags: ["Assignments"],
       summary: "Assignment detail",
       description:
-        "Season access alone is not enough: for a targeted assignment (`isAllGroups: false`), a STUDENT must also be in one of the targeted groups — resolved from their enrolment in *this* season, not from their current group membership. A student's response says `readOnly: true` unless they hold an ACTIVE enrolment in an ACTIVE season: a draft's roster reads, but can't submit yet.",
+        "Staff need access to the season; a STUDENT needs an enrolment in it, of any status (an assignment is for the whole season, so there is no group to check). A student's response carries `my`, their own work on each part, and says `readOnly: true` unless they hold an ACTIVE enrolment in an ACTIVE season: a draft's roster reads, but can't submit yet.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/AssignmentDetail" }, "The assignment."),
@@ -30,8 +30,13 @@ export const assignmentsSubmissionsPaths = {
       },
       responses: {
         200: ok(
-          { type: "object", properties: { id: { type: "integer" }, reopened: { type: "integer" } } },
-          "Saved; `reopened` counts the students whose submitted work went back to To do.",
+          {
+            allOf: [
+              { $ref: "#/components/schemas/AssignmentDetail" },
+              { type: "object", properties: { reopened: { type: "integer" } } },
+            ],
+          },
+          "Saved: the assignment as GET returns it to staff, and `reopened`, the students whose submitted work went back to To do.",
         ),
         400: conflict("`bad_request` or `unknown_part`."),
         401: errRef("Unauthorized"),
@@ -57,15 +62,15 @@ export const assignmentsSubmissionsPaths = {
     },
   },
 
-  "/api/v1/assignments/{id}/tracker": {
+  "/api/v1/assignments/{id}/progress": {
     get: {
       tags: ["Assignments"],
-      summary: "Who was given this assignment, and what they have done about it",
+      summary: "Every student's work on each part",
       description:
-        "Staff only, and scoped: a LEADER sees only students in the groups they lead. The rows carry every student's name and email, so this is gated the same way the attendance roster is rather than on season access.\n\nThe population comes from season enrolments, not from who happens to have a submission — a student who has done nothing still appears, which is the point of a tracker. A student whose work is still a DRAFT shows as `PENDING` with no `submissionPublicId`: a draft exists only for its author.\n\nRows are ordered by group name, then student name (v1's order, REG-84); students with no group come last.",
+        "Staff only, and scoped: a LEADER sees only students in the groups they lead; staff with the whole season see everyone. Gated the same way the attendance roster is, because the rows name students.\n\nThe population is the season's participants, so a student who has done nothing still appears. Each row has the student's work on every part, in order: how far into each video (`video.watchedSeconds` of `video.durationSeconds`, questions answered and correct), each essay's review status, whether the forum post is up. A draft essay or forum post is the student's alone and reads as NOT_STARTED.\n\nStudents who haven't submitted come first, then by name.",
       parameters: [idParam],
       responses: {
-        200: ok({ $ref: "#/components/schemas/AssignmentTracker" }, "The tracker."),
+        200: ok({ $ref: "#/components/schemas/AssignmentProgress" }, "The progress."),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),

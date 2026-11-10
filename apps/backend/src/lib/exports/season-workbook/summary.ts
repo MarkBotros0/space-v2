@@ -4,15 +4,14 @@ import { seasonParticipant } from "../../queries/season-participants";
 import { findLiveSeason } from "../../queries/seasons";
 import { quizWhere } from "./load";
 
-/** Blank means "assigned, nothing submitted"; n/a means "not assigned" (D-17.15). */
-export const NOT_ASSIGNED = "n/a";
-
 export const KEY_SYMBOLS: Array<[string, string]> = [
   ["P", "Present"],
   ["A", "Absent"],
   ["L", "Late — see the note about recorded minutes below"],
-  ["(blank)", "No record for this student and session / assignment"],
-  [NOT_ASSIGNED, "This assignment was not assigned to this student"],
+  ["(blank)", "No record for this student and session"],
+  ["Submitted", "Every part done and submitted"],
+  ["2 of 3 done", "Parts done so far; not submitted yet"],
+  ["Not submitted", "No part done yet"],
 ];
 
 export interface SheetSummary {

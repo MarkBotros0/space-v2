@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { assignmentSavedResponseSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData } from "./fixtures";
 import {
   body,
@@ -89,7 +90,10 @@ describe("PATCH /api/v1/assignments/:id", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ id: made.id, reopened: 0 });
+    // The full detail plus `reopened`, so the form can show the saved state.
+    const saved = assignmentSavedResponseSchema.parse(res.body.data);
+    expect(saved).toMatchObject({ id: made.id, reopened: 0, reminderLine: null });
+    expect(saved.parts.map((p) => p.kind)).toEqual(["ESSAY", "VIDEO"]);
     const row = await db.assignment.findUnique({
       where: { id: made.id },
       select: {
@@ -147,7 +151,7 @@ describe("PATCH /api/v1/assignments/:id", () => {
 
     const confirmed = await patch(made.id, { parts, confirm: true });
     expect(confirmed.status).toBe(200);
-    expect(confirmed.body.data).toEqual({ id: made.id, reopened: 1 });
+    expect(confirmed.body.data).toMatchObject({ id: made.id, reopened: 1 });
     const sub = await db.submission.findUniqueOrThrow({
       where: { assignmentId_studentUserId: { assignmentId: made.id, studentUserId: studentAId } },
       select: { submittedAt: true, completedAt: true },

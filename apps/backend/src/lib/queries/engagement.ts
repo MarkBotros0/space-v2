@@ -33,14 +33,16 @@ interface EngagementCohortOptions {
  * Formula, ported verbatim from jpc-space/src/lib/engagement.ts:
  *   score = round(attendancePct * 0.5 + submissionPct * 0.5)   (domain 9 R53)
  *   attendance counts PRESENT and LATE alike                   (domain 9 R54)
- *   a submission counts as done at SUBMITTED|REVIEWED|RETURNED (domain 9 R57)
+ *   an assignment counts as done once submitted: every part done
+ *   and Submit tapped (`Submission.submittedAt`; a returned essay
+ *   clears it until handed back in)
  *   assignment due dates are ignored                           (domain 9 R60)
  *
  * Two deliberate corrections, both Plan 12's:
  *   - the attendance denominator starts at the student's own enrolledAt
  *     (domain 9 R55, spec D8 #1);
- *   - targeting resolves through SeasonEnrollment.groupId, not GroupStudent
- *     (domain 9 R59, ruling C9).
+ *   - the expected assignments are every assignment of the enrolment's
+ *     season: an assignment is for the whole season, with no targeting.
  *
  * Nothing below reads Attendance.lateMinutes, so the score is untouched by
  * ruling C3's wrong-instant lateness defect (domain 9 R67). The surfaces that
@@ -110,18 +112,13 @@ async function loadCohort(seasonIds: number[], opts: EngagementCohortOptions) {
           select: { studentUserId: true, sessionId: true },
         });
 
-  // 4 — the scope's assignments and their targets.
+  // 4 — the scope's assignments.
   const assignments = await db.assignment.findMany({
     where: { seasonId: { in: seasonIds }, ...liveAssignment },
-    select: {
-      id: true,
-      seasonId: true,
-      isAllGroups: true,
-      targets: { select: { groupId: true } },
-    },
+    select: { id: true, seasonId: true },
   });
 
-  // 5 — the cohort's completed submissions against them.
+  // 5 — the cohort's submitted assignments among them.
   const submissions =
     assignments.length === 0
       ? []
@@ -129,7 +126,7 @@ async function loadCohort(seasonIds: number[], opts: EngagementCohortOptions) {
           where: {
             studentUserId: { in: ids },
             assignmentId: { in: assignments.map((a) => a.id) },
-            status: { in: ["SUBMITTED", "REVIEWED", "RETURNED"] },
+            submittedAt: { not: null },
           },
           select: { studentUserId: true, assignmentId: true },
         });
@@ -174,9 +171,7 @@ function foldEngagement({ enrollments, pastSessions, attendance, assignments, su
     const attendancePresent = eligibleSessions.filter((s) => present.has(s.id)).length;
     const attendancePct = attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : 0;
 
-    const expectedAssignments = (assignmentsBySeason.get(e.seasonId) ?? []).filter(
-      (a) => a.isAllGroups || (e.groupId !== null && a.targets.some((t) => t.groupId === e.groupId)),
-    );
+    const expectedAssignments = assignmentsBySeason.get(e.seasonId) ?? [];
     const submissionsExpected = expectedAssignments.length;
     const submissionsCompleted = expectedAssignments.filter((a) => completed.has(`${e.studentUserId}:${a.id}`)).length;
     const submissionPct = submissionsExpected > 0 ? Math.round((submissionsCompleted / submissionsExpected) * 100) : 0;

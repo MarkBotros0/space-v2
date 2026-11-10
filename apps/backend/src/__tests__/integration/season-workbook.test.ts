@@ -2,9 +2,9 @@
 import type { Workbook } from "exceljs";
 
 import { db } from "../../db/client";
-import { newPublicId } from "../../lib/public-id";
 import { buildSeasonWorkbook, summariseSeasonWorkbook } from "../../lib/exports/season-workbook";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
+import { createAssignmentWithParts, seedEssays, seedTextWork, seedVideoWork } from "./assignment-reads-setup";
 
 jest.setTimeout(60000);
 
@@ -115,26 +115,20 @@ beforeAll(async () => {
     data: { quizId: paper.id, studentUserId: alice.id, score: 15 },
   });
 
-  const allGroups = await db.assignment.create({
-    data: { seasonId, title: "For everyone", isAllGroups: true },
-    select: { id: true },
-  });
-  const groupAOnly = await db.assignment.create({
-    data: {
-      seasonId,
-      title: "Group A only",
-      isAllGroups: false,
-      targets: { create: { groupId: gA.id } },
-    },
-    select: { id: true },
-  });
+  // Both assignments are the whole season's: there is no targeting.
+  const allGroups = await createAssignmentWithParts({ seasonId, title: "For everyone" });
+  const three = await createAssignmentWithParts({ seasonId, title: "Three parts" }, [
+    { kind: "VIDEO", durationSeconds: 600 },
+    { kind: "ESSAY" },
+    { kind: "FORUM" },
+  ]);
 
-  await db.submission.createMany({
-    data: [
-      { assignmentId: allGroups.id, studentUserId: alice.id, publicId: newPublicId(), status: "SUBMITTED" },
-      { assignmentId: groupAOnly.id, studentUserId: alice.id, publicId: newPublicId(), status: "DRAFT" },
-    ],
-  });
+  await seedEssays([{ assignmentId: allGroups.id, studentUserId: alice.id, status: "SUBMITTED" }]);
+  // alice: the video watched, the forum post up, the essay only a draft (which
+  // staff never see, so it doesn't count): 2 of 3 done, not submitted.
+  await seedVideoWork(three.id, three.partIds[0]!, alice.id, 600);
+  await seedTextWork(three.id, three.partIds[1]!, alice.id, "DRAFT");
+  await seedTextWork(three.id, three.partIds[2]!, alice.id, "SUBMITTED");
 });
 
 afterAll(async () => {
@@ -214,39 +208,33 @@ describe("buildSeasonWorkbook", () => {
     expect(header.join(" ")).not.toContain("Zero max");
   });
 
-  it("marks an assignment a student was never given as n/a, not as a miss (D-17.15)", async () => {
+  it("gives every student every assignment, in words: Submitted, Not submitted, 2 of 3 done", async () => {
     const result = (await buildSeasonWorkbook(seasonId))!;
     const rows = sheetRows(result.workbook, "Assignments");
-    const header = rows[0]!;
-    expect(header).toEqual([
+    expect(rows[0]).toEqual([
       "Student",
       "Email",
       "Group",
       "For everyone",
-      "Group A only",
+      "Three parts",
       "Submitted % (assigned to student)",
     ]);
 
+    const alice = rows.find((r) => r[0] === "Test wb-alice")!;
     const bob = rows.find((r) => r[0] === "Test wb-bob")!;
-    // bob is in Group B; "Group A only" was never his to do. v1 gave every
-    // student a column for every assignment and divided by all of them (R78,
-    // R80), so bob was marked down for work nobody assigned him.
-    expect(bob[4]).toBe("n/a");
-    expect(bob[3]).toBe("");
+    expect(alice.slice(3, 5)).toEqual(["Submitted", "2 of 3 done"]);
+    // bob is in Group B, and has both: an assignment is for the whole season.
+    expect(bob.slice(3, 5)).toEqual(["Not submitted", "Not submitted"]);
   });
 
-  it("divides Submitted % by the assignments assigned to that student (ruling C5)", async () => {
+  it("divides Submitted % by every assignment of the season (ruling C5)", async () => {
     const result = (await buildSeasonWorkbook(seasonId))!;
     const rows = sheetRows(result.workbook, "Assignments");
     const alice = rows.find((r) => r[0] === "Test wb-alice")!;
     const bob = rows.find((r) => r[0] === "Test wb-bob")!;
-    // alice: 2 assigned, 1 turned in (the other is a DRAFT) → 50.
+    // alice: 2 assignments, 1 submitted (the other has parts left) → 50.
     expect(alice[5]).toBe(50);
-    // Her draft reads as nothing submitted: staff never see that a draft
-    // exists (owner decision 2026-11-04), here as on the queue.
-    expect(alice[3]).toBe("Submitted");
-    expect(alice[4]).toBe("");
-    // bob: 1 assigned, 0 turned in → 0. v1 divided by 2 for both.
+    // bob: 2 assignments, 0 submitted → 0.
     expect(bob[5]).toBe(0);
   });
 
@@ -260,8 +248,7 @@ describe("buildSeasonWorkbook", () => {
     const assignments = sheetRows(result.workbook, "Assignments").find((r) => r[0] === "Test wb-alice")!;
 
     // The workbook reads these two columns from the SAME function the report
-    // does. v1 computed them independently and they disagreed for any season
-    // with a group-targeted assignment (spec D2).
+    // does. v1 computed them independently and they disagreed (spec D2).
     expect(attendance[5]).toBe(alice.attendancePct);
     expect(assignments[5]).toBe(alice.submissionPct);
     expect(bobId).toBeGreaterThan(0);
@@ -281,7 +268,8 @@ describe("buildSeasonWorkbook", () => {
       .flat()
       .map((c) => String(c ?? ""))
       .join("\n");
-    expect(key).toContain("n/a");
+    expect(key).toContain("2 of 3 done");
+    expect(key).not.toContain("n/a");
     expect(key).toContain("Late arrivals show as");
     // A legend row inside a data sheet breaks sorting and filtering — the two
     // things an operator opens a spreadsheet to do.

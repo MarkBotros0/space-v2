@@ -104,12 +104,11 @@ export const engagementSummarySchemaDoc = {
       type: "array",
       items: {
         type: "object",
-        required: ["assignmentId", "seasonId", "title", "targeting", "completed", "expected", "completionRate"],
+        required: ["assignmentId", "seasonId", "title", "completed", "expected", "completionRate"],
         properties: {
           assignmentId: intField,
           seasonId: intField,
           title: { type: "string" },
-          targeting: { type: "string", enum: ["all_groups", "targeted"] },
           completed: intField,
           expected: intField,
           completionRate: { type: ["integer", "null"], minimum: 0, maximum: 100 },
