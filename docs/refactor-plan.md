@@ -316,7 +316,7 @@ Each commit: the domain's integration suites + backend unit tests + typecheck + 
 - [x] 4.14 Reports, engagement, dashboard, exports: BE-005, BE-012, BE-013 — BE-012 dashboard/ folder, BE-013 season-workbook/ folder, BE-005 loadCohort/foldEngagement + reports/folds.ts; live fragments and http helpers in reports, engagement, exports
 - [x] 4.15 Imports: BE-011; `commitStudentImport` transaction nesting 4 → 3; `splitRecords` keeps depth 4
       with a documented lint exception (CSV state machine) — routes/imports/{limits,students,season-groups,index}; commitGroupImport in lib/imports/groups.ts (30 s timeout kept); seatRefusalMessage; splitRecords max-depth exception
-- [ ] 4.16 Events, dev, health, scripts: remaining call sites (BE-02D adoption); BE-006 left as is
+- [x] 4.16 Events, dev, health, scripts: remaining call sites (BE-02D adoption); BE-006 left as is — events + dev helpers, pageOf, findLiveSeason, liveSeason/liveUser; health had nothing to convert; BE-006 left as is
 - [ ] 4.17 Sweep: no `deletedAt` literal outside `lib/db/live.ts`, no `$transaction` in `routes/`, no
       inline `apiError` with a catalogued code; full verification + wave summary + PR → **STOP**
 - Skipped (D8): DB-012 read switch, DB-026 (a bounded query changes the result), BE-050 (authz scopes
