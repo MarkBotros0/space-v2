@@ -204,7 +204,7 @@ export const forumEventsPaths = {
       summary: "Update an event (SUPER only)",
       description:
         "A true partial, unlike v1 (whose update reuses the create schema). `createdById` is not touched. Visibility leaving SEASON detaches the season.",
-      parameters: [idParam, partIdParam],
+      parameters: [idParam],
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/UpdateJpcEventRequest" } } },

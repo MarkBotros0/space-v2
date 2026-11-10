@@ -32,7 +32,7 @@ async function lockForumPart(tx: Tx, partId: number) {
   await lockAssignmentForWork(tx, owner.assignmentId);
   const part = await tx.assignmentPart.findFirst({
     where: { id: partId, kind: "FORUM", assignment: liveAssignment },
-    select: { id: true, assignmentId: true, minWords: true },
+    select: { id: true, assignmentId: true, minWords: true, allowComments: true },
   });
   if (!part) throw forumGone();
   return part;
@@ -84,13 +84,16 @@ export async function postForumResponse(
 
 /**
  * POST …/forum/posts/:publicId/comments, once the route's gates have passed.
- * Under the Assignment's lock the post is re-read: it must still be a posted
- * work on this live FORUM part (404 otherwise). No notification:
+ * Under the Assignment's lock the part and the post are re-read: the post must
+ * still be a posted work on this live FORUM part (404 otherwise), and the
+ * part's comments must still be on (403, the route gate's refusal: an edit that
+ * turned them off landed first). No notification:
  * NotificationType has no forum member (spec 14 D13).
  */
 export async function addForumComment(partId: number, postWorkId: number, authorUserId: number, body: string) {
   return db.$transaction(async (tx) => {
-    await lockForumPart(tx, partId);
+    const part = await lockForumPart(tx, partId);
+    if (!part.allowComments) throw new ApiError("forbidden", "You don't have access to this.", 403);
     const post = await tx.assignmentPartWork.findFirst({
       where: { id: postWorkId, partId, status: { not: "DRAFT" } },
       select: { id: true },

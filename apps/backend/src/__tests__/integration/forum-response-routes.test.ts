@@ -190,7 +190,7 @@ describe("PUT /api/v1/assignments/:id/parts/:partId/forum/response", () => {
       db.assignmentPart.create({
         data: { assignmentId, position: 5, kind: "FORUM", prompt: "space-v2-test second forum" },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: "P2002" });
     expect(await db.assignmentPart.count({ where: { assignmentId, kind: "FORUM" } })).toBe(1);
   });
 });

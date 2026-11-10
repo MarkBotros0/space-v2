@@ -317,6 +317,26 @@ describe("forum comments", () => {
     await expect(addForumComment(gone.partId, work.id, studentAId, COMMENT)).rejects.toMatchObject({ status: 404 });
   });
 
+  it("comments switched off before the comment lands are refused inside the write", async () => {
+    // The route's gate has passed; an edit turns comments off; the service
+    // re-reads the part under the lock and refuses as the gate would.
+    const quiet = await createForum(seasonId, "space-v2-test-forum-quiet");
+    const posted = await request(app)
+      .put(`${forumPath(quiet)}/response`)
+      .set("authorization", `Bearer ${studentA2Token}`)
+      .send({ text: OWN_TEXT });
+    const work = await db.assignmentPartWork.findUniqueOrThrow({
+      where: { publicId: posted.body.data.publicId as string },
+      select: { id: true },
+    });
+    await db.assignmentPart.update({ where: { id: quiet.partId }, data: { allowComments: false } });
+    await expect(addForumComment(quiet.partId, work.id, studentAId, COMMENT)).rejects.toMatchObject({
+      status: 403,
+      code: "forbidden",
+    });
+    expect(await db.forumComment.count({ where: { partWorkId: work.id } })).toBe(0);
+  });
+
   it("404s an unknown comment", async () => {
     const res = await request(app)
       .delete("/api/v1/forum/comments/987654321")
