@@ -6,7 +6,7 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { haptic } from "../../design/motion";
 import { Text, toast } from "../../design/ui";
-import { StudentList } from "../../design/students/student-list";
+import { LocalStudentList } from "../../design/students/local-student-list";
 import { StatusChip } from "../../design/ui/status-chip";
 import { useQuizGradeSheet, useSaveQuizGrades, type GradeEntryInput } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
@@ -89,7 +89,7 @@ export function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDet
         // Search, a page at a time, and a header per group (owner, 2026-11-07).
         <View className="flex-col gap-4">
           <ReleaseResultsCard quiz={detail} />
-          <StudentList
+          <LocalStudentList
             items={sheet.rows.map((r) => ({
               id: r.studentUserId,
               name: r.studentName ?? "Student",

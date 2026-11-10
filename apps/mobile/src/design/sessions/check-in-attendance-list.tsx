@@ -1,6 +1,6 @@
 /**
  * The session's roster (v1 components/sessions/check-in-attendance-list.tsx)
- * in the shared StudentList: search, a page at a time, a header per group, a
+ * in the shared LocalStudentList: search, a page at a time, a header per group, a
  * status chip (or neutral "Not recorded"), and the whole row opens v1's
  * "Override attendance" sheet (owner, 2026-11-07: no Edit button per row).
  * The screen owns the write.
@@ -16,7 +16,7 @@ import { Button } from "../ui/button";
 import { Sheet } from "../ui/sheet";
 import { StatusChip, statusChip } from "../ui/status-chip";
 import { Text } from "../ui/text";
-import { StudentList } from "../students/student-list";
+import { LocalStudentList } from "../students/local-student-list";
 
 const ORDER: AttendanceStatus[] = ["PRESENT", "LATE", "ABSENT"];
 
@@ -51,7 +51,7 @@ export function CheckInAttendanceList({
 
   return (
     <>
-      <StudentList
+      <LocalStudentList
         items={rows.map((r) => ({
           id: r.studentUserId,
           name: nameOf(r),

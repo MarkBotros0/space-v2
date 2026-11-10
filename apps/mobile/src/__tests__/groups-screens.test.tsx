@@ -182,7 +182,7 @@ it("shows the leaders' emails but no student emails for a staff caller", async (
   renderWithProviders(<GroupDetailScreen />);
 
   expect(await screen.findByText("Test student")).toBeTruthy();
-  // Students are listed by name only (StudentList shows no emails).
+  // Students are listed by name only (LocalStudentList shows no emails).
   expect(screen.queryByText("s@jpc.test")).toBeNull();
   expect(screen.getByText("l@jpc.test")).toBeTruthy();
   expect(get).toHaveBeenCalledWith("/api/v1/groups/3");

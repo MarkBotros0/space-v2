@@ -4,7 +4,7 @@ import { View } from "react-native";
 import type { GroupListItem } from "@space/shared";
 
 import { SeasonSwitcher } from "../../components/SeasonSwitcher";
-import { StudentList } from "../../components/StudentList";
+import { StudentDirectory } from "../students-list/student-directory";
 import { SegmentedControl } from "../../design/ui/segmented-control";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
@@ -92,7 +92,7 @@ export function AdminGroups() {
           onChange={(v) => setView(v as "groups" | "students")}
         />
         {view === "students" ? (
-          <StudentList status="active" allowedRoles={["SUPER", "ADMIN"]} title="Students" embedded />
+          <StudentDirectory status="active" allowedRoles={["SUPER", "ADMIN"]} title="Students" embedded />
         ) : (
           <>
             {season ? (

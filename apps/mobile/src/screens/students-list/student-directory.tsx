@@ -2,16 +2,16 @@ import { useEffect, useState, type ReactNode } from "react";
 import { View } from "react-native";
 import type { StudentListStatus, UserRole } from "@space/shared";
 
-import { RouteError, RouteSkeleton } from "../design/layout/route-states";
-import { Screen } from "../design/layout/screen";
-import { EmptyState, FilterButton, GroupedList, SearchField } from "../design/ui";
-import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../hooks/use-students";
-import { StudentFilterSheet, activeFilterCount } from "../screens/students-list/student-filter-sheet";
-import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "../screens/students-list/student-rows";
-import { useDebouncedSearch } from "../hooks/use-debounced-search";
-import { useRole } from "../store/session";
-import { studentListCopy } from "../screens/students-list/copy";
-import { LoadMoreButton } from "../design/ui/load-more-button";
+import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { Screen } from "../../design/layout/screen";
+import { EmptyState, FilterButton, GroupedList, SearchField } from "../../design/ui";
+import { DEFAULT_STUDENT_VIEW, useStudentList, type StudentListView } from "../../hooks/use-students";
+import { StudentFilterSheet, activeFilterCount } from "./student-filter-sheet";
+import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "./student-rows";
+import { useDebouncedSearch } from "../../hooks/use-debounced-search";
+import { useRole } from "../../store/session";
+import { studentListCopy } from "./copy";
+import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 /** Who may open each list: the screen mirrors the endpoint's per-surface gate. */
 const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];
@@ -19,7 +19,7 @@ const DROPPED_ROLES: readonly UserRole[] = ["SUPER", "ADMIN"];
 
 const ROWS = { active: ActiveStudentRow, alumni: AlumnusRow, dropped: DroppedStudentRow } as const;
 
-interface StudentListProps {
+interface StudentDirectoryProps {
   status: StudentListStatus;
   /** Mirrors the endpoint's per-surface role gate — the screen never asks for a 403. */
   allowedRoles: readonly UserRole[];
@@ -36,14 +36,14 @@ interface StudentListProps {
  * v1 /admin/students, /alumni and /dropped (and, for SUPER, the same pages
  * under /super): title, count line, search, v1's DataTable (phone cards).
  */
-export function StudentList({
+export function StudentDirectory({
   status,
   allowedRoles,
   title,
   headerAction,
   embedded = false,
   absentLately = false,
-}: StudentListProps) {
+}: StudentDirectoryProps) {
   const role = useRole();
   const allowed = role !== null && allowedRoles.includes(role);
   const { search, q, setSearch, commit } = useDebouncedSearch();

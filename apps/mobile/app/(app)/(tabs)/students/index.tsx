@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { StudentListStatus } from "@space/shared";
 
-import { StudentList } from "../../../../src/components/StudentList";
+import { StudentDirectory } from "../../../../src/screens/students-list/student-directory";
 import { useSessionStore, useIsSuper } from "../../../../src/store/session";
 import { Button } from "../../../../src/design/ui";
 
@@ -20,7 +20,7 @@ export default function StudentsScreen() {
   // narrows them to their groups' members, and the route stays reachable by
   // navigation (spec 06 §9's leader-roster decision, answered "yes, scoped").
   return (
-    <StudentList
+    <StudentDirectory
       status={parseShow(params.show)}
       // The mentor's Home card "Absent lately" opens the list on it.
       absentLately={params.absent === "1"}

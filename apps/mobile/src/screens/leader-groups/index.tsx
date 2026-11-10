@@ -6,7 +6,7 @@ import type { GroupDetail, GroupListItem } from "@space/shared";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { StudentList } from "../../design/students/student-list";
+import { LocalStudentList } from "../../design/students/local-student-list";
 import { EmptyState } from "../../design/ui/empty-state";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { Text } from "../../design/ui/text";
@@ -44,7 +44,7 @@ function CurrentGroup({ group, detail }: { group: GroupListItem; detail: { data?
           Couldn't load the students. Pull to try again.
         </Text>
       ) : students === null ? null : (
-        <StudentList
+        <LocalStudentList
           header="Students"
           items={students.map((st) => ({ id: st.id, name: st.name ?? st.email ?? "Student" }))}
           emptyDescription="No students in this group yet."
