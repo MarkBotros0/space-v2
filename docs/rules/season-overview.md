@@ -4,7 +4,7 @@
 > `apps/backend/src/`, mobile paths under `apps/mobile/src/`, unless written in full.
 
 `/seasons/[code]` is one page: the summary and figures, the next step, then one **People** card
-(`design/seasons/people-card.tsx`): Admins (Super only), then each group with its leaders and up to
+(`screens/season/people-card.tsx`): Admins (Super only), then each group with its leaders and up to
 six of its students as pills, then "Not in a group". New group, Move students (the roster) and Manage
 admins (`/seasons/[code]/admins`) live inside it; there is no separate Groups or Admins section. The
 Manage tiles name what they open, never "Manage ...": Sessions (`/seasons/[code]/sessions`),

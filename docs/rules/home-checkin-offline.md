@@ -18,7 +18,7 @@
   allows, rounded down). Upcoming events are grouped rows with a chevron. The leader's ring is the
   season's (the header names the group); the alumni Home never lists the "Your last season"
   season again under Your history; a mentor's note rows name the author only when it is someone else.
-- **One session card on every Home** (owner, 2026-11-09): `SessionHomeCard` (`design/home/session-card.tsx`)
+- **One session card on every Home** (owner, 2026-11-09): `SessionHomeCard` (`screens/home/session-card.tsx`)
   for the student, leader and admin. The eyebrow carries the day cue, the title opens the session (no
   "Open session" button), and buttons show only for what can be done now (check in, Mark attendance,
   Join stream). It is the brand hero only while the session runs or carries an action; otherwise a

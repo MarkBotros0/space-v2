@@ -65,8 +65,12 @@ the merged redesign branches over the same period, so file counts are not the re
      data is lost (D9).
 3. **Rotate the leaked secrets** if not done: `STG_DATABASE_URL` and the main checkout's `AUTH_SECRET`
    (printed into a session on 2026-11-09).
-4. **FE-017 / FE-073.** These were skipped because they collided with the redesign 02–05 branches. Those
-   branches are merged now, so the reason is gone. They stay skipped unless you ask for them.
+4. **FE-017 / FE-073, done after Wave 7 (2026-11-10, on `main`).** They had been skipped because of the
+   redesign branches, which are merged now. `src/components/` is gone. Every feature's views live in
+   `src/screens/<feature>/`, kebab-case, and `src/design/` holds only the domain-free kit. A lint rule
+   stops `src/design/` importing hooks, the store or a screen; four shell pieces in `design/layout`
+   are the named exceptions. 77 files moved in 7 commits, with import paths only, so behaviour is
+   unchanged.
 5. **Duplication check.** Not added because `jscpd` was not approved (Q10). Say so if you want it.
 
 ## Every finding left alone on purpose (D8 and conditions)
@@ -94,7 +98,6 @@ half-done.
 | 4 | left inline | compound-id 400s, events' 400 "Season not found.", the exports `?format` guard, parses answering the first Zod issue, the dev switch's mocked read |
 | 4 | `splitRecords` depth 4 | named lint exception |
 | 5 | FE-004 player part | YouTube timing |
-| 5 | FE-017, FE-073 | see "For the owner" 4 |
 | 5 | FE-071 part 2, FE-072 | visual changes the redesign plans own |
 | 5 | FE-007 | — |
 | 5 | 53 irregular `apiClient` calls | no schema, blobs or custom config; they don't fit `apiGet` / `apiSend` |
