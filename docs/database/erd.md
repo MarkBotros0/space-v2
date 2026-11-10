@@ -628,6 +628,8 @@ Rules Prisma cannot declare. They live in `prisma/migrations` and are noted on t
 | AssignmentPart | CHECK | `AssignmentPart_words_check` | `minWords <= maxWords` |
 | AssignmentPart | CHECK | `AssignmentPart_allowedMimeCategories_check` | `allowedMimeCategories <@ {image, pdf, doc, audio, video, text}` |
 | AssignmentPart | UNIQUE INDEX | `AssignmentPart_one_forum` | `(assignmentId) WHERE kind = FORUM` |
+| AssignmentPartWork | INDEX | `AssignmentPartWork_queue_idx` | `(status, submittedAt DESC NULLS LAST, id DESC) WHERE status <> 'DRAFT' (the review queue and the mentor's handed-in feed)` |
+| AssignmentPartWork | INDEX | `AssignmentPartWork_reviewed_idx` | `(reviewedAt DESC, id DESC) WHERE reviewedAt IS NOT NULL (the mentor's reviewed feed)` |
 | MentorFollowUp | UNIQUE INDEX | `MentorFollowUp_one_open` | `(mentorUserId, studentUserId) WHERE doneAt IS NULL` |
 | MentorFollowUp | INDEX | `MentorFollowUp_due_open_idx` | `(dueAt) WHERE doneAt IS NULL AND remindedAt IS NULL` |
 | QuizAttempt | UNIQUE INDEX | `QuizAttempt_one_in_progress_key` | `(quizId, studentUserId) WHERE status = 'IN_PROGRESS'` |

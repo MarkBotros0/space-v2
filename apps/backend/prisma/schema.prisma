@@ -693,6 +693,9 @@ model AssignmentPartWork {
   @@index([studentUserId])
   @@index([partId, status])
   @@index([reviewedById])
+  // SQL-only (prisma/migrations; not expressible in this file):
+  // SQL-only INDEX AssignmentPartWork_queue_idx: (status, submittedAt DESC NULLS LAST, id DESC) WHERE status <> 'DRAFT' (the review queue and the mentor's handed-in feed)
+  // SQL-only INDEX AssignmentPartWork_reviewed_idx: (reviewedAt DESC, id DESC) WHERE reviewedAt IS NOT NULL (the mentor's reviewed feed)
 }
 
 // A file attached to an essay part's work.
