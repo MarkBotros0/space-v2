@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
 
 import { NAV_ICONS } from "../../../src/design/icons/nav-icon";
-import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
+import { queryStateView } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../src/design/lib/icon";
 import { Button, EmptyState } from "../../../src/design/ui";
@@ -24,8 +24,8 @@ export default function AnnouncementsScreen() {
   const canPost = !!targets.data && (targets.data.community || targets.data.seasons.length > 0);
 
   let body;
-  if (feed.isPending) body = <RouteSkeleton />;
-  else if (feed.isError) body = <RouteError onRetry={() => void feed.refetch()} />;
+  const feedState = queryStateView(feed);
+  if (feedState) body = feedState;
   else if (items.length === 0)
     body = (
       <EmptyState

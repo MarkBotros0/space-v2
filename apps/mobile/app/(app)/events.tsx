@@ -4,7 +4,7 @@ import { Plus } from "lucide-react-native";
 
 import { EMPTY_EVENT_VALUES, EventForm } from "../../src/components/EventForm";
 import { NAV_ICONS } from "../../src/design/icons/nav-icon";
-import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
+import { queryStateView } from "../../src/design/layout/route-states";
 import { Screen } from "../../src/design/layout/screen";
 import { iconWithClassName } from "../../src/design/lib/icon";
 import { Button, EmptyState, GroupedList } from "../../src/design/ui";
@@ -33,8 +33,8 @@ export default function EventsScreen() {
   const [message, setMessage] = useState<string | null>(null);
 
   let body;
-  if (events.isPending) body = <RouteSkeleton />;
-  else if (events.isError) body = <RouteError onRetry={() => void events.refetch()} />;
+  const eventsState = queryStateView(events);
+  if (eventsState) body = eventsState;
   else if (rows.length === 0)
     // v1's card renders nothing at all here (R75); say so instead.
     body = (

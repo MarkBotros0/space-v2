@@ -3,7 +3,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { RouteError, RouteSkeleton } from "../../../../src/design/layout/route-states";
+import { queryStateView } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { SeasonsList } from "../../../../src/design/seasons/seasons-list";
 import { Button, EmptyState, SegmentedControl } from "../../../../src/design/ui";
@@ -73,11 +73,7 @@ export default function SeasonsScreen() {
       onRefresh={() => void seasons.refetch()}
     >
       <View className="flex-col gap-4">
-        {seasons.isPending ? (
-          <RouteSkeleton />
-        ) : seasons.isError ? (
-          <RouteError onRetry={() => void seasons.refetch()} />
-        ) : (
+        {queryStateView(seasons) ?? (
           <>
             {hasSeasons ? (
               <SegmentedControl

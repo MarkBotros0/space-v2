@@ -6,7 +6,7 @@ import { UPCOMING_EVENTS_LIMIT, type StaffSeasonDashboard } from "@space/shared"
 
 import { UpcomingEventsCard } from "../../components/dashboard/UpcomingEventsCard";
 import { Screen } from "../../design/layout/screen";
-import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { queryStateView, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { EmptyState } from "../../design/ui/empty-state";
 import { CountGrid, type CountTileProps } from "../../design/home/count-tile";
 import { PeoplePreview } from "../../design/home/people-preview";
@@ -118,11 +118,9 @@ export function LeaderToday() {
     <RouteError onRetry={current.refetch} />
   ) : current.seasonId === null ? (
     <EmptyState title="No season yet" description="There is no season for you to manage yet." />
-  ) : dash.isPending ? (
-    <RouteSkeleton />
-  ) : dash.isError ? (
-    <RouteError onRetry={() => void dash.refetch()} />
-  ) : null;
+  ) : (
+    (queryStateView(dash) ?? null)
+  );
 
   const named = (name ?? "").trim() !== "";
   const data = dash.data;
