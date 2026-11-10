@@ -3,7 +3,13 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
-import { createAssignmentWithParts, seedTextWork, seedVideoWork, setSubmitted } from "./assignment-reads-setup";
+import {
+  createAssignmentWithParts,
+  seedEssays,
+  seedTextWork,
+  seedVideoWork,
+  setSubmitted,
+} from "./assignment-reads-setup";
 
 // 60s, not the Jest default: the first query after idle can be slow and this
 // suite's beforeAll performs several sequential writes.
@@ -286,5 +292,57 @@ describe("GET /api/v1/assignments/:id/progress", () => {
   it("refuses a student outright, and the old tracker is gone", async () => {
     expect((await get(`/assignments/${threePartId}/progress`, studentToken)).status).toBe(403);
     expect((await get(`/assignments/${threePartId}/tracker`, superToken)).status).toBe(404);
+  });
+});
+
+describe("a returned essay, and a deleted participant", () => {
+  it("shows a returned essay as RETURNED with its feedback, and the list row says returned", async () => {
+    const returned = await createAssignmentWithParts({ seasonId, title: "Returned one" });
+    await seedEssays([
+      {
+        assignmentId: returned.id,
+        studentUserId,
+        status: "RETURNED",
+        text: "Too short",
+        feedback: "Say more about the father",
+      },
+    ]);
+
+    const detail = await get(`/assignments/${returned.id}`, studentToken);
+    expect(detail.body.data.my.parts).toEqual([
+      {
+        partId: returned.partIds[0],
+        kind: "ESSAY",
+        status: "RETURNED",
+        essay: {
+          publicId: expect.any(String),
+          wordCount: 2,
+          reviewStatus: "RETURNED",
+          feedback: "Say more about the father",
+        },
+      },
+    ]);
+    const list = await get(`/seasons/${seasonId}/assignments`, studentToken);
+    const row = list.body.data.assignments.find((a: { id: number }) => a.id === returned.id);
+    expect(row).toMatchObject({ status: "RETURNED", returned: true, partsDone: 0, submittedAt: null });
+
+    await db.assignment.update({ where: { id: returned.id }, data: { deletedAt: new Date() } });
+  });
+
+  it("drops a deleted participant from the list's counts and the progress rows alike", async () => {
+    const gone = await createTestUser("gone", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: gone.id, groupId: groupAId, status: "ACTIVE" },
+    });
+    await setSubmitted(threePartId, gone.id, new Date());
+    await db.user.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
+
+    const list = await get(`/seasons/${seasonId}/assignments`, superToken);
+    const three = list.body.data.assignments.find((a: { id: number }) => a.id === threePartId);
+    const progress = await get(`/assignments/${threePartId}/progress`, superToken);
+    // One denominator: 3 live participants, 1 of them submitted.
+    expect(three).toMatchObject({ expectedCount: 3, submissionCount: 1 });
+    expect(progress.body.data.rows).toHaveLength(three.expectedCount);
+    expect(progress.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId)).not.toContain(gone.id);
   });
 });

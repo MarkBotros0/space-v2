@@ -1,4 +1,5 @@
 import { db } from "../../../db/client";
+import { liveAssignment } from "../../db/live";
 import type { Prisma } from "../../../generated/prisma/client";
 import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import {
@@ -229,7 +230,7 @@ export function reviewedAtOf(parts: PartRow[], studentUserId: number, index: Wor
 /** `loadPartWorks`: one student's work on one assignment's parts, as they read it. */
 export async function loadPartWorks(assignmentId: number, studentUserId: number): Promise<PartWork[]> {
   const parts = await db.assignmentPart.findMany({
-    where: { assignmentId },
+    where: { assignmentId, assignment: liveAssignment },
     orderBy: { position: "asc" },
     select: PART_SELECT,
   });

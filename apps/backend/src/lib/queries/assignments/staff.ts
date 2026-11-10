@@ -25,7 +25,8 @@ export interface AssignmentListRow {
  * its submission count those of them who have tapped Submit.
  */
 export async function listAssignmentsForSeason(seasonId: number): Promise<AssignmentListRow[]> {
-  const participant = { seasonEnrollments: { some: { seasonId, ...seasonParticipant } } };
+  // One denominator with the progress roster: live users only.
+  const participant = { ...liveUser, seasonEnrollments: { some: { seasonId, ...seasonParticipant } } };
   const [rows, expectedCount] = await Promise.all([
     db.assignment.findMany({
       where: { seasonId, ...liveAssignment },
@@ -43,7 +44,7 @@ export async function listAssignmentsForSeason(seasonId: number): Promise<Assign
         season: { select: { code: true } },
       },
     }),
-    db.seasonEnrollment.count({ where: { seasonId, ...seasonParticipant } }),
+    db.seasonEnrollment.count({ where: { seasonId, ...seasonParticipant, studentUser: liveUser } }),
   ]);
 
   const now = new Date();
