@@ -375,6 +375,14 @@ erDiagram
   User |o--o{ QuizAttempt : "gradedBy"
   QuizAttempt ||--o{ QuizAnswer : "attempt"
   QuizQuestion ||--o{ QuizAnswer : "question"
+  QuizQuestion ||--o{ QuizOption : "question"
+  QuizOption |o--o{ QuizOption : "match"
+  QuizQuestion ||--o{ QuizBlank : "question"
+  QuizAnswer ||--o{ QuizAnswerSelection : "answer"
+  QuizOption ||--o{ QuizAnswerSelection : "option"
+  QuizOption |o--o{ QuizAnswerSelection : "matchedOption"
+  QuizAnswer ||--o{ QuizAnswerBlank : "answer"
+  QuizBlank ||--o{ QuizAnswerBlank : "blank"
   Quiz {
     Int id PK
     Int seasonId FK
@@ -382,6 +390,7 @@ erDiagram
     String title
     QuizKind kind
     Int maxScore
+    Boolean shuffleQuestions
     DateTime publishedAt "nullable"
     Int createdById FK "nullable"
     DateTime resultsReleasedAt "nullable"
@@ -412,15 +421,35 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  QuizOption {
+    Int id PK
+    Int questionId FK
+    Int position
+    String label
+    Boolean isCorrect
+    QuizOptionSide side "nullable"
+    Int matchId FK "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  QuizBlank {
+    Int id PK
+    Int questionId FK
+    Int position
+    String expected
+    DateTime createdAt
+    DateTime updatedAt
+  }
   QuizAttempt {
     Int id PK
     Int quizId FK
     Int studentUserId FK
     Int attemptNumber
     QuizAttemptStatus status
-    Int autoScore "nullable"
-    Int manualScore "nullable"
-    Int totalScore "nullable"
+    Decimal autoScore "nullable"
+    Decimal manualScore "nullable"
+    Decimal totalScore "nullable"
+    Int shuffleSeed
     DateTime submittedAt "nullable"
     Int gradedById FK "nullable"
     DateTime gradedAt "nullable"
@@ -434,7 +463,22 @@ erDiagram
     Int selectedIndex "nullable"
     String text "nullable"
     Boolean isCorrect "nullable"
-    Int pointsAwarded "nullable"
+    Decimal pointsAwarded "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  QuizAnswerSelection {
+    Int answerId PK, FK
+    Int optionId PK, FK
+    Int matchedOptionId FK "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  QuizAnswerBlank {
+    Int answerId PK, FK
+    Int blankId PK, FK
+    String text
+    Boolean isCorrect "nullable"
     DateTime createdAt
     DateTime updatedAt
   }

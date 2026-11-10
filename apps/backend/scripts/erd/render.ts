@@ -34,7 +34,20 @@ const DOMAINS: { title: string; models: string[] }[] = [
     title: "Assignments & submissions",
     models: ["Assignment", "AssignmentTarget", "Submission", "SubmissionFile", "ForumComment"],
   },
-  { title: "Quizzes", models: ["Quiz", "QuizGrade", "QuizQuestion", "QuizAttempt", "QuizAnswer"] },
+  {
+    title: "Quizzes",
+    models: [
+      "Quiz",
+      "QuizGrade",
+      "QuizQuestion",
+      "QuizOption",
+      "QuizBlank",
+      "QuizAttempt",
+      "QuizAnswer",
+      "QuizAnswerSelection",
+      "QuizAnswerBlank",
+    ],
+  },
   {
     title: "Notes, follow-ups, notifications, announcements, events",
     models: ["EngagementNote", "MentorFollowUp", "Notification", "JpcEvent", "Announcement", "AnnouncementRead"],

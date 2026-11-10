@@ -116,8 +116,18 @@ enum QuizKind {
 }
 
 enum QuizQuestionType {
-  MCQ
+  MCQ // legacy, no rows after 20261112040000
   ESSAY
+  SINGLE_CHOICE
+  MULTI_CHOICE
+  TRUE_FALSE
+  MATCHING
+  FILL_BLANK
+}
+
+enum QuizOptionSide {
+  LEFT
+  RIGHT
 }
 
 enum QuizAttemptStatus {
@@ -747,6 +757,8 @@ model Quiz {
   kind        QuizKind  @default(PAPER)
   // For ONLINE quizzes maxScore is recomputed as the sum of question points.
   maxScore    Int       @default(100)
+  // ONLINE: each attempt sees the questions in its own order (QuizAttempt.shuffleSeed).
+  shuffleQuestions Boolean @default(true)
   // ONLINE availability: null = draft, students only see published quizzes.
   publishedAt DateTime? @db.Timestamptz(3)
   createdById Int?
@@ -786,8 +798,9 @@ model QuizGrade {
   @@index([studentUserId])
 }
 
-// Questions for an ONLINE quiz. MCQ questions carry options + correctIndex
-// (auto-graded); ESSAY questions are graded manually by a leader/admin.
+// Questions for an ONLINE quiz. Choice, true/false and matching questions carry
+// QuizOption rows and fill-in-the-blank ones QuizBlank rows (auto-graded); ESSAY
+// questions are graded manually by a leader/admin.
 model QuizQuestion {
   id           Int              @id @default(autoincrement())
   quizId       Int
@@ -796,12 +809,16 @@ model QuizQuestion {
   type         QuizQuestionType
   prompt       String
   points       Int              @default(1)
+  // legacy: read by nothing after the quiz-types plan; dropped by a later contract migration
   options      String[]
+  // legacy: read by nothing after the quiz-types plan; dropped by a later contract migration
   correctIndex Int?
   createdAt    DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime         @updatedAt @db.Timestamptz(3)
 
-  answers QuizAnswer[]
+  answers     QuizAnswer[]
+  quizOptions QuizOption[]
+  quizBlanks  QuizBlank[]
 
   @@index([quizId, order])
 
@@ -819,9 +836,12 @@ model QuizAttempt {
   studentUser   User              @relation("QuizAttemptStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
   attemptNumber Int               @default(1)
   status        QuizAttemptStatus @default(IN_PROGRESS)
-  autoScore     Int?
-  manualScore   Int?
-  totalScore    Int?
+  autoScore     Decimal?          @db.Decimal(8, 2)
+  manualScore   Decimal?          @db.Decimal(8, 2)
+  totalScore    Decimal?          @db.Decimal(8, 2)
+  // Seeds this attempt's question and option order: a random 31-bit value set when
+  // the attempt starts or is reopened (0 only on rows that predate it).
+  shuffleSeed   Int               @default(0)
   submittedAt   DateTime? @db.Timestamptz(3)
   gradedById    Int?
   gradedBy      User?             @relation("QuizAttemptGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)
@@ -846,15 +866,88 @@ model QuizAnswer {
   attempt       QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   questionId    Int
   question      QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  // legacy: read by nothing after the quiz-types plan; dropped by a later contract migration
   selectedIndex Int?
   text          String?
   isCorrect     Boolean?
-  pointsAwarded Int?
+  pointsAwarded Decimal?     @db.Decimal(8, 2)
   createdAt     DateTime     @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime     @updatedAt @db.Timestamptz(3)
 
+  selections QuizAnswerSelection[]
+  blanks     QuizAnswerBlank[]
+
   @@unique([attemptId, questionId])
   @@index([questionId])
+}
+
+// An option of a choice, true/false or matching question. A matching question has
+// LEFT and RIGHT rows; a LEFT row's matchId is its correct RIGHT row.
+model QuizOption {
+  id         Int             @id @default(autoincrement())
+  questionId Int
+  question   QuizQuestion    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  position   Int
+  label      String
+  isCorrect  Boolean         @default(false)
+  side       QuizOptionSide?
+  matchId    Int?
+  match      QuizOption?     @relation("QuizOptionMatch", fields: [matchId], references: [id], onDelete: SetNull)
+  matchedBy  QuizOption[]    @relation("QuizOptionMatch")
+  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime        @updatedAt @db.Timestamptz(3)
+
+  selections        QuizAnswerSelection[] @relation("QuizAnswerSelected")
+  matchedSelections QuizAnswerSelection[] @relation("QuizAnswerMatched")
+
+  @@index([questionId, position])
+  @@index([matchId])
+}
+
+// A gap in a fill-in-the-blank question and the text expected in it.
+model QuizBlank {
+  id         Int          @id @default(autoincrement())
+  questionId Int
+  question   QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  position   Int
+  expected   String
+  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime     @updatedAt @db.Timestamptz(3)
+
+  answers QuizAnswerBlank[]
+
+  @@unique([questionId, position])
+}
+
+// An option a student picked; for matching, a LEFT option and the RIGHT one paired with it.
+model QuizAnswerSelection {
+  answerId        Int
+  answer          QuizAnswer  @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  optionId        Int
+  option          QuizOption  @relation("QuizAnswerSelected", fields: [optionId], references: [id], onDelete: Cascade)
+  matchedOptionId Int?
+  matchedOption   QuizOption? @relation("QuizAnswerMatched", fields: [matchedOptionId], references: [id], onDelete: Cascade)
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(3)
+
+  @@id([answerId, optionId])
+  @@index([optionId])
+  @@index([matchedOptionId])
+}
+
+// What a student wrote into one blank, and whether it matched.
+model QuizAnswerBlank {
+  answerId  Int
+  answer    QuizAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  blankId   Int
+  blank     QuizBlank  @relation(fields: [blankId], references: [id], onDelete: Cascade)
+  text      String
+  isCorrect Boolean?
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime   @updatedAt @db.Timestamptz(3)
+
+  @@id([answerId, blankId])
+  @@index([blankId])
 }
 
 // ---------------------------------------------------------------------------

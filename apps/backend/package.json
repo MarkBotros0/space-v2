@@ -19,6 +19,7 @@
     "db:migrate:status": "prisma migrate status",
     "preflight:community": "ts-node --transpile-only scripts/community-preflight.ts",
     "check:wave-3": "ts-node --transpile-only scripts/refactor-checks/wave-3.ts",
+    "check:quiz-types": "ts-node --transpile-only scripts/refactor-checks/quiz-types.ts",
     "roles:convert": "ts-node --transpile-only scripts/convert-stored-roles.ts",
     "seed:sweep": "ts-node --transpile-only scripts/seed-sweep.ts",
     "create:super-admin": "ts-node --transpile-only scripts/create-super-admin.ts"

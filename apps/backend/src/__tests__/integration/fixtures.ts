@@ -165,9 +165,13 @@ export async function cleanupTestData(): Promise<void> {
     // cascade ever fails to fire, user.deleteMany at the end of this function
     // throws a foreign-key error and strands test rows in a database
     // jpc-space is live against. Explicit, like every other line here.
+    await db.quizAnswerSelection.deleteMany({ where: { answer: { attempt: { quiz: inSeasons } } } });
+    await db.quizAnswerBlank.deleteMany({ where: { answer: { attempt: { quiz: inSeasons } } } });
     await db.quizAnswer.deleteMany({ where: { attempt: { quiz: inSeasons } } });
     await db.quizAttempt.deleteMany({ where: { quiz: inSeasons } });
     await db.quizGrade.deleteMany({ where: { quiz: inSeasons } });
+    await db.quizOption.deleteMany({ where: { question: { quiz: inSeasons } } });
+    await db.quizBlank.deleteMany({ where: { question: { quiz: inSeasons } } });
     await db.quizQuestion.deleteMany({ where: { quiz: inSeasons } });
     await db.quiz.deleteMany({ where: inSeasons });
     await db.attendance.deleteMany({ where: { session: inSeasons } });
