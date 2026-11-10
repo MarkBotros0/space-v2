@@ -189,7 +189,7 @@ describe("GET /api/v1/assignments/:id", () => {
       dueOrgTime: "02:00",
       reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
       // The season has no session after the assignment was published.
-      reminderLine: "No upcoming session yet — no reminder",
+      reminderLine: "No session after it was published — no reminder",
       my: null,
       canManage: true,
       readOnly: false,

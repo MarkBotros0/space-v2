@@ -43,8 +43,9 @@ describe("reminderPreview", () => {
       line: "Thu 9 Apr, around 9:00 AM — students who haven't finished",
     };
     expect(reminderPreview({ reminder: on, dueDay: null, dueTime: "23:59" }, saved, now)).toBe(saved.line);
+    // Ruling (I3): a saved assignment's next session is the first after it was published, maybe past now.
     expect(reminderPreview({ reminder: { ...on, days: 4 }, dueDay: null, dueTime: "23:59" }, saved, now)).toBe(
-      "4 days before the next session, around 9:00\u00A0AM — students who haven't finished",
+      "4 days before the first session after it was published, around 9:00\u00A0AM — students who haven't finished",
     );
   });
 });

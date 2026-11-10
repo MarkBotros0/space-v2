@@ -37,7 +37,9 @@ const sameSettings = (a: ReminderInputs, b: ReminderInputs) =>
  * settings are unchanged it is the server's line (which knows the next
  * session). Edited, a due-date reminder is dated from the form's due day; a
  * next-session one says its rule, since the season's sessions are the
- * server's to resolve. "Too close" compares with this device's clock, a
+ * server's to resolve. That rule (ruling I3) anchors on the first session
+ * after publication: a new assignment's is simply the next one, a saved
+ * assignment's may have passed, so its rule says "after it was published". "Too close" compares with this device's clock, a
  * preview only: the server decides on the organisation's clock when it saves.
  * Null while the anchor is the due date and there is none (the anchor field
  * says "Set a due date first").
@@ -48,7 +50,8 @@ export function reminderPreview(v: ReminderInputs, saved: SavedReminder | null, 
   if (saved !== null && sameSettings(v, saved) && saved.line !== null) return saved.line;
   const at = `around ${formatWallTime(reminder.time)}`;
   if (reminder.anchor === "NEXT_SESSION") {
-    return `${plural(reminder.days, "day")} before the next session, ${at} — ${FOR_WHOM}`;
+    const session = saved === null ? "the next session" : "the first session after it was published";
+    return `${plural(reminder.days, "day")} before ${session}, ${at} — ${FOR_WHOM}`;
   }
   if (v.dueDay === null) return null;
   const due = parse(v.dueDay, "yyyy-MM-dd", now);

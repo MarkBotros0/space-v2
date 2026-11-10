@@ -97,7 +97,7 @@ export const assignmentDetailSchema = z.object({
   reminder: reminderSchema,
   /**
    * When the reminder goes out, in words ("Tue 11 Nov, around 9:00 AM — students who haven't finished",
-   * "No upcoming session yet — no reminder", "Sent Tue 11 Nov, around 9:00 AM"); null when it is off.
+   * "No session after it was published — no reminder", "Sent Tue 11 Nov, around 9:00 AM"); null when it is off.
    */
   reminderLine: z.string().nullable(),
   parts: z.array(assignmentPartSchema),

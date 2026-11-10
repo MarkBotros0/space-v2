@@ -88,7 +88,10 @@ reopened, and one it finishes (every part done, every essay reviewed) is complet
   in-app notification (`ASSIGNMENT_REMINDER`, under the student's New assignments switch,
   `docs/rules/settings-account.md`), opening the assignment.
 - **"The next session"** is the first session of the season starting after the assignment is
-  published. With none, no reminder is sent and the form says so.
+  published (`createdAt`), never the first after now (ruling I3). With none, no reminder is sent and
+  the Details line says "No session after it was published — no reminder". When the reminder's time
+  before that session had already passed at save time, none is sent either, even once a later session
+  exists: "The next session was too close — no reminder".
 - **The schedule runs inside the backend, request-driven (owner, 2026-11-10: "I want the schedule to
   be inside the backend", "I don't want to use the Vercel scheduler").** On any API request, at most
   once every ~5 minutes, the backend takes a database lease and, after the response, sends what is due

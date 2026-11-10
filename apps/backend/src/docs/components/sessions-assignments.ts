@@ -198,7 +198,7 @@ export const sessionsAssignmentsSchemas = {
       reminderLine: {
         type: ["string", "null"],
         description:
-          'When the reminder goes out, on the organisation\'s clock: "Tue 11 Nov, around 9:00 AM — students who haven\'t finished"; "No upcoming session yet — no reminder"; "Too close to the next session — no reminder"; "Sent Tue 11 Nov, around 9:00 AM" once it has gone. Null when it is off.',
+          'When the reminder goes out, on the organisation\'s clock: "Tue 11 Nov, around 9:00 AM — students who haven\'t finished"; "No session after it was published — no reminder"; "The next session was too close — no reminder"; "Sent Tue 11 Nov, around 9:00 AM" once it has gone. Null when it is off.',
       },
       parts: { type: "array", items: { $ref: "#/components/schemas/AssignmentPart" } },
       my: {

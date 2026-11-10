@@ -48,9 +48,9 @@ const PARTS: PartDraft[] = [
 const LINES = [
   "Tue 11 Nov, around 9:00 AM — students who haven't finished",
   "2 days before the next session, around 9:00\u00A0AM — students who haven't finished",
-  "No upcoming session yet — no reminder",
+  "No session after it was published — no reminder",
   "No due date yet — no reminder",
-  "Too close to the next session — no reminder",
+  "The next session was too close — no reminder",
   "Sent Tue 11 Nov, around 9:00 AM",
   "No reminder goes out for this assignment.",
 ];

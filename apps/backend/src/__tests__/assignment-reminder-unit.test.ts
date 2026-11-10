@@ -79,12 +79,13 @@ describe("reminderLine", () => {
     );
   });
 
-  it("says there is no upcoming session, and null when off", () => {
-    expect(reminderLine({ ...on, hasAnchor: false }, null)).toBe("No upcoming session yet — no reminder");
+  it("says there is no session after it was published, and null when off", () => {
+    expect(reminderLine({ ...on, hasAnchor: false }, null)).toBe("No session after it was published — no reminder");
     expect(reminderLine({ ...on, enabled: false }, new Date())).toBeNull();
   });
 
   it("says when the anchor is too close, and when it was sent", () => {
+    expect(reminderLine(on, null)).toBe("The next session was too close — no reminder");
     expect(reminderLine({ ...on, anchor: "DUE_DATE" }, null)).toBe("Too close to the due date — no reminder");
     const sent = { ...on, remindedAt: new Date("2025-11-11T07:04:00.000Z") };
     expect(reminderLine(sent, new Date("2025-11-11T07:00:00.000Z"))).toBe("Sent Tue 11 Nov, around 9:00 AM");

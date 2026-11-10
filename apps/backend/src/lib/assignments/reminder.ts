@@ -28,8 +28,8 @@ type Client = Prisma.TransactionClient | typeof db;
 
 /**
  * When the reminder goes out: the anchor's org day minus `days`, at `time` on
- * the org clock. Null when the anchor is missing (no due date, no upcoming
- * session) or the time has already passed at save time.
+ * the org clock. Null when the anchor is missing (no due date, no session after
+ * publication) or the time has already passed at save time.
  */
 export function remindAtFor(input: {
   anchor: ReminderAnchor;
@@ -46,14 +46,15 @@ export function remindAtFor(input: {
 }
 
 /**
- * "The next session": the first session of the season starting after the
- * assignment was published and after now. Sessions have no soft delete; a
- * cancelled session is a deleted row.
+ * "The next session" (ruling I3): the first session of the season starting
+ * after the assignment was published (`createdAt`), whether or not it has
+ * passed since; never the first after now, or whether a reminder exists would
+ * hang on unrelated later writes. Sessions have no soft delete; a cancelled
+ * session is a deleted row.
  */
-async function nextSessionStart(seasonId: number, createdAt: Date, now: Date, client: Client): Promise<Date | null> {
-  const after = createdAt > now ? createdAt : now;
+async function nextSessionStart(seasonId: number, createdAt: Date, client: Client): Promise<Date | null> {
   const next = await client.session.findFirst({
-    where: { seasonId, startsAt: { gt: after } },
+    where: { seasonId, startsAt: { gt: createdAt } },
     orderBy: { startsAt: "asc" },
     select: { startsAt: true },
   });
@@ -101,7 +102,7 @@ function remindAtGiven(a: ReminderSubject, nextSessionStartsAt: Date | null, now
  */
 export async function resolveRemindAt(a: ReminderSubject, now: Date, client: Client = db): Promise<Date | null> {
   const needsSession = a.reminderEnabled && a.remindedAt === null && a.reminderAnchor === "NEXT_SESSION";
-  const next = needsSession ? await nextSessionStart(a.seasonId, a.createdAt, now, client) : null;
+  const next = needsSession ? await nextSessionStart(a.seasonId, a.createdAt, client) : null;
   return remindAtGiven(a, next, now);
 }
 
@@ -115,7 +116,7 @@ export async function describeReminder(a: ReminderSubject, now: Date): Promise<s
     hasAnchor =
       a.reminderAnchor === "DUE_DATE"
         ? a.dueAt !== null
-        : (await nextSessionStart(a.seasonId, a.createdAt, now, db)) !== null;
+        : (await nextSessionStart(a.seasonId, a.createdAt, db)) !== null;
   }
   const line = { enabled: a.reminderEnabled, anchor: a.reminderAnchor, remindedAt: a.remindedAt, hasAnchor };
   return reminderLine(line, a.remindAt);
@@ -145,14 +146,16 @@ export async function refreshSeasonReminders(seasonId: number, now: Date): Promi
     },
   });
   if (rows.length === 0) return 0;
-  const upcoming = await db.session.findMany({
-    where: { seasonId, startsAt: { gt: now } },
+  // Every session after the earliest publication: each row's anchor is the first after its own.
+  const earliest = new Date(Math.min(...rows.map((a) => a.createdAt.getTime())));
+  const sessions = await db.session.findMany({
+    where: { seasonId, startsAt: { gt: earliest } },
     orderBy: { startsAt: "asc" },
     select: { startsAt: true },
   });
   let moved = 0;
   for (const a of rows) {
-    const next = upcoming.find((s) => s.startsAt > a.createdAt)?.startsAt ?? null;
+    const next = sessions.find((s) => s.startsAt > a.createdAt)?.startsAt ?? null;
     const remindAt = remindAtGiven(a, next, now);
     if ((remindAt?.getTime() ?? null) === (a.remindAt?.getTime() ?? null)) continue;
     const { count } = await db.assignment.updateMany({
@@ -175,7 +178,7 @@ export async function refreshSeasonReminders(seasonId: number, now: Date): Promi
 
 /**
  * The Details tab's "when it goes out" line; null when the reminder is off.
- * `hasAnchor`: the anchor exists (a due date; an upcoming session).
+ * `hasAnchor`: the anchor exists (a due date; a session after publication).
  */
 export function reminderLine(
   a: { enabled: boolean; anchor: ReminderAnchor; remindedAt: Date | null; hasAnchor: boolean },
@@ -185,10 +188,12 @@ export function reminderLine(
   const when = (at: Date) => `${formatShortDayInOrgTime(at)}, around ${formatClockInOrgTime(at)}`;
   if (a.remindedAt !== null) return `Sent ${when(remindAt ?? a.remindedAt)}`;
   if (remindAt !== null) return `${when(remindAt)} — students who haven't finished`;
-  if (!a.hasAnchor) {
-    return a.anchor === "NEXT_SESSION" ? "No upcoming session yet — no reminder" : "No due date yet — no reminder";
+  if (a.anchor === "NEXT_SESSION") {
+    return a.hasAnchor
+      ? "The next session was too close — no reminder"
+      : "No session after it was published — no reminder";
   }
-  return `Too close to the ${a.anchor === "NEXT_SESSION" ? "next session" : "due date"} — no reminder`;
+  return a.hasAnchor ? "Too close to the due date — no reminder" : "No due date yet — no reminder";
 }
 
 /** The reminder's body: "2 parts left before Thursday", the weekday being the anchor's (`days` after it goes out). */

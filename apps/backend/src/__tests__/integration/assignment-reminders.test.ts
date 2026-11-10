@@ -103,7 +103,7 @@ describe("remindAt follows the next session", () => {
     }
     expect((await stored(id)).remindAt).toBeNull();
     const detail = await request(app).get(`/api/v1/assignments/${id}`).set(auth());
-    expect(detail.body.data.reminderLine).toBe("No upcoming session yet — no reminder");
+    expect(detail.body.data.reminderLine).toBe("No session after it was published — no reminder");
   });
 });
 
