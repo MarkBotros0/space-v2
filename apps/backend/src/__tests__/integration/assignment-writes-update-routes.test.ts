@@ -3,7 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { assignmentDetailSchema } from "../../../../../packages/shared/src/index";
-import { cleanupTestData } from "./fixtures";
+import { cleanupTestData, createTestUser } from "./fixtures";
 import { body, notificationsFor, seedAssignmentWriteFixtures } from "./assignment-writes-setup";
 
 // 60s: the shared Neon staging database autosuspends, and beforeAll performs
@@ -138,6 +138,21 @@ describe("PATCH /api/v1/assignments/:id", () => {
     expect(await notificationsFor(studentAId, id)).toHaveLength(1);
     expect(await notificationsFor(studentBId, id)).toHaveLength(1);
     expect(await notificationsFor(withdrawnId, id)).toHaveLength(0);
+  });
+
+  it("never notifies a deleted account an edit newly targets (Q9)", async () => {
+    const gone = await createTestUser("q9-deleted-update", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: gone.id, groupId: groupBId, status: "ACTIVE" },
+    });
+    await db.user.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
+
+    const made = await create({ title: "Q9 retarget", isAllGroups: false, groupIds: [groupAId] });
+    const id = made.body.data.id as number;
+    const widened = await patch(id, { title: "Q9 retarget", isAllGroups: false, groupIds: [groupAId, groupBId] });
+    expect(widened.status).toBe(200);
+    expect(await notificationsFor(gone.id, id)).toEqual([]);
+    expect(await notificationsFor(studentBId, id)).toHaveLength(1); // a live one still is
   });
 
   it("accepts a repeated group id instead of failing the transaction (R70)", async () => {

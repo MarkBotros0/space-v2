@@ -7,6 +7,7 @@ import { createNotificationsBulk } from "./notifications";
 import { bestEffort } from "./best-effort";
 import { formatInOrgTime, orgWallClockToInstant } from "./org-time";
 import { notificationLink } from "./notification-target";
+import { liveStudentIds } from "./queries/season-participants";
 
 /**
  * Rules every assignment write shares, in one place so create and edit cannot
@@ -74,25 +75,19 @@ export function assignmentColumns(body: AssignmentWriteBody) {
  * draft's roster doesn't count yet, and can't act on it), narrowed to the
  * targeted groups. v1 read GroupStudent for the targeted branch
  * (`assignment-actions.ts:177`) — ruling C9 forbids that: the enrolment is the
- * authority, GroupStudent only its per-season mirror. In a live season this is
- * the population `loadAssignmentTracker` lists, so "who was notified" and "who
- * the tracker expects" are one answer.
+ * authority, GroupStudent only its per-season mirror. A deleted account is
+ * never told (refactor Q9), though `loadAssignmentTracker` still lists its row
+ * as history; otherwise this is the population the tracker expects.
  */
 export async function targetedStudentIds(
   seasonId: number,
   isAllGroups: boolean,
   groupIds: number[],
 ): Promise<number[]> {
-  const rows = await db.seasonEnrollment.findMany({
-    where: {
-      seasonId,
-      status: "ACTIVE",
-      season: { status: "ACTIVE" },
-      ...(isAllGroups ? {} : { groupId: { in: groupIds } }),
-    },
-    select: { studentUserId: true },
-  });
-  return Array.from(new Set(rows.map((r) => r.studentUserId)));
+  // Never a deleted account (refactor Q9: they were notified while their
+  // enrolment stayed ACTIVE).
+  const ids = await liveStudentIds(seasonId, isAllGroups ? {} : { groupIds });
+  return Array.from(new Set(ids));
 }
 
 /**

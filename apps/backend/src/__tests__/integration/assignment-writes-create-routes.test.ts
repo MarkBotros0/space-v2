@@ -3,7 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { assignmentDetailSchema } from "../../../../../packages/shared/src/index";
-import { cleanupTestData } from "./fixtures";
+import { cleanupTestData, createTestUser } from "./fixtures";
 import { body, notificationsFor, seedAssignmentWriteFixtures } from "./assignment-writes-setup";
 
 // 60s: the shared Neon staging database autosuspends, and beforeAll performs
@@ -140,6 +140,21 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
     expect(await notificationsFor(withdrawnId, id)).toEqual([]); // R61: ACTIVE only
     expect(res.body.data.dueAt).toBeNull();
     expect(res.body.data.dueOrgDay).toBeNull();
+  });
+
+  it("notifies no deleted account, though its enrolment is still ACTIVE (Q9)", async () => {
+    const gone = await createTestUser("q9-deleted-create", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: gone.id, groupId: groupAId, status: "ACTIVE" },
+    });
+    await db.user.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
+
+    const targeted = await create({ title: "Q9 targeted", isAllGroups: false, groupIds: [groupAId] });
+    const everyone = await create({ title: "Q9 everyone" });
+
+    expect(await notificationsFor(gone.id, targeted.body.data.id as number)).toEqual([]);
+    expect(await notificationsFor(gone.id, everyone.body.data.id as number)).toEqual([]);
+    expect(await notificationsFor(studentAId, targeted.body.data.id as number)).toHaveLength(1);
   });
 
   it("applies the FORUM/STANDARD coercion on write (R14–R16)", async () => {
