@@ -346,6 +346,17 @@ describe("DELETE /api/v1/assignments/:id", () => {
     expect(row?.deletedAt).toBeNull();
   });
 
+  it("deletes when the only Submission has no work left (its part was removed), review M6", async () => {
+    const made = await create();
+    await db.submission.create({
+      data: { assignmentId: made.id, studentUserId: studentAId, publicId: `space-v2-test-empty-${made.id}` },
+    });
+    const res = await del(made.id);
+    expect(res.status).toBe(200);
+    const row = await db.assignment.findUnique({ where: { id: made.id }, select: { deletedAt: true } });
+    expect(row?.deletedAt).not.toBeNull();
+  });
+
   it("cannot delete twice (closes R79), and 404s a missing id", async () => {
     const made = await create();
     expect((await del(made.id)).status).toBe(200);

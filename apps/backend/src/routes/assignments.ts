@@ -144,11 +144,12 @@ assignmentsRouter.delete("/:id", async (req, res) => {
   if (!canManageAssignment(user, existing.seasonId)) return forbidden(res);
 
   // Designed, not ported (ruling C12, spec 07 §10 item 4): a deleted
-  // assignment with submissions would strand student work out of every view.
-  // The "no submissions" condition is in the UPDATE's own WHERE, so a draft
-  // created after the lookup above still blocks the delete.
+  // assignment with student work would strand it out of every view. The "no
+  // work" condition is in the UPDATE's own WHERE, so a draft created after the
+  // lookup above still blocks the delete. A Submission with no part work left
+  // (its only part was removed) is not work (review M6).
   const { count } = await db.assignment.updateMany({
-    where: { id, ...liveAssignment, submissions: { none: {} } },
+    where: { id, ...liveAssignment, submissions: { none: { partWork: { some: {} } } } },
     data: { deletedAt: new Date(), updatedById: user.userId },
   });
   if (count === 0) {
