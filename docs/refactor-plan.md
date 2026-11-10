@@ -357,8 +357,8 @@ a backup first is optional. A rollback restores columns, not data.**
 - [x] 6.4 DB-006: drop `RefreshToken.userAgent` — `20261111040000_refresh_token_user_agent`; cycle + drift empty + snapshot (-1 column); the 'no longer written' comment and assertion go with it; unit 572
 - [x] 6.5 DB-010: drop `StudentProfile.deletedAt` — `20261111050000_student_profile_deleted_at`; `liveStudentProfile` removed; the role-convert script's profile upsert no longer copies the stamp (the User row keeps it); schema header, OpenAPI text and tests updated; cycle + drift empty + snapshot (-1 column); unit 572
 - [x] 6.6 IDX-D1 (`GroupStudent_groupId_idx`), IDX-D3 (`MentorFollowUp_dueAt_idx`) — `20261111060000_drop_group_student_group_idx` (IDX-D1) and `20261111070000_drop_mentor_follow_up_due_idx` (IDX-D3), one CONCURRENTLY statement per file (D10 corrected: two in one file failed with nothing applied); cycle each + drift empty + snapshot (-2 indexes); unit 572
-- [x] 6.7 ERD final; full verification + wave summary + PR → **STOP**
-- Skipped (D8): DB-012 table drop, DB-005, IDX-D4 (kept: the device prune reads `lastSeenAt`), DB-011b — ERD regenerated at every step; verified (log ~/logs/space-v2-refactor-wave6.log); summary written; on the owner's 2026-11-10 instruction no stop here, straight on to Wave 7; PR and push wait for the owner
+- [x] 6.7 ERD final; full verification + wave summary + PR → **STOP** — ERD regenerated at every step; verified (log ~/logs/space-v2-refactor-wave6.log); summary written; on the owner's 2026-11-10 instruction no stop here, straight on to Wave 7; PR and push wait for the owner
+- Skipped (D8): DB-012 table drop, DB-005, IDX-D4 (kept: the device prune reads `lastSeenAt`), DB-011b
 
 ### Wave 7 — guardrails (`refactor/wave-7-guardrails`)
 
@@ -488,3 +488,12 @@ _(one paragraph per finished wave)_
   migrations** (a running build whose client still knows a dropped column fails on every read of that model;
   this build runs fine on a database that still has them); then `db:migrate:deploy`. The data in the dropped
   columns and table is lost (D9); a rollback restores columns, not data.
+- **Wave 7** (`refactor/wave-7-guardrails`, not merged or pushed): `max-lines` 400 / `max-depth` 3 as errors;
+  backend bans on a literal `deletedAt: null` inside a `where` and on `$transaction` under `src/routes/`;
+  mobile ban on axios / `api-client` / `api-request` in screens, routes and the kit; `pnpm check:dead`
+  (`scripts/check-dead.mjs` + `check-dead.allow`; its first run dropped 35 file-local exports, nothing
+  fully dead); `schema-conformance.test.ts`; `pnpm check:size`; `pnpm check`; CI runs it on every pull
+  request; the PR template; CLAUDE.md `## Code & Data Standards`. Each guardrail was shown failing on a
+  planted violation (7.9). Final verification (log ~/logs/space-v2-refactor-final.log): lint 0 errors
+  (61 / 217 warnings), typecheck, build, unit 340 / 579 / 2,363, integration 137 / 1,587, 0 dead, 0 over
+  400 lines. End state and every D8 skip: `docs/refactor-report.md`.
