@@ -215,6 +215,54 @@ describe("POST /api/v1/seasons/:id/duplicate", () => {
     });
   });
 
+  it("resolves the copied assignments' reminders against the copied sessions and due dates", async () => {
+    const source = await createTestSeason();
+    await db.season.update({ where: { id: source.id }, data: { startDate: new Date("2099-01-01T00:00:00.000Z") } });
+    // 18:00 Cairo on 5 Feb 2099; the copy lands 368 days later, on Mon 8 Feb 2100.
+    await db.session.create({
+      data: {
+        seasonId: source.id,
+        title: "Week 1",
+        startsAt: new Date("2099-02-05T16:00:00.000Z"),
+        durationMinutes: 60,
+      },
+    });
+    await db.assignment.create({
+      data: { seasonId: source.id, title: "Next session", reminderDays: 2, reminderAnchor: "NEXT_SESSION" },
+    });
+    await db.assignment.create({
+      data: {
+        seasonId: source.id,
+        title: "Due date",
+        dueAt: new Date("2099-02-10T21:59:00.000Z"),
+        reminderDays: 1,
+        reminderAnchor: "DUE_DATE",
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/v1/seasons/${source.id}/duplicate`)
+      .set("authorization", `Bearer ${superToken}`)
+      .send({
+        year: 2100,
+        code: testSeasonCode(),
+        startDate: "2100-01-04T00:00:00.000Z",
+        endDate: "2100-12-31T00:00:00.000Z",
+      });
+    expect(res.status).toBe(201);
+    const copied = await db.assignment.findMany({
+      where: { seasonId: res.body.data.id },
+      orderBy: { title: "asc" },
+      select: { title: true, remindAt: true },
+    });
+    expect(copied).toEqual([
+      // Due 23:59 Cairo on 13 Feb 2100; 1 day before at 09:00 Cairo.
+      { title: "Due date", remindAt: new Date("2100-02-12T07:00:00.000Z") },
+      // The copied session is Mon 8 Feb 2100; 2 days before at 09:00 Cairo.
+      { title: "Next session", remindAt: new Date("2100-02-06T07:00:00.000Z") },
+    ]);
+  });
+
   it("defaults the code to slugify('<source.program> <year>') (v1 R64)", async () => {
     // A prefixed program keeps the derived code inside cleanupTestData's
     // prefix discovery; a plain "TEST" program would derive "test-2100" and

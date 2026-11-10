@@ -4,8 +4,15 @@ import type { ReminderAnchor } from "../../generated/prisma/enums";
 import { liveAssignment, liveSeason } from "../db/live";
 import { notificationLink } from "../notification-target";
 import { createNotificationsBulk } from "../notifications";
-import { formatClockInOrgTime, formatShortDayInOrgTime, formatWeekdayInOrgTime, orgDaysBeforeAt } from "../org-time";
+import {
+  formatClockInOrgTime,
+  formatShortDayInOrgTime,
+  formatWeekdayInOrgTime,
+  orgDayKey,
+  orgDaysBeforeAt,
+} from "../org-time";
 import { seasonRosterMember } from "../queries/season-participants";
+import { reportError } from "../sentry";
 import { workStandings } from "./standing";
 
 /*
@@ -115,14 +122,15 @@ export async function describeReminder(a: ReminderSubject, now: Date): Promise<s
 }
 
 /**
- * After a session of the season is created, moved or deleted: re-resolves
- * `remindAt` for its assignments anchored on the next session that have not
- * been reminded. Each row is written only while its settings are still the
- * ones read, so a concurrent edit of the assignment wins. Returns how many moved.
+ * After a session of the season is created, moved or deleted, or the season
+ * is copied: re-resolves `remindAt` for its assignments that have not been
+ * reminded (a due-date one only changes when it had none, as in a copy). Each
+ * row is written only while its settings are still the ones read, so a
+ * concurrent edit of the assignment wins. Returns how many moved.
  */
 export async function refreshSeasonReminders(seasonId: number, now: Date): Promise<number> {
   const rows = await db.assignment.findMany({
-    where: { seasonId, ...liveAssignment, remindedAt: null, reminderEnabled: true, reminderAnchor: "NEXT_SESSION" },
+    where: { seasonId, ...liveAssignment, remindedAt: null, reminderEnabled: true },
     select: {
       id: true,
       seasonId: true,
@@ -153,7 +161,8 @@ export async function refreshSeasonReminders(seasonId: number, now: Date): Promi
         remindedAt: null,
         remindAt: a.remindAt,
         reminderEnabled: true,
-        reminderAnchor: "NEXT_SESSION",
+        reminderAnchor: a.reminderAnchor,
+        dueAt: a.dueAt,
         reminderDays: a.reminderDays,
         reminderTime: a.reminderTime,
       },
@@ -259,7 +268,21 @@ export async function sendDueAssignmentReminders(now: Date = new Date()): Promis
       data: { remindedAt: now },
     });
     if (claimed.count !== 1) continue;
-    sent += await remindStudents({ ...a, remindAt: a.remindAt });
+    // Too late: "before Thursday" must not arrive on or after Thursday (the
+    // season was a draft, or no request came for days). Claimed, not sent.
+    if (isLate(a.remindAt, a.reminderDays, now)) continue;
+    try {
+      sent += await remindStudents({ ...a, remindAt: a.remindAt });
+    } catch (err) {
+      // One assignment's failure never stops the rest. Its id only, no names.
+      console.error(`[assignment-reminders] assignment ${a.id} failed:`, err instanceof Error ? err.message : err);
+      reportError(err, { scheduler: "assignment-reminders", assignmentId: String(a.id) });
+    }
   }
   return sent;
+}
+
+/** Whether the org clock has reached the anchor's day: the reminder's "before <day>" no longer holds. */
+export function isLate(remindAt: Date, days: number, now: Date): boolean {
+  return orgDayKey(now) >= orgDayKey(orgDaysBeforeAt(remindAt, -days, "12:00"));
 }

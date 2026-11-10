@@ -61,7 +61,10 @@ function workFor(part: AssignmentPart, works: PartWork[]): PartWork | undefined 
   return works.find((w) => w.partId === part.id);
 }
 
-/** Done: video 90% watched with every question answered; essay within range and not returned; forum posted. */
+/**
+ * Done: video 90% watched with every question answered; essay handed in, or a
+ * draft within range; forum posted.
+ */
 export function partDone(part: AssignmentPart, work: PartWork | undefined): boolean {
   if (work === undefined) return false;
   switch (part.kind) {
@@ -70,11 +73,15 @@ export function partDone(part: AssignmentPart, work: PartWork | undefined): bool
       return v !== undefined && isWatched(v.watchedSeconds, v.durationSeconds) && v.answered >= v.questionCount;
     }
     case "ESSAY": {
-      // Handed in (SUBMITTED, REVIEWED) or a draft, inside the range: a draft
-      // counts so Submit can unlock, since Submit is what hands essays in. A
-      // returned essay is not done until it is handed in again.
+      // A handed-in essay (SUBMITTED, REVIEWED) is done whatever its range says
+      // now: a range changed after the hand-in never reopens it (spec, "Admin
+      // changes after students started"), and it is locked, so the student
+      // could not fix it anyway. A draft counts once it is inside the range, so
+      // Submit can unlock, since Submit is what hands essays in. A returned
+      // essay is not done until it is handed in again.
       const e = work.essay;
       if (e === undefined || e.reviewStatus === "RETURNED") return false;
+      if (e.reviewStatus === "SUBMITTED" || e.reviewStatus === "REVIEWED") return true;
       return e.wordCount > 0 && wordCountIssue(e.wordCount, part.minWords, part.maxWords) === null;
     }
     case "FORUM":

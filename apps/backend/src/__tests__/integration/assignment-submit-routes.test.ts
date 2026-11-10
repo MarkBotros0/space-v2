@@ -186,6 +186,30 @@ describe("editing after students submitted", () => {
     expect(await submission(a.id)).toEqual({ submittedAt: null, completedAt: null });
   });
 
+  it("a range change then a video reset reopens the student, who can submit again once they rewatch", async () => {
+    const a = await createAssignmentWithParts({ seasonId: f.seasonId, title: "Range then reset" }, [
+      { kind: "VIDEO" },
+      { kind: "ESSAY" },
+    ]);
+    // Handed in at 3 words, with no range.
+    await seedVideoWork(a.id, a.partIds[0]!, f.studentUserId, 600);
+    await seedTextWork(a.id, a.partIds[1]!, f.studentUserId, "SUBMITTED", { text: "Three words here" });
+    await setSubmitted(a.id, f.studentUserId, new Date());
+
+    const essay = { ...essayInput("What did you learn?"), minWords: 50, id: a.partIds[1] };
+    const res = await patch(a.id, [{ ...videoInput("https://youtu.be/9bZkp7q19f0"), id: a.partIds[0] }, essay]);
+    expect(res.status).toBe(200);
+    expect((await submission(a.id)).submittedAt).toBeNull();
+
+    // Only the video blocks: the handed-in essay stays done under its new range.
+    const blocked = await submit(a.id);
+    expect(blocked.status).toBe(409);
+    expect(blocked.body.error.message).toBe("Finish Watch this (9 min left) to submit");
+
+    await seedVideoWork(a.id, a.partIds[0]!, f.studentUserId, 600);
+    expect((await submit(a.id)).status).toBe(200);
+  });
+
   it("removing the only unreviewed essay completes a submitted student", async () => {
     const a = await createAssignmentWithParts({ seasonId: f.seasonId, title: "Removal completes" }, [
       { kind: "VIDEO" },

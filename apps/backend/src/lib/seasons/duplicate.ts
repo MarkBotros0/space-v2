@@ -1,4 +1,6 @@
 import { db } from "../../db/client";
+import { refreshSeasonReminders } from "../assignments/reminder";
+import { bestEffort } from "../best-effort";
 import type { Prisma } from "../../generated/prisma/client";
 import { liveAssignment, liveSeason } from "../db/live";
 import { newPublicId } from "../public-id";
@@ -86,7 +88,7 @@ export async function cloneSeason(
 ): Promise<{ id: number; code: string }> {
   const offsetMs = target.startDate.getTime() - source.startDate.getTime();
   const shift = (d: Date) => new Date(d.getTime() + offsetMs);
-  return db.$transaction(
+  const created = await db.$transaction(
     async (tx) => {
       const season = await tx.season.create({
         data: {
@@ -117,6 +119,10 @@ export async function cloneSeason(
     // the 5 s interactive-transaction default (roster and imports raise it the same way).
     { timeout: 30_000 },
   );
+  // The copied assignments' reminders anchor on the copied sessions: resolved
+  // after the commit, best-effort (a failure must not report the copy as failed).
+  await bestEffort("assignment-reminders:refresh", () => refreshSeasonReminders(created.id, new Date()));
+  return created;
 }
 
 /** R57/R61: name and description only — no GroupLeader, no GroupStudent. */
@@ -154,8 +160,9 @@ async function cloneSessions(tx: Tx, source: DuplicateSource, seasonId: number, 
 
 /**
  * Each live assignment with its settings, its parts in order and each video's
- * timed questions; no student work. The copy lands in a DRAFT season, which
- * nobody is reminded in, so `remindAt` stays unset until it is next saved.
+ * timed questions; no student work. `remindAt` is resolved after the commit
+ * (`refreshSeasonReminders`); the copy is a DRAFT, and nobody is reminded until
+ * it is live.
  */
 async function cloneAssignments(
   tx: Tx,

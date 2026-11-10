@@ -1,6 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client";
 import {
-  partDone,
+  canSubmit,
+  partsLeft,
   submitBlockerLine,
   type AssignmentPart,
   type PartWork,
@@ -23,30 +24,13 @@ interface WorkStanding {
   works: PartWork[];
 }
 
-/**
- * Done for the stored standing. A handed-in essay (waiting review or reviewed)
- * stays done whatever its word range says now: a range changed after the
- * hand-in never reopens it (spec, "Admin changes after students started").
- * Everything else is the shared rule Submit's button follows.
- */
-function doneForStanding(part: AssignmentPart, work: PartWork | undefined): boolean {
-  const status = work?.essay?.reviewStatus;
-  if (part.kind === "ESSAY" && (status === "SUBMITTED" || status === "REVIEWED")) return true;
-  return partDone(part, work);
-}
-
 function standingFrom(parts: AssignmentPart[], works: PartWork[]): WorkStanding {
-  const left = parts.filter(
-    (p) =>
-      !doneForStanding(
-        p,
-        works.find((w) => w.partId === p.id),
-      ),
-  ).length;
-  const everyPartDone = parts.length > 0 && left === 0;
+  // The shared rules, so the server's gate and the app's button agree (a
+  // handed-in essay stays done whatever its range says now: partDone).
+  const everyPartDone = canSubmit(parts, works);
   return {
     everyPartDone,
-    partsLeft: left,
+    partsLeft: partsLeft(parts, works),
     essaysReviewed: works.filter((w) => w.kind === "ESSAY").every((w) => w.essay?.reviewStatus === "REVIEWED"),
     blocker: everyPartDone ? null : (submitBlockerLine(parts, works) ?? "Finish every part to submit"),
     works,

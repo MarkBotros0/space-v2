@@ -143,6 +143,14 @@ describe("partDone for an essay", () => {
     expect(partDone(part, at("SUBMITTED", 5))).toBe(true);
     expect(partDone(part, at("REVIEWED", 5))).toBe(true);
   });
+
+  it("a handed-in essay stays done after its word range changes", () => {
+    // Handed in at 5 words; the range is now 3–4 (or 6+): still done, never reopened.
+    expect(partDone({ ...part, maxWords: 4 } as AssignmentPart, at("SUBMITTED", 5))).toBe(true);
+    expect(partDone({ ...part, minWords: 6 } as AssignmentPart, at("REVIEWED", 5))).toBe(true);
+    expect(canSubmit([{ ...part, minWords: 6 } as AssignmentPart], [at("SUBMITTED", 5)])).toBe(true);
+    expect(submitBlockerLine([{ ...part, minWords: 6 } as AssignmentPart], [at("SUBMITTED", 5)])).toBeNull();
+  });
 });
 
 describe("essayWordCount", () => {

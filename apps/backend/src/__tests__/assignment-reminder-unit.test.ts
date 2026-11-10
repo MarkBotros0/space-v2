@@ -1,4 +1,4 @@
-import { remindAtFor, reminderBody, reminderLine } from "../lib/assignments/reminder";
+import { isLate, remindAtFor, reminderBody, reminderLine } from "../lib/assignments/reminder";
 
 // The org clock is Africa/Cairo (config default): UTC+2 in November 2025 (13 Nov 2025 is a Thursday).
 const THU_13_NOV_SESSION = new Date("2025-11-13T16:00:00.000Z"); // 18:00 Cairo
@@ -97,5 +97,14 @@ describe("reminderBody", () => {
     expect(reminderBody(2, remindAt, 2)).toBe("2 parts left before Thursday");
     expect(reminderBody(1, remindAt, 2)).toBe("1 part left before Thursday");
     expect(reminderBody(0, remindAt, 2)).toBe("Every part is done. Submit it before Thursday");
+  });
+});
+
+describe("isLate", () => {
+  it("is late once the org clock reaches the anchor's day", () => {
+    const remindAt = new Date("2025-11-11T07:00:00.000Z"); // Tue; the anchor is Thu 13 Nov
+    expect(isLate(remindAt, 2, new Date("2025-11-11T07:05:00.000Z"))).toBe(false);
+    expect(isLate(remindAt, 2, new Date("2025-11-12T21:59:00.000Z"))).toBe(false); // 23:59 Wed Cairo
+    expect(isLate(remindAt, 2, new Date("2025-11-12T22:00:00.000Z"))).toBe(true); // 00:00 Thu Cairo
   });
 });
