@@ -9,7 +9,8 @@ import {
   StudentCalendar,
   SuperCalendar,
 } from "../../../src/screens/calendar/season-calendars";
-import { useAlumnusNotStudying, useSessionStore, useRole } from "../../../src/store/session";
+import { calendarBranchFor } from "../../../src/lib/calendar-branch";
+import { audienceOf, useSessionStore } from "../../../src/store/session";
 
 /**
  * /calendar — one route, every role (Decision D1). STUDENT/ALUMNI keep
@@ -18,35 +19,36 @@ import { useAlumnusNotStudying, useSessionStore, useRole } from "../../../src/st
  * no calendar in its nav (spec 03 §9).
  */
 export default function CalendarScreen() {
-  const role = useRole();
-  // navFor's rule (shared): a graduated student, unless studying. They get the
-  // student calendar; /events already answers them with their alumni-only events.
-  const alumnusNotStudying = useAlumnusNotStudying();
-  const leadsNothing = useSessionStore(
-    (s) => s.user?.role === "LEADER" && (s.scopes?.groupLeaderIds.length ?? 0) === 0,
-  );
+  const branch = useSessionStore((s) => calendarBranchFor(audienceOf(s), s.scopes?.groupLeaderIds ?? []));
 
-  if (role === "MENTOR") {
-    return (
-      <Screen title="Calendar">
-        <EmptyState icon={CalendarIcon} title="Calendar" description="The calendar isn't available for your role." />
-      </Screen>
-    );
+  switch (branch) {
+    case "UNAVAILABLE":
+      return (
+        <Screen title="Calendar">
+          <EmptyState icon={CalendarIcon} title="Calendar" description="The calendar isn't available for your role." />
+        </Screen>
+      );
+    case "LEADS_NOTHING":
+      return (
+        <Screen title="Calendar" subtitle="You don't lead any groups yet.">
+          <EmptyState
+            icon={CalendarIcon}
+            title="No calendar"
+            description="An admin will add you to a group when you're ready."
+          />
+        </Screen>
+      );
+    case "LEADER":
+      return <LeaderCalendar />;
+    case "SUPER":
+      return <SuperCalendar />;
+    case "ADMIN":
+      return <AdminCalendar />;
+    // navFor's rule (shared): a graduated student, unless studying; /events already answers them
+    // with their alumni-only events.
+    case "ALUMNI":
+      return <AlumniCalendar />;
+    case "STUDENT":
+      return <StudentCalendar />;
   }
-  if (leadsNothing) {
-    return (
-      <Screen title="Calendar" subtitle="You don't lead any groups yet.">
-        <EmptyState
-          icon={CalendarIcon}
-          title="No calendar"
-          description="An admin will add you to a group when you're ready."
-        />
-      </Screen>
-    );
-  }
-  if (role === "LEADER") return <LeaderCalendar />;
-  if (role === "SUPER") return <SuperCalendar />;
-  if (role === "ADMIN") return <AdminCalendar />;
-  if (alumnusNotStudying) return <AlumniCalendar />;
-  return <StudentCalendar />;
 }
