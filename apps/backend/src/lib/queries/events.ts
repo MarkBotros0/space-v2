@@ -2,6 +2,7 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason, isAlumnus, isLeaderOfGroup, isSuper } from "../rbac";
+import { liveSeason } from "../db/live";
 
 /**
  * The seasons a viewer may see SEASON-scoped events for.
@@ -43,7 +44,7 @@ export async function viewerSeasonIds(user: SessionUser): Promise<number[] | "al
  * answer and no caller can widen it.
  *
  * SUPER is unfiltered so the manager list can show orphans and archived-season
- * events. Everyone else gets `season: { deletedAt: null }` on the SEASON branch
+ * events. Everyone else gets `season: liveSeason` on the SEASON branch
  * (item 4 — a soft-deleted season's events are a bug in any reading), which
  * also hides an R54 orphan, since a null relation cannot satisfy a relation
  * filter.
@@ -62,7 +63,7 @@ export async function eventVisibilityFilter(user: SessionUser): Promise<Prisma.J
     branches.push({
       visibility: "SEASON",
       seasonId: { in: seasonIds },
-      season: { deletedAt: null },
+      season: liveSeason,
     });
   }
   return { OR: branches };

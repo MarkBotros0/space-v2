@@ -8,6 +8,9 @@ import { deriveRoles, usersWithRole } from "../lib/auth/scopes";
 import { issueSession } from "../lib/auth/tokens";
 import { config } from "../lib/config";
 import { makeLimiter } from "../lib/rate-limit";
+import { notFound } from "../lib/http/not-found";
+import { parseOr400 } from "../lib/http/validate";
+import { liveUser } from "../lib/db/live";
 
 /**
  * Dev user switcher — v1 parity (jpc-space `dev-switch` provider +
@@ -50,7 +53,7 @@ devRouter.get("/users", devLimiter, async (req, res) => {
   const perRole = await Promise.all(
     ROLE_ORDER.map(async (role) => {
       const rows = await db.user.findMany({
-        where: { deletedAt: null, ...usersWithRole(role), ...search },
+        where: { ...liveUser, ...usersWithRole(role), ...search },
         select: { id: true, email: true, name: true, role: true },
         orderBy: { email: "asc" },
         take: PER_ROLE,
@@ -64,17 +67,17 @@ devRouter.get("/users", devLimiter, async (req, res) => {
 
 /** Same response as POST /auth/login, for the chosen user. */
 devRouter.post("/switch", devLimiter, async (req, res) => {
-  const parsed = devSwitchRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "A user id is required.", 400);
+  const parsed = parseOr400(devSwitchRequestSchema, req.body, res, "A user id is required.");
+  if (parsed === null) return;
 
   const target = await db.user.findUnique({
-    where: { id: parsed.data.userId },
+    where: { id: parsed.userId },
     select: { id: true, name: true, email: true, deletedAt: true },
   });
-  if (!target || target.deletedAt) return apiError(res, "not_found", "User not found.", 404);
+  if (!target || target.deletedAt) return notFound(res, "User");
 
   const issued = await issueSession(target.id);
-  if (!issued) return apiError(res, "not_found", "User not found.", 404);
+  if (!issued) return notFound(res, "User");
   await db.user.update({ where: { id: target.id }, data: { lastLoginAt: new Date() } });
 
   return apiOk(res, {

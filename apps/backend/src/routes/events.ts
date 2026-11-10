@@ -4,7 +4,8 @@ import { db } from "../db/client";
 import type { JpcVisibility } from "../generated/prisma/enums";
 import { apiError, apiOk } from "../lib/api-response";
 import { isOrgMidnight, orgDayKey, orgWallClockToInstant, orgWallTime } from "../lib/org-time";
-import { parseId } from "../lib/parse-id";
+import { pageOf } from "../lib/pagination";
+import { findLiveSeason } from "../lib/queries/seasons";
 import {
   EVENT_PAGE_ORDER,
   encodeEventCursor,
@@ -21,6 +22,9 @@ import {
   mergedEventSchema,
   updateJpcEventRequestSchema,
 } from "../../../../packages/shared/src/index";
+import { idParam } from "../lib/http/params";
+import { notFound } from "../lib/http/not-found";
+import { parseOr400 } from "../lib/http/validate";
 
 /**
  * Domain 15. Mounted at /api/v1/events, a prefix this router owns exclusively,
@@ -97,15 +101,14 @@ function toDetail(row: ListRow & { description: string | null }, canManage: bool
 
 /** A season an event may be attached to: exists and is not soft-deleted. */
 async function isLiveSeason(seasonId: number): Promise<boolean> {
-  const season = await db.season.findFirst({ where: { id: seasonId, deletedAt: null }, select: { id: true } });
-  return season !== null;
+  return (await findLiveSeason(seasonId, { id: true })) !== null;
 }
 
 eventsRouter.get("/", async (req, res) => {
   const user = requireUser(req);
-  const parsed = eventListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { from: fromRaw, to: toRaw, upcoming, limit, paged, pageSize, cursor } = parsed.data;
+  const parsed = parseOr400(eventListQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
+  const { from: fromRaw, to: toRaw, upcoming, limit, paged, pageSize, cursor } = parsed;
 
   // v1 parity (audit 2026-cutover, v1-parity-classification 15-events R57
   // REVERT): with no from/to, every visible event, ordered by date — v1's
@@ -132,9 +135,7 @@ eventsRouter.get("/", async (req, res) => {
       // The window's total, not the remainder after the cursor.
       db.jpcEvent.count({ where }),
     ]);
-    const page = pageRows.slice(0, size);
-    const last = page[page.length - 1];
-    const nextCursor = pageRows.length > size && last ? encodeEventCursor(last) : null;
+    const { page, nextCursor } = pageOf(pageRows, size, encodeEventCursor);
     return apiOk(res, { events: page.map(toListItem), total, nextCursor });
   }
 
@@ -152,8 +153,8 @@ eventsRouter.get("/", async (req, res) => {
 
 eventsRouter.get("/:id", async (req, res) => {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid event id.", 400);
+  const id = idParam(res, req.params.id, "event");
+  if (id === null) return;
 
   const row = await db.jpcEvent.findFirst({
     where: { AND: [{ id }, await eventVisibilityFilter(user)] },
@@ -161,7 +162,7 @@ eventsRouter.get("/:id", async (req, res) => {
   });
   // 404, not 403: a caller cannot tell an event they may not see from one that
   // does not exist.
-  if (!row) return apiError(res, "not_found", "Event not found.", 404);
+  if (!row) return notFound(res, "Event");
   return apiOk(res, toDetail(row, isSuper(user)));
 });
 
@@ -171,9 +172,9 @@ eventsRouter.post("/", async (req, res) => {
   const user = requireRole(req, res, isSuper, "Only a super admin can manage events.");
   if (!user) return;
 
-  const parsed = createJpcEventRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid event.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(createJpcEventRequestSchema, req.body, res, "Invalid event.");
+  if (parsed === null) return;
+  const body = parsed;
 
   // v1 force-nulls the season whenever visibility is not SEASON (R13); kept,
   // because a detached seasonId on an ALL event is unreachable data.
@@ -204,14 +205,14 @@ eventsRouter.post("/", async (req, res) => {
 eventsRouter.patch("/:id", async (req, res) => {
   const user = requireRole(req, res, isSuper, "Only a super admin can manage events.");
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid event id.", 400);
+  const id = idParam(res, req.params.id, "event");
+  if (id === null) return;
 
   const row = await db.jpcEvent.findUnique({ where: { id }, select: DETAIL_SELECT });
-  if (!row) return apiError(res, "not_found", "Event not found.", 404);
+  if (!row) return notFound(res, "Event");
 
-  const parsed = updateJpcEventRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid event.", 400);
+  const parsed = parseOr400(updateJpcEventRequestSchema, req.body, res, "Invalid event.");
+  if (parsed === null) return;
 
   const stored = {
     title: row.title,
@@ -224,7 +225,7 @@ eventsRouter.patch("/:id", async (req, res) => {
     seasonId: row.seasonId,
   };
   // Drop undefined keys so an omitted field keeps its stored value.
-  const patch = Object.fromEntries(Object.entries(parsed.data).filter(([, v]) => v !== undefined));
+  const patch = Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined));
   const merged = mergedEventSchema.safeParse({ ...stored, ...patch });
   if (!merged.success) return apiError(res, "bad_request", "Invalid event.", 400);
   const m = merged.data;
@@ -258,12 +259,12 @@ eventsRouter.patch("/:id", async (req, res) => {
 eventsRouter.delete("/:id", async (req, res) => {
   const user = requireRole(req, res, isSuper, "Only a super admin can manage events.");
   if (!user) return;
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid event id.", 400);
+  const id = idParam(res, req.params.id, "event");
+  if (id === null) return;
 
   // v1 does not read first, so a stale id throws P2025 at the client (R36).
   const row = await db.jpcEvent.findUnique({ where: { id }, select: { id: true } });
-  if (!row) return apiError(res, "not_found", "Event not found.", 404);
+  if (!row) return notFound(res, "Event");
 
   // Hard delete: this model has no `deletedAt` and adding one is a migration.
   await db.jpcEvent.delete({ where: { id } });
