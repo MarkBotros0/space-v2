@@ -86,7 +86,10 @@ export const openApiDocument = {
       description:
         "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)",
     },
-    { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
+    {
+      name: "Forum",
+      description: "The forum part of an assignment: the group thread, the post that unlocks it, and comments",
+    },
     {
       name: "Events",
       description:

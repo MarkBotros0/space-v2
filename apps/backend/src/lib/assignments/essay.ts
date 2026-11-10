@@ -56,12 +56,12 @@ export async function lockEssayWork(tx: Tx, publicId: string): Promise<{ assignm
 }
 
 /**
- * The student's essay work on this part, made (with the assignment's
- * Submission) if missing, so the work's part is always the submission's
- * assignment's and its student the submission's. The Submission, then the
- * work, are locked FOR UPDATE (the caller holds the assignment's lock).
+ * The student's work on this part (an essay or a forum post), made (with the
+ * assignment's Submission) if missing, so the work's part is always the
+ * submission's assignment's and its student the submission's. The Submission,
+ * then the work, are locked FOR UPDATE (the caller holds the assignment's lock).
  */
-async function ensureEssayWork(tx: Tx, assignmentId: number, partId: number, studentUserId: number) {
+export async function ensurePartWork(tx: Tx, assignmentId: number, partId: number, studentUserId: number) {
   await tx.submission.createMany({
     data: [{ assignmentId, studentUserId, publicId: newPublicId() }],
     skipDuplicates: true,
@@ -105,7 +105,7 @@ export async function saveEssayDraft(
       select: { id: true },
     });
     if (!part) throw new ApiError("not_found", "Part not found.", 404);
-    const work = await ensureEssayWork(tx, owner.assignmentId, partId, studentUserId);
+    const work = await ensurePartWork(tx, owner.assignmentId, partId, studentUserId);
     if (!EDITABLE_STATUSES.includes(work.status)) throw new ApiError("submission_locked", handedInMessage, 409);
     await tx.assignmentPartWork.update({ where: { id: work.id }, data: { text } });
     return { publicId: work.publicId, wordCount: essayWordCount(text), reviewStatus: work.status };

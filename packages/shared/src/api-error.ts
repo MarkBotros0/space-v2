@@ -117,7 +117,6 @@ export const API_ERROR_CODES = [
   "unknown_part",
   "uploads_disabled",
   "use_end_season",
-  "use_forum_endpoint",
   "use_graduate",
   "use_start_season",
   "user_deleted",

@@ -2,13 +2,14 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import type { SessionUser } from "../../lib/auth/tokens";
 import {
-  canCommentOnForumSubmission,
+  canCommentOnForumPost,
   canDeleteForumComment,
   canManageSessionVideo,
   forumAudienceFor,
   hasActiveEnrollment,
 } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
+import { createForum } from "./forum-setup";
 import { cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 
 jest.setTimeout(60000);
@@ -19,6 +20,7 @@ let sessionId: number;
 let groupAId: number;
 let groupBId: number;
 let assignmentId: number;
+let partId: number;
 let postSubmissionId: number;
 let commentId: number;
 
@@ -93,34 +95,15 @@ beforeAll(async () => {
   });
   sessionId = session.id;
 
-  const assignment = await db.assignment.create({
-    data: {
-      seasonId,
-      title: "space-v2-test-forum-assignment",
-      type: "FORUM",
-      forumMinWords: 5,
-      forumAllowComments: true,
-      isAllGroups: true,
-    },
-    select: { id: true },
-  });
-  assignmentId = assignment.id;
+  const forum = await createForum(seasonId, "space-v2-test-forum-assignment", { minWords: 5, allowComments: true });
+  assignmentId = forum.assignmentId;
+  partId = forum.partId;
 
-  const post = await db.submission.create({
-    data: {
-      assignmentId,
-      studentUserId: authorUser.id,
-      publicId: newPublicId(),
-      status: "SUBMITTED",
-      submittedAt: new Date(),
-      text: "<p>space-v2-test post body</p>",
-    },
-    select: { id: true },
-  });
+  const post = await seedForumWork(partId, authorUser.id, "SUBMITTED");
   postSubmissionId = post.id;
 
   const comment = await db.forumComment.create({
-    data: { submissionId: post.id, authorUserId: mateUser.id, body: "space-v2-test comment" },
+    data: { partWorkId: post.id, authorUserId: mateUser.id, body: "space-v2-test comment" },
     select: { id: true },
   });
   commentId = comment.id;
@@ -139,6 +122,32 @@ beforeAll(async () => {
 afterAll(async () => {
   await cleanupTestData();
 });
+
+/** A student's text work on a part (a forum post unless the part says otherwise), with its assignment's Submission (made if missing). */
+async function seedForumWork(forumPartId: number, studentUserId: number, status: "DRAFT" | "SUBMITTED") {
+  const part = await db.assignmentPart.findUniqueOrThrow({
+    where: { id: forumPartId },
+    select: { assignmentId: true },
+  });
+  const submission = await db.submission.upsert({
+    where: { assignmentId_studentUserId: { assignmentId: part.assignmentId, studentUserId } },
+    create: { assignmentId: part.assignmentId, studentUserId, publicId: newPublicId() },
+    update: {},
+    select: { id: true },
+  });
+  return db.assignmentPartWork.create({
+    data: {
+      publicId: newPublicId(),
+      partId: forumPartId,
+      submissionId: submission.id,
+      studentUserId,
+      status,
+      text: status === "DRAFT" ? null : "<p>space-v2-test post body</p>",
+      submittedAt: status === "DRAFT" ? null : new Date(),
+    },
+    select: { id: true },
+  });
+}
 
 describe("canManageSessionVideo", () => {
   it("admits SUPER and the season's ADMIN, and nobody else", async () => {
@@ -173,22 +182,22 @@ describe("hasActiveEnrollment", () => {
   });
 });
 
-describe("canCommentOnForumSubmission", () => {
+describe("canCommentOnForumPost", () => {
   it("admits a group-mate, SUPER, the season ADMIN and the author's LEADER", async () => {
-    expect(await canCommentOnForumSubmission(groupMate, postSubmissionId)).toBe(true);
-    expect(await canCommentOnForumSubmission(superUser, postSubmissionId)).toBe(true);
-    expect(await canCommentOnForumSubmission(admin, postSubmissionId)).toBe(true);
+    expect(await canCommentOnForumPost(groupMate, postSubmissionId)).toBe(true);
+    expect(await canCommentOnForumPost(superUser, postSubmissionId)).toBe(true);
+    expect(await canCommentOnForumPost(admin, postSubmissionId)).toBe(true);
     // Widening, taken deliberately (spec 14 D3): in v1 LEADER falls through to
     // `return false`, so a leader cannot join the discussion of a group they
     // lead — an omission, not a policy.
-    expect(await canCommentOnForumSubmission(leaderA, postSubmissionId)).toBe(true);
+    expect(await canCommentOnForumPost(leaderA, postSubmissionId)).toBe(true);
   });
 
   it("refuses another group's student, another group's leader, and a mentor", async () => {
-    expect(await canCommentOnForumSubmission(outsider, postSubmissionId)).toBe(false);
-    expect(await canCommentOnForumSubmission(leaderB, postSubmissionId)).toBe(false);
+    expect(await canCommentOnForumPost(outsider, postSubmissionId)).toBe(false);
+    expect(await canCommentOnForumPost(leaderB, postSubmissionId)).toBe(false);
     // MENTOR stays read-only, consistent with their posture elsewhere.
-    expect(await canCommentOnForumSubmission(mentor, postSubmissionId)).toBe(false);
+    expect(await canCommentOnForumPost(mentor, postSubmissionId)).toBe(false);
   });
 
   it("refuses when the target is still a DRAFT (v1 R43)", async () => {
@@ -204,49 +213,32 @@ describe("canCommentOnForumSubmission", () => {
     await db.seasonEnrollment.create({
       data: { seasonId, studentUserId: draftAuthorRow.id, groupId: groupAId, status: "ACTIVE" },
     });
-    const draft = await db.submission.create({
-      data: {
-        assignmentId,
-        studentUserId: draftAuthorRow.id,
-        publicId: newPublicId(),
-        status: "DRAFT",
-      },
-      select: { id: true },
-    });
-    expect(await canCommentOnForumSubmission(groupMate, draft.id)).toBe(false);
+    const draft = await seedForumWork(partId, draftAuthorRow.id, "DRAFT");
+    expect(await canCommentOnForumPost(groupMate, draft.id)).toBe(false);
     // Control: the same author's post, once SUBMITTED, is commentable — so the
     // refusal above is the DRAFT rule and nothing else.
-    await db.submission.update({
+    await db.assignmentPartWork.update({
       where: { id: draft.id },
       data: { status: "SUBMITTED", submittedAt: new Date(), text: "<p>space-v2-test</p>" },
     });
-    expect(await canCommentOnForumSubmission(groupMate, draft.id)).toBe(true);
+    expect(await canCommentOnForumPost(groupMate, draft.id)).toBe(true);
   });
 
   it("refuses when comments are switched off on the assignment", async () => {
-    const quiet = await db.assignment.create({
-      data: {
-        seasonId,
-        title: "space-v2-test-quiet-forum",
-        type: "FORUM",
-        forumAllowComments: false,
-        isAllGroups: true,
-      },
-      select: { id: true },
+    const quiet = await createForum(seasonId, "space-v2-test-quiet-forum", { allowComments: false });
+    const post = await seedForumWork(quiet.partId, author.userId, "SUBMITTED");
+    expect(await canCommentOnForumPost(groupMate, post.id)).toBe(false);
+    expect(await canCommentOnForumPost(superUser, post.id)).toBe(false);
+  });
+
+  it("refuses a work that is not a forum post, and one that doesn't exist", async () => {
+    const essayAssignment = await db.assignment.create({
+      data: { seasonId, title: "space-v2-test-essay", parts: { create: { position: 0, kind: "ESSAY", prompt: "x" } } },
+      select: { parts: { select: { id: true } } },
     });
-    const post = await db.submission.create({
-      data: {
-        assignmentId: quiet.id,
-        studentUserId: author.userId,
-        publicId: newPublicId(),
-        status: "SUBMITTED",
-        submittedAt: new Date(),
-        text: "<p>space-v2-test</p>",
-      },
-      select: { id: true },
-    });
-    expect(await canCommentOnForumSubmission(groupMate, post.id)).toBe(false);
-    expect(await canCommentOnForumSubmission(superUser, post.id)).toBe(false);
+    const essay = await seedForumWork(essayAssignment.parts[0]!.id, author.userId, "SUBMITTED");
+    expect(await canCommentOnForumPost(superUser, essay.id)).toBe(false);
+    expect(await canCommentOnForumPost(superUser, 987_654_321)).toBe(false);
   });
 });
 
@@ -276,6 +268,14 @@ describe("forumAudienceFor", () => {
 
   it("refuses a student with no ACTIVE enrolment", async () => {
     expect(await forumAudienceFor(dropped, assignmentId)).toBeNull();
+  });
+
+  it("gives every season student their own group: no group targeting", async () => {
+    expect(await forumAudienceFor(outsider, assignmentId)).toEqual({ kind: "student", groupId: groupBId });
+  });
+
+  it("is null for an assignment that is gone", async () => {
+    expect(await forumAudienceFor(superUser, 987_654_321)).toBeNull();
   });
 
   it("gives a leader only the groups they lead in this season", async () => {

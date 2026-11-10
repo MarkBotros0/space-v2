@@ -6,10 +6,11 @@ import { submissionStatusSchema } from "./enums";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 //
-// A FORUM assignment is not an entity: the post *is* a Submission row and the
-// only table this domain owns is ForumComment. `type`, `forumMinWords` and
-// `forumAllowComments` belong to assignment.ts (domain 7) and are flattened
-// onto the view below only as the two config values the screen needs.
+// A forum is a FORUM part of an assignment (at most one per assignment). The
+// post *is* the student's work on that part (an AssignmentPartWork row, named
+// by its `publicId` as an essay's work is in assignment-parts.ts), and the only
+// table this domain owns is ForumComment. The part's settings live in
+// assignment-parts.ts; the view below flattens the ones the screen needs.
 
 const forumCommentSchema = z.object({
   id: z.number(),
@@ -34,8 +35,8 @@ const forumCommentSchema = z.object({
 export type ForumComment = z.infer<typeof forumCommentSchema>;
 
 const forumPostSchema = z.object({
-  /** Addressed by publicId, never the sequential Submission.id (v1 R5/R43). */
-  submissionPublicId: z.string(),
+  /** The post's work publicId, never a sequential id (v1 R5/R43). */
+  publicId: z.string(),
   studentUserId: z.number(),
   authorDisplayName: z.string(),
   /** Plain text, converted from stored rich text at the API boundary (ruling C11). */
@@ -51,22 +52,12 @@ export type ForumPost = z.infer<typeof forumPostSchema>;
 
 export const forumOwnResponseSchema = z.object({
   /**
-   * Spec 14 §10 D9: posting sets SUBMITTED, which puts a forum post in the
-   * leader review queue as ordinary work, and `reviewSubmissionAction` has no
-   * type precondition — so a reviewer can write feedback on a discussion post
-   * and v1's forum screen renders none of it, because `loadForumView` never
-   * selects the column. Forum posts stay reviewable (that is the cheaper half
-   * of the decision and matches what leaders already do); the fix is that the
-   * student can now read the verdict.
+   * The work's publicId, or null before the first post: nothing creates the
+   * row up front (ruling C6), so the screen renders the compose box, the
+   * counter and the locked feed with no work in existence. A forum post has no
+   * review (owner): posting is what makes the part done.
    */
-  feedback: z.string().nullable(),
-  reviewedAt: z.string().nullable(),
-  /**
-   * Nullable, and that is the whole point: nothing creates the row up front any
-   * more (ruling C6), so the screen must render the compose box, the counter and
-   * the locked feed with no submission in existence.
-   */
-  submissionPublicId: z.string().nullable(),
+  publicId: z.string().nullable(),
   text: z.string(),
   status: submissionStatusSchema,
   wordCount: z.number(),
@@ -76,14 +67,18 @@ export type ForumOwnResponse = z.infer<typeof forumOwnResponseSchema>;
 
 export const forumViewSchema = z.object({
   assignmentId: z.number(),
+  /** The FORUM part this thread belongs to. */
+  partId: z.number(),
+  /** The part's prompt: what the group is asked to discuss. */
+  prompt: z.string(),
   /** Rendered on the forum screen — v1's FORUM branch omitted it (spec 14 D10). */
   dueAt: z.string().nullable(),
   /**
    * Null for staff readers, who have no response of their own. A student always
-   * has one, even when its `submissionPublicId` is null.
+   * has one, even when its `publicId` is null.
    */
   own: forumOwnResponseSchema.nullable(),
-  /** True until the caller's own response is posted, on a forum with `forumPostToRead`. Staff are never locked. */
+  /** True until the caller's own response is posted, on a part with `postToRead`. Staff are never locked. */
   locked: z.boolean(),
   minWords: z.number().nullable(),
   allowComments: z.boolean(),
@@ -95,7 +90,7 @@ export const forumViewSchema = z.object({
 export type ForumView = z.infer<typeof forumViewSchema>;
 
 /**
- * `min(1)` after trimming, regardless of the assignment's `forumMinWords`
+ * `min(1)` after trimming, regardless of the part's `minWords`
  * (spec 14 §10 D8). With a null or zero minimum, v1's `countWords("") >= 0`
  * passed on both client and server, so a student could post nothing, flip to
  * SUBMITTED, unlock the peer feed and read everyone else's work without
@@ -138,7 +133,7 @@ export const deleteForumCommentResponseSchema = z.object({ deleted: z.literal(tr
  * v1's word counter, carried verbatim from `jpc-space/src/lib/forum.ts`.
  *
  * Shared for the reason v1 shared it: the live counter in the compose box and
- * the server's `forumMinWords` gate must agree, or a student gets an enabled
+ * the server's `minWords` gate must agree, or a student gets an enabled
  * button and a refusal. Numeric entities (`&#160;`) are deliberately still
  * unhandled — matching v1 exactly is the point (spec 14 R10).
  *

@@ -227,11 +227,18 @@ function studentWrites(k: Kit): Row[] {
     ["hand in essay", "post", `/submissions/${k.draft}/hand-in`, undefined, 403, "forbidden"],
     ["start attempt", "put", `/quizzes/${k.quizId}/attempt`, undefined, 403, "forbidden"],
     ["submit attempt", "post", `/quizzes/${k.quizId}/attempt/submit`, {}, 403, "forbidden"],
-    ["forum response", "put", `/assignments/${k.forumId}/forum/response`, { text: "late post" }, 403, "forbidden"],
+    [
+      "forum response",
+      "put",
+      `/assignments/${k.forumId}/parts/${k.forumPartId}/forum/response`,
+      { text: "late post" },
+      403,
+      "forbidden",
+    ],
     [
       "forum comment",
       "post",
-      `/assignments/${k.forumId}/forum/posts/${k.matePost}/comments`,
+      `/assignments/${k.forumId}/parts/${k.forumPartId}/forum/posts/${k.matePost}/comments`,
       { body: "late comment" },
       403,
       "forbidden",
@@ -351,13 +358,18 @@ describe("a student with an active place", () => {
 
   it("can comment on a group-mate's post and delete its own comment", async () => {
     // Post-first: the active student needs their own post; the forum response creates it.
-    const posted = await call("put", `/assignments/${kit.dropped.forumId}/forum/response`, t.active, {
-      text: "my take",
-    });
+    const posted = await call(
+      "put",
+      `/assignments/${kit.dropped.forumId}/parts/${kit.dropped.forumPartId}/forum/response`,
+      t.active,
+      {
+        text: "my take",
+      },
+    );
     expect(posted.status).toBe(200);
     const c = await call(
       "post",
-      `/assignments/${kit.dropped.forumId}/forum/posts/${kit.dropped.matePost}/comments`,
+      `/assignments/${kit.dropped.forumId}/parts/${kit.dropped.forumPartId}/forum/posts/${kit.dropped.matePost}/comments`,
       t.active,
       { body: "hi" },
     );

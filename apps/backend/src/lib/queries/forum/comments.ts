@@ -59,7 +59,7 @@ export async function listForumComments(
   query: { cursor?: number; limit: number },
 ): Promise<{ comments: ForumCommentData[]; nextCursor: number | null }> {
   const rows = await db.forumComment.findMany({
-    where: { submissionId: post.id },
+    where: { partWorkId: post.id },
     orderBy: { id: "asc" },
     take: query.limit + 1,
     ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),

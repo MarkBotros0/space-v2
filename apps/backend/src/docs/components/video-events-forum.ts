@@ -244,22 +244,17 @@ export const videoEventsForumSchemas = {
   ForumOwnResponse: {
     type: "object",
     description:
-      "The caller's own post. With no submission row in existence (nothing creates one on read) `submissionPublicId` is null, `status` DRAFT and `posted` false.",
-    required: ["submissionPublicId", "text", "status", "wordCount", "posted", "feedback", "reviewedAt"],
+      "The caller's own post: their work on the FORUM part. With no work in existence (nothing creates one on read) `publicId` is null, `status` DRAFT and `posted` false. A forum post has no review.",
+    required: ["publicId", "text", "status", "wordCount", "posted"],
     properties: {
-      submissionPublicId: { type: ["string", "null"] },
+      publicId: { type: ["string", "null"], description: "The post's work publicId." },
       text: {
         type: "string",
-        description: "Plain text. Stored as HTML for v1's renderer and converted at this boundary in both directions.",
+        description: "Plain text. Stored as HTML and converted at this boundary in both directions.",
       },
       status: { $ref: "#/components/schemas/SubmissionStatus" },
       wordCount: { type: "integer" },
       posted: { type: "boolean" },
-      feedback: {
-        type: ["string", "null"],
-        description: "A reviewer's verdict, as plain text. v1's forum screen never rendered it.",
-      },
-      reviewedAt: { type: ["string", "null"], format: "date-time" },
     },
   },
   ForumComment: {
@@ -283,7 +278,7 @@ export const videoEventsForumSchemas = {
   ForumPost: {
     type: "object",
     required: [
-      "submissionPublicId",
+      "publicId",
       "studentUserId",
       "authorDisplayName",
       "text",
@@ -293,7 +288,7 @@ export const videoEventsForumSchemas = {
       "canComment",
     ],
     properties: {
-      submissionPublicId: { type: "string" },
+      publicId: { type: "string", description: "The post's work publicId." },
       studentUserId: { type: "integer" },
       authorDisplayName: { type: "string" },
       text: { type: "string", description: "Plain text." },
@@ -309,9 +304,23 @@ export const videoEventsForumSchemas = {
   },
   ForumView: {
     type: "object",
-    required: ["assignmentId", "dueAt", "own", "locked", "minWords", "allowComments", "groupId", "posts", "nextCursor"],
+    required: [
+      "assignmentId",
+      "partId",
+      "prompt",
+      "dueAt",
+      "own",
+      "locked",
+      "minWords",
+      "allowComments",
+      "groupId",
+      "posts",
+      "nextCursor",
+    ],
     properties: {
       assignmentId: { type: "integer" },
+      partId: { type: "integer", description: "The FORUM part." },
+      prompt: { type: "string", description: "The part's prompt." },
       dueAt: { type: ["string", "null"], format: "date-time" },
       own: {
         oneOf: [{ $ref: "#/components/schemas/ForumOwnResponse" }, { type: "null" }],
@@ -320,7 +329,7 @@ export const videoEventsForumSchemas = {
       locked: {
         type: "boolean",
         description:
-          "A product mechanic, not an error: on a forum with `forumPostToRead`, a student sees no peer's work until their own response is posted. Staff are never locked.",
+          "A product mechanic, not an error: on a forum part with `postToRead`, a student sees no peer's work until their own response is posted. Staff are never locked.",
       },
       minWords: { type: ["integer", "null"] },
       allowComments: { type: "boolean" },
@@ -338,7 +347,7 @@ export const videoEventsForumSchemas = {
         minLength: 1,
         maxLength: 20000,
         description:
-          "Plain text. At least one word regardless of `forumMinWords`, so an empty post cannot unlock the feed.",
+          "Plain text. At least one word regardless of the part's `minWords`, so an empty post cannot unlock the feed.",
       },
     },
   },

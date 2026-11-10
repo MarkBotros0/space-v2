@@ -25,6 +25,7 @@ let groupId: number;
 let sessionId: number;
 let assignmentId: number;
 let forumId: number;
+let forumPartId: number;
 let onlineQuizId: number;
 let attemptId: number;
 let paperQuizId: number;
@@ -79,6 +80,7 @@ beforeAll(async () => {
   assignmentId = (await createAssignmentWithParts({ seasonId, title: "Essay" })).id;
   const forum = await createAssignmentWithParts({ seasonId, title: "Forum" }, [{ kind: "FORUM" }]);
   forumId = forum.id;
+  forumPartId = forum.partIds[0]!;
   await db.assignment.updateMany({ where: { id: { in: [assignmentId, forumId] } }, data: { createdById: admin.id } });
   // Peter's forum post, up.
   await seedTextWork(forumId, forum.partIds[0]!, peter, "SUBMITTED", { text: "<p>post</p>" });
@@ -179,7 +181,7 @@ describe("Super, after End", () => {
   });
 
   it("reads the forum's posts as staff", async () => {
-    const res = await get(`/assignments/${forumId}/forum`, superT);
+    const res = await get(`/assignments/${forumId}/parts/${forumPartId}/forum`, superT);
     expect(res.status).toBe(200);
     expect(res.body.data.posts).toHaveLength(1);
   });
@@ -271,7 +273,7 @@ describe("Mentor, after End", () => {
     expect(assignments.status).toBe(200);
     expect(assignments.body.data.assignments.find((a: { id: number }) => a.id === assignmentId).expectedCount).toBe(2);
 
-    const forum = await get(`/assignments/${forumId}/forum`, mentorT);
+    const forum = await get(`/assignments/${forumId}/parts/${forumPartId}/forum`, mentorT);
     expect(forum.status).toBe(200);
     expect(forum.body.data.posts).toHaveLength(1);
   });
