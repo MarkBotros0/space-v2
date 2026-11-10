@@ -17,13 +17,8 @@ import {
   listAssignmentsForStudent,
   loadAssignmentById,
 } from "../../lib/queries/assignments";
-import {
-  applyLeaderChange,
-  listGroupsForSeason,
-  planLeaderChange,
-  setGroupStudents,
-  validateGroupWrite,
-} from "../../lib/queries/groups";
+import { listGroupsForSeason } from "../../lib/queries/groups";
+import { applyLeaderChange, planLeaderChange, setGroupStudents, validateGroupWrite } from "../../lib/groups/membership";
 import { listSessionsForSeason } from "../../lib/queries/sessions";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { refusalStatus } from "../../lib/api-error";

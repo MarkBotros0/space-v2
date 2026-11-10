@@ -1,6 +1,6 @@
 /**
- * Group reads (`read`) and membership writes (`membership`). Import from this
- * index.
+ * Group reads. Membership writes are lib/groups/membership.ts (refactor
+ * BE-016). Import from this index.
  */
 export {
   listGroupsForSeason,
@@ -10,13 +10,3 @@ export {
   type GroupListRow,
   type SeasonRosterRow,
 } from "./read";
-export {
-  applyLeaderChange,
-  assignStudentsToGroups,
-  GroupOutsideSeasonError,
-  planLeaderChange,
-  setGroupStudents,
-  unassignStudentsFromGroups,
-  validateGroupWrite,
-  type GroupWriteInput,
-} from "./membership";

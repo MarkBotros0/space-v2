@@ -6,7 +6,7 @@ const mockDb = {};
 jest.mock("../db/client", () => ({ db: mockDb }));
 
 import type { Prisma } from "../generated/prisma/client";
-import { assignStudentsToGroups, setGroupStudents, unassignStudentsFromGroups } from "../lib/queries/groups";
+import { assignStudentsToGroups, setGroupStudents, unassignStudentsFromGroups } from "../lib/groups/membership";
 import { seasonRosterMember } from "../lib/queries/season-participants";
 
 const tx = {

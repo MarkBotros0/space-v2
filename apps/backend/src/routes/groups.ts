@@ -5,14 +5,8 @@ import { apiOk, apiError, forbidden } from "../lib/api-response";
 import { markSessionsStale } from "../lib/auth/session-validity";
 import { parseId } from "../lib/parse-id";
 import { canAccessGroup } from "../lib/permissions";
-import {
-  applyLeaderChange,
-  listMyGroups,
-  loadGroupImpact,
-  planLeaderChange,
-  setGroupStudents,
-  validateGroupWrite,
-} from "../lib/queries/groups";
+import { listMyGroups, loadGroupImpact } from "../lib/queries/groups";
+import { applyLeaderChange, planLeaderChange, setGroupStudents, validateGroupWrite } from "../lib/groups/membership";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { isAdminOfSeason } from "../lib/rbac";
 import { lockPeople, lockSeason } from "../lib/roles";

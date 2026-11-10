@@ -19,7 +19,7 @@ import {
   type StudentImportTarget,
 } from "../lib/imports/students";
 import { parseId } from "../lib/parse-id";
-import { assignStudentsToGroups, GroupOutsideSeasonError } from "../lib/queries/groups";
+import { assignStudentsToGroups, GroupOutsideSeasonError } from "../lib/groups/membership";
 import { isAdminOfSeason, isSuper } from "../lib/rbac";
 // Value import — relative path is mandatory here (CLAUDE.md's rootDir emit
 // trap). `import type` may use "@space/shared"; this line may not.

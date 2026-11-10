@@ -1,9 +1,9 @@
 import type { ApiErrorCode } from "@space/shared";
-import { db } from "../../../db/client";
-import type { Prisma } from "../../../generated/prisma/client";
-import { markSessionsStale } from "../../auth/session-validity";
-import { lockPeople, readSeatSeason, refuseNewSeats, type SeatRefusal } from "../../roles";
-import { seasonRosterMember } from "../season-participants";
+import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
+import { markSessionsStale } from "../auth/session-validity";
+import { lockPeople, readSeatSeason, refuseNewSeats, type SeatRefusal } from "../roles";
+import { seasonRosterMember } from "../queries/season-participants";
 
 export interface GroupWriteInput {
   name: string;

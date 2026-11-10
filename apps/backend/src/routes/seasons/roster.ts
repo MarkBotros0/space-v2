@@ -3,12 +3,12 @@ import type { Request, Response } from "express";
 import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
+import { listSeasonRoster } from "../../lib/queries/groups";
 import {
   assignStudentsToGroups,
   GroupOutsideSeasonError,
-  listSeasonRoster,
   unassignStudentsFromGroups,
-} from "../../lib/queries/groups";
+} from "../../lib/groups/membership";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { groupAssignmentsRequestSchema } from "../../../../../packages/shared/src/index";
