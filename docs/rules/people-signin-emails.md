@@ -11,7 +11,8 @@
 - **Students list.** Filter is the icon in the search row, never a chip under it. A Super filters
   by season first, then that season's groups. Alumni and Dropped are a Show choice in the sheet
   (`/students?show=alumni`), not pages. Every row names the active season, else "Last season: …"
-  (`lastSeasonTitle`).
+  (`lastSeasonTitle`). An alumnus row gives the class as **JPCS-25** (for 2025), never "School of
+  2025" (the same label everywhere the app names a class: `classLabel` in `packages/shared`), and no university, faculty or other academic detail (owner, 2026-11-10).
 - **A student's page (staff):** Edit is a pencil beside the name; sections switch on a segmented
   control; an empty Details card is left out.
 - **Sign-in:** no boxed card; Forgot password under its field; "or", then Continue with Google

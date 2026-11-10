@@ -5,7 +5,7 @@
 
 - **One Profile page** (owner, 2026-11-07): `/profile` is read-only (name, email, phone, date
   of birth, address; a student's or alumnus's university, faculty, graduation year and
-  "School of N"), with no role badge and no season figures. Its Edit opens `/edit-profile`, one
+  "JPCS-YY"), with no role badge and no season figures. Its Edit opens `/edit-profile`, one
   form with one Save: the `User` columns (PATCH /me, every role) and, for a student or a
   studying alumnus, the academic record (PATCH /me/profile); an alumnus's academic record is
   read-only. Profile is in no sidebar: More's name row and Home's avatar open it (a tab for

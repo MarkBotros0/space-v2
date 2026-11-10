@@ -1,5 +1,5 @@
 import { View } from "react-native";
-import type { SeasonEndCheck } from "@space/shared";
+import { classLabel, type SeasonEndCheck } from "@space/shared";
 
 import { GroupedList, ListRow, StatusChip, Text } from "../../design/ui";
 import { joinMeta } from "../../lib/join-meta";
@@ -22,7 +22,7 @@ export function ReviewList({
   students: Row[];
   /** This season's pass makes them alumni: staff of any kind should know before End. */
   graduating: boolean;
-  /** The season's own year: passing makes them School of this year. */
+  /** The season's own year: passing puts them in this year's class (JPCS-YY). */
   year: number | null;
   /** Verdicts the staff member changed, by user id. */
   staged: Record<number, ResultDraft>;
@@ -35,7 +35,7 @@ export function ReviewList({
       </Text>
       {graduating ? (
         <Text variant="subhead" className="font-semibold text-foreground">
-          {year === null ? "Passing this season graduates them" : `Passing makes them School of ${year}`}
+          {year === null ? "Passing this season graduates them" : `Passing makes them ${classLabel(year)}`}
         </Text>
       ) : null}
       <GroupedList>
@@ -45,7 +45,7 @@ export function ReviewList({
             <ListRow
               key={s.userId}
               title={s.name}
-              detail={s.graduationYear === null ? undefined : `School of ${s.graduationYear}`}
+              detail={s.graduationYear === null ? undefined : classLabel(s.graduationYear)}
               subtitle={joinMeta([s.groupName, `${s.attendancePct}% attendance`])}
               trailing={<StatusChip tone={notPassed ? "bad" : "ok"} label={notPassed ? "Did not pass" : "Passed"} />}
               trailingLabel={notPassed ? "Did not pass" : "Passed"}

@@ -7,7 +7,7 @@ appId: com.jpc.space
     env:
       EMAIL: ${ALUMNI_EMAIL}
 - openLink: spacev2://profile
-# One Profile page (owner, 2026-11-07): read-only, the academic record with "School of N"
+# One Profile page (owner, 2026-11-07): read-only, the academic record with the class "JPCS-YY"
 # (maybe below the fold), and its Edit opens /edit-profile. Edit renders once the profile loads.
 - extendedWaitUntil:
     visible: 'Edit profile'

@@ -100,7 +100,7 @@ describe("Screen home: compact header (R31)", () => {
   it("takes over at the row's top with a title too: the bell and menu sit beside it", async () => {
     // Sweep s47 (alumni "Hi, <name>" + subtitle): partly scrolled, the row had gone and no bar showed.
     renderWithProviders(
-      <Screen home title="Hi, Sam" subtitle="School of 2025">
+      <Screen home title="Hi, Sam" subtitle="JPCS-25">
         <RNText>body</RNText>
       </Screen>,
     );

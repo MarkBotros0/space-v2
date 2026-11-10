@@ -208,7 +208,7 @@ export function TakingPartSection({
               Graduating season
             </Text>
             <Text variant="caption" className="text-muted-foreground">
-              Everyone who passes becomes an alumnus when it ends, School of its year.
+              Everyone who passes becomes an alumnus when it ends, in its year's class (JPCS-YY).
             </Text>
           </View>
           <Switch

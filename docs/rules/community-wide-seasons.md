@@ -20,7 +20,7 @@
   is blocked, so an alumnus who did not pass an earlier community-wide season is simply `available`.
 - **`isStudyingAlumnus` against `isAlumnus`** (`packages/shared/src/navigation.ts`, mirrored over a token in
   `lib/rbac.ts`). `isAlumnus` (role STUDENT and `graduationYear` set) is the permanent fact: the Alumni
-  list, alumni-only events, the class "School of N" and the 403s on student pages. `isStudyingAlumnus`
+  list, alumni-only events, the class "JPCS-YY" and the 403s on student pages. `isStudyingAlumnus`
   (an alumnus whose token has `activeSeasonId`, i.e. an ACTIVE enrolment in an ACTIVE season, only a
   community-wide one can seat them) decides the **experience**: `navFor`, Today's branch, the student
   dashboard, quizzes, submissions, check-in and profile edits behave as a student's. Gates read
@@ -31,7 +31,7 @@
   community-wide, via `graduationFilter` in `lib/queries/students/list.ts`; so do the season roster,
   attendance, trackers, reports and End's review. A regular season's graduates never appear. A dropped alumnus stays on their season's own list, as any
   dropped student does (`seasonId` matches any status).
-- **Ending.** End-check students carry `graduationYear` (the review shows "School of N"), the confirm says
+- **Ending.** End-check students carry `graduationYear` (the review shows "JPCS-YY"), the confirm says
   how many people it ends the season for, and End graduates nobody and keeps every class. Alumni return to
   the alumni portal on their next refresh (`activeSeasonId` null), and their old attempts are refused.
 - **Preflight.** `pnpm preflight:community` reports `communityWideNotAlone` (one row per ACTIVE

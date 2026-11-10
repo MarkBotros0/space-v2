@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import { classLabel } from "@space/shared";
 import { ApiError } from "../api-error";
 import { invalidateSessions } from "../auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../auth/tokens";
@@ -30,12 +31,12 @@ export async function graduateStudentAccount(
     if (!qualified && !override) {
       throw new ApiError("not_qualified", `${student.name} hasn't passed a graduating season.`, 409);
     }
-    // A pass decides the class: a typed year can't put them in a different School.
+    // A pass decides the class: a typed year can't put them in a different class.
     if (qualified && !passedYears.includes(graduationYear)) {
       const year = Math.max(...passedYears);
       throw new ApiError(
         "wrong_class",
-        `${student.name} passed the ${year} season, so they're School of ${year}.`,
+        `${student.name} passed the ${year} season, so they're ${classLabel(year)}.`,
         409,
       );
     }

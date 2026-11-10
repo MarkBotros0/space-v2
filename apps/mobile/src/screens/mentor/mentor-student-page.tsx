@@ -4,6 +4,7 @@
  * then Notes (first, open) and Attendance across every season, grouped by
  * season. No This season card, no figures, no Submissions or Seasons tabs.
  */
+import { classLabel } from "@space/shared";
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -35,7 +36,7 @@ export function MentorStudentPage({ student }: { student: StudentDetail }) {
   return (
     <View className="flex-col gap-6">
       {student.graduationYear !== null ? (
-        <StatusChip tone="ok" label={`Alumnus · School of ${student.graduationYear}`} className="self-start" />
+        <StatusChip tone="ok" label={`Alumnus · ${classLabel(student.graduationYear)}`} className="self-start" />
       ) : null}
       <FollowUpCard studentId={student.id} studentName={student.name} />
       <StudentDetails profile={student.profile} canCall />

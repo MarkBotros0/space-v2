@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { SEASON_RESULT_REASON_MAX } from "@space/shared";
+import { classLabel, SEASON_RESULT_REASON_MAX } from "@space/shared";
 
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { SegmentedControl } from "../../design/ui/segmented-control";
@@ -23,7 +23,7 @@ function graduationNote(graduation: ResultGraduation, result: ResultValue): stri
   if (result === "PASSED")
     return graduation.isAlumnus
       ? null
-      : `${graduation.year === null ? "Passing graduates them" : `Passing makes them School of ${graduation.year}`}. Any regular season they're in now ends for them. A community-wide season carries on.`;
+      : `${graduation.year === null ? "Passing graduates them" : `Passing makes them ${classLabel(graduation.year)}`}. Any regular season they're in now ends for them. A community-wide season carries on.`;
   return graduation.isAlumnus && graduation.stored !== "NOT_PASSED" ? "This doesn't remove their alumni status." : null;
 }
 

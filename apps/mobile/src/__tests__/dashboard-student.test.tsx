@@ -215,7 +215,7 @@ describe("DashboardScreen — ALUMNI", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByText("Hi, Nour")).toBeTruthy();
-    expect(screen.getByText("School of 2024")).toBeTruthy();
+    expect(screen.getByText("JPCS-24")).toBeTruthy();
     fireEvent.press(await screen.findByText("View my history"));
     expect(mockPush).toHaveBeenCalledWith("/history");
     expect(await screen.findByText("Open day")).toBeTruthy();

@@ -7,6 +7,7 @@
  * internal notes (spec 06 D3/C8), so those rows are absent. `staffTabs={false}`
  * is the student's own view: Seasons only, as the staff endpoints refuse the rest.
  */
+import { classLabel } from "@space/shared";
 import { useState, type ComponentProps } from "react";
 import { View } from "react-native";
 
@@ -57,7 +58,7 @@ export function StudentDetailGrouped({
   return (
     <View className="flex-col gap-6">
       {student.graduationYear !== null ? (
-        <StatusChip tone="ok" label={`Alumnus · School of ${student.graduationYear}`} className="self-start" />
+        <StatusChip tone="ok" label={`Alumnus · ${classLabel(student.graduationYear)}`} className="self-start" />
       ) : null}
       {staffTabs ? <EngagementSummary studentId={student.id} /> : null}
       <StudentDetails profile={student.profile} canCall={staffTabs} />

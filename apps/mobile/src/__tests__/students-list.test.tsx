@@ -230,7 +230,7 @@ describe("Students on the Alumni filter (?show=alumni)", () => {
 
     renderWithProviders(<StudentsScreen />);
 
-    expect(await screen.findByLabelText(/School of 2024/)).toBeTruthy();
+    expect(await screen.findByLabelText(/JPCS-24/)).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/students?status=alumni");
   });
 });

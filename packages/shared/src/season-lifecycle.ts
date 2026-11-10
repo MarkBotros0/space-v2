@@ -88,7 +88,7 @@ export const seasonEndCheckSchema = z.object({
       name: z.string(),
       groupName: z.string().nullable(),
       attendancePct: z.number(),
-      /** Their class (School of N); null for a non-alumnus. */
+      /** Their class (`classLabel`, e.g. JPCS-25); null for a non-alumnus. */
       graduationYear: z.number().int().nullable(),
     }),
   ),
@@ -176,3 +176,8 @@ export const seasonRecordSchema = z
   })
   .strict();
 export type SeasonRecord = z.infer<typeof seasonRecordSchema>;
+
+/** An alumnus's class as the community writes it: 2025 is "JPCS-25" (owner, 2026-11-10). */
+export function classLabel(graduationYear: number): string {
+  return `JPCS-${String(graduationYear % 100).padStart(2, "0")}`;
+}

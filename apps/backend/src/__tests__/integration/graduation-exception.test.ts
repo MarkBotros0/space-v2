@@ -140,7 +140,7 @@ describe("A pass decides the class", () => {
     expect(res.status).toBe(409);
     expect(res.body.error).toEqual({
       code: "wrong_class",
-      message: "Typed passed the 2024 season, so they're School of 2024.",
+      message: "Typed passed the 2024 season, so they're JPCS-24.",
     });
     expect((await columns(student.id)).graduationYear).toBeNull();
   });

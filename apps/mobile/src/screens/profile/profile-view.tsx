@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { View } from "react-native";
-import type { MeUser, MyProfile } from "@space/shared";
+import { classLabel, type MeUser, type MyProfile } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
@@ -73,9 +73,7 @@ function ProfileBody({ user, profile }: { user: MeUser; profile: MyProfile | nul
           <Detail label="University" value={profile.university} />
           <Detail label="Faculty" value={profile.faculty} />
           <Detail label="Graduation year" value={year == null ? null : String(year)} />
-          {profile.graduationYear !== null ? (
-            <Detail label="JPC" value={`School of ${profile.graduationYear}`} />
-          ) : null}
+          {profile.graduationYear !== null ? <Detail label="JPC" value={classLabel(profile.graduationYear)} /> : null}
         </GroupedList>
       ) : null}
     </View>

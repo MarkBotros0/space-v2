@@ -64,9 +64,9 @@ appId: com.jpc.space
 - hideKeyboard
 - openLink: spacev2://students?show=alumni
 # The mentor's count line says "N members" on every list, so wait for an alumnus row: only
-# those say "School of <year>".
+# those say "JPCS-<yy>".
 - extendedWaitUntil:
-    visible: 'Aya Alumni, School of \d{4}.*'
+    visible: 'Aya Alumni, JPCS-\d{2}.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

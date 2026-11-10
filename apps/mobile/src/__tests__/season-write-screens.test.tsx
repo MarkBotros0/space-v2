@@ -134,7 +134,9 @@ describe("NewSeasonScreen (/seasons/new)", () => {
     post.mockResolvedValue({ data: { data: { id: 99, code: "gbv-2028" } } });
     renderWithProviders(<NewSeasonScreen />);
     expect(screen.getByText("Graduating season")).toBeTruthy();
-    expect(screen.getByText("Everyone who passes becomes an alumnus when it ends, School of its year.")).toBeTruthy();
+    expect(
+      screen.getByText("Everyone who passes becomes an alumnus when it ends, in its year's class (JPCS-YY)."),
+    ).toBeTruthy();
 
     fireEvent.press(screen.getByRole("switch", { name: "Graduating season" }));
     fireEvent.changeText(screen.getByLabelText("Program"), "GBV");

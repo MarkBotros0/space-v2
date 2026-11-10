@@ -86,7 +86,7 @@ describe("while studying", () => {
   it("Profile names their class, and the university's year stays its own", async () => {
     serve({ [PROFILE]: { profile } });
     renderWithProviders(<ProfileScreen />);
-    expect(await screen.findByText("School of 2025")).toBeTruthy();
+    expect(await screen.findByText("JPCS-25")).toBeTruthy();
     expect(screen.queryByText("Student")).toBeNull();
     expect(screen.getByText("Cairo University")).toBeTruthy();
     expect(screen.getByText("2031")).toBeTruthy();
@@ -146,7 +146,7 @@ describe("once the season is over", () => {
   it("Profile shows the alumni record, and Edit profile leaves the academic record alone", async () => {
     serve({ [PROFILE]: { profile: { ...profile, activeSeasonTitle: null } } });
     const { unmount } = renderWithProviders(<ProfileScreen />);
-    expect(await screen.findByText("School of 2025")).toBeTruthy();
+    expect(await screen.findByText("JPCS-25")).toBeTruthy();
     unmount();
     renderWithProviders(<EditProfileScreen />);
     expect(screen.getByLabelText("Name")).toBeTruthy();
@@ -175,6 +175,6 @@ it("a student who isn't an alumnus has no class on Profile", async () => {
   serve({ [PROFILE]: { profile: { ...profile, graduationYear: null } } });
   renderWithProviders(<ProfileScreen />);
   expect(await screen.findByText("Cairo University")).toBeTruthy();
-  expect(screen.queryByText(/School of/)).toBeNull();
+  expect(screen.queryByText(/JPCS-\d{2}/)).toBeNull();
   expect(screen.queryByText("Student")).toBeNull();
 });

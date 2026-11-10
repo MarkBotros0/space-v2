@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import type { StudentListItem } from "@space/shared";
+import { classLabel, type StudentListItem } from "@space/shared";
 
 import { Avatar, AvatarFallback, ListRow } from "../../design/ui";
 import { formatDate, keepTogether } from "../../lib/format";
@@ -52,13 +52,14 @@ export function ActiveStudentRow({ item, seasonless = false }: RowProps) {
   );
 }
 
+/** An alumnus: name over their class (JPCS-25) and season. No university or faculty (owner, 2026-11-10). */
 export function AlumnusRow({ item, seasonless = false }: RowProps) {
   const open = useOpenStudent(item);
-  const year = item.graduationYear === null ? null : `School of ${item.graduationYear}`;
+  const year = item.graduationYear === null ? null : classLabel(item.graduationYear);
   return (
     <ListRow
       title={item.name}
-      subtitle={joinMeta([year, seasonless ? null : seasonLine(item), item.university])}
+      subtitle={joinMeta([year, seasonless ? null : seasonLine(item)])}
       leading={<StudentAvatar item={item} />}
       chevron
       onPress={open}
