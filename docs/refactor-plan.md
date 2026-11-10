@@ -365,8 +365,8 @@ a backup first is optional. A rollback restores columns, not data.**
 - [x] 7.1 `max-lines` 400 and `max-depth` 3 → **error**; `max-lines-per-function` and `complexity` stay
       **warnings** (zero needs the skipped refactors, D8); `no-unused-vars` stays error;
       `no-restricted-syntax` bans a literal `deletedAt: null` outside `lib/db/live.ts` and `$transaction` under `routes/` — max-lines / max-depth are errors (0 hits; splitRecords keeps its named exception); max-lines-per-function / complexity stay warnings (48+13 backend, 177+40 mobile, 1 shared). Backend no-restricted-syntax: a literal `deletedAt: null` inside a `where` outside lib/db/live.ts and tests (writes and response bodies may still say it), and `$transaction` under src/routes; both shown firing on planted code, 0 hits in the tree
-- [ ] 7.2 Boundaries with `no-restricted-imports`: mobile `app/`, `src/screens`, `src/components`, `src/design`
-      ↛ `api-client` / axios (D1 lets thin handlers import `db`, so no route ↛ db rule)
+- [x] 7.2 Boundaries with `no-restricted-imports`: mobile `app/`, `src/screens`, `src/components`, `src/design`
+      ↛ `api-client` / axios (D1 lets thin handlers import `db`, so no route ↛ db rule) — mobile eslint.config.js: no-restricted-imports in app/, src/screens, src/components, src/design for axios, lib/api-client and lib/api-request (the hooks' plumbing too); 0 hits, shown firing on a planted screen
 - [ ] 7.3 Dead-code check: in-repo TS-API script `pnpm check:dead`
 - [ ] 7.4 Schema conformance test: base columns per Q4, every FK indexed (minus the documented audit-FK
       exceptions), link tables keyed by their pair
