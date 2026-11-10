@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { Users } from "lucide-react-native";
-import type { PeopleCandidate } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { SaveBar } from "../../design/layout/save-bar";
@@ -24,8 +23,9 @@ import {
   type Pool,
 } from "./model";
 import { PeopleFilterBar } from "./people-filters";
-import { initialSourceId, isStraggler, passersToTick, stragglerPhrase } from "./source";
+import { initialSourceId, passersToTick, stragglerPhrase } from "./source";
 import { SourcePicker } from "./source-picker";
+import { usePeopleSelection } from "./use-people-selection";
 import { people as peopleCount } from "../../lib/plural";
 
 const keyOf = (item: PeopleItem) => item.key;
@@ -57,16 +57,8 @@ export function PeopleList({
   const [filters, setFilters] = useState<PeopleFilters>({ query: "", lastSeason: ANY_SEASON, availableOnly: false });
   const [pool, setPool] = useState<Pool>("student");
   const listRef = useRef<FlatList<PeopleItem>>(null);
-  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
-  const [overridden, setOverridden] = useState<ReadonlySet<number>>(new Set());
-  const [asking, setAsking] = useState<{ person: PeopleCandidate; kind: "override" | "choice" } | null>(null);
-  /** Ticked on purpose although they didn't pass the chosen season or dropped out. */
-  const [chosen, setChosen] = useState<ReadonlySet<number>>(new Set());
-  /** The season to bring passers in from; undefined until the list first loads. */
-  const [sourceId, setSourceId] = useState<number | null | undefined>(undefined);
-  /** What choosing that season ticked, so choosing another unticks only those. */
-  const [autoTicked, setAutoTicked] = useState<number[]>([]);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [selection, pick] = usePeopleSelection();
+  const { selected, overridden, chosen, sourceId, autoTicked, asking, notice } = selection;
 
   const people = candidates.data?.people;
   const requiredProgram = candidates.data?.season.requiredProgram ?? null;
@@ -93,18 +85,8 @@ export function PeopleList({
   );
 
   const chooseSource = useCallback(
-    (id: number | null) => {
-      const ticks = id !== null && people ? passersToTick(people, id) : [];
-      setSourceId(id);
-      setSelected((cur) => {
-        const next = new Set(cur);
-        for (const t of autoTicked) next.delete(t);
-        for (const t of ticks) next.add(t);
-        return next;
-      });
-      setAutoTicked(ticks);
-    },
-    [people, autoTicked],
+    (id: number | null) => pick.chooseSource(id, id !== null && people ? passersToTick(people, id) : []),
+    [people, pick],
   );
   // The first load picks the season to start from (the link's, else the suggestion on an empty draft).
   useEffect(() => {
@@ -113,49 +95,19 @@ export function PeopleList({
   }, [sourceId, candidates.data, from, isDraft, chooseSource]);
 
   const toggle = useCallback(
-    (id: number) => {
-      setNotice(null);
-      const person = people?.find((p) => p.id === id);
-      if (person && !selected.has(id) && !chosen.has(id) && isStraggler(person, sourceId ?? null)) {
-        setAsking({ person, kind: "choice" });
-        return;
-      }
-      setSelected((cur) => {
-        const next = new Set(cur);
-        if (!next.delete(id)) next.add(id);
-        return next;
-      });
-    },
-    [people, selected, chosen, sourceId],
+    (id: number) =>
+      pick.toggle(
+        id,
+        people?.find((p) => p.id === id),
+      ),
+    [people, pick],
   );
-  const ask = useCallback((person: PeopleCandidate) => setAsking({ person, kind: "override" }), []);
-
-  const selectAll = () => {
-    setNotice(null);
-    setSelected((cur) => {
-      const next = new Set(cur);
-      for (const id of targets) {
-        if (allTicked) next.delete(id);
-        else next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const confirmAsk = () => {
-    if (!asking) return;
-    const { id } = asking.person;
-    if (asking.kind === "override") setOverridden((cur) => new Set(cur).add(id));
-    else setChosen((cur) => new Set(cur).add(id));
-    setSelected((cur) => new Set(cur).add(id));
-    setAsking(null);
-  };
 
   const submit = () => {
     if (selected.size === 0 || add.isPending) return;
     const userIds = [...selected];
     const overrideUserIds = userIds.filter((id) => overridden.has(id));
-    setNotice(null);
+    pick.notice(null);
     add.mutate(overrideUserIds.length > 0 ? { userIds, overrideUserIds } : { userIds }, {
       onSuccess: (added) => {
         toast.success(`Added ${peopleCount(added)}`);
@@ -165,7 +117,7 @@ export function PeopleList({
         const message = apiErrorMessage(err, "Couldn't add them.");
         toast.error(message);
         if (apiErrorCode(err) !== "people_unavailable") {
-          setNotice(message);
+          pick.notice(message);
           return;
         }
         void candidates.refetch().then((res) => {
@@ -175,8 +127,8 @@ export function PeopleList({
             return !!p && (p.selectable || (overridden.has(id) && p.overridable));
           };
           const dropped = userIds.filter((id) => !stillOk(id)).length;
-          setSelected(new Set(userIds.filter(stillOk)));
-          setNotice(
+          pick.pruneAfterRefusal(
+            userIds.filter(stillOk),
             dropped > 0
               ? `${message}. ${peopleCount(dropped)} ${dropped === 1 ? "was" : "were"} taken off your selection. Check the rest and add again.`
               : message,
@@ -232,7 +184,7 @@ export function PeopleList({
               targetCount={targets.length}
               pool={wide ? pool : null}
               onPool={switchPool}
-              onSelectAll={selectAll}
+              onSelectAll={() => pick.selectAll(targets)}
             />
           </>
         }
@@ -271,7 +223,7 @@ export function PeopleList({
               chosen={chosen.has(item.person.id)}
               source={source}
               onToggle={toggle}
-              onOverride={ask}
+              onOverride={pick.ask}
             />
           )
         }
@@ -279,7 +231,7 @@ export function PeopleList({
       <ConfirmDialog
         open={asking !== null}
         onOpenChange={(open) => {
-          if (!open) setAsking(null);
+          if (!open) pick.cancelAsk();
         }}
         title={
           !asking
@@ -294,7 +246,7 @@ export function PeopleList({
             : undefined
         }
         confirmLabel="Add anyway"
-        onConfirm={confirmAsk}
+        onConfirm={pick.confirmAsk}
       />
     </>,
     <SaveBar
