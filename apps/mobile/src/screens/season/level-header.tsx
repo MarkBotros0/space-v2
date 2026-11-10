@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
-import { Text } from "../ui/text";
+import { Text } from "../../design/ui/text";
 
 export function LevelHeader({ icon: Icon, title, action }: { icon: LucideIcon; title: string; action?: ReactNode }) {
   return (

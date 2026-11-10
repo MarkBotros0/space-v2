@@ -7,7 +7,7 @@ import { Button, ConfirmDialog, GroupedList, ListRow, Skeleton, Text, toast } fr
 import { useGroupDetails, useSeasonGroups } from "../../hooks/use-groups";
 import { useAddSeasonAdmin, useRemoveSeasonAdmin, useSeasonAdmins } from "../../hooks/use-season-admins";
 import { apiErrorMessage } from "../../lib/api-error";
-import { StaffPickerSheet, type StaffPick } from "../../screens/season-people/staff-picker-sheet";
+import { StaffPickerSheet, type StaffPick } from "../season-people/staff-picker-sheet";
 
 iconWithClassName(Trash2, UserPlus);
 

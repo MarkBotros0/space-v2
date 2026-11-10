@@ -13,8 +13,8 @@ jest.mock("expo-router", () => ({
   }),
 }));
 
-import { SeasonsList } from "../design/seasons/seasons-list";
-import { SeasonForm, NEW_SEASON_VALUES, type SeasonFormValues } from "../components/season/SeasonForm";
+import { SeasonsList } from "../screens/season/seasons-list";
+import { SeasonForm, NEW_SEASON_VALUES, type SeasonFormValues } from "../screens/season-form/season-form";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";

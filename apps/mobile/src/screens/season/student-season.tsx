@@ -8,9 +8,9 @@ import { EmptyState, GroupedList, Progress, statusChip, StatusChip, Text } from 
 import { useMySeason } from "../../hooks/use-self-service";
 import { formatDate } from "../../lib/format";
 import { queryKeys } from "../../lib/query-keys";
-import { GroupSection } from "../../screens/season/group-section";
-import { SubmissionsSection } from "../../screens/season/submissions-section";
-import { UpcomingSection } from "../../screens/season/upcoming-section";
+import { GroupSection } from "./group-section";
+import { SubmissionsSection } from "./submissions-section";
+import { UpcomingSection } from "./upcoming-section";
 import { useSessionStore } from "../../store/session";
 
 /**

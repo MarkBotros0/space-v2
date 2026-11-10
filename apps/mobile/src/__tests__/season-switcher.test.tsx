@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 
-import { SeasonSwitcher } from "../components/SeasonSwitcher";
+import { SeasonSwitcher } from "../screens/season/season-switcher";
 
 const seasons = [
   { id: 1, title: "GBV 2026" },

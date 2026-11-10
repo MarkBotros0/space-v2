@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { SeasonAdmins } from "../../../../src/components/season/SeasonAdmins";
+import { SeasonAdmins } from "../../../../src/screens/season-admins/season-admins";
 import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { EmptyState } from "../../../../src/design/ui";

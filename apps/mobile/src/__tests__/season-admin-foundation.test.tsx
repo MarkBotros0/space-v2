@@ -10,7 +10,7 @@ import { apiErrorCode } from "../lib/api-error";
 import { firstErrorByField } from "../lib/form-errors";
 import { parsePositiveInt } from "../lib/params";
 import { useStaffSeasonSelection } from "../hooks/use-season-selection";
-import { SeasonSwitcher } from "../components/SeasonSwitcher";
+import { SeasonSwitcher } from "../screens/season/season-switcher";
 import { renderWithProviders } from "./helpers/render";
 
 const get = apiClient.get as jest.Mock;

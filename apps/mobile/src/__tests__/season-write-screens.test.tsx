@@ -15,7 +15,7 @@ import { useSessionStore } from "../store/session";
 import { renderStacked, renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import NewSeasonScreen from "../../app/(app)/seasons/new";
-import { NEW_SEASON_VALUES, SeasonForm } from "../components/season/SeasonForm";
+import { NEW_SEASON_VALUES, SeasonForm } from "../screens/season-form/season-form";
 
 const post = apiClient.post as jest.Mock;
 

@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useRouter } from "expo-router";
 import { Copy, Pencil } from "lucide-react-native";
 
-import { DuplicateSeasonDialog } from "../../../../src/components/season/DuplicateSeasonDialog";
+import { DuplicateSeasonDialog } from "../../../../src/screens/season-form/duplicate-season-dialog";
 import { QueryGate, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
 import { iconWithClassName } from "../../../../src/design/lib/icon";
-import { phoneDayKey } from "../../../../src/design/seasons/season-timeline";
+import { phoneDayKey } from "../../../../src/screens/season/season-timeline";
 import { Button } from "../../../../src/design/ui";
 import { useStaffOrgToday } from "../../../../src/hooks/use-dashboard";
 import { useSeasonRoster } from "../../../../src/hooks/use-group-admin";

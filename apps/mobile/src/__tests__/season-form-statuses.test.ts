@@ -1,4 +1,4 @@
-import { allowedSeasonStatuses } from "../components/season/SeasonForm";
+import { allowedSeasonStatuses } from "../screens/season-form/season-form";
 
 describe("allowedSeasonStatuses", () => {
   it("only offers moves the server allows outside the end flow", () => {

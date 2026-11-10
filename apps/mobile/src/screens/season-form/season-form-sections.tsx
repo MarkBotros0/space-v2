@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 
-import { CommunityWideField } from "./CommunityWideField";
+import { CommunityWideField } from "./community-wide-field";
 import { FieldCell, FieldRow, FormSection } from "../../design/forms/form-section";
 import {
   DatePicker,

@@ -9,7 +9,7 @@ import { useDuplicateSeason } from "../../hooks/use-season-writes";
 import { apiErrorMessage } from "../../lib/api-error";
 import { useSchemaErrors } from "../../lib/form-errors";
 import { addYearsIso, autoSeasonCode } from "../../lib/season-defaults";
-import { dayToDate } from "./SeasonForm";
+import { dayToDate } from "./season-form";
 import { dateToDay } from "../../lib/day-key";
 
 /**

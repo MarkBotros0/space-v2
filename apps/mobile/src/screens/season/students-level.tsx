@@ -8,9 +8,9 @@
 import { UserPlus, Users } from "lucide-react-native";
 import { View } from "react-native";
 
-import { iconWithClassName } from "../lib/icon";
-import { Button } from "../ui/button";
-import { Text } from "../ui/text";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Button } from "../../design/ui/button";
+import { Text } from "../../design/ui/text";
 import { LevelHeader } from "./level-header";
 import { people } from "../../lib/plural";
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
 
-import { NEW_SEASON_VALUES, SeasonForm } from "../../../src/components/season/SeasonForm";
+import { NEW_SEASON_VALUES, SeasonForm } from "../../../src/screens/season-form/season-form";
 import { Screen } from "../../../src/design/layout/screen";
 import { EmptyState } from "../../../src/design/ui";
 import { useCreateSeason } from "../../../src/hooks/use-season-writes";

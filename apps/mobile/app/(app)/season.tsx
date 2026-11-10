@@ -5,10 +5,10 @@ import { useRouter } from "expo-router";
 
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";
 import { Screen } from "../../src/design/layout/screen";
-import { SeasonsList } from "../../src/design/seasons/seasons-list";
+import { SeasonsList } from "../../src/screens/season/seasons-list";
 import { useCurrentSeasonId, useSeasonDetail, useSeasons } from "../../src/hooks/use-seasons";
-import { EditSeason } from "../../src/components/season/EditSeason";
-import { StudentSeason } from "../../src/components/season/StudentSeason";
+import { EditSeason } from "../../src/screens/season/edit-season";
+import { StudentSeason } from "../../src/screens/season/student-season";
 import { formatDate } from "../../src/lib/format";
 import { joinMeta } from "../../src/lib/join-meta";
 import { EmptyState, GroupedList, ListRow, StatusChip, statusChip, Text } from "../../src/design/ui";

@@ -2,9 +2,9 @@ import { CalendarPlus, Copy, FolderPlus, Users } from "lucide-react-native";
 import { View } from "react-native";
 
 import { FieldCell, FieldRow, FormSection } from "../../design/forms/form-section";
-import { ActionGrid } from "../../design/seasons/action-grid";
-import { NextStepCard } from "../../design/seasons/next-step-card";
-import { StudentsLevel } from "../../design/seasons/students-level";
+import { ActionGrid } from "../season/action-grid";
+import { NextStepCard } from "../season/next-step-card";
+import { StudentsLevel } from "../season/students-level";
 import { FormField } from "../../design/ui/form-field";
 import { Input } from "../../design/ui/input";
 import { CatalogueSection } from "./section";

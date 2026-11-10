@@ -4,7 +4,7 @@ import type { JpcEventListItem, SeasonListItem } from "@space/shared";
 
 jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
 
-import { SeasonsList } from "../design/seasons/seasons-list";
+import { SeasonsList } from "../screens/season/seasons-list";
 import { NeedsActionList } from "../screens/staff-today/needs-action-list";
 import { EventListRow } from "../screens/events/event-row";
 import { GroupedList } from "../design/ui";

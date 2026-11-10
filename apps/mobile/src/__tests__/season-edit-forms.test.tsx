@@ -20,7 +20,7 @@ jest.mock("expo-router", () => ({
 
 import type { SeasonDetail } from "@space/shared";
 
-import { EditSeason, parseMinutes } from "../components/season/EditSeason";
+import { EditSeason, parseMinutes } from "../screens/season/edit-season";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";

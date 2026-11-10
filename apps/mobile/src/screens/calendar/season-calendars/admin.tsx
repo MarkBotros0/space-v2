@@ -3,7 +3,7 @@ import { Calendar as CalendarIcon } from "lucide-react-native";
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
-import { SeasonSwitcher } from "../../../components/SeasonSwitcher";
+import { SeasonSwitcher } from "../../season/season-switcher";
 import { RouteError, RouteSkeleton } from "../../../design/layout/route-states";
 import { Screen } from "../../../design/layout/screen";
 import { Button, EmptyState } from "../../../design/ui";

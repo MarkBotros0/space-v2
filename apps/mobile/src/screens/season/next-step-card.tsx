@@ -4,9 +4,9 @@
  */
 import { View } from "react-native";
 
-import { cn } from "../lib/cn";
-import { Button } from "../ui/button";
-import { Text } from "../ui/text";
+import { cn } from "../../design/lib/cn";
+import { Button } from "../../design/ui/button";
+import { Text } from "../../design/ui/text";
 
 export function NextStepCard({
   title,

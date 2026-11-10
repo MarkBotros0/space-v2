@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 
 import { queryStateView } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
-import { SeasonsList } from "../../../../src/design/seasons/seasons-list";
+import { SeasonsList } from "../../../../src/screens/season/seasons-list";
 import { Button, EmptyState, SegmentedControl } from "../../../../src/design/ui";
 import { useSeasons } from "../../../../src/hooks/use-seasons";
 import { useRole } from "../../../../src/store/session";

@@ -13,12 +13,12 @@ import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { initialsOf } from "../../lib/initials";
-import { iconWithClassName } from "../lib/icon";
-import { usePressDim } from "../motion";
-import { Button } from "../ui/button";
-import { MorePill, PersonPill } from "../ui/person-pill";
-import { PillButton } from "../ui/pill-button";
-import { Text } from "../ui/text";
+import { iconWithClassName } from "../../design/lib/icon";
+import { usePressDim } from "../../design/motion";
+import { Button } from "../../design/ui/button";
+import { MorePill, PersonPill } from "../../design/ui/person-pill";
+import { PillButton } from "../../design/ui/pill-button";
+import { Text } from "../../design/ui/text";
 import { LevelHeader } from "./level-header";
 import { StudentsLevel, type StudentsSuggestion } from "./students-level";
 

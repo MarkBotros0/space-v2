@@ -4,7 +4,7 @@ import { fireEvent, screen } from "@testing-library/react-native";
 
 import { MembersField } from "../screens/group-form/members-field";
 import { memberLine, memberSections, membersSummary } from "../screens/group-form/members-model";
-import { studentsSummary } from "../design/seasons/students-level";
+import { studentsSummary } from "../screens/season/students-level";
 import { renderWithProviders } from "./helpers/render";
 
 const roster = [

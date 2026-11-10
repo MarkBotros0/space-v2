@@ -8,10 +8,10 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Award, CalendarDays, ClipboardList, FileQuestion, Flag, type LucideIcon } from "lucide-react-native";
 
-import { EditSeason } from "../../components/season/EditSeason";
-import { NextStepCard } from "../../design/seasons/next-step-card";
-import { PeopleCard, type PeopleCardAdmins } from "../../design/seasons/people-card";
-import { SeasonDetailView, type SeasonAction } from "../../design/seasons/season-detail";
+import { EditSeason } from "./edit-season";
+import { NextStepCard } from "./next-step-card";
+import { PeopleCard, type PeopleCardAdmins } from "./people-card";
+import { SeasonDetailView, type SeasonAction } from "./season-detail";
 import type { seasonSuggestion } from "../season-people/source";
 import { seasonOverviewModel, type OverviewNextStepKey, type OverviewTileKey } from "./overview-model";
 import { SeasonNeeds } from "./season-needs";

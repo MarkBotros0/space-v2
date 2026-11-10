@@ -14,9 +14,9 @@ import { Fragment, type ReactNode } from "react";
 import { View } from "react-native";
 
 import { formatSeasonDay } from "../../lib/format";
-import { ListSectionHeader } from "../ui/grouped-list";
-import { StatusChip, statusChip } from "../ui/status-chip";
-import { Text } from "../ui/text";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
+import { StatusChip, statusChip } from "../../design/ui/status-chip";
+import { Text } from "../../design/ui/text";
 import { ActionGrid, type SeasonAction } from "./action-grid";
 import { seasonTimeline } from "./season-timeline";
 

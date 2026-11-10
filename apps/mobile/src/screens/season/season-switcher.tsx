@@ -1,8 +1,8 @@
 import { Pressable, ScrollView } from "react-native";
 import type { SeasonListItem } from "@space/shared";
 
-import { cn } from "../design/lib/cn";
-import { Text } from "../design/ui";
+import { cn } from "../../design/lib/cn";
+import { Text } from "../../design/ui";
 
 interface SeasonSwitcherProps {
   seasons: SeasonListItem[];

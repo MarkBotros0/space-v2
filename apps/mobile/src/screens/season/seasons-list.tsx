@@ -11,9 +11,9 @@ import { View } from "react-native";
 
 import { formatSeasonDay, keepTogether } from "../../lib/format";
 import { joinMeta } from "../../lib/join-meta";
-import { EmptyState } from "../ui/empty-state";
-import { GroupedList, ListRow } from "../ui/grouped-list";
-import { StatusChip, statusChip } from "../ui/status-chip";
+import { EmptyState } from "../../design/ui/empty-state";
+import { GroupedList, ListRow } from "../../design/ui/grouped-list";
+import { StatusChip, statusChip } from "../../design/ui/status-chip";
 
 export function SeasonsList({
   rows,

@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { Trash2 } from "lucide-react-native";
 import type { SeasonDetail } from "@space/shared";
 
-import { SeasonForm, type SeasonFormValues } from "../../../../src/components/season/SeasonForm";
+import { SeasonForm, type SeasonFormValues } from "../../../../src/screens/season-form/season-form";
 import { FormSection } from "../../../../src/design/forms/form-section";
 import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
