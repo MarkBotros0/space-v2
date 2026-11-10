@@ -12,6 +12,7 @@ import type { SessionUser } from "../../auth/tokens";
 import { canReadAllStudents, isSuper } from "../../rbac";
 import { CURRENT_MEMBERSHIP_ORDER, currentMembershipSelect } from "./current-group";
 import { attendancePctByEnrollment, canReadEnrollmentHistory } from "./history";
+import { liveUser } from "../../db/live";
 
 export type StudentDetailView = "public" | "private" | "internal";
 export type StudentDetail = StudentDetailPublic | StudentDetailPrivate | StudentDetailInternal;
@@ -33,7 +34,7 @@ export async function loadStudentDetail(
 ): Promise<StudentDetail | null> {
   const row = await db.user.findFirst({
     // R69: role and soft-delete are part of resolution, not decoration.
-    where: { id: studentUserId, role: "STUDENT", deletedAt: null },
+    where: { id: studentUserId, role: "STUDENT", ...liveUser },
     select: {
       id: true,
       name: true,

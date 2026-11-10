@@ -4,6 +4,7 @@ import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
 import { isAdminOfSeason, isMentor, isSuper } from "../../rbac";
 import { isLate } from "../assignments";
+import { liveAssignment } from "../../db/live";
 
 /**
  * Which of a student's enrolments a caller may read anything about (REG-83, and
@@ -162,7 +163,7 @@ export async function loadStudentSubmissions(
     where: {
       studentUserId,
       status: { not: "DRAFT" },
-      assignment: { seasonId: { in: seasonIds }, deletedAt: null },
+      assignment: { seasonId: { in: seasonIds }, ...liveAssignment },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: HISTORY_LIMIT,

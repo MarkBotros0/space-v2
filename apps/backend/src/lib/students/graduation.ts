@@ -1,6 +1,7 @@
 import type { Prisma } from "../../generated/prisma/client";
 import { markSessionsStale } from "../auth/session-validity";
 import { finishedSeasonStatus } from "../seasons/status";
+import { liveSeason, liveUser } from "../db/live";
 
 /** Anything recorded for this person in this season. Remove and graduation both keep the row then. */
 export async function hasWorkInSeason(
@@ -68,7 +69,7 @@ export async function graduatePerson(
   exception?: { byId: number; reason: string },
 ): Promise<GraduationOutcome> {
   const student = await tx.user.findFirst({
-    where: { id, role: "STUDENT", deletedAt: null },
+    where: { id, role: "STUDENT", ...liveUser },
     select: { graduationYear: true },
   });
   if (!student) return "not_found";
@@ -109,7 +110,7 @@ export async function graduatePassed(
   ids: number[],
   graduationYear: number,
 ): Promise<number[]> {
-  const who = { id: { in: ids }, role: "STUDENT" as const, deletedAt: null, graduationYear: null };
+  const who = { id: { in: ids }, role: "STUDENT" as const, ...liveUser, graduationYear: null };
   const graduating = (await tx.user.findMany({ where: who, select: { id: true } })).map((u) => u.id);
   if (graduating.length === 0) return [];
   await tx.user.updateMany({ where: { id: { in: graduating }, graduationYear: null }, data: { graduationYear } });
@@ -131,7 +132,7 @@ export async function passedGraduatingYears(tx: Prisma.TransactionClient, studen
       studentUserId,
       status: "COMPLETED",
       result: "PASSED",
-      season: { graduatesOnPass: true, status: finishedSeasonStatus, deletedAt: null },
+      season: { graduatesOnPass: true, status: finishedSeasonStatus, ...liveSeason },
     },
     select: { season: { select: { year: true } } },
   });

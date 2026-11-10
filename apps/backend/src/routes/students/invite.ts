@@ -1,11 +1,14 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiError, forbidden } from "../../lib/api-response";
-import { parseId } from "../../lib/parse-id";
+import { forbidden } from "../../lib/api-response";
+
 import { canEditStudent } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
 import { answerResend } from "../users/invites";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { liveUser } from "../../lib/db/live";
 
 /**
  * POST /students/:id/invite: send a student who hasn't set up their account a
@@ -16,14 +19,14 @@ import { answerResend } from "../users/invites";
  */
 export async function resendStudentInvite(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const id = idParam(res, req.params.id, "student");
+  if (id === null) return;
 
   const student = await db.user.findFirst({
-    where: { id, role: "STUDENT", deletedAt: null },
+    where: { id, role: "STUDENT", ...liveUser },
     select: { id: true },
   });
-  if (!student) return apiError(res, "not_found", "Student not found.", 404);
+  if (!student) return notFound(res, "Student");
   if (user.userId === id || !(await canEditStudent(user, id))) return forbidden(res);
 
   return answerResend(res, id, user.userId);

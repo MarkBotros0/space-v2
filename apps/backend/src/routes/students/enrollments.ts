@@ -17,6 +17,9 @@ import {
   updateEnrollmentRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { isSeasonFinished } from "../../lib/seasons/status";
+import { idParam } from "../../lib/http/params";
+import { parseOr400 } from "../../lib/http/validate";
+import { liveUser } from "../../lib/db/live";
 
 /**
  * Explicit enrollment — the endpoint v1 never had (spec 06 §7): its only
@@ -27,12 +30,12 @@ import { isSeasonFinished } from "../../lib/seasons/status";
  */
 export async function createEnrollment(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const id = idParam(res, req.params.id, "student");
+  if (id === null) return;
 
-  const parsed = createEnrollmentRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid enrollment body.", 400);
-  const { seasonId } = parsed.data;
+  const parsed = parseOr400(createEnrollmentRequestSchema, req.body, res, "Invalid enrollment body.");
+  if (parsed === null) return;
+  const { seasonId } = parsed;
 
   // Season-admin power over the TARGET season; SUPER passes inside the
   // predicate. Gate before any lookup — a refused caller learns nothing.
@@ -70,7 +73,7 @@ async function enrollOne(tx: Prisma.TransactionClient, id: number, seasonId: num
   if (isSeasonFinished(season.status)) return { code: "season_finished", message: "This season has finished." };
 
   const student = await tx.user.findFirst({
-    where: { id, role: "STUDENT", deletedAt: null },
+    where: { id, role: "STUDENT", ...liveUser },
     select: { id: true },
   });
   if (!student) return { code: "not_found", message: "Student not found." };
@@ -100,9 +103,9 @@ export async function updateEnrollment(req: Request, res: Response) {
     return apiError(res, "bad_request", "Invalid student or season id.", 400);
   }
 
-  const parsed = updateEnrollmentRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid enrollment body.", 400);
-  if (parsed.data.status === "COMPLETED") {
+  const parsed = parseOr400(updateEnrollmentRequestSchema, req.body, res, "Invalid enrollment body.");
+  if (parsed === null) return;
+  if (parsed.status === "COMPLETED") {
     return apiError(
       res,
       "use_end_season",
@@ -116,7 +119,7 @@ export async function updateEnrollment(req: Request, res: Response) {
   // existed (R65).
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
-  const { dropReason } = parsed.data;
+  const { dropReason } = parsed;
   const outcome = await db.$transaction(async (tx): Promise<SeatRefusal | { id: number; status: string }> => {
     const season = await readSeatSeason(tx, seasonId);
     if (!season) return { code: "not_found", message: "Enrollment not found." };
@@ -162,8 +165,8 @@ export async function restoreEnrollment(req: Request, res: Response) {
   if (id === null || seasonId === null) {
     return apiError(res, "bad_request", "Invalid student or season id.", 400);
   }
-  const parsed = restoreEnrollmentRequestSchema.safeParse(req.body ?? {});
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid restore body.", 400);
+  const parsed = parseOr400(restoreEnrollmentRequestSchema, req.body ?? {}, res, "Invalid restore body.");
+  if (parsed === null) return;
 
   const outcome = await db.$transaction(async (tx) => {
     const season = await readSeatSeason(tx, seasonId);
@@ -171,7 +174,7 @@ export async function restoreEnrollment(req: Request, res: Response) {
     if (isSeasonFinished(season.status)) {
       return { code: "season_finished", message: "This season has finished." } satisfies SeatRefusal;
     }
-    return restoreStudentSeat(tx, season, id, { id: user.userId, override: parsed.data.override ?? false });
+    return restoreStudentSeat(tx, season, id, { id: user.userId, override: parsed.override ?? false });
   });
   if ("code" in outcome) return apiError(res, outcome.code, outcome.message, refusalStatus(outcome));
 

@@ -15,6 +15,10 @@ import {
 import { isSuper } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { studentListQuerySchema } from "../../../../../packages/shared/src/index";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
+import { liveUser } from "../../lib/db/live";
 
 /**
  * One endpoint, three list surfaces: ?status=active|alumni|dropped. This is
@@ -24,12 +28,12 @@ import { studentListQuerySchema } from "../../../../../packages/shared/src/index
  */
 export async function getStudentList(req: Request, res: Response) {
   const user = requireUser(req);
-  const parsed = studentListQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
+  const parsed = parseOr400(studentListQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
   // A mentor's filter (owner, 2026-11-07): no other role has a caller for it.
-  if (parsed.data.absentLately && user.role !== "MENTOR") return forbidden(res);
+  if (parsed.absentLately && user.role !== "MENTOR") return forbidden(res);
 
-  const result = await listStudents(user, parsed.data);
+  const result = await listStudents(user, parsed);
   if (result === null) return forbidden(res);
   return apiOk(res, result);
 }
@@ -50,14 +54,14 @@ function detailViewFor(user: SessionUser, studentUserId: number): StudentDetailV
 
 export async function getStudent(req: Request, res: Response) {
   const user = requireUser(req);
-  const id = parseId(req.params.id);
-  if (id === null) return apiError(res, "bad_request", "Invalid student id.", 400);
+  const id = idParam(res, req.params.id, "student");
+  if (id === null) return;
 
   // The gate lives in the handler, not in a call-site convention (R70/C8).
   if (!(await canViewStudent(user, id))) return forbidden(res);
 
   const detail = await loadStudentDetail(id, detailViewFor(user, id), user);
-  if (!detail) return apiError(res, "not_found", "Student not found.", 404);
+  if (!detail) return notFound(res, "Student");
   return apiOk(res, detail);
 }
 
@@ -80,11 +84,11 @@ async function resolveHistoryTarget(req: Request, res: Response): Promise<{ user
     return null;
   }
   const exists = await db.user.findFirst({
-    where: { id, role: "STUDENT", deletedAt: null },
+    where: { id, role: "STUDENT", ...liveUser },
     select: { id: true },
   });
   if (!exists) {
-    apiError(res, "not_found", "Student not found.", 404);
+    notFound(res, "Student");
     return null;
   }
   return { user, id };

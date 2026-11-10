@@ -10,6 +10,7 @@ import { currentSeasonEnrollmentSelect } from "./current-season";
 import { currentMembershipSelect, studentIdsWithCurrentGroup } from "./current-group";
 import { withLastSeason } from "./last-season";
 import { absentLatelyStudentIds } from "./absent-lately";
+import { liveUser } from "../../db/live";
 
 export interface StudentListResult {
   students: StudentListItem[];
@@ -231,7 +232,7 @@ export async function listStudents(user: SessionUser, query: StudentListQuery): 
   // is a data leak, not a lost filter).
   const where: Prisma.UserWhereInput = {
     AND: [
-      { role: "STUDENT", deletedAt: null },
+      { role: "STUDENT", ...liveUser },
       graduationFilter(query, roster),
       ...(scope.kind === "ids" ? [{ id: { in: scope.ids } }] : []),
       // Season filter through enrollments, any status (C9). For staff, only on
@@ -295,7 +296,7 @@ async function listDroppedEnrollments(user: SessionUser, query: StudentListQuery
       // D12: v1 filtered neither deletedAt nor role here, so a soft-deleted
       // student's name, email and drop reason stayed listed forever, with a
       // click-through that 404s.
-      { studentUser: { role: "STUDENT", deletedAt: null, ...searchFilter(query.q) } },
+      { studentUser: { role: "STUDENT", ...liveUser, ...searchFilter(query.q) } },
       ...(user.role === "ADMIN" ? [{ seasonId: { in: user.seasonAdminIds } }] : []),
       ...(query.seasonId ? [{ seasonId: query.seasonId }] : []),
     ],

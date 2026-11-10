@@ -4,6 +4,7 @@ import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
 import { staffRosterWhere } from "../../permissions";
 import { finishedSeasonStatus } from "../../seasons/status";
+import { liveSeason } from "../../db/live";
 
 /**
  * A list row's season line (owner, 2026-11-07): its active season, else the
@@ -17,7 +18,7 @@ export async function withLastSeason(items: StudentListItem[], user: SessionUser
     where: {
       studentUserId: { in: ids },
       status: "COMPLETED",
-      season: { status: finishedSeasonStatus, deletedAt: null },
+      season: { status: finishedSeasonStatus, ...liveSeason },
       ...(staffRosterWhere(user) ?? {}),
     },
     orderBy: [{ season: { endDate: "desc" } }, { id: "desc" }],
