@@ -1,6 +1,7 @@
 import { db } from "../../../db/client";
 import { type ForumAudience } from "../../permissions";
 import { groupIdInSeason } from "../assignments";
+import { liveAssignment } from "../../db/live";
 
 /**
  * The one place a forum author's name is produced.
@@ -33,7 +34,7 @@ interface ForumAssignmentRow {
  */
 export async function loadForumAssignment(assignmentId: number): Promise<ForumAssignmentRow | null> {
   return db.assignment.findFirst({
-    where: { id: assignmentId, deletedAt: null, type: "FORUM" },
+    where: { id: assignmentId, ...liveAssignment, type: "FORUM" },
     select: {
       id: true,
       seasonId: true,

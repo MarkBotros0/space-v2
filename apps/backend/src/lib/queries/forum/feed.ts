@@ -2,10 +2,10 @@ import { countWords, htmlToPlainText } from "../../../../../../packages/shared/s
 import { db } from "../../../db/client";
 import type { SubmissionStatus } from "../../../generated/prisma/client";
 import type { SessionUser } from "../../auth/tokens";
-import { canDeleteForumComment, type ForumAudience } from "../../permissions";
+import { canDeleteLoadedComment, commentDeleteCtx, type ForumAudience } from "../../permissions";
 import { seasonParticipant } from "../season-participants";
 import { displayNameFor, loadForumAssignment } from "./shared";
-import { type ForumCommentData } from "./comments";
+import { FORUM_COMMENT_SELECT, toForumComment, type ForumCommentData } from "./comments";
 
 interface ForumPostData {
   submissionPublicId: string;
@@ -148,13 +148,7 @@ export async function loadForumView(
         orderBy: { createdAt: "asc" },
         // Three inline, the rest from the comments endpoint (R27).
         take: 3,
-        select: {
-          id: true,
-          authorUserId: true,
-          body: true,
-          createdAt: true,
-          authorUser: { select: { name: true } },
-        },
+        select: FORUM_COMMENT_SELECT,
       },
     },
   });
@@ -165,26 +159,21 @@ export async function loadForumView(
     (audience.kind === "student" ? !assignment.forumPostToRead || (own?.posted ?? false) : user.role !== "MENTOR");
 
   const posts: ForumPostData[] = await Promise.all(
-    page.map(async (p) => ({
-      submissionPublicId: p.publicId,
-      studentUserId: p.studentUserId,
-      authorDisplayName: displayNameFor(p.studentUser.name),
-      text: htmlToPlainText(p.text ?? ""),
-      submittedAt: p.submittedAt,
-      commentCount: p._count.forumComments,
-      comments: await Promise.all(
-        p.forumComments.map(async (c) => ({
-          id: c.id,
-          authorUserId: c.authorUserId,
-          authorDisplayName: displayNameFor(c.authorUser.name),
-          body: c.body,
-          createdAt: c.createdAt,
-          // The gate itself, not a client-side lookalike (R52).
-          canDelete: await canDeleteForumComment(user, c.id),
-        })),
-      ),
-      canComment,
-    })),
+    page.map(async (p) => {
+      // One context per post: every comment under it shares the season and the post's author (BE-071).
+      const ctx = await commentDeleteCtx(user, assignment.seasonId, p.studentUserId);
+      return {
+        submissionPublicId: p.publicId,
+        studentUserId: p.studentUserId,
+        authorDisplayName: displayNameFor(p.studentUser.name),
+        text: htmlToPlainText(p.text ?? ""),
+        submittedAt: p.submittedAt,
+        commentCount: p._count.forumComments,
+        // The gate's own rule, not a client-side lookalike (R52).
+        comments: p.forumComments.map((c) => toForumComment(c, canDeleteLoadedComment(user, c, ctx))),
+        canComment,
+      };
+    }),
   );
 
   return {

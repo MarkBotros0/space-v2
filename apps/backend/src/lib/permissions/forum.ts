@@ -5,6 +5,7 @@ import { groupIdInSeason } from "../queries/enrollment";
 import { isAdminOfSeason, isLeaderOfGroup, isMentor, isSuper } from "../rbac";
 import { hasActiveEnrollment, staffScopeForSeason } from "./season";
 import { leadsStudentInSeason } from "./submission";
+import { liveAssignment } from "../db/live";
 
 /**
  * Who may comment on a forum post.
@@ -138,7 +139,7 @@ export type ForumAudience = { kind: "student"; groupId: number | null } | { kind
 
 export async function forumAudienceFor(user: SessionUser, assignmentId: number): Promise<ForumAudience | null> {
   const assignment = await db.assignment.findFirst({
-    where: { id: assignmentId, deletedAt: null, type: "FORUM" },
+    where: { id: assignmentId, ...liveAssignment, type: "FORUM" },
     select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },
   });
   if (!assignment) return null;

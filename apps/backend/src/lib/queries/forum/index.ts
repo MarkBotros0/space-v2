@@ -5,4 +5,4 @@
  */
 export { displayNameFor, loadForumAssignment, postInAudience } from "./shared";
 export { loadForumView } from "./feed";
-export { listForumComments } from "./comments";
+export { FORUM_COMMENT_SELECT, listForumComments, toForumComment } from "./comments";

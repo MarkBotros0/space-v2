@@ -261,6 +261,46 @@ describe("forum comments", () => {
     expect(await db.forumComment.count({ where: { id: commentId } })).toBe(1);
   });
 
+  it("shows canDelete exactly when DELETE would succeed, for every role (BE-071 parity)", async () => {
+    const peerPost = await postFor(studentA2Token);
+    await postFor(studentAToken);
+    const roles: [string, string][] = [
+      ["comment author", studentAToken],
+      ["post author", studentA2Token],
+      ["own group's leader", leaderAToken],
+      ["other group's leader", leaderBToken],
+      ["season admin", adminToken],
+      ["mentor", mentorToken],
+    ];
+    for (const [label, token] of roles) {
+      const created = await request(app)
+        .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+        .set("authorization", `Bearer ${studentAToken}`)
+        .send({ body: COMMENT });
+      const commentId = created.body.data.comment.id as number;
+
+      const feed = await request(app)
+        .get(`/api/v1/assignments/${assignmentId}/forum`)
+        .set("authorization", `Bearer ${token}`);
+      const inFeed = (feed.body.data?.posts ?? [])
+        .flatMap((p: { comments: { id: number; canDelete: boolean }[] }) => p.comments)
+        .find((c: { id: number }) => c.id === commentId);
+      const list = await request(app)
+        .get(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+        .set("authorization", `Bearer ${token}`);
+      const inList = (list.body.data?.comments ?? []).find((c: { id: number }) => c.id === commentId);
+      // A reader who can't see the comment is shown no control at all.
+      const shown = inList?.canDelete ?? false;
+      if (inFeed) expect([label, inFeed.canDelete]).toEqual([label, shown]);
+
+      const res = await request(app)
+        .delete(`/api/v1/forum/comments/${commentId}`)
+        .set("authorization", `Bearer ${token}`);
+      expect([label, res.status]).toEqual([label, shown ? 200 : 403]);
+      await db.forumComment.deleteMany({ where: { id: commentId } });
+    }
+  });
+
   it("does not serve another group's comments, nor a draft's, nor before posting", async () => {
     const peerPost = await postFor(studentA2Token);
     await postFor(studentBToken);
