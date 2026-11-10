@@ -26,7 +26,7 @@ const KIND_ICONS: Record<AssignmentPartKind, LucideIcon> = {
 
 /** "150–300 words" kept in one run (word joiners round the dash), "At least 150 words", "Any length". */
 function wordRangeLine(min: number | null, max: number | null): string {
-  if (min !== null && max !== null) return `${min}⁠–⁠${max} words`;
+  if (min !== null && max !== null) return `${min}\u2060–\u2060${max} words`;
   if (min !== null) return `At least ${plural(min, "word")}`;
   if (max !== null) return `At most ${plural(max, "word")}`;
   return "Any length";

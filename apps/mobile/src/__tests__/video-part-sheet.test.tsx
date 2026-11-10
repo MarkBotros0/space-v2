@@ -4,12 +4,20 @@ import type * as ReactModule from "react";
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
-// A player that becomes ready at once, reporting a 10-minute video.
+// Like react-native-youtube-iframe 2.4.1: onReady fires once, on mount; a new
+// videoId on a ready player loads that video without firing onReady again.
+// A 10-minute video, or 15 minutes for OTHER_ID.
 jest.mock("react-native-youtube-iframe", () => {
-  const { forwardRef, useEffect, useImperativeHandle } = jest.requireActual<typeof ReactModule>("react");
-  const Player = forwardRef((props: { onReady?: () => void }, ref) => {
-    useImperativeHandle(ref, () => ({ getDuration: () => Promise.resolve(600.4), seekTo: () => undefined }));
-    useEffect(() => props.onReady?.(), [props]);
+  const { forwardRef, useEffect, useImperativeHandle, useRef } = jest.requireActual<typeof ReactModule>("react");
+  const Player = forwardRef((props: { videoId: string; onReady?: () => void }, ref) => {
+    const videoId = useRef(props.videoId);
+    videoId.current = props.videoId;
+    useImperativeHandle(ref, () => ({
+      getDuration: () => Promise.resolve(videoId.current === "9bZkp7q19f0" ? 900 : 600.4),
+      seekTo: () => undefined,
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => props.onReady?.(), []);
     return null;
   });
   Player.displayName = "MockReadyPlayer";
@@ -25,6 +33,7 @@ import { VideoPartSheet } from "../screens/assignment-form/part-sheets/video-par
 
 const get = apiClient.get as jest.Mock;
 const LINK = "https://youtu.be/dQw4w9WgXcQ";
+const OTHER_LINK = "https://youtu.be/9bZkp7q19f0";
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -67,6 +76,16 @@ describe("VideoPartSheet", () => {
       durationSeconds: 600,
     });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("switching the link from one video to another reads the new video's length, and saves it", async () => {
+    const { onSave } = open();
+    fireEvent.changeText(screen.getByLabelText("YouTube link"), LINK);
+    await screen.findByText("Length 10:00");
+    fireEvent.changeText(screen.getByLabelText("YouTube link"), OTHER_LINK);
+    expect(await screen.findByText("Length 15:00")).toBeTruthy();
+    fireEvent.press(bar().getByText("Add video"));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ youtubeUrl: OTHER_LINK, durationSeconds: 900 }));
   });
 
   it("refuses to save without a link, saying so on the field", () => {

@@ -14,7 +14,13 @@ import { ConfirmDialog } from "../../design/ui/confirm-dialog";
 import { SegmentedControl } from "../../design/ui/segmented-control";
 import { toAssignmentBody, type AssignmentFormValues } from "../../lib/assignment-form-values";
 import { plural } from "../../lib/plural";
-import { formIssues, reminderPreview, type FormIssues, type SavedReminder } from "./assignment-form-model";
+import {
+  formIssues,
+  reminderPreview,
+  withoutPartIssue,
+  type FormIssues,
+  type SavedReminder,
+} from "./assignment-form-model";
 import { DetailsTab } from "./details-tab";
 import { PartsTab } from "./parts-tab";
 import { usePartsDraft } from "./use-parts-draft";
@@ -82,7 +88,9 @@ export function AssignmentForm({
   };
 
   const hasIssues = issues.tabs.details + issues.tabs.parts > 0;
-  const saveHint = serverError ?? (hasIssues ? "Fix what's marked on this tab." : undefined);
+  // An issue with no field of its own (the whole form, the reminder switch) is the bar's hint itself.
+  const unplaced = issues.details.form ?? issues.details.reminder;
+  const saveHint = serverError ?? unplaced ?? (hasIssues ? "Fix what's marked on this tab." : undefined);
 
   return (
     <Screen
@@ -111,7 +119,13 @@ export function AssignmentForm({
             reminderLine={reminderPreview(v, savedReminder, new Date())}
           />
         ) : (
-          <PartsTab draft={draft} assignmentId={assignmentId} listError={issues.partsList} partErrors={issues.byPart} />
+          <PartsTab
+            draft={draft}
+            assignmentId={assignmentId}
+            listError={issues.partsList}
+            partErrors={issues.byPart}
+            onPartEdited={(key) => setIssues((prev) => withoutPartIssue(prev, key))}
+          />
         )}
       </View>
       <ConfirmDialog

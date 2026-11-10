@@ -24,13 +24,13 @@ export interface SavedReminder extends ReminderInputs {
 
 const FOR_WHOM = "students who haven't finished";
 
+/** The saved settings, unchanged. The due fields count only when the reminder hangs off the due date. */
 const sameSettings = (a: ReminderInputs, b: ReminderInputs) =>
-  a.dueDay === b.dueDay &&
-  a.dueTime === b.dueTime &&
   a.reminder.enabled === b.reminder.enabled &&
   a.reminder.days === b.reminder.days &&
   a.reminder.anchor === b.reminder.anchor &&
-  a.reminder.time === b.reminder.time;
+  a.reminder.time === b.reminder.time &&
+  (a.reminder.anchor !== "DUE_DATE" || (a.dueDay === b.dueDay && a.dueTime === b.dueTime));
 
 /**
  * When the reminder goes out, in the words the server uses. While the saved
@@ -105,4 +105,11 @@ export function formIssues(error: ZodError, parts: readonly PartDraft[]): FormIs
   out.tabs.details = Object.keys(out.details).length;
   out.tabs.parts = Object.keys(out.byPart).length + (out.partsList === null ? 0 : 1);
   return out;
+}
+
+/** An edited part's issue is stale: drop it until the next Save checks again. */
+export function withoutPartIssue(issues: FormIssues, key: string): FormIssues {
+  if (!(key in issues.byPart)) return issues;
+  const { [key]: _gone, ...byPart } = issues.byPart;
+  return { ...issues, byPart, tabs: { ...issues.tabs, parts: issues.tabs.parts - 1 } };
 }

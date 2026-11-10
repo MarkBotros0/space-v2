@@ -117,7 +117,8 @@ export function VideoPartSheet({
         </FormField>
         {videoId !== null ? (
           <View className="flex-col gap-1">
-            <VideoPreview videoId={videoId} onDuration={setDuration} />
+            {/* A new video on a ready player never fires onReady again (react-native-youtube-iframe 2.4.1): remount it per video. */}
+            <VideoPreview key={videoId} videoId={videoId} onDuration={setDuration} />
             <Text variant="caption" className="text-muted-foreground">
               {duration === null ? "Loading the video's length…" : `Length ${formatTimestamp(duration)}`}
             </Text>

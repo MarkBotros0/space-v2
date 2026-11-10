@@ -36,12 +36,15 @@ export function PartsTab({
   assignmentId,
   listError,
   partErrors,
+  onPartEdited,
 }: {
   draft: PartsDraftControls;
   /** The saved assignment's id; null while it is new (a video's questions wait for it). */
   assignmentId: number | null;
   listError: string | null;
   partErrors: Record<string, string>;
+  /** A part was edited: its issue from the last Save no longer applies. */
+  onPartEdited?: (key: string) => void;
 }) {
   const [editing, setEditing] = useState<Editing>(null);
 
@@ -50,7 +53,10 @@ export function PartsTab({
   const current = editing?.key == null ? null : (draft.parts.find((p) => p.key === editing.key) ?? null);
   const save = (part: AssignmentPartInput) => {
     if (editing?.key == null) draft.add(part);
-    else draft.edit(editing.key, part);
+    else {
+      draft.edit(editing.key, part);
+      onPartEdited?.(editing.key);
+    }
   };
   const removing = draft.parts.find((p) => p.key === draft.removing) ?? null;
   const sheetOpen = (kind: AssignmentPartKind) => editing?.kind === kind;
