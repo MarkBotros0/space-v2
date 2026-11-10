@@ -1,11 +1,11 @@
-name: Unit tests (on demand)
+name: Unit tests
 
-# Manual only: Actions tab > Unit tests (on demand) > Run workflow. Deliberately
-# NOT wired to pull_request or push, so it never runs unless someone asks.
-#
-# Runs lint, typecheck and the unit tests of both apps. Needs no database.
-# Integration tests are the separate "Integration tests (on demand)" workflow.
+# Runs on every pull request (owner, refactor Q24), and by hand from the Actions tab.
+# `pnpm check`: lint (Prettier, ESLint with the size and boundary rules), typecheck, the
+# unit tests of every package, the dead-export check and the 400-line check. Needs no
+# database. Integration tests stay the manual "Integration tests (on demand)" workflow.
 on:
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -26,6 +26,4 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
         working-directory: apps/backend
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test:unit
+      - run: pnpm check

@@ -371,7 +371,7 @@ a backup first is optional. A rollback restores columns, not data.**
 - [x] 7.4 Schema conformance test: base columns per Q4, every FK indexed (minus the documented audit-FK
       exceptions), link tables keyed by their pair — `src/__tests__/schema-conformance.test.ts` (unit, reads schema.prisma): createdAt/updatedAt unless listed append-only (7) or link/event (7); every FK indexed by its leading column except 18 audit FKs to User and 5 small unfiltered ones (DB-008), with a stale-list check both ways; composite PKs made of FK columns; link-shaped models keyed by their pair. 7 tests
 - [x] 7.5 One command `pnpm check` (lint, typecheck, unit tests, dead-code, size) — `pnpm check` = lint → typecheck → test:unit → check:dead → check:size; `scripts/check-size.mjs` holds every tracked .ts/.tsx/.js/.mjs/.cjs (scripts and tools too; generated, migrations, dist, .d.ts out) to 400 lines. Green: unit 340/579/2363, 0 dead, 0 over (log ~/logs/space-v2-refactor-check.log)
-- [ ] 7.6 CI: `pnpm check` + unit tests on `pull_request` in the existing workflows
+- [x] 7.6 CI: `pnpm check` + unit tests on `pull_request` in the existing workflows — unit-tests.yml runs on `pull_request` (and by hand) and calls `pnpm check`; integration-tests.yml stays manual (Q24)
 - [ ] 7.7 `.github/pull_request_template.md` with the definition-of-done checklist
 - [ ] 7.8 CLAUDE.md `## Code & Data Standards` (real paths, the D8 exceptions)
 - [ ] 7.9 Prove each guardrail fails on a planted violation (401-line file, unused export, route with
