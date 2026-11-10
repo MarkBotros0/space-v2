@@ -4,18 +4,17 @@ import { db } from "../../db/client";
 import { apiOk, apiError } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 
-import { invalidateSessions } from "../../lib/auth/session-validity";
-import { revokeAllRefreshTokensForUser } from "../../lib/auth/tokens";
 import { findExistingByEmail } from "../../lib/imports/students/validation";
-import { deliverInvite, issueInvite } from "../../lib/invites";
+import { deliverInvite } from "../../lib/invites";
 
 import { isUniqueViolation } from "../../lib/prisma-errors";
 
-import { isLastActiveSuper, lockActiveSuperIds } from "../../lib/super-guard";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { createUserRequestSchema, updateUserRequestSchema } from "../../../../../packages/shared/src/index";
 import { loadUserDetail } from "./views";
-import { isSeasonRole, updateUserInTx } from "../../lib/users/update-user";
+import { isSeasonRole, saveUser } from "../../lib/users/update-user";
+import { deactivateAccount } from "../../lib/users/deactivate";
+import { createInvitedUser } from "../../lib/users/create";
 import { EMAIL_IN_USE } from "../../lib/error-messages";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
@@ -53,7 +52,7 @@ export async function updateUser(req: Request, res: Response) {
   }
   const body = parsed.data;
 
-  const outcome = await db.$transaction((tx) => updateUserInTx(tx, user.userId, id, body));
+  const outcome = await saveUser(user.userId, id, body);
 
   if (outcome.roleChanged) auditLog("user.role_change", user.userId, id);
   if (outcome.yearCorrected) auditLog("user.graduation_year_change", user.userId, id);
@@ -77,29 +76,7 @@ export async function deactivateUser(req: Request, res: Response) {
   }
 
   const deletedAt = new Date();
-  // The existence check, the last-SUPER guard and the write share one
-  // transaction, and the guard locks the SUPER rows (Decision 16) — an earlier
-  // draft counted outside any transaction, so a concurrent demotion could
-  // slip between the count and the write.
-  const outcome = await db.$transaction(async (tx) => {
-    const target = await tx.user.findUnique({ where: { id }, select: { role: true } });
-    if (!target) return "not_found" as const;
-    if (target.role === "SUPER") {
-      const activeSuperIds = await lockActiveSuperIds(tx);
-      if (isLastActiveSuper(activeSuperIds, id)) return "last_super" as const;
-    }
-    await tx.user.update({ where: { id }, data: { deletedAt } });
-    // D6: deactivation revokes — v1 left the refresh path live for 30 days.
-    // Live access tokens end too (Plan 18 M13).
-    await revokeAllRefreshTokensForUser(tx, id);
-    await invalidateSessions(tx, id);
-    return "ok" as const;
-  });
-
-  if (outcome === "not_found") return notFound(res, "User");
-  if (outcome === "last_super") {
-    return apiError(res, "last_super", "This is the only active SUPER account.", 409);
-  }
+  await deactivateAccount(id, deletedAt);
   auditLog("user.deactivate", user.userId, id);
   return apiOk(res, { deletedAt: deletedAt.toISOString() });
 }
@@ -150,24 +127,7 @@ export async function createUser(req: Request, res: Response) {
 
   let created: { id: number; raw: string; expiresAt: Date };
   try {
-    created = await db.$transaction(async (tx) => {
-      // Spec 11 §7: creation and invitation are ONE operation. passwordHash
-      // stays null — the column is nullable and null IS the activation model
-      // (R14). No temp password exists to log, display, or share (D2).
-      const row = await tx.user.create({
-        data: {
-          name: body.name,
-          email: body.email,
-          role: body.role,
-          graduationYear: body.graduationYear,
-          passwordHash: null,
-          ...(body.role === "STUDENT" ? { studentProfile: { create: {} } } : {}),
-        },
-        select: { id: true },
-      });
-      const invite = await issueInvite(tx, row.id, user.userId);
-      return { id: row.id, raw: invite.raw, expiresAt: invite.expiresAt };
-    });
+    created = await createInvitedUser(user.userId, body);
   } catch (err) {
     // Unique-violation from the race the pre-check can lose.
     if (isUniqueViolation(err)) {

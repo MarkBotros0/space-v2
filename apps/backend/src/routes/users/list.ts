@@ -12,6 +12,7 @@ import { LIST_SELECT, toListItem } from "./views";
 import { requireRole } from "../../middleware/require-auth";
 import { canManageUsers } from "../../lib/rbac";
 import { parseOr400 } from "../../lib/http/validate";
+import { liveUser } from "../../lib/db/live";
 
 export async function listUsers(req: Request, res: Response) {
   const user = requireRole(req, res, canManageUsers);
@@ -44,16 +45,16 @@ export async function listUsers(req: Request, res: Response) {
   const statusWhere: Record<UserStatus, object> = {
     inactive: { deletedAt: { not: null } },
     active: {
-      deletedAt: null,
+      ...liveUser,
       OR: [{ passwordHash: { not: null } }, { lastLoginAt: { not: null } }],
     },
     invited: {
-      deletedAt: null,
+      ...liveUser,
       ...unactivated,
       invitesReceived: { some: liveInviteWhere(now) },
     },
     pending: {
-      deletedAt: null,
+      ...liveUser,
       ...unactivated,
       invitesReceived: { none: liveInviteWhere(now) },
     },

@@ -1,6 +1,7 @@
 import type { UserDetail, UserRole, UserStatus } from "@space/shared";
 
 import { db } from "../../db/client";
+import { liveSeason } from "../../lib/db/live";
 import { deriveRoles } from "../../lib/auth/scopes";
 
 interface StatusRow {
@@ -83,7 +84,7 @@ export async function loadUserDetail(id: number): Promise<UserDetail | null> {
   // The seasons a demotion away from ADMIN would take away (updateUser
   // deletes the SeasonAdmin rows), so the edit screen can name them first.
   const adminRows = await db.seasonAdmin.findMany({
-    where: { userId: id, season: { deletedAt: null } },
+    where: { userId: id, season: liveSeason },
     select: { season: { select: { id: true, code: true, title: true } } },
     orderBy: { season: { startDate: "desc" } },
   });

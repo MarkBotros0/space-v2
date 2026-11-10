@@ -1,3 +1,4 @@
+import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 // Relative, not "@space/shared" — same emit trap routes/auth.ts documents.
 import { roleRequiresAlumnus, type UpdateUserBody } from "../../../../../packages/shared/src/index";
@@ -142,4 +143,13 @@ export async function updateUserInTx(
   if (yearCorrected) await markSessionsStale(tx, [id]);
 
   return { roleChanged, yearCorrected };
+}
+
+/** PATCH /users/:id's write in its own transaction. */
+export function saveUser(
+  actorId: number,
+  id: number,
+  body: UpdateUserBody,
+): Promise<{ roleChanged: boolean; yearCorrected: boolean }> {
+  return db.$transaction((tx) => updateUserInTx(tx, actorId, id, body));
 }
