@@ -138,7 +138,6 @@ erDiagram
     DateTime startDate
     DateTime endDate
     SeasonStatus status
-    String coverImagePath "nullable"
     Int absenceBudgetMinutes
     Int absenceWeightMinutes
     Int createdById FK "nullable"
@@ -218,7 +217,6 @@ erDiagram
     String location "nullable"
     String youtubeUrl "nullable"
     String description "nullable"
-    String materialsPath "nullable"
     String recurrenceGroupId "nullable"
     String checkInToken UK "nullable"
     DateTime checkInOpenAt "nullable"
@@ -519,7 +517,6 @@ erDiagram
     DateTime date
     DateTime endDate "nullable"
     String description "nullable"
-    String imagePath "nullable"
     String url "nullable"
     JpcVisibility visibility
     Int seasonId FK "nullable"

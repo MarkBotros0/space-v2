@@ -303,7 +303,6 @@ model Season {
   startDate      DateTime @db.Timestamptz(3)
   endDate        DateTime @db.Timestamptz(3)
   status         SeasonStatus @default(DRAFT)
-  coverImagePath String?
 
   absenceBudgetMinutes Int @default(180)
   absenceWeightMinutes Int @default(90)
@@ -446,7 +445,6 @@ model Session {
   location          String?
   youtubeUrl        String?
   description       String?
-  materialsPath     String?
   // Sibling sessions created in the same recurrence batch share this id.
   recurrenceGroupId String?
   checkInToken      String?   @unique
@@ -889,7 +887,6 @@ model JpcEvent {
   date        DateTime @db.Timestamptz(3)
   endDate     DateTime? @db.Timestamptz(3)
   description String?
-  imagePath   String?
   url         String?
   visibility  JpcVisibility @default(ALL)
   seasonId    Int?

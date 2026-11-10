@@ -46,11 +46,9 @@ const LIST_SELECT = {
 
 const DETAIL_SELECT = { ...LIST_SELECT, description: true } as const;
 
-// `imagePath` is deliberately absent from every select in this file. Uploads are
-// off (ENABLE_UPLOADS defaults false) and v1 serves event photos through
-// /api/uploads/[...path], which gates on nothing but "is logged in" — so any
-// authenticated user who guesses a key can fetch a photo attached to an event
-// they cannot see (spec 15 R32). The storage key never crosses this wire.
+// Events carry no image. v1's `JpcEvent.imagePath` was never selected here (v1 served event
+// photos through /api/uploads/[...path], which gated on nothing but "is logged in"; spec 15 R32),
+// and the column is dropped (refactor DB-002).
 
 interface ListRow {
   id: number;
