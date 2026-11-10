@@ -330,7 +330,7 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
       FE-003 (start/end ladders), FE-018 (no placeholder ids) — FE-001: 13-case tile/next-step screen snapshot first, then seasonOverviewModel (src/screens/season/overview-model.ts, 5 unit tests) and SeasonOverview; the route is queries + QueryGate (complexity 37 -> 16). FE-003: startGate and endGate (early returns, same order; 2 end-check tests added, green on the old screen too). FE-018: 8 write hooks take number | null via loadedId; the nine '?? 0' placeholders gone. Mobile unit 279/2340
 - [x] 5.2 Season people: FE-002 (`usePeopleSelection`, reducer tests first) — usePeopleSelection reducer (7 tests) + PeopleList on it; screen tests unchanged
 - [x] 5.3 Roster import: FE-005 — src/screens/group-import/{use-group-import-flow,preview-step,result-step}; route 253 -> 114 lines
-- [ ] 5.4 Forms: FE-006 (assignment, group, event, user, student, session, quiz)
+- [x] 5.4 Forms: FE-006 (assignment, group, event, user, student, session, quiz) — useSchemaErrors in GroupForm and SeasonForm (the exact pattern); assignment form's two fieldsets split into assignment-form-sections.tsx. Left as they are (D8): the irregular validators (assignment, quiz, user, both profile forms merge their own errors; EventForm sends the parsed output), and the other forms' bodies (177-255 lines, no self-contained field groups to lift)
 - [ ] 5.5 Quizzes: FE-008 (grade screen), FE-010 (`use-quizzes/` split)
 - [ ] 5.6 Forum: FE-009
 - [ ] 5.7 Video questions editor: FE-004 editor part (`video-question-form.ts`)
