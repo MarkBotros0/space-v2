@@ -1,4 +1,5 @@
 import { countWords } from "./forum";
+import { htmlToPlainText } from "./html-text";
 import type { AssignmentPart, PartWork } from "./assignment-parts";
 
 // The completion rules, pure so the server's gate and the screen's button
@@ -32,13 +33,22 @@ export function isWatched(watched: number, duration: number): boolean {
   return duration > 0 && watched >= WATCHED_FRACTION * duration;
 }
 
+/**
+ * An essay's word count, always on its plain text (what the app shows), so
+ * inline markup and entities count the same on the server and in the app:
+ * "un<i>believ</i>able" is one word, "Tom &amp; Jerry" three.
+ */
+export function essayWordCount(text: string | null): number {
+  return countWords(htmlToPlainText(text ?? ""));
+}
+
 /** Null when the text is inside the range; else how far outside, counted like the server. */
 export function wordRangeIssue(
   text: string,
   min: number | null,
   max: number | null,
 ): null | { kind: "short" | "long"; by: number } {
-  return wordCountIssue(countWords(text), min, max);
+  return wordCountIssue(essayWordCount(text), min, max);
 }
 
 function wordCountIssue(words: number, min: number | null, max: number | null) {

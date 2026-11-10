@@ -1,6 +1,11 @@
 import { db } from "../../db/client";
 import type { Prisma, SubmissionStatus } from "../../generated/prisma/client";
-import { canSubmit, countWords, essayWordRangeMessage, type PartWork } from "../../../../../packages/shared/src/index";
+import {
+  canSubmit,
+  essayWordCount,
+  essayWordRangeMessage,
+  type PartWork,
+} from "../../../../../packages/shared/src/index";
 import { ApiError } from "../api-error";
 import { liveAssignment } from "../db/live";
 import { EDITABLE_STATUSES } from "../permissions/submission";
@@ -9,9 +14,16 @@ import { loadWorkIndex, PART_SELECT, partWorksFor, toAssignmentPart } from "../q
 
 /*
  * A student's essays: saving a draft and handing a returned essay in again.
- * Every write here takes the assignment's row FOR SHARE first, which pairs
- * with `replaceAssignment`'s FOR UPDATE (an edit that removes the part waits,
- * or the write sees it gone), then the essay work row FOR UPDATE.
+ *
+ * Lock order for every write to one student's work on an assignment:
+ * 1. the Assignment FOR SHARE (`lockAssignmentForWork`), which pairs with
+ *    `replaceAssignment`'s FOR UPDATE: an edit that removes the part waits, or
+ *    the write sees it gone;
+ * 2. the student's Submission FOR UPDATE (`lockSubmissionForWork`), so writes
+ *    to sibling parts (two essays reviewed at once, a return racing a hand-in)
+ *    run one after the other and each reads the other's result when it works
+ *    out the student's standing;
+ * 3. the work row FOR UPDATE.
  */
 
 type Tx = Prisma.TransactionClient;
@@ -22,14 +34,32 @@ export function lockAssignmentForWork(tx: Tx, assignmentId: number) {
   return tx.$queryRaw`SELECT "id" FROM "Assignment" WHERE "id" = ${assignmentId} FOR SHARE`;
 }
 
-export function lockWorkRow(tx: Tx, publicId: string) {
-  return tx.$queryRaw`SELECT "id" FROM "AssignmentPartWork" WHERE "publicId" = ${publicId} FOR UPDATE`;
+export function lockSubmissionForWork(tx: Tx, submissionId: number) {
+  return tx.$queryRaw`SELECT "id" FROM "Submission" WHERE "id" = ${submissionId} FOR UPDATE`;
+}
+
+/**
+ * Takes the three locks for the essay work with this publicId, in order, and
+ * returns its assignment and Submission. 404 when there is no such work. The
+ * caller re-reads the work under the locks (a removal may have deleted it).
+ */
+export async function lockEssayWork(tx: Tx, publicId: string): Promise<{ assignmentId: number; submissionId: number }> {
+  const found = await tx.assignmentPartWork.findUnique({
+    where: { publicId },
+    select: { submissionId: true, part: { select: { assignmentId: true } } },
+  });
+  if (!found) throw essayGone();
+  await lockAssignmentForWork(tx, found.part.assignmentId);
+  await lockSubmissionForWork(tx, found.submissionId);
+  await tx.$queryRaw`SELECT "id" FROM "AssignmentPartWork" WHERE "publicId" = ${publicId} FOR UPDATE`;
+  return { assignmentId: found.part.assignmentId, submissionId: found.submissionId };
 }
 
 /**
  * The student's essay work on this part, made (with the assignment's
  * Submission) if missing, so the work's part is always the submission's
- * assignment's and its student the submission's. Locked FOR UPDATE.
+ * assignment's and its student the submission's. The Submission, then the
+ * work, are locked FOR UPDATE (the caller holds the assignment's lock).
  */
 async function ensureEssayWork(tx: Tx, assignmentId: number, partId: number, studentUserId: number) {
   await tx.submission.createMany({
@@ -40,6 +70,7 @@ async function ensureEssayWork(tx: Tx, assignmentId: number, partId: number, stu
     where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
     select: { id: true },
   });
+  await lockSubmissionForWork(tx, submission.id);
   await tx.assignmentPartWork.createMany({
     data: [{ publicId: newPublicId(), partId, submissionId: submission.id, studentUserId }],
     skipDuplicates: true,
@@ -77,7 +108,7 @@ export async function saveEssayDraft(
     const work = await ensureEssayWork(tx, owner.assignmentId, partId, studentUserId);
     if (!EDITABLE_STATUSES.includes(work.status)) throw new ApiError("submission_locked", handedInMessage, 409);
     await tx.assignmentPartWork.update({ where: { id: work.id }, data: { text } });
-    return { publicId: work.publicId, wordCount: countWords(text), reviewStatus: work.status };
+    return { publicId: work.publicId, wordCount: essayWordCount(text), reviewStatus: work.status };
   });
 }
 
@@ -115,7 +146,7 @@ function notReturnedMessage(status: SubmissionStatus): string {
 /**
  * POST /submissions/:publicId/hand-in: a returned essay, handed in again on its
  * own (only from RETURNED; the first hand-in is the assignment's Submit). The
- * word range is checked on the server's count (`countWords`, as the app
+ * word range is checked on the server's count (`essayWordCount`, as the app
  * counts). The essay goes back to SUBMITTED, so only it re-enters the queue;
  * when that leaves every part done, the assignment is submitted again.
  */
@@ -125,14 +156,7 @@ export async function handInEssay(
   now = new Date(),
 ): Promise<{ reviewStatus: "SUBMITTED"; assignmentSubmitted: boolean }> {
   return db.$transaction(async (tx) => {
-    const found = await tx.assignmentPartWork.findUnique({
-      where: { publicId },
-      select: { part: { select: { assignmentId: true } } },
-    });
-    if (!found) throw essayGone();
-    const { assignmentId } = found.part;
-    await lockAssignmentForWork(tx, assignmentId);
-    await lockWorkRow(tx, publicId);
+    const { assignmentId } = await lockEssayWork(tx, publicId);
     const work = await tx.assignmentPartWork.findFirst({
       where: { publicId, studentUserId, part: { kind: "ESSAY", assignment: liveAssignment } },
       select: {
@@ -145,7 +169,7 @@ export async function handInEssay(
     });
     if (!work) throw essayGone();
     if (work.status !== "RETURNED") throw new ApiError("not_returned", notReturnedMessage(work.status), 409);
-    const refusal = essayWordRangeMessage(countWords(work.text ?? ""), work.part.minWords, work.part.maxWords);
+    const refusal = essayWordRangeMessage(essayWordCount(work.text), work.part.minWords, work.part.maxWords);
     if (refusal !== null) throw new ApiError("word_range", refusal, 400);
 
     await tx.assignmentPartWork.update({ where: { id: work.id }, data: { status: "SUBMITTED", submittedAt: now } });

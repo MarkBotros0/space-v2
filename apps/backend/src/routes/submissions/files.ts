@@ -7,9 +7,9 @@ import { ForbiddenError } from "../../lib/auth/errors";
 import { config } from "../../lib/config";
 import { parseId } from "../../lib/parse-id";
 import { canViewSubmission, isHiddenDraft } from "../../lib/permissions";
-import { newPublicId } from "../../lib/public-id";
 import { findEssayWork } from "../../lib/queries/essays";
-import { FileNotFoundError, buildStorageKey, getStorage } from "../../lib/storage";
+import { attachEssayFile, essayFileRefusal, removeEssayFile } from "../../lib/assignments/essay-files";
+import { FileNotFoundError, getStorage } from "../../lib/storage";
 import { requireUser } from "../../middleware/require-auth";
 import { studentWriteRefusal } from "../../lib/permissions";
 import { submissionLocked } from "./editable";
@@ -23,21 +23,6 @@ export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: config.maxUploadBytes, files: 1 },
 });
-
-const MIME_CATEGORY_MAP: Record<string, RegExp> = {
-  image: /^image\//,
-  pdf: /^application\/pdf$/,
-  doc: /^(application\/msword|application\/vnd\.openxmlformats-officedocument\..*|application\/vnd\.oasis\.opendocument\..*)$/,
-  audio: /^audio\//,
-  video: /^video\//,
-  text: /^text\//,
-};
-
-function mimeAllowed(mime: string, categories: string[]): boolean {
-  // An essay with no declared categories accepts anything.
-  if (categories.length === 0) return true;
-  return categories.some((c) => MIME_CATEGORY_MAP[c]?.test(mime) ?? false);
-}
 
 /**
  * Refuse uploads before multer reads the body.
@@ -84,16 +69,13 @@ export async function uploadSubmissionFile(req: Request, res: Response) {
   if (refusal === "forbidden") return forbidden(res);
   if (refusal === "not_editable") return submissionLocked(res);
 
-  const maxMb = work.part.maxFileSizeMb;
-  if (maxMb === null) return apiError(res, "bad_request", "This essay doesn't take files.", 400);
+  if (work.part.maxFileSizeMb === null) return apiError(res, "bad_request", "This essay doesn't take files.", 400);
   const file = req.file;
   if (!file) return apiError(res, "bad_request", "No file provided.", 400);
-  if (file.size > maxMb * 1024 * 1024) {
-    return apiError(res, "file_too_large", `File exceeds ${maxMb} MB.`, 400);
-  }
-  if (!mimeAllowed(file.mimetype, work.part.allowedMimeCategories)) {
-    return apiError(res, "mime_not_allowed", `File type ${file.mimetype} not allowed.`, 400);
-  }
+  // Refuse what can be refused before a byte is stored; attachEssayFile checks
+  // again under the essay's locks once the blob is stored.
+  const limit = essayFileRefusal(work.part, { size: file.size, mimeType: file.mimetype });
+  if (limit !== null) throw limit;
 
   // busboy (under multer) decodes multipart filenames as latin1, so a UTF-8
   // name like "تقرير.txt" arrives mojibake'd and would be stored that way.
@@ -101,23 +83,11 @@ export async function uploadSubmissionFile(req: Request, res: Response) {
   // correctly — recovering the raw bytes and re-decoding restores parity.
   // Pure-ASCII names round-trip unchanged.
   const originalName = Buffer.from(file.originalname, "latin1").toString("utf8");
-
-  const key = buildStorageKey({
-    bucket: "submissions",
-    publicId: newPublicId(),
+  const created = await attachEssayFile(work.publicId, user.userId, {
+    buffer: file.buffer,
     originalName,
-  });
-  const put = await getStorage().put(key, file.buffer, { mime: file.mimetype });
-
-  const created = await db.submissionFile.create({
-    data: {
-      partWorkId: work.id,
-      originalName,
-      storagePath: put.path,
-      mimeType: file.mimetype || "application/octet-stream",
-      sizeBytes: file.size,
-    },
-    select: { id: true, originalName: true, mimeType: true, sizeBytes: true },
+    mimeType: file.mimetype,
+    size: file.size,
   });
 
   return apiOk(res, { file: created }, 201);
@@ -141,7 +111,7 @@ export async function deleteSubmissionFile(req: Request<{ publicId: string }>, r
 
   const file = await db.submissionFile.findUnique({
     where: { id: fileId },
-    select: { storagePath: true, partWork: { select: ESSAY_OF_FILE } },
+    select: { partWork: { select: ESSAY_OF_FILE } },
   });
   // The publicId in the path must match the file's own essay, or a fileId
   // alone would let a caller probe files across essays.
@@ -155,13 +125,8 @@ export async function deleteSubmissionFile(req: Request<{ publicId: string }>, r
   if (refusal === "forbidden") return forbidden(res);
   if (refusal === "not_editable") return submissionLocked(res);
 
-  // Storage first, then the row. A failed unlink must not leave a database row
-  // pointing at a file the user believes is gone, so the delete is swallowed —
-  // an orphaned blob is recoverable, an orphaned row is not.
-  await getStorage()
-    .delete(file.storagePath)
-    .catch((): void => undefined);
-  await db.submissionFile.delete({ where: { id: fileId } });
+  // The row goes under the essay's locks, re-checked; its blob after commit.
+  await removeEssayFile(file.partWork.publicId, user.userId, fileId);
 
   return apiOk(res, { deleted: true });
 }

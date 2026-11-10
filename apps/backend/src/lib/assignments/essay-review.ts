@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import { ApiError } from "../api-error";
-import { lockAssignmentForWork, lockWorkRow, workStanding } from "./essay";
+import { liveAssignment } from "../db/live";
+import { lockEssayWork, workStanding } from "./essay";
 
 /**
  * POST /submissions/:publicId/review: a verdict on one essay, on its own.
@@ -24,16 +25,10 @@ export async function reviewEssay(
   now = new Date(),
 ): Promise<{ reviewStatus: "REVIEWED" | "RETURNED"; assignmentId: number; studentUserId: number }> {
   return db.$transaction(async (tx) => {
-    const found = await tx.assignmentPartWork.findUnique({
-      where: { publicId },
-      select: { part: { select: { assignmentId: true } } },
-    });
-    if (!found) throw new ApiError("not_found", "Essay not found.", 404);
-    const { assignmentId } = found.part;
-    await lockAssignmentForWork(tx, assignmentId);
-    await lockWorkRow(tx, publicId);
-    const work = await tx.assignmentPartWork.findUnique({
-      where: { publicId },
+    const { assignmentId } = await lockEssayWork(tx, publicId);
+    // Re-read under the locks: a removed part or a deleted assignment wins.
+    const work = await tx.assignmentPartWork.findFirst({
+      where: { publicId, part: { kind: "ESSAY", assignment: liveAssignment } },
       select: { id: true, status: true, submissionId: true, studentUserId: true },
     });
     if (!work || work.status === "DRAFT") throw new ApiError("not_found", "Essay not found.", 404);
@@ -48,7 +43,13 @@ export async function reviewEssay(
     const reviewStatus = action === "return" ? "RETURNED" : "REVIEWED";
     await tx.assignmentPartWork.update({
       where: { id: work.id },
-      data: { status: reviewStatus, feedback, reviewedAt: now, reviewedById: reviewerId },
+      // A blank note on `reviewed` is no note at all.
+      data: {
+        status: reviewStatus,
+        feedback: feedback?.trim() ? feedback : null,
+        reviewedAt: now,
+        reviewedById: reviewerId,
+      },
     });
     if (reviewStatus === "RETURNED") {
       await tx.submission.update({

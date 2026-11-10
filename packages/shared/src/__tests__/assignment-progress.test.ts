@@ -1,5 +1,6 @@
 import {
   canSubmit,
+  essayWordCount,
   partDone,
   isWatched,
   mergeIntervals,
@@ -141,5 +142,25 @@ describe("partDone for an essay", () => {
   it("a handed-in or reviewed essay inside the range is done", () => {
     expect(partDone(part, at("SUBMITTED", 5))).toBe(true);
     expect(partDone(part, at("REVIEWED", 5))).toBe(true);
+  });
+});
+
+describe("essayWordCount", () => {
+  it("counts the plain text the app shows, not the stored markup", () => {
+    expect(essayWordCount("un<i>believ</i>able")).toBe(1);
+    expect(essayWordCount("it&apos;s fine")).toBe(2);
+    expect(essayWordCount("Tom &amp; Jerry")).toBe(3);
+    expect(essayWordCount("<p>one</p><p>two</p>")).toBe(2);
+    expect(essayWordCount("a&nbsp;b")).toBe(2);
+  });
+
+  it("is zero for no text at all", () => {
+    expect(essayWordCount(null)).toBe(0);
+    expect(essayWordCount("  <p></p> ")).toBe(0);
+  });
+
+  it("is the count wordRangeIssue checks", () => {
+    expect(wordRangeIssue("Tom &amp; Jerry", 3, null)).toBeNull();
+    expect(wordRangeIssue("un<i>believ</i>able", 2, null)).toEqual({ kind: "short", by: 1 });
   });
 });

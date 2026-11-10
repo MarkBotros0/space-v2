@@ -23,8 +23,8 @@ export const saveEssayDraftResponseSchema = z.object({
 });
 
 /**
- * Why an essay can't be handed in at this count, counted as `countWords`
- * counts, or null when it can. An essay needs typed words whatever its range:
+ * Why an essay can't be handed in at this count (`essayWordCount`), or null
+ * when it can. An essay needs typed words whatever its range:
  * files are extras, never the essay.
  */
 export function essayWordRangeMessage(words: number, min: number | null, max: number | null): string | null {

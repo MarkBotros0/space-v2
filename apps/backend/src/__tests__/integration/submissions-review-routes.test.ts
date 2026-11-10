@@ -239,3 +239,49 @@ describe("POST /api/v1/submissions/:publicId/review — each essay on its own", 
     );
   });
 });
+
+describe("sibling essays of one student, written at once", () => {
+  async function twoEssays(title: string) {
+    const a = await createAssignmentWithParts({ seasonId: f.seasonId, title }, [{ kind: "ESSAY" }, { kind: "ESSAY" }]);
+    const standing = () =>
+      db.submission.findUniqueOrThrow({
+        where: { assignmentId_studentUserId: { assignmentId: a.id, studentUserId: f.studentUserId } },
+        select: { submittedAt: true, completedAt: true },
+      });
+    return { a, standing };
+  }
+
+  it("two reviewers marking the last two essays together complete the assignment", async () => {
+    const { a, standing } = await twoEssays("Reviewed together");
+    const one = await seedTextWork(a.id, a.partIds[0]!, f.studentUserId, "SUBMITTED");
+    const two = await seedTextWork(a.id, a.partIds[1]!, f.studentUserId, "SUBMITTED");
+    await setSubmitted(a.id, f.studentUserId, new Date());
+    const [r1, r2] = await Promise.all([
+      review(one.publicId, { action: "reviewed", feedback: null }, f.leaderToken),
+      review(two.publicId, { action: "reviewed", feedback: null }, f.adminToken),
+    ]);
+    expect([r1.status, r2.status]).toEqual([200, 200]);
+    expect((await standing()).completedAt).not.toBeNull();
+  });
+
+  it("a return racing a hand-in of the other essay leaves the assignment unsubmitted", async () => {
+    const { a, standing } = await twoEssays("Return races hand-in");
+    const back = await seedTextWork(a.id, a.partIds[0]!, f.studentUserId, "RETURNED");
+    const waiting = await seedTextWork(a.id, a.partIds[1]!, f.studentUserId, "SUBMITTED");
+    await setSubmitted(a.id, f.studentUserId, null);
+    const [handIn, ret] = await Promise.all([
+      request(app).post(`/api/v1/submissions/${back.publicId}/hand-in`).set(auth(f.ownerToken)),
+      review(waiting.publicId, { action: "return", feedback: "Redo this one." }),
+    ]);
+    expect([handIn.status, ret.status]).toEqual([200, 200]);
+    // Whichever ran first, essay two is now returned, so the assignment is not submitted.
+    expect(await standing()).toEqual({ submittedAt: null, completedAt: null });
+  });
+
+  it("stores no feedback, not an empty one, for a blank note on reviewed", async () => {
+    const pid = await seedSubmission("SUBMITTED", "Blank note");
+    expect((await review(pid, { action: "reviewed", feedback: "   " })).status).toBe(200);
+    const row = await db.assignmentPartWork.findUniqueOrThrow({ where: { publicId: pid }, select: { feedback: true } });
+    expect(row.feedback).toBeNull();
+  });
+});

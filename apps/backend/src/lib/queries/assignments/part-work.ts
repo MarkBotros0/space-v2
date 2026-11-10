@@ -3,7 +3,7 @@ import { liveAssignment } from "../../db/live";
 import type { Prisma } from "../../../generated/prisma/client";
 import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import {
-  countWords,
+  essayWordCount,
   partDone,
   parseYouTubeId,
   type AssignmentPart,
@@ -179,7 +179,7 @@ function essayWork(p: PartRow, row: WorkRow | undefined): PartWork {
   if (!row) return { partId: p.id, kind: p.kind, status: "NOT_STARTED" };
   const essay = {
     publicId: row.publicId,
-    wordCount: countWords(row.text ?? ""),
+    wordCount: essayWordCount(row.text),
     reviewStatus: row.status,
     feedback: row.feedback,
   };

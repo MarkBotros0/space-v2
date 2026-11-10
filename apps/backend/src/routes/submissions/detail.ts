@@ -7,7 +7,7 @@ import { liveAssignment } from "../../lib/db/live";
 import { canReviewSubmission, canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
-import { countWords, htmlToPlainText } from "../../../../../packages/shared/src/index";
+import { essayWordCount, htmlToPlainText } from "../../../../../packages/shared/src/index";
 import { notFound } from "../../lib/http/not-found";
 
 /** One essay work (not a video's progress or a forum post), with its part and assignment. */
@@ -92,7 +92,7 @@ export async function getSubmission(req: Request<{ publicId: string }>, res: Res
     publicId: work.publicId,
     status: work.status,
     text,
-    wordCount: countWords(work.text ?? ""),
+    wordCount: essayWordCount(work.text),
     partId: part.id,
     prompt: part.prompt ?? "",
     minWords: part.minWords,

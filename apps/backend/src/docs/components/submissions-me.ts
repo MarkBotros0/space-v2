@@ -22,7 +22,10 @@ export const submissionsMeSchemas = {
         type: ["string", "null"],
         description: "Plain text: stored HTML is converted on read (ruling C11, REG-90).",
       },
-      wordCount: { type: "integer", description: "The server's count (`countWords`), as the hand-in checks it." },
+      wordCount: {
+        type: "integer",
+        description: "Words of the plain text (`essayWordCount`), as the hand-in checks them.",
+      },
       partId: { type: "integer" },
       prompt: { type: "string", description: "The essay's question." },
       minWords: { type: ["integer", "null"] },

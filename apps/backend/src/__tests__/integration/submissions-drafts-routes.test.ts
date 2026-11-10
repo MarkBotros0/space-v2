@@ -83,6 +83,14 @@ describe("PUT /api/v1/assignments/:id/parts/:partId/essay — save a draft", () 
     expect(await db.submission.count({ where: { assignmentId: a.id, studentUserId: f.studentUserId } })).toBe(1);
   });
 
+  it("counts words on the plain text, so markup and entities count as the app counts them", async () => {
+    const a = await createAssignmentWithParts({ seasonId: f.seasonId, title: "Counted plain" }, [{ kind: "ESSAY" }]);
+    const res = await saveDraft(a.id, a.partIds[0]!, "un<i>believ</i>able Tom &amp; Jerry");
+    expect(res.body.data.wordCount).toBe(4);
+    const detail = await request(app).get(`/api/v1/submissions/${res.body.data.publicId}`).set(auth(f.ownerToken));
+    expect(detail.body.data.wordCount).toBe(4);
+  });
+
   it("refuses a handed-in essay, and keeps a returned one RETURNED while it is rewritten", async () => {
     const a = await createAssignmentWithParts({ seasonId: f.seasonId, title: "Locked" }, [
       { kind: "ESSAY" },
@@ -154,7 +162,16 @@ describe("POST /api/v1/submissions/:publicId/hand-in — a returned essay, again
     expect(long.status).toBe(400);
     expect(long.body.error.message).toBe("This is 320 words; it needs at most 300.");
 
-    await db.assignmentPartWork.update({ where: { publicId: work.publicId }, data: { text: "  " } });
+    // An entity counts as the plain text the app shows: "Tom & Jerry" is three words, so 150 here.
+    await db.assignmentPartWork.update({
+      where: { publicId: work.publicId },
+      data: { text: `${words(147)} Tom &amp; Jerry` },
+    });
+    expect((await handIn(work.publicId)).status).toBe(200);
+    await db.assignmentPartWork.update({
+      where: { publicId: work.publicId },
+      data: { status: "RETURNED", text: "  " },
+    });
     expect((await handIn(work.publicId)).body.error.message).toBe("Write your essay before handing it in.");
 
     const row = await db.assignmentPartWork.findUniqueOrThrow({
