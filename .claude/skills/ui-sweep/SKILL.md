@@ -15,8 +15,8 @@ is the check for everything the v1 match can't see: it screenshots every state o
 The harness exists. Read these before starting:
 - `tools/ui-reference/README.md` → **"UI sweep"** (runner, matrix, flags, output) and **"v2 capture
   rig"** (emulator, Metro, backend, reference users).
-- `apps/mobile/CLAUDE.md` → **"Conventions"** (the redesign spec is the UI reference) and **"Rules from
-  the UI sweep"**. The checklist in step 4 is the starting point; rules learned from findings
+- `apps/mobile/CLAUDE.md` → **"Conventions"** (the redesign spec is the UI reference), **"Building a
+  screen that passes the sweep"** and **"Rules from the UI sweep"**. The checklist in step 4 is the starting point; rules learned from findings
   are added there.
 
 ## 1. List what the screen puts on screen

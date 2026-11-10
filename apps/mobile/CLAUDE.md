@@ -12,35 +12,40 @@ Paths are under `apps/mobile/` unless written in full. A screen is four layers; 
 | Layer | Where | Holds |
 |---|---|---|
 | Route | `app/` (`(app)/(tabs)/` for tabs, `(app)/<name>/` for pushed and detail routes) | thin: params, queries, `QueryGate`, then the screen |
-| Screen | `src/screens/<feature>/` (older ones in `src/components/`) | the UI and its pure model or state hook |
+| Screen | `src/screens/<feature>/` | the UI and its pure model or state hook; parts shared by several screens live in the owning feature's folder |
 | Data | `src/hooks/use-<domain>.ts` or `src/hooks/use-<domain>/` | React Query hooks over `apiGet` / `apiSend`; keys in `src/lib/query-keys.ts` |
 | Contract | `packages/shared/src/<domain>.ts` | the Zod schema every response is parsed with |
 
 | Feature | Route(s) under `app/(app)/` | Screen | Hook |
 |---|---|---|---|
-| Home (every role) | `(tabs)/dashboard.tsx` | `src/screens/today/`, `staff-today/`, `leader-today/`, `mentor/`, `src/components/dashboard/` | `use-dashboard.ts`, `use-staff-today.ts` |
-| Seasons | `(tabs)/seasons/`, `seasons/[code]/`, `seasons/new.tsx` | `src/screens/season/`, `season-people/`, `season-roster/`, `season-start/`, `season-end/`, `src/components/season/` | `use-seasons.ts`, `use-season-writes.ts`, `use-season-route.ts`, `use-season-start.ts`, `use-season-end.ts`, `use-season-people.ts` |
+| Home (every role) | `(tabs)/dashboard.tsx` | `src/screens/home/` (shared Home parts), `today/`, `staff-today/`, `leader-today/`, `mentor/`, `alumni/` | `use-dashboard.ts`, `use-staff-today.ts` |
+| Seasons | `(tabs)/seasons/`, `seasons/[code]/`, `seasons/new.tsx` | `src/screens/season/`, `season-people/`, `season-roster/`, `season-start/`, `season-end/`, `season-form/`, `season-admins/` | `use-seasons.ts`, `use-season-writes.ts`, `use-season-route.ts`, `use-season-start.ts`, `use-season-end.ts`, `use-season-people.ts` |
 | Student's season | `season.tsx`, `past-season/` | `src/screens/season/`, `past-season/` | `use-seasons.ts` |
-| Sessions, attendance, check-in | `session/`, `attendance.tsx`, `app/checkin/[token].tsx` | `src/screens/session-detail/`, `src/components/check-in/` | `use-sessions.ts`, `use-session-detail.ts`, `use-session-writes.ts`, `use-attendance.ts`, `use-check-in.ts` |
-| Calendar | `(tabs)/calendar.tsx` | `src/screens/calendar/`, `src/components/calendar/` | `use-sessions.ts`, `use-events.ts` |
+| Sessions, attendance, check-in | `session/`, `attendance.tsx`, `app/checkin/[token].tsx` | `src/screens/session-detail/`, `session-form/`, `check-in/` | `use-sessions.ts`, `use-session-detail.ts`, `use-session-writes.ts`, `use-attendance.ts`, `use-check-in.ts` |
+| Calendar | `(tabs)/calendar.tsx` | `src/screens/calendar/`, the season calendar widget `src/design/calendar/` | `use-sessions.ts`, `use-events.ts` |
 | Groups | `(tabs)/groups.tsx`, `group/` | `src/screens/groups-admin/`, `leader-groups/`, `group-form/`, `group-import/` | `use-groups.ts`, `use-group-admin.ts`, `use-import.ts` |
-| Students and community | `(tabs)/students/`, `(tabs)/community.tsx`, `student/`, `students/new.tsx` | `src/screens/students-list/`, `student-admin/`, `community/` | `use-students/`, `use-users.ts` |
-| Users and import | `user/`, `users/` | `src/screens/user-import/`, `src/components/UserForm.tsx` | `use-users.ts`, `use-import.ts` |
-| Assignments and submissions | `assignment/`, `assignments.tsx`, `submission/`, `(tabs)/submissions.tsx`, `(tabs)/work.tsx` | `src/screens/assignment-detail/`, `submission-review/`, `staff-queue/`, `staff-work/`, `work/`, `leader-submissions/` | `use-assignments.ts`, `use-assignment-writes.ts`, `use-submission.ts`, `use-submission-queue.ts` |
-| Quizzes | `quiz/`, `quizzes.tsx` | `src/screens/quiz-detail/`, `quiz-edit/`, `quiz-grade/`, `leader-quizzes.tsx` | `use-quizzes/`, `use-quiz-authoring.ts`, `use-session-quizzes.ts` |
-| Video questions | `session/` | `src/components/VideoQuizPlayer.tsx`, `VideoQuestionsEditor.tsx`, `src/lib/video-question-form.ts` | `use-video-quiz.ts` |
+| Students and community | `(tabs)/students/`, `(tabs)/community.tsx`, `student/`, `students/new.tsx` | `src/screens/students-list/`, `student-detail/` (shared by staff and mentor pages), `student-admin/`, `community/` | `use-students/`, `use-users.ts` |
+| Users and import | `user/`, `users/` | `src/screens/user-import/`, `user-form/` | `use-users.ts`, `use-import.ts` |
+| Assignments and submissions | `assignment/`, `assignments.tsx`, `submission/`, `(tabs)/submissions.tsx`, `(tabs)/work.tsx` | `src/screens/assignment-form/`, `assignment-detail/`, `submission-review/`, `staff-queue/`, `staff-work/`, `work/`, `leader-submissions/` | `use-assignments.ts`, `use-assignment-writes.ts`, `use-submission.ts`, `use-submission-queue.ts` |
+| Quizzes | `quiz/`, `quizzes.tsx` | `src/screens/quiz-detail/`, `quiz-edit/`, `quiz-grade/` | `use-quizzes/`, `use-quiz-authoring.ts`, `use-session-quizzes.ts` |
+| Video questions | `session/` | `src/screens/video-quiz/`, `src/lib/video-question-form.ts` | `use-video-quiz.ts` |
 | Announcements and polls | `announcements/` | `src/screens/announcements/` (poll in `src/screens/announcements/poll/`) | `use-announcements.ts` |
 | Forum | `session/` | `src/screens/forum/` | `use-forum.ts` |
 | Notes and follow-ups | `(tabs)/notes.tsx`, `(tabs)/follow-ups.tsx` | `src/screens/staff-notes/`, `mentor/` | `use-notes.ts`, `use-follow-ups.ts` |
-| Reports and exports | `reports.tsx`, `attention/` | `src/screens/reports/`, `attention/`, `src/components/charts/` | `use-reports.ts`, `use-engagement.ts`, `use-report-export.ts` |
+| Reports and exports | `reports.tsx`, `attention/` | `src/screens/reports/`, `attention/`, charts in `src/design/charts/` | `use-reports.ts`, `use-engagement.ts`, `use-report-export.ts` |
 | Events | `events.tsx`, `event/` | `src/screens/events/` | `use-events.ts` |
-| Profile, account, settings | `(tabs)/profile.tsx`, `edit-profile.tsx`, `(tabs)/more.tsx`, `settings/`, `notifications.tsx` | `src/screens/profile/` | `use-me.ts`, `use-account.ts`, `use-notifications.ts` |
+| Profile, account, settings | `(tabs)/profile.tsx`, `edit-profile.tsx`, `(tabs)/more.tsx`, `settings/`, `notifications.tsx` | `src/screens/profile/`, `settings/` | `use-me.ts`, `use-account.ts`, `use-notifications.ts` |
 | Alumni | `(tabs)/history.tsx` | `src/screens/alumni/` | `use-me.ts` |
 | Signed out | `app/login.tsx`, `forgot-password.tsx`, `reset-password.tsx`, `accept-invite.tsx` | `src/design/layout/auth-card.tsx` | `use-password-reset.ts`, `use-accept-invite.ts` |
 | Design catalogue | `design-catalogue.tsx` | `src/screens/design-catalogue/` | — |
 
-Shell and kit: `src/design/layout/` (Screen, tab bar, route states, SaveBar), `src/design/ui/`
-(components), `src/design/theme/` (tokens), `src/design/motion/`. Navigation config is
+**Where a new file goes.** A route file in `app/` stays thin. Anything about one feature, data-bound
+or not, goes in `src/screens/<feature>/`, kebab-case; `src/screens/shell/` holds the app-wide pieces
+(push bridge, boot retry). `src/design/` is only the domain-free kit: `ui/` (components), `layout/`
+(Screen, tab bar, route states, SaveBar), `calendar/`, `charts/`, `forms/`, `theme/` (tokens),
+`motion/`, `lib/`, `icons/`, `brand/`. Lint stops `src/design/` importing hooks, the store or a
+screen; the shell pieces in `src/design/layout/` (`home-actions`, `more-menu`, `dev-user-switcher`,
+`route-states`) are the named exceptions. Navigation config is
 `packages/shared/src/navigation.ts`; route-name lists are in `src/lib/route-names.ts`. Tests live in
 `src/__tests__/` (helpers in `src/__tests__/helpers/`).
 
@@ -175,6 +180,28 @@ or changing a screen, run the `ui-sweep` skill (`.claude/skills/ui-sweep/`,
 before calling it done. Sweep flows never save anything. Maestro on Android often misses
 sonner-native toasts, so flows shoot toasts best-effort.
 
+## Building a screen that passes the sweep
+
+Design for the hardest cell first: a 360dp Android phone at font scale 1.3 with a 3-button nav bar, in
+light and dark. `src/__tests__/sweep-rules.test.ts` holds the rules a file can show: no fixed height on
+text, no large hard-coded bottom padding, no `autoFocus`, no faded text token (strict), and no new
+hand-built " · " line, "—" empty value or inline "pts" (a ratchet over today's offenders: fix one and
+lower its count, never add one). The rest needs your eyes. Before calling a screen done:
+
+1. **Kit only.** The root is `Screen`; a form's Save is its `footer={<SaveBar … />}`; states come from
+   `QueryGate` / `queryStateView`; text is a `ui/text.tsx` variant; colours, radii and elevation are
+   tokens. These carry the keyboard, inset, tab-bar and contrast rules below for free.
+2. **Every state has words:** loading, error with retry, empty, read-only (finished season), not open yet.
+   An empty value says so in words, never "—" or a blank.
+3. **It fits at 1.3 on 360dp:** no fixed height on text, `min-w-0 flex-1` beside a badge, `flex-wrap` on
+   button rows, no word broken mid-word, the last row clear of the tab bar.
+4. **The keyboard leaves every field usable:** each input and its submit reachable, the focused field
+   below the header and above the SaveBar.
+5. **Catalogue and flow:** add the new component's states to the design catalogue (`s90`) and a
+   read-only Maestro flow under `apps/mobile/.maestro/sweep/` that scrolls to the end and opens the
+   keyboard on each field; then run the `ui-sweep` skill and look at the 360dp/1.3 light shot and the
+   dark shot first.
+
 ## Rules from the UI sweep
 
 One line per class of bug the sweep has found, so the next screen doesn't repeat it.
@@ -208,6 +235,12 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 - **Never put `className` on a Reanimated `Animated.*` component.** css-interop merges it with
   the animated style and Reanimated's PropsFilter drops it in builds; put classes on a plain
   `View` inside. `no-classname-on-animated.test.ts` guards it.
+- **No line built from parts joined by " · ".** At 1.3 the parts wrap apart and leave a dangling dot or
+  split a date across lines (Nov 2026 sweep). Put each fact on its own line, or keep a date or time in
+  one unbreakable run.
+- **Counts go through `plural()` / `people()` (`src/lib/plural.ts`).** The Nov 2026 sweep found "1 pts".
+- **An empty value is a word.** "Not answered", "No phone number", never "—" or nothing (the sweep found
+  a quiz answer shown as "—").
 - **Offsets above the keyboard come from `keyboardBottomOffset`** (`design/lib/keyboard-offset.ts`).
   Android reports the keyboard height without the nav bar, and an edge-to-edge `Modal` window
   is never resized.
