@@ -222,6 +222,33 @@ describe("PATCH /api/v1/assignments/:id", () => {
     expect(await inconsistentWorks(made.id)).toEqual([]);
   });
 
+  it("a video reset clears completion for a student who only answered its questions", async () => {
+    const made = await create({ parts: [videoPart(), essayPart()] });
+    const [video, essay] = made.parts;
+    // An essay row makes the submission; the video has answers but no work row.
+    await seedWork(made.id, essay!.id, studentBId);
+    await db.submission.updateMany({
+      where: { assignmentId: made.id, studentUserId: studentBId },
+      data: { completedAt: new Date() },
+    });
+    const question = await db.sessionVideoQuestion.create({
+      data: { assignmentPartId: video!.id, atSeconds: 30, prompt: "Who?", options: ["A", "B"], correctIndex: 0 },
+      select: { id: true },
+    });
+    await db.sessionVideoQuestionResponse.create({
+      data: { questionId: question.id, studentUserId: studentBId, selectedIndex: 0, isCorrect: true },
+    });
+
+    const parts = asSent(made.parts, [videoPart({ youtubeUrl: "https://youtu.be/9bZkp7q19f0" }), essayPart()]);
+    expect((await patch(made.id, { parts })).body.students).toBe(1);
+    expect((await patch(made.id, { parts, confirm: true })).status).toBe(200);
+    const after = await db.submission.findUniqueOrThrow({
+      where: { assignmentId_studentUserId: { assignmentId: made.id, studentUserId: studentBId } },
+      select: { completedAt: true },
+    });
+    expect(after.completedAt).toBeNull();
+  });
+
   it("removing a part asks first, counting each student once, then deletes their work on it", async () => {
     const made = await create({ parts: [videoPart(), essayPart(), forumPart()] });
     const [video, essay, forum] = made.parts;

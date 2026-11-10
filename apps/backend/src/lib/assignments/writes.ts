@@ -133,17 +133,23 @@ function confirmMessage(students: number): string {
 /** Applies a confirmed plan's part changes. Returns how many submitted students were reopened. */
 async function applyPartChanges(tx: Tx, assignmentId: number, plan: PartChangePlan): Promise<number> {
   if (plan.resetVideo.length > 0) {
-    const resetWork = await tx.assignmentPartWork.findMany({
-      where: { partId: { in: plan.resetVideo } },
-      select: { studentUserId: true },
-    });
+    // Whoever has work on a reset video: a work row, or only answers to its
+    // questions (the same students partChangeImpact counted).
+    const [resetWork, resetAnswers] = await Promise.all([
+      tx.assignmentPartWork.findMany({ where: { partId: { in: plan.resetVideo } }, select: { studentUserId: true } }),
+      tx.sessionVideoQuestionResponse.findMany({
+        where: { question: { assignmentPartId: { in: plan.resetVideo } } },
+        select: { studentUserId: true },
+      }),
+    ]);
+    const touched = [...new Set([...resetWork, ...resetAnswers].map((r) => r.studentUserId))];
     await tx.sessionVideoQuestionResponse.deleteMany({
       where: { question: { assignmentPartId: { in: plan.resetVideo } } },
     });
     await tx.assignmentPartWork.deleteMany({ where: { partId: { in: plan.resetVideo } } });
     // A reset video is no longer done, so nobody it touched has every part done.
     await tx.submission.updateMany({
-      where: { assignmentId, studentUserId: { in: resetWork.map((w) => w.studentUserId) } },
+      where: { assignmentId, studentUserId: { in: touched } },
       data: { completedAt: null },
     });
   }

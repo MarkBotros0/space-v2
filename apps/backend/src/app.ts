@@ -7,6 +7,7 @@ import { config } from "./lib/config";
 import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
 import { assignmentsRouter } from "./routes/assignments";
+import { assignmentVideoRouter } from "./routes/assignments/video";
 import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
 import { devicesRouter } from "./routes/me/devices";
@@ -95,6 +96,8 @@ export function createApp(): Express {
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);
   app.use("/api/v1/sessions", sessionsRouter);
+  // Ahead of assignmentsRouter (router-wide requireAuth); this one guards per route and falls through.
+  app.use("/api/v1/assignments", assignmentVideoRouter);
   app.use("/api/v1/assignments", assignmentsRouter);
   app.use("/api/v1/submissions", submissionsRouter);
   app.use("/api/v1/quizzes", quizzesRouter);

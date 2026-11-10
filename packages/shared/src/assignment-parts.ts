@@ -15,7 +15,7 @@ const mimeCategorySchema = z.enum(["image", "pdf", "doc", "audio", "video", "tex
 export type MimeCategory = z.infer<typeof mimeCategorySchema>;
 
 /** Longest video an author may declare: 12 hours. */
-const MAX_PART_VIDEO_SECONDS = 43_200;
+export const MAX_PART_VIDEO_SECONDS = 43_200;
 
 const wordLimit = z.number().int().min(1).max(5000);
 

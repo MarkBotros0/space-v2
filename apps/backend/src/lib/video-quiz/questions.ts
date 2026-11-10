@@ -1,8 +1,10 @@
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
+import { ApiError } from "../api-error";
+import { ownerColumns, questionsOf, type VideoOwner } from "./owner";
 
 /** The staff view of a video question, with how many students answered it. */
-export const ADMIN_SELECT = {
+const ADMIN_SELECT = {
   id: true,
   atSeconds: true,
   prompt: true,
@@ -13,6 +15,59 @@ export const ADMIN_SELECT = {
 } as const;
 
 type QuestionInput = { atSeconds: number; prompt: string; options: string[]; correctIndex: number; points: number };
+
+/** A part's question must come before its video ends; a session's length isn't stored (null). */
+export function assertInsideVideo(atSeconds: number, durationSeconds: number | null): void {
+  if (durationSeconds !== null && atSeconds >= durationSeconds) {
+    throw new ApiError("bad_request", "That time is past the end of the video.", 400);
+  }
+}
+
+type AdminRowSource = Prisma.SessionVideoQuestionGetPayload<{ select: typeof ADMIN_SELECT }>;
+
+/** The admin row shape — the only place `correctIndex` may be sent. */
+export function toAdminRow(q: AdminRowSource) {
+  return {
+    id: q.id,
+    atSeconds: q.atSeconds,
+    prompt: q.prompt,
+    options: q.options,
+    correctIndex: q.correctIndex,
+    points: q.points,
+    responseCount: q._count.responses,
+  };
+}
+
+/** An owner's questions for the authoring screen, in play order. Carries the answer key: staff only. */
+export async function listQuestionsFor(owner: VideoOwner) {
+  const rows = await db.sessionVideoQuestion.findMany({
+    where: questionsOf(owner),
+    orderBy: [{ atSeconds: "asc" }, { id: "asc" }],
+    select: ADMIN_SELECT,
+  });
+  return rows.map(toAdminRow);
+}
+
+/**
+ * Adds a question to a session's video or a video part. createdById is stamped
+ * on create only — there is no updatedById column, so it means "who first
+ * authored this".
+ */
+export async function createQuestionFor(owner: VideoOwner, body: QuestionInput, createdById: number) {
+  const created = await db.sessionVideoQuestion.create({
+    data: {
+      ...ownerColumns(owner),
+      atSeconds: body.atSeconds,
+      prompt: body.prompt,
+      options: body.options,
+      correctIndex: body.correctIndex,
+      points: body.points,
+      createdById,
+    },
+    select: ADMIN_SELECT,
+  });
+  return toAdminRow(created);
+}
 
 /** Re-marks every recorded answer against the new key. Returns how many verdicts changed. */
 async function regradeResponses(
