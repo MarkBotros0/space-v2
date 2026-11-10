@@ -34,7 +34,14 @@ export type AssignmentType = z.infer<typeof assignmentTypeSchema>;
 export const quizKindSchema = z.enum(["PAPER", "ONLINE"]);
 export type QuizKind = z.infer<typeof quizKindSchema>;
 
-export const quizQuestionTypeSchema = z.enum(["MCQ", "ESSAY"]);
+export const quizQuestionTypeSchema = z.enum([
+  "SINGLE_CHOICE",
+  "MULTI_CHOICE",
+  "TRUE_FALSE",
+  "MATCHING",
+  "FILL_BLANK",
+  "ESSAY",
+]);
 export type QuizQuestionType = z.infer<typeof quizQuestionTypeSchema>;
 
 export const quizAttemptStatusSchema = z.enum(["IN_PROGRESS", "SUBMITTED", "GRADED"]);

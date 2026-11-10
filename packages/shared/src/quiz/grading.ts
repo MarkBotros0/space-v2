@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { quizAttemptStatusSchema, quizKindSchema, quizQuestionTypeSchema } from "../enums";
+import { quizAttemptStatusSchema, quizKindSchema } from "../enums";
 
 // ---------------------------------------------------------------------------
 // Grading read shapes — the paper grade sheet and the online grading page.
@@ -31,19 +31,66 @@ export const quizGradeSheetSchema = z.object({
 });
 export type QuizGradeSheet = z.infer<typeof quizGradeSheetSchema>;
 
-/** Grader-only: carries the answer key by design (R103). */
-const quizGradingAnswerSchema = z.object({
+const gradingBase = {
   questionId: z.number(),
-  type: quizQuestionTypeSchema,
   prompt: z.string(),
   points: z.number(),
-  options: z.array(z.string()),
-  correctIndex: z.number().nullable(),
-  selectedIndex: z.number().nullable(),
-  isCorrect: z.boolean().nullable(),
-  text: z.string().nullable(),
   pointsAwarded: z.number().nullable(),
-});
+};
+const gradingOption = z.object({ id: z.number(), label: z.string(), isCorrect: z.boolean() }).strict();
+const gradingPair = z.object({ leftId: z.number(), left: z.string(), rightId: z.number(), right: z.string() }).strict();
+
+/**
+ * Grader-only: carries the answer key by design (R103), in the author's order.
+ * Per type: the key next to what the student chose. FILL_BLANK and ESSAY are
+ * what the leader marks right or wrong (`correct` null = not marked yet).
+ */
+const quizGradingAnswerSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      ...gradingBase,
+      type: z.enum(["SINGLE_CHOICE", "TRUE_FALSE"]),
+      options: z.array(gradingOption),
+      selectedOptionId: z.number().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      ...gradingBase,
+      type: z.literal("MULTI_CHOICE"),
+      options: z.array(gradingOption),
+      selectedOptionIds: z.array(z.number()),
+    })
+    .strict(),
+  z
+    .object({
+      ...gradingBase,
+      type: z.literal("MATCHING"),
+      pairs: z.array(gradingPair),
+      chosen: z.array(z.object({ leftId: z.number(), rightId: z.number() }).strict()),
+    })
+    .strict(),
+  z
+    .object({
+      ...gradingBase,
+      type: z.literal("FILL_BLANK"),
+      blanks: z.array(
+        z
+          .object({
+            blankId: z.number(),
+            position: z.number(),
+            expected: z.string(),
+            text: z.string().nullable(),
+            correct: z.boolean().nullable(),
+          })
+          .strict(),
+      ),
+    })
+    .strict(),
+  z
+    .object({ ...gradingBase, type: z.literal("ESSAY"), text: z.string().nullable(), correct: z.boolean().nullable() })
+    .strict(),
+]);
 export type QuizGradingAnswer = z.infer<typeof quizGradingAnswerSchema>;
 
 export const quizGradingAttemptSchema = z.object({

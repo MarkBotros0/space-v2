@@ -1,6 +1,8 @@
 import { z } from "zod";
 
-import { quizAttemptStatusSchema, quizKindSchema, quizQuestionTypeSchema } from "../enums";
+import { quizAttemptStatusSchema, quizKindSchema } from "../enums";
+import { quizQuestionAuthoringSchema } from "./questions";
+import { quizQuestionStudentSchema } from "./student";
 
 // ---------------------------------------------------------------------------
 // Read shapes
@@ -31,8 +33,8 @@ const quizSummarySchema = z.object({
   seasonCode: z.string(),
   gradedCount: z.number(),
   studentCount: z.number(),
-  /** When students were let see their scores; null while results are held back. */
-  resultsReleasedAt: z.string().nullable(),
+  /** When students were let see the answers; null while they are held back. */
+  answersReleasedAt: z.string().nullable(),
 });
 export type QuizSummary = z.infer<typeof quizSummarySchema>;
 
@@ -41,18 +43,6 @@ export const quizListPageSchema = z.object({
   nextCursor: z.number().nullable(),
 });
 export type QuizListPage = z.infer<typeof quizListPageSchema>;
-
-/** Authoring projection — the ONLY read shape carrying the answer key. */
-export const quizQuestionAuthoringSchema = z.object({
-  id: z.number(),
-  order: z.number(),
-  type: quizQuestionTypeSchema,
-  prompt: z.string(),
-  points: z.number(),
-  options: z.array(z.string()),
-  correctIndex: z.number().nullable(),
-});
-export type QuizQuestionAuthoring = z.infer<typeof quizQuestionAuthoringSchema>;
 
 export const quizAuthoringDetailSchema = z.object({
   id: z.number(),
@@ -76,37 +66,18 @@ export const quizAuthoringDetailSchema = z.object({
   /** Whether this caller may reopen an attempt / publish (canManageQuiz). */
   canManage: z.boolean(),
   /**
-   * Students see no score and no right or wrong answer until this is set
-   * (owner, 2026-11-07): someone taking the quiz later could learn the answers
-   * from someone who took it first.
+   * Students see no question text and no right or wrong answer until this is
+   * set: someone taking the quiz later could learn the answers from someone
+   * who took it first. Their score does not wait for it.
    */
-  resultsReleasedAt: z.string().nullable(),
-  /** The season's admin, or a super: the only people who may release results. */
+  answersReleasedAt: z.string().nullable(),
+  /** The season's admin, or a super: the only people who may release the answers. */
   canReleaseResults: z.boolean(),
+  /** Whether each attempt's questions are shuffled for the student (on by default). */
+  shuffleQuestions: z.boolean(),
   questions: z.array(quizQuestionAuthoringSchema),
 });
 export type QuizAuthoringDetail = z.infer<typeof quizAuthoringDetailSchema>;
-
-/**
- * The student projection. No `correctIndex`, ever.
- *
- * `isCorrect` and `pointsAwarded` ARE here and are correct to send (R34): both
- * are null until submit, and after an auto-graded submit the student learns
- * which MCQs were wrong without learning what was right.
- */
-export const quizQuestionStudentSchema = z.object({
-  id: z.number(),
-  order: z.number(),
-  type: quizQuestionTypeSchema,
-  prompt: z.string(),
-  points: z.number(),
-  options: z.array(z.string()),
-  selectedIndex: z.number().nullable(),
-  text: z.string().nullable(),
-  isCorrect: z.boolean().nullable(),
-  pointsAwarded: z.number().nullable(),
-});
-export type QuizQuestionStudent = z.infer<typeof quizQuestionStudentSchema>;
 
 /**
  * `autoScore` and `manualScore` are deliberately absent: v1 returned both to
@@ -123,6 +94,9 @@ export const studentQuizDetailSchema = z.object({
   attemptId: z.number().nullable(),
   attemptNumber: z.number(),
   status: quizAttemptStatusSchema.nullable(),
+  /** Which screen the student is on: before, during, waiting for marking, score only, or answers shown. */
+  stage: z.enum(["not_started", "in_progress", "submitted", "graded", "answers"]),
+  /** The student's best GRADED attempt; null until one is graded. */
   totalScore: z.number().nullable(),
   submittedAt: z.string().nullable(),
   gradedAt: z.string().nullable(),
@@ -130,11 +104,10 @@ export const studentQuizDetailSchema = z.object({
   /** True when the student's enrolment is no longer ACTIVE: they can read the quiz, not take it. */
   readOnly: z.boolean(),
   /**
-   * False until staff release the results. Until then a handed-in attempt
-   * reads SUBMITTED, and the score, gradedAt and every isCorrect and
-   * pointsAwarded are null.
+   * False until staff release the answers. Until then `questions` is empty
+   * after a hand-in and no `review` is sent.
    */
-  resultsReleased: z.boolean(),
+  answersReleased: z.boolean(),
 });
 export type StudentQuizDetail = z.infer<typeof studentQuizDetailSchema>;
 
@@ -151,8 +124,8 @@ const studentQuizResultSchema = z.object({
   sessionDate: z.string().nullable(),
   /** ONLINE only; null for PAPER and for a never-started ONLINE quiz. */
   attemptStatus: quizAttemptStatusSchema.nullable(),
-  /** False until staff release the results: no score, and a graded attempt reads SUBMITTED. */
-  resultsReleased: z.boolean(),
+  /** False until staff release the answers. */
+  answersReleased: z.boolean(),
 });
 export type StudentQuizResult = z.infer<typeof studentQuizResultSchema>;
 

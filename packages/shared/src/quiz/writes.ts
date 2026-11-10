@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { idCursorSchema } from "../pagination";
 
-import { quizKindSchema, quizQuestionTypeSchema } from "../enums";
+import { quizKindSchema } from "../enums";
 
 // ---------------------------------------------------------------------------
 // Write shapes
@@ -42,33 +42,9 @@ export const updateQuizRequestSchema = z
     title: z.string().trim().min(1).max(200).optional(),
     maxScore: z.number().int().min(1).max(1000).optional(),
     sessionId: z.number().int().positive().nullable().optional(),
+    shuffleQuestions: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update." });
-
-/**
- * v1 validated, then normalised in a separate `normalizeQuestion` helper that
- * every write had to remember to call. The normalisation is a `transform` here
- * so it cannot be forgotten (spec §8).
- */
-export const quizQuestionRequestSchema = z
-  .object({
-    type: quizQuestionTypeSchema,
-    prompt: z.string().trim().min(2).max(2000),
-    points: z.number().int().min(1).max(100),
-    options: z.array(z.string().trim().min(1).max(500)).max(6).default([]),
-    correctIndex: z.number().int().min(0).nullable().default(null),
-  })
-  .refine((d) => d.type === "ESSAY" || d.options.length >= 2, {
-    path: ["options"],
-    message: "Add at least 2 options.",
-  })
-  .refine((d) => d.type === "ESSAY" || (d.correctIndex !== null && d.correctIndex < d.options.length), {
-    path: ["correctIndex"],
-    message: "Mark the correct answer.",
-  })
-  .transform((d) => (d.type === "ESSAY" ? { ...d, options: [] as string[], correctIndex: null } : d));
-/** What a client form sends (before the schema's defaults and transform run). */
-export type QuizQuestionInput = z.input<typeof quizQuestionRequestSchema>;
 
 /** New in v2 (R20: v1 had no reorder at all). Must be a permutation — checked server-side. */
 export const reorderQuestionsRequestSchema = z.object({
@@ -76,28 +52,6 @@ export const reorderQuestionsRequestSchema = z.object({
 });
 
 export const publishQuizRequestSchema = z.object({ publish: z.boolean() });
-
-/**
- * A batch, unlike v1's one-answer-per-call. The runner debounces and flushes
- * everything pending in one request, so a backgrounded phone loses at most one
- * flush instead of one answer per silent failure (R55/R56 and spec §9).
- */
-export const saveQuizAnswersRequestSchema = z.object({
-  answers: z
-    .array(
-      z.object({
-        questionId: z.number().int().positive(),
-        /** Bounds against THIS question's options.length are a server check (R51). */
-        selectedIndex: z.number().int().min(0).nullable().default(null),
-        text: z.string().max(20000).nullable().default(null),
-      }),
-    )
-    .min(1)
-    .max(100),
-});
-
-/** One answer as the app sends it (after defaults: both fields present). */
-export type QuizAnswerInput = z.output<typeof saveQuizAnswersRequestSchema>["answers"][number];
 
 /**
  * `score: null` CLEARS the grade row.
@@ -125,13 +79,28 @@ export const saveQuizGradesRequestSchema = z.object({
 export type QuizGradeEntry = z.output<typeof saveQuizGradesRequestSchema>["entries"][number];
 
 /**
- * Every ESSAY question of the quiz must appear. v1 recomputed manualScore from
- * only the awards present in the call, so a partial payload silently lowered a
- * student's total (R72); completeness is checked server-side against the quiz.
+ * Right or wrong for every leader-marked item of an attempt: one mark per FILL_BLANK
+ * blank (`blankId`) and one per ESSAY question (`blankId: null`). Completeness is
+ * checked server-side against the attempt, since a partial payload would otherwise
+ * silently lower a student's total (R72). Replaces the old essay point awards.
  */
-export const gradeEssayAnswersRequestSchema = z.object({
-  awards: z.array(z.object({ questionId: z.number().int().positive(), points: z.number().int().min(0) })).min(1),
-});
+export const markAttemptRequestSchema = z
+  .object({
+    marks: z
+      .array(
+        z
+          .object({
+            questionId: z.number().int().positive(),
+            blankId: z.number().int().positive().nullable(),
+            correct: z.boolean(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(200),
+  })
+  .strict();
+export type MarkAttemptInput = z.output<typeof markAttemptRequestSchema>;
 
 export const reopenAttemptRequestSchema = z.object({
   studentUserId: z.number().int().positive(),

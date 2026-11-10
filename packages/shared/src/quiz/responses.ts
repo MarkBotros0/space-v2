@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { quizQuestionAuthoringSchema } from "./read";
+import { quizQuestionAuthoringSchema } from "./questions";
 
 // ---------------------------------------------------------------------------
 // Write responses — every client mutation parses one of these (ruling X10).
@@ -19,7 +19,7 @@ export const reorderQuestionsResponseSchema = z.object({
 /** POST /quizzes/:id/publish */
 export const publishQuizResponseSchema = z.object({ publishedAt: z.string().nullable() });
 /** POST /quizzes/:id/release */
-export const releaseQuizResultsResponseSchema = z.object({ resultsReleasedAt: z.string() });
+export const releaseQuizResultsResponseSchema = z.object({ answersReleasedAt: z.string() });
 /** PATCH /quizzes/:id/attempt */
 export const saveQuizAnswersResponseSchema = z.object({ saved: z.number() });
 /** POST /quizzes/:id/attempts/reopen */
