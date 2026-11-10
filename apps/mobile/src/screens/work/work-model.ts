@@ -31,7 +31,7 @@ export type WorkRow = {
 const DATE_CHIP = /^Due [A-Z][a-z]{2} \d{1,2}$/;
 
 /** A deadline chip that names the date itself ("Due Nov 14"), not "Overdue", "Due Fri" or "Due in 2 days". */
-export function chipNamesDate(chip: ChipSpec): boolean {
+function chipNamesDate(chip: ChipSpec): boolean {
   return DATE_CHIP.test(chip.label);
 }
 

@@ -26,6 +26,7 @@ export function VideoQuestionModal({
   onAnswer,
   onContinue,
   onLeave,
+  leaveLabel = "Leave the quiz",
 }: {
   question: StudentVideoQuestion | null;
   feedback: AnswerFeedback | null;
@@ -34,6 +35,8 @@ export function VideoQuestionModal({
   onAnswer: (selectedIndex: number) => void;
   onContinue: () => void;
   onLeave: () => void;
+  /** The explicit exit's words: a session's video is a quiz, an assignment's is a video. */
+  leaveLabel?: string;
 }) {
   return (
     <Modal
@@ -96,7 +99,7 @@ export function VideoQuestionModal({
                 </View>
               ) : null}
               <Button variant="plain" onPress={onLeave}>
-                Leave the quiz
+                {leaveLabel}
               </Button>
             </View>
           </>

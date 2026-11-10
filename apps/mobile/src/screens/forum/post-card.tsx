@@ -17,17 +17,19 @@ import { CommentRow } from "./comments";
 
 export function PostCard({
   assignmentId,
+  partId,
   post,
   allowComments,
 }: {
   assignmentId: number;
+  partId: number;
   post: ForumPost;
   allowComments: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState("");
-  const comments = useForumComments(assignmentId, post.submissionPublicId, expanded);
-  const postComment = usePostComment(assignmentId);
+  const comments = useForumComments(assignmentId, partId, post.publicId, expanded);
+  const postComment = usePostComment(assignmentId, partId);
 
   const remaining = post.commentCount - post.comments.length;
   const shown: ForumComment[] =
@@ -36,7 +38,7 @@ export function PostCard({
   const send = (): void => {
     const body = draft.trim();
     if (body === "") return;
-    postComment.mutate({ postPublicId: post.submissionPublicId, body }, { onSuccess: () => setDraft("") });
+    postComment.mutate({ postPublicId: post.publicId, body }, { onSuccess: () => setDraft("") });
   };
 
   return (
@@ -64,7 +66,7 @@ export function PostCard({
               </View>
             ) : null}
             {shown.map((c) => (
-              <CommentRow key={c.id} comment={c} assignmentId={assignmentId} />
+              <CommentRow key={c.id} comment={c} assignmentId={assignmentId} partId={partId} />
             ))}
             {/* Comment paging is v2's (v1 loaded every comment). */}
             {!expanded && remaining > 0 ? (

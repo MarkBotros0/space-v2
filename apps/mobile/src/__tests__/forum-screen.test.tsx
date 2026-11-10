@@ -6,59 +6,42 @@ jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
 }));
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ id: "41" }),
+  useLocalSearchParams: () => ({ id: "41", partId: "3" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
+import { assignmentDetail, forumPart, forumWork } from "./helpers/assignment-fixtures";
 import { renderWithProviders } from "./helpers/render";
 
-import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
+import PartScreen from "../../app/(app)/assignment/[id]/part/[partId]";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
-const forumAssignment = {
-  id: 41,
-  seasonId: 7,
-  seasonCode: "S26",
-  seasonTitle: "Spring 2026",
-  sessionId: null,
-  sessionTitle: null,
+const forumAssignment = assignmentDetail([forumWork(false)], {
   title: "Week three discussion",
   description: null,
-  // Org midnight on Apr 1 (Cairo, UTC+2). Plan 5's detail carries the
-  // server's org day/time and the screen renders those, never dueAt.
+  // Org midnight on Apr 1 (Cairo, UTC+2): the screen renders the server's org day, never dueAt.
   dueAt: "2099-03-31T22:00:00.000Z",
   dueOrgDay: "2099-04-01",
   dueOrgTime: null,
-  isOverdue: false,
-  isAllGroups: true,
-  type: "FORUM" as const,
-  forumMinWords: 5,
-  forumAllowComments: true,
-  forumPostToRead: true,
-  maxFileSizeMb: null,
-  allowedMimeCategories: [],
-  groupIds: null,
-  mySubmission: null,
-  canManage: false,
-  readOnly: false,
-};
+  parts: [forumPart],
+});
 
 const lockedView = {
   assignmentId: 41,
+  partId: 3,
+  prompt: forumPart.prompt,
   dueAt: forumAssignment.dueAt,
   own: {
-    submissionPublicId: null,
+    publicId: null,
     text: "",
     status: "DRAFT" as const,
     wordCount: 0,
     posted: false,
-    feedback: null,
-    reviewedAt: null,
   },
   locked: true,
   minWords: 5,
@@ -71,18 +54,16 @@ const lockedView = {
 const unlockedView = {
   ...lockedView,
   own: {
-    submissionPublicId: "abc123defg",
+    publicId: "abc123defg",
     text: "space-v2-test my response one two three",
-    status: "REVIEWED" as const,
+    status: "SUBMITTED" as const,
     wordCount: 7,
     posted: true,
-    feedback: "space-v2-test leader feedback",
-    reviewedAt: "2099-03-03T09:00:00.000Z",
   },
   locked: false,
   posts: [
     {
-      submissionPublicId: "peer000001",
+      publicId: "peer000001",
       studentUserId: 12,
       authorDisplayName: "Group member",
       text: "space-v2-test peer response",
@@ -121,7 +102,7 @@ beforeEach(() => {
   useSessionStore.setState(studentSession);
 });
 
-describe("forum branch of the assignment screen", () => {
+describe("forum part screen", () => {
   it("renders the compose box and the lock state with no submission in existence", async () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/assignments/41"
@@ -129,15 +110,12 @@ describe("forum branch of the assignment screen", () => {
         : Promise.resolve({ data: { data: lockedView } }),
     );
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
 
     expect(await screen.findByLabelText("Your response")).toBeTruthy();
     // A deliberate product mechanic, not an error — it gets a real empty state.
     expect(screen.getByText("Post to unlock the discussion")).toBeTruthy();
     expect(screen.getByText("0 words · minimum 5")).toBeTruthy();
-    // v1's FORUM branch shows no due date at all (spec 14 R33); v2 keeps it, once.
-    expect(screen.getByText("Due Apr 1, 2099")).toBeTruthy();
-    expect(screen.queryByText("Due Apr 1")).toBeNull();
     // Nothing was created by opening the screen (ruling C6).
     expect(put).not.toHaveBeenCalled();
   });
@@ -149,7 +127,7 @@ describe("forum branch of the assignment screen", () => {
         : Promise.resolve({ data: { data: lockedView } }),
     );
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
     fireEvent.changeText(await screen.findByLabelText("Your response"), "one two three");
     expect(screen.getByText("3 words · minimum 5")).toBeTruthy();
 
@@ -165,12 +143,12 @@ describe("forum branch of the assignment screen", () => {
     );
     put.mockResolvedValue({ data: { data: unlockedView.own } });
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
     fireEvent.changeText(await screen.findByLabelText("Your response"), "space-v2-test my response one two three");
     fireEvent.press(screen.getByText("Post response"));
 
     await waitFor(() =>
-      expect(put).toHaveBeenCalledWith("/api/v1/assignments/41/forum/response", {
+      expect(put).toHaveBeenCalledWith("/api/v1/assignments/41/parts/3/forum/response", {
         text: "space-v2-test my response one two three",
       }),
     );
@@ -183,7 +161,7 @@ describe("forum branch of the assignment screen", () => {
         : Promise.resolve({ data: { data: unlockedView } }),
     );
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
 
     expect(await screen.findByText("space-v2-test peer response")).toBeTruthy();
     expect(screen.getByText("Group member")).toBeTruthy();
@@ -191,10 +169,8 @@ describe("forum branch of the assignment screen", () => {
     // canDelete comes from the server; the client never re-derives it.
     expect(screen.getByLabelText("Delete comment")).toBeTruthy();
     expect(screen.queryByText("Update response")).toBeTruthy();
-    // v1 never renders feedback on a forum assignment, so a leader's verdict is
-    // invisible to the student who wrote the post (spec 14 R34 / D9).
-    expect(screen.getByText("space-v2-test leader feedback")).toBeTruthy();
-    expect(screen.getByText("Leader feedback")).toBeTruthy();
+    // A forum post has no review (owner): no feedback block.
+    expect(screen.queryByText("Leader feedback")).toBeNull();
     expect(screen.getByText(/^Group discussion · /)).toBeTruthy();
   });
 
@@ -206,7 +182,7 @@ describe("forum branch of the assignment screen", () => {
     );
     (apiClient.delete as jest.Mock).mockResolvedValue({ data: { data: { deleted: true } } });
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
 
     fireEvent.press(await screen.findByLabelText("Delete comment"));
     expect(await screen.findByText("Delete comment?")).toBeTruthy();
@@ -225,12 +201,12 @@ describe("forum branch of the assignment screen", () => {
     );
     post.mockResolvedValue({ data: { data: { comment: { id: 6 } } } });
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
     fireEvent.changeText(await screen.findByLabelText("Write a comment…"), "space-v2-test another comment");
     fireEvent.press(screen.getByLabelText("Post comment"));
 
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/assignments/41/forum/posts/peer000001/comments", {
+      expect(post).toHaveBeenCalledWith("/api/v1/assignments/41/parts/3/forum/posts/peer000001/comments", {
         body: "space-v2-test another comment",
       }),
     );
@@ -245,7 +221,7 @@ describe("forum branch of the assignment screen", () => {
       if (url === "/api/v1/assignments/41") {
         return Promise.resolve({ data: { data: forumAssignment } });
       }
-      if (url === "/api/v1/assignments/41/forum/posts/peer000001/comments") {
+      if (url === "/api/v1/assignments/41/parts/3/forum/posts/peer000001/comments") {
         return Promise.resolve({
           data: {
             data: {
@@ -265,19 +241,19 @@ describe("forum branch of the assignment screen", () => {
       return Promise.resolve({ data: { data: threeComments } });
     });
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
     expect(await screen.findByText("2 more")).toBeTruthy();
     fireEvent.press(screen.getByText("Show all comments"));
 
     expect(await screen.findByText("space-v2-test comment 7")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/assignments/41/forum/posts/peer000001/comments");
+    expect(get).toHaveBeenCalledWith("/api/v1/assignments/41/parts/3/forum/posts/peer000001/comments");
   });
 
   it("hides the comment block entirely when the assignment disallows comments", async () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/assignments/41"
         ? Promise.resolve({
-            data: { data: { ...forumAssignment, forumAllowComments: false } },
+            data: { data: { ...forumAssignment, parts: [{ ...forumPart, allowComments: false }] } },
           })
         : Promise.resolve({
             data: {
@@ -290,21 +266,33 @@ describe("forum branch of the assignment screen", () => {
           }),
     );
 
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
     expect(await screen.findByText("space-v2-test peer response")).toBeTruthy();
     expect(screen.queryByLabelText("Write a comment…")).toBeNull();
   });
 
-  it("does not render the forum branch for a STANDARD assignment", async () => {
+  it("shows the part's prompt above the thread", async () => {
     get.mockImplementation((url: string) =>
       url === "/api/v1/assignments/41"
-        ? Promise.resolve({ data: { data: { ...forumAssignment, type: "STANDARD" } } })
+        ? Promise.resolve({ data: { data: forumAssignment } })
         : Promise.resolve({ data: { data: lockedView } }),
     );
+    renderWithProviders(<PartScreen />);
+    expect(await screen.findByText("Share one takeaway")).toBeTruthy();
+  });
 
-    renderWithProviders(<AssignmentDetailScreen />);
-    await screen.findByText("Week three discussion");
-    expect(get).not.toHaveBeenCalledWith("/api/v1/assignments/41/forum");
+  it("a finished season says whether they posted and never reads the feed", async () => {
+    get.mockImplementation((url: string) => {
+      if (url.includes("/forum")) throw new Error(`forum feed must not be read: ${url}`);
+      return Promise.resolve({
+        data: { data: { ...forumAssignment, readOnly: true, my: { submittedAt: null, parts: [forumWork(true)] } } },
+      });
+    });
+    renderWithProviders(<PartScreen />);
+    expect(
+      await screen.findByText("You posted in this forum. This season has finished, so the discussion is closed."),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("Your response")).toBeNull();
   });
 
   it("offline, posting fails at once into the form's error and isn't sent on reconnect", async () => {
@@ -314,7 +302,7 @@ describe("forum branch of the assignment screen", () => {
         : Promise.resolve({ data: { data: lockedView } }),
     );
     put.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true, response: undefined }));
-    renderWithProviders(<AssignmentDetailScreen />);
+    renderWithProviders(<PartScreen />);
     fireEvent.changeText(await screen.findByLabelText("Your response"), "one two three four five six");
     act(() => onlineManager.setOnline(false));
     try {

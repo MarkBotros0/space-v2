@@ -1,23 +1,23 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { countWords, plainTextToHtml, type ForumView } from "@space/shared";
+import { countWords, type ForumView } from "@space/shared";
 
 import { cn } from "../../design/lib/cn";
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, RichTextView, Text, Textarea } from "../../design/ui";
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Text, Textarea } from "../../design/ui";
 import { useSubmitForumResponse } from "../../hooks/use-forum";
 import { apiErrorMessage } from "../../lib/api-error";
-import { formatDate } from "../../lib/format";
 
 import { NOTICE } from "./shared";
 
 /**
  * v1 forum-view.tsx compose card. Plain text in and out: the server converts
  * to and from stored HTML, so a rich editor here would store literal tags
- * (gap note). The leader's feedback on the own post is v2's (spec 14 D9).
+ * (gap note). A forum post has no review (owner): posting is what makes the
+ * part done.
  */
-export function ComposeCard({ assignmentId, view }: { assignmentId: number; view: ForumView }) {
+export function ComposeCard({ assignmentId, partId, view }: { assignmentId: number; partId: number; view: ForumView }) {
   const own = view.own;
-  const submit = useSubmitForumResponse(assignmentId);
+  const submit = useSubmitForumResponse(assignmentId, partId);
   const [draft, setDraft] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   if (own === null) return null;
@@ -70,19 +70,6 @@ export function ComposeCard({ assignmentId, view }: { assignmentId: number; view
           </View>
         </CardContent>
       </Card>
-      {own.feedback ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Leader feedback</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-col gap-1">
-            <RichTextView html={plainTextToHtml(own.feedback)} />
-            {own.reviewedAt ? (
-              <Text className="text-xs text-muted-foreground">{formatDate(own.reviewedAt)}</Text>
-            ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
     </>
   );
 }

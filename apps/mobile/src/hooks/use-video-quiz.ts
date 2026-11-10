@@ -151,7 +151,8 @@ function refreshRowsOnChange(
  *   gets its own wall-clock allowance on the server);
  * - the unsent watching belongs to one part: when `assignmentId` or `partId`
  *   changes, the reporter starts empty and never sends one part's ranges to
- *   another's address;
+ *   another's address. A `report` kept from an older render still reports to
+ *   its own part, with its own part's unsent ranges;
  * - no cache writes on each report (the player holds the live numbers). Only
  *   when the part becomes watched or done do the assignment's rows refresh.
  */
@@ -193,9 +194,14 @@ export function useSavePartVideoProgress(assignmentId: number, partId: number) {
     [assignmentId, partId, queryClient],
   );
 
+  // This render's part. A report() kept from an older render (a leave or unmount
+  // cleanup that runs after a rerender to a new part) holds its own part's state
+  // and address, so it can neither send the new part's ranges nor leave its own
+  // in the new part's queue.
+  const state = stateRef.current;
   const report = useCallback(
     async (ranges: Range[], at: number): Promise<void> => {
-      const s = stateRef.current;
+      const s = state;
       s.pending = mergeIntervals(s.pending, ranges);
       s.position = at;
       s.dirty = true;
@@ -206,7 +212,7 @@ export function useSavePartVideoProgress(assignmentId: number, partId: number) {
       });
       await s.inFlight;
     },
-    [flush],
+    [flush, state],
   );
 
   return { report };

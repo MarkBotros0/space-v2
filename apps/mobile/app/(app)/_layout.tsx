@@ -32,6 +32,8 @@ export const unstable_settings = { anchor: "(tabs)" };
 export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "assignment/[id]/index",
   "assignment/[id]/edit",
+  // One part of an assignment, opened from the student's checklist.
+  "assignment/[id]/part/[partId]",
   "assignment/new",
   "announcements/[id]/index",
   "announcements/[id]/edit",

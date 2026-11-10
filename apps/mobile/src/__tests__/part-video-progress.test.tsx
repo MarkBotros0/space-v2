@@ -136,4 +136,29 @@ describe("useSavePartVideoProgress: the reporter's edges", () => {
     });
     expect(put).toHaveBeenLastCalledWith(url(1), { intervals: [[10, 30]], position: 30 });
   });
+
+  it("a report from an old part's render (a leave cleanup after a rerender) keeps to that part", async () => {
+    // Part 1's last report fails, so its ranges stay unsent: they must stay part 1's.
+    put.mockRejectedValueOnce(new Error("offline"));
+    put.mockResolvedValue(saved(5));
+    const { result, rerender } = renderHook(({ partId }: { partId: number }) => useSavePartVideoProgress(41, partId), {
+      wrapper,
+      initialProps: { partId: 1 },
+    });
+    const partOneReport = result.current.report;
+    rerender({ partId: 2 });
+
+    // The old render's report: part 1's address and only what it was given.
+    await act(async () => {
+      await partOneReport([[0, 5]], 5);
+    });
+    expect(put).toHaveBeenLastCalledWith(url(1), { intervals: [[0, 5]], position: 5 });
+
+    // Part 2's reporter never saw part 1's ranges.
+    await act(async () => {
+      await result.current.report([[0, 3]], 3);
+    });
+    expect(put).toHaveBeenLastCalledWith(url(2), { intervals: [[0, 3]], position: 3 });
+    expect(put).toHaveBeenCalledTimes(2);
+  });
 });

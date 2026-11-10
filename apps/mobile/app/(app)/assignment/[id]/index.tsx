@@ -25,6 +25,7 @@ export default function AssignmentDetailScreen() {
   const { data, isPending, isError, refetch, isRefetching } = query;
 
   if (isStudent && id !== null) return <StudentAssignmentView query={query} />;
+  const forumPart = data?.parts.find((p) => p.kind === "FORUM");
 
   return (
     <ShellFrame onRefresh={() => void refetch()} refreshing={isRefetching}>
@@ -55,7 +56,7 @@ export default function AssignmentDetailScreen() {
               (own === null). MENTOR reads every group (the API answers 200,
               read-only), so it gets the thread too. */}
           <AssignmentStaffPanel detail={data} />
-          {data.type === "FORUM" ? <ForumThread assignmentId={data.id} /> : null}
+          {forumPart ? <ForumThread assignmentId={data.id} partId={forumPart.id} /> : null}
         </View>
       )}
     </ShellFrame>

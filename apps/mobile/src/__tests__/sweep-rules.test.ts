@@ -74,7 +74,6 @@ const BASELINE: Record<string, Record<string, number>> = {
     "src/screens/alumni/event-day-list.tsx": 2,
     "src/screens/announcements/meta.ts": 1,
     "src/screens/announcements/poll/poll-results.tsx": 1,
-    "src/screens/assignment-detail/student-assignment.tsx": 1,
     "src/screens/calendar/calendar-entries.tsx": 1,
     "src/screens/calendar/calendar-list.tsx": 1,
     "src/screens/group-form/members-model.ts": 1,

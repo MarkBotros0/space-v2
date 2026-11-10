@@ -2,136 +2,86 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { AppState, ScrollView, type AppStateStatus } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn() },
+  apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn() },
 }));
 jest.mock("../design/ui/toaster", () => ({
   toast: { success: jest.fn(), error: jest.fn() },
   Toaster: () => null,
 }));
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ id: "41" }),
+  useLocalSearchParams: () => ({ id: "41", partId: "2" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
 import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
+import { assignmentDetail, essayDetail, essayPart, essayWork, words } from "./helpers/assignment-fixtures";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
+import PartScreen from "../../app/(app)/assignment/[id]/part/[partId]";
 
 const get = apiClient.get as jest.Mock;
-const patch = apiClient.patch as jest.Mock;
+const put = apiClient.put as jest.Mock;
+const post = apiClient.post as jest.Mock;
 
-const URL = "/api/v1/submissions/abc123defg";
+const URL = "/api/v1/assignments/41/parts/2/essay";
+const PROMPT = essayPart.prompt;
 const FAILED = "Your draft wasn't saved. Check your connection.";
 const rejected = (status: number) =>
   Object.assign(new Error(String(status)), { isAxiosError: true, response: { status, data: {} } });
-const saved = { data: { data: { saved: true, submitted: false } } };
+const saved = { data: { data: { publicId: "essay00001", wordCount: 2, reviewStatus: "DRAFT" } } };
+const handedIn = { data: { data: { reviewStatus: "SUBMITTED", assignmentSubmitted: true } } };
 
-const assignment = {
-  id: 41,
-  seasonId: 7,
-  seasonCode: "S26",
-  seasonTitle: "Spring 2026",
-  sessionId: null,
-  sessionTitle: null,
-  title: "Essay one",
-  description: null,
-  dueAt: null,
-  dueOrgDay: null,
-  dueOrgTime: null,
-  isOverdue: false,
-  isAllGroups: true,
-  type: "STANDARD" as const,
-  forumMinWords: null,
-  forumAllowComments: false,
-  forumPostToRead: true,
-  maxFileSizeMb: null,
-  allowedMimeCategories: [],
-  groupIds: null,
-  canManage: false,
-  readOnly: false,
-};
-const submission = {
-  id: 900,
-  publicId: "abc123defg",
-  text: "first draft",
-  feedback: null,
-  submittedAt: null,
-  reviewedAt: null,
-  isLate: false,
-  assignmentId: 41,
-  assignmentTitle: "Essay one",
-  assignmentDueAt: null,
-  assignmentDescription: null,
-  seasonCode: "S26",
-  studentUserId: 9,
-  studentName: "S",
-  studentEmail: "s@jpc.test",
-  groupId: null,
-  groupName: null,
-  files: [],
-  canUploadFiles: false,
-  canReview: false,
-};
+type Status = "DRAFT" | "RETURNED" | "SUBMITTED";
 
-function serve(status: "DRAFT" | "RETURNED" | "SUBMITTED" = "DRAFT") {
+function serve(status: Status = "DRAFT", text = "first draft") {
   get.mockImplementation((url: string) =>
     Promise.resolve({
       data: {
         data:
           url === "/api/v1/assignments/41"
-            ? {
-                ...assignment,
-                mySubmission: {
-                  publicId: "abc123defg",
-                  status,
-                  submittedAt: null,
-                  reviewedAt: null,
-                  feedback: null,
-                  isLate: false,
-                },
-              }
-            : { ...submission, status },
+            ? assignmentDetail([essayWork(status, 2, status === "RETURNED" ? "More." : null)], { parts: [essayPart] })
+            : essayDetail(status, text, { feedback: status === "RETURNED" ? "More." : null }),
       },
     }),
   );
 }
 
-const open = () => renderWithProviders(<AssignmentDetailScreen />);
+const open = () => renderWithProviders(<PartScreen />);
 const settle = () => act(() => new Promise<void>((resolve) => setTimeout(resolve, 10)));
 
 beforeEach(() => {
   jest.clearAllMocks();
-  patch.mockReset();
+  put.mockReset();
+  post.mockReset();
   useSessionStore.setState(useSessionStore.getInitialState(), true);
   useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }, { id: 9 }));
 });
 
-describe("leaving the screen saves what was written", () => {
-  it("Back with typed text saves the draft, without a toast or a submit", async () => {
+describe("leaving the essay saves what was written", () => {
+  it("Back with typed text saves the draft, without a toast", async () => {
     serve();
-    patch.mockResolvedValue(saved);
+    put.mockResolvedValue(saved);
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
-    expect(patch).not.toHaveBeenCalled();
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "my essay");
+    expect(put).not.toHaveBeenCalled();
 
     view.unmount();
-    await waitFor(() => expect(patch).toHaveBeenCalledWith(URL, { text: "my essay" }));
+    await waitFor(() => expect(put).toHaveBeenCalledWith(URL, { text: "my essay" }));
     await settle();
-    expect(patch).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
   });
 
-  it("returned work is flushed too", async () => {
+  it("a returned essay is flushed too", async () => {
     serve("RETURNED");
-    patch.mockResolvedValue(saved);
+    put.mockResolvedValue(saved);
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "revised");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "revised");
     view.unmount();
-    await waitFor(() => expect(patch).toHaveBeenCalledWith(URL, { text: "revised" }));
+    await waitFor(() => expect(put).toHaveBeenCalledWith(URL, { text: "revised" }));
   });
 
   it.each([
@@ -141,183 +91,168 @@ describe("leaving the screen saves what was written", () => {
   ])("sends nothing when %s", async (_name, typed) => {
     serve();
     const view = open();
-    const input = await screen.findByLabelText("Your response");
+    const input = await screen.findByLabelText(PROMPT);
     if (typed !== undefined) fireEvent.changeText(input, typed);
     view.unmount();
     await settle();
-    expect(patch).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
   });
 
-  it("sends nothing when editing isn't allowed", async () => {
+  it("sends nothing when the essay is handed in", async () => {
     serve("SUBMITTED");
     const view = open();
     expect(await screen.findByText("first draft")).toBeTruthy();
     view.unmount();
     await settle();
-    expect(patch).not.toHaveBeenCalled();
+    expect(put).not.toHaveBeenCalled();
   });
 
   it("sends nothing more after Save draft", async () => {
     serve();
-    patch.mockResolvedValue(saved);
+    put.mockResolvedValue(saved);
     const view = open();
-    const input = await screen.findByLabelText("Your response");
-    fireEvent.changeText(input, "saved text");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "saved text");
     fireEvent.press(screen.getByText("Save draft"));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Draft saved."));
 
     view.unmount();
     await settle();
-    expect(patch).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
   });
 
   it("sends what was typed after Save draft", async () => {
     serve();
-    patch.mockResolvedValue(saved);
+    put.mockResolvedValue(saved);
     const view = open();
-    const input = await screen.findByLabelText("Your response");
+    const input = await screen.findByLabelText(PROMPT);
     fireEvent.changeText(input, "saved text");
     fireEvent.press(screen.getByText("Save draft"));
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Draft saved."));
     fireEvent.changeText(input, "saved text, and more");
 
     view.unmount();
-    await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
-    expect(patch).toHaveBeenLastCalledWith(URL, { text: "saved text, and more" });
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(put).toHaveBeenLastCalledWith(URL, { text: "saved text, and more" });
   });
 
   it("a slower save can't overwrite newer text: writes go out in order", async () => {
     serve();
     let finishFirst!: (v: unknown) => void;
-    patch.mockReturnValueOnce(new Promise((resolve) => (finishFirst = resolve)));
-    patch.mockResolvedValue(saved);
+    put.mockReturnValueOnce(new Promise((resolve) => (finishFirst = resolve)));
+    put.mockResolvedValue(saved);
     const view = open();
-    const input = await screen.findByLabelText("Your response");
+    const input = await screen.findByLabelText(PROMPT);
     fireEvent.changeText(input, "older");
     fireEvent.press(screen.getByText("Save draft"));
-    await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
     fireEvent.changeText(input, "newer");
 
     view.unmount();
     await settle();
-    expect(patch).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
     await act(async () => finishFirst(saved));
-    await waitFor(() => expect(patch).toHaveBeenLastCalledWith(URL, { text: "newer" }));
+    await waitFor(() => expect(put).toHaveBeenLastCalledWith(URL, { text: "newer" }));
   });
 
   it("re-opening while a flush is in flight: the new save waits for it", async () => {
     serve();
     let finishFlush: (value: unknown) => void = () => undefined;
-    patch.mockImplementationOnce(
+    put.mockImplementationOnce(
       () =>
         new Promise((resolve) => {
           finishFlush = resolve;
         }),
     );
-    patch.mockResolvedValue(saved);
+    put.mockResolvedValue(saved);
     const first = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "older");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "older");
     first.unmount();
-    await waitFor(() => expect(patch).toHaveBeenCalledWith(URL, { text: "older" }));
+    await waitFor(() => expect(put).toHaveBeenCalledWith(URL, { text: "older" }));
 
     open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "newer");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "newer");
     fireEvent.press(screen.getByText("Save draft"));
     await settle();
-    expect(patch).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
 
     await act(async () => finishFlush(saved));
-    await waitFor(() => expect(patch).toHaveBeenLastCalledWith(URL, { text: "newer" }));
+    await waitFor(() => expect(put).toHaveBeenLastCalledWith(URL, { text: "newer" }));
   });
 
-  it("does not flush after a submit, even with the submit still in flight", async () => {
-    serve();
+  it("does not flush after Hand in again, even with the hand-in still in flight", async () => {
+    serve("RETURNED", words(160));
+    put.mockResolvedValue(saved);
     let finish!: (v: unknown) => void;
-    patch.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
+    post.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "final");
-    fireEvent.press(screen.getByText("Submit"));
-    fireEvent.press(await screen.findByText("Yes, submit"));
-    await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
-    fireEvent.changeText(screen.getByLabelText("Your response"), "typed after");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), words(170));
+    fireEvent.press(screen.getByText("Hand in again"));
+    fireEvent.press(await screen.findByText("Yes, hand it in"));
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    fireEvent.changeText(screen.getByLabelText(PROMPT), "typed after");
 
     view.unmount();
     await settle();
-    expect(patch).toHaveBeenCalledTimes(1);
-    await act(async () => finish({ data: { data: { saved: true, submitted: true } } }));
+    expect(put).toHaveBeenCalledTimes(1);
+    await act(async () => finish(handedIn));
     await settle();
-    expect(patch).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
     // The answer still reaches the student, though the screen is gone.
-    expect(toast.success).toHaveBeenCalledWith("Submitted!");
+    expect(toast.success).toHaveBeenCalledWith("Handed in again.");
   });
 
-  it("a failed submit doesn't count as handed in: leaving saves the text", async () => {
-    serve();
-    patch.mockRejectedValueOnce(new Error("Network Error"));
-    patch.mockResolvedValue(saved);
+  it("a failed hand-in doesn't count as handed in: leaving saves the text", async () => {
+    serve("RETURNED", words(160));
+    put.mockResolvedValue(saved);
+    post.mockRejectedValueOnce(new Error("Network Error"));
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "final");
-    fireEvent.press(screen.getByText("Submit"));
-    fireEvent.press(await screen.findByText("Yes, submit"));
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), words(165));
+    fireEvent.press(screen.getByText("Hand in again"));
+    fireEvent.press(await screen.findByText("Yes, hand it in"));
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    fireEvent.changeText(screen.getByLabelText(PROMPT), words(166));
 
     view.unmount();
-    await waitFor(() => expect(patch).toHaveBeenLastCalledWith(URL, { text: "final" }));
+    await waitFor(() => expect(put).toHaveBeenLastCalledWith(URL, { text: words(166) }));
   });
 
   it("a flush that fails after leaving says so in a toast", async () => {
     serve();
-    patch.mockRejectedValue(new Error("Network Error"));
+    put.mockRejectedValue(new Error("Network Error"));
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "my essay");
     view.unmount();
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(FAILED));
   });
 });
 
-describe("work returned while the screen stays open", () => {
-  it("is flushed again after a submit has landed and the leader sends it back", async () => {
-    let status: "DRAFT" | "SUBMITTED" | "RETURNED" = "DRAFT";
+describe("an essay returned while the screen stays open", () => {
+  it("becomes editable again on a pull, and is flushed", async () => {
+    let status: Status = "SUBMITTED";
     get.mockImplementation((url: string) =>
       Promise.resolve({
         data: {
           data:
             url === "/api/v1/assignments/41"
-              ? {
-                  ...assignment,
-                  mySubmission: {
-                    publicId: "abc123defg",
-                    status,
-                    submittedAt: null,
-                    reviewedAt: null,
-                    feedback: null,
-                    isLate: false,
-                  },
-                }
-              : { ...submission, status, text: "final" },
+              ? assignmentDetail([essayWork(status, 2)], { parts: [essayPart] })
+              : essayDetail(status, "final"),
         },
       }),
     );
-    patch.mockImplementation(() => {
-      status = "SUBMITTED";
-      return Promise.resolve({ data: { data: { saved: true, submitted: true } } });
-    });
+    put.mockResolvedValue(saved);
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "final");
-    fireEvent.press(screen.getByText("Submit"));
-    fireEvent.press(await screen.findByText("Yes, submit"));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Submitted!"));
-    await waitFor(() => expect(screen.queryByLabelText("Your response")).toBeNull());
+    expect(await screen.findByText("final")).toBeTruthy();
+    expect(screen.queryByLabelText(PROMPT)).toBeNull();
 
     // The leader sends it back; the student pulls, then rewrites.
     status = "RETURNED";
     await act(async () => {
       screen.UNSAFE_getByType(ScrollView).props.refreshControl.props.onRefresh();
     });
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "revised");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "revised");
     view.unmount();
-    await waitFor(() => expect(patch).toHaveBeenLastCalledWith(URL, { text: "revised" }));
-    expect(patch).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(put).toHaveBeenLastCalledWith(URL, { text: "revised" }));
+    expect(put).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -328,9 +263,9 @@ describe("a flush the server refused doesn't blame the connection", () => {
     [403, "Your draft wasn't saved."],
   ])("status %s", async (status, message) => {
     serve();
-    patch.mockRejectedValue(rejected(status));
+    put.mockRejectedValue(rejected(status));
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "my essay");
     view.unmount();
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(message));
   });
@@ -355,34 +290,34 @@ describe("backgrounding saves what was written", () => {
   it("flushes once, and a later Back doesn't send it again", async () => {
     const app = background();
     serve();
-    patch.mockResolvedValue(saved);
+    put.mockResolvedValue(saved);
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "my essay");
 
     await app.send("inactive");
     await app.send("background");
-    await waitFor(() => expect(patch).toHaveBeenCalledWith(URL, { text: "my essay" }));
+    await waitFor(() => expect(put).toHaveBeenCalledWith(URL, { text: "my essay" }));
     view.unmount();
     await settle();
-    expect(patch).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
     app.spy.mockRestore();
   });
 
   it("a failed background flush is tried again next time, and coming back sends nothing", async () => {
     const app = background();
     serve();
-    patch.mockRejectedValueOnce(new Error("Network Error"));
-    patch.mockResolvedValue(saved);
+    put.mockRejectedValueOnce(new Error("Network Error"));
+    put.mockResolvedValue(saved);
     const view = open();
-    fireEvent.changeText(await screen.findByLabelText("Your response"), "my essay");
+    fireEvent.changeText(await screen.findByLabelText(PROMPT), "my essay");
 
     await app.send("background");
     await waitFor(() => expect(toast.error).toHaveBeenCalledWith(FAILED));
     await app.send("active");
-    expect(patch).toHaveBeenCalledTimes(1);
+    expect(put).toHaveBeenCalledTimes(1);
 
     view.unmount();
-    await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
     app.spy.mockRestore();
   });
 });

@@ -1,102 +1,144 @@
-/** v1 app/student/assignments/[id]/page.tsx (STANDARD and FORUM branches), on the redesign's Screen. */
-import type { UseQueryResult } from "@tanstack/react-query";
-import { View } from "react-native";
-import type { AssignmentDetail } from "@space/shared";
-
-import { ForumThread } from "../forum";
-import { ListSectionHeader } from "../../design/ui/grouped-list";
-import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import { Screen } from "../../design/layout/screen";
-import { RichTextView, StatusChip, Text, dueChip, statusChip, type ChipSpec } from "../../design/ui";
-import { useStudentDashboard } from "../../hooks/use-dashboard";
-import { usePullRefresh } from "../../hooks/use-pull-refresh";
-import { useSubmissionDetail } from "../../hooks/use-submission";
-import { deviceTodayKey } from "../../lib/calendar-grid";
-import { formatOrgDue } from "../../lib/format";
-import { storedTextToHtml } from "../../lib/stored-text";
-import { chipNamesDate } from "../work/work-model";
-import { useSubmissionEditor } from "./submission-editor";
-
 /**
- * The line under the chips gives the date, so a chip is here only for what the line
- * can't say. Once work is handed in there is none: `isOverdue` only compares the due
- * instant with now, whatever was handed in, and the status chip says where it stands.
- * RETURNED agrees with its Work row, where "Returned" stands in for "Overdue"; the
- * deadline still applies to it, and DueBanner says so. Otherwise only a relative chip
- * ("Overdue", "Due in 2 days", "Due Friday") or "No due date", never a repeat of the date.
+ * The student's assignment page (spec layout A): title, due date, the
+ * instructions, then the checklist of parts and Submit in the pinned bar.
+ * Submit unlocks only when every part is done, videos included, and the
+ * caption above it names what is left. Each part opens on its own screen.
  */
-function dateChip(detail: AssignmentDetail, todayOrgDay: string): ChipSpec | null {
-  const status = detail.mySubmission?.status;
-  if (status === "SUBMITTED" || status === "REVIEWED" || status === "RETURNED") return null;
-  const chip = dueChip({ isOverdue: detail.isOverdue, dueOrgDay: detail.dueOrgDay, todayOrgDay });
-  return chipNamesDate(chip) ? null : chip;
-}
+import type { UseQueryResult } from "@tanstack/react-query";
+import { useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import { View } from "react-native";
+import { canSubmit, submitBlockerLine, type AssignmentDetail } from "@space/shared";
 
-function ChipRow({ detail, todayOrgDay }: { detail: AssignmentDetail; todayOrgDay: string }) {
-  const forum = detail.type === "FORUM";
-  const sub = detail.mySubmission;
-  // A finished season has no deadline left to count down to.
-  const date = detail.readOnly ? null : dateChip(detail, todayOrgDay);
+import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
+import { SaveBar } from "../../design/layout/save-bar";
+import { Screen } from "../../design/layout/screen";
+import { ConfirmDialog, RichTextView, StatusChip, Text } from "../../design/ui";
+import { ListSectionHeader } from "../../design/ui/grouped-list";
+import { usePullRefresh } from "../../hooks/use-pull-refresh";
+import { useSubmitAssignment } from "../../hooks/use-submission";
+import { apiErrorMessage } from "../../lib/api-error";
+import { formatDate, formatOrgDue, keepTogether } from "../../lib/format";
+import { reportOutcome } from "../../lib/outcome";
+import { storedTextToHtml } from "../../lib/stored-text";
+import { AssignmentChecklist } from "./assignment-checklist";
+
+const READ_ONLY = "This season has finished. You can read your work but not change it.";
+const SUBMIT_HINT = "Your essays go to your leader when you submit.";
+
+/** The due date in words, with "Overdue" beside it while there is still something to hand in. */
+function DueLine({ detail }: { detail: AssignmentDetail }) {
+  const owed = !detail.readOnly && detail.my?.submittedAt == null;
   return (
-    <View className="gap-1.5">
-      <View className="flex-row flex-wrap gap-1.5">
-        {forum ? <StatusChip tone="info" label="Forum" /> : null}
-        {/* The forum keeps v2's due chip (spec 14 D10) and shows none without a date. */}
-        {date && (!forum || detail.dueOrgDay !== null) ? <StatusChip {...date} /> : null}
-        {sub ? <StatusChip {...statusChip("submission", sub.status)} /> : null}
-        {sub?.isLate ? <StatusChip tone="warn" label="Late" /> : null}
-      </View>
-      {detail.dueOrgDay !== null ? (
-        <Text variant="subhead" className="text-muted-foreground">
-          {`Due ${formatOrgDue(detail.dueOrgDay, detail.dueOrgTime)}`}
-        </Text>
-      ) : null}
+    <View className="flex-row flex-wrap items-center gap-2">
+      {detail.isOverdue && owed ? <StatusChip tone="bad" label="Overdue" /> : null}
+      <Text variant="subhead" className="min-w-0 shrink text-muted-foreground">
+        {/* The server's org-clock day and time (C2/X13), never dueAt in the device's zone. */}
+        {detail.dueOrgDay === null ? "No due date" : `Due ${formatOrgDue(detail.dueOrgDay, detail.dueOrgTime)}`}
+      </Text>
     </View>
   );
 }
 
+/** Submit, its confirmation and its refusals. Pending disables it, so one tap is one Submit. */
+function useSubmit(detail: AssignmentDetail) {
+  const submit = useSubmitAssignment(detail.id);
+  const [confirming, setConfirming] = useState(false);
+  // isPending reaches the buttons a tick after the press, so a quick second tap is held here.
+  const inFlight = useRef(false);
+  const confirm = () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    submit.mutate(undefined, {
+      onSuccess: () => reportOutcome("success", "Submitted!"),
+      // not_finished carries the blocker line, already_submitted its own words; the hook re-reads either way.
+      onError: (err) =>
+        reportOutcome("error", apiErrorMessage(err, "Couldn't submit. Check your connection and try again.")),
+      onSettled: () => {
+        inFlight.current = false;
+        setConfirming(false);
+      },
+    });
+  };
+  return { submit, confirming, setConfirming, confirm };
+}
+
 function StudentAssignment({ detail, refresh }: { detail: AssignmentDetail; refresh: () => Promise<unknown> }) {
-  const forum = detail.type === "FORUM";
-  const dash = useStudentDashboard(detail.seasonId);
-  const { body, footer } = useSubmissionEditor(detail);
-  // The chip comes from the assignment and the feedback from the submission: a pull
-  // reads both, or the chip can say Returned over a body with no feedback in it.
-  const publicId = detail.mySubmission?.publicId ?? null;
-  const submission = useSubmissionDetail(publicId);
-  // The spinner is the pull's own, so a save or a poll never raises it, and it waits for
-  // both reads. `enabled` gates only the automatic run, so the submission read is guarded.
-  const pull = usePullRefresh(() => Promise.all([refresh(), publicId !== null ? submission.refetch() : undefined]));
-  const subtitle = [detail.seasonTitle, detail.sessionTitle].filter(Boolean).join(" · ");
+  const router = useRouter();
+  const pull = usePullRefresh(refresh);
+  const { submit, confirming, setConfirming, confirm } = useSubmit(detail);
+  const works = detail.my?.parts ?? [];
+  const submittedAt = detail.my?.submittedAt ?? null;
+  const ready = canSubmit(detail.parts, works);
+  const blocker = ready ? null : submitBlockerLine(detail.parts, works);
+  const offerSubmit = !detail.readOnly && submittedAt === null && detail.parts.length > 0;
+
+  const footer = offerSubmit ? (
+    <SaveBar
+      label="Submit"
+      onPress={() => setConfirming(true)}
+      loading={submit.isPending}
+      disabled={!ready || submit.isPending}
+      disabledReason={blocker ?? undefined}
+      hint={blocker ?? SUBMIT_HINT}
+    />
+  ) : undefined;
+
   return (
     <Screen
       title={detail.title}
-      subtitle={subtitle || undefined}
+      subtitle={detail.seasonTitle}
       onRefresh={pull.onRefresh}
       refreshing={pull.refreshing}
-      footer={forum && !detail.readOnly ? undefined : footer}
+      footer={footer}
     >
       <View className="gap-4">
-        <ChipRow detail={detail} todayOrgDay={dash.data?.todayOrgDay ?? deviceTodayKey()} />
+        <DueLine detail={detail} />
+        {submittedAt !== null ? (
+          <Text variant="subhead">{`Submitted ${keepTogether(formatDate(submittedAt))}`}</Text>
+        ) : null}
+        {detail.readOnly ? (
+          <Text variant="subhead" className="rounded-group bg-surface p-4 text-muted-foreground">
+            {READ_ONLY}
+          </Text>
+        ) : null}
         {detail.description ? (
           <View>
-            <ListSectionHeader>{forum ? "Question" : "Brief"}</ListSectionHeader>
+            <ListSectionHeader>Instructions</ListSectionHeader>
+            {/* Descriptions hold v1's stored HTML or v2 plain text; never show raw tags (B3-16). */}
             <View className="rounded-group bg-surface p-4">
               <RichTextView html={storedTextToHtml(detail.description)} />
             </View>
           </View>
         ) : null}
-        {/* A forum response IS the submission; it can never carry files. A former
-            student's feed stays closed (the server answers 403), so they get their
-            own response only and the feed is neither read nor drawn. */}
-        {forum && !detail.readOnly ? <ForumThread assignmentId={detail.id} /> : body}
+        <AssignmentChecklist
+          parts={detail.parts}
+          works={works}
+          onOpen={(part) =>
+            router.push({
+              pathname: "/assignment/[id]/part/[partId]",
+              params: { id: String(detail.id), partId: String(part.id) },
+            })
+          }
+        />
       </View>
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={setConfirming}
+        title="Submit this assignment?"
+        description="Your essays go to your leader for review, and you can't change them after you submit."
+        confirmLabel="Yes, submit"
+        cancelLabel="Not yet"
+        pending={submit.isPending}
+        onConfirm={confirm}
+      />
     </Screen>
   );
 }
 
 /** The student's route body: loading and error states, then the detail. */
 export function StudentAssignmentView({ query }: { query: UseQueryResult<AssignmentDetail> }) {
-  // A failed pull keeps the screen: swapping it out would drop what is being typed.
+  // A failed pull keeps the page: swapping it out would lose the student's place.
   if (query.data === undefined) {
     return (
       <Screen title="Assignment">
