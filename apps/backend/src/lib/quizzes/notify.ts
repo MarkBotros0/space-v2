@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import { liveStudentIds } from "../queries/season-participants";
 import { bestEffort } from "../best-effort";
 import { createNotificationsBulk } from "../notifications";
 import { notificationLink } from "../notification-target";
@@ -45,20 +46,13 @@ export async function notifyQuizGraded(studentUserIds: number[], title: string, 
  */
 export async function notifyQuizPublished(quiz: { seasonId: number; title: string }): Promise<void> {
   await bestEffort("notify:QUIZ_PUBLISHED", async () => {
-    const enrolled = await db.seasonEnrollment.findMany({
-      where: {
-        seasonId: quiz.seasonId,
-        status: "ACTIVE",
-        // A draft's roster can't take the quiz yet, so there is nothing to tell them.
-        season: { status: "ACTIVE" },
-        studentUser: { deletedAt: null },
-      },
-      select: { studentUserId: true },
+    // A draft's roster can't take the quiz yet, so there is nothing to tell them.
+    const enrolled = await liveStudentIds(quiz.seasonId);
+    await createNotificationsBulk(enrolled, {
+      type: "QUIZ_PUBLISHED",
+      title: `New quiz: ${quiz.title}`,
+      link: QUIZ_GRADED_LINK,
     });
-    await createNotificationsBulk(
-      enrolled.map((e) => e.studentUserId),
-      { type: "QUIZ_PUBLISHED", title: `New quiz: ${quiz.title}`, link: QUIZ_GRADED_LINK },
-    );
   });
 }
 

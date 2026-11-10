@@ -1,4 +1,5 @@
 import { db } from "../db/client";
+import { liveStudentIds } from "./queries/season-participants";
 
 import { bestEffort } from "./best-effort";
 import { createNotificationsBulk } from "./notifications";
@@ -50,16 +51,13 @@ export async function prepareSessionCancelledNotice(
     if (!first) return;
 
     const [enrolled, leaders] = await Promise.all([
-      db.seasonEnrollment.findMany({
-        where: { seasonId, status: "ACTIVE", season: { status: "ACTIVE" }, studentUser: { deletedAt: null } },
-        select: { studentUserId: true },
-      }),
+      liveStudentIds(seasonId),
       db.groupLeader.findMany({
         where: { group: { seasonId, season: { status: "ACTIVE" } }, user: { deletedAt: null } },
         select: { userId: true },
       }),
     ]);
-    const recipientIds = [...new Set([...enrolled.map((e) => e.studentUserId), ...leaders.map((l) => l.userId)])];
+    const recipientIds = [...new Set([...enrolled, ...leaders.map((l) => l.userId)])];
     if (recipientIds.length === 0) return;
 
     // Org wall clock (C2), formatted as the SESSION_RESCHEDULED notice is.

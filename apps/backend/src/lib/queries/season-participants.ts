@@ -1,4 +1,5 @@
 import type { Prisma } from "../../generated/prisma/client";
+import { db } from "../../db/client";
 import { finishedSeasonStatus } from "../seasons/status";
 import { liveUser } from "../db/live";
 
@@ -34,3 +35,23 @@ export const seasonRosterMember: Prisma.SeasonEnrollmentWhereInput = {
   ...seasonParticipant,
   studentUser: { role: "STUDENT", ...liveUser },
 };
+
+/**
+ * The live students of an ACTIVE season, by id, in enrolment order (one per
+ * enrolment): an ACTIVE enrolment, not a deleted account. Optionally only
+ * those in the given groups. Who a season-wide notification goes to (refactor
+ * BE-028); a draft's roster is not live yet.
+ */
+export async function liveStudentIds(seasonId: number, opts: { groupIds?: number[] } = {}): Promise<number[]> {
+  const rows = await db.seasonEnrollment.findMany({
+    where: {
+      seasonId,
+      status: "ACTIVE",
+      season: { status: "ACTIVE" },
+      studentUser: liveUser,
+      ...(opts.groupIds ? { groupId: { in: opts.groupIds } } : {}),
+    },
+    select: { studentUserId: true },
+  });
+  return rows.map((r) => r.studentUserId);
+}
