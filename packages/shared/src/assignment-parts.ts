@@ -59,9 +59,9 @@ export type AssignmentPartInput = z.input<typeof assignmentPartInputSchema>;
 
 const stored = { id: z.number(), position: z.number() };
 
-/** A part as a reader sees it. A video also carries the id of its quiz-bearing video record. */
+/** A part as a reader sees it. A video also carries its YouTube id. */
 export const assignmentPartSchema = z.discriminatedUnion("kind", [
-  z.object({ ...stored, ...videoFields, videoId: z.number().nullable() }),
+  z.object({ ...stored, ...videoFields, videoId: z.string().nullable() }),
   z.object({ ...stored, ...essayFields }),
   z.object({ ...stored, ...forumFields }),
 ]);

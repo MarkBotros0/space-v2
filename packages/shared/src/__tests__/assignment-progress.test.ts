@@ -19,7 +19,7 @@ const parts: AssignmentPart[] = [
     youtubeUrl: "dQw4w9WgXcQ",
     blockSkipping: true,
     durationSeconds: 1080,
-    videoId: 5,
+    videoId: "dQw4w9WgXcQ",
   },
   {
     id: 2,

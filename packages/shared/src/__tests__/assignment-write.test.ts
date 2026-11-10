@@ -130,6 +130,10 @@ describe("response additions", () => {
   const detail = {
     id: 41,
     seasonId: 7,
+    seasonCode: "s7",
+    seasonTitle: "Spring 2099",
+    sessionTitle: null,
+    isAllGroups: true,
     title: "Essay one",
     description: null,
     dueAt: "2099-04-01T21:59:00.000Z",
@@ -139,7 +143,7 @@ describe("response additions", () => {
     reminder,
     reminderLine: "2 days before the next session",
     parts: [
-      { ...video, id: 1, position: 0, videoId: 9 },
+      { ...video, id: 1, position: 0, videoId: "dQw4w9WgXcQ" },
       { ...essay, id: 2, position: 1 },
     ],
     my: null,
