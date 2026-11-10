@@ -2,7 +2,7 @@ name: Unit tests
 
 # Runs on every pull request (owner, refactor Q24), and by hand from the Actions tab.
 # `pnpm check`: lint (Prettier, ESLint with the size and boundary rules), typecheck, the
-# unit tests of every package, the dead-export check and the 400-line check. Needs no
+# unit tests of every package, the dead-export, 400-line and Claude-guide path checks. Needs no
 # database. Integration tests stay the manual "Integration tests (on demand)" workflow.
 on:
   pull_request:

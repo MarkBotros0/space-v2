@@ -19,7 +19,8 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json}\"",
     "check:dead": "node scripts/check-dead.mjs",
     "check:size": "node scripts/check-size.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm check:dead && pnpm check:size"
+    "check": "pnpm lint && pnpm typecheck && pnpm test:unit && pnpm check:dead && pnpm check:size && pnpm check:docs",
+    "check:docs": "node scripts/check-docs.mjs"
   },
   "devDependencies": {
     "prettier": "^3.2.5",

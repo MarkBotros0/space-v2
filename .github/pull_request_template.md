@@ -4,7 +4,7 @@
 
 ## Definition of done
 
-- [ ] `pnpm check` passes (lint, typecheck, unit tests, `check:dead`, `check:size`); CI runs it on this PR
+- [ ] `pnpm check` passes (lint, typecheck, unit tests, `check:dead`, `check:size`, `check:docs`); CI runs it on this PR
 - [ ] Integration tests run where the change touches the backend or the database (Actions → "Integration tests (on demand)", or locally against a throwaway database, never staging or production)
 - [ ] Every feature, API contract and user-visible text keeps working, or the change is the owner's ruling and is named here
 - [ ] No file over 400 lines; no new `eslint-disable` without a reason beside it
