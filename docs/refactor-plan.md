@@ -335,7 +335,7 @@ a thin route file where it touches one (FE-011). Files stay where they are (see 
 - [x] 5.6 Forum: FE-009 — screens/forum/{compose-card,post-card,comments,shared,index}; components/ForumThread.tsx removed; mobile 280/2347
 - [x] 5.7 Video questions editor: FE-004 editor part (`video-question-form.ts`) — lib/video-question-form.ts (5 tests); editor onSave is the two writes; mobile 281/2352
 - [x] 5.8 Students lists: FE-034 (renames), FE-061 (`studentListCopy`), FE-029, FE-010 (`use-students` split) — FE-061 studentListCopy (3 tests, cast gone); FE-034 StudentDirectory (screens/students-list/student-directory.tsx) and LocalStudentList / LocalStudentRow; FE-029 SearchFilterRow (+ catalogue); FE-010 use-students/{list,detail,writes}; mobile 282/2355
-- [ ] 5.9 Calendar: FE-060 (`calendarBranchFor`), FE-010 (`season-calendars` split)
+- [x] 5.9 Calendar: FE-060 (`calendarBranchFor`), FE-010 (`season-calendars` split) — FE-060 calendarBranchFor (3 tests) + switch; FE-010 season-calendars/{student,leader,super,admin,shared}; mobile 283/2358
 - [ ] 5.10 Reports & exports: FE-012
 - [ ] 5.11 Announcements & polls: FE-080 (poll-diff rule pinned first), FE-081
 - [ ] 5.12 Remaining screens: FE-020 / FE-032 leftovers
