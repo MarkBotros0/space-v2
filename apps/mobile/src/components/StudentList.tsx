@@ -1,8 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { View } from "react-native";
-import type { StudentListItem, StudentListStatus, UserRole } from "@space/shared";
+import type { StudentListStatus, UserRole } from "@space/shared";
 
-import { NAV_ICONS } from "../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../design/layout/route-states";
 import { Screen } from "../design/layout/screen";
 import { EmptyState, FilterButton, GroupedList, SearchField } from "../design/ui";
@@ -11,42 +10,14 @@ import { StudentFilterSheet, activeFilterCount } from "../screens/students-list/
 import { ActiveStudentRow, AlumnusRow, DroppedStudentRow } from "../screens/students-list/student-rows";
 import { useDebouncedSearch } from "../hooks/use-debounced-search";
 import { useRole } from "../store/session";
+import { studentListCopy } from "../screens/students-list/copy";
 import { LoadMoreButton } from "../design/ui/load-more-button";
 
 /** Who may open each list: the screen mirrors the endpoint's per-surface gate. */
 const ALUMNI_ROLES: readonly UserRole[] = ["SUPER", "ADMIN", "MENTOR"];
 const DROPPED_ROLES: readonly UserRole[] = ["SUPER", "ADMIN"];
 
-const COPY = {
-  active: {
-    Row: ActiveStudentRow,
-    icon: NAV_ICONS.students,
-    emptyTitle: "No students yet",
-    emptyDescription: "Students will appear here once they're enrolled.",
-    subtitle: (n: number) => `${n} ${n === 1 ? "student" : "students"} in your seasons`,
-  },
-  alumni: {
-    Row: AlumnusRow,
-    icon: NAV_ICONS.alumni,
-    emptyTitle: "No alumni yet",
-    emptyDescription: "Students you graduate will appear here.",
-    subtitle: (n: number) => `${n} graduated ${n === 1 ? "student" : "students"} from your seasons`,
-  },
-  dropped: {
-    Row: DroppedStudentRow,
-    icon: NAV_ICONS.dropped,
-    emptyTitle: "No dropped students",
-    emptyDescription: "Students who leave a season without graduating will show up here.",
-    subtitle: (n: number) => `${n} ${n === 1 ? "student" : "students"} dropped from your seasons`,
-  },
-} as const;
-
-/** The mentor's count line: no "your seasons" (owner, 2026-11-07). */
-/** A mentor's people are members, students and alumni alike (owner, 2026-11-07). */
-function mentorSubtitle(n: number, absent: boolean): string {
-  const people = `${n} ${n === 1 ? "member" : "members"}`;
-  return absent ? `${people} absent lately` : people;
-}
+const ROWS = { active: ActiveStudentRow, alumni: AlumnusRow, dropped: DroppedStudentRow } as const;
 
 interface StudentListProps {
   status: StudentListStatus;
@@ -107,43 +78,25 @@ export function StudentList({
 
   const students = data?.pages.flatMap((p) => p.students) ?? [];
   const total = data?.pages[0]?.total ?? 0;
-  const copy = COPY[shown];
-  const filtered = q !== "" || view.groupId !== null || view.seasonId !== null || view.absentLately;
+  const copy = studentListCopy({ audience: mentor ? "mentor" : "staff", shown, view, q });
+  const Row = ROWS[shown];
   const filters = activeFilterCount(view) + (shown !== "active" ? 1 : 0);
 
   let body: ReactNode;
   if (isPending) body = <RouteSkeleton />;
   else if (isError) body = <RouteError onRetry={() => void refetch()} />;
   else if (students.length === 0)
-    body = (
-      <EmptyState
-        icon={copy.icon}
-        title={filtered ? "No matches" : mentor && shown === "active" ? "No members yet" : copy.emptyTitle}
-        description={
-          q
-            ? `No ${mentor ? "members" : "students"} match your search.`
-            : view.absentLately
-              ? "Nobody has missed their last two sessions."
-              : view.groupId !== null
-                ? "No students are in that group."
-                : view.seasonId !== null
-                  ? "No students are in that season."
-                  : mentor && shown === "active"
-                    ? "Members will appear here once they join a season."
-                    : copy.emptyDescription
-        }
-      />
-    );
+    body = <EmptyState icon={copy.icon} title={copy.emptyTitle} description={copy.emptyDescription} />;
   else
     body = (
       <>
         <GroupedList>
           {students.map((item) => (
-            <copy.Row
+            <Row
               // Dropped rows are enrollment-keyed (R43): one student can
               // appear once per dropped season, so the user id collides.
               key={item.droppedEnrollment?.enrollmentId ?? item.id}
-              item={item as StudentListItem}
+              item={item}
               seasonless={mentor}
             />
           ))}
@@ -157,10 +110,10 @@ export function StudentList({
       {/* Owner 2026-11-07: Filter is an icon button in the search row. */}
       <View className="flex-row items-center gap-2">
         <SearchField
-          accessibilityLabel={mentor ? "Search members" : "Search students"}
+          accessibilityLabel={copy.searchLabel}
           value={search}
           onChangeText={setSearch}
-          placeholder={mentor ? "Search members" : "Search students"}
+          placeholder={copy.searchLabel}
           onSubmitEditing={commit}
           className="min-w-0 flex-1"
         />
@@ -192,7 +145,7 @@ export function StudentList({
       title={title}
       // The real population under the current filters (D14) — v1
       // printed the fetched row count as if it were the total.
-      subtitle={data ? (mentor ? mentorSubtitle(total, view.absentLately) : copy.subtitle(total)) : undefined}
+      subtitle={data ? copy.subtitle(total) : undefined}
       trailing={headerAction}
       onRefresh={() => void refetch()}
       refreshing={isRefetching}
