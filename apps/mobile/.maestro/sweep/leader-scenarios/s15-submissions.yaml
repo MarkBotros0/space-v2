@@ -1,5 +1,5 @@
 # UI sweep s15 — Submissions and review as a leader. Read-only: nothing is saved, the flow only
-# opens, scrolls, types and looks.
+# opens, scrolls and looks.
 appId: com.jpc.space
 ---
 - runFlow:
@@ -8,7 +8,7 @@ appId: com.jpc.space
       EMAIL: ${LEADER_EMAIL}
 - openLink: spacev2://submissions
 - extendedWaitUntil:
-    visible: '.*pending review.*'
+    visible: '.*waiting review.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -22,7 +22,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-02-queue-bottom
-# Waiting rows come before Reviewed ones, so the first Salma row is the late submission.
+# Waiting rows come before Reviewed ones, so the first Salma row is the late essay.
 # A row's label is "title, subtitle", so match the name as a prefix.
 - runFlow:
     file: ../_tap.yaml
@@ -32,40 +32,16 @@ appId: com.jpc.space
     timeout: 5000
 - extendedWaitUntil:
     # Section headers are upper-cased by style; match either case.
-    visible: '(?i)assignment prompt'
+    visible: '(?i)question'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s15-03-submission
-# The feedback form is a sheet behind the pinned bar. Never tap its save button.
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Add feedback'
-- extendedWaitUntil:
-    visible: 'What did the student do well.*'
-    timeout: 40000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s15-04-feedback-sheet
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'What did the student do well.*'
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s15-04b-feedback-kbd
-- inputText: 'Sweep feedback, never saved'
-- hideKeyboard
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s15-05-feedback-typed
-# Dismiss the sheet without saving.
-- back
-- waitForAnimationToEnd:
-    timeout: 5000
+# The verdict sheets open from Mark reviewed / Return in the pinned bar; the multi-part sweep
+# rules never tap either (they share their labels with the sheets' save buttons), so the sheets
+# aren't shot here. The essay's question, text and chips are.
 # Last item has to clear the pinned bar and the system bar.
 - scroll
 - scroll
@@ -89,11 +65,11 @@ appId: com.jpc.space
           duration: 500
 - waitForAnimationToEnd:
     timeout: 5000
-# The reviewed row, found by its assignment title: the bar reads Update feedback.
-# The whole row is one button; tap the second Salma row.
+# The reviewed row: the bar reads Update feedback. Two Salma essays wait for review
+# (the reflection, then The lost son), so the reviewed one is the third Salma row.
 - tapOn:
     text: 'Salma Student.*'
-    index: 1
+    index: 2
 - waitForAnimationToEnd:
     timeout: 5000
 - extendedWaitUntil:

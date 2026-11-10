@@ -1,0 +1,154 @@
+# UI sweep s58 — the assignment form's Details and Parts tabs and each part's sheet, as a season
+# admin. Read-only: fields are focused for the keyboard but nothing is typed, and Save, Add and the
+# sheets' save buttons are never tapped. Each sheet is closed with Back.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${ADMIN_EMAIL}
+# Assignment 3 is the seed's three-part "The lost son" (seed-sweep/three-part.ts).
+- openLink: spacev2://assignment/3/edit
+- extendedWaitUntil:
+    visible: 'Details'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-01-details
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Title'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-02-details-title-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+# The reminder and the line saying when it goes out, above the pinned Save.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-03-details-bottom
+# The Parts tab: the control sits under the title, so scroll back up to it.
+- scrollUntilVisible:
+    element: 'Parts, 3 parts'
+    direction: UP
+    timeout: 10000
+- tapOn: 'Parts, 3 parts'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-04-parts
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-05-parts-bottom
+# The video part's sheet, with its preview player.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit Video'
+- extendedWaitUntil:
+    visible: 'Edit video'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-06-video-sheet
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'YouTube link'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-07-video-link-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+# The essay question's sheet.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit Essay question'
+- extendedWaitUntil:
+    visible: 'Edit essay question'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-08-essay-sheet
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Question'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-09-essay-question-kbd
+- hideKeyboard
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Maximum words'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-10-essay-words-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+# The forum's sheet.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit Forum'
+- extendedWaitUntil:
+    visible: 'Edit forum'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-11-forum-sheet
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Prompt'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-12-forum-prompt-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+# A new assignment: no parts yet, and an empty video sheet.
+- openLink: spacev2://assignment/new
+- extendedWaitUntil:
+    visible: 'Details'
+    timeout: 40000
+- tapOn: 'Parts, 0 parts'
+- extendedWaitUntil:
+    visible: 'No parts yet'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-13-new-parts-empty
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Add a video'
+- extendedWaitUntil:
+    visible: 'Add a video'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s58-14-new-video-sheet
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
