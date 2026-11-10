@@ -2,7 +2,7 @@
 import { Router } from "express";
 
 import { db } from "../db/client";
-import { apiOk, apiError } from "../lib/api-response";
+import { apiOk } from "../lib/api-response";
 import { parseNotificationLink } from "../lib/notification-target";
 import { requireAuth, requireUser } from "../middleware/require-auth";
 import { markReadRequestSchema, notificationListQuerySchema } from "../../../../packages/shared/src/index";
@@ -134,9 +134,9 @@ notificationsRouter.get("/unread-count", async (req, res) => {
 notificationsRouter.post("/read", async (req, res) => {
   const user = requireUser(req);
 
-  const parsed = markReadRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid mark-read body.", 400);
-  const body = parsed.data;
+  const parsed = parseOr400(markReadRequestSchema, req.body, res, "Invalid mark-read body.");
+  if (parsed === null) return;
+  const body = parsed;
 
   const result = await db.notification.updateMany({
     where: {

@@ -5,6 +5,7 @@ import { bestEffort } from "./best-effort";
 import { createNotificationsBulk } from "./notifications";
 import { formatInOrgTime } from "./org-time";
 import { notificationLink } from "./notification-target";
+import { liveUser } from "./db/live";
 
 /** Same destination as SESSION_RESCHEDULED: the calendar (X1 link shape). */
 const SESSION_CANCELLED_LINK = notificationLink.studentCalendar();
@@ -53,7 +54,7 @@ export async function prepareSessionCancelledNotice(
     const [enrolled, leaders] = await Promise.all([
       liveStudentIds(seasonId),
       db.groupLeader.findMany({
-        where: { group: { seasonId, season: { status: "ACTIVE" } }, user: { deletedAt: null } },
+        where: { group: { seasonId, season: { status: "ACTIVE" } }, user: liveUser },
         select: { userId: true },
       }),
     ]);
