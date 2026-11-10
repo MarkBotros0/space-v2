@@ -3,6 +3,7 @@ import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import { orgDayKey } from "../../org-time";
 import { seasonParticipant } from "../season-participants";
 import { isLate, isOverdue } from "./rules";
+import { liveAssignment } from "../../db/live";
 
 export interface AssignmentListRow {
   id: number;
@@ -19,7 +20,7 @@ export interface AssignmentListRow {
 
 export async function listAssignmentsForSeason(seasonId: number): Promise<AssignmentListRow[]> {
   const rows = await db.assignment.findMany({
-    where: { seasonId, deletedAt: null },
+    where: { seasonId, ...liveAssignment },
     orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -119,7 +120,7 @@ export async function loadAssignmentTracker(
   restrictToGroupIds?: number[],
 ): Promise<AssignmentTrackerData | null> {
   const assignment = await db.assignment.findFirst({
-    where: { id: assignmentId, deletedAt: null },
+    where: { id: assignmentId, ...liveAssignment },
     select: {
       id: true,
       seasonId: true,

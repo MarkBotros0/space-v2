@@ -2,6 +2,7 @@ import { db } from "../../../db/client";
 import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import { orgDayKey, orgWallTime } from "../../org-time";
 import { isOverdue } from "./rules";
+import { liveAssignment } from "../../db/live";
 
 export interface AssignmentDetailData {
   id: number;
@@ -26,7 +27,7 @@ export interface AssignmentDetailData {
 /** Returns null when the assignment does not exist or is soft-deleted. */
 export async function loadAssignmentById(id: number): Promise<AssignmentDetailData | null> {
   const a = await db.assignment.findFirst({
-    where: { id, deletedAt: null },
+    where: { id, ...liveAssignment },
     select: {
       id: true,
       seasonId: true,

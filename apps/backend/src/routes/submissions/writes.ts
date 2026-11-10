@@ -5,7 +5,6 @@ import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { ForbiddenError } from "../../lib/auth/errors";
 import { bestEffort } from "../../lib/best-effort";
 import { createNotificationsBulk } from "../../lib/notifications";
-import { parseId } from "../../lib/parse-id";
 import { canReviewSubmission, hasActiveEnrollment, isHiddenDraft } from "../../lib/permissions";
 import { newPublicId } from "../../lib/public-id";
 import { studentCanSeeAssignment } from "../../lib/queries/assignments";
@@ -19,6 +18,10 @@ import {
 import { EDITABLE_STATUSES, studentWriteRefusal } from "../../lib/permissions";
 import { submissionLocked } from "./editable";
 import { notificationLink } from "../../lib/notification-target";
+import { idParam } from "../../lib/http/params";
+import { notFound } from "../../lib/http/not-found";
+import { parseOr400 } from "../../lib/http/validate";
+import { liveAssignment } from "../../lib/db/live";
 
 export async function updateSubmission(req: Request<{ publicId: string }>, res: Response) {
   const user = requireUser(req);
@@ -36,7 +39,7 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
   });
   // A draft is its author's alone: anyone else is told it does not exist.
   if (!sub || isHiddenDraft(user, sub)) {
-    return apiError(res, "not_found", "Submission not found.", 404);
+    return notFound(res, "Submission");
   }
   // Only the author may edit. Season admins and leaders can read a submission
   // (canViewSubmission) but must never rewrite a student's words.
@@ -52,15 +55,15 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
   const refusal = await studentWriteRefusal(user, sub.assignment.seasonId, sub.status);
   if (refusal === "forbidden") return forbidden(res);
 
-  const parsed = updateSubmissionRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid submission body.", 400);
+  const parsed = parseOr400(updateSubmissionRequestSchema, req.body, res, "Invalid submission body.");
+  if (parsed === null) return;
   if (refusal === "not_editable") return submissionLocked(res);
 
-  if (parsed.data.submit) {
+  if (parsed.submit) {
     // REG-85: v1's form disabled Submit for blank text with no attached file.
     // That rule now lives on the server, where a client cannot skip it. A DRAFT
     // save of blank text stays legal.
-    if (htmlToPlainText(parsed.data.text) === "") {
+    if (htmlToPlainText(parsed.text) === "") {
       const attached = await db.submissionFile.count({ where: { submissionId: sub.id } });
       if (attached === 0) {
         return apiError(res, "empty_submission", "Write a response or attach a file before submitting.", 400);
@@ -71,7 +74,7 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
     // leaders are told once, by the request that actually moved it.
     const submitted = await db.submission.updateMany({
       where: { id: sub.id, status: { in: [...EDITABLE_STATUSES] } },
-      data: { text: parsed.data.text, status: "SUBMITTED", submittedAt: new Date() },
+      data: { text: parsed.text, status: "SUBMITTED", submittedAt: new Date() },
     });
     if (submitted.count === 0) return submissionLocked(res);
     await notifySubmissionReceived({
@@ -91,11 +94,11 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
     // POST /:publicId/review with returnForRevision is for.
     await db.submission.update({
       where: { id: sub.id },
-      data: { text: parsed.data.text },
+      data: { text: parsed.text },
     });
   }
 
-  return apiOk(res, { saved: true, submitted: Boolean(parsed.data.submit) });
+  return apiOk(res, { saved: true, submitted: Boolean(parsed.submit) });
 }
 
 /**
@@ -115,8 +118,8 @@ export async function updateSubmission(req: Request<{ publicId: string }>, res: 
  */
 export async function startSubmission(req: Request, res: Response) {
   const user = requireUser(req);
-  const assignmentId = parseId(req.params.assignmentId);
-  if (assignmentId === null) return apiError(res, "bad_request", "Invalid assignment id.", 400);
+  const assignmentId = idParam(res, req.params.assignmentId, "assignment");
+  if (assignmentId === null) return;
 
   // Only a student has a submission of their own; staff have nothing to create.
   if (user.role !== "STUDENT") {
@@ -124,7 +127,7 @@ export async function startSubmission(req: Request, res: Response) {
   }
 
   const assignment = await db.assignment.findFirst({
-    where: { id: assignmentId, deletedAt: null },
+    where: { id: assignmentId, ...liveAssignment },
     select: {
       seasonId: true,
       isAllGroups: true,
@@ -132,7 +135,7 @@ export async function startSubmission(req: Request, res: Response) {
       targets: { select: { groupId: true } },
     },
   });
-  if (!assignment) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!assignment) return notFound(res, "Assignment");
   // A forum post has exactly one writer: PUT /assignments/:id/forum/response,
   // which applies forumMinWords, refuses an empty post (it would unlock every
   // peer's work) and stores escaped HTML. Creating the row here would let a
@@ -190,20 +193,20 @@ export async function reviewSubmission(req: Request<{ publicId: string }>, res: 
   // A draft is its author's alone, and the author never reviews, so nobody can
   // review a DRAFT: to everyone but its author it does not exist.
   if (!sub || isHiddenDraft(user, sub)) {
-    return apiError(res, "not_found", "Submission not found.", 404);
+    return notFound(res, "Submission");
   }
 
   if (!(await canReviewSubmission(user, sub.id))) return forbidden(res);
 
-  const parsed = reviewSubmissionRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid review body.", 400);
+  const parsed = parseOr400(reviewSubmissionRequestSchema, req.body, res, "Invalid review body.");
+  if (parsed === null) return;
 
   const now = new Date();
   await db.submission.update({
     where: { id: sub.id },
     data: {
-      feedback: parsed.data.feedback,
-      status: parsed.data.returnForRevision ? "RETURNED" : "REVIEWED",
+      feedback: parsed.feedback,
+      status: parsed.returnForRevision ? "RETURNED" : "REVIEWED",
       reviewedAt: now,
       reviewedById: user.userId,
     },
@@ -217,7 +220,7 @@ export async function reviewSubmission(req: Request<{ publicId: string }>, res: 
       // REG-91: v1's exact wording for a verdict (submission-actions.ts:196).
       // v1 had no "returned" state, so that one keeps its own v2 title. Neither
       // carries the feedback text — the body is left empty on purpose.
-      title: parsed.data.returnForRevision
+      title: parsed.returnForRevision
         ? `${sub.assignment.title} was returned for revision`
         : `Feedback ready on "${sub.assignment.title}"`,
       // v1's exact link (submission-actions.ts:197; ruling X1): the assignment,
@@ -226,5 +229,5 @@ export async function reviewSubmission(req: Request<{ publicId: string }>, res: 
     }),
   );
 
-  return apiOk(res, { reviewed: true, returnedForRevision: Boolean(parsed.data.returnForRevision) });
+  return apiOk(res, { reviewed: true, returnedForRevision: Boolean(parsed.returnForRevision) });
 }

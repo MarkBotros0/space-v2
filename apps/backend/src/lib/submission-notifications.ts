@@ -4,6 +4,7 @@ import { bestEffort } from "./best-effort";
 import { createNotificationsBulk } from "./notifications";
 import { groupIdInSeason } from "./queries/enrollment";
 import { notificationLink } from "./notification-target";
+import { liveUser } from "./db/live";
 
 /**
  * Where SUBMISSION_RECEIVED points: the submission itself, by publicId.
@@ -44,7 +45,7 @@ export async function notifySubmissionReceived(sub: ReceivedSubmission): Promise
     if (groupId === null) return;
 
     const leaders = await db.groupLeader.findMany({
-      where: { groupId, user: { deletedAt: null } },
+      where: { groupId, user: liveUser },
       select: { userId: true },
     });
     // A student never hears about their own submission, whatever rows they hold.

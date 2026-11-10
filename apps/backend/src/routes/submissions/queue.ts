@@ -2,12 +2,14 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
+import { apiOk, forbidden } from "../../lib/api-response";
 import { submissionQueueScopeFor } from "../../lib/permissions";
 import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
 import { submissionQueueQuerySchema } from "../../../../../packages/shared/src/index";
 import { countQueue } from "./queue-counts";
+import { parseOr400 } from "../../lib/http/validate";
+import { liveAssignment } from "../../lib/db/live";
 
 /**
  * A reviewer's queue.
@@ -27,9 +29,9 @@ export async function listSubmissionQueue(req: Request, res: Response) {
 
   if (user.role === "STUDENT") return forbidden(res);
 
-  const parsed = submissionQueueQuerySchema.safeParse(req.query);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid query.", 400);
-  const { pendingOnly, seasonId, cursor, limit } = parsed.data;
+  const parsed = parseOr400(submissionQueueQuerySchema, req.query, res, "Invalid query.");
+  if (parsed === null) return;
+  const { pendingOnly, seasonId, cursor, limit } = parsed;
 
   const scope = await submissionQueueScopeFor(user);
   if (scope === null) {
@@ -51,7 +53,7 @@ export async function listSubmissionQueue(req: Request, res: Response) {
   const reachable: Prisma.SubmissionWhereInput = {
     AND: [
       scope,
-      { assignment: { deletedAt: null } },
+      { assignment: liveAssignment },
       { status: { not: "DRAFT" as const } },
       ...(seasonId ? [{ assignment: { seasonId } }] : []),
     ],

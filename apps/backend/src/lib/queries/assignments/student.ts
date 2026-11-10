@@ -3,6 +3,7 @@ import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import { orgDayKey } from "../../org-time";
 import { groupIdInSeason } from "../enrollment";
 import { isLate, isOverdue } from "./rules";
+import { liveAssignment } from "../../db/live";
 
 export interface StudentAssignmentRow {
   id: number;
@@ -60,7 +61,7 @@ export async function listAssignmentStatesForStudent(
   const assignments = await db.assignment.findMany({
     where: {
       seasonId,
-      deletedAt: null,
+      ...liveAssignment,
       OR: [{ isAllGroups: true }, ...(groupId !== null ? [{ targets: { some: { groupId } } }] : [])],
     },
     orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],

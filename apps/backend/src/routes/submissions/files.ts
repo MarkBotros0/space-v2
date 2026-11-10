@@ -12,6 +12,7 @@ import { FileNotFoundError, buildStorageKey, getStorage } from "../../lib/storag
 import { requireUser } from "../../middleware/require-auth";
 import { studentWriteRefusal } from "../../lib/permissions";
 import { submissionLocked } from "./editable";
+import { notFound } from "../../lib/http/not-found";
 
 // memoryStorage: the per-assignment size and MIME rules live in the database,
 // so the file has to be in hand before they can be applied. limits.fileSize is
@@ -83,7 +84,7 @@ export async function uploadSubmissionFile(req: Request, res: Response) {
   });
   // A draft is its author's alone: anyone else is told it does not exist.
   if (!sub || isHiddenDraft(user, sub)) {
-    return apiError(res, "not_found", "Submission not found.", 404);
+    return notFound(res, "Submission");
   }
   if (sub.studentUserId !== user.userId) throw new ForbiddenError();
   // Attaching a file changes the work as much as editing its text does.
@@ -155,7 +156,7 @@ export async function deleteSubmissionFile(req: Request<{ publicId: string }>, r
   // fileId alone would let a caller probe files across submissions.
   // A file on someone else's draft is as absent as the draft itself.
   if (!file || file.submission.publicId !== publicId || isHiddenDraft(user, file.submission)) {
-    return apiError(res, "not_found", "File not found.", 404);
+    return notFound(res, "File");
   }
   if (file.submission.studentUserId !== user.userId) throw new ForbiddenError();
   // Removing a file from submitted or reviewed work rewrites it after the fact.
@@ -217,7 +218,7 @@ export async function downloadSubmissionFile(req: Request<{ publicId: string; fi
   // Same cross-check as DELETE: a bare fileId must never reach a file that
   // belongs to a different submission, nor one on someone else's draft.
   if (!file || file.submission.publicId !== publicId || isHiddenDraft(user, file.submission)) {
-    return apiError(res, "not_found", "File not found.", 404);
+    return notFound(res, "File");
   }
 
   // Reading a file is the same right as reading its submission, so this uses
@@ -232,7 +233,7 @@ export async function downloadSubmissionFile(req: Request<{ publicId: string; fi
   } catch (err) {
     // A row pointing at a blob that is gone is a 404, not a 500.
     if (err instanceof FileNotFoundError) {
-      return apiError(res, "not_found", "File not found.", 404);
+      return notFound(res, "File");
     }
     throw err;
   }

@@ -1,12 +1,13 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError, forbidden } from "../../lib/api-response";
+import { apiOk, forbidden } from "../../lib/api-response";
 import { config } from "../../lib/config";
 import { canReviewSubmission, canViewSubmission, isHiddenDraft } from "../../lib/permissions";
 import { isLate } from "../../lib/queries/assignments";
 import { requireUser } from "../../middleware/require-auth";
 import { htmlToPlainText } from "../../../../../packages/shared/src/index";
+import { notFound } from "../../lib/http/not-found";
 
 async function loadSubmissionForApi(publicId: string) {
   return db.submission.findUnique({
@@ -58,7 +59,7 @@ export async function getSubmission(req: Request<{ publicId: string }>, res: Res
   const sub = await loadSubmissionForApi(publicId ?? "");
   // A draft is its author's alone: anyone else is told it does not exist.
   if (!sub || isHiddenDraft(user, sub)) {
-    return apiError(res, "not_found", "Submission not found.", 404);
+    return notFound(res, "Submission");
   }
 
   // The three reads below depend only on the row just loaded, not on each
