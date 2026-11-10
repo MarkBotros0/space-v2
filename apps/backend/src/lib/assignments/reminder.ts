@@ -110,7 +110,7 @@ export async function resolveRemindAt(a: ReminderSubject, now: Date, client: Cli
  * The Details line for a stored assignment (`reminderLine`). Asks the database
  * for the next session only when the line needs it: on, unsent, unscheduled.
  */
-export async function describeReminder(a: ReminderSubject, now: Date): Promise<string | null> {
+export async function describeReminder(a: ReminderSubject): Promise<string | null> {
   let hasAnchor = true;
   if (a.reminderEnabled && a.remindAt === null && a.remindedAt === null) {
     hasAnchor =

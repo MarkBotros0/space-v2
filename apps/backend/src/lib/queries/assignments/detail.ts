@@ -66,7 +66,7 @@ export async function loadAssignmentDetail(id: number, viewer: AssignmentViewer)
     dueOrgTime: a.dueAt ? orgWallTime(a.dueAt) : null,
     isOverdue: isOverdue(a.dueAt, now),
     reminder,
-    reminderLine: await describeReminder(a, now),
+    reminderLine: await describeReminder(a),
     parts: a.parts.map(toAssignmentPart),
     my: viewer.studentUserId === null ? null : await myWork(a.id, a.parts, viewer.studentUserId),
     canManage: viewer.canManage,

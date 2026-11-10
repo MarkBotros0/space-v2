@@ -64,7 +64,7 @@ describe("the reminder's anchor is the first session after publication", () => {
     mockSessions.push({ seasonId: 1, startsAt: TUE_SESSION }, { seasonId: 1, startsAt: NEXT_TUE_SESSION });
 
     expect(await resolveRemindAt(subject, WED)).toBeNull();
-    expect(await describeReminder(subject, WED)).toBe("The next session was too close — no reminder");
+    expect(await describeReminder(subject)).toBe("The next session was too close — no reminder");
 
     // A session write in the season re-resolves nothing for it either.
     mockAssignments.push(subject);
@@ -74,7 +74,7 @@ describe("the reminder's anchor is the first session after publication", () => {
 
   it("no session after it was published says so, even when one came before", async () => {
     mockSessions.push({ seasonId: 1, startsAt: new Date("2025-11-09T16:00:00.000Z") });
-    expect(await describeReminder(subject, WED)).toBe("No session after it was published — no reminder");
+    expect(await describeReminder(subject)).toBe("No session after it was published — no reminder");
   });
 
   it("a session added later, after publication and far enough ahead, sets the reminder", async () => {
