@@ -1,62 +1,11 @@
-import { countWords, htmlToPlainText } from "../../../../../packages/shared/src/index";
-import { db } from "../../db/client";
-import type { SubmissionStatus } from "../../generated/prisma/client";
-import type { SessionUser } from "../auth/tokens";
-import { canDeleteForumComment, type ForumAudience } from "../permissions";
-import { groupIdInSeason } from "./assignments";
-import { seasonParticipant } from "./season-participants";
-
-/**
- * The one place a forum author's name is produced.
- *
- * v1 falls back to the author's email address when `name` is blank (spec 14
- * R30), so every student in a group sees the address of any group-mate who has
- * not set a name. These are young people's addresses, and `email` is not
- * selected anywhere in this module precisely so the fallback cannot come back.
- */
-export function displayNameFor(name: string | null): string {
-  const trimmed = name?.trim();
-  return trimmed ? trimmed : "Group member";
-}
-
-interface ForumAssignmentRow {
-  id: number;
-  seasonId: number;
-  dueAt: Date | null;
-  forumMinWords: number | null;
-  forumAllowComments: boolean;
-  forumPostToRead: boolean;
-}
-
-/**
- * The one existence check for the forum surface. `type: "FORUM"` in the where
- * is what makes every forum endpoint refuse a standard assignment (404) rather
- * than serve an empty thread — and because routes call this before
- * `forumAudienceFor`, the answer is 404 for every caller, never a 403 that
- * depends on who is asking.
- */
-export async function loadForumAssignment(assignmentId: number): Promise<ForumAssignmentRow | null> {
-  return db.assignment.findFirst({
-    where: { id: assignmentId, deletedAt: null, type: "FORUM" },
-    select: {
-      id: true,
-      seasonId: true,
-      dueAt: true,
-      forumMinWords: true,
-      forumAllowComments: true,
-      forumPostToRead: true,
-    },
-  });
-}
-
-interface ForumCommentData {
-  id: number;
-  authorUserId: number;
-  authorDisplayName: string;
-  body: string;
-  createdAt: Date;
-  canDelete: boolean;
-}
+import { countWords, htmlToPlainText } from "../../../../../../packages/shared/src/index";
+import { db } from "../../../db/client";
+import type { SubmissionStatus } from "../../../generated/prisma/client";
+import type { SessionUser } from "../../auth/tokens";
+import { canDeleteForumComment, type ForumAudience } from "../../permissions";
+import { seasonParticipant } from "../season-participants";
+import { displayNameFor, loadForumAssignment } from "./shared";
+import { type ForumCommentData } from "./comments";
 
 interface ForumPostData {
   submissionPublicId: string;
@@ -244,67 +193,4 @@ export async function loadForumView(
     posts,
     nextCursor: rows.length > query.limit ? (page[page.length - 1]?.publicId ?? null) : null,
   };
-}
-
-/**
- * One post's comments, oldest first (v1 R26), bounded.
- *
- * `canDelete` is computed here rather than left to the client, which is the fix
- * for the class of bug that made v1's staff removal power unreachable: the
- * component derived the affordance from `authorUserId === currentUserId` while
- * the action allowed three more cases (spec 14 R49/R52).
- */
-export async function listForumComments(
-  submissionId: number,
-  user: SessionUser,
-  query: { cursor?: number; limit: number },
-): Promise<{ comments: ForumCommentData[]; nextCursor: number | null }> {
-  const rows = await db.forumComment.findMany({
-    where: { submissionId },
-    orderBy: { id: "asc" },
-    take: query.limit + 1,
-    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    select: {
-      id: true,
-      authorUserId: true,
-      body: true,
-      createdAt: true,
-      authorUser: { select: { name: true } },
-    },
-  });
-  const page = rows.slice(0, query.limit);
-  const comments = await Promise.all(
-    page.map(async (c) => ({
-      id: c.id,
-      authorUserId: c.authorUserId,
-      authorDisplayName: displayNameFor(c.authorUser.name),
-      // Plain text, rendered as plain text. v1's comment box is a textarea and
-      // its comments are never parsed as HTML (R29).
-      body: c.body,
-      createdAt: c.createdAt,
-      canDelete: await canDeleteForumComment(user, c.id),
-    })),
-  );
-  return {
-    comments,
-    nextCursor: rows.length > query.limit ? (page[page.length - 1]?.id ?? null) : null,
-  };
-}
-
-/**
- * Is this post's author inside the audience the caller was granted? The feed
- * scopes by group; the comments read must too, or a publicId (unguessable, but
- * still a bearer of nothing) would be enough to read another group's thread.
- */
-export async function postInAudience(
-  audience: ForumAudience,
-  seasonId: number,
-  authorUserId: number,
-): Promise<boolean> {
-  if (audience.kind === "staff" && audience.groupIds === null) return true;
-  const authorGroup = await groupIdInSeason(authorUserId, seasonId);
-  if (authorGroup === null) return false;
-  return audience.kind === "student"
-    ? audience.groupId === authorGroup
-    : (audience.groupIds ?? []).includes(authorGroup);
 }

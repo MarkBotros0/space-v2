@@ -77,19 +77,53 @@ export async function canDeleteForumComment(user: SessionUser, commentId: number
     },
   });
   if (!comment) return false;
+  const ctx = await commentDeleteCtx(user, comment.submission.assignment.seasonId, comment.submission.studentUserId);
+  return canDeleteLoadedComment(user, comment, ctx);
+}
+
+/**
+ * What canDeleteLoadedComment needs beyond the comment itself. It is the same
+ * for every comment under one post, so a list builds it once per post instead
+ * of re-reading each comment (refactor BE-071). Each fact is read only for the
+ * role whose rule needs it.
+ */
+export interface CommentDeleteCtx {
+  seasonId: number;
+  /** A student's place in the season is live (only read for a STUDENT). */
+  liveStudent: boolean;
+  /** The caller leads the post's author in this season (only read for a LEADER who isn't its admin). */
+  leadsPostAuthor: boolean;
+}
+
+export async function commentDeleteCtx(
+  user: SessionUser,
+  seasonId: number,
+  postAuthorId: number,
+): Promise<CommentDeleteCtx> {
+  const ctx: CommentDeleteCtx = { seasonId, liveStudent: false, leadsPostAuthor: false };
+  if (isSuper(user)) return ctx;
+  if (user.role === "STUDENT") return { ...ctx, liveStudent: await hasActiveEnrollment(user, seasonId) };
+  if (isAdminOfSeason(user, seasonId)) return ctx;
+  if (user.role === "LEADER")
+    return { ...ctx, leadsPostAuthor: await leadsStudentInSeason(user, postAuthorId, seasonId) };
+  return ctx;
+}
+
+/**
+ * The delete rule over a loaded comment, shared by DELETE (through
+ * canDeleteForumComment) and every list's `canDelete`, so the two cannot drift.
+ * No write path accepts changes in a finished season: a student deletes their
+ * own comment only while their place in the season is live.
+ */
+export function canDeleteLoadedComment(
+  user: SessionUser,
+  comment: { authorUserId: number },
+  ctx: CommentDeleteCtx,
+): boolean {
   if (isSuper(user)) return true;
-
-  const seasonId = comment.submission.assignment.seasonId;
-  // No write path accepts changes in a finished season: a student deletes
-  // their own comment only while their place in the season is live.
-  if (user.role === "STUDENT") {
-    return comment.authorUserId === user.userId && (await hasActiveEnrollment(user, seasonId));
-  }
-  if (isAdminOfSeason(user, seasonId)) return true;
-
-  if (user.role === "LEADER") {
-    return leadsStudentInSeason(user, comment.submission.studentUserId, seasonId);
-  }
+  if (user.role === "STUDENT") return comment.authorUserId === user.userId && ctx.liveStudent;
+  if (isAdminOfSeason(user, ctx.seasonId)) return true;
+  if (user.role === "LEADER") return ctx.leadsPostAuthor;
   return false;
 }
 

@@ -28,7 +28,15 @@ export {
 } from "./submission";
 export { canEditStudent, canViewStudent, staffRosterWhere, type StaffRoster } from "./student";
 export { canEditNote, canWriteNote, noteSeasonWhere, noteVisibilityWhere } from "./note";
-export { canCommentOnForumSubmission, canDeleteForumComment, forumAudienceFor, type ForumAudience } from "./forum";
+export {
+  canCommentOnForumSubmission,
+  canDeleteForumComment,
+  canDeleteLoadedComment,
+  commentDeleteCtx,
+  forumAudienceFor,
+  type CommentDeleteCtx,
+  type ForumAudience,
+} from "./forum";
 export { canExportSeasonWorkbook, reportScopeFor, type ReportScope } from "./report";
 export {
   announcementFlags,
