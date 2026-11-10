@@ -14,6 +14,7 @@ import { formatInOrgTime, orgWallClockToInstant } from "../org-time";
 import { liveStudentIds } from "../queries/season-participants";
 import { partChangeImpact, planPartChanges, type PartChangePlan } from "./part-changes";
 import { resolveRemindAt } from "./reminder";
+import { settleSubmitted } from "./standing";
 
 type Tx = Prisma.TransactionClient;
 
@@ -73,10 +74,6 @@ function partColumns(input: AssignmentPartInput) {
   return { ...blank, kind: input.kind, prompt, minWords, postToRead, allowComments };
 }
 
-async function remindAtFor(seasonId: number, columns: ReturnType<typeof assignmentColumns>): Promise<Date | null> {
-  return resolveRemindAt({ seasonId, ...columns }, new Date());
-}
-
 /**
  * The single ASSIGNMENT_CREATED producer. Runs after the write has committed
  * (R65). Title and link are v1's exact strings (`assignment-actions.ts:87,91`;
@@ -110,12 +107,18 @@ export async function createAssignment(
   actorId: number,
 ): Promise<{ id: number }> {
   const columns = assignmentColumns(body);
-  const remindAt = await remindAtFor(seasonId, columns);
+  const now = new Date();
+  const remindAt = await resolveRemindAt(
+    { seasonId, createdAt: now, ...columns, remindAt: null, remindedAt: null },
+    now,
+  );
   const created = await db.assignment.create({
     data: {
       seasonId,
       ...columns,
       remindAt,
+      // The next session is the first after this instant (resolveRemindAt).
+      createdAt: now,
       createdById: actorId,
       updatedById: actorId,
       parts: { create: body.parts.map((input, position) => ({ position, ...partColumns(input) })) },
@@ -131,7 +134,13 @@ function confirmMessage(students: number): string {
 }
 
 /** Applies a confirmed plan's part changes. Returns how many submitted students were reopened. */
-async function applyPartChanges(tx: Tx, assignmentId: number, plan: PartChangePlan): Promise<number> {
+async function applyPartChanges(tx: Tx, assignmentId: number, plan: PartChangePlan, now: Date): Promise<number> {
+  const changesStanding = plan.resetVideo.length > 0 || plan.remove.length > 0 || plan.create.length > 0;
+  // Lock order (lib/assignments/essay.ts): this edit holds the Assignment FOR
+  // UPDATE; the students' Submissions come next, before any work row goes.
+  if (changesStanding) {
+    await tx.$queryRaw`SELECT "id" FROM "Submission" WHERE "assignmentId" = ${assignmentId} ORDER BY "id" FOR UPDATE`;
+  }
   if (plan.resetVideo.length > 0) {
     // Whoever has work on a reset video: a work row, or only answers to its
     // questions (the same students partChangeImpact counted).
@@ -160,7 +169,10 @@ async function applyPartChanges(tx: Tx, assignmentId: number, plan: PartChangePl
   for (const { id, position, input } of plan.update) {
     await tx.assignmentPart.update({ where: { id }, data: { position, ...partColumns(input) } });
   }
-  if (plan.create.length === 0) return 0;
+  if (plan.create.length === 0) {
+    // A reset can reopen a submitted student; a removal can leave one complete.
+    return changesStanding ? settleSubmitted(tx, assignmentId, now) : 0;
+  }
   await tx.assignmentPart.createMany({
     data: plan.create.map(({ position, input }) => ({ assignmentId, position, ...partColumns(input) })),
   });
@@ -194,22 +206,24 @@ export async function replaceAssignment(
       where: { id, ...liveAssignment },
       select: {
         seasonId: true,
+        createdAt: true,
+        remindAt: true,
+        remindedAt: true,
         parts: { select: { id: true, kind: true, youtubeId: true, minWords: true, maxWords: true } },
       },
     });
     if (!current) throw new ApiError("not_found", "Assignment not found.", 404);
-    const { seasonId, parts } = current;
+    const { parts, ...stored } = current;
     const plan = planPartChanges(parts, body.parts);
     const { students } = await partChangeImpact(id, plan, tx);
     if (students > 0 && body.confirm !== true) {
       throw new ApiError("needs_confirmation", confirmMessage(students), 409, { students });
     }
-    const reopened = await applyPartChanges(tx, id, plan);
+    const now = new Date();
+    const reopened = await applyPartChanges(tx, id, plan, now);
     const columns = assignmentColumns(body);
-    await tx.assignment.update({
-      where: { id },
-      data: { ...columns, remindAt: await remindAtFor(seasonId, columns), updatedById: actorId },
-    });
+    const remindAt = await resolveRemindAt({ ...stored, ...columns }, now, tx);
+    await tx.assignment.update({ where: { id }, data: { ...columns, remindAt, updatedById: actorId } });
     return { reopened };
   });
 }

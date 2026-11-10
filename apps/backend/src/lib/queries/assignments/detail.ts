@@ -1,6 +1,7 @@
 import { db } from "../../../db/client";
 import type { AssignmentDetail, Reminder } from "../../../../../../packages/shared/src/index";
 import { ApiError } from "../../api-error";
+import { describeReminder } from "../../assignments/reminder";
 import { orgDayKey, orgWallTime } from "../../org-time";
 import { liveAssignment } from "../../db/live";
 import { isOverdue } from "./rules";
@@ -14,13 +15,6 @@ export interface AssignmentViewer {
   canManage: boolean;
   /** A student whose place in the season has ended: they read, they cannot write. */
   readOnly: boolean;
-}
-
-/** The reminder in words: "2 days before the next session", or null when it is off. */
-export function reminderLine(reminder: Reminder): string | null {
-  if (!reminder.enabled) return null;
-  const days = reminder.days === 1 ? "1 day" : `${reminder.days} days`;
-  return `${days} before ${reminder.anchor === "NEXT_SESSION" ? "the next session" : "the due date"}`;
 }
 
 /**
@@ -45,10 +39,14 @@ export async function loadAssignmentDetail(id: number, viewer: AssignmentViewer)
       reminderDays: true,
       reminderAnchor: true,
       reminderTime: true,
+      remindAt: true,
+      remindedAt: true,
+      createdAt: true,
       parts: { orderBy: { position: "asc" }, select: PART_SELECT },
     },
   });
   if (!a) throw new ApiError("not_found", "Assignment not found.", 404);
+  const now = new Date();
 
   const reminder: Reminder = {
     enabled: a.reminderEnabled,
@@ -66,9 +64,9 @@ export async function loadAssignmentDetail(id: number, viewer: AssignmentViewer)
     dueAt: a.dueAt?.toISOString() ?? null,
     dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
     dueOrgTime: a.dueAt ? orgWallTime(a.dueAt) : null,
-    isOverdue: isOverdue(a.dueAt, new Date()),
+    isOverdue: isOverdue(a.dueAt, now),
     reminder,
-    reminderLine: reminderLine(reminder),
+    reminderLine: await describeReminder(a, now),
     parts: a.parts.map(toAssignmentPart),
     my: viewer.studentUserId === null ? null : await myWork(a.id, a.parts, viewer.studentUserId),
     canManage: viewer.canManage,

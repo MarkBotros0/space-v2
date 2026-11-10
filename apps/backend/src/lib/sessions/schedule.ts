@@ -1,4 +1,16 @@
 import { db } from "../../db/client";
+import { refreshSeasonReminders } from "../assignments/reminder";
+import { bestEffort } from "../best-effort";
+
+/**
+ * After a write moves the season's sessions: assignments reminded before "the
+ * next session" follow it (lib/assignments/reminder.ts). Runs after the commit
+ * and never fails the session write; a reminder left stale is re-resolved the
+ * next time a session or the assignment is saved.
+ */
+function followNextSession(seasonId: number): Promise<void> {
+  return bestEffort("assignment-reminders:refresh", () => refreshSeasonReminders(seasonId, new Date()));
+}
 
 type SessionFields = {
   title: string;
@@ -14,7 +26,7 @@ export async function createSessionSeries(
   fields: SessionFields & { seasonId: number },
   recurrenceGroupId: string | null,
 ): Promise<{ id: number }[]> {
-  return db.$transaction(
+  const created = await db.$transaction(
     dates.map((startsAt) =>
       db.session.create({
         data: { ...fields, startsAt, recurrenceGroupId },
@@ -22,6 +34,8 @@ export async function createSessionSeries(
       }),
     ),
   );
+  await followNextSession(fields.seasonId);
+  return created;
 }
 
 /**
@@ -31,6 +45,7 @@ export async function createSessionSeries(
  * preserves the siblings' existing org-time spacing.
  */
 export async function editSessions(
+  seasonId: number,
   targets: { id: number; startsAt: Date }[],
   fields: SessionFields,
   delta: number,
@@ -43,6 +58,7 @@ export async function editSessions(
       }),
     ),
   );
+  if (delta !== 0) await followNextSession(seasonId);
 }
 
 /**
@@ -51,12 +67,13 @@ export async function editSessions(
  * it destroys. Video questions cascade; assignments/quizzes keep their rows with
  * sessionId set null. Returns how many sessions went.
  */
-export async function deleteSessionsWithRecords(targetIds: number[]): Promise<{ count: number }> {
+export async function deleteSessionsWithRecords(seasonId: number, targetIds: number[]): Promise<{ count: number }> {
   const inTargets = { sessionId: { in: targetIds } };
   const [, , removed] = await db.$transaction([
     db.attendance.deleteMany({ where: inTargets }),
     db.sessionVideoProgress.deleteMany({ where: inTargets }),
     db.session.deleteMany({ where: { id: { in: targetIds } } }),
   ]);
+  await followNextSession(seasonId);
   return removed;
 }

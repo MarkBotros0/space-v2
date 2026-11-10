@@ -77,7 +77,11 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
     // The full detail, as GET returns it to staff: the app shows it without a refetch.
     const detail = assignmentDetailSchema.parse(res.body.data);
     expect(detail.parts.map((p) => p.kind)).toEqual(["VIDEO", "ESSAY", "FORUM"]);
-    expect(detail).toMatchObject({ my: null, canManage: true, reminderLine: "3 days before the due date" });
+    expect(detail).toMatchObject({
+      my: null,
+      canManage: true,
+      reminderLine: "Sat 7 Mar, around 6:30 PM — students who haven't finished",
+    });
     const row = await db.assignment.findUnique({
       where: { id: res.body.data.id },
       select: {
@@ -123,7 +127,8 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
       reminderDays: 3,
       reminderAnchor: "DUE_DATE",
       reminderTime: "18:30",
-      remindAt: null, // resolveRemindAt is Task 8's
+      // 3 days before 10 March, at 18:30 Cairo (UTC+2).
+      remindAt: new Date("2099-03-07T16:30:00.000Z"),
       createdById: adminId,
       updatedById: adminId,
       parts: [

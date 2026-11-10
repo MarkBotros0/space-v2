@@ -1,7 +1,8 @@
 import { db } from "../../db/client";
 import { ApiError } from "../api-error";
 import { liveAssignment } from "../db/live";
-import { lockEssayWork, workStanding } from "./essay";
+import { lockEssayWork } from "./essay";
+import { workStanding } from "./standing";
 
 /**
  * POST /submissions/:publicId/review: a verdict on one essay, on its own.

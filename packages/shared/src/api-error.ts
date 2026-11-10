@@ -18,6 +18,7 @@ export const API_ERROR_CODES = [
   "already_following_up",
   "already_graduated",
   "already_in_role",
+  "already_submitted",
   "answer_out_of_range",
   "attempt_closed",
   "attempt_incomplete",

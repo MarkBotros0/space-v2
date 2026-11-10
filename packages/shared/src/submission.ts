@@ -43,6 +43,15 @@ export const handInEssayResponseSchema = z.object({
 });
 
 /**
+ * `POST /assignments/:id/submit`: the assignment handed in, its draft essays
+ * with it. `completedAt` is set at once when there is no essay to review.
+ */
+export const submitAssignmentResponseSchema = z.object({
+  submittedAt: z.string(),
+  completedAt: z.string().nullable(),
+});
+
+/**
  * A reviewer's verdict on one essay. `reviewed` may carry feedback; `return`
  * sends the essay back to the student and needs a note saying what to change.
  */

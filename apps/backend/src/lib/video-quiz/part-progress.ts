@@ -4,6 +4,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api-error";
 import { liveAssignment } from "../db/live";
 import { newPublicId } from "../public-id";
+import { lockAssignmentForWork, lockSubmissionForWork } from "../assignments/essay";
 import { applyWatchReport } from "./part-watching";
 
 type Tx = Prisma.TransactionClient;
@@ -16,19 +17,21 @@ const partGone = () => new ApiError("not_found", "Part not found.", 404);
 
 /**
  * Locks one student's work on one video part for a write, making it if it is
- * missing. Takes the assignment's row FOR SHARE first, which pairs with
- * `replaceAssignment`'s FOR UPDATE: an edit that resets or removes this part
- * waits for the write, or the write sees the part gone. Then the Submission
- * (one per assignment per student) and the work row are made if missing, so
- * the work row's part is always the submission's assignment's and its student
- * the submission's; then the work row is locked FOR UPDATE, so two reports
- * landing together merge rather than one losing the other's intervals.
+ * missing, in the per-student lock order (lib/assignments/essay.ts). The
+ * assignment's row FOR SHARE first, which pairs with `replaceAssignment`'s FOR
+ * UPDATE: an edit that resets or removes this part waits for the write, or the
+ * write sees the part gone. Then the Submission (one per assignment per
+ * student), made if missing and locked FOR UPDATE, so this write and a Submit
+ * or an essay write run one after the other; then the work row, made if
+ * missing (its part is always the submission's assignment's, its student the
+ * submission's) and locked FOR UPDATE, so two reports landing together merge
+ * rather than one losing the other's intervals.
  */
 async function lockVideoWork(tx: Tx, partId: number, studentUserId: number) {
   const owner = await tx.assignmentPart.findUnique({ where: { id: partId }, select: { assignmentId: true } });
   if (!owner) throw partGone();
   const { assignmentId } = owner;
-  await tx.$queryRaw`SELECT "id" FROM "Assignment" WHERE "id" = ${assignmentId} FOR SHARE`;
+  await lockAssignmentForWork(tx, assignmentId);
   // Re-read under the lock: an edit that landed first wins.
   const part = await tx.assignmentPart.findFirst({
     where: { id: partId, kind: "VIDEO", assignment: liveAssignment },
@@ -44,6 +47,7 @@ async function lockVideoWork(tx: Tx, partId: number, studentUserId: number) {
     where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
     select: { id: true },
   });
+  await lockSubmissionForWork(tx, submission.id);
   await tx.assignmentPartWork.createMany({
     data: [{ publicId: newPublicId(), partId, submissionId: submission.id, studentUserId }],
     skipDuplicates: true,

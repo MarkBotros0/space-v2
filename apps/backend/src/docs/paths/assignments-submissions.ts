@@ -157,6 +157,35 @@ export const assignmentsSubmissionsPaths = {
     },
   },
 
+  "/api/v1/assignments/{id}/submit": {
+    post: {
+      tags: ["Submissions"],
+      summary: "Submit the assignment",
+      description:
+        "STUDENT only, with an ACTIVE enrolment in the assignment's season (403 otherwise); a live assignment (404). Allowed only when every part is done, videos included: otherwise `409 not_finished` with the reason the app shows, e.g. \"Finish Luke 15 talk (12 min left) and the forum post to submit\". A handed-in essay counts as done even if its word range changed since.\n\nThe draft essays are handed in with it (DRAFT → SUBMITTED) and reach the review queue. `completedAt` is set at once when there is no essay to review; otherwise when every essay is reviewed. A second Submit is `409 already_submitted` (a returned essay is handed in on its own). The leaders of the student's group in the season get one `SUBMISSION_RECEIVED` each, opening the first essay (`/leader/submissions/{publicId}`), or the assignment when it has none (best-effort).",
+      parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            properties: {
+              submittedAt: { type: "string", format: "date-time" },
+              completedAt: { type: ["string", "null"], format: "date-time" },
+            },
+          },
+          "Submitted.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict(
+          "`not_finished` — a part is left (the message says which); `already_submitted` — submitted before.",
+        ),
+      },
+    },
+  },
+
   "/api/v1/submissions/{publicId}/hand-in": {
     post: {
       tags: ["Submissions"],

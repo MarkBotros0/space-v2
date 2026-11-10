@@ -15,6 +15,3 @@ packages/shared/src/enums.ts:AssignmentPartKind
 packages/shared/src/enums.ts:ReminderAnchor
 packages/shared/src/assignment-parts.ts:AssignmentPartInput
 packages/shared/src/assignment-progress.ts:partDone
-# The first two locks of the per-student write order; Task 8's Submit takes them.
-apps/backend/src/lib/assignments/essay.ts:lockAssignmentForWork
-apps/backend/src/lib/assignments/essay.ts:lockSubmissionForWork

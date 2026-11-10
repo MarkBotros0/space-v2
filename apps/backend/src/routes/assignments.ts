@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import { db } from "../db/client";
 import { apiOk, apiError, forbidden } from "../lib/api-response";
+import { submitAssignment } from "../lib/assignments/submit";
 import { bodyErrorMessage, replaceAssignment } from "../lib/assignments/writes";
 import { canAccessSeason, canManageAssignment, hasActiveEnrollment, staffScopeForSeason } from "../lib/permissions";
 import { loadAssignmentDetail, loadAssignmentProgress } from "../lib/queries/assignments";
@@ -103,6 +104,31 @@ assignmentsRouter.patch("/:id", async (req, res) => {
   const { reopened } = await replaceAssignment(id, parsed.data, user.userId);
   const detail = await loadAssignmentDetail(id, { studentUserId: null, canManage: true, readOnly: false });
   return apiOk(res, { ...detail, reopened });
+});
+
+/**
+ * The student hands the assignment in (lib/assignments/submit.ts): 409
+ * `not_finished` with the reason while a part is left, 409 `already_submitted`
+ * the second time. Only a student with a live place in the season (an ACTIVE
+ * enrolment in an ACTIVE season); staff and a finished season get 403.
+ */
+assignmentsRouter.post("/:id/submit", async (req, res) => {
+  const user = requireUser(req);
+  const id = idParam(res, req.params.id, "assignment");
+  if (id === null) return;
+
+  const assignment = await db.assignment.findFirst({
+    where: { id, ...liveAssignment },
+    select: { seasonId: true },
+  });
+  if (!assignment) return notFound(res, "Assignment");
+  if (!(await hasActiveEnrollment(user, assignment.seasonId))) return forbidden(res);
+
+  const result = await submitAssignment(id, user.userId);
+  return apiOk(res, {
+    submittedAt: result.submittedAt.toISOString(),
+    completedAt: result.completedAt?.toISOString() ?? null,
+  });
 });
 
 assignmentsRouter.delete("/:id", async (req, res) => {

@@ -1,16 +1,11 @@
 import { db } from "../../db/client";
 import type { Prisma, SubmissionStatus } from "../../generated/prisma/client";
-import {
-  canSubmit,
-  essayWordCount,
-  essayWordRangeMessage,
-  type PartWork,
-} from "../../../../../packages/shared/src/index";
+import { essayWordCount, essayWordRangeMessage } from "../../../../../packages/shared/src/index";
 import { ApiError } from "../api-error";
 import { liveAssignment } from "../db/live";
 import { EDITABLE_STATUSES } from "../permissions/submission";
 import { newPublicId } from "../public-id";
-import { loadWorkIndex, PART_SELECT, partWorksFor, toAssignmentPart } from "../queries/assignments/part-work";
+import { workStanding } from "./standing";
 
 /*
  * A student's essays: saving a draft and handing a returned essay in again.
@@ -110,33 +105,6 @@ export async function saveEssayDraft(
     await tx.assignmentPartWork.update({ where: { id: work.id }, data: { text } });
     return { publicId: work.publicId, wordCount: essayWordCount(text), reviewStatus: work.status };
   });
-}
-
-/**
- * Where a student stands on one assignment, read inside a write's transaction:
- * whether every part is done (Submit's rule), and whether every essay is
- * reviewed. An assignment with no essay counts its essays as reviewed.
- */
-export async function workStanding(
-  tx: Tx,
-  assignmentId: number,
-  studentUserId: number,
-): Promise<{ everyPartDone: boolean; essaysReviewed: boolean }> {
-  const parts = await tx.assignmentPart.findMany({
-    where: { assignmentId },
-    orderBy: { position: "asc" },
-    select: PART_SELECT,
-  });
-  const index = await loadWorkIndex(
-    parts.map((p) => p.id),
-    [studentUserId],
-    tx,
-  );
-  const works: PartWork[] = partWorksFor(parts, studentUserId, index, { forStaff: false });
-  return {
-    everyPartDone: canSubmit(parts.map(toAssignmentPart), works),
-    essaysReviewed: works.filter((w) => w.kind === "ESSAY").every((w) => w.essay?.reviewStatus === "REVIEWED"),
-  };
 }
 
 function notReturnedMessage(status: SubmissionStatus): string {

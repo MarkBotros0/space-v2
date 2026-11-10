@@ -93,7 +93,10 @@ export const assignmentDetailSchema = z.object({
   dueOrgTime: wallTimeSchema.nullable(),
   isOverdue: z.boolean(),
   reminder: reminderSchema,
-  /** The reminder in words ("2 days before the next session"); null when it is off. */
+  /**
+   * When the reminder goes out, in words ("Tue 11 Nov, around 9:00 AM — students who haven't finished",
+   * "No upcoming session yet — no reminder", "Sent Tue 11 Nov, around 9:00 AM"); null when it is off.
+   */
   reminderLine: z.string().nullable(),
   parts: z.array(assignmentPartSchema),
   /** Present only for students; null for everyone else. */
