@@ -1,7 +1,6 @@
 // apps/mobile/src/components/ExportMenu.tsx
 import { useState } from "react";
 import { View } from "react-native";
-import { exportFilename } from "@space/shared";
 
 import { useReportExport, useSeasonWorkbookManifest } from "../hooks/use-report-export";
 import { Button, GroupedList, ListRow, Sheet, Text } from "../design/ui";
@@ -34,31 +33,10 @@ export function ExportMenu({ seasonId, scopeLabel, canExportWorkbook, exportDay,
   const manifest = useSeasonWorkbookManifest(seasonId, canExportWorkbook);
   const [open, setOpen] = useState(false);
 
-  const exportEngagement = () =>
-    exportMutation.mutate({
-      path:
-        seasonId === null
-          ? "/api/v1/reports/engagement/export"
-          : `/api/v1/reports/engagement/export?seasonId=${seasonId}`,
-      // The SAME builder the server uses for Content-Disposition, so the
-      // name in the share sheet and the name in the header cannot drift
-      // (D-17.16). The local path must be chosen before any header is
-      // visible, which is why this is shared code and not a header parse.
-      // exportDay is the server's org-zone day (ruling X13), not
-      // `new Date()` on the device: the server stamps
-      // orgDayKey(now) on Content-Disposition, and a device clock
-      // in UTC or another zone names a different day near midnight.
-      filename: exportFilename("engagement", scopeLabel, exportDay),
-      dialogTitle: `Engagement — ${scopeLabel}`,
-    });
-
-  const exportWorkbook = () =>
-    exportMutation.mutate({
-      path: `/api/v1/seasons/${seasonId}/exports/workbook`,
-      filename: manifest.data!.filename,
-      dialogTitle: manifest.data!.scopeDescription,
-      estimatedBytes: manifest.data!.estimatedBytes,
-    });
+  const exportEngagement = () => exportMutation.exportEngagement({ seasonId, scopeLabel, exportDay });
+  const exportWorkbook = () => {
+    if (seasonId !== null && manifest.data) exportMutation.exportWorkbook(seasonId, manifest.data);
+  };
 
   const workbookTitle = manifest.data ? `Export season workbook (~${formatBytes(manifest.data.estimatedBytes)})` : "";
 
