@@ -19,8 +19,8 @@ interface PartRules {
   blockSkipping: boolean;
 }
 
-/** A first report counts at most this much, however much it claims. */
-const FIRST_REPORT_MAX = 60;
+/** A first report counts at most this much, however much it claims: the app reports at most every 10 s while playing. */
+const FIRST_REPORT_MAX = 15;
 /** Slack on top of the wall-clock time since the last report. */
 const CLOCK_SLACK = 2;
 /** With skipping blocked, a range may start this far past the furthest point. */
@@ -59,7 +59,7 @@ function allowanceFor(state: WatchState, now: Date): number {
  *
  * Only time that could have played counts: the new watched time is clamped to
  * the wall-clock time since the last report plus 2 s (a first report, to the
- * span it reports, at most 60 s), taking the earliest unwatched seconds first.
+ * span it reports, at most 15 s), taking the earliest unwatched seconds first.
  * A stretch watched again counts once. With `blockSkipping`, a range starting
  * more than 5 s past the furthest point reached is dropped, and the reported
  * position never moves the furthest point; without it, the position does (the

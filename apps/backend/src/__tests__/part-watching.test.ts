@@ -6,10 +6,10 @@ const at = (seconds: number) => new Date(t0.getTime() + seconds * 1000);
 const fresh: WatchState = { intervals: [], furthestSeconds: 0, lastReportAt: null };
 
 describe("applyWatchReport", () => {
-  it("counts a first report up to 60 s, earliest seconds first", () => {
+  it("counts a first report up to 15 s, earliest seconds first", () => {
     const out = applyWatchReport(fresh, { intervals: [[0, 300]], position: 300 }, part, t0);
-    expect(out.intervals).toEqual([[0, 60]]);
-    expect(out.watchedSeconds).toBe(60);
+    expect(out.intervals).toEqual([[0, 15]]);
+    expect(out.watchedSeconds).toBe(15);
   });
 
   it("fills only the gaps of what is already watched", () => {

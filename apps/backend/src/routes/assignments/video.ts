@@ -7,6 +7,7 @@ import { notFound } from "../../lib/http/not-found";
 import { idParam } from "../../lib/http/params";
 import { parseOr400 } from "../../lib/http/validate";
 import { canManageAssignment, hasActiveEnrollment } from "../../lib/permissions";
+import { studentCanSeeAssignment } from "../../lib/queries/assignments";
 import { loadStudentVideoQuiz } from "../../lib/queries/video-quiz";
 import { answerVideoQuestionFor } from "../../lib/video-quiz/answer";
 import { saveVideoPartProgress } from "../../lib/video-quiz/part-progress";
@@ -46,14 +47,22 @@ async function findVideoPart(req: Request, res: Response) {
 }
 
 /**
- * The student gate: a live place in the assignment's season (an ACTIVE
- * enrolment in an ACTIVE season, `hasActiveEnrollment`), as on a session's
- * video. Returns the part id, or null after answering.
+ * The student gates. Reading follows the assignment's own visibility rule
+ * (`studentCanSeeAssignment`: a season participant, so a finished season's
+ * student still sees their progress). Writing needs a live place in the season
+ * (`hasActiveEnrollment`: an ACTIVE enrolment in an ACTIVE season), as on a
+ * session's video; a finished season stays locked. Returns the part id, or
+ * null after answering.
  */
-async function studentPart(req: Request, res: Response): Promise<number | null> {
+async function studentPart(req: Request, res: Response, mode: "read" | "write"): Promise<number | null> {
   const part = await findVideoPart(req, res);
   if (part === null) return null;
-  if (!(await hasActiveEnrollment(requireUser(req), part.seasonId))) {
+  const user = requireUser(req);
+  const allowed =
+    mode === "write"
+      ? await hasActiveEnrollment(user, part.seasonId)
+      : user.role === "STUDENT" && (await studentCanSeeAssignment(user.userId, part.seasonId));
+  if (!allowed) {
     forbidden(res);
     return null;
   }
@@ -72,7 +81,7 @@ async function staffPart(req: Request, res: Response) {
 }
 
 assignmentVideoRouter.get("/:id/parts/:partId/video", requireAuth, async (req, res) => {
-  const partId = await studentPart(req, res);
+  const partId = await studentPart(req, res, "read");
   if (partId === null) return;
   const data = await loadStudentVideoQuiz({ partId }, requireUser(req).userId);
   if (data === null || data.part === null) return notFound(res, "Part");
@@ -95,7 +104,7 @@ assignmentVideoRouter.get("/:id/parts/:partId/video", requireAuth, async (req, r
  * report (the ranges are already watched); the server decides what counts.
  */
 assignmentVideoRouter.put("/:id/parts/:partId/video/progress", requireAuth, async (req, res) => {
-  const partId = await studentPart(req, res);
+  const partId = await studentPart(req, res, "write");
   if (partId === null) return;
   const parsed = parseOr400(videoPartProgressRequestSchema, req.body, res, "Invalid progress.");
   if (parsed === null) return;
@@ -104,7 +113,7 @@ assignmentVideoRouter.put("/:id/parts/:partId/video/progress", requireAuth, asyn
 });
 
 assignmentVideoRouter.post("/:id/parts/:partId/video/answers", requireAuth, async (req, res) => {
-  const partId = await studentPart(req, res);
+  const partId = await studentPart(req, res, "write");
   if (partId === null) return;
   const parsed = parseOr400(submitVideoAnswerRequestSchema, req.body, res, "Invalid answer.");
   if (parsed === null) return;
