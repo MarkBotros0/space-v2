@@ -5,6 +5,7 @@ import { db } from "../../db/client";
 import { reviewEssay } from "../../lib/assignments/essay-review";
 import { sendDueAssignmentReminders } from "../../lib/assignments/reminder";
 import * as notifications from "../../lib/notifications";
+import { parseNotificationLink } from "../../lib/notification-target";
 import { orgDaysBeforeAt } from "../../lib/org-time";
 import { createAssignmentWithParts, seedTextWork, seedVideoWork, setSubmitted } from "./assignment-reads-setup";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
@@ -161,6 +162,12 @@ describe("the assignment-reminders handler", () => {
       ].sort((x, y) => x.userId - y.userId),
     );
     expect((await stored(a.id)).remindedAt?.toISOString()).toBe(NOW.toISOString());
+    // The stored link opens the assignment in the app: the same target as a new assignment's.
+    const sent = await db.notification.findFirstOrThrow({
+      where: { type: "ASSIGNMENT_REMINDER", userId: ids.idle! },
+      select: { link: true },
+    });
+    expect(parseNotificationLink(sent.link)).toEqual({ entityType: "assignment", entityId: a.id });
 
     // The second run finds it claimed.
     await sendDueAssignmentReminders(new Date(NOW.getTime() + 60_000));

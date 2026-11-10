@@ -5,8 +5,17 @@ import { markSubmitted, seedTextWork, seedVideoWork } from "./assignment-work";
 import type { SweepPeople } from "./people";
 import { fromToday } from "./shared";
 
-/** The talk's real length on YouTube, so the player and the seed agree. */
+/**
+ * A placeholder video: no JPC talk is in the repo, and this is the one id the app's tests already
+ * use (a music video, not a talk), so the part is titled as a placeholder rather than as a talk.
+ * Its length is not confirmed offline; 213 s is approximate, so the player may report a slightly
+ * different length than the seed.
+ */
+const VIDEO_ID = "dQw4w9WgXcQ";
 const VIDEO_SECONDS = 213;
+
+/** The sweep flows open this assignment by id (`spacev2://assignment/3`). */
+const FLOW_ASSIGNMENT_ID = 3;
 
 /**
  * One assignment of three parts (video, essay, forum) for the multi-part sweep flows
@@ -34,9 +43,9 @@ export async function seedThreePartAssignment({
           {
             position: 0,
             kind: "VIDEO",
-            title: "Luke 15 talk",
-            youtubeId: "dQw4w9WgXcQ",
-            youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            title: "Placeholder video",
+            youtubeId: VIDEO_ID,
+            youtubeUrl: `https://www.youtube.com/watch?v=${VIDEO_ID}`,
             durationSeconds: VIDEO_SECONDS,
             blockSkipping: true,
           },
@@ -54,6 +63,12 @@ export async function seedThreePartAssignment({
     },
     select: { id: true, parts: { orderBy: { position: "asc" }, select: { id: true } } },
   });
+  if (assignment.id !== FLOW_ASSIGNMENT_ID) {
+    throw new Error(
+      `seed-sweep: "The lost son" is assignment ${assignment.id}, but the sweep flows open ` +
+        `assignment ${FLOW_ASSIGNMENT_ID}; seed it in the old order or update the flows.`,
+    );
+  }
   const [video, essay, forum] = assignment.parts.map((p) => p.id);
   if (video === undefined || essay === undefined || forum === undefined) {
     throw new Error("seed-sweep: the three-part assignment needs its three parts");
@@ -133,8 +148,9 @@ export async function seedThreePartAssignment({
         userId: student.id,
         type: "ASSIGNMENT_REMINDER",
         title: "Reminder: The lost son",
-        // As the sweep would word it two days before "Week 2: Calling" (activity.ts).
-        body: reminderBody(2, fromToday(5), 2),
+        // As the scheduler words it: all three parts are left, and it is sent (remindAt) at
+        // 9:00 Cairo (07:00 UTC) two days before "Week 2: Calling" (activity.ts, in 7 days).
+        body: reminderBody(3, fromToday(5, 7), 2),
         link: notificationLink.studentAssignment(id),
       },
     ],
