@@ -9,7 +9,7 @@ import {
   targetedStudentIds,
   validateAssignmentRefs,
 } from "../../lib/assignment-writes";
-import { parseId } from "../../lib/parse-id";
+
 import { canAccessSeason, canManageAssignment } from "../../lib/permissions";
 import {
   assignmentDetailPayload,
@@ -25,6 +25,9 @@ import { isAdminOfSeason } from "../../lib/rbac";
 
 import { requireUser } from "../../middleware/require-auth";
 import { createAssignmentRequestSchema, groupWriteRequestSchema } from "../../../../../packages/shared/src/index";
+import { idParam } from "../../lib/http/params";
+import { parseOr400 } from "../../lib/http/validate";
+import { notFound } from "../../lib/http/not-found";
 
 /*
  * A season's child collections: its groups, sessions and assignments, read and
@@ -33,8 +36,8 @@ import { createAssignmentRequestSchema, groupWriteRequestSchema } from "../../..
 
 export async function listSeasonGroups(req: Request, res: Response) {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
   if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
 
@@ -48,28 +51,28 @@ export async function listSeasonGroups(req: Request, res: Response) {
 
 export async function createSeasonGroup(req: Request, res: Response) {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
   if (!isAdminOfSeason(user, seasonId)) return forbidden(res);
 
   const season = await db.season.findUnique({ where: { id: seasonId }, select: { id: true } });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  if (!season) return notFound(res, "Season");
 
-  const parsed = groupWriteRequestSchema.safeParse(req.body);
-  if (!parsed.success) return apiError(res, "bad_request", "Invalid group body.", 400);
+  const body = parseOr400(groupWriteRequestSchema, req.body, res, "Invalid group body.");
+  if (body === null) return;
 
-  const refusal = await validateGroupWrite(seasonId, parsed.data);
+  const refusal = await validateGroupWrite(seasonId, body);
   if (refusal) return apiError(res, refusal.code, refusal.message, 409);
 
-  const id = await createGroup(seasonId, parsed.data);
+  const id = await createGroup(seasonId, body);
   return apiOk(res, { id }, 201);
 }
 
 export async function listSeasonSessions(req: Request, res: Response) {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
   if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
 
@@ -81,8 +84,8 @@ export async function listSeasonSessions(req: Request, res: Response) {
 
 export async function listSeasonAssignments(req: Request, res: Response) {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
   if (!(await canAccessSeason(user, seasonId))) return forbidden(res);
 
@@ -98,8 +101,8 @@ export async function listSeasonAssignments(req: Request, res: Response) {
 
 export async function createSeasonAssignment(req: Request, res: Response) {
   const user = requireUser(req);
-  const seasonId = parseId(req.params.id);
-  if (seasonId === null) return apiError(res, "bad_request", "Invalid season id.", 400);
+  const seasonId = idParam(res, req.params.id, "season");
+  if (seasonId === null) return;
 
   // v1 canCreateAssignment = isAdminOfSeason (SUPER passes) — permissions.ts:273-278.
   if (!canManageAssignment(user, seasonId)) return forbidden(res);
@@ -108,7 +111,7 @@ export async function createSeasonAssignment(req: Request, res: Response) {
     where: { id: seasonId, deletedAt: null },
     select: { id: true },
   });
-  if (!season) return apiError(res, "not_found", "Season not found.", 404);
+  if (!season) return notFound(res, "Season");
 
   const parsed = createAssignmentRequestSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -142,6 +145,6 @@ export async function createSeasonAssignment(req: Request, res: Response) {
 
   const detail = await loadAssignmentById(created.id);
   // Unreachable — the row was written above — but the loader is nullable.
-  if (!detail) return apiError(res, "not_found", "Assignment not found.", 404);
+  if (!detail) return notFound(res, "Assignment");
   return apiOk(res, assignmentDetailPayload(detail, { isStudent: false, canManage: true, mySubmission: null }), 201);
 }

@@ -279,3 +279,34 @@ export async function unassignStudentsFromGroups(
   }
   return { unassigned: taken.length, skippedStudentIds };
 }
+
+/**
+ * The roster save (spec 05 §7, Plan 6 D-16.12): non-null groupIds go through
+ * assignStudentsToGroups (the importer's path too), nulls through
+ * unassignStudentsFromGroups, in ONE transaction, so a group outside the season
+ * (GroupOutsideSeasonError, mapped by the route) refuses everything.
+ */
+export async function saveRosterAssignments(
+  seasonId: number,
+  assignments: { studentUserId: number; groupId: number | null }[],
+): Promise<{ assigned: number; unassigned: number; skippedStudentIds: number[] }> {
+  const toAssign: { studentUserId: number; groupId: number }[] = [];
+  const toUnassign: number[] = [];
+  for (const a of assignments) {
+    if (a.groupId === null) toUnassign.push(a.studentUserId);
+    else toAssign.push({ studentUserId: a.studentUserId, groupId: a.groupId });
+  }
+  return db.$transaction(
+    async (tx) => {
+      const assigned = await assignStudentsToGroups(tx, seasonId, toAssign);
+      const unassigned = await unassignStudentsFromGroups(tx, seasonId, toUnassign);
+      return {
+        assigned: assigned.assigned,
+        unassigned: unassigned.unassigned,
+        skippedStudentIds: [...assigned.skippedStudentIds, ...unassigned.skippedStudentIds],
+      };
+    },
+    // Up to four statements per student, 500 students max (spec 05 R56).
+    { timeout: 30_000 },
+  );
+}
