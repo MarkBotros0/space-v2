@@ -93,8 +93,9 @@ reopened, and one it finishes (every part done, every essay reviewed) is complet
   before that session had already passed at save time, none is sent either, even once a later session
   exists: "The next session was too close — no reminder".
 - **The schedule runs inside the backend, request-driven (owner, 2026-11-10: "I want the schedule to
-  be inside the backend", "I don't want to use the Vercel scheduler").** On any API request, at most
-  once every ~5 minutes, the backend takes a database lease and, after the response, sends what is due
+  be inside the backend", "I don't want to use the Vercel scheduler").** On any API request, about
+  once a minute per server instance, one sweep at a time, the backend takes a database lease and, after
+  the response, sends what is due
   (`lib/scheduler/`, `SCHEDULER_TICK`). **No crons on Vercel at all (owner, 2026-11-10: "remove any
   crons from vercel").** The mentor follow-up reminder runs on the same schedule.
 - **Accepted trade-off:** a reminder goes out at the first request after its time, so the form says

@@ -174,8 +174,8 @@ With skip blocking off, a student who jumps to the end reaches the end but not 9
 - **The schedule lives in the backend, driven by requests (owner, 2026-11-10: "I want the schedule
   to be inside the backend", "I don't want to use the Vercel scheduler", picked option 1).** The
   backend is serverless, so nothing runs between requests and an in-process timer would never fire.
-  Instead each reminder is a row with its send time (`remindAt`); on any API request, at most once
-  every ~5 minutes, the backend takes a database lease (one row, `UPDATE … WHERE lockedUntil < now()`,
+  Instead each reminder is a row with its send time (`remindAt`); on any API request, about once a
+  minute per server instance, one sweep at a time, the backend takes a database lease (one row, `UPDATE … WHERE lockedUntil < now()`,
   so concurrent requests don't both sweep) and, after the response has been sent (Vercel's
   `waitUntil`), sends every reminder that is due and marks it sent. No Vercel Cron, no Vercel
   Schedules, no outside pinger.
