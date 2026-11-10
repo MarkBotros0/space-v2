@@ -6,3 +6,12 @@ apps/backend/src/lib/dashboard-figures.ts:QuizRollupFigures
 packages/shared/src/import/headers.ts:IMPORT_PROFILE_FIELDS
 packages/shared/src/reports/exports.ts:exportKindSchema
 packages/shared/src/standing.ts:standingSchema
+# Multi-part assignment contracts, consumed by the backend and mobile tasks that follow; remove each line once it is imported.
+packages/shared/src/assignment.ts:Reminder
+packages/shared/src/assignment.ts:assignmentProgressSchema
+packages/shared/src/assignment.ts:AssignmentProgress
+packages/shared/src/assignment.ts:DEFAULT_DUE_TIME
+packages/shared/src/enums.ts:AssignmentPartKind
+packages/shared/src/enums.ts:ReminderAnchor
+packages/shared/src/assignment-parts.ts:AssignmentPartInput
+packages/shared/src/assignment-progress.ts:partDone

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { assignmentTypeSchema, submissionStatusSchema } from "./enums";
+import { assignmentPartSchema, partWorkSchema, assignmentPartInputSchema } from "./assignment-parts";
+import { reminderAnchorSchema, submissionStatusSchema } from "./enums";
 import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
@@ -8,13 +9,6 @@ import { isoDaySchema, wallTimeSchema } from "./org-time";
 // Zod rather than bare interfaces, per the convention in CLAUDE.md: the mobile
 // client parses every response against these instead of casting, so a backend
 // drift fails at the client boundary rather than downstream.
-
-/**
- * The six MIME buckets an assignment may restrict uploads to. An empty array
- * means "any type" — there is no "all" member.
- */
-const mimeCategorySchema = z.enum(["image", "pdf", "doc", "audio", "video", "text"]);
-export type MimeCategory = z.infer<typeof mimeCategorySchema>;
 
 /**
  * A student's state on one assignment.
@@ -25,7 +19,6 @@ export type MimeCategory = z.infer<typeof mimeCategorySchema>;
  * database should have to represent.
  */
 const assignmentStudentStatusSchema = z.union([submissionStatusSchema, z.literal("PENDING")]);
-type AssignmentStudentStatus = z.infer<typeof assignmentStudentStatusSchema>;
 
 // ---------------------------------------------------------------------------
 // Response schemas
@@ -75,26 +68,17 @@ export const studentAssignmentListItemSchema = z.object({
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 
-const mySubmissionSummarySchema = z.object({
-  publicId: z.string(),
-  status: submissionStatusSchema,
-  submittedAt: z.string().nullable(),
-  reviewedAt: z.string().nullable(),
-  feedback: z.string().nullable(),
-  /**
-   * Derived server-side (ruling C4): submitted after the due date. False when
-   * either timestamp is absent.
-   */
-  isLate: z.boolean(),
+const reminderSchema = z.object({
+  enabled: z.boolean(),
+  days: z.number().int().min(1).max(14),
+  anchor: reminderAnchorSchema,
+  time: wallTimeSchema,
 });
+export type Reminder = z.infer<typeof reminderSchema>;
 
 export const assignmentDetailSchema = z.object({
   id: z.number(),
   seasonId: z.number(),
-  seasonCode: z.string(),
-  seasonTitle: z.string(),
-  sessionId: z.number().nullable(),
-  sessionTitle: z.string().nullable(),
   title: z.string(),
   description: z.string().nullable(),
   dueAt: z.string().nullable(),
@@ -102,25 +86,12 @@ export const assignmentDetailSchema = z.object({
   dueOrgDay: isoDaySchema.nullable(),
   dueOrgTime: wallTimeSchema.nullable(),
   isOverdue: z.boolean(),
-  isAllGroups: z.boolean(),
-  type: assignmentTypeSchema,
-  forumMinWords: z.number().nullable(),
-  forumAllowComments: z.boolean(),
-  /** True: a student sees group-mates' responses only after posting their own. */
-  forumPostToRead: z.boolean(),
-  /** Null means this assignment accepts no file uploads — there is no separate flag. */
-  maxFileSizeMb: z.number().nullable(),
-  allowedMimeCategories: z.array(mimeCategorySchema),
-  /**
-   * Which groups the assignment targets — **null for students**, who have no
-   * business enumerating the group ids of an assignment (ruling C8: narrow the
-   * payload, not just the access). v1 handed students the full authoring shape
-   * so its student page could re-check its own targeting; v2 does that check
-   * server-side instead.
-   */
-  groupIds: z.array(z.number()).nullable(),
+  reminder: reminderSchema,
+  /** The reminder in words ("2 days before the next session"); null when it is off. */
+  reminderLine: z.string().nullable(),
+  parts: z.array(assignmentPartSchema),
   /** Present only for students; null for everyone else. */
-  mySubmission: mySubmissionSummarySchema.nullable(),
+  my: z.object({ submittedAt: z.string().nullable(), parts: z.array(partWorkSchema) }).nullable(),
   /** Whether this caller may edit or delete the assignment. Drives the UI, never the gate. */
   canManage: z.boolean(),
   /** True for a student whose enrolment is no longer ACTIVE: they can read this, not change it. */
@@ -128,33 +99,19 @@ export const assignmentDetailSchema = z.object({
 });
 export type AssignmentDetail = z.infer<typeof assignmentDetailSchema>;
 
-/** One row of the per-assignment submission tracker. */
-const assignmentTrackerRowSchema = z.object({
-  studentUserId: z.number(),
-  name: z.string().nullable(),
-  email: z.string(),
-  groupId: z.number().nullable(),
-  groupName: z.string().nullable(),
-  status: assignmentStudentStatusSchema,
-  /** Derived server-side (ruling C4), never recomputed by a renderer. */
-  isLate: z.boolean(),
-  submittedAt: z.string().nullable(),
-  reviewedAt: z.string().nullable(),
-  /** The handle into the submission review screen; null when nothing was started. */
-  submissionPublicId: z.string().nullable(),
+/** The leader's view: every expected student with their work on each part. */
+export const assignmentProgressSchema = z.object({
+  rows: z.array(
+    z.object({
+      studentUserId: z.number(),
+      name: z.string().nullable(),
+      avatarPath: z.string().nullable(),
+      submittedAt: z.string().nullable(),
+      parts: z.array(partWorkSchema),
+    }),
+  ),
 });
-export type AssignmentTrackerRow = z.infer<typeof assignmentTrackerRowSchema>;
-
-export const assignmentTrackerSchema = z.object({
-  assignmentId: z.number(),
-  dueAt: z.string().nullable(),
-  isOverdue: z.boolean(),
-  /** Non-DRAFT submissions among `rows`. The one definition of "submitted". */
-  submittedCount: z.number(),
-  expectedCount: z.number(),
-  rows: z.array(assignmentTrackerRowSchema),
-});
-export type AssignmentTracker = z.infer<typeof assignmentTrackerSchema>;
+export type AssignmentProgress = z.infer<typeof assignmentProgressSchema>;
 
 // ---------------------------------------------------------------------------
 // Request schemas
@@ -163,92 +120,40 @@ export type AssignmentTracker = z.infer<typeof assignmentTrackerSchema>;
 /** v1's form defaulted a picked due date to 23:59 (spec 07 R19). */
 export const DEFAULT_DUE_TIME = "23:59";
 
-const assignmentWriteBase = z.object({
-  title: z.string().min(2).max(160),
-  description: z.string().max(20000).nullable().optional(),
-  /**
-   * The due date as an organisation-calendar day plus wall-clock time. The
-   * server composes the instant in config.orgTimezone (ruling C2). v1 sent an
-   * instant composed with `setHours` in the author's browser zone (R45), so
-   * the same "23:59" meant a different moment per author.
-   */
-  dueDay: isoDaySchema.nullable().optional(),
-  dueTime: wallTimeSchema.nullable().optional(),
-  sessionId: z.number().int().positive().nullable().optional(),
-  type: assignmentTypeSchema.default("STANDARD"),
-  forumMinWords: z.number().int().min(0).max(2000).nullable().optional(),
-  forumAllowComments: z.boolean().default(false),
-  /** Defaults to v1's behaviour: post your own response to read your group's. */
-  forumPostToRead: z.boolean().default(true),
-  maxFileSizeMb: z.number().int().min(1).max(100).nullable().optional(),
-  allowedMimeCategories: z.array(mimeCategorySchema).default([]),
-  /**
-   * Targeting. In v1 these two were read off the *raw* request body, never the
-   * parsed one, so nothing constrained them at all (R11). They are in the
-   * schema now; the server additionally checks each id belongs to the season.
-   */
-  isAllGroups: z.boolean(),
-  groupIds: z.array(z.number().int().positive()).default([]),
-});
-
-type AssignmentWriteParsed = z.infer<typeof assignmentWriteBase>;
-
-/**
- * Deliberate divergence from v1: "specific groups" with an empty list is
- * rejected rather than silently accepted. v1 wrote an assignment that targeted
- * nobody, notified nobody and had an expected count of zero — indistinguishable
- * from a save that worked.
- */
-function refineTargeting(value: AssignmentWriteParsed, ctx: z.RefinementCtx): void {
-  if (!value.isAllGroups && value.groupIds.length === 0) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ["groupIds"],
-      message: "Choose at least one group, or target the whole season.",
-    });
-  }
-}
-
-/**
- * The type-driven coercion v1 applied in its action bodies (R14–R17), hoisted
- * into the schema so both write paths get it identically and neither can
- * forget it. Duplicate group ids collapse, which is what stops v1's update
- * path from throwing a unique-constraint error mid-transaction (R70).
- */
-function normalizeAssignmentWrite(value: AssignmentWriteParsed) {
-  const isForum = value.type === "FORUM";
-  const dueDay = value.dueDay ?? null;
-  return {
-    title: value.title,
-    description: value.description ?? null,
-    dueDay,
-    dueTime: dueDay === null ? null : (value.dueTime ?? DEFAULT_DUE_TIME),
-    sessionId: value.sessionId ?? null,
-    type: value.type,
-    forumMinWords: isForum ? (value.forumMinWords ?? null) : null,
-    forumAllowComments: isForum ? value.forumAllowComments : false,
-    forumPostToRead: isForum ? value.forumPostToRead : true,
-    maxFileSizeMb: isForum ? null : (value.maxFileSizeMb ?? null),
-    allowedMimeCategories: isForum ? [] : value.allowedMimeCategories,
-    isAllGroups: value.isAllGroups,
-    groupIds: value.isAllGroups ? [] : Array.from(new Set(value.groupIds)),
-  };
-}
-
 /**
  * One body for create and for update. A full replace, not a partial merge
  * (spec 07 R67, §8): v1 had no partial update and the edit form always sends
  * every field; PATCH-merge semantics would make "clear the due date" and
  * "leave the due date alone" the same request. `seasonId` is not a field —
  * create takes it from the path and update can never change it (R68).
+ *
+ * `dueDay` and `dueTime` are an organisation-calendar day plus wall-clock
+ * time; the server composes the instant in config.orgTimezone (ruling C2).
  */
-export const assignmentWriteRequestSchema = assignmentWriteBase
-  .superRefine(refineTargeting)
-  .transform(normalizeAssignmentWrite);
+export const assignmentWriteRequestSchema = z
+  .object({
+    title: z.string().min(2).max(160),
+    description: z.string().max(20000).nullable(),
+    dueDay: isoDaySchema.nullable(),
+    dueTime: wallTimeSchema.nullable(),
+    reminder: reminderSchema,
+    parts: z
+      .array(assignmentPartInputSchema)
+      .min(1, "Add at least one part")
+      .max(20)
+      .refine((parts) => parts.filter((p) => p.kind === "FORUM").length <= 1, "One forum per assignment"),
+    /** Re-sent with true to confirm a save the server flagged (for example, one that returns work). */
+    confirm: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.reminder.anchor === "DUE_DATE" && value.dueDay === null) {
+      ctx.addIssue({ code: "custom", path: ["reminder", "anchor"], message: "Set a due date first" });
+    }
+  });
 
 /** What a client sends. */
 export type AssignmentWriteRequest = z.input<typeof assignmentWriteRequestSchema>;
-/** What the server acts on after defaults and type coercion. */
+/** What the server acts on. */
 export type AssignmentWriteBody = z.output<typeof assignmentWriteRequestSchema>;
 
 export const createAssignmentRequestSchema = assignmentWriteRequestSchema;
@@ -256,15 +161,3 @@ export const updateAssignmentRequestSchema = assignmentWriteRequestSchema;
 
 /** `DELETE /assignments/:id`. */
 export const assignmentDeletedResponseSchema = z.object({ deleted: z.literal(true) });
-
-/**
- * Outstanding = not yet handed in: PENDING or DRAFT. The exact complement of
- * ruling C5's "completed" set (SUBMITTED | REVIEWED | RETURNED), so
- * outstanding + completed = assignments expected of the student. RETURNED is
- * completed for counting purposes even though the student may revise it.
- * One definition (spec 19 §10 D15): the mobile dashboard count and the
- * server-side dashboard summary both call this.
- */
-export function isAssignmentOutstanding(status: AssignmentStudentStatus): boolean {
-  return status === "PENDING" || status === "DRAFT";
-}

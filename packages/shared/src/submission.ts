@@ -80,18 +80,15 @@ export type SubmissionDetail = z.infer<typeof submissionDetailSchema>;
 
 /** One row of a reviewer's queue. Deliberately narrower than the detail. */
 const submissionQueueItemSchema = z.object({
+  /** The essay work's handle into the review screen. */
   publicId: z.string(),
-  status: submissionStatusSchema,
-  submittedAt: z.string().nullable(),
-  isLate: z.boolean(),
   assignmentId: z.number(),
   assignmentTitle: z.string(),
-  assignmentDueAt: z.string().nullable(),
-  seasonCode: z.string(),
-  studentUserId: z.number(),
+  prompt: z.string(),
   studentName: z.string().nullable(),
-  groupId: z.number().nullable(),
-  groupName: z.string().nullable(),
+  submittedAt: z.string().nullable(),
+  isLate: z.boolean(),
+  reviewStatus: submissionStatusSchema,
 });
 export type SubmissionQueueItem = z.infer<typeof submissionQueueItemSchema>;
 
