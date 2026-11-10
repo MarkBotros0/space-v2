@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
 import type { StartIssue } from "@space/shared";
 
-import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
+import { queryStateView, SeasonLinkNotFound, type GateQuery } from "../../../../src/design/layout/route-states";
 import { SaveBar } from "../../../../src/design/layout/save-bar";
 import { Screen } from "../../../../src/design/layout/screen";
 import { ConfirmDialog, EmptyState, Text, toast } from "../../../../src/design/ui";
@@ -21,6 +21,28 @@ import { plural } from "../../../../src/lib/plural";
  * when it is empty. Starting is refused again server-side, so a race (someone
  * changed meanwhile) reloads the list with the reason.
  */
+/**
+ * What the screen shows instead of its content, in this order: a bad link, not a Super, the season
+ * loading or failed, no longer a draft, the start-check loading or failed. Null once it can show
+ * the check (refactor FE-003).
+ */
+function startGate(p: {
+  code: string | null;
+  isSuper: boolean;
+  season: GateQuery;
+  isDraft: boolean;
+  check: GateQuery & { error: unknown };
+}): ReactNode | null {
+  if (p.code === null) return <SeasonLinkNotFound />;
+  if (!p.isSuper) return <EmptyState title="Not available" description="Only a super admin can start a season." />;
+  const seasonState = queryStateView(p.season);
+  if (seasonState !== null) return seasonState;
+  if (!p.isDraft || apiErrorCode(p.check.error) === "not_draft") {
+    return <EmptyState title="Already started" description="This season has already started." />;
+  }
+  return queryStateView(p.check);
+}
+
 export default function StartSeasonScreen() {
   const router = useRouter();
   const { code, season } = useSeasonRoute();
@@ -85,28 +107,14 @@ export default function StartSeasonScreen() {
 
   const busy = removePerson.isPending || removeAdmin.isPending || override.isPending || check.isFetching;
   const title = season.data?.title ?? "this season";
-  const started = <EmptyState title="Already started" description="This season has already started." />;
 
-  let body: ReactNode;
+  const gate = startGate({ code, isSuper, season, isDraft, check });
+  let body: ReactNode = gate;
   let footer: ReactNode = undefined;
-  if (code === null) {
-    body = <SeasonLinkNotFound />;
-  } else if (!isSuper) {
-    body = <EmptyState title="Not available" description="Only a super admin can start a season." />;
-  } else if (season.isError) {
-    body = <RouteError onRetry={() => void season.refetch()} />;
-  } else if (season.isPending) {
-    body = <RouteSkeleton />;
-  } else if (!isDraft || apiErrorCode(check.error) === "not_draft") {
-    body = started;
-  } else if (check.isError) {
-    body = <RouteError onRetry={() => void check.refetch()} />;
-  } else if (check.isPending) {
-    body = <RouteSkeleton />;
-  } else if (check.data.ready) {
+  if (gate === null && check.data?.ready) {
     body = (
       <Text variant="body">
-        {`Everyone's clear. Starting makes this season live for ${plural(season.data.studentCount, "person", "people")}.`}
+        {`Everyone's clear. Starting makes this season live for ${plural(season.data?.studentCount ?? 0, "person", "people")}.`}
       </Text>
     );
     footer = (
@@ -117,7 +125,7 @@ export default function StartSeasonScreen() {
         onPress={() => setConfirming(true)}
       />
     );
-  } else {
+  } else if (gate === null && check.data && code !== null) {
     body = (
       <IssueList
         items={check.data.items}
