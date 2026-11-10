@@ -30,6 +30,16 @@ function flushFailedMessage(err: unknown): string {
 const lastWrite = new Map<string, Promise<unknown>>();
 
 /**
+ * Waits for every draft write in flight, a flush on leaving included (review
+ * M2): Submit awaits it before posting, so it never hands in older text than
+ * the student last typed. The stored writes never reject; a failed one has
+ * already said so in a toast.
+ */
+export async function waitForDraftWrites(): Promise<void> {
+  await Promise.all([...lastWrite.values()]);
+}
+
+/**
  * The response is only local state, so an edge swipe, the pinned Back or the OS
  * killing the app in the background would lose an essay typed on a phone. Like
  * the quiz (use-quiz-answers.ts), it is written out on leaving and on backgrounding:

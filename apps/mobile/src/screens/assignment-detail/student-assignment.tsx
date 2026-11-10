@@ -22,6 +22,7 @@ import { formatDate, formatOrgDue, keepTogether } from "../../lib/format";
 import { reportOutcome } from "../../lib/outcome";
 import { storedTextToHtml } from "../../lib/stored-text";
 import { AssignmentChecklist } from "./assignment-checklist";
+import { waitForDraftWrites } from "./use-draft-flush";
 
 const READ_ONLY = "This season has finished. You can read your work but not change it.";
 const SUBMIT_HINT = "Your essays go to your leader when you submit.";
@@ -42,7 +43,8 @@ function DueLine({ detail }: { detail: AssignmentDetail }) {
 
 /** Submit, its confirmation and its refusals. Pending disables it, so one tap is one Submit. */
 function useSubmit(detail: AssignmentDetail) {
-  const submit = useSubmitAssignment(detail.id);
+  // A draft flushed on leaving an essay lands before Submit hands it in (review M2).
+  const submit = useSubmitAssignment(detail.id, { beforeSend: waitForDraftWrites });
   const [confirming, setConfirming] = useState(false);
   // isPending reaches the buttons a tick after the press, so a quick second tap is held here.
   const inFlight = useRef(false);

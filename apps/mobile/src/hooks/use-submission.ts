@@ -96,15 +96,19 @@ export function useHandInEssay(publicId: string, assignmentId: number) {
  * the assignment refreshes on a refusal too. Read the refusal with
  * `apiErrorCode` / `apiErrorMessage`.
  */
-export function useSubmitAssignment(assignmentId: number) {
+export function useSubmitAssignment(assignmentId: number, opts: { beforeSend?: () => Promise<void> } = {}) {
   const queryClient = useQueryClient();
+  const { beforeSend } = opts;
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
     // Offline, fail now into the screen's own copy rather than spin until reconnect.
     networkMode: "always",
-    mutationFn: () =>
-      apiSend("post", `/api/v1/assignments/${assignmentId}/submit`, undefined, submitAssignmentResponseSchema),
+    mutationFn: async () => {
+      // The screen's writes that must land first (a draft flushed on leaving its essay).
+      await beforeSend?.();
+      return apiSend("post", `/api/v1/assignments/${assignmentId}/submit`, undefined, submitAssignmentResponseSchema);
+    },
     onSuccess: () => {
       // Its essays join the reviewers' queues.
       void queryClient.invalidateQueries({ queryKey: queryKeys.submissions.queues() });
