@@ -73,7 +73,7 @@ describe("POST /quizzes/:id/attempts/end", () => {
     expect(after.endedById).not.toBeNull();
   });
 
-  it("End that grades at once sends exactly one \"Your score is in\"", async () => {
+  it('End that grades at once sends exactly one "Your score is in"', async () => {
     const quizId = await openQuiz();
     const before = await quizGradedCountFor(f.ownStudentId);
     const res = await end(quizId, f.leaderToken, f.ownStudentId);
