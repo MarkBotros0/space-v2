@@ -87,6 +87,8 @@ type ListRowProps = {
   footer?: ReactNode;
   /** What `trailing` says, for screen readers. Defaults to its `label` prop (StatusChip). */
   trailingLabel?: string;
+  /** What the row's detail says, for screen readers, when the shown text reads badly aloud (a ticking m:ss). */
+  spokenDetail?: string;
   /**
    * Where `trailing` sits. "side" (default) is a column right of the text; "below"
    * puts it under the subtitle so a chip never takes width from long metadata
@@ -123,6 +125,7 @@ function ListRow({
   trailing,
   footer,
   trailingLabel,
+  spokenDetail,
   trailingPlacement = "side",
   chevron,
   destructive,
@@ -172,7 +175,7 @@ function ListRow({
       accessibilityRole="button"
       accessibilityLabel={[
         title,
-        [detail, subtitle].filter(Boolean).join("\n"),
+        spokenDetail ?? [detail, subtitle].filter(Boolean).join("\n"),
         spokenTrailing(trailing, trailingLabel),
       ]
         .filter(Boolean)

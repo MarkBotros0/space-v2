@@ -40,7 +40,8 @@ describe("liveRowView", () => {
     expect(liveRowView(row(), 0, NOW, true)).toEqual({
       title: "Test student",
       stateChip: { tone: "neutral", label: "Not started" },
-      detail: "Hasn't opened the quiz",
+      detail: "Hasn't started",
+      spoken: "Hasn't started",
     });
   });
 
@@ -50,6 +51,15 @@ describe("liveRowView", () => {
     const view = liveRowView(row({ state: "in_progress", deadlineAt, exits: 1 }), 5 * 60_000, NOW, true);
     expect(view.stateChip).toEqual({ tone: "info", label: "In progress" });
     expect(view.detail).toBe("12:30 left · 1 exit");
+    // A screen reader hears whole minutes, not every second.
+    expect(view.spoken).toBe("13 minutes left, 1 exit");
+  });
+
+  it("in progress past its deadline but not closed yet", () => {
+    const deadlineAt = new Date(NOW - 5_000).toISOString();
+    const view = liveRowView(row({ state: "in_progress", deadlineAt, exits: 1 }), 0, NOW, true);
+    expect(view.detail).toBe("Time up · closing");
+    expect(view.spoken).toBe("Time up, closing");
   });
 
   it("in progress with no exits says only the time", () => {
@@ -79,15 +89,15 @@ describe("liveRowView", () => {
   it("timed out", () => {
     expect(liveRowView(row({ state: "timed_out" }), 0, NOW, true)).toMatchObject({
       stateChip: { tone: "warn", label: "Timed out" },
-      detail: "Timed out",
+      detail: "Time ran out",
     });
-    expect(liveRowView(row({ state: "timed_out", exits: 2 }), 0, NOW, true).detail).toBe("Timed out · 2 exits");
+    expect(liveRowView(row({ state: "timed_out", exits: 2 }), 0, NOW, true).detail).toBe("Time ran out · 2 exits");
   });
 
   it("ended by exits", () => {
     expect(liveRowView(row({ state: "ended_by_exits", exits: 3 }), 0, NOW, true)).toMatchObject({
       stateChip: { tone: "bad", label: "Ended" },
-      detail: "Ended · left the quiz",
+      detail: "Left the quiz",
     });
   });
 

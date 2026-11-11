@@ -4,11 +4,8 @@ import { View } from "react-native";
 
 import { QueryGate } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { haptic } from "../../design/motion";
-import { ConfirmDialog, EmptyState, GroupedList, ListRow, StatTile, StatusChip, Text } from "../../design/ui";
-import { toast } from "../../design/ui/toaster";
-import { useEndAttempt, useQuizLive } from "../../hooks/use-quizzes";
-import { apiErrorMessage } from "../../lib/api-error";
+import { EmptyState, GroupedList, ListRow, StatTile, StatusChip, Text } from "../../design/ui";
+import { useQuizLive } from "../../hooks/use-quizzes";
 import { people } from "../../lib/plural";
 import { clockOffsetMs } from "../quiz-detail/countdown";
 import { LiveRowSheet } from "./live-row-sheet";
@@ -48,26 +45,11 @@ function Summary({ rows }: { rows: QuizLiveRow[] }) {
 }
 
 function LiveBody({ id, data, offsetMs, now }: { id: number; data: QuizLive; offsetMs: number; now: number }) {
-  const end = useEndAttempt(id);
   const [shown, setShown] = useState<number | null>(null);
   const [open, setOpen] = useState(false);
-  const [ending, setEnding] = useState<QuizLiveRow | null>(null);
   const timed = data.timeLimitMinutes !== null;
   const view = (r: QuizLiveRow) => liveRowView(r, offsetMs, now, timed);
   const row = data.rows.find((r) => r.studentUserId === shown);
-  const endingName = ending?.studentName ?? "Student";
-
-  const confirmEnd = () => {
-    if (!ending) return;
-    end.mutate(ending.studentUserId, {
-      onSuccess: () => {
-        haptic("light");
-        toast.success("Attempt ended.");
-      },
-      onError: (err) => toast.error(apiErrorMessage(err, "Couldn't end the attempt.")),
-      onSettled: () => setEnding(null),
-    });
-  };
 
   if (data.rows.length === 0) {
     return <EmptyState title="No students" description="Students in your groups appear here once they are enrolled." />;
@@ -78,21 +60,23 @@ function LiveBody({ id, data, offsetMs, now }: { id: number; data: QuizLive; off
       <GroupedList header="Students">
         {data.rows.map((r) => {
           const v = view(r);
+          const pressable = liveRowAction(r) !== null;
           return (
             <ListRow
               key={r.studentUserId}
               title={v.title}
               titleLines={2}
               subtitle={v.detail}
+              spokenDetail={v.spoken}
               trailing={<StatusChip {...v.stateChip} />}
-              chevron={liveRowAction(r) !== null}
+              chevron={pressable}
               onPress={
-                liveRowAction(r) === null
-                  ? undefined
-                  : () => {
+                pressable
+                  ? () => {
                       setShown(r.studentUserId);
                       setOpen(true);
                     }
+                  : undefined
               }
             />
           );
@@ -106,21 +90,8 @@ function LiveBody({ id, data, offsetMs, now }: { id: number; data: QuizLive; off
           view={view(row)}
           open={open}
           onClose={() => setOpen(false)}
-          onEnd={setEnding}
         />
       ) : null}
-      <ConfirmDialog
-        open={ending !== null}
-        onOpenChange={(next) => {
-          if (!next && !end.isPending) setEnding(null);
-        }}
-        title={`End ${endingName}'s attempt?`}
-        description="Their saved answers are submitted."
-        confirmLabel="End attempt"
-        destructive
-        pending={end.isPending}
-        onConfirm={confirmEnd}
-      />
     </View>
   );
 }

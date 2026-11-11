@@ -98,7 +98,30 @@ describe("live quiz screen", () => {
     expect(screen.getByLabelText("Not started: 1")).toBeTruthy();
     expect(screen.getByLabelText("Finished: 1")).toBeTruthy();
     expect(screen.getByText(/1[23]:\d\d left · 1 exit/)).toBeTruthy();
-    expect(screen.getByText("Hasn't opened the quiz")).toBeTruthy();
+    expect(screen.getByText("Hasn't started")).toBeTruthy();
+    // The row speaks whole minutes; the per-second text is for the eye only.
+    expect(screen.getByLabelText(/^Second student, 1[23] minutes left, 1 exit, In progress$/)).toBeTruthy();
+  });
+
+  it("re-reads at once when the app comes back after more than a poll", async () => {
+    jest.useFakeTimers();
+    renderStacked(<QuizLiveRoute />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(liveReads()).toBe(1);
+
+    act(() => appStateHandler?.("background"));
+    await act(async () => {
+      jest.advanceTimersByTime(QUIZ_LIVE_POLL_MS * 5);
+    });
+    expect(liveReads()).toBe(1);
+    // Back in front: no waiting for the next tick with 20 s old rows.
+    await act(async () => {
+      appStateHandler?.("active");
+      await Promise.resolve();
+    });
+    expect(liveReads()).toBe(2);
   });
 
   it("polls every 4 s while focused, and stops in the background", async () => {
@@ -138,6 +161,9 @@ describe("live quiz screen", () => {
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/end", { studentUserId: 10 }));
     await waitFor(() => expect(liveReads()).toBe(2));
     expect(toast.success).toHaveBeenCalledWith("Attempt ended.");
+    // The confirm sits inside the sheet and closes once End has gone through (the sheet with it,
+    // after its exit animation, which the test renderer never finishes).
+    await waitFor(() => expect(screen.queryByText("End Second student's attempt?")).toBeNull());
   });
 
   it("Reopen from a finished row posts the reopen", async () => {

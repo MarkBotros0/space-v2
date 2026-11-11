@@ -34,7 +34,7 @@ describe("exit log model", () => {
   it("one line per event, each exit with how long the student was away", () => {
     expect(exitLogLines([...events], "ENDED_BY_EXITS")).toEqual([
       `Left ${at(LEFT_1)} · away 0:42`,
-      `Screenshot ${at(LEFT_2)}`,
+      `Took a screenshot ${at(LEFT_2)}`,
       `Closed the app ${at(LEFT_2)} · away 2:05`,
       `Left ${at(LEFT_3)} · ended the attempt`,
     ]);

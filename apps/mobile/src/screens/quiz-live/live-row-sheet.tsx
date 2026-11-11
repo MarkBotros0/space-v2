@@ -1,18 +1,20 @@
 import type { QuizLiveRow } from "@space/shared";
+import { useState } from "react";
 import { View } from "react-native";
 
 import { haptic } from "../../design/motion";
-import { Button, Sheet, StatusChip, Text } from "../../design/ui";
+import { Button, ConfirmDialog, Sheet, StatusChip, Text } from "../../design/ui";
 import { toast } from "../../design/ui/toaster";
-import { useReopenAttempt } from "../../hooks/use-quizzes";
+import { useEndAttempt, useReopenAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
 import { ReopenButton } from "../quiz-grade/quiz-answer-marker";
 import { liveRowAction, type LiveRowView } from "./live-model";
 
 /**
- * One student's actions on the live screen: End an open attempt (the caller confirms first, so
- * this sheet closes before the dialog opens) or Reopen a finished one as a retake, as the
- * grading sheet does. A student who never started has no sheet.
+ * One student's actions on the live screen: End an open attempt, after a confirm, or Reopen a
+ * finished one as a retake, as the grading sheet does. The confirm sits inside the sheet (as the
+ * staff picker's does): closing one modal while opening another drops the second on iOS. The
+ * sheet closes once End has gone through. A student who never started has no sheet.
  */
 export function LiveRowSheet({
   quizId,
@@ -20,16 +22,16 @@ export function LiveRowSheet({
   view,
   open,
   onClose,
-  onEnd,
 }: {
   quizId: number;
   row: QuizLiveRow;
   view: LiveRowView;
   open: boolean;
   onClose: () => void;
-  onEnd: (row: QuizLiveRow) => void;
 }) {
   const reopen = useReopenAttempt(quizId);
+  const end = useEndAttempt(quizId);
+  const [asking, setAsking] = useState(false);
   const action = liveRowAction(row);
 
   const onReopen = () => {
@@ -40,6 +42,21 @@ export function LiveRowSheet({
         onClose();
       },
       onError: (err) => toast.error(apiErrorMessage(err, "Couldn't reopen the attempt.")),
+    });
+  };
+
+  const confirmEnd = () => {
+    end.mutate(row.studentUserId, {
+      onSuccess: () => {
+        haptic("light");
+        toast.success("Attempt ended.");
+        setAsking(false);
+        onClose();
+      },
+      onError: (err) => {
+        setAsking(false);
+        toast.error(apiErrorMessage(err, "Couldn't end the attempt."));
+      },
     });
   };
 
@@ -56,25 +73,26 @@ export function LiveRowSheet({
           ) : null}
         </View>
         {action === "end" ? (
-          <>
-            <Text variant="subhead" className="text-muted-foreground">
-              Ending submits the answers they have saved.
-            </Text>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="self-start"
-              onPress={() => {
-                onClose();
-                onEnd(row);
-              }}
-            >
-              End attempt
-            </Button>
-          </>
+          <Button size="sm" variant="destructive" className="self-start" onPress={() => setAsking(true)}>
+            End attempt
+          </Button>
         ) : null}
         {action === "reopen" ? <ReopenButton onPress={onReopen} disabled={reopen.isPending} /> : null}
       </View>
+      {asking ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(next) => {
+            if (!next && !end.isPending) setAsking(false);
+          }}
+          title={`End ${view.title}'s attempt?`}
+          description="Their saved answers are submitted."
+          confirmLabel="End attempt"
+          destructive
+          pending={end.isPending}
+          onConfirm={confirmEnd}
+        />
+      ) : null}
     </Sheet>
   );
 }

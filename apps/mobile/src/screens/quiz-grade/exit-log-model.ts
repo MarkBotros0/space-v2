@@ -33,7 +33,7 @@ export function exitLogLines(events: QuizGradingEvent[], reason: EndReason): str
   const lastExit = events.reduce((last, e, i) => (isExit(e) ? i : last), -1);
   return events.map((e, i) => {
     const time = formatSessionTime(e.leftAt);
-    if (e.kind === "SCREENSHOT") return `Screenshot ${time}`;
+    if (e.kind === "SCREENSHOT") return `Took a screenshot ${time}`;
     const left = e.kind === "RELAUNCH" ? `Closed the app ${time}` : `Left ${time}`;
     if (i === lastExit && reason === "ENDED_BY_EXITS") return joinMeta([left, "ended the attempt"]);
     if (e.returnedAt === null) return joinMeta([left, "didn't come back"]);

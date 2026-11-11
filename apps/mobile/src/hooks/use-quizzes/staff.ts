@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
   quizAuthoringDetailSchema,
@@ -67,14 +68,27 @@ export const QUIZ_LIVE_POLL_MS = 4000;
 /**
  * The staff live screen: every student in scope, where they are now. Polls every 4 s only while
  * `polling` (the screen is focused and the app in the foreground); the caller decides that, so a
- * screen left open under another or a phone in a pocket never polls.
+ * screen left open under another or a phone in a pocket never polls. Rows count as fresh for one
+ * poll only, and coming back to the screen or the app re-reads at once when they are older, so
+ * staff never look at rows up to the app-wide 30 s stale until the next tick.
  */
 export function useQuizLive(id: number | null, polling: boolean): UseQueryResult<QuizLive> {
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.quizzes.live(id),
     queryFn: () => apiGet(`/api/v1/quizzes/${id}/live`, quizLiveSchema),
     enabled: id !== null,
+    staleTime: QUIZ_LIVE_POLL_MS,
     refetchInterval: polling ? QUIZ_LIVE_POLL_MS : false,
     refetchIntervalInBackground: false,
   });
+  const { refetch, dataUpdatedAt } = query;
+  const updatedAt = useRef(dataUpdatedAt);
+  updatedAt.current = dataUpdatedAt;
+  useEffect(() => {
+    // `refetch` ignores `enabled`, so the id is checked here.
+    if (polling && id !== null && updatedAt.current > 0 && Date.now() - updatedAt.current >= QUIZ_LIVE_POLL_MS) {
+      void refetch();
+    }
+  }, [polling, id, refetch]);
+  return query;
 }

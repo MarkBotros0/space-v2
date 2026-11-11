@@ -3,8 +3,7 @@ import type { QuizLiveRow, QuizLiveState } from "@space/shared";
 import type { ChipSpec } from "../../design/ui/status-chip";
 import { joinMeta } from "../../lib/join-meta";
 import { plural } from "../../lib/plural";
-import { formatRemaining, remainingMs } from "../quiz-detail/countdown";
-import { endReasonLine } from "../quiz-grade/exit-log-model";
+import { formatRemaining, minutesLeftLabel, remainingMs } from "../quiz-detail/countdown";
 
 /*
  * The staff live screen's pure model (spec "Live screen"): where every student in scope is right
@@ -35,42 +34,54 @@ const CHIPS: Record<QuizLiveState, ChipSpec> = {
 
 const exitCount = (r: QuizLiveRow) => r.exits > 0 && plural(r.exits, "exit");
 
+/** The detail line's facts: what the eye reads, and what a screen reader hears. */
+type Facts = { shown: (string | false)[]; spoken: (string | false)[] };
+const same = (parts: (string | false)[]): Facts => ({ shown: parts, spoken: parts });
+
 /** In progress: time left (or why there is none), then the exits so far. */
-function inProgressDetail(r: QuizLiveRow, offsetMs: number, now: number, timed: boolean): string {
+function inProgressFacts(r: QuizLiveRow, offsetMs: number, now: number, timed: boolean): Facts {
   if (r.deadlineAt !== null) {
-    return joinMeta([`${formatRemaining(remainingMs(r.deadlineAt, offsetMs, now))} left`, exitCount(r)]);
+    const ms = remainingMs(r.deadlineAt, offsetMs, now);
+    // Past the deadline, the server closes it on the next read or the scheduler's run.
+    if (ms === 0) return same(["Time up", "closing"]);
+    return { shown: [`${formatRemaining(ms)} left`, exitCount(r)], spoken: [minutesLeftLabel(ms), exitCount(r)] };
   }
   // A reopened timed attempt has no deadline until the student starts it again.
-  if (timed) return "Retake not started";
-  return joinMeta(["No time limit", exitCount(r)]);
+  if (timed) return same(["Retake not started"]);
+  return same(["No time limit", exitCount(r)]);
 }
 
-function rowDetail(r: QuizLiveRow, offsetMs: number, now: number, timed: boolean): string {
+/** The chip says the state; the detail adds what the chip doesn't. */
+function rowFacts(r: QuizLiveRow, offsetMs: number, now: number, timed: boolean): Facts {
   switch (r.state) {
     case "not_started":
-      return "Hasn't opened the quiz";
+      return same(["Hasn't started"]);
     case "in_progress":
-      return inProgressDetail(r, offsetMs, now, timed);
+      return inProgressFacts(r, offsetMs, now, timed);
     case "submitted":
     case "graded":
-      return r.exits > 0 ? plural(r.exits, "exit") : "No exits";
+      return same([r.exits > 0 ? plural(r.exits, "exit") : "No exits"]);
     case "timed_out":
-      return joinMeta([endReasonLine("TIMED_OUT", null), exitCount(r)]);
+      return same(["Time ran out", exitCount(r)]);
     case "ended_by_exits":
-      return endReasonLine("ENDED_BY_EXITS", null) ?? "";
+      return same(["Left the quiz"]);
     case "ended_by_staff":
-      return endReasonLine("ENDED_BY_STAFF", null) ?? "";
+      return same(["Ended by staff"]);
   }
 }
 
-export type LiveRowView = { title: string; stateChip: ChipSpec; detail: string };
+export type LiveRowView = { title: string; stateChip: ChipSpec; detail: string; spoken: string };
 
-/** One student's row; `timed` is whether the quiz has a time limit. */
+const spokenJoin = (parts: (string | false)[]) => parts.filter((p): p is string => p !== false).join(", ");
+
+/** One student's row; `timed` is whether the quiz has a time limit. `spoken` is the detail for a screen reader. */
 export function liveRowView(row: QuizLiveRow, offsetMs: number, now: number, timed: boolean): LiveRowView {
+  const facts = rowFacts(row, offsetMs, now, timed);
   return {
     title: row.studentName ?? "Student",
     stateChip: CHIPS[row.state],
-    detail: rowDetail(row, offsetMs, now, timed),
+    detail: joinMeta(facts.shown),
+    spoken: spokenJoin(facts.spoken),
   };
 }
 
