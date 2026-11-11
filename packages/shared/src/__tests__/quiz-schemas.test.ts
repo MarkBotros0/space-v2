@@ -29,6 +29,54 @@ describe("the answer-key split (spec D2)", () => {
   });
 });
 
+describe("no key inside a student question's items (final review I2)", () => {
+  const base = { id: 1, order: 0, prompt: "P", points: 2, pointsAwarded: null, review: null };
+  const ok = (v: unknown) => quizQuestionStudentSchema.safeParse(v).success;
+  const single = { ...base, type: "SINGLE_CHOICE", options: [{ id: 1, label: "a" }], answer: { optionId: null } };
+  const multi = {
+    ...base,
+    type: "MULTI_CHOICE",
+    choose: 2,
+    options: [{ id: 1, label: "a" }],
+    answer: { optionIds: [] },
+  };
+  const matching = {
+    ...base,
+    type: "MATCHING",
+    left: [{ id: 1, label: "L" }],
+    right: [{ id: 2, label: "R" }],
+    answer: { pairs: [] },
+  };
+  const blank = { ...base, type: "FILL_BLANK", blanks: [{ id: 5, position: 0 }], answer: { blanks: [] } };
+
+  it("accepts the keyless shapes", () => {
+    for (const q of [single, multi, matching, blank]) expect(ok(q)).toBe(true);
+  });
+
+  it("options are exactly { id, label }", () => {
+    expect(ok({ ...single, options: [{ id: 1, label: "a", isCorrect: true }] })).toBe(false);
+    expect(ok({ ...multi, options: [{ id: 1, label: "a", isCorrect: false }] })).toBe(false);
+    expect(ok({ ...single, options: [{ id: 1, label: "a", position: 0 }] })).toBe(false);
+  });
+
+  it("matching items carry no matchId, isCorrect or expected", () => {
+    expect(ok({ ...matching, left: [{ id: 1, label: "L", matchId: 2 }] })).toBe(false);
+    expect(ok({ ...matching, right: [{ id: 2, label: "R", isCorrect: true }] })).toBe(false);
+    expect(ok({ ...matching, left: [{ id: 1, label: "L", expected: "R" }] })).toBe(false);
+  });
+
+  it("blanks are exactly { id, position }", () => {
+    expect(ok({ ...blank, blanks: [{ id: 5, position: 0, expected: "x" }] })).toBe(false);
+    expect(ok({ ...blank, blanks: [{ id: 5, position: 0, isCorrect: true }] })).toBe(false);
+  });
+
+  it("a strict parse fails on any extra key, at the top or in the answer", () => {
+    expect(ok({ ...single, extra: 1 })).toBe(false);
+    expect(ok({ ...single, answer: { optionId: null, isCorrect: true } })).toBe(false);
+    expect(ok({ ...matching, answer: { pairs: [{ leftId: 1, rightId: 2, correct: true }] } })).toBe(false);
+  });
+});
+
 describe("createQuizRequestSchema", () => {
   const base = { seasonId: 7, sessionId: 12, title: "Week 1 quiz" };
 

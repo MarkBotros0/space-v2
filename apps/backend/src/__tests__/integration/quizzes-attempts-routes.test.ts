@@ -98,6 +98,16 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     );
     expect(single).toMatchObject({ pointsAwarded: null, review: null });
     expect(during.body.data.questions.every((q: { review: unknown }) => q.review === null)).toBe(true);
+    // Every item, every type: exactly the keyless keys (final review I2).
+    type Shown = { options?: object[]; left?: object[]; right?: object[]; blanks?: object[] };
+    const keysOf = (items: object[] | undefined) => (items ?? []).map((o) => Object.keys(o).sort());
+    const shownQuestions = during.body.data.questions as Shown[];
+    const items = shownQuestions.flatMap((q) => [...keysOf(q.options), ...keysOf(q.left), ...keysOf(q.right)]);
+    expect(items.length).toBeGreaterThan(0);
+    for (const keys of items) expect(keys).toEqual(["id", "label"]);
+    const blanks = shownQuestions.flatMap((q) => keysOf(q.blanks));
+    expect(blanks.length).toBeGreaterThan(0);
+    for (const keys of blanks) expect(keys).toEqual(["id", "position"]);
 
     // submitted, then graded: no question text, options or own answers either.
     for (const status of ["SUBMITTED", "GRADED"] as const) {
