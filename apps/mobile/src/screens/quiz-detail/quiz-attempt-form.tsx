@@ -14,11 +14,20 @@ import { QuestionInput, questionTypeLabel } from "./questions";
 import { QuizCountdown } from "./quiz-countdown";
 import { QCARD, quizTitleProps } from "./quiz-header";
 import { useQuizAnswers } from "./use-quiz-answers";
+import { useTimeUp, type TimeUpOutcome } from "./use-time-up";
 
 const SUBMIT_FAILED = "Couldn't submit the quiz. Check your connection and try again.";
-const TIME_UP = "Time's up. Your answers were submitted.";
+const CLOSING = "Time's up. Submitting your answers…";
+const UNCONFIRMED = "Time's up. Couldn't confirm the submission yet.";
 /** Staff ended it, or the server's clock ran out first; the screen moves to the result. */
 const ENDED = "This attempt has ended.";
+
+/** The autosave state, as the bar's hint says it; nothing before the first edit. */
+function saveLabelFor(saveState: "idle" | "saving" | "saved" | "error", online: boolean): string | null {
+  if (saveState === "saving") return online ? "Saving…" : "Waiting for connection";
+  if (saveState === "saved") return "Saved";
+  return saveState === "error" ? "Not saved" : null;
+}
 
 /** One question of the attempt: its number, type and points, then the input for its type. */
 function AttemptQuestion({
@@ -56,23 +65,25 @@ export function AttemptForm({
   id: number;
   /** The server's clock minus the phone's (countdown.ts). */
   offsetMs: number;
-  /** Re-reads the quiz after the deadline (the read closes the attempt); true once it is closed. */
-  onTimeUp: () => Promise<boolean>;
+  /** Re-reads the quiz after the deadline (the read closes the attempt): what it found. */
+  onTimeUp: () => Promise<TimeUpOutcome>;
 }) {
   // Read by the save's refusal handler, which outlives the render: time-up has its own message.
-  const timeUpRef = useRef(false);
+  const isTimeUpRef = useRef<() => boolean>(() => false);
   const { answers, setAnswer, flush, isGone, hasUnsentOffline, saveState, isComplete, savePending } = useQuizAnswers(
     detail,
     id,
     (err) => {
-      if (apiErrorCode(err) === "attempt_closed" && !timeUpRef.current) reportOutcome("error", ENDED);
+      if (apiErrorCode(err) === "attempt_closed" && !isTimeUpRef.current()) reportOutcome("error", ENDED);
     },
   );
   const submit = useSubmitAttempt(id);
   const online = useIsOnline();
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Time ran out: nothing more can change, and the server submits what is saved.
-  const [timeUp, setTimeUp] = useState(false);
+  const time = useTimeUp({ flush, hasUnsentOffline, readAfterDeadline: onTimeUp });
+  isTimeUpRef.current = time.isTimeUp;
+  const { timeUp } = time;
 
   // One hand-in at a time. `submit.isPending` is only true once `mutate` has run, after the
   // flush; a double tap on Confirm reaches here twice before that. A second `mutate`
@@ -109,15 +120,11 @@ export function AttemptForm({
     });
   };
 
-  // At zero: send what is still waiting, then re-read; the read closes the attempt on the server and
-  // the runner swaps to the result. No submit call: the server submits what is saved, complete or not.
-  const onExpire = async () => {
-    timeUpRef.current = true;
-    setTimeUp(true);
+  // At zero: re-read (useTimeUp); the read closes the attempt on the server and the runner swaps to
+  // the result. No submit call: the server submits what is saved, complete or not.
+  const onExpire = () => {
     setConfirmOpen(false);
-    // Offline, a flush would wait for the connection; the server already holds the last saves.
-    if (!hasUnsentOffline()) await flush();
-    if (await onTimeUp()) reportOutcome("success", TIME_UP);
+    time.expire();
   };
 
   // Feedback lives in the pinned bar's hint, where it stays in view: how many
@@ -126,25 +133,16 @@ export function AttemptForm({
     const a = answers[q.id];
     return a !== undefined && isAnswered(q, a);
   }).length;
-  const saveLabel =
-    saveState === "saving"
-      ? online
-        ? "Saving…"
-        : "Waiting for connection"
-      : saveState === "saved"
-        ? "Saved"
-        : saveState === "error"
-          ? "Not saved"
-          : null;
+  const saveLabel = saveLabelFor(saveState, online);
   const progress = `${answered} of ${detail.questions.length} answered`;
-  const hint = timeUp ? "Time's up. Submitting your answers…" : [progress, saveLabel].filter(Boolean).join(" · ");
+  const hint = time.unconfirmed ? UNCONFIRMED : timeUp ? CLOSING : [progress, saveLabel].filter(Boolean).join(" · ");
 
   return (
     <Screen
       {...quizTitleProps(detail)}
       pinned={
         detail.deadlineAt ? (
-          <QuizCountdown deadlineAt={detail.deadlineAt} offsetMs={offsetMs} onExpire={() => void onExpire()} />
+          <QuizCountdown deadlineAt={detail.deadlineAt} offsetMs={offsetMs} onExpire={onExpire} />
         ) : undefined
       }
       footer={
@@ -156,7 +154,11 @@ export function AttemptForm({
           loading={submit.isPending}
           onPress={() => setConfirmOpen(true)}
           secondary={
-            saveState === "error" && !timeUp ? { label: "Retry save", onPress: () => void flush() } : undefined
+            time.unconfirmed
+              ? { label: "Check again", onPress: time.checkAgain }
+              : saveState === "error" && !timeUp
+                ? { label: "Retry save", onPress: () => void flush() }
+                : undefined
           }
         />
       }

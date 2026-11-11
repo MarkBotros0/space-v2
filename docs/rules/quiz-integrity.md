@@ -80,6 +80,11 @@ The ended attempt stays for staff to see. **The best attempt counts** (see `quiz
   questions scroll, `m:ss`, red under a minute with the time still written. No five- or one-minute
   warnings and nothing beside Submit. At zero the app sends what is still unsaved, re-reads the quiz
   (the read closes the attempt) and says "Time's up. Your answers were submitted."
+- **Zero is never a dead end.** If the re-read shows the attempt still open with time left on the
+  server's clock (the phone's clock jumped forward), the form unlocks and the countdown re-arms from
+  that read. If it can't confirm the close (offline, failed reads, or still open past the deadline),
+  the form stays locked with "Check again" and re-reads by itself when the phone is back online or in
+  the foreground.
 - **An attempt ended elsewhere moves the screen on.** When a save or submit is refused because the
   attempt closed (staff End, or the server's clock ran out first) or a reopened attempt isn't started,
   the app stops saving and re-reads the quiz: the result, or the start card. A close says "This

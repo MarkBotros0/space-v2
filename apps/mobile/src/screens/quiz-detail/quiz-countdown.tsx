@@ -12,7 +12,7 @@ const LAST_MINUTE_MS = 60_000;
  * The time left on a timed attempt, `m:ss`, in the screen's pinned bar so it stays in view while the
  * student scrolls (owner, 2026-11-11). No motion: the digits change in place (docs/rules/motion.md),
  * and there are no warnings at five or one minutes (owner). A screen reader hears whole minutes
- * from a polite live region, once a minute rather than every second. `onExpire` runs once, at zero.
+ * from a polite live region, once a minute rather than every second. `onExpire` runs once at zero, and again only if time came back first.
  */
 export function QuizCountdown({
   deadlineAt,
@@ -33,6 +33,8 @@ export function QuizCountdown({
     const check = () => {
       const next = remainingMs(deadlineAt, offsetMs, Date.now());
       setMs(next);
+      // Time left again (a fresh read corrected the offset after the phone's clock jumped): re-arm.
+      if (next > 0) expired.current = false;
       if (next === 0 && !expired.current) {
         expired.current = true;
         onExpireRef.current();
