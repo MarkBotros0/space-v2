@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
+  quizAttemptEventsResponseSchema,
   saveQuizAnswersResponseSchema,
   studentQuizDetailSchema,
   studentQuizListPageSchema,
   type StudentQuizDetail,
   type StudentQuizResult,
   type QuizAnswerInput,
+  type QuizAttemptEventInput,
 } from "@space/shared";
 
 import { apiClient } from "../../lib/api-client";
@@ -144,5 +146,24 @@ export function useSubmitAttempt(id: number) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
     onError: (err) => refreshOnGone(queryClient, id, err),
+  });
+}
+
+/**
+ * Report what the phone saw while the attempt was open (exits, relaunches, screenshots). The server
+ * counts the exits; when this report ended the attempt, or it was already shut, the quiz is re-read
+ * so the runner moves to the result. Offline it fails at once: the events wait in the exit queue.
+ */
+export function usePostAttemptEvents(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    networkMode: "always",
+    mutationFn: (body: { attemptId: number; events: QuizAttemptEventInput[] }) =>
+      apiSend("post", `/api/v1/quizzes/${id}/attempt/events`, body, quizAttemptEventsResponseSchema),
+    onSuccess: (report) => {
+      if (!report.ended && report.status === "IN_PROGRESS") return;
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+    },
   });
 }

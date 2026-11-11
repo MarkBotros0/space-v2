@@ -1,5 +1,6 @@
 import { STUDENT_BETWEEN, navByRole } from "@space/shared";
 
+import { useQuizLockStore } from "../store/quiz-lock";
 import { useSessionStore } from "../store/session";
 
 const user = { id: 1, name: "A", email: "a@b.test", role: "STUDENT" as const, avatarPath: null, hasPassword: true };
@@ -71,5 +72,12 @@ describe("session store", () => {
     useSessionStore.setState({ pushToken: "ExponentPushToken[abc]" });
     useSessionStore.getState().clear();
     expect(useSessionStore.getState().pushToken).toBeNull();
+  });
+
+  it("clearing the session (any sign-out) releases the quiz lock", () => {
+    useSessionStore.getState().setSession(user, scopes);
+    useQuizLockStore.getState().setOpenAttempt(41);
+    useSessionStore.getState().clear();
+    expect(useQuizLockStore.getState().openAttemptQuizId).toBeNull();
   });
 });

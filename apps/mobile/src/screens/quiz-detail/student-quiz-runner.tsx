@@ -1,11 +1,13 @@
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { onlineManager } from "@tanstack/react-query";
+import { useEffect } from "react";
 import type { StudentQuizDetail } from "@space/shared";
 
 import { Text } from "../../design/ui";
 import { useStudentQuizDetail } from "../../hooks/use-quizzes";
 import { clockOffsetMs } from "./countdown";
+import { forgetAttempt } from "./lock/exit-queue";
 import { AttemptForm } from "./quiz-attempt-form";
 import { quizTitleProps } from "./quiz-header";
 import { ResultView } from "./quiz-result-view";
@@ -24,6 +26,12 @@ const timeLeftOnServer = (fresh: StudentQuizDetail) =>
 /** STUDENT: the start card, the attempt in progress, or the result. */
 export function StudentRunner({ id }: { id: number }) {
   const { data, isPending, refetch, dataUpdatedAt } = useStudentQuizDetail(id);
+
+  // A finished attempt keeps nothing on the phone: its unsent exits can no longer count.
+  const finishedAttemptId = data !== undefined && data.stage !== "in_progress" ? data.attemptId : null;
+  useEffect(() => {
+    if (finishedAttemptId !== null) void forgetAttempt(finishedAttemptId);
+  }, [finishedAttemptId]);
 
   // Only a first read that failed is an error page. A re-read that fails keeps the data it had, so an
   // open attempt's form (and its time-up state) stays on screen rather than being swapped away.

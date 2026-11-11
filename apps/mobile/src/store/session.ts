@@ -10,6 +10,7 @@ import {
 } from "@space/shared";
 
 import { isAdminOfSeasonForUi } from "../lib/season-admin";
+import { useQuizLockStore } from "./quiz-lock";
 
 /**
  * `idle` means the app has not yet looked for a stored session; `anonymous`
@@ -46,7 +47,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   setPushToken: (pushToken) => set({ pushToken }),
   setStatus: (status) => set({ status }),
   setSession: (user, scopes) => set({ user, scopes, status: "authenticated" }),
-  clear: () => set({ user: null, scopes: null, pushToken: null, status: "anonymous" }),
+  clear: () => {
+    // Every way out (sign-out, a forced one, the boot retry's) ends here: no quiz lock outlives the user.
+    useQuizLockStore.getState().setOpenAttempt(null);
+    set({ user: null, scopes: null, pushToken: null, status: "anonymous" });
+  },
   nav: () => {
     const { user, scopes } = get();
     if (!user || !scopes) return null;

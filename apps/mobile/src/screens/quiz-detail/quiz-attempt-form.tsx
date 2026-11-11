@@ -10,6 +10,8 @@ import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
 import { useIsOnline } from "../../lib/online";
 import { reportOutcome } from "../../lib/outcome";
 import { isAnswered, type DraftAnswer } from "./answer-model";
+import { ExitWarning } from "./lock/exit-warning";
+import { useQuizLock } from "./lock/use-quiz-lock";
 import { QuestionInput, questionTypeLabel } from "./questions";
 import { QuizCountdown } from "./quiz-countdown";
 import { QCARD, quizTitleProps } from "./quiz-header";
@@ -79,6 +81,8 @@ export function AttemptForm({
   );
   const submit = useSubmitAttempt(id);
   const online = useIsOnline();
+  // Mounted only while the attempt is showing; a finished season's attempt can't be taken.
+  const lock = useQuizLock({ quizId: id, attemptId: detail.attemptId, active: !detail.readOnly, offsetMs });
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Time ran out: nothing more can change, and the server submits what is saved.
   const time = useTimeUp({ flush, hasUnsentOffline, readAfterDeadline: onTimeUp });
@@ -186,6 +190,7 @@ export function AttemptForm({
             void onSubmit();
           }}
         />
+        <ExitWarning open={lock.warningOpen} onClose={lock.closeWarning} />
       </View>
     </Screen>
   );

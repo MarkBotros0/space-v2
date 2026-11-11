@@ -56,6 +56,18 @@ jest.mock("@react-native-google-signin/google-signin", () => ({
   },
 }));
 
+// The quiz lock's native calls (screen capture, keep awake) do nothing under Jest; the lock's own
+// tests (quiz-locks, quiz-exit-flow) replace these with mocks they assert on.
+jest.mock("expo-screen-capture", () => ({
+  preventScreenCaptureAsync: jest.fn(async () => undefined),
+  allowScreenCaptureAsync: jest.fn(async () => undefined),
+  addScreenshotListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
+jest.mock("expo-keep-awake", () => ({
+  activateKeepAwakeAsync: jest.fn(async () => undefined),
+  deactivateKeepAwake: jest.fn(async () => undefined),
+}));
+
 // design/ui's ThemeToggle reads the saved theme; the library's own mock.
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
