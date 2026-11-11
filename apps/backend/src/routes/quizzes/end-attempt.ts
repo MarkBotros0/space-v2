@@ -34,14 +34,16 @@ export async function endAttempt(req: Request, res: Response) {
     return apiError(res, "student_not_in_scope", "That student is not in your groups.", 403);
   }
 
-  // An attempt already past its deadline is closed as TIMED_OUT first, so it reads as closed here.
-  await closeLatestIfExpired(id, parsed.studentUserId, SAVE_GRACE_MS);
+  // An attempt already past its deadline is closed as TIMED_OUT. When this request closed it, End did
+  // what staff asked (the attempt stopped), so it answers that attempt rather than "already closed".
+  const timedOut = await closeLatestIfExpired(id, parsed.studentUserId, SAVE_GRACE_MS);
   const latest = await db.quizAttempt.findFirst({
     where: { quizId: id, studentUserId: parsed.studentUserId },
     orderBy: { attemptNumber: "desc" },
     select: { id: true, status: true },
   });
   if (!latest) return apiError(res, "no_attempt", "That student has no attempt to end.", 409);
+  if (timedOut) return apiOk(res, { attemptId: latest.id, status: latest.status });
   if (latest.status !== "IN_PROGRESS") return apiError(res, "attempt_closed", "That attempt is already closed.", 409);
 
   const { closed } = await closeAttempt(latest.id, "ENDED_BY_STAFF", user.userId);

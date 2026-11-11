@@ -91,6 +91,18 @@ describe("POST /quizzes/:id/attempts/end", () => {
     expect(await quizGradedCountFor(f.ownStudentId)).toBe(before);
   });
 
+  it("End on an attempt past its deadline succeeds: it closes TIMED_OUT and answers that attempt", async () => {
+    const quizId = await openQuiz();
+    const before = await latest(quizId);
+    await db.quizAttempt.updateMany({ where: { quizId }, data: { deadlineAt: new Date(Date.now() - 60_000) } });
+    const res = await end(quizId, f.leaderToken, f.ownStudentId);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ attemptId: before.id, status: "GRADED" });
+    const after = await latest(quizId);
+    expect(after.endReason).toBe("TIMED_OUT");
+    expect(after.endedById).toBeNull();
+  });
+
   it("an admin and a super can end", async () => {
     for (const token of [f.adminToken, f.superToken]) {
       const quizId = await openQuiz();

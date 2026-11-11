@@ -168,7 +168,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "End a student's open attempt",
       description:
-        "Staff with a scope in the season (leader, season admin, SUPER); the student must be in the caller's own student set (403 `student_not_in_scope`). Closes the student's latest attempt, which must be IN_PROGRESS (a timed attempt the student has not started yet counts): it is marked like a submit with what is saved and unanswered counts 0, `endReason` ENDED_BY_STAFF and `endedById` the caller. An attempt already past its deadline is closed as TIMED_OUT first and so answers `attempt_closed`. 409 `no_attempt` (never attempted) or `attempt_closed` (SUBMITTED, GRADED or closed by someone else first).",
+        "Staff with a scope in the season (leader, season admin, SUPER); the student must be in the caller's own student set (403 `student_not_in_scope`). Closes the student's latest attempt, which must be IN_PROGRESS (a timed attempt the student has not started yet counts): it is marked like a submit with what is saved and unanswered counts 0, `endReason` ENDED_BY_STAFF and `endedById` the caller. An attempt already past its deadline (+ the 10 s save grace) is closed as TIMED_OUT instead and answers 200 with that attempt (its `endReason` stays TIMED_OUT, `endedById` null). 409 `no_attempt` (never attempted) or `attempt_closed` (SUBMITTED, GRADED or closed by someone else first).",
       parameters: [idParam],
       requestBody: {
         required: true,
