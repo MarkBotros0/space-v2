@@ -7,7 +7,6 @@ import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scop
 import { requireUser } from "../../middleware/require-auth";
 import { bestGraded } from "../../lib/quizzes/best-attempt";
 import { toScore } from "../../lib/quizzes/score";
-import { studentQuizStage } from "../../lib/quizzes/student-stage";
 import { quizListQuerySchema } from "../../../../../packages/shared/src/index";
 import { parseOr400 } from "../../lib/http/validate";
 
@@ -73,8 +72,8 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
       const best = bestGraded(q.attempts);
       const released = q.resultsReleasedAt !== null;
       // The best graded score shows once graded, no release needed (spec "What students see").
-      const stage = studentQuizStage(latest ?? null, best !== null, released);
-      const scored = stage === "graded" || stage === "answers";
+      // A later attempt in progress or awaiting marking does not hide it.
+      const scored = best !== null;
       return {
         quizId: q.id,
         title: q.title,

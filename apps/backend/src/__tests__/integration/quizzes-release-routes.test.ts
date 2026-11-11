@@ -41,7 +41,12 @@ async function listedRow(quizId: number) {
 }
 
 /** Adds a later attempt for the student straight in the database, as a retake would leave it. */
-async function addAttempt(quizId: number, attemptNumber: number, status: "GRADED" | "SUBMITTED", totalScore: number) {
+async function addAttempt(
+  quizId: number,
+  attemptNumber: number,
+  status: "GRADED" | "SUBMITTED" | "IN_PROGRESS",
+  totalScore: number,
+) {
   const now = new Date();
   await db.quizAttempt.create({
     data:
@@ -57,7 +62,13 @@ async function addAttempt(quizId: number, attemptNumber: number, status: "GRADED
             submittedAt: now,
             gradedAt: now,
           }
-        : { quizId, studentUserId: f.ownStudentId, attemptNumber, status, submittedAt: now },
+        : {
+            quizId,
+            studentUserId: f.ownStudentId,
+            attemptNumber,
+            status,
+            submittedAt: status === "SUBMITTED" ? now : null,
+          },
   });
 }
 
@@ -106,6 +117,7 @@ describe("answers released (owner, 2026-11-07; spec 2026-11-10)", () => {
   it('release sends "Answers are out" once and is one-way', async () => {
     const { quizId } = await takeHeldQuiz();
     const before = await quizGradedCountFor(f.ownStudentId);
+    const startedAt = new Date(Date.now() - 1000);
 
     const first = await request(app).post(`/api/v1/quizzes/${quizId}/release`).set(bearer(f.adminToken));
     expect(first.status).toBe(200);
@@ -113,7 +125,12 @@ describe("answers released (owner, 2026-11-07; spec 2026-11-10)", () => {
     expect(again.body.data.answersReleasedAt).toBe(first.body.data.answersReleasedAt);
     expect((await quizGradedCountFor(f.ownStudentId)) - before).toBe(1);
     const sent = await db.notification.findFirstOrThrow({
-      where: { userId: f.ownStudentId, type: "QUIZ_GRADED", title: { startsWith: "Answers are out" } },
+      where: {
+        userId: f.ownStudentId,
+        type: "QUIZ_GRADED",
+        title: { startsWith: "Answers are out" },
+        createdAt: { gte: startedAt },
+      },
     });
     expect(sent.link).toBe("/student/quizzes");
 
@@ -165,6 +182,15 @@ describe("the best attempt counts (spec: honest accidents)", () => {
     const { quizId } = await takeHeldQuiz();
     await addAttempt(quizId, 2, "GRADED", 2.5);
     expect(await listedRow(quizId)).toMatchObject({ score: 2.5 });
+  });
+
+  it("a retake in progress keeps showing the best graded score", async () => {
+    const { quizId } = await takeHeldQuiz();
+    await addAttempt(quizId, 2, "IN_PROGRESS", 0);
+    expect(await listedRow(quizId)).toMatchObject({ score: 2, attemptStatus: "IN_PROGRESS" });
+    const detail = await request(app).get(`/api/v1/quizzes/${quizId}`).set(bearer(f.studentToken));
+    expect(detail.body.data).toMatchObject({ stage: "in_progress", totalScore: 2 });
+    expect(JSON.stringify(detail.body)).not.toMatch(/correctOptionIds|isCorrect/);
   });
 
   it("an ungraded retake does not hide the best graded score", async () => {

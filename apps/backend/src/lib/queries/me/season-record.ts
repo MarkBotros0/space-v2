@@ -5,7 +5,6 @@ import { listAssignmentStatesForStudent } from "../assignments";
 import { attendancePct } from "../attendance-pct";
 import { toScore } from "../../quizzes/score";
 import { bestGraded } from "../../quizzes/best-attempt";
-import { studentQuizStage } from "../../quizzes/student-stage";
 import { outcomeOf } from "./outcome";
 import { liveSeason } from "../../db/live";
 
@@ -102,9 +101,7 @@ export async function loadSeasonRecord(
       // a paper score shows once entered. Status is the latest attempt's.
       const best = bestGraded(q.attempts);
       if (attempt) {
-        const stage = studentQuizStage(attempt, best !== null, q.resultsReleasedAt !== null);
-        const graded = stage === "graded" || stage === "answers";
-        return { ...base, status: attempt.status, score: graded ? toScore(best?.totalScore ?? null) : null };
+        return { ...base, status: attempt.status, score: best ? toScore(best.totalScore) : null };
       }
       // A paper quiz has no attempt: it is graded or not taken.
       const score = q.grades[0]?.score ?? null;
