@@ -6,6 +6,7 @@ import { cn } from "../../../design/lib/cn";
 import { iconWithClassName } from "../../../design/lib/icon";
 import { Badge, ContentText, StatusChip, Text, type ChipSpec } from "../../../design/ui";
 import { formatScore } from "../../../lib/format";
+import { plural } from "../../../lib/plural";
 import { splitBlanks } from "../blank-segments";
 import { questionTypeLabel } from "../questions";
 import { QCARD } from "../quiz-header";
@@ -22,7 +23,7 @@ const VERDICT_CHIP: Record<Verdict, ChipSpec> = {
 };
 
 /** A tick or a cross with its word: the verdict is never colour alone. */
-function Mark({ right, word }: { right: boolean; word: string }) {
+export function Mark({ right, word }: { right: boolean; word: string }) {
   const Icon = right ? Check : X;
   return (
     <View className="flex-row items-center gap-1">
@@ -137,10 +138,8 @@ function Body({ q }: { q: QuizQuestionStudent }) {
 
 /** One question after the answers are out: its marks, the student's answers marked, the key where they missed. */
 export function QuestionReview({ q, index }: { q: QuizQuestionStudent; index: number }) {
-  const points =
-    q.pointsAwarded === null
-      ? `${formatScore(q.points)} pts`
-      : `${formatScore(q.pointsAwarded)} / ${formatScore(q.points)} pts`;
+  const outOf = plural(Number(formatScore(q.points)), "pt");
+  const points = q.pointsAwarded === null ? outOf : `${formatScore(q.pointsAwarded)} / ${outOf}`;
   return (
     <View className={QCARD}>
       <View className="flex-row flex-wrap items-center justify-between gap-2">

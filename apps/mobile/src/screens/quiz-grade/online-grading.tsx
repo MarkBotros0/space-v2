@@ -35,7 +35,6 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
           quizId={id}
           attempt={attempt}
           maxScore={first.maxScore}
-          hasEssays={first.hasEssays}
           open={open}
           onClose={() => setOpen(false)}
         />

@@ -93,7 +93,7 @@ function staffRow(over: Partial<Record<string, unknown>> = {}) {
     seasonCode: "s26",
     gradedCount: 3,
     studentCount: 8,
-    resultsReleasedAt: null,
+    answersReleasedAt: null,
     ...over,
   };
 }

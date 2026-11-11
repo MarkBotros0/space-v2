@@ -132,7 +132,7 @@ describe("quiz runner, read-only (a finished season)", () => {
     expect(screen.getByText("Score")).toBeTruthy();
   });
 
-  it("lets staff release held results after a confirm, and tells the student what is held", async () => {
+  it("lets staff release held answers after a confirm, and tells the student what is held", async () => {
     useSessionStore.setState({
       user: {
         id: 5,
@@ -179,12 +179,12 @@ describe("quiz runner, read-only (a finished season)", () => {
         },
       },
     });
-    post.mockResolvedValue({ data: { data: { resultsReleasedAt: "2099-03-01T00:00:00.000Z" } } });
+    post.mockResolvedValue({ data: { data: { answersReleasedAt: "2099-03-01T00:00:00.000Z" } } });
 
     renderWithProviders(<QuizDetailScreen />);
-    fireEvent.press(await screen.findByText("Release results"));
+    fireEvent.press(await screen.findByText("Release answers"));
     expect(post).not.toHaveBeenCalled();
-    fireEvent.press((await screen.findAllByText("Release results")).at(-1)!);
+    fireEvent.press((await screen.findAllByText("Release answers")).at(-1)!);
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/release"));
   });
 
