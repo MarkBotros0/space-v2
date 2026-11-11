@@ -110,10 +110,9 @@ export async function markAndClose(
   attemptId: number,
   opts: { requireComplete: boolean; endReason: QuizAttemptEndReason; endedById: number | null },
 ): Promise<{ graded: boolean }> {
-  const [rows, answers] = await Promise.all([
-    tx.quizQuestion.findMany({ where: { quizId }, select: MARKABLE_QUESTION_SELECT }),
-    tx.quizAnswer.findMany({ where: { attemptId }, select: STORED_ANSWER_SELECT }),
-  ]);
+  // Sequential: one transaction is one connection, and pg warns on queries queued on it in parallel.
+  const rows = await tx.quizQuestion.findMany({ where: { quizId }, select: MARKABLE_QUESTION_SELECT });
+  const answers = await tx.quizAnswer.findMany({ where: { attemptId }, select: STORED_ANSWER_SELECT });
   const questions = rows.map(toMarkable);
   const answerBy = new Map<number, StoredAnswer>(answers.map((a) => [a.questionId, a]));
 

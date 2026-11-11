@@ -134,14 +134,16 @@ export async function gradeAttempt(
     if (!locked || locked.status === "IN_PROGRESS") {
       throw new ApiError("attempt_not_submitted", "This attempt has not been submitted.", 409);
     }
-    const [rows, answers, attempt] = await Promise.all([
-      tx.quizQuestion.findMany({
-        where: { quizId, type: { in: ["FILL_BLANK", "ESSAY"] } },
-        select: MARKABLE_QUESTION_SELECT,
-      }),
-      tx.quizAnswer.findMany({ where: { attemptId }, select: STORED_ANSWER_SELECT }),
-      tx.quizAttempt.findUniqueOrThrow({ where: { id: attemptId }, select: { autoScore: true, totalScore: true } }),
-    ]);
+    // Sequential: one transaction is one connection (pg warns on parallel queries on it).
+    const rows = await tx.quizQuestion.findMany({
+      where: { quizId, type: { in: ["FILL_BLANK", "ESSAY"] } },
+      select: MARKABLE_QUESTION_SELECT,
+    });
+    const answers = await tx.quizAnswer.findMany({ where: { attemptId }, select: STORED_ANSWER_SELECT });
+    const attempt = await tx.quizAttempt.findUniqueOrThrow({
+      where: { id: attemptId },
+      select: { autoScore: true, totalScore: true },
+    });
     const questions = rows.map(toMarkable);
     const answerBy = new Map<number, StoredAnswer>(answers.map((a) => [a.questionId, a]));
     const plan = planLeaderMarks(questions, marks, emptyItems(questions, answerBy));
@@ -152,7 +154,14 @@ export async function gradeAttempt(
     await recordLeaderMarks(tx, attemptId, plan.rows);
     await tx.quizAttempt.update({
       where: { id: attemptId },
-      data: { manualScore: plan.manualScore, totalScore, status: "GRADED", gradedById, gradedAt: new Date() },
+      data: {
+        manualScore: plan.manualScore,
+        totalScore,
+        status: "GRADED",
+        // Nothing marked (every leader item was left empty, GRADED at close): nobody graded it (R64),
+        // so a re-save of an empty payload leaves gradedById and gradedAt as they are.
+        ...(plan.rows.length > 0 ? { gradedById, gradedAt: new Date() } : {}),
+      },
     });
     return { scoreChanged };
   });

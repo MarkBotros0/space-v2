@@ -117,6 +117,8 @@ export async function saveAnswers(
 ): Promise<void> {
   await db.$transaction(async (tx) => {
     const row = await lockAttempt(tx, attemptId);
+    // Authoritative under the lock: the route's closeLatestIfExpired ran before it, so a deadline
+    // crossed in between is refused here (nothing written); the next read closes the attempt.
     if (row?.status !== "IN_PROGRESS" || isExpired(row.deadlineAt, new Date(), graceMs)) throw attemptClosed();
     for (const answer of answers) await writeAnswer(tx, attemptId, answer);
   });
@@ -132,6 +134,8 @@ export async function saveAnswers(
 export async function submitAnswers(quizId: number, attemptId: number): Promise<{ graded: boolean }> {
   return db.$transaction(async (tx) => {
     const row = await lockAttempt(tx, attemptId);
+    // As in saveAnswers: a deadline (+ grace) crossed after the route's lazy close is refused
+    // here, before any mark is written; the next read closes it TIMED_OUT with what was saved.
     if (row?.status !== "IN_PROGRESS" || isExpired(row.deadlineAt, new Date(), SAVE_GRACE_MS)) throw attemptClosed();
     return markAndClose(tx, quizId, attemptId, { requireComplete: true, endReason: "SUBMITTED", endedById: null });
   });

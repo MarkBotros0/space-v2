@@ -18,7 +18,8 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizGraded, notifyQuizRetake } from "../../lib/quizzes/notify";
 import { newShuffleSeed } from "../../lib/quizzes/shuffle";
-import { closeExpiredForQuiz } from "../../lib/quizzes/close-attempt";
+import { closeExpiredForQuiz, closeLatestIfExpired } from "../../lib/quizzes/close-attempt";
+import { SAVE_GRACE_MS } from "../../lib/quizzes/timing";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
@@ -257,6 +258,8 @@ export async function reopenAttempt(req: Request, res: Response) {
     return apiError(res, "quiz_not_published", "This quiz is not available to students.", 409);
   }
 
+  // An expired attempt still marked IN_PROGRESS is closed first, so it can be reopened.
+  await closeLatestIfExpired(id, parsed.studentUserId, SAVE_GRACE_MS);
   const latest = await db.quizAttempt.findFirst({
     where: { quizId: id, studentUserId: parsed.studentUserId },
     orderBy: { attemptNumber: "desc" },

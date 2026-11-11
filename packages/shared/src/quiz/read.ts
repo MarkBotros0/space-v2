@@ -121,7 +121,12 @@ export const studentQuizDetailSchema = z.object({
   startsFrom: z.string().nullable(),
   startsUntil: z.string().nullable(),
   timeLimitMinutes: z.number().nullable(),
-  /** When the open attempt runs out (ISO); null when untimed or not yet opened. */
+  /**
+   * When the open attempt runs out (ISO); null when untimed or not started. On a timed quiz
+   * (`timeLimitMinutes` set), stage `in_progress` with `deadlineAt` null means NOT STARTED yet
+   * (a reopened attempt): save and submit refuse `attempt_not_started` until the start PUT,
+   * which sets the deadline. The app shows a start card for that state.
+   */
   deadlineAt: z.string().nullable(),
   /** The server's clock at this response: the countdown's reference, not the phone's. */
   serverNow: z.string(),

@@ -307,3 +307,63 @@ describe("editing timing", () => {
     expect(quiz.startsUntil?.toISOString()).toBe(until);
   });
 });
+
+describe("reopening", () => {
+  const reopen = (quizId: number) =>
+    request(app)
+      .post(`/api/v1/quizzes/${quizId}/attempts/reopen`)
+      .set(bearer(f.leaderToken))
+      .send({ studentUserId: f.ownStudentId });
+
+  async function reopenedTimed() {
+    const built = await timedQuiz({ timeLimitMinutes: 20 });
+    await start(built.quizId);
+    await closeAttempt((await latest(built.quizId)).id, "TIMED_OUT", null);
+    expect((await reopen(built.quizId)).status).toBe(201);
+    return built;
+  }
+
+  it("a reopened timed attempt is not started until the start PUT: save and submit are attempt_not_started", async () => {
+    const { quizId, mcqId } = await reopenedTimed();
+    const saved = await save(quizId, [await pickParis(mcqId)]);
+    expect(saved.status).toBe(409);
+    expect(saved.body.error).toEqual({ code: "attempt_not_started", message: "Start the quiz first." });
+    expect((await submit(quizId)).body.error.code).toBe("attempt_not_started");
+
+    // The student's read shows it: in progress, timed, no deadline yet.
+    const read = await request(app).get(`/api/v1/quizzes/${quizId}`).set(bearer(f.studentToken));
+    expect(read.body.data).toMatchObject({ stage: "in_progress", timeLimitMinutes: 20, deadlineAt: null });
+
+    const before = Date.now();
+    expect((await start(quizId)).status).toBe(200);
+    const ms = ((await latest(quizId)).deadlineAt as Date).getTime();
+    expect(ms).toBeGreaterThanOrEqual(before + 20 * MIN - 1000);
+    expect(ms).toBeLessThanOrEqual(Date.now() + 20 * MIN + 1000);
+    expect((await save(quizId, [await pickParis(mcqId)])).status).toBe(200);
+  });
+
+  it("a reopened untimed attempt saves without a start PUT, as before", async () => {
+    const { quizId, mcqId } = await timedQuiz({});
+    await start(quizId);
+    await closeAttempt((await latest(quizId)).id, "ENDED_BY_STAFF", null);
+    expect((await reopen(quizId)).status).toBe(201);
+    expect((await save(quizId, [await pickParis(mcqId)])).status).toBe(200);
+  });
+
+  it("reopen closes an expired attempt still marked in progress, then reopens it", async () => {
+    const { quizId } = await timedQuiz({ timeLimitMinutes: 20 });
+    await start(quizId);
+    await setDeadline((await latest(quizId)).id, ago(MIN));
+    const res = await reopen(quizId);
+    expect(res.status).toBe(201);
+    const attempts = await db.quizAttempt.findMany({
+      where: { quizId, studentUserId: f.ownStudentId },
+      orderBy: { attemptNumber: "asc" },
+      select: { status: true, endReason: true },
+    });
+    expect(attempts).toEqual([
+      { status: "GRADED", endReason: "TIMED_OUT" },
+      { status: "IN_PROGRESS", endReason: null },
+    ]);
+  });
+});

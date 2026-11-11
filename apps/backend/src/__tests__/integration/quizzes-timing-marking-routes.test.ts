@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { closeAttempt } from "../../lib/quizzes/close-attempt";
+import { gradeAttempt } from "../../lib/quizzes/grading";
 import { addQuizQuestion } from "../../lib/quizzes/questions";
 import { toScore } from "../../lib/quizzes/score";
 import { bearer, cleanupTestData } from "./fixtures";
@@ -180,6 +181,21 @@ describe("closing with leader-marked questions left empty (C-a, C-b)", () => {
     );
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({ status: "GRADED", manualScore: 4, totalScore: 4 });
+  });
+});
+
+describe("re-saving an attempt graded at close", () => {
+  // The route refuses `marks: []` (schema min 1), so this pins the service the seed script and the route share.
+  it("an empty payload on an attempt with nothing to mark leaves gradedById null", async () => {
+    const t = await openWith(() => []);
+    await closeAttempt(t.attemptId, "TIMED_OUT", null);
+    const leader = await db.user.findFirstOrThrow({ where: { name: "Test leader" }, select: { id: true } });
+    expect(await gradeAttempt(t.quizId, t.attemptId, [], leader.id)).toEqual({ scoreChanged: false });
+    const row = await db.quizAttempt.findUniqueOrThrow({
+      where: { id: t.attemptId },
+      select: { status: true, gradedById: true },
+    });
+    expect(row).toEqual({ status: "GRADED", gradedById: null });
   });
 });
 

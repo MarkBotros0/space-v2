@@ -36,7 +36,7 @@ async function canTakeQuizIn(user: SessionUser, seasonId: number): Promise<boole
 async function loadTakeableQuiz(res: Response, user: SessionUser, quizId: number) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
-    select: { title: true, seasonId: true },
+    select: { title: true, seasonId: true, timeLimitMinutes: true },
   });
   if (!quiz) {
     notFound(res, "Quiz");
@@ -105,12 +105,23 @@ export async function startAttempt(req: Request, res: Response) {
   return apiOk(res, detail);
 }
 
-/** Resolve the caller's live attempt, or answer and return null. */
-async function resolveOpenAttempt(res: Response, quizId: number, studentUserId: number) {
+/**
+ * Resolve the caller's live attempt, or answer and return null. On a timed quiz
+ * an open attempt with no deadline hasn't been started (a reopened one, before
+ * the student's start PUT): saving or submitting it would let a client skip
+ * the clock, so it is attempt_not_started until the PUT starts it. The
+ * deadline only ever goes from null to set, so this read needs no lock.
+ */
+async function resolveOpenAttempt(
+  res: Response,
+  quizId: number,
+  studentUserId: number,
+  timeLimitMinutes: number | null,
+) {
   const attempt = await db.quizAttempt.findFirst({
     where: { quizId, studentUserId },
     orderBy: { attemptNumber: "desc" },
-    select: { id: true, status: true },
+    select: { id: true, status: true, deadlineAt: true },
   });
   if (!attempt) {
     apiError(res, "no_attempt", "Start the quiz before saving answers.", 409);
@@ -118,6 +129,10 @@ async function resolveOpenAttempt(res: Response, quizId: number, studentUserId: 
   }
   if (attempt.status !== "IN_PROGRESS") {
     apiError(res, "attempt_closed", "This attempt is closed.", 409);
+    return null;
+  }
+  if (timeLimitMinutes !== null && attempt.deadlineAt === null) {
+    apiError(res, "attempt_not_started", "Start the quiz first.", 409);
     return null;
   }
   return attempt;
@@ -134,11 +149,12 @@ export async function saveAttemptAnswers(req: Request, res: Response) {
   const parsed = parseOr400(saveQuizAnswersRequestSchema, req.body, res, "Invalid answers.");
   if (parsed === null) return;
 
-  if (!(await loadTakeableQuiz(res, user, id))) return undefined;
+  const quiz = await loadTakeableQuiz(res, user, id);
+  if (!quiz) return undefined;
 
   // A write: the save grace, so a save in flight at the deadline still lands.
   await closeLatestIfExpired(id, user.userId, SAVE_GRACE_MS);
-  const attempt = await resolveOpenAttempt(res, id, user.userId);
+  const attempt = await resolveOpenAttempt(res, id, user.userId, quiz.timeLimitMinutes);
   if (!attempt) return undefined;
 
   // Loads the key server-side to count "Choose N"; nothing of it is answered.
@@ -166,7 +182,7 @@ export async function submitAttempt(req: Request, res: Response) {
 
   // Past the deadline (+ grace) the attempt is closed with what's saved, and this submit is attempt_closed.
   await closeLatestIfExpired(id, user.userId, SAVE_GRACE_MS);
-  const attempt = await resolveOpenAttempt(res, id, user.userId);
+  const attempt = await resolveOpenAttempt(res, id, user.userId, quiz.timeLimitMinutes);
   if (!attempt) return undefined;
 
   const { graded } = await submitAnswers(id, attempt.id);

@@ -22,6 +22,7 @@ export const API_ERROR_CODES = [
   "answer_out_of_range",
   "attempt_closed",
   "attempt_incomplete",
+  "attempt_not_started",
   "attempt_not_submitted",
   "attempt_open",
   "awards_incomplete",
