@@ -165,7 +165,13 @@ describe("ONLINE grading", () => {
     const res = await grade(f.leaderToken, marksFor([true, true, false], true));
     expect(res.status).toBe(200);
     // 2/3 of 3 = 2, essay right = 5; auto 2 → total 9.
-    expect(res.body.data).toMatchObject({ status: "GRADED", autoScore: 2, manualScore: 7, totalScore: 9, bestScore: 9 });
+    expect(res.body.data).toMatchObject({
+      status: "GRADED",
+      autoScore: 2,
+      manualScore: 7,
+      totalScore: 9,
+      bestScore: 9,
+    });
     expect(res.body.data.gradedByName).toBe("Test leader");
 
     const stored = await db.quizAnswerBlank.findMany({
