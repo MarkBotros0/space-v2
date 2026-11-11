@@ -12,7 +12,6 @@ import { useQuizGradeSheet, useSaveQuizGrades, type GradeEntryInput } from "../.
 import { apiErrorMessage } from "../../lib/api-error";
 import { unbreakable } from "../../lib/format";
 import { parseMark } from "../../lib/parse-mark";
-import { ReleaseResultsCard } from "./release-results";
 import { PaperGradeSheet, seedDraft, type PaperDraft } from "./paper-grade-sheet";
 
 export function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
@@ -88,7 +87,6 @@ export function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDet
       ) : (
         // Search, a page at a time, and a header per group (owner, 2026-11-07).
         <View className="flex-col gap-4">
-          <ReleaseResultsCard quiz={detail} />
           <LocalStudentList
             items={sheet.rows.map((r) => ({
               id: r.studentUserId,

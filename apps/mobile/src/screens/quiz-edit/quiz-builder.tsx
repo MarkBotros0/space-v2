@@ -206,7 +206,7 @@ function QuizForm({
           </View>
         )}
 
-        {published || isPaper ? <ReleaseResultsCard quiz={data} /> : null}
+        {published && !isPaper ? <ReleaseResultsCard quiz={data} /> : null}
       </View>
       <QuizDetailsSheet
         key={`${data.title}-${data.maxScore}-${data.shuffleQuestions}`}

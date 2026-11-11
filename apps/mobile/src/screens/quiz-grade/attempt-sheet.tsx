@@ -50,7 +50,7 @@ export function AttemptSheet({
   // An essay marked with points before right/wrong existed would lose them to a re-mark.
   const readOnly = hasLegacyMarks(attempt);
   const canMark = marks.length > 0 && !readOnly;
-  const complete = marksComplete(attempt, marks);
+  const complete = marksComplete(marks);
   const graded = attempt.status === "GRADED";
 
   const save = () => {

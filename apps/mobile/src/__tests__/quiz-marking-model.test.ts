@@ -80,15 +80,9 @@ describe("marking model", () => {
     marks = setMark(marks, 2, 21, true);
     marks = setMark(marks, 3, null, false);
     expect(markedCount(marks)).toBe(3);
-    expect(marksComplete(a, marks)).toBe(false);
+    expect(marksComplete(marks)).toBe(false);
     marks = setMark(marks, 2, 23, false);
-    expect(marksComplete(a, marks)).toBe(true);
-  });
-
-  it("is not complete when a mark is missing from the list altogether", () => {
-    const a = attempt([blanks, essay]);
-    const marks = initialMarks(attempt([blanks])).map((m) => ({ ...m, correct: true }));
-    expect(marksComplete(a, marks)).toBe(false);
+    expect(marksComplete(marks)).toBe(true);
   });
 
   it("turns marks into one per blank and blankId null for an essay", () => {

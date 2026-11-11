@@ -45,11 +45,12 @@ export function markedCount(marks: ItemMark[]): number {
   return marks.filter((m) => m.correct !== null).length;
 }
 
-/** Every leader-marked item of the attempt has a right or wrong. */
-export function marksComplete(attempt: QuizGradingAttempt, marks: ItemMark[]): boolean {
-  return initialMarks(attempt).every((item) =>
-    marks.some((m) => m.questionId === item.questionId && m.blankId === item.blankId && m.correct !== null),
-  );
+/**
+ * Every item has a right or wrong. `marks` always holds one entry per leader-marked item: it is
+ * seeded by `initialMarks` and re-seeded whenever the server's attempt changes.
+ */
+export function marksComplete(marks: ItemMark[]): boolean {
+  return markedCount(marks) === marks.length;
 }
 
 /** The request body. Throws on an unmarked item: call it only once `marksComplete` holds. */
