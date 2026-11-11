@@ -410,6 +410,7 @@ erDiagram
   User ||--o{ QuizAttempt : "studentUser"
   User |o--o{ QuizAttempt : "gradedBy"
   User |o--o{ QuizAttempt : "endedBy"
+  QuizAttempt ||--o{ QuizAttemptEvent : "attempt"
   QuizAttempt ||--o{ QuizAnswer : "attempt"
   QuizQuestion ||--o{ QuizAnswer : "question"
   QuizQuestion ||--o{ QuizOption : "question"
@@ -498,6 +499,15 @@ erDiagram
     Int endedById FK "nullable"
     DateTime createdAt
     DateTime updatedAt
+  }
+  QuizAttemptEvent {
+    Int id PK
+    Int attemptId FK
+    QuizAttemptEventKind kind
+    String clientEventId
+    DateTime leftAt
+    DateTime returnedAt "nullable"
+    DateTime createdAt
   }
   QuizAnswer {
     Int id PK

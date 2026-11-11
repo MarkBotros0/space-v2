@@ -80,6 +80,62 @@ export const quizAttemptsPaths = {
       },
     },
   },
+  "/api/v1/quizzes/{id}/attempt/events": {
+    post: {
+      tags: ["Quizzes"],
+      summary: "Report exits from the open attempt",
+      description:
+        "STUDENT only, with an ACTIVE enrolment in the quiz's season (403 otherwise; 404 for an unknown quiz); the caller's own latest attempt, addressed by quiz. 1-20 events per call, each with a client UUID `clientEventId`: an `(attempt, clientEventId)` pair is stored once, so a retry or an offline replay never counts twice. `EXIT` and `RELAUNCH` count towards the limit of 3; `SCREENSHOT` is logged only. The report that brings the count to 3 ends the attempt in the same transaction as the insert, under the attempt's row lock: it is marked like a submit with what is saved, `endReason` ENDED_BY_EXITS, and a GRADED close sends one \"Your score is in\" after the commit. On an attempt that is not IN_PROGRESS (submitted, graded, timed out, ended) nothing is stored and the call still answers 200 with `ended: false`; one past its deadline (+ the 10 s save grace) is closed TIMED_OUT first and then treated the same. A timed attempt whose clock has not started (reopened, before the start PUT) stores nothing either: it shows no questions. Returns the server's count (`exits`, never shown to the student), whether this call ended the attempt, and its status; no answer data. 400 `event_in_future` when a `leftAt` is more than 60 s ahead of the server's clock.",
+      parameters: [idParam],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["events"],
+              properties: {
+                events: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 20,
+                  items: {
+                    type: "object",
+                    required: ["clientEventId", "kind", "leftAt", "returnedAt"],
+                    properties: {
+                      clientEventId: { type: "string", format: "uuid" },
+                      kind: { type: "string", enum: ["EXIT", "RELAUNCH", "SCREENSHOT"] },
+                      leftAt: { type: "string", format: "date-time" },
+                      returnedAt: { type: ["string", "null"], format: "date-time" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            required: ["exits", "ended", "status"],
+            properties: {
+              exits: { type: "integer" },
+              ended: { type: "boolean" },
+              status: { type: "string", enum: ["IN_PROGRESS", "SUBMITTED", "GRADED"] },
+            },
+          },
+          "The server's exit count.",
+        ),
+        400: conflict("`bad_request` or `event_in_future`."),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+        409: conflict("`no_attempt`."),
+      },
+    },
+  },
 
   "/api/v1/quizzes/{id}/attempts": {
     get: {

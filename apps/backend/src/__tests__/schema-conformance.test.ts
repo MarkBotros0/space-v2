@@ -73,6 +73,7 @@ const APPEND_ONLY = new Set([
   "Notification",
   "DeviceToken",
   "AnnouncementPollVote",
+  "QuizAttemptEvent", // event log, never updated
 ]);
 /** Pure links and event rows that carry their own moment (assignedAt, answeredAt, uploadedAt, readAt). */
 const NO_BASE_TIMESTAMPS = new Set([

@@ -10,6 +10,9 @@
 // guarantee; structural typing lets a spread through, so that test is what
 // must never be weakened.
 
+/** Exits 1 and 2 warn; the third ends the attempt. The same for every quiz. */
+export const MAX_EXITS = 3;
+
 export * from "./questions";
 export * from "./student";
 export * from "./read";

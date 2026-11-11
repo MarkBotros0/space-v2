@@ -39,6 +39,7 @@ export const API_ERROR_CODES = [
   "email_send_failed",
   "email_taken",
   "empty_submission",
+  "event_in_future",
   "file_too_large",
   "forbidden",
   "forbidden_field",

@@ -153,6 +153,14 @@ enum QuizAttemptEndReason {
   ENDED_BY_EXITS
 }
 
+// What the phone saw while an attempt was open. EXIT and RELAUNCH count towards the
+// exit limit; SCREENSHOT is logged only.
+enum QuizAttemptEventKind {
+  EXIT
+  RELAUNCH
+  SCREENSHOT
+}
+
 // ---------------------------------------------------------------------------
 // Identity & auth
 // ---------------------------------------------------------------------------
@@ -953,6 +961,7 @@ model QuizAttempt {
   updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
 
   answers QuizAnswer[]
+  events  QuizAttemptEvent[]
 
   @@unique([quizId, studentUserId, attemptNumber])
   @@index([studentUserId])
@@ -962,6 +971,24 @@ model QuizAttempt {
   // SQL-only UNIQUE INDEX QuizAttempt_one_in_progress_key: (quizId, studentUserId) WHERE status = 'IN_PROGRESS'
   // SQL-only INDEX QuizAttempt_deadline_open_idx: (deadlineAt) WHERE status = 'IN_PROGRESS' AND deadlineAt IS NOT NULL
   // SQL-only CHECK QuizAttempt_totalScore_check: totalScore IS NULL OR totalScore = coalesce(autoScore, 0) + coalesce(manualScore, 0)
+}
+
+// One exit, relaunch or blocked screenshot the phone reported for an open attempt.
+// Keyed by the phone's own id, so a retry or an offline replay is stored once.
+// Written once with both times (the phone reports on return) and never updated.
+model QuizAttemptEvent {
+  id            Int                  @id @default(autoincrement())
+  attemptId     Int
+  attempt       QuizAttempt          @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  kind          QuizAttemptEventKind
+  // A UUID the phone made when it saw the event.
+  clientEventId String
+  leftAt        DateTime             @db.Timestamptz(3)
+  returnedAt    DateTime?            @db.Timestamptz(3)
+  createdAt     DateTime             @default(now()) @db.Timestamptz(3)
+
+  @@unique([attemptId, clientEventId])
+  @@index([attemptId, leftAt])
 }
 
 model QuizAnswer {

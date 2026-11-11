@@ -9,6 +9,7 @@ import { listQuizzes } from "./list";
 import { getGradeSheet, saveGrades } from "./paper-grades";
 import { addQuestion, deleteQuestion, publishQuiz, reorderQuestions, updateQuestion } from "./questions";
 import { saveAttemptAnswers, startAttempt, submitAttempt } from "./attempts";
+import { postAttemptEvents } from "./attempt-events";
 import { releaseQuizResults } from "./release";
 
 /**
@@ -40,6 +41,8 @@ quizzesRouter.get("/:id", getQuiz);
 quizzesRouter.put("/:id/attempt", startAttempt);
 quizzesRouter.patch("/:id/attempt", saveAttemptAnswers);
 quizzesRouter.post("/:id/attempt/submit", submitAttempt);
+// What the phone saw while the attempt was open; the third exit ends it.
+quizzesRouter.post("/:id/attempt/events", postAttemptEvents);
 
 // Staff grading of ONLINE attempts.
 quizzesRouter.get("/:id/attempts", listAttempts);

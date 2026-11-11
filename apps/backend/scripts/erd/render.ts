@@ -44,6 +44,7 @@ const DOMAINS: { title: string; models: string[] }[] = [
       "QuizOption",
       "QuizBlank",
       "QuizAttempt",
+      "QuizAttemptEvent",
       "QuizAnswer",
       "QuizAnswerSelection",
       "QuizAnswerBlank",

@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import type { Prisma } from "../../generated/prisma/client";
 import { lockAttempt, markAndClose, type LockedAttempt } from "./mark-and-close";
 import { notifyQuizGraded } from "./notify";
 import { reportError } from "../sentry";
@@ -14,6 +15,32 @@ import { isExpired, SAVE_GRACE_MS } from "./timing";
 
 type CloseReason = "TIMED_OUT" | "ENDED_BY_STAFF" | "ENDED_BY_EXITS";
 
+/** What a close inside a transaction leaves for after the commit. */
+export type ClosedAttempt = { graded: boolean; quizId: number; studentUserId: number };
+
+/**
+ * The close core, inside the caller's transaction: the caller holds `lockAttempt` and has
+ * seen `row` IN_PROGRESS under it. Marks what is saved; the caller sends
+ * `notifyClosed` after its commit.
+ */
+export async function closeLockedInTx(
+  tx: Prisma.TransactionClient,
+  attemptId: number,
+  row: LockedAttempt,
+  endReason: CloseReason,
+  endedById: number | null,
+): Promise<ClosedAttempt> {
+  const { graded } = await markAndClose(tx, row.quizId, attemptId, { requireComplete: false, endReason, endedById });
+  return { graded, quizId: row.quizId, studentUserId: row.studentUserId };
+}
+
+/** After the commit, best-effort (spec D6), as a submit that grades at once does: once, only when GRADED. */
+export async function notifyClosed(outcome: ClosedAttempt | null): Promise<void> {
+  if (!outcome?.graded) return;
+  const quiz = await db.quiz.findUnique({ where: { id: outcome.quizId }, select: { title: true } });
+  if (quiz) await notifyQuizGraded([outcome.studentUserId], quiz.title);
+}
+
 /** Close under the row lock when the attempt is still open and `due` holds for its locked state. */
 async function closeLocked(
   attemptId: number,
@@ -24,16 +51,10 @@ async function closeLocked(
   const outcome = await db.$transaction(async (tx) => {
     const row = await lockAttempt(tx, attemptId);
     if (row?.status !== "IN_PROGRESS" || !due(row)) return null;
-    const { graded } = await markAndClose(tx, row.quizId, attemptId, { requireComplete: false, endReason, endedById });
-    return { graded, quizId: row.quizId, studentUserId: row.studentUserId };
+    return closeLockedInTx(tx, attemptId, row, endReason, endedById);
   });
-  if (!outcome) return false;
-  if (outcome.graded) {
-    // After the commit, best-effort (spec D6), as a submit that grades at once does.
-    const quiz = await db.quiz.findUnique({ where: { id: outcome.quizId }, select: { title: true } });
-    if (quiz) await notifyQuizGraded([outcome.studentUserId], quiz.title);
-  }
-  return true;
+  await notifyClosed(outcome);
+  return outcome !== null;
 }
 
 /** Close an open attempt now. `closed: false` when it was no longer IN_PROGRESS (someone closed it first). */

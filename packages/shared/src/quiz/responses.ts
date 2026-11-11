@@ -33,3 +33,12 @@ export const endAttemptResponseSchema = z.object({
   attemptId: z.number(),
   status: quizAttemptStatusSchema,
 });
+/**
+ * POST /quizzes/:id/attempt/events. `exits` is the server's count, for the app's own logic only
+ * (the warning never shows a number); `ended` is true only when THIS report closed the attempt.
+ */
+export const quizAttemptEventsResponseSchema = z.object({
+  exits: z.number().int(),
+  ended: z.boolean(),
+  status: quizAttemptStatusSchema,
+});

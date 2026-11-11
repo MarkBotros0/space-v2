@@ -129,3 +129,22 @@ export const quizAttemptsQuerySchema = z.object({
   cursor: idCursorSchema,
   limit: z.coerce.number().int().min(1).max(50).default(20),
 });
+
+/**
+ * POST /quizzes/:id/attempt/events — what the phone saw while the attempt was open. Each event
+ * carries the phone's own id, so a retry or an offline replay is stored once. EXIT and RELAUNCH
+ * count towards MAX_EXITS; SCREENSHOT is logged only.
+ */
+const quizAttemptEventInputSchema = z
+  .object({
+    clientEventId: z.uuid(),
+    kind: z.enum(["EXIT", "RELAUNCH", "SCREENSHOT"]),
+    leftAt: z.iso.datetime({ offset: true }),
+    returnedAt: z.iso.datetime({ offset: true }).nullable(),
+  })
+  .strict();
+export type QuizAttemptEventInput = z.output<typeof quizAttemptEventInputSchema>;
+
+export const quizAttemptEventsRequestSchema = z
+  .object({ events: z.array(quizAttemptEventInputSchema).min(1).max(20) })
+  .strict();

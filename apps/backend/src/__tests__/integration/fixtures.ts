@@ -168,6 +168,7 @@ export async function cleanupTestData(): Promise<void> {
     await db.quizAnswerSelection.deleteMany({ where: { answer: { attempt: { quiz: inSeasons } } } });
     await db.quizAnswerBlank.deleteMany({ where: { answer: { attempt: { quiz: inSeasons } } } });
     await db.quizAnswer.deleteMany({ where: { attempt: { quiz: inSeasons } } });
+    await db.quizAttemptEvent.deleteMany({ where: { attempt: { quiz: inSeasons } } });
     await db.quizAttempt.deleteMany({ where: { quiz: inSeasons } });
     await db.quizGrade.deleteMany({ where: { quiz: inSeasons } });
     await db.quizOption.deleteMany({ where: { question: { quiz: inSeasons } } });

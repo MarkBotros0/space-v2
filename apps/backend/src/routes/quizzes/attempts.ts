@@ -33,7 +33,7 @@ async function canTakeQuizIn(user: SessionUser, seasonId: number): Promise<boole
 }
 
 /** Load the quiz and apply the enrolment gate, or answer and return null. */
-async function loadTakeableQuiz(res: Response, user: SessionUser, quizId: number) {
+export async function loadTakeableQuiz(res: Response, user: SessionUser, quizId: number) {
   const quiz = await db.quiz.findUnique({
     where: { id: quizId },
     select: { title: true, seasonId: true, timeLimitMinutes: true },
