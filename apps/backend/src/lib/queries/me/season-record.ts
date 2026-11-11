@@ -4,6 +4,7 @@ import type { SeasonRecord } from "../../../../../../packages/shared/src/season-
 import { listAssignmentStatesForStudent } from "../assignments";
 import { attendancePct } from "../attendance-pct";
 import { toScore } from "../../quizzes/score";
+import { bestGraded } from "../../quizzes/best-attempt";
 import { studentQuizStage } from "../../quizzes/student-stage";
 import { outcomeOf } from "./outcome";
 import { liveSeason } from "../../db/live";
@@ -52,8 +53,7 @@ export async function loadSeasonRecord(
         attempts: {
           where: { studentUserId: user.userId },
           orderBy: { attemptNumber: "desc" },
-          take: 1,
-          select: { status: true, totalScore: true },
+          select: { status: true, totalScore: true, attemptNumber: true },
         },
         grades: { where: { studentUserId: user.userId }, select: { score: true } },
       },
@@ -96,18 +96,16 @@ export async function loadSeasonRecord(
       reviewedAt: a.reviewedAt?.toISOString() ?? null,
     })),
     quizzes: quizzes.map((q): RecordQuiz => {
-      const attempt = q.attempts[0];
+      const attempt = q.attempts[0]; // newest first
       const base = { id: q.id, title: q.title, kind: q.kind };
-      // A graded attempt shows its score with no release (spec "What students see"); an
-      // unreleased paper grade still reads not taken until Task 8 lifts that hold.
-      // Task 8 moves the attempt side to the best graded attempt; today it reads the latest.
-      const released = q.resultsReleasedAt !== null;
+      // The best graded attempt's score shows with no release (spec "What students see");
+      // a paper score shows once entered. Status is the latest attempt's.
+      const best = bestGraded(q.attempts);
       if (attempt) {
-        const stage = studentQuizStage(attempt, attempt.status === "GRADED", released);
+        const stage = studentQuizStage(attempt, best !== null, q.resultsReleasedAt !== null);
         const graded = stage === "graded" || stage === "answers";
-        return { ...base, status: attempt.status, score: graded ? toScore(attempt.totalScore) : null };
+        return { ...base, status: attempt.status, score: graded ? toScore(best?.totalScore ?? null) : null };
       }
-      if (!released) return { ...base, status: "NOT_TAKEN", score: null };
       // A paper quiz has no attempt: it is graded or not taken.
       const score = q.grades[0]?.score ?? null;
       return score === null ? { ...base, status: "NOT_TAKEN", score: null } : { ...base, status: "GRADED", score };

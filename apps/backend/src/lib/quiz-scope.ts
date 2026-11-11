@@ -44,8 +44,8 @@ export async function visibleStudentIdsForQuiz(user: SessionUser, seasonId: numb
  * "graded" (ruling C4, spec 12 D10), moved here from `GET /quizzes` so the
  * dashboard's quiz roll-up uses it instead of a copy (spec 19 D10).
  *
- * PAPER: a QuizGrade row with a real score. ONLINE: an attempt that reached
- * GRADED. v1's dashboards never consulted QuizAttempt, so every ONLINE quiz
+ * PAPER: a QuizGrade row with a real score. ONLINE: a student with any attempt
+ * that reached GRADED, counted once however many retakes they have. v1's dashboards never consulted QuizAttempt, so every ONLINE quiz
  * read as permanently pending (spec 12 R114). Two groupBys, whatever the
  * number of quizzes or students.
  */
@@ -62,12 +62,12 @@ export async function countGradedByQuiz(
       _count: { _all: true },
     }),
     db.quizAttempt.groupBy({
-      by: ["quizId"],
+      by: ["quizId", "studentUserId"],
       where: { quizId: { in: quizIds }, studentUserId: { in: [...studentIds] }, status: "GRADED" },
-      _count: { _all: true },
     }),
   ]);
   const paperBy = new Map(paperGraded.map((g) => [g.quizId, g._count._all]));
-  const onlineBy = new Map(onlineGraded.map((g) => [g.quizId, g._count._all]));
+  const onlineBy = new Map<number, number>();
+  for (const g of onlineGraded) onlineBy.set(g.quizId, (onlineBy.get(g.quizId) ?? 0) + 1);
   return new Map(quizzes.map((q) => [q.id, (q.kind === "PAPER" ? paperBy.get(q.id) : onlineBy.get(q.id)) ?? 0]));
 }

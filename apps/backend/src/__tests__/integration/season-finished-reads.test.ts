@@ -203,7 +203,7 @@ describe("Super, after End", () => {
 
   it("re-grades an attempt, reopens one and enters a paper grade", async () => {
     const graded = await post(`/quizzes/${onlineQuizId}/attempts/${attemptId}/grade`, superT, {
-      awards: [{ questionId: essayId, points: 4 }],
+      marks: [{ questionId: essayId, blankId: null, correct: true }],
     });
     expect(graded.status).toBe(200);
     const reopened = await post(`/quizzes/${onlineQuizId}/attempts/reopen`, superT, { studentUserId: peter });

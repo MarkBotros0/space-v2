@@ -256,8 +256,8 @@ export const quizAuthoringPaths = {
         200: ok(
           {
             type: "object",
-            required: ["resultsReleasedAt"],
-            properties: { resultsReleasedAt: { type: "string", format: "date-time" } },
+            required: ["answersReleasedAt"],
+            properties: { answersReleasedAt: { type: "string", format: "date-time" } },
           },
           "When the results were released.",
         ),

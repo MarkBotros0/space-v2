@@ -16,11 +16,25 @@ import { notificationLink } from "../notification-target";
 const QUIZ_GRADED_LINK = notificationLink.studentQuizzes();
 
 /**
- * Every QUIZ_GRADED notification this domain sends (auto-grade, essay grade,
- * paper grades, retake). Best-effort and called after the write has committed
- * (spec D6): a mail or notification failure must not report the grade as failed.
+ * "Your score is in": an online attempt reached GRADED, or a paper score was
+ * entered or changed. Sent whether or not the answers are released. Best-effort
+ * and called after the write has committed (spec D6): a mail or notification
+ * failure must not report the grade as failed.
  */
-export async function notifyQuizGraded(studentUserIds: number[], title: string, body: string): Promise<void> {
+export async function notifyQuizGraded(studentUserIds: number[], quizTitle: string): Promise<void> {
+  await notifyQuizGradedWith(studentUserIds, `Quiz graded: ${quizTitle}`, "Your score is in.");
+}
+
+/** A retake was opened for a student: QUIZ_GRADED reused with copy that says what happened (D5). */
+export async function notifyQuizRetake(studentUserId: number, quizTitle: string): Promise<void> {
+  await notifyQuizGradedWith(
+    [studentUserId],
+    `You can retake: ${quizTitle}`,
+    "Your quiz has been reopened, so you can take it again.",
+  );
+}
+
+async function notifyQuizGradedWith(studentUserIds: number[], title: string, body: string): Promise<void> {
   await bestEffort("notify:QUIZ_GRADED", () =>
     createNotificationsBulk(studentUserIds, {
       type: "QUIZ_GRADED",
@@ -58,49 +72,31 @@ export async function notifyQuizPublished(quiz: { seasonId: number; title: strin
 }
 
 /**
- * Results released: everyone with a result to see hears about it once — a
- * PAPER grade, or a GRADED latest ONLINE attempt. Someone whose essays are
- * still waiting hears when they are graded, since the quiz is released by then.
- * Best-effort, after the release has committed (spec D6).
+ * Answers released: ONLINE students with any graded attempt hear that the
+ * answers are out, once. PAPER quizzes have no answers to release and notify
+ * nobody — a paper score notifies when it is entered. Best-effort, after the
+ * release has committed (spec D6).
  */
-export async function notifyQuizResultsReleased(quiz: {
+export async function notifyQuizAnswersReleased(quiz: {
   id: number;
   title: string;
   kind: "PAPER" | "ONLINE";
 }): Promise<void> {
+  if (quiz.kind !== "ONLINE") return;
   await bestEffort("notify:QUIZ_GRADED", async () => {
-    const ids =
-      quiz.kind === "PAPER"
-        ? (
-            await db.quizGrade.findMany({
-              where: { quizId: quiz.id, score: { not: null }, studentUser: liveUser },
-              select: { studentUserId: true },
-            })
-          ).map((g) => g.studentUserId)
-        : latestGraded(
-            await db.quizAttempt.findMany({
-              where: { quizId: quiz.id, studentUser: liveUser },
-              orderBy: { attemptNumber: "desc" },
-              select: { studentUserId: true, status: true },
-            }),
-          );
-    await createNotificationsBulk(ids, {
-      type: "QUIZ_GRADED",
-      title: `Results are out: ${quiz.title}`,
-      body: "Your quiz results are ready to see.",
-      link: QUIZ_GRADED_LINK,
+    const graded = await db.quizAttempt.findMany({
+      where: { quizId: quiz.id, status: "GRADED", studentUser: liveUser },
+      select: { studentUserId: true },
+      distinct: ["studentUserId"],
     });
+    await createNotificationsBulk(
+      graded.map((a) => a.studentUserId),
+      {
+        type: "QUIZ_GRADED",
+        title: `Answers are out: ${quiz.title}`,
+        body: "You can now review the answers.",
+        link: QUIZ_GRADED_LINK,
+      },
+    );
   });
-}
-
-/** Students whose newest attempt (rows come newest first) is graded. */
-function latestGraded(rows: { studentUserId: number; status: string }[]): number[] {
-  const seen = new Set<number>();
-  const graded: number[] = [];
-  for (const r of rows) {
-    if (seen.has(r.studentUserId)) continue;
-    seen.add(r.studentUserId);
-    if (r.status === "GRADED") graded.push(r.studentUserId);
-  }
-  return graded;
 }

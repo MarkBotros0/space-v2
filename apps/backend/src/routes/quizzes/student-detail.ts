@@ -3,6 +3,7 @@ import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { toScore } from "../../lib/quizzes/score";
+import { bestGraded } from "../../lib/quizzes/best-attempt";
 import { seededOrder } from "../../lib/quizzes/shuffle";
 import { studentQuizStage } from "../../lib/quizzes/student-stage";
 import {
@@ -46,18 +47,6 @@ type AttemptRow = {
   submittedAt: Date | null;
   gradedAt: Date | null;
 };
-
-/** Highest total among GRADED attempts; a tie goes to the later attempt. Task 8 moves this to best-attempt.ts. */
-function bestGradedOf(attempts: AttemptRow[]): AttemptRow | null {
-  let best: AttemptRow | null = null;
-  for (const a of attempts) {
-    if (a.status !== "GRADED") continue;
-    const score = toScore(a.totalScore) ?? 0;
-    const bestScore = best ? (toScore(best.totalScore) ?? 0) : -Infinity;
-    if (!best || score > bestScore || (score === bestScore && a.attemptNumber > best.attemptNumber)) best = a;
-  }
-  return best;
-}
 
 /** Question order for an attempt: shuffled by its seed when the quiz says so, else the author's. */
 function orderFor<Q extends { id: number; order: number }>(questions: Q[], shuffle: boolean, seed: number): Q[] {
@@ -130,7 +119,7 @@ export async function loadStudentQuizDetail(
     },
   });
   const latest = attempts[0] ?? null;
-  const best = bestGradedOf(attempts);
+  const best = bestGraded(attempts);
   const answersReleased = quiz.resultsReleasedAt !== null;
   const stage = studentQuizStage(latest, best !== null, answersReleased);
 

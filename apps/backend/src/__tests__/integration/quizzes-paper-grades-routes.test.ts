@@ -39,8 +39,8 @@ describe("PAPER grades", () => {
 
   beforeEach(async () => {
     const quiz = await db.quiz.create({
-      // Released, so a grade notifies; held results: quizzes-release-routes.
-      data: { seasonId, sessionId, title: "Paper sheet", kind: "PAPER", maxScore: 20, resultsReleasedAt: new Date() },
+      // A paper score notifies and shows once entered, with no release.
+      data: { seasonId, sessionId, title: "Paper sheet", kind: "PAPER", maxScore: 20 },
       select: { id: true },
     });
     quizId = quiz.id;

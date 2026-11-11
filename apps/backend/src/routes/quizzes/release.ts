@@ -4,7 +4,7 @@ import { db } from "../../db/client";
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { isAdminOfSeason, isSuper } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
-import { notifyQuizResultsReleased } from "../../lib/quizzes/notify";
+import { notifyQuizAnswersReleased } from "../../lib/quizzes/notify";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 
@@ -14,8 +14,8 @@ export function canReleaseQuizResults(user: Parameters<typeof isSuper>[0], seaso
 }
 
 /**
- * POST /quizzes/:id/release — let students see their scores and which answers
- * were right. Until then every student read hides them, so a student taking the
+ * POST /quizzes/:id/release — let students see the answers: the questions, their own
+ * answers and which were right. Scores show once graded. Until release every student read hides the answers, so a student taking the
  * quiz later can't learn the answers from one who took it first. One way: once
  * students have seen results there is nothing to take back. Only the request
  * that flips it notifies, so a repeat or a race stays silent.
@@ -32,7 +32,7 @@ export async function releaseQuizResults(req: Request, res: Response) {
   if (!quiz) return notFound(res, "Quiz");
   if (!canReleaseQuizResults(user, quiz.seasonId)) return forbidden(res);
   if (quiz.kind === "ONLINE" && quiz.publishedAt === null) {
-    return apiError(res, "quiz_not_published", "Publish the quiz before releasing its results.", 409);
+    return apiError(res, "quiz_not_published", "Publish the quiz before releasing its answers.", 409);
   }
 
   const now = new Date();
@@ -43,11 +43,11 @@ export async function releaseQuizResults(req: Request, res: Response) {
         data: { resultsReleasedAt: now, resultsReleasedById: user.userId },
       })
     ).count === 1;
-  if (flipped) await notifyQuizResultsReleased(quiz);
+  if (flipped) await notifyQuizAnswersReleased(quiz);
 
   const { resultsReleasedAt } = await db.quiz.findUniqueOrThrow({
     where: { id },
     select: { resultsReleasedAt: true },
   });
-  return apiOk(res, { resultsReleasedAt });
+  return apiOk(res, { answersReleasedAt: resultsReleasedAt });
 }

@@ -36,7 +36,7 @@ export const quizSchemas = {
       "seasonCode",
       "gradedCount",
       "studentCount",
-      "resultsReleasedAt",
+      "answersReleasedAt",
     ],
     properties: {
       id: { type: "integer" },
@@ -52,7 +52,7 @@ export const quizSchemas = {
       seasonCode: { type: "string" },
       gradedCount: { type: "integer" },
       studentCount: { type: "integer" },
-      resultsReleasedAt: {
+      answersReleasedAt: {
         type: ["string", "null"],
         format: "date-time",
         description: "Null while students' results are held back.",
@@ -111,7 +111,7 @@ export const quizSchemas = {
       "gradeCount",
       "canEditStructure",
       "canManage",
-      "resultsReleasedAt",
+      "answersReleasedAt",
       "canReleaseResults",
       "questions",
     ],
@@ -136,7 +136,7 @@ export const quizSchemas = {
         description:
           "SUPER or admin of the quiz's season (authoring and publishing); a grading-only leader gets false.",
       },
-      resultsReleasedAt: {
+      answersReleasedAt: {
         type: ["string", "null"],
         format: "date-time",
         description:
@@ -197,7 +197,7 @@ export const quizSchemas = {
       "gradedAt",
       "questions",
       "readOnly",
-      "resultsReleased",
+      "answersReleased",
     ],
     properties: {
       id: { type: "integer" },
@@ -218,7 +218,7 @@ export const quizSchemas = {
         description:
           "True when the student's enrolment is no longer ACTIVE: they can read the quiz and their attempt, not take it.",
       },
-      resultsReleased: {
+      answersReleased: {
         type: "boolean",
         description:
           "False until staff release the results. Until then a graded attempt reads SUBMITTED and `totalScore`, `gradedAt` and every question's `isCorrect`/`pointsAwarded` are null.",
@@ -355,7 +355,7 @@ export const quizSchemas = {
       "sessionTitle",
       "sessionDate",
       "attemptStatus",
-      "resultsReleased",
+      "answersReleased",
     ],
     properties: {
       quizId: { type: "integer" },
@@ -371,7 +371,7 @@ export const quizSchemas = {
         oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }],
         description: "ONLINE only. A graded attempt reads SUBMITTED until results are released.",
       },
-      resultsReleased: {
+      answersReleased: {
         type: "boolean",
         description:
           "False until staff release the results; `score` and `gradedAt` are null until then. A PAPER row appears only once released.",

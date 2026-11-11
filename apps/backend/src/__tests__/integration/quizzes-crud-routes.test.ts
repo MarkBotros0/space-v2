@@ -210,9 +210,7 @@ describe("GET /api/v1/quizzes", () => {
       },
       update: { score: 15, notes: "Nice work.", gradedAt: new Date() },
     });
-    // A paper grade reaches the student's list once the results are released.
-    await db.quiz.update({ where: { id: paperQuizId }, data: { resultsReleasedAt: new Date() } });
-
+    // A paper score reaches the student's list once entered; there is no release gate.
     const res = await request(app)
       .get(`/api/v1/quizzes?seasonId=${seasonId}`)
       .set("authorization", `Bearer ${studentToken}`);

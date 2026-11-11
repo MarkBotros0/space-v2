@@ -15,7 +15,7 @@ import {
   quizAttemptsQuerySchema,
   reopenAttemptRequestSchema,
 } from "../../../../../packages/shared/src/index";
-import { notifyQuizGraded } from "../../lib/quizzes/notify";
+import { notifyQuizGraded, notifyQuizRetake } from "../../lib/quizzes/notify";
 import { newShuffleSeed } from "../../lib/quizzes/shuffle";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
@@ -190,7 +190,7 @@ export async function gradeAttempt(req: Request, res: Response) {
   // see"), so the student hears now. D8's single rule for both grading paths:
   // notify on a first grade and on any score change, silent on a no-op re-save.
   if (scoreChanged) {
-    await notifyQuizGraded([attempt.studentUserId], `Quiz graded: ${quiz.title}`, "Your score is in.");
+    await notifyQuizGraded([attempt.studentUserId], quiz.title);
   }
 
   const page = await db.quizAttempt.findUnique({
@@ -285,11 +285,7 @@ export async function reopenAttempt(req: Request, res: Response) {
   // is no dedicated NotificationType, so
   // QUIZ_GRADED is reused with copy that says what actually happened — D5's
   // explicit second option.
-  await notifyQuizGraded(
-    [parsed.studentUserId],
-    `You can retake: ${quiz.title}`,
-    "Your quiz has been reopened, so you can take it again.",
-  );
+  await notifyQuizRetake(parsed.studentUserId, quiz.title);
 
   return apiOk(res, { attemptId: created.id, attemptNumber: created.attemptNumber }, 201);
 }

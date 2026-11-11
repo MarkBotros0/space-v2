@@ -107,7 +107,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
   it("serves staff the authoring shape from the same path", async () => {
     const res = await request(app).get(`/api/v1/quizzes/${onlineQuizId}`).set("authorization", `Bearer ${adminToken}`);
     expect(res.status).toBe(200);
-    expect(res.body.data.questions[0].correctIndex).toBe(1);
+    expect(res.body.data.questions[0].options.find((o: { isCorrect: boolean }) => o.isCorrect).label).toBe("Paris");
     expect(res.body.data.canEditStructure).toBe(true);
     expect(res.body.data.canManage).toBe(true);
   });
@@ -117,7 +117,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     // A leader grades, and grading needs the key (R103) — same audience v1's
     // essay grader served it to.
     expect(res.status).toBe(200);
-    expect(res.body.data.questions[0].correctIndex).toBe(1);
+    expect(res.body.data.questions[0].options.find((o: { isCorrect: boolean }) => o.isCorrect).label).toBe("Paris");
     expect(res.body.data.canManage).toBe(false);
   });
 

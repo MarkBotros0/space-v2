@@ -290,6 +290,43 @@ describe("buildSeasonWorkbook", () => {
   });
 });
 
+describe("ONLINE quiz columns", () => {
+  it("workbook ONLINE column shows best score", async () => {
+    const quiz = await db.quiz.create({
+      data: { seasonId, title: "Online best", kind: "ONLINE", maxScore: 10, publishedAt: new Date() },
+      select: { id: true },
+    });
+    const graded = (attemptNumber: number, totalScore: number) => ({
+      quizId: quiz.id,
+      studentUserId: aliceId,
+      attemptNumber,
+      status: "GRADED" as const,
+      autoScore: totalScore,
+      manualScore: 0,
+      totalScore,
+      gradedAt: new Date(),
+    });
+    // A lower retake and an ungraded third attempt: the 8 still counts.
+    await db.quizAttempt.createMany({
+      data: [
+        graded(1, 8),
+        graded(2, 5),
+        { quizId: quiz.id, studentUserId: aliceId, attemptNumber: 3, status: "SUBMITTED" },
+      ],
+    });
+    try {
+      const result = (await buildSeasonWorkbook(seasonId))!;
+      const rows = sheetRows(result.workbook, "Grades");
+      const column = rows[0]!.indexOf("Online best (/10)");
+      expect(column).toBeGreaterThan(-1);
+      expect(rows.find((r) => r[0] === "Test wb-alice")![column]).toBe(8);
+      expect(rows.find((r) => r[0] === "Test wb-bob")![column]).toBe("");
+    } finally {
+      await db.quiz.delete({ where: { id: quiz.id } });
+    }
+  });
+});
+
 describe("summariseSeasonWorkbook", () => {
   it("reports the sheet shape without building the workbook", async () => {
     const summary = (await summariseSeasonWorkbook(seasonId))!;

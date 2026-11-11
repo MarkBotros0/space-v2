@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 
+import { addQuizQuestion } from "../../lib/quizzes/questions";
 import { newPublicId } from "../../lib/public-id";
 import { studentQuizDetailSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestUser, reviewedOf, tokenFor } from "./fixtures";
@@ -103,11 +104,19 @@ async function buildKit(o: {
       kind: "ONLINE",
       maxScore: 2,
       publishedAt: new Date(),
-      questions: { create: [{ order: 1, type: "MCQ", prompt: "Q?", points: 2, options: ["a", "b"], correctIndex: 0 }] },
       // An attempt in progress, so submit is refused by the lock and not by "no attempt".
       attempts: { create: [{ studentUserId: o.student, attemptNumber: 1, status: "IN_PROGRESS" }] },
     },
     select: { id: true },
+  });
+  await addQuizQuestion(quiz.id, {
+    type: "SINGLE_CHOICE",
+    prompt: "Q?",
+    points: 2,
+    options: [
+      { label: "a", isCorrect: true },
+      { label: "b", isCorrect: false },
+    ],
   });
   const q = await db.sessionVideoQuestion.create({
     data: { sessionId: o.sessionId, atSeconds: 5, prompt: "VQ?", options: ["a", "b"], correctIndex: 0, points: 1 },
@@ -351,9 +360,10 @@ describe("a student with an active place", () => {
     expect(started.status).toBe(200);
     expect(studentQuizDetailSchema.safeParse(JSON.parse(JSON.stringify(started.body.data))).success).toBe(true);
     expect(started.body.data.readOnly).toBe(false);
-    const qid = started.body.data.questions[0].id as number;
+    const question = started.body.data.questions[0] as { id: number; options: { id: number }[] };
+    const qid = question.id;
     const saved = await call("patch", `/quizzes/${droppedQuizId}/attempt`, t.active, {
-      answers: [{ questionId: qid, selectedIndex: 0, text: null }],
+      answers: [{ type: "SINGLE_CHOICE", questionId: qid, optionId: question.options[0]!.id }],
     });
     expect(saved.status).toBe(200);
     const submitted = await call("post", `/quizzes/${droppedQuizId}/attempt/submit`, t.active, {});

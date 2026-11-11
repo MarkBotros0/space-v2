@@ -5,7 +5,7 @@ import request from "supertest";
 
 import { db } from "../../db/client";
 import { verifyAccessToken } from "../../lib/auth/tokens";
-import { buildPublishedQuizIn } from "./quizzes-setup";
+import { buildPublishedQuizIn, keyOf } from "./quizzes-setup";
 import {
   add,
   adminTokenOf,
@@ -149,7 +149,11 @@ describe("their work", () => {
     const save = await request(app)
       .patch(path)
       .set(as(studying))
-      .send({ answers: [{ questionId: quiz.mcqId, selectedIndex: 1, text: null }] });
+      .send({
+        answers: [
+          { type: "SINGLE_CHOICE", questionId: quiz.mcqId, optionId: (await keyOf(quiz.mcqId)).optionId("Paris") },
+        ],
+      });
     expect(save.status).toBe(200);
     const submit = await request(app).post(`${path}/submit`).set(as(studying));
     expect(submit.status).toBe(200);

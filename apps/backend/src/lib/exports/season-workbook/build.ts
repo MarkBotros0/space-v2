@@ -3,6 +3,8 @@ import ExcelJS from "exceljs";
 import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import { formatDayInOrgTime } from "../../org-time";
 import { addKeySheet, columnWidths, freezeFirstRowAndColumns, styleHeader } from "../workbook-style";
+import { bestGraded } from "../../quizzes/best-attempt";
+import { toScore } from "../../quizzes/score";
 import { loadSeasonExportData } from "./load";
 import { estimateBytes, KEY_SYMBOLS, NOT_ASSIGNED, type SeasonWorkbookSummary, type SheetSummary } from "./summary";
 
@@ -16,6 +18,20 @@ const SUBMISSION_LABEL: Record<SubmissionStatus, string> = {
   REVIEWED: "Reviewed",
   RETURNED: "Returned",
 };
+
+type ExportQuiz = NonNullable<Awaited<ReturnType<typeof loadSeasonExportData>>>["quizzes"][number];
+
+/** Student to score for one quiz column: the paper grade, or an ONLINE quiz's best graded attempt. */
+function scoresOf(q: ExportQuiz): Map<number, number | null> {
+  if (q.kind === "PAPER") return new Map(q.grades.map((g) => [g.studentUserId, g.score]));
+  const attemptsOf = new Map<number, ExportQuiz["attempts"]>();
+  for (const a of q.attempts) attemptsOf.set(a.studentUserId, [...(attemptsOf.get(a.studentUserId) ?? []), a]);
+  const scores = new Map<number, number | null>();
+  for (const [studentId, attempts] of attemptsOf) {
+    scores.set(studentId, toScore(bestGraded(attempts)?.totalScore ?? null));
+  }
+  return scores;
+}
 
 interface SeasonWorkbookResult extends SeasonWorkbookSummary {
   workbook: ExcelJS.Workbook;
@@ -92,7 +108,7 @@ export async function buildSeasonWorkbook(seasonId: number): Promise<SeasonWorkb
   grades.addRow(gradeHeader);
   grades.columns = columnWidths(gradeHeader.length, 18);
 
-  const scoreByQuiz = quizzes.map((q) => new Map(q.grades.map((g) => [g.studentUserId, g.score])));
+  const scoreByQuiz = quizzes.map((q) => scoresOf(q));
 
   for (const student of students) {
     let pctSum = 0;

@@ -183,7 +183,7 @@ export async function submitAttempt(req: Request, res: Response) {
   if (graded) {
     // Best-effort, outside the transaction (spec D6). A mail failure must not
     // report a submitted quiz as failed.
-    await notifyQuizGraded([user.userId], `Quiz graded: ${quiz.title}`, "Your score is in.");
+    await notifyQuizGraded([user.userId], quiz.title);
   }
 
   const detail = await loadStudentQuizDetail(id, user.userId, false);

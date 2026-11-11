@@ -124,7 +124,7 @@ export async function saveGrades(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { id: true, title: true, kind: true, maxScore: true, seasonId: true, resultsReleasedAt: true },
+    select: { id: true, title: true, kind: true, maxScore: true, seasonId: true },
   });
   if (!quiz) return notFound(res, "Quiz");
 
@@ -171,12 +171,12 @@ export async function saveGrades(req: Request, res: Response) {
   const notifyIds = parsed.entries
     .filter((e) => e.score !== null && previousScore.get(e.studentUserId) !== e.score)
     .map((e) => e.studentUserId);
-  // Held results stay quiet: the release notifies everyone graded by then.
-  if (notifyIds.length > 0 && quiz.resultsReleasedAt !== null) {
+  // A paper score is visible once entered, so it notifies with no release gate.
+  if (notifyIds.length > 0) {
     // Best-effort, outside the transaction. v1 issued three queries per
     // student here, one student at a time (R96); createNotificationsBulk
     // batches the whole set.
-    await notifyQuizGraded(notifyIds, `Quiz graded: ${quiz.title}`, "Your quiz has been graded.");
+    await notifyQuizGraded(notifyIds, quiz.title);
   }
 
   const sheet = await buildGradeSheet(id, studentIds);

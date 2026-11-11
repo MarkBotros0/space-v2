@@ -5,6 +5,7 @@ import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason } from "../../lib/permissions";
 import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
+import { bestGraded } from "../../lib/quizzes/best-attempt";
 import { toScore } from "../../lib/quizzes/score";
 import { studentQuizStage } from "../../lib/quizzes/student-stage";
 import { quizListQuerySchema } from "../../../../../packages/shared/src/index";
@@ -13,15 +14,15 @@ import { parseOr400 } from "../../lib/http/validate";
 /**
  * The student's own results — v1's listQuizResultsForStudent, ported.
  *
- * PAPER rows start from QuizGrade, so a paper quiz stays invisible until it is
- * graded (R36) and its results released (owner, 2026-11-07); ONLINE rows start from Quiz filtered to published, so they
+ * PAPER rows start from QuizGrade, so a paper quiz stays invisible until a
+ * score is entered (R36); there is no release gate on a score. ONLINE rows start from Quiz filtered to published, so they
  * appear as soon as they are available, attempted or not (R37). Merged by
  * session date descending, a null date sunk to the bottom (R38).
  */
 async function listQuizResultsForStudent(studentUserId: number, seasonId: number) {
   const [grades, onlineQuizzes] = await Promise.all([
     db.quizGrade.findMany({
-      where: { studentUserId, quiz: { seasonId, kind: "PAPER", resultsReleasedAt: { not: null } } },
+      where: { studentUserId, score: { not: null }, quiz: { seasonId, kind: "PAPER" } },
       select: {
         score: true,
         notes: true,
@@ -47,8 +48,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
         attempts: {
           where: { studentUserId },
           orderBy: { attemptNumber: "desc" },
-          take: 1,
-          select: { status: true, totalScore: true, gradedAt: true },
+          select: { status: true, totalScore: true, gradedAt: true, attemptNumber: true },
         },
       },
     }),
@@ -66,14 +66,14 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
       sessionTitle: g.quiz.session?.title ?? null,
       sessionDate: g.quiz.session?.startsAt ?? null,
       attemptStatus: null,
-      resultsReleased: true,
+      answersReleased: true,
     })),
     ...onlineQuizzes.map((q) => {
-      const attempt = q.attempts[0];
+      const latest = q.attempts[0];
+      const best = bestGraded(q.attempts);
       const released = q.resultsReleasedAt !== null;
-      // The score shows once graded, no release needed (spec "What students see").
-      // Task 8 moves this to the best graded attempt; today it reads the latest.
-      const stage = studentQuizStage(attempt ?? null, attempt?.status === "GRADED", released);
+      // The best graded score shows once graded, no release needed (spec "What students see").
+      const stage = studentQuizStage(latest ?? null, best !== null, released);
       const scored = stage === "graded" || stage === "answers";
       return {
         quizId: q.id,
@@ -81,13 +81,13 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
         kind: "ONLINE" as const,
         maxScore: q.maxScore,
         // Only a GRADED attempt has a score to show (R37).
-        score: scored ? toScore(attempt?.totalScore ?? null) : null,
+        score: scored ? toScore(best?.totalScore ?? null) : null,
         notes: null,
-        gradedAt: scored ? (attempt?.gradedAt ?? null) : null,
+        gradedAt: scored ? (best?.gradedAt ?? null) : null,
         sessionTitle: q.session?.title ?? null,
         sessionDate: q.session?.startsAt ?? null,
-        attemptStatus: attempt?.status ?? null,
-        resultsReleased: released,
+        attemptStatus: latest?.status ?? null,
+        answersReleased: released,
       };
     }),
   ];
@@ -175,7 +175,7 @@ export async function listQuizzes(req: Request, res: Response) {
       seasonCode: q.season.code,
       gradedCount: gradedBy.get(q.id) ?? 0,
       studentCount: studentIds.length,
-      resultsReleasedAt: q.resultsReleasedAt,
+      answersReleasedAt: q.resultsReleasedAt,
     })),
     nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,
   });
