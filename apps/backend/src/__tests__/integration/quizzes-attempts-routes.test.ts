@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { addQuizQuestion } from "../../lib/quizzes/questions";
 import { cleanupTestData } from "./fixtures";
 import { buildPublishedQuizIn, keyOf, pickOption, seedQuizFixtures, setLatestAttempt } from "./quizzes-setup";
 
@@ -102,6 +103,49 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
       expect(JSON.stringify(after.body)).not.toContain("Paris");
       noKey((await list()).body);
     }
+  });
+
+  // The key by inference, not by name (final review C1): serial ids follow
+  // insertion, so rows inserted in author order made every right id its left
+  // id + pairs and undid the choice shuffle. A fixed shuffle makes it exact.
+  it("never lets the option ids give the key away before release", async () => {
+    const quiz = await buildPublishedQuizIn(seasonId, sessionId, { withEssay: false, released: false });
+    const fixed =
+      (order: number[]) =>
+      <T>(rows: readonly T[]) =>
+        order.map((i) => rows[i] as T);
+    const pairs = ["a", "b", "c", "d", "e", "f"].map((k) => ({ left: `L-${k}`, right: `R-${k}` }));
+    const matching = await addQuizQuestion(
+      quiz.quizId,
+      { type: "MATCHING", prompt: "Match six", points: 6, pairs },
+      fixed([7, 2, 10, 0, 5, 11, 3, 8, 1, 6, 9, 4]),
+    );
+    const labels = ["w", "x", "y", "z"];
+    const options = labels.map((label, i) => ({ label, isCorrect: i === 1 }));
+    const choice = await addQuizQuestion(
+      quiz.quizId,
+      { type: "SINGLE_CHOICE", prompt: "Pick one", points: 1, options },
+      fixed([2, 0, 3, 1]),
+    );
+    await request(app).put(`/api/v1/quizzes/${quiz.quizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
+    const res = await request(app).get(`/api/v1/quizzes/${quiz.quizId}`).set("authorization", `Bearer ${studentToken}`);
+    expect(res.body.data.stage).toBe("in_progress");
+    type Item = { id: number; label: string };
+    const shownOf = (id: number) => res.body.data.questions.find((q: { id: number }) => q.id === id);
+
+    // Matching: the ids sent are the stored ones, and no single offset maps a left to its right.
+    const shown = shownOf(matching.id) as { left: Item[]; right: Item[] };
+    const { lefts } = await keyOf(matching.id);
+    const correct = lefts.map((l) => ({ leftId: l.id, rightId: l.matchId as number }));
+    const sorted = (ids: number[]) => [...ids].sort((a, b) => a - b);
+    expect(sorted(shown.left.map((o) => o.id))).toEqual(sorted(correct.map((p) => p.leftId)));
+    expect(sorted(shown.right.map((o) => o.id))).toEqual(sorted(correct.map((p) => p.rightId)));
+    expect(new Set(correct.map((p) => p.rightId - p.leftId)).size).toBeGreaterThan(1);
+
+    // Choice: sorting the options by id does not give back the author's order.
+    const shownOptions = (shownOf(choice.id) as { options: Item[] }).options;
+    const idsInAuthorOrder = labels.map((l) => shownOptions.find((o) => o.label === l)?.id as number);
+    expect(idsInAuthorOrder).not.toEqual(sorted(idsInAuthorOrder));
   });
 
   it("serves staff the authoring shape from the same path", async () => {

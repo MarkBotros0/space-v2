@@ -5,6 +5,25 @@ export function newShuffleSeed(): number {
   return randomInt(1, 2 ** 31);
 }
 
+/** A shuffle a writer can take, so a test can pass a fixed one. */
+export type Shuffle = <T>(items: readonly T[]) => T[];
+
+/**
+ * A crypto-random Fisher-Yates permutation. Never mutates. Option rows are
+ * inserted in this order so their serial ids say nothing about the author's
+ * order or the matching key (final review C1).
+ */
+export const randomOrder: Shuffle = <T>(items: readonly T[]): T[] => {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = randomInt(i + 1);
+    const held = out[i] as T;
+    out[i] = out[j] as T;
+    out[j] = held;
+  }
+  return out;
+};
+
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {

@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { questionRowsFor, toAuthoringQuestion, type QuizQuestionRequest } from "./question-rows";
+import { randomOrder, type Shuffle } from "./shuffle";
 
 /** The authoring view of a question — the answer key included. */
 export const AUTHORING_QUESTION_SELECT = {
@@ -32,13 +33,23 @@ async function recomputeMaxScore(tx: Prisma.TransactionClient, quizId: number): 
 /**
  * Replaces a question's option and blank rows with the ones its request implies.
  * Safe because questions are frozen once attempts exist, so no answer row points at the old ones.
+ *
+ * Option rows go in in a random order: serial ids follow insertion, and a
+ * student read sends the ids, so author order would give away the matching key
+ * (right id = left id + pairs) and undo the choice shuffle. `position` keeps
+ * the author's order; every reader sorts by it or by `seededOrder`.
  */
-async function writeRows(tx: Prisma.TransactionClient, questionId: number, data: QuizQuestionRequest): Promise<void> {
+async function writeRows(
+  tx: Prisma.TransactionClient,
+  questionId: number,
+  data: QuizQuestionRequest,
+  shuffle: Shuffle,
+): Promise<void> {
   await tx.quizOption.deleteMany({ where: { questionId } });
   await tx.quizBlank.deleteMany({ where: { questionId } });
   const { options, blanks } = questionRowsFor(data);
   const created = new Map<string, number>();
-  for (const o of options) {
+  for (const o of shuffle(options)) {
     const row = await tx.quizOption.create({
       data: { questionId, position: o.position, label: o.label, isCorrect: o.isCorrect, side: o.side },
       select: { id: true },
@@ -59,7 +70,7 @@ function questionColumns(data: QuizQuestionRequest) {
 }
 
 /** Adds a question at the end and recomputes maxScore, in one transaction. */
-export async function addQuizQuestion(quizId: number, data: QuizQuestionRequest) {
+export async function addQuizQuestion(quizId: number, data: QuizQuestionRequest, shuffle: Shuffle = randomOrder) {
   return db.$transaction(async (tx) => {
     // R20: order is the current count. It stays that way, but a real reorder
     // endpoint exists now, and delete renumbers, so `order` is a position.
@@ -68,7 +79,7 @@ export async function addQuizQuestion(quizId: number, data: QuizQuestionRequest)
       data: { quizId, order: count, ...questionColumns(data) },
       select: { id: true },
     });
-    await writeRows(tx, id, data);
+    await writeRows(tx, id, data, shuffle);
     await recomputeMaxScore(tx, quizId);
     return toAuthoringQuestion(
       await tx.quizQuestion.findUniqueOrThrow({ where: { id }, select: AUTHORING_QUESTION_SELECT }),
@@ -77,12 +88,17 @@ export async function addQuizQuestion(quizId: number, data: QuizQuestionRequest)
 }
 
 /** Edits a question (never its `order`) and recomputes maxScore, in one transaction. */
-export async function updateQuizQuestion(quizId: number, questionId: number, data: QuizQuestionRequest) {
+export async function updateQuizQuestion(
+  quizId: number,
+  questionId: number,
+  data: QuizQuestionRequest,
+  shuffle: Shuffle = randomOrder,
+) {
   return db.$transaction(async (tx) => {
     // `order` is deliberately not writable here — reordering has its own
     // endpoint, so a question edit cannot silently move a question.
     await tx.quizQuestion.update({ where: { id: questionId }, data: questionColumns(data), select: { id: true } });
-    await writeRows(tx, questionId, data);
+    await writeRows(tx, questionId, data, shuffle);
     await recomputeMaxScore(tx, quizId);
     return toAuthoringQuestion(
       await tx.quizQuestion.findUniqueOrThrow({ where: { id: questionId }, select: AUTHORING_QUESTION_SELECT }),
