@@ -168,3 +168,46 @@ appId: com.jpc.space
 - back
 - waitForAnimationToEnd:
     timeout: 5000
+# The live screen (seed-sweep/activity.ts): quiz 8 has the classmate's open attempt with two exits, so
+# that row is first. Only looks: End attempt and Reopen retake are never tapped, the sheet is dismissed.
+- openLink: spacev2://quiz/8/live
+- extendedWaitUntil:
+    visible: '.*2 exits.*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-18-live
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '.*2 exits.*'
+- extendedWaitUntil:
+    visible: 'End attempt'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-19-live-row-sheet
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+# Quiz 10: ended by the third exit. Its attempt sheet carries the exit log: exits, a relaunch and a screenshot.
+- openLink: spacev2://quiz/10/grade
+- extendedWaitUntil:
+    visible: 'Max score: \d+'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-20-ended-grade
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Salma Student.*'
+- extendedWaitUntil:
+    visible: 'Exit log'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-21-exit-log
+- back
+- waitForAnimationToEnd:
+    timeout: 5000

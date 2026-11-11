@@ -92,7 +92,103 @@ The ended attempt stays for staff to see. **The best attempt counts** (see `quiz
 - **An expired attempt is closed by the scheduler** (`quiz-deadlines`) **or by the next read**,
   whichever comes first, so a dead phone never leaves it open.
 
-## Exits and integrity
+## Integrity
 
-Added by the integrity plan: what the phone blocks during an attempt, what counts as leaving the
-quiz, the three-exit limit, the relaunch lock, the screen before starting and the staff live screen.
+Added by the integrity plan (spec: "Integrity", "Live screen"). What the phone blocks during an online
+attempt, what counts as leaving the quiz, the three-exit limit, the relaunch lock, the screen before
+starting and the staff live screen. Exits are counted on the server, never on the phone.
+
+- **Blocked while an attempt is open:** screenshots and screen recording (the OS blanks them), copying
+  question text, pasting into answer boxes, autocorrect and suggestions in answer boxes, the screen
+  locking by itself, and the app's own banners and sounds (shown after the attempt ends).
+- **A screenshot is logged, not counted.** It never warns the student and never ends the attempt.
+- **An exit is the app going to the background:** the home screen, another app, the power button, a
+  call that takes over the screen. Coming back shows the warning.
+- **Not an exit:** the app only going `inactive` (Control Center, the notification shade, a Face ID or
+  dictation prompt, the start of the app-switcher gesture); losing the internet; a keyboard.
+- **Android split screen counts.** The window shrinking under 85% of the screen's height for more than
+  one second is an exit; a drag shorter than that is not. Returning to full size is the return.
+- **Closing the app counts once.** A kill, a crash or a dead battery is recognised on the next start
+  of that attempt and stored as one `RELAUNCH`. A leave the phone never came back from is that same
+  one exit, not two.
+- **The limit is three.** The first and second exit show the warning. The third ends the attempt
+  `ENDED_BY_EXITS`: it is marked like a submit, with what is saved. The warning never says how many
+  exits are left: "You left the quiz. Leaving the quiz isn't allowed and has been recorded. Leaving
+  again may end your attempt."
+- **The warning shows within 2.5 seconds of the return, offline too.** If the server's answer comes
+  in time and says the attempt ended, the app moves on to the result instead and no warning shows. A
+  later "ended" still moves the screen on. An open "Submit quiz?" dialog is closed on the leave, so
+  the warning is what the student sees on return.
+- **Reports survive.** Each exit is queued on the phone with its own id and sent at once when online;
+  what is still queued goes again on reconnect, on each return to the foreground and after each
+  answer save. A kill does not lose the queue. A retry or a replay is counted once. Times are sent on
+  the server's clock.
+- **A reopened timed attempt not yet started has no exits.** It shows no questions, so leaving it
+  counts for nothing (the server ignores the report).
+- **A report after the attempt closed is ignored**, with no error.
+
+### Before you start
+
+- **It replaces the start card for every online attempt**, a reopened timed attempt awaiting its start
+  included. The student sees how many questions and points the quiz has, that there is one attempt,
+  that every question must be answered, and then the time limit: "No time limit." or "You have N
+  minutes from when you start. When time runs out, your saved answers are submitted."
+- **Three points, verbatim:** "Turn on Do Not Disturb or Focus." / "Leaving the quiz is recorded.
+  Leaving more than twice ends your attempt." / "Screenshots are blocked." The app cannot check Do
+  Not Disturb.
+- **"I'm ready" is the one thing that starts the attempt** and, on a timed quiz, its clock. The start
+  window limits only a first start (see Timing), so "Opens at ..." or "Starting closed at ..." shows
+  in its place; a reopened attempt is never blocked by it.
+- **A reopened attempt awaiting its start has no way back**: no back link, no swipe, Android back does
+  nothing. The student is already held on it.
+
+### Relaunch and the route lock
+
+- **Students only, timed and untimed.** While a student has an online attempt open (a reopened timed
+  one awaiting its start too), the app shows that quiz and nothing else. Staff are never held.
+- **Any other route goes back to the quiz:** a tab, a deep link, a notification tap, a check-in link.
+  The held quiz has no back link, no swipe back, and Android back is ignored.
+- **The lock is kept on the phone** and read again from the server (`/me/open-quiz-attempt`) so a
+  launch with no signal still opens into the quiz.
+- **It lifts on:** submit; time up (the close); staff End; `ENDED_BY_EXITS`; sign-out, forced or not;
+  a quiz or season that is gone or closed to the student (404 or 403 on the quiz's own read). A
+  transient error (offline, a failed read) keeps it. A student who is no longer a student (role
+  change) is not held: the lock is for the `STUDENT` role only.
+- **An open attempt in a finished season holds nothing**: the quiz shows "You didn't finish this
+  quiz."
+
+### Live screen
+
+- **Who sees it:** a leader, the season's admin, a super (`canGradeQuiz`), from the quiz's preview
+  (the "Live" pill).
+- **What it shows:** In progress, Not started and Finished counts; "N people left the quiz at least
+  once" when any did; each student as a row. Rows read: open attempts with exits first, then the
+  other open ones, then not started, then finished; each by name. A row says the state, then the time
+  left ("Time up, closing" when past it, "Retake not started" for a reopened timed attempt, "No time
+  limit" when untimed) and the exits so far.
+- **It reads every 4 seconds only while the screen is in front and the app is open**, and on pull to
+  refresh. It never carries an answer.
+- **A row opens a sheet.** **End attempt** (open attempts, after a confirm: "Their saved answers are
+  submitted.") ends it `ENDED_BY_STAFF` with the staff member's name. **Reopen retake** (finished
+  attempts) makes a fresh attempt, as in Honest accidents. A student who has not started has no sheet.
+
+### Exit log
+
+- **The attempt sheet in grading shows it**, staff only: how the attempt ended ("Submitted", "Timed
+  out", "Ended, left the quiz", "Ended by {name}"), then one line per event, oldest first: "Left
+  6:02 PM, away 0:42", "Closed the app 6:10 PM", "Took a screenshot 6:15 PM". An exit never reported
+  back says "didn't come back"; the exit that ended the attempt says "ended the attempt". Times are
+  the phone's, moved onto the server's clock. With no events: "Never left the quiz".
+
+### Known limits
+
+- **Offline cold start goes to sign-in** and clears the stored lock. It is not an escape: the next
+  sign-in reads the open attempt and holds the student again.
+- **The first launch after an update may show Home briefly** until the open-attempt read answers.
+- **The open-attempt read runs at mount and on reconnect only.** A lift in between (staff End, the
+  scheduler) reaches a held student through the quiz's own reads.
+- **Android counts a peek at Recents as an exit; iOS's app-switcher peek does not.** The app cannot
+  tell the two apart on iOS (`inactive` alone is never an exit).
+- **An Android floating window** (picture-in-picture or a bubble) that does not resize ours is not
+  counted: it cannot be told apart from the notification shade, which must not count.
+- **At most 3 exits are counted**, and a screenshot is logged but never counted.

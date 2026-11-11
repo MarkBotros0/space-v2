@@ -142,10 +142,13 @@ const HOUR = 60 * 60 * 1000;
 const SWEEP_DEADLINE_MS = 6 * HOUR;
 
 /**
- * Timed quizzes, quiz 8 and 9 (quiz-types.ts makes 3 to 7): a start window open now, 20 minutes each
+ * Timed quizzes, quiz 8 to 10 (quiz-types.ts makes 3 to 7): a start window open now, 20 minutes each
  * (docs/rules/quiz-integrity.md "Timing"). Quiz 8 is not started by the student, so the start card
  * names the limit, and the classmate is part-way through it, so staff grading offers End attempt.
  * Quiz 9 has the student's attempt running, so the countdown shows.
+ * Integrity (docs/rules/quiz-integrity.md): the classmate's open attempt on quiz 8 has two exits, so
+ * the live screen lists it first with "2 exits"; quiz 10 is the classmate's attempt ended by a third
+ * exit, with a full exit log (exits, a relaunch and a blocked screenshot) for the attempt sheet.
  */
 async function seedTimedQuizzes({ admin, student, classmate, season }: SweepPeople) {
   const now = Date.now();
@@ -168,6 +171,7 @@ async function seedTimedQuizzes({ admin, student, classmate, season }: SweepPeop
       { label: wrong, isCorrect: false },
     ],
   });
+  const minutesAgo = (m: number) => new Date(now - m * 60_000);
   const open = (quizId: number, studentUserId: number) =>
     db.quizAttempt.create({
       data: { quizId, studentUserId, shuffleSeed: 424242, deadlineAt: new Date(now + SWEEP_DEADLINE_MS) },
@@ -176,12 +180,78 @@ async function seedTimedQuizzes({ admin, student, classmate, season }: SweepPeop
   const startCard = await db.quiz.create({ data: { ...timed, title: "Timed check-in" } });
   await addQuizQuestion(startCard.id, question("Which hall do we meet in?", "Hall A", "Hall B"));
   await addQuizQuestion(startCard.id, question("How long is a session?", "90 minutes", "2 hours"));
-  await open(startCard.id, classmate.id);
+  const exiting = await open(startCard.id, classmate.id);
+  await db.quizAttemptEvent.createMany({
+    data: [
+      {
+        attemptId: exiting.id,
+        kind: "EXIT",
+        clientEventId: "sweep-8-exit-1",
+        leftAt: minutesAgo(12),
+        returnedAt: minutesAgo(11),
+      },
+      {
+        attemptId: exiting.id,
+        kind: "EXIT",
+        clientEventId: "sweep-8-exit-2",
+        leftAt: minutesAgo(5),
+        returnedAt: minutesAgo(4),
+      },
+    ],
+  });
 
   const running = await db.quiz.create({ data: { ...timed, title: "Timed practice" } });
   await addQuizQuestion(running.id, question("Who leads the opening night?", "The season admin", "A student"));
   await addQuizQuestion(running.id, question("Where are notes kept?", "In the app", "On paper"));
   await open(running.id, student.id);
+
+  // Quiz 10: the classmate's attempt was ended by the third exit (submitted as it stood), with the log staff read.
+  const ended = await db.quiz.create({ data: { ...timed, title: "Timed review" } });
+  await addQuizQuestion(ended.id, question("Which day is the sweep?", "Monday", "Friday"));
+  await addQuizQuestion(ended.id, question("Who marks the quiz?", "The leader", "Nobody"));
+  const endedAttempt = await db.quizAttempt.create({
+    data: {
+      quizId: ended.id,
+      studentUserId: classmate.id,
+      shuffleSeed: 424242,
+      status: "SUBMITTED",
+      endReason: "ENDED_BY_EXITS",
+      deadlineAt: new Date(now + SWEEP_DEADLINE_MS),
+      submittedAt: minutesAgo(1),
+    },
+  });
+  await db.quizAttemptEvent.createMany({
+    data: [
+      {
+        attemptId: endedAttempt.id,
+        kind: "EXIT",
+        clientEventId: "sweep-10-exit-1",
+        leftAt: minutesAgo(30),
+        returnedAt: minutesAgo(29),
+      },
+      {
+        attemptId: endedAttempt.id,
+        kind: "SCREENSHOT",
+        clientEventId: "sweep-10-shot-1",
+        leftAt: minutesAgo(20),
+        returnedAt: null,
+      },
+      {
+        attemptId: endedAttempt.id,
+        kind: "RELAUNCH",
+        clientEventId: "sweep-10-relaunch-1",
+        leftAt: minutesAgo(10),
+        returnedAt: minutesAgo(9),
+      },
+      {
+        attemptId: endedAttempt.id,
+        kind: "EXIT",
+        clientEventId: "sweep-10-exit-2",
+        leftAt: minutesAgo(2),
+        returnedAt: null,
+      },
+    ],
+  });
 }
 
 export type SweepActivity = Awaited<ReturnType<typeof seedActivity>>;

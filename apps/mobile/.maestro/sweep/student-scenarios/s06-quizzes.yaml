@@ -30,7 +30,7 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s06-02-work-done-bottom
 # Opens the seeded online quiz (seed-sweep/activity.ts, not started). The quiz page
-# shows its intro and "Start quiz", which creates an attempt, so it is never tapped:
+# shows "Before you start" and "I'm ready", which creates an attempt, so it is never tapped:
 # the attempt screen is not reachable without a write and has no shot.
 - scrollUntilVisible:
     element: 'Week 2 check-in'
@@ -39,20 +39,20 @@ appId: com.jpc.space
     timeout: 10000
 - tapOn: 'Week 2 check-in'
 - extendedWaitUntil:
-    visible: 'Start quiz'
+    visible: 'Before you start'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s06-03-quiz-start
+- takeScreenshot: s06-03-before-you-start
 # The timed quizzes (seed-sweep/activity.ts). Quiz 8: not started, 20 minutes, the window open now.
-# The start button names the limit; it is never tapped.
+# Before you start names the limit and the three points; "I'm ready" is never tapped.
 - openLink: spacev2://quiz/8
 - extendedWaitUntil:
-    visible: 'Start quiz · 20 minutes'
+    visible: 'You have 20 minutes from when you start.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s06-04a-timed-start
+- takeScreenshot: s06-04a-timed-before-you-start
 # Quiz 9: the student's timed attempt is running. The countdown sits in the pinned back bar and
 # stays there as the questions scroll (owner, 2026-11-11). Nothing is answered.
 - openLink: spacev2://quiz/9
