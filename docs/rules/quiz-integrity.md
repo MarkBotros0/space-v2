@@ -63,8 +63,20 @@ The ended attempt stays for staff to see. **The best attempt counts** (see `quiz
 
 ## Timing
 
-Added by the timing plan: the start window, the time limit, and an attempt that closes itself when
-time runs out.
+- **The start window is optional and limits starting only.** A student who has begun is never cut
+  off by it, and its end is inclusive (a start at exactly the closing time still works).
+- **The time limit is per student**, counted from their own start (the first time they open the
+  attempt), not from the window. It is read on the server's clock, never the phone's.
+- **A 10 second grace** lets a save or submit that was already in flight at the deadline land.
+- **Time out submits what is saved.** Unanswered counts 0. An empty blank or essay is wrong
+  automatically and is not left for a leader to mark.
+- **A reopen gets a fresh limit** and is not blocked by the window. A reopened timed attempt must be
+  started again; its clock begins then.
+- **The window can be edited any time. The limit is frozen once attempts exist.**
+- **Staff (leader, admin, super) can End an open attempt** for a student in their set, timed or
+  not. It is marked like a submit with `endReason` ENDED_BY_STAFF.
+- **An expired attempt is closed by the scheduler** (`quiz-deadlines`) **or by the next read**,
+  whichever comes first, so a dead phone never leaves it open.
 
 ## Exits and integrity
 

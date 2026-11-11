@@ -8,7 +8,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Start or resume the caller's attempt",
       description:
-        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus who isn't studying in it, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key: the questions in this attempt's own shuffle (fixed for the life of the attempt; a retake gets a new one), options and matching columns shuffled, true/false not.",
+        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus who isn't studying in it, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `quiz_not_open_yet` before the start window opens and `quiz_start_closed` after it closes (a first start only; an attempt already begun, and a retake, are not blocked by the window); 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key: the questions in this attempt's own shuffle (fixed for the life of the attempt; a retake gets a new one), options and matching columns shuffled, true/false not.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The open attempt."),
@@ -16,7 +16,7 @@ export const quizAttemptsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`quiz_not_published` or `attempt_closed`."),
+        409: conflict("`quiz_not_published`, `quiz_not_open_yet`, `quiz_start_closed` or `attempt_closed`."),
       },
     },
     patch: {
@@ -55,7 +55,9 @@ export const quizAttemptsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`no_attempt` or `attempt_closed`."),
+        409: conflict(
+          "`no_attempt`, `attempt_not_started` (a timed attempt whose clock has not started: start it first) or `attempt_closed` (including one that just timed out; saves land up to 10 s after the deadline).",
+        ),
       },
     },
   },
@@ -72,7 +74,9 @@ export const quizAttemptsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`no_attempt`, `attempt_closed` or `attempt_incomplete`."),
+        409: conflict(
+          "`no_attempt`, `attempt_not_started`, `attempt_closed` or `attempt_incomplete` (a timed-out attempt is closed with what was saved and skips the completeness rule).",
+        ),
       },
     },
   },
@@ -155,6 +159,43 @@ export const quizAttemptsPaths = {
         403: conflict("`forbidden` or `student_not_in_scope`."),
         404: errRef("NotFound"),
         409: conflict("`quiz_not_published`, `no_attempt` or `attempt_open`."),
+      },
+    },
+  },
+
+  "/api/v1/quizzes/{id}/attempts/end": {
+    post: {
+      tags: ["Quizzes"],
+      summary: "End a student's open attempt",
+      description:
+        "Staff with a scope in the season (leader, season admin, SUPER); the student must be in the caller's own student set (403 `student_not_in_scope`). Closes the student's latest attempt, which must be IN_PROGRESS (a timed attempt the student has not started yet counts): it is marked like a submit with what is saved and unanswered counts 0, `endReason` ENDED_BY_STAFF and `endedById` the caller. An attempt already past its deadline is closed as TIMED_OUT first and so answers `attempt_closed`. 409 `no_attempt` (never attempted) or `attempt_closed` (SUBMITTED, GRADED or closed by someone else first).",
+      parameters: [idParam],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["studentUserId"],
+              properties: { studentUserId: { type: "integer", minimum: 1 } },
+            },
+          },
+        },
+      },
+      responses: {
+        200: ok(
+          {
+            type: "object",
+            required: ["attemptId", "status"],
+            properties: { attemptId: { type: "integer" }, status: { type: "string", enum: ["SUBMITTED", "GRADED"] } },
+          },
+          "The closed attempt.",
+        ),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: conflict("`forbidden` or `student_not_in_scope`."),
+        404: errRef("NotFound"),
+        409: conflict("`no_attempt` or `attempt_closed`."),
       },
     },
   },

@@ -156,6 +156,7 @@ exports[`route inventory registers exactly these routes, in this order 1`] = `
   "GET /api/v1/quizzes/:id/attempts",
   "POST /api/v1/quizzes/:id/attempts/:attemptId/grade",
   "POST /api/v1/quizzes/:id/attempts/reopen",
+  "POST /api/v1/quizzes/:id/attempts/end",
   "GET /api/v1/quizzes/:id/grades",
   "POST /api/v1/quizzes/:id/grades",
   "GET /api/v1/students",

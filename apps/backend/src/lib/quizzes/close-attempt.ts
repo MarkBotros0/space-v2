@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import { lockAttempt, markAndClose, type LockedAttempt } from "./mark-and-close";
 import { notifyQuizGraded } from "./notify";
+import { reportError } from "../sentry";
 import { isExpired, SAVE_GRACE_MS } from "./timing";
 
 /*
@@ -82,5 +83,32 @@ export async function closeExpiredForQuiz(quizId: number, now = new Date(), grac
   });
   let closed = 0;
   for (const a of expired) if (await closeIfExpired(a.id, now, graceMs)) closed += 1;
+  return closed;
+}
+
+/** The most attempts one scheduler run closes; the rest wait for the next tick. */
+const SWEEP_BATCH = 200;
+
+/**
+ * Every open attempt in the database past its deadline (+ the save grace),
+ * closed TIMED_OUT: the scheduler's `quiz-deadlines` handler, so a dead phone
+ * is closed even when nobody reads the quiz. Uses the partial index
+ * `QuizAttempt_deadline_open_idx`. One failing close is reported and skipped.
+ */
+export async function closeAllExpired(now = new Date()): Promise<number> {
+  const expired = await db.quizAttempt.findMany({
+    where: { status: "IN_PROGRESS", deadlineAt: { lt: new Date(now.getTime() - SAVE_GRACE_MS) } },
+    orderBy: { deadlineAt: "asc" },
+    take: SWEEP_BATCH,
+    select: { id: true },
+  });
+  let closed = 0;
+  for (const a of expired) {
+    try {
+      if (await closeIfExpired(a.id, now, SAVE_GRACE_MS)) closed += 1;
+    } catch (err) {
+      reportError(err, { attemptId: String(a.id) });
+    }
+  }
   return closed;
 }

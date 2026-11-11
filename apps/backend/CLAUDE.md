@@ -26,7 +26,7 @@ Cross-cutting pieces:
 | Errors and responses | `lib/api-error.ts`, `lib/api-response.ts`, `lib/http/` (`idParam`, `notFound`, `parseOr400`), `lib/pagination.ts` |
 | Notifications, push, email | `lib/notifications.ts`, `lib/*-notifications.ts`, `lib/push.ts`, `lib/email.ts`, `lib/email-templates.ts` |
 | Org time and dates | `lib/org-time.ts` |
-| Scheduled work (reminders), request-driven | `lib/scheduler/` (`SCHEDULER_TICK`); handlers in `lib/scheduler/handlers.ts` |
+| Scheduled work (reminders), request-driven | `lib/scheduler/` (`SCHEDULER_TICK`); handlers (follow-ups, assignment-reminders, quiz-deadlines) in `lib/scheduler/handlers.ts` |
 | Config (the only `process.env` reader) | `lib/config.ts` |
 | OpenAPI | `src/docs/` (`openapi.ts` plus a file per path group) |
 | Schema | `apps/backend/prisma/schema.prisma`, migrations in `apps/backend/prisma/migrations/`, diagram `docs/database/erd.md` |

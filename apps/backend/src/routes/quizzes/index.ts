@@ -3,6 +3,7 @@ import { Router } from "express";
 import { requireAuth } from "../../middleware/require-auth";
 import { listAttempts, gradeAttempt, reopenAttempt } from "./grading";
 import { createQuiz, updateQuiz } from "./authoring";
+import { endAttempt } from "./end-attempt";
 import { getQuiz } from "./detail";
 import { listQuizzes } from "./list";
 import { getGradeSheet, saveGrades } from "./paper-grades";
@@ -44,6 +45,7 @@ quizzesRouter.post("/:id/attempt/submit", submitAttempt);
 quizzesRouter.get("/:id/attempts", listAttempts);
 quizzesRouter.post("/:id/attempts/:attemptId/grade", gradeAttempt);
 quizzesRouter.post("/:id/attempts/reopen", reopenAttempt);
+quizzesRouter.post("/:id/attempts/end", endAttempt);
 
 // PAPER grade sheet.
 quizzesRouter.get("/:id/grades", getGradeSheet);
