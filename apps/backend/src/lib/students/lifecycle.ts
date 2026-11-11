@@ -1,5 +1,6 @@
 import { db } from "../../db/client";
-import { classLabel } from "@space/shared";
+// Relative, not "@space/shared": a value import by package name resolves to the TypeScript source at runtime (CLAUDE.md).
+import { classLabel } from "../../../../../packages/shared/src/index";
 import { ApiError } from "../api-error";
 import { invalidateSessions } from "../auth/session-validity";
 import { revokeAllRefreshTokensForUser } from "../auth/tokens";
