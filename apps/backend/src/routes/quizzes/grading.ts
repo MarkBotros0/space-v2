@@ -8,6 +8,7 @@ import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
 import { gradeAttempt as gradeLeaderMarks } from "../../lib/quizzes/grading";
 import { GRADING_ANSWER_SELECT, GRADING_QUESTION_SELECT, gradingAnswers } from "../../lib/quizzes/grading-view";
+import { endInfo, exitLogsFor, GRADING_END_SELECT } from "../../lib/quizzes/exit-log";
 import { isLeaderMarked } from "../../lib/quizzes/marking";
 import { toScore } from "../../lib/quizzes/score";
 import { bestScoresFor } from "../../lib/queries/quiz-best-scores";
@@ -77,9 +78,11 @@ export async function listAttempts(req: Request, res: Response) {
       studentUser: { select: { name: true } },
       // D13: the audit column v1 wrote and never read anywhere.
       gradedBy: { select: { name: true } },
+      ...GRADING_END_SELECT,
       answers: { select: GRADING_ANSWER_SELECT },
     },
   });
+  const logs = await exitLogsFor(attempts.filter((a) => a.status !== "IN_PROGRESS").map((a) => a.id));
 
   // Spec "Honest accidents": the score a grading list shows is the best GRADED
   // attempt's. The row stays the latest attempt, which is what gets marked or reopened.
@@ -115,6 +118,8 @@ export async function listAttempts(req: Request, res: Response) {
       bestScore: bestScores.get(att.studentUserId) ?? null,
       submittedAt: att.submittedAt,
       gradedByName: att.gradedBy?.name ?? null,
+      ...endInfo(att),
+      events: logs.get(att.id) ?? [],
       // Projected over the quiz's CURRENT questions (R104), in the author's
       // order: a question with no answer row shows with empty answer fields.
       answers: gradingAnswers(questions, att.answers),
@@ -124,6 +129,7 @@ export async function listAttempts(req: Request, res: Response) {
         studentUserId: att.studentUserId,
         studentName: att.studentUser.name,
         startedAt: att.createdAt,
+        ...endInfo(att),
       })),
       ...pageIds
         .filter((sid) => !startedIds.has(sid))
@@ -131,6 +137,9 @@ export async function listAttempts(req: Request, res: Response) {
           studentUserId: sid,
           studentName: nameById.get(sid) ?? null,
           startedAt: null,
+          endReason: null,
+          endedByName: null,
+          deadlineAt: null,
         })),
     ],
     nextCursor: remaining.length > limit ? (pageIds[pageIds.length - 1] ?? null) : null,
@@ -203,8 +212,10 @@ export async function gradeAttempt(req: Request, res: Response) {
       submittedAt: true,
       studentUser: { select: { name: true } },
       gradedBy: { select: { name: true } },
+      ...GRADING_END_SELECT,
     },
   });
+  const log = await exitLogsFor([attemptId]);
   const best = await bestScoresFor(id, [attempt.studentUserId]);
   return apiOk(res, {
     attemptId: page?.id,
@@ -218,6 +229,10 @@ export async function gradeAttempt(req: Request, res: Response) {
     bestScore: best.get(attempt.studentUserId) ?? null,
     submittedAt: page?.submittedAt ?? null,
     gradedByName: page?.gradedBy?.name ?? null,
+    endReason: page?.endReason ?? null,
+    endedByName: page?.endedBy?.name ?? null,
+    deadlineAt: page?.deadlineAt ?? null,
+    events: log.get(attemptId) ?? [],
     answers: [],
   });
 }

@@ -17,5 +17,6 @@ export * from "./questions";
 export * from "./student";
 export * from "./read";
 export * from "./grading";
+export * from "./live";
 export * from "./writes";
 export * from "./responses";

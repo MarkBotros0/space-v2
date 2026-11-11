@@ -14,6 +14,7 @@ import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
+import { NOT_ENDED, waitingRow } from "./quiz-grading-fixtures";
 import QuizGradeScreen from "../../app/(app)/quiz/[id]/grade";
 
 const get = apiClient.get as jest.Mock;
@@ -72,6 +73,7 @@ const attemptsPage = {
       bestScore: null,
       submittedAt: "2099-03-02T10:00:00.000Z",
       gradedByName: null,
+      ...NOT_ENDED,
       answers: [
         {
           questionId: 100,
@@ -97,7 +99,7 @@ const attemptsPage = {
       ],
     },
   ],
-  waiting: [{ studentUserId: 10, studentName: "Second student", startedAt: null }],
+  waiting: [waitingRow(10, "Second student", null)],
   nextCursor: null,
 };
 
@@ -257,7 +259,7 @@ describe("grading screen — ONLINE", () => {
               data: {
                 ...attemptsPage,
                 items: [],
-                waiting: [{ studentUserId: 10, studentName: "Second student", startedAt: "2099-03-02T10:00:00.000Z" }],
+                waiting: [waitingRow(10, "Second student", "2099-03-02T10:00:00.000Z")],
               },
             },
           }),
@@ -272,7 +274,7 @@ describe("grading screen — ONLINE", () => {
     const second = {
       ...attemptsPage,
       items: [{ ...baseAttempt, attemptId: 950, studentUserId: 30, studentName: "Page two student" }],
-      waiting: [{ studentUserId: 31, studentName: "Late student", startedAt: "2099-03-02T10:00:00.000Z" }],
+      waiting: [waitingRow(31, "Late student", "2099-03-02T10:00:00.000Z")],
       nextCursor: null,
     };
     get.mockImplementation((url: string) =>

@@ -19,6 +19,10 @@ const row = (over: Partial<QuizGradingAttempt>): QuizGradingAttempt => ({
   bestScore: null,
   submittedAt,
   gradedByName: null,
+  endReason: null,
+  endedByName: null,
+  deadlineAt: null,
+  events: [],
   answers: [],
   ...over,
 });

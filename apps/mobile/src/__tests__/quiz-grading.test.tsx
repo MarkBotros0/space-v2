@@ -74,6 +74,10 @@ const gradeSheet = {
       notes: null,
       gradedAt: null,
       gradedByName: null,
+      endReason: null,
+      endedByName: null,
+      deadlineAt: null,
+      events: [],
     },
     {
       studentUserId: 10,
@@ -83,6 +87,10 @@ const gradeSheet = {
       notes: "Good.",
       gradedAt: "2099-03-02T10:00:00.000Z",
       gradedByName: "Test leader",
+      endReason: null,
+      endedByName: null,
+      deadlineAt: null,
+      events: [],
     },
   ],
 };

@@ -77,8 +77,22 @@ beforeEach(() => {
     return Promise.resolve({
       data: {
         data: page([
-          { studentUserId: 10, studentName: "Second student", startedAt: "2099-03-02T10:00:00.000Z" },
-          { studentUserId: 11, studentName: "Third student", startedAt: null },
+          {
+            studentUserId: 10,
+            studentName: "Second student",
+            startedAt: "2099-03-02T10:00:00.000Z",
+            endReason: null,
+            endedByName: null,
+            deadlineAt: null,
+          },
+          {
+            studentUserId: 11,
+            studentName: "Third student",
+            startedAt: null,
+            endReason: null,
+            endedByName: null,
+            deadlineAt: null,
+          },
         ]),
       },
     });

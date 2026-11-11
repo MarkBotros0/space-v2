@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { quizAttemptStatusSchema, quizKindSchema } from "../enums";
+import { quizAttemptEndReasonSchema, quizAttemptStatusSchema, quizKindSchema } from "../enums";
 
 // ---------------------------------------------------------------------------
 // Grading read shapes — the paper grade sheet and the online grading page.
@@ -93,6 +93,22 @@ const quizGradingAnswerSchema = z.discriminatedUnion("type", [
 ]);
 export type QuizGradingAnswer = z.infer<typeof quizGradingAnswerSchema>;
 
+/** One logged event of an attempt for the exit log (staff only); `returnedAt` null = never reported back. */
+const quizGradingEventSchema = z.object({
+  kind: z.enum(["EXIT", "RELAUNCH", "SCREENSHOT"]),
+  leftAt: z.string(),
+  returnedAt: z.string().nullable(),
+});
+export type QuizGradingEvent = z.infer<typeof quizGradingEventSchema>;
+
+/** How an attempt ended and who ended it (staff views); all null while it is open or legacy. */
+const gradingEndShape = {
+  endReason: quizAttemptEndReasonSchema.nullable(),
+  /** Name of the staff member who ended it (ENDED_BY_STAFF); null otherwise. */
+  endedByName: z.string().nullable(),
+  deadlineAt: z.string().nullable(),
+};
+
 export const quizGradingAttemptSchema = z.object({
   attemptId: z.number(),
   studentUserId: z.number(),
@@ -110,6 +126,9 @@ export const quizGradingAttemptSchema = z.object({
   bestScore: z.number().nullable(),
   submittedAt: z.string().nullable(),
   gradedByName: z.string().nullable(),
+  ...gradingEndShape,
+  /** The exit log: every event the phone reported, oldest first. */
+  events: z.array(quizGradingEventSchema),
   answers: z.array(quizGradingAnswerSchema),
 });
 export type QuizGradingAttempt = z.infer<typeof quizGradingAttemptSchema>;
@@ -134,6 +153,7 @@ export const quizGradingPageSchema = z.object({
       studentName: z.string().nullable(),
       /** null = never started; a date = an IN_PROGRESS attempt open since then. */
       startedAt: z.string().nullable(),
+      ...gradingEndShape,
     }),
   ),
   nextCursor: z.number().nullable(),

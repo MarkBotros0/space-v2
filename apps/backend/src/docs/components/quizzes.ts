@@ -199,6 +199,10 @@ export const quizSchemas = {
       "bestScore",
       "submittedAt",
       "gradedByName",
+      "endReason",
+      "endedByName",
+      "deadlineAt",
+      "events",
       "answers",
     ],
     properties: {
@@ -217,6 +221,26 @@ export const quizSchemas = {
       },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedByName: { type: ["string", "null"], description: "Who graded it; null for an auto-graded attempt." },
+      endReason: {
+        type: ["string", "null"],
+        enum: ["SUBMITTED", "TIMED_OUT", "ENDED_BY_STAFF", "ENDED_BY_EXITS", null],
+        description: "How the attempt ended; null while open or for a legacy attempt.",
+      },
+      endedByName: { type: ["string", "null"], description: "The staff member who ended it (ENDED_BY_STAFF)." },
+      deadlineAt: { type: ["string", "null"], format: "date-time" },
+      events: {
+        type: "array",
+        description: "The exit log: every event the phone reported, oldest first (staff only).",
+        items: {
+          type: "object",
+          required: ["kind", "leftAt", "returnedAt"],
+          properties: {
+            kind: { type: "string", enum: ["EXIT", "RELAUNCH", "SCREENSHOT"] },
+            leftAt: { type: "string", format: "date-time" },
+            returnedAt: { type: ["string", "null"], format: "date-time" },
+          },
+        },
+      },
       answers: { type: "array", items: { $ref: "#/components/schemas/QuizGradingAnswer" } },
     },
   },
@@ -245,11 +269,18 @@ export const quizSchemas = {
           "Students on this page with no gradable attempt: never started (`startedAt` null) or latest attempt IN_PROGRESS (`startedAt` = when it was opened).",
         items: {
           type: "object",
-          required: ["studentUserId", "studentName", "startedAt"],
+          required: ["studentUserId", "studentName", "startedAt", "endReason", "endedByName", "deadlineAt"],
           properties: {
             studentUserId: { type: "integer" },
             studentName: { type: ["string", "null"] },
             startedAt: { type: ["string", "null"], format: "date-time" },
+            endReason: {
+              type: ["string", "null"],
+              enum: ["SUBMITTED", "TIMED_OUT", "ENDED_BY_STAFF", "ENDED_BY_EXITS", null],
+              description: "How the attempt ended; null while open or for a legacy attempt.",
+            },
+            endedByName: { type: ["string", "null"], description: "The staff member who ended it (ENDED_BY_STAFF)." },
+            deadlineAt: { type: ["string", "null"], format: "date-time" },
           },
         },
       },

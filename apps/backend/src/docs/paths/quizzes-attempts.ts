@@ -138,6 +138,23 @@ export const quizAttemptsPaths = {
     },
   },
 
+  "/api/v1/quizzes/{id}/live": {
+    get: {
+      tags: ["Quizzes"],
+      summary: "The live screen: where every student in scope is",
+      description:
+        "Staff only (SUPER, season admin, leader of a group in the season; a leader sees only their groups). Closes the quiz's expired attempts first, then returns each student's latest attempt as a state with the exit count. Carries no answer content. Polled by the app every few seconds.",
+      parameters: [idParam],
+      responses: {
+        200: ok({ $ref: "#/components/schemas/QuizLive" }, "Every student in scope with their state."),
+        400: errRef("BadRequest"),
+        401: errRef("Unauthorized"),
+        403: errRef("Forbidden"),
+        404: errRef("NotFound"),
+      },
+    },
+  },
+
   "/api/v1/quizzes/{id}/attempts": {
     get: {
       tags: ["Quizzes"],

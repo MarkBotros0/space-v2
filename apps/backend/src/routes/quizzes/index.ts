@@ -9,6 +9,7 @@ import { listQuizzes } from "./list";
 import { getGradeSheet, saveGrades } from "./paper-grades";
 import { addQuestion, deleteQuestion, publishQuiz, reorderQuestions, updateQuestion } from "./questions";
 import { saveAttemptAnswers, startAttempt, submitAttempt } from "./attempts";
+import { getQuizLive } from "./live";
 import { postAttemptEvents } from "./attempt-events";
 import { releaseQuizResults } from "./release";
 
@@ -34,6 +35,9 @@ quizzesRouter.put("/:id/questions/order", reorderQuestions);
 quizzesRouter.post("/:id/publish", publishQuiz);
 // Students see scores only once the season's admin or a super releases them.
 quizzesRouter.post("/:id/release", releaseQuizResults);
+
+// Staff: where every student in scope is right now (before the bare /:id).
+quizzesRouter.get("/:id/live", getQuizLive);
 
 quizzesRouter.get("/:id", getQuiz);
 

@@ -21,6 +21,10 @@ const attempt: QuizGradingAttempt = {
   bestScore: null,
   submittedAt: "2099-03-02T10:00:00.000Z",
   gradedByName: null,
+  endReason: null,
+  endedByName: null,
+  deadlineAt: null,
+  events: [],
   answers: [
     {
       questionId: 2,
