@@ -202,8 +202,8 @@ describe("My work: what was handed in", () => {
       ),
     );
     renderWithProviders(<WorkScreen />);
-    expect(await screen.findByRole("button", { name: /Quiz 4.*, 7\/10$/ })).toBeTruthy();
-    expect(screen.getAllByText("Not graded yet")).toHaveLength(2);
+    expect(await screen.findByRole("button", { name: /Quiz 4.*, 7 \/ 10$/ })).toBeTruthy();
+    expect(screen.getAllByText("Awaiting marking")).toHaveLength(2);
   });
 
   it("a paper quiz is no button, and its notes show in full", async () => {
@@ -215,7 +215,7 @@ describe("My work: what was handed in", () => {
     fireEvent.press(title);
     expect(mockPush).not.toHaveBeenCalled();
     expect(screen.getByText(new RegExp(notes)).props.numberOfLines).toBe(0);
-    expect(screen.getByText("15/20")).toBeTruthy();
+    expect(screen.getByText("15 / 20")).toBeTruthy();
   });
 
   it("has no figure tiles", async () => {

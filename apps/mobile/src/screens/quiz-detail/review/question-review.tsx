@@ -48,22 +48,24 @@ function Row({ right, children }: { right: boolean | null; children: React.React
 }
 
 function Choices({ q }: { q: Extract<QuizQuestionStudent, { options: unknown }> }) {
+  const multi = q.type === "MULTI_CHOICE";
   return (
     <View className="flex-col gap-2">
-      {reviewRows(q).map((row) => (
-        <Row key={row.label} right={row.mine || row.isAnswerKey ? row.correct : null}>
-          <ContentText variant="subhead">{row.label}</ContentText>
-          {row.mine ? (
-            <Mark right={row.correct} word={row.correct ? "Your answer, right" : "Your answer, wrong"} />
-          ) : null}
-          {row.isAnswerKey && !row.mine ? <Mark right={false} word="Correct answer, you missed it" /> : null}
-          {row.isAnswerKey && row.mine ? (
-            <Text variant="caption" className="text-muted-foreground">
-              Correct answer
-            </Text>
-          ) : null}
-        </Row>
-      ))}
+      {reviewRows(q).map((row) => {
+        const missedKey = row.isAnswerKey && !row.mine;
+        // A missed correct option is not a mistake of the student's: ok tone for one-pick questions,
+        // neutral for multiple choice (the mistake there is the ticks they left out as a whole).
+        const tone = row.mine ? row.correct : missedKey && !multi ? true : null;
+        return (
+          <Row key={row.id} right={tone}>
+            <ContentText variant="subhead">{row.label}</ContentText>
+            {row.mine ? (
+              <Mark right={row.correct} word={row.correct ? "Your answer, right" : "Your answer, wrong"} />
+            ) : null}
+            {missedKey ? <Mark right word={multi ? "Correct answer, not ticked" : "Correct answer"} /> : null}
+          </Row>
+        );
+      })}
     </View>
   );
 }
@@ -78,7 +80,9 @@ function Matches({ q }: { q: Extract<QuizQuestionStudent, { type: "MATCHING" }> 
           </ContentText>
           <ContentText variant="subhead">{`Your match: ${row.mine ?? "none"}`}</ContentText>
           <Mark right={row.correct} word={row.correct ? "Right" : "Wrong"} />
-          {row.correct ? null : <ContentText variant="subhead">{`Correct answer: ${row.correctRight}`}</ContentText>}
+          {row.correct || row.correctRight === "" ? null : (
+            <ContentText variant="subhead">{`Correct answer: ${row.correctRight}`}</ContentText>
+          )}
         </Row>
       ))}
     </View>
@@ -99,7 +103,7 @@ function Blanks({ q }: { q: Extract<QuizQuestionStudent, { type: "FILL_BLANK" }>
           <Text variant="caption" className="font-bold text-muted-foreground">{`Blank ${row.index}`}</Text>
           <ContentText variant="subhead">{`Your answer: ${row.text === "" ? "none" : row.text}`}</ContentText>
           {row.correct === null ? null : <Mark right={row.correct} word={row.correct ? "Right" : "Wrong"} />}
-          {row.correct === false ? (
+          {row.correct !== true && row.expected !== "" ? (
             <ContentText variant="subhead">{`Correct answer: ${row.expected}`}</ContentText>
           ) : null}
         </Row>
@@ -136,7 +140,7 @@ export function QuestionReview({ q, index }: { q: QuizQuestionStudent; index: nu
   const points =
     q.pointsAwarded === null
       ? `${formatScore(q.points)} pts`
-      : `${formatScore(q.pointsAwarded)}/${formatScore(q.points)} pts`;
+      : `${formatScore(q.pointsAwarded)} / ${formatScore(q.points)} pts`;
   return (
     <View className={QCARD}>
       <View className="flex-row flex-wrap items-center justify-between gap-2">

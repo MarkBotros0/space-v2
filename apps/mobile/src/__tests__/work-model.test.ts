@@ -132,16 +132,16 @@ describe("quizRow", () => {
     expect(quizRow(quiz({ quizId: 5, attemptStatus: "IN_PROGRESS" })).chip).toEqual({ tone: "warn", label: "Resume" });
   });
 
-  it("submitted without a score: Awaiting grading", () => {
+  it("submitted without a score: Awaiting marking", () => {
     expect(quizRow(quiz({ quizId: 5, attemptStatus: "SUBMITTED" })).chip).toEqual({
       tone: "neutral",
-      label: "Awaiting grading",
+      label: "Awaiting marking",
     });
   });
 
   it("a score shows once graded, one decimal at most, even with a retake in progress", () => {
     const row = quizRow(quiz({ quizId: 6, score: 7.5, attemptStatus: "IN_PROGRESS" }));
-    expect(row.score).toBe("7.5/10");
+    expect(row.score).toBe("7.5 / 10");
     expect(row.chip).toBeUndefined();
   });
 
@@ -156,7 +156,7 @@ describe("quizRow", () => {
     const row = quizRow(
       quiz({ quizId: 5, score: 8, gradedAt: "2099-03-02T12:00:00.000Z", attemptStatus: "GRADED", notes: "Nice" }),
     );
-    expect(row.score).toBe("8/10");
+    expect(row.score).toBe("8 / 10");
     expect(row.chip).toBeUndefined();
     expect(row.subtitle).toBe("Graded\u00A0Mar\u00A02,\u00A02099 · Nice");
   });
@@ -164,7 +164,7 @@ describe("quizRow", () => {
   it("a scored paper quiz stays a plain row; a zero-point quiz does not divide by zero", () => {
     const row = quizRow(quiz({ quizId: 5, kind: "PAPER", score: 0, maxScore: 0 }));
     expect(row.href).toBeNull();
-    expect(row.score).toBe("0/0");
+    expect(row.score).toBe("0 / 0");
     expect(row.subtitle).toBeUndefined();
   });
 

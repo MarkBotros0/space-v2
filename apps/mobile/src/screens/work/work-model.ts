@@ -94,7 +94,7 @@ function quizChip(q: StudentQuizResult): ChipSpec | undefined {
   if (q.kind === "PAPER") return { tone: "neutral", label: "Pending" };
   if (q.attemptStatus === null) return { tone: "info", label: "Take quiz" };
   if (q.attemptStatus === "IN_PROGRESS") return { tone: "warn", label: "Resume" };
-  return { tone: "neutral", label: "Awaiting grading" };
+  return { tone: "neutral", label: "Awaiting marking" };
 }
 
 export function quizRow(q: StudentQuizResult): WorkRow {
@@ -118,7 +118,7 @@ export function quizRow(q: StudentQuizResult): WorkRow {
     title: q.title,
     ...(parts.length > 0 ? { subtitle: parts.join(" · ") } : {}),
     ...(chip ? { chip } : {}),
-    ...(scored ? { score: `${formatScore(q.score!)}/${formatScore(q.maxScore)}` } : {}),
+    ...(scored ? { score: `${formatScore(q.score!)} / ${formatScore(q.maxScore)}` } : {}),
     // v1: a paper quiz is a plain row, not a link.
     href: q.kind === "ONLINE" ? { pathname: "/quiz/[id]", params: { id: String(q.quizId) } } : null,
   };
@@ -204,7 +204,7 @@ function submittedQuizRow(q: StudentQuizResult): WorkRow {
   const base = quizRow(q);
   if (q.score !== null) return base;
   // No graded attempt yet: waiting for marking (the answers' release is a separate step).
-  return { ...base, chip: { tone: "neutral", label: "Not graded yet" } };
+  return { ...base, chip: { tone: "neutral", label: "Awaiting marking" } };
 }
 
 type SubmittedSections = { assignments: WorkRow[]; quizzes: WorkRow[] };

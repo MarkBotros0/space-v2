@@ -7,7 +7,7 @@ type Of<T extends QuizQuestionStudent["type"]> = Extract<QuizQuestionStudent, { 
  * `isAnswerKey`: it is one of the right options. `correct`: the student handled this option right
  * (picked a key option or left a wrong one alone), so a wrong tick and a missed key are both `false`.
  */
-export type ChoiceRow = { label: string; mine: boolean; correct: boolean; isAnswerKey: boolean };
+export type ChoiceRow = { id: number; label: string; mine: boolean; correct: boolean; isAnswerKey: boolean };
 
 /** One left item of a matching question: what the student paired it with, and the right partner. */
 export type MatchRow = { left: string; mine: string | null; correctRight: string; correct: boolean };
@@ -24,7 +24,7 @@ export function reviewRows(q: Of<"SINGLE_CHOICE" | "TRUE_FALSE" | "MULTI_CHOICE"
   return q.options.map((o) => {
     const mine = picked.has(o.id);
     const isAnswerKey = key.has(o.id);
-    return { label: o.label, mine, correct: mine === isAnswerKey, isAnswerKey };
+    return { id: o.id, label: o.label, mine, correct: mine === isAnswerKey, isAnswerKey };
   });
 }
 

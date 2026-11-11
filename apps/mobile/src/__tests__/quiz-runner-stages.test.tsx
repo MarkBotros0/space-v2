@@ -140,9 +140,9 @@ describe("quiz runner, result stages", () => {
     expect(await screen.findByLabelText("Score: 5 / 7")).toBeTruthy();
     expect(screen.getByText("Capital of France?")).toBeTruthy();
     expect(screen.getByText("Your answer, wrong")).toBeTruthy();
-    expect(screen.getByText("Correct answer, you missed it")).toBeTruthy();
-    expect(screen.getByText("0/2 pts")).toBeTruthy();
-    expect(screen.getByText("5/5 pts")).toBeTruthy();
+    expect(screen.getByText("Correct answer")).toBeTruthy();
+    expect(screen.getByText("0 / 2 pts")).toBeTruthy();
+    expect(screen.getByText("5 / 5 pts")).toBeTruthy();
     expect(screen.getAllByText("Wrong").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Right").length).toBeGreaterThan(0);
   });

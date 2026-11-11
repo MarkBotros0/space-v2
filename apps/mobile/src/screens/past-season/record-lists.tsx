@@ -38,7 +38,7 @@ export function AssignmentsList({ record }: { record: SeasonRecord }) {
 const QUIZ_CHIP = {
   NOT_TAKEN: { tone: "neutral", label: "Not taken" },
   IN_PROGRESS: { tone: "neutral", label: "Not finished" },
-  SUBMITTED: { tone: "neutral", label: "Awaiting grading" },
+  SUBMITTED: { tone: "neutral", label: "Awaiting marking" },
   GRADED: { tone: "ok", label: "Graded" },
 } as const;
 

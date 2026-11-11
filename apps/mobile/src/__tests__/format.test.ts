@@ -1,5 +1,6 @@
 import {
   NBSP,
+  formatScore,
   unbreakable,
   formatShortDateTime,
   addMinutesToWallTime,
@@ -167,5 +168,14 @@ describe("times never break across lines", () => {
 describe("notificationTypeLabel", () => {
   it("reads as words, not the enum", () => {
     expect(notificationTypeLabel("QUIZ_GRADED")).toBe("Quiz graded");
+  });
+});
+
+describe("formatScore", () => {
+  it("keeps one decimal at most and drops a trailing .0", () => {
+    expect(formatScore(7.25)).toBe("7.3");
+    expect(formatScore(7.5)).toBe("7.5");
+    expect(formatScore(8)).toBe("8");
+    expect(formatScore(0)).toBe("0");
   });
 });

@@ -21,9 +21,9 @@ describe("reviewRows", () => {
       review: { correctOptionIds: [12] },
     };
     expect(reviewRows(q)).toEqual([
-      { label: "London", mine: true, correct: false, isAnswerKey: false },
-      { label: "Paris", mine: false, correct: false, isAnswerKey: true },
-      { label: "Rome", mine: false, correct: true, isAnswerKey: false },
+      { id: 11, label: "London", mine: true, correct: false, isAnswerKey: false },
+      { id: 12, label: "Paris", mine: false, correct: false, isAnswerKey: true },
+      { id: 13, label: "Rome", mine: false, correct: true, isAnswerKey: false },
     ]);
   });
 
