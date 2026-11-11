@@ -39,13 +39,15 @@ const studentSession = {
 const mcq = {
   id: 100,
   order: 0,
-  type: "MCQ" as const,
+  type: "SINGLE_CHOICE" as const,
   prompt: "Capital of France?",
   points: 2,
-  options: ["London", "Paris"],
-  selectedIndex: null,
-  text: null,
-  isCorrect: null,
+  options: [
+    { id: 1001, label: "London" },
+    { id: 1002, label: "Paris" },
+  ],
+  answer: { optionId: null as number | null },
+  review: null,
   pointsAwarded: null,
 };
 const essay = {
@@ -54,10 +56,8 @@ const essay = {
   type: "ESSAY" as const,
   prompt: "Discuss.",
   points: 5,
-  options: [],
-  selectedIndex: null,
-  text: null,
-  isCorrect: null,
+  answer: { text: "" },
+  review: null,
   pointsAwarded: null,
 };
 
@@ -73,10 +73,11 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
     attemptNumber: 0,
     readOnly: false,
     status: null,
+    stage: "not_started",
     totalScore: null,
     submittedAt: null,
     gradedAt: null,
-    resultsReleased: true,
+    answersReleased: false,
     questions: [mcq, essay],
     ...over,
   };
@@ -132,8 +133,8 @@ describe("quiz runner", () => {
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt", {
         answers: [
-          { questionId: 100, selectedIndex: 1, text: null },
-          { questionId: 101, selectedIndex: null, text: "Because of the river." },
+          { type: "SINGLE_CHOICE", questionId: 100, optionId: 1002 },
+          { type: "ESSAY", questionId: 101, text: "Because of the river." },
         ],
       }),
     );
@@ -167,8 +168,8 @@ describe("quiz runner", () => {
           attemptNumber: 1,
           status: "SUBMITTED",
           questions: [
-            { ...mcq, selectedIndex: 1 },
-            { ...essay, text: "Because." },
+            { ...mcq, answer: { optionId: 1002 } },
+            { ...essay, answer: { text: "Because." } },
           ],
         }),
       },
@@ -204,8 +205,8 @@ describe("quiz runner", () => {
           totalScore: 5,
           gradedAt: "2099-03-02T10:00:00.000Z",
           questions: [
-            { ...mcq, selectedIndex: 0, isCorrect: false, pointsAwarded: 0 },
-            { ...essay, text: "Because.", pointsAwarded: 5 },
+            { ...mcq, answer: { optionId: 1001 }, review: { correctOptionIds: [1002] }, pointsAwarded: 0 },
+            { ...essay, answer: { text: "Because." }, pointsAwarded: 5 },
           ],
         }),
       },
@@ -235,8 +236,8 @@ describe("quiz runner", () => {
           attemptNumber: 1,
           status: "SUBMITTED",
           questions: [
-            { ...mcq, selectedIndex: 1, isCorrect: true, pointsAwarded: 2 },
-            { ...essay, text: "Because." },
+            { ...mcq, answer: { optionId: 1002 }, review: { correctOptionIds: [1002] }, pointsAwarded: 2 },
+            { ...essay, answer: { text: "Because." } },
           ],
         }),
       },
@@ -273,8 +274,8 @@ describe("quiz runner", () => {
           attemptNumber: 1,
           status: "IN_PROGRESS",
           questions: [
-            { ...mcq, selectedIndex: 1 },
-            { ...essay, text: "Half done." },
+            { ...mcq, answer: { optionId: 1002 } },
+            { ...essay, answer: { text: "Half done." } },
           ],
         }),
       },
@@ -295,8 +296,8 @@ describe("quiz runner", () => {
           attemptNumber: 1,
           status: "IN_PROGRESS",
           questions: [
-            { ...mcq, selectedIndex: 1 },
-            { ...essay, text: "Done." },
+            { ...mcq, answer: { optionId: 1002 } },
+            { ...essay, answer: { text: "Done." } },
           ],
         }),
       },

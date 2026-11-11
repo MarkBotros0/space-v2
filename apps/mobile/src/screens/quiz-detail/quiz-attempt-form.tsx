@@ -1,89 +1,43 @@
-import { Check } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { Screen } from "../../design/layout/screen";
 import { SaveBar } from "../../design/layout/save-bar";
-import { cn } from "../../design/lib/cn";
-import { iconWithClassName } from "../../design/lib/icon";
-import { Badge, ConfirmDialog, Text, Textarea } from "../../design/ui";
+import { Badge, ConfirmDialog, Text } from "../../design/ui";
 import { useSubmitAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
 import { useIsOnline } from "../../lib/online";
 import { reportOutcome } from "../../lib/outcome";
+import { isAnswered, type DraftAnswer } from "./answer-model";
+import { QuestionInput, questionTypeLabel } from "./questions";
 import { QCARD, quizTitleProps } from "./quiz-header";
-import { useQuizAnswers, type Answer } from "./use-quiz-answers";
-
-iconWithClassName(Check);
+import { useQuizAnswers } from "./use-quiz-answers";
 
 const SUBMIT_FAILED = "Couldn't submit the quiz. Check your connection and try again.";
 
-/** One question of the attempt: MCQ options as radios, an essay as a textarea. */
+/** One question of the attempt: its number, type and points, then the input for its type. */
 function AttemptQuestion({
   q,
   index,
-  answer: a,
+  answer,
   onChange,
+  disabled,
 }: {
   q: QuizQuestionStudent;
   index: number;
-  answer: Answer | undefined;
-  onChange: (patch: { selectedIndex?: number | null; text?: string }) => void;
+  answer: DraftAnswer | undefined;
+  onChange: (next: DraftAnswer) => void;
+  disabled: boolean;
 }) {
   return (
     <View className={QCARD}>
-      <View className="flex-row items-center gap-2">
+      <View className="flex-row flex-wrap items-center gap-2">
         <Text variant="caption" className="font-bold text-muted-foreground">{`Q${index + 1}`}</Text>
-        <Badge variant={q.type === "MCQ" ? "teal" : "outline"}>{q.type === "MCQ" ? "Multiple choice" : "Essay"}</Badge>
+        <Badge variant={q.type === "ESSAY" ? "outline" : "teal"}>{questionTypeLabel(q)}</Badge>
         <Text variant="caption" className="text-muted-foreground">{`${q.points} pt${q.points === 1 ? "" : "s"}`}</Text>
       </View>
-      <Text variant="headline" className="mt-2">
-        {q.prompt}
-      </Text>
-      {q.type === "MCQ" ? (
-        <View className="mt-3 flex-col gap-2">
-          {q.options.map((option, optionIndex) => {
-            const selected = a?.selectedIndex === optionIndex;
-            return (
-              <Pressable
-                key={optionIndex}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option}`}
-                onPress={() => onChange({ selectedIndex: optionIndex })}
-                className={cn(
-                  "min-h-11 flex-row items-center gap-3 rounded-control border px-4 py-3",
-                  selected ? "border-ring bg-accent" : "border-control-border bg-surface",
-                )}
-              >
-                <View
-                  className={cn(
-                    "size-5 shrink-0 items-center justify-center rounded-full border",
-                    selected ? "border-ring bg-ring" : "border-control-border",
-                  )}
-                >
-                  {selected ? <Check size={12} className="text-primary-foreground" /> : null}
-                </View>
-                <Text
-                  variant="subhead"
-                  className={cn("min-w-0 flex-1 font-medium", selected ? "text-accent-foreground" : "text-foreground")}
-                >
-                  {option}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      ) : (
-        <Textarea
-          accessibilityLabel={`Answer ${index + 1}`}
-          className="mt-3"
-          placeholder="Write your answer…"
-          value={a?.text ?? ""}
-          onChangeText={(text) => onChange({ text })}
-        />
-      )}
+      <QuestionInput question={q} index={index} answer={answer} onChange={onChange} disabled={disabled} />
     </View>
   );
 }
@@ -133,7 +87,7 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
   // are answered, and the autosave state.
   const answered = detail.questions.filter((q) => {
     const a = answers[q.id];
-    return q.type === "MCQ" ? a?.selectedIndex != null : (a?.text ?? "").trim().length > 0;
+    return a !== undefined && isAnswered(q, a);
   }).length;
   const saveLabel =
     saveState === "saving"
@@ -170,7 +124,8 @@ export function AttemptForm({ detail, id }: { detail: StudentQuizDetail; id: num
             q={q}
             index={index}
             answer={answers[q.id]}
-            onChange={(patch) => setAnswer(q, patch)}
+            onChange={(next) => setAnswer(q, next)}
+            disabled={submit.isPending}
           />
         ))}
         <ConfirmDialog
