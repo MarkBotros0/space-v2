@@ -285,6 +285,40 @@ describe("quiz runner, every question type", () => {
     expect(box.props.autoCorrect).toBe(false);
   });
 
+  it("options of an Arabic question put their radio on the right, the label beside it", async () => {
+    await open({
+      ...base,
+      id: 700,
+      type: "TRUE_FALSE",
+      prompt: "الأرض كروية.",
+      options: opts(["True", "False"], 7001),
+      answer: { optionId: null },
+    });
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(style(radio)).toEqual(expect.objectContaining({ flexDirection: "row-reverse" }));
+    }
+    // An English label in an Arabic question still sits against its radio.
+    expect(style(screen.getByText("True"))).toEqual(expect.objectContaining({ textAlign: "right" }));
+  });
+
+  it("options of an English question keep their radio on the left, even with an Arabic label", async () => {
+    await open({
+      ...base,
+      id: 701,
+      type: "SINGLE_CHOICE",
+      prompt: "Which verse?",
+      options: opts(["يوحنا 3:16", "John 14:6"], 7011),
+      answer: { optionId: null },
+    });
+    for (const radio of screen.getAllByRole("radio")) {
+      expect(style(radio)).toEqual(expect.objectContaining({ flexDirection: "row" }));
+    }
+    // Its own direction for shaping, aligned to the radio's side.
+    expect(style(screen.getByText("يوحنا 3:16"))).toEqual(
+      expect.objectContaining({ writingDirection: "rtl", textAlign: "left" }),
+    );
+  });
+
   it("locks the answers while the quiz is being handed in", async () => {
     post.mockReturnValue(new Promise(() => {}));
     await open({ ...base, id: 600, type: "ESSAY", prompt: "Discuss.", answer: { text: "Done." } }, 1);

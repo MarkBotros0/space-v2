@@ -1,5 +1,6 @@
 import { View } from "react-native";
 
+import { textDirection } from "../../../design/lib/text-direction";
 import { Text } from "../../../design/ui";
 import { joinMeta } from "../../../lib/join-meta";
 import { toggleChoice } from "../answer-model";
@@ -10,6 +11,7 @@ import type { QuestionProps } from "./props";
 export function MultiChoice({ question, index, answer, onChange, disabled }: QuestionProps<"MULTI_CHOICE">) {
   const picked = answer.optionIds;
   const full = picked.length >= question.choose;
+  const direction = textDirection(question.prompt);
   return (
     <View className="flex-col gap-2">
       <Text variant="caption" className="text-muted-foreground">
@@ -21,6 +23,7 @@ export function MultiChoice({ question, index, answer, onChange, disabled }: Que
           <ChoiceRow
             key={option.id}
             role="checkbox"
+            direction={direction}
             label={option.label}
             accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option.label}`}
             checked={checked}
