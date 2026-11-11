@@ -33,6 +33,6 @@ students who have a graded attempt. Paper quizzes send nothing on release. A re-
 nothing stays silent.
 
 A new student read of quiz results must go through `lib/quizzes/student-stage.ts`. Staff see
-`resultsReleasedAt` and `canReleaseResults`; the release card
+`answersReleasedAt` and `canReleaseResults`; the release card
 (`screens/quiz-grade/release-results.tsx`) sits on the grading screen and the quiz page. Quizzes
 graded before this existed were backfilled as released.
