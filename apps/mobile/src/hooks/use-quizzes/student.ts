@@ -102,9 +102,11 @@ export function useSaveAnswers(id: number) {
     // leaves and re-opens the quiz inside staleTime sees their saved answers
     // as blank. Hook-level, so it still runs for a flush fired on unmount.
     onSuccess: (_result, answers) => {
-      queryClient.setQueryData<StudentQuizDetail>(queryKeys.quizzes.studentDetail(id), (old) =>
-        mergeSavedAnswers(old, answers),
-      );
+      const key = queryKeys.quizzes.studentDetail(id);
+      // Keep the cached read's time: the countdown's clock offset pairs `serverNow` with it, and
+      // this merge brings no new `serverNow`.
+      const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt;
+      queryClient.setQueryData<StudentQuizDetail>(key, (old) => mergeSavedAnswers(old, answers), { updatedAt });
     },
   });
 }

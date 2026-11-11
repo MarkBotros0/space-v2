@@ -112,7 +112,8 @@ export function compactHeaderFade(to: 0 | 1, animate: boolean): number {
  * so they stay reachable once the in-content copy has scrolled away. They are
  * live only while `interactive` (the bar is shown): until then the whole bar
  * takes no touches and is out of the accessibility tree, so nothing finds a
- * second, invisible copy of them.
+ * second, invisible copy of them. With `back` the bar is always shown, so its
+ * `trailing` (`Screen`'s `pinned`: a quiz's countdown) is always live and never fades.
  */
 export function CompactHeader({
   title,
@@ -185,6 +186,11 @@ export function CompactHeader({
               <CompactTitle title={title} />
             </View>
           </Animated.View>
+        ) : null}
+        {trailing ? (
+          <View testID="back-bar-trailing" className="ml-auto shrink-0 flex-row items-center">
+            {trailing}
+          </View>
         ) : null}
       </View>
       <Animated.View style={[styles.hairline, fade]}>

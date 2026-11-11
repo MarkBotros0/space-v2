@@ -8,10 +8,10 @@ import { EmptyState } from "../../design/ui";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { StatusChip, statusChip } from "../../design/ui/status-chip";
 import { flattenGradingPages, useQuizAttempts } from "../../hooks/use-quizzes";
-import { formatDate, unbreakable } from "../../lib/format";
 import { AttemptSheet } from "./attempt-sheet";
 import { attemptSubtitle } from "./attempt-subtitle";
 import { ReleaseResultsCard } from "./release-results";
+import { WaitingList } from "./waiting-list";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
@@ -68,28 +68,7 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
             ))}
           </GroupedList>
         )}
-        {waiting.length > 0 ? (
-          /**
-           * V2-ONLY (spec 12 D5/R102): students who haven't finished.
-           *
-           * No Reopen here, and no press at all. A waiting student either never
-           * started (the server answers 409 `no_attempt`) or has an attempt still
-           * IN_PROGRESS (409 `attempt_open`) — they can simply resume it — so the
-           * button could only ever fail.
-           */
-          <GroupedList header="Waiting">
-            {waiting.map((w) => (
-              <ListRow
-                key={w.studentUserId}
-                title={w.studentName ?? "Student"}
-                titleLines={2}
-                subtitle={
-                  w.startedAt === null ? "Not started" : `In progress since ${unbreakable(formatDate(w.startedAt))}`
-                }
-              />
-            ))}
-          </GroupedList>
-        ) : null}
+        {waiting.length > 0 ? <WaitingList quizId={id} waiting={waiting} /> : null}
         <LoadMoreButton
           query={{ hasNextPage, isFetchingNextPage, fetchNextPage }}
           loadingLabel="Loading…"

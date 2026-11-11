@@ -8,6 +8,7 @@ import {
   type UseQueryResult,
 } from "@tanstack/react-query";
 import {
+  endAttemptResponseSchema,
   quizGradeSheetSchema,
   quizGradingAttemptSchema,
   quizGradingPageSchema,
@@ -123,6 +124,25 @@ export function useReopenAttempt(id: number) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
       // A reopened attempt is no longer graded, so the lists' "2/2 graded" moves.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+    },
+  });
+}
+
+/**
+ * Staff End: closes a student's open attempt and submits what is saved (endReason ENDED_BY_STAFF,
+ * docs/rules/quiz-integrity.md "Timing"). Refreshes on a refusal too: `attempt_closed` means the
+ * list is out of date (the student submitted, or time ran out).
+ */
+export function useEndAttempt(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
+    mutationFn: (studentUserId: number) =>
+      apiSend("post", `/api/v1/quizzes/${id}/attempts/end`, { studentUserId }, endAttemptResponseSchema),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
   });

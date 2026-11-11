@@ -75,6 +75,11 @@ type ScreenProps = {
   back?: BackTarget | null;
   /** Actions beside the large title. */
   trailing?: ReactNode;
+  /**
+   * Something that must stay in view while the content scrolls (a quiz's countdown): at the right
+   * of the pinned back bar, or in a bar of its own on a screen without one. Never fades.
+   */
+  pinned?: ReactNode;
   /** Home only: the notification bell and the user menu in the title row. */
   home?: boolean;
   refreshing?: boolean;
@@ -117,6 +122,15 @@ function useEffectiveBack(back: BackTarget | null | undefined): BackTarget | nul
   return hasTabBar ? null : BACK_TO_PREVIOUS;
 }
 
+/** `pinned` on a screen with no back bar: its own row above the scroll view, at the right. */
+function PinnedBar({ children }: { children: ReactNode }) {
+  return (
+    <View testID="pinned-bar" className="min-h-[44px] flex-row items-center justify-end bg-background px-4">
+      {children}
+    </View>
+  );
+}
+
 /** The back bar alone: no title to fade in, so its hairline stays hidden. */
 function PinnedBackBar({ back }: { back: BackTarget }) {
   const progress = useSharedValue(0);
@@ -130,6 +144,7 @@ export function Screen({
   compactTitle: compactTitleProp,
   back: backProp,
   trailing,
+  pinned,
   home = false,
   refreshing = false,
   onRefresh,
@@ -277,7 +292,8 @@ export function Screen({
   if (!scroll) {
     return (
       <ScreenChrome back={null}>
-        {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
+        {back ? <CompactHeader title={title} back={back} progress={progress} trailing={pinned} /> : null}
+        {pinned && !back ? <PinnedBar>{pinned}</PinnedBar> : null}
         <View
           className={cn("flex-1 px-4 pt-4", contentClassName)}
           style={{ paddingBottom: footer ? contentBottom : bottom }}
@@ -292,7 +308,8 @@ export function Screen({
 
   return (
     <ScreenChrome back={null}>
-      {back ? <CompactHeader title={title} back={back} progress={progress} /> : null}
+      {back ? <CompactHeader title={title} back={back} progress={progress} trailing={pinned} /> : null}
+      {pinned && !back ? <PinnedBar>{pinned}</PinnedBar> : null}
       <View className="flex-1">
         <Animated.ScrollView
           testID="screen-scroll"

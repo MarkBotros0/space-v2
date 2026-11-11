@@ -1,9 +1,11 @@
 /**
- * The quiz's name (for paper, its max score; for online, the shuffle switch) in a sheet with its own
+ * The quiz's name (for paper, its max score; for online, the shuffle switch, the start window and the
+ * time limit) in a sheet with its own
  * Save, so the builder page has one action of its own: Publish (owner,
  * 2026-11-07: a Publish button at the top and a Save at the bottom was messy).
  */
 import { useState } from "react";
+import { View } from "react-native";
 import { updateQuizRequestSchema, type QuizAuthoringDetail } from "@space/shared";
 
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
@@ -11,8 +13,12 @@ import { useUpdateQuiz } from "../../hooks/use-quiz-authoring";
 import { apiErrorMessage } from "../../lib/api-error";
 import { firstErrorByField } from "../../lib/form-errors";
 import { QuizSettings } from "./quiz-settings";
+import { QuizTimingFields } from "./quiz-timing-fields";
+import { timingBody, timingDraft } from "./timing-values";
 
 const MAX_SCORE_MESSAGE = "Max score must be a whole number from 1 to 1000.";
+const TIME_LIMIT_MESSAGE = "Time limit must be a whole number of minutes from 1 to 300.";
+const WINDOW_ORDER_MESSAGE = "Can start until must be after can start from.";
 
 export function QuizDetailsSheet({
   quiz,
@@ -27,6 +33,7 @@ export function QuizDetailsSheet({
   const [title, setTitle] = useState(quiz.title);
   const [maxScore, setMaxScore] = useState(String(quiz.maxScore));
   const [shuffle, setShuffle] = useState(quiz.shuffleQuestions);
+  const [timing, setTiming] = useState(() => timingDraft(quiz));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -38,13 +45,16 @@ export function QuizDetailsSheet({
   // The server's own check (quiz_has_attempts) is whether any attempt exists.
   const shuffleLocked = quiz.attemptCount > 0;
   const shuffleChanged = !isPaper && !shuffleLocked && shuffle !== quiz.shuffleQuestions;
-  const dirty = titleChanged || scoreChanged || shuffleChanged;
+  // Timing is ONLINE only; the time limit freezes with the same check as the shuffle.
+  const timingChanges = isPaper ? {} : timingBody(timing, quiz, shuffleLocked);
+  const dirty = titleChanged || scoreChanged || shuffleChanged || Object.keys(timingChanges).length > 0;
 
   const close = () => {
     // Reopening starts from what is saved, not from an abandoned edit.
     setTitle(quiz.title);
     setMaxScore(String(quiz.maxScore));
     setShuffle(quiz.shuffleQuestions);
+    setTiming(timingDraft(quiz));
     setErrors({});
     setSaveError(null);
     onClose();
@@ -52,7 +62,9 @@ export function QuizDetailsSheet({
 
   const save = () => {
     if (!dirty) return close();
-    const body: { title?: string; maxScore?: number; shuffleQuestions?: boolean } = {};
+    const body: { title?: string; maxScore?: number; shuffleQuestions?: boolean } & typeof timingChanges = {
+      ...timingChanges,
+    };
     if (titleChanged) body.title = title.trim();
     if (shuffleChanged) body.shuffleQuestions = shuffle;
     if (scoreChanged) body.maxScore = maxScore.trim() === "" ? Number.NaN : Number(maxScore);
@@ -62,6 +74,8 @@ export function QuizDetailsSheet({
       const next: Record<string, string> = {};
       if ("title" in byField) next.title = "Enter a title.";
       if ("maxScore" in byField) next.maxScore = MAX_SCORE_MESSAGE;
+      if ("timeLimitMinutes" in byField) next.timeLimitMinutes = TIME_LIMIT_MESSAGE;
+      if ("startsUntil" in byField) next.startsUntil = WINDOW_ORDER_MESSAGE;
       if (Object.keys(next).length === 0) next.form = Object.values(byField)[0] ?? "Check the quiz.";
       setErrors(next);
       return;
@@ -81,18 +95,23 @@ export function QuizDetailsSheet({
       title="Quiz details"
       footer={<SheetSaveBar label="Save" onPress={save} loading={update.isPending} error={saveError ?? errors.form} />}
     >
-      <QuizSettings
-        kind={quiz.kind}
-        title={title}
-        maxScore={maxScore}
-        locked={scoreLocked}
-        shuffle={shuffle}
-        shuffleLocked={shuffleLocked}
-        errors={errors}
-        onTitle={setTitle}
-        onMaxScore={setMaxScore}
-        onShuffle={setShuffle}
-      />
+      <View className="flex-col gap-4">
+        <QuizSettings
+          kind={quiz.kind}
+          title={title}
+          maxScore={maxScore}
+          locked={scoreLocked}
+          shuffle={shuffle}
+          shuffleLocked={shuffleLocked}
+          errors={errors}
+          onTitle={setTitle}
+          onMaxScore={setMaxScore}
+          onShuffle={setShuffle}
+        />
+        {isPaper ? null : (
+          <QuizTimingFields draft={timing} limitLocked={shuffleLocked} errors={errors} onChange={setTiming} />
+        )}
+      </View>
     </Sheet>
   );
 }

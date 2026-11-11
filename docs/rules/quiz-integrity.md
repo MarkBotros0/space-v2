@@ -75,6 +75,10 @@ The ended attempt stays for staff to see. **The best attempt counts** (see `quiz
 - **The window can be edited any time. The limit is frozen once attempts exist.**
 - **Staff (leader, admin, super) can End an open attempt** for a student in their set, timed or
   not. It is marked like a submit with `endReason` ENDED_BY_STAFF.
+- **The countdown stays in view** (owner, 2026-11-11): pinned in the quiz screen's top bar while the
+  questions scroll, `m:ss`, red under a minute with the time still written. No five- or one-minute
+  warnings and nothing beside Submit. At zero the app sends what is still unsaved, re-reads the quiz
+  (the read closes the attempt) and says "Time's up. Your answers were submitted."
 - **An expired attempt is closed by the scheduler** (`quiz-deadlines`) **or by the next read**,
   whichever comes first, so a dead phone never leaves it open.
 

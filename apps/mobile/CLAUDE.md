@@ -129,7 +129,8 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
   title, `back`, `home` (bell + avatar, Home only), the offline banner, and the top
   inset, which only it owns. `ShellFrame` is the transitional wrapper over it. A screen
   on the stack gets the pinned back bar by default; `back={null}` opts out, and an
-  in-content back link is a duplicate. Bottom padding comes from `useShellBottomPadding()`,
+  in-content back link is a duplicate. `pinned` puts something that must stay in view (a quiz's
+  countdown) at the right of that bar, never fading. Bottom padding comes from `useShellBottomPadding()`,
   driven by the tab-bar presence context (tab bar vs none). A long form's pinned Save goes in
   `Screen`'s `footer` (`footer={<SaveBar … />}`): outside the scroll view, above the pill or
   the inset, riding the keyboard, with the content padded by its measured height. Never put a
