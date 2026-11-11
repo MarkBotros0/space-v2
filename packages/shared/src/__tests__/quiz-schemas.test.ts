@@ -1,5 +1,6 @@
 import {
   createQuizRequestSchema,
+  quizAnswerInputSchema,
   quizQuestionStudentSchema,
   reorderQuestionsRequestSchema,
   saveQuizGradesRequestSchema,
@@ -74,6 +75,25 @@ describe("no key inside a student question's items (final review I2)", () => {
     expect(ok({ ...single, extra: 1 })).toBe(false);
     expect(ok({ ...single, answer: { optionId: null, isCorrect: true } })).toBe(false);
     expect(ok({ ...matching, answer: { pairs: [{ leftId: 1, rightId: 2, correct: true }] } })).toBe(false);
+  });
+});
+
+describe("quizAnswerInputSchema", () => {
+  it("refuses the same blank twice in one FILL_BLANK answer", () => {
+    const answer = (blanks: { blankId: number; text: string }[]) =>
+      quizAnswerInputSchema.safeParse({ type: "FILL_BLANK", questionId: 3, blanks }).success;
+    expect(
+      answer([
+        { blankId: 5, text: "a" },
+        { blankId: 6, text: "b" },
+      ]),
+    ).toBe(true);
+    expect(
+      answer([
+        { blankId: 5, text: "a" },
+        { blankId: 5, text: "b" },
+      ]),
+    ).toBe(false);
   });
 });
 

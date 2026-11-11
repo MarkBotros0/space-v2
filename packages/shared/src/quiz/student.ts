@@ -134,7 +134,10 @@ export const quizAnswerInputSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("FILL_BLANK"),
       questionId,
-      blanks: z.array(z.object({ blankId: id, text: z.string().max(500) }).strict()).max(10),
+      blanks: z
+        .array(z.object({ blankId: id, text: z.string().max(500) }).strict())
+        .max(10)
+        .refine((b) => unique(b.map((x) => x.blankId)), { message: "Each blank once." }),
     })
     .strict(),
   z.object({ type: z.literal("ESSAY"), questionId, text: z.string().max(20000) }).strict(),

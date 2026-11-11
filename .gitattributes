@@ -1,0 +1,3 @@
+# The Prisma schema is hashed and parsed by tools that expect LF; a Windows
+# checkout with autocrlf would otherwise turn it CRLF.
+*.prisma text eol=lf
