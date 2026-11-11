@@ -80,6 +80,10 @@ The ended attempt stays for staff to see. **The best attempt counts** (see `quiz
   questions scroll, `m:ss`, red under a minute with the time still written. No five- or one-minute
   warnings and nothing beside Submit. At zero the app sends what is still unsaved, re-reads the quiz
   (the read closes the attempt) and says "Time's up. Your answers were submitted."
+- **An attempt ended elsewhere moves the screen on.** When a save or submit is refused because the
+  attempt closed (staff End, or the server's clock ran out first) or a reopened attempt isn't started,
+  the app stops saving and re-reads the quiz: the result, or the start card. A close says "This
+  attempt has ended."
 - **An expired attempt is closed by the scheduler** (`quiz-deadlines`) **or by the next read**,
   whichever comes first, so a dead phone never leaves it open.
 

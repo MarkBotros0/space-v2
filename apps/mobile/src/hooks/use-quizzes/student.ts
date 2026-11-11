@@ -9,6 +9,7 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../../lib/api-client";
+import { apiErrorCode } from "../../lib/api-error";
 import { DASHBOARD_META } from "../../lib/dashboard-invalidation";
 import { queryKeys } from "../../lib/query-keys";
 import { apiGet, apiSend } from "../../lib/api-request";
@@ -53,6 +54,23 @@ export function useStartAttempt(id: number) {
 }
 
 export type AnswerInput = QuizAnswerInput;
+
+/**
+ * A save or submit refused because the attempt is no longer the one the form shows: closed elsewhere
+ * (staff End, or the server's clock ran out before the phone's), or a reopened timed attempt not
+ * started yet. No retry can change that.
+ */
+export function isAttemptGone(err: unknown): boolean {
+  const code = apiErrorCode(err);
+  return code === "attempt_closed" || code === "attempt_not_started";
+}
+
+/** Re-read the quiz so the runner shows where the attempt really is: the result, or the start card. */
+function refreshOnGone(queryClient: ReturnType<typeof useQueryClient>, id: number, err: unknown) {
+  if (!isAttemptGone(err)) return;
+  void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(id) });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+}
 
 /** The `answer` a saved input leaves on a question of the same type; undefined if the shapes disagree. */
 function savedAnswer(q: StudentQuizDetail["questions"][number], a: AnswerInput): DraftAnswerShape | undefined {
@@ -108,6 +126,7 @@ export function useSaveAnswers(id: number) {
       const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt;
       queryClient.setQueryData<StudentQuizDetail>(key, (old) => mergeSavedAnswers(old, answers), { updatedAt });
     },
+    onError: (err) => refreshOnGone(queryClient, id, err),
   });
 }
 
@@ -124,5 +143,6 @@ export function useSubmitAttempt(id: number) {
       queryClient.setQueryData(queryKeys.quizzes.studentDetail(id), detail);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
+    onError: (err) => refreshOnGone(queryClient, id, err),
   });
 }

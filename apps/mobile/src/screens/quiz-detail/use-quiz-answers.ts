@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
-import { useSaveAnswers, type AnswerInput } from "../../hooks/use-quizzes";
+import { isAttemptGone, useSaveAnswers, type AnswerInput } from "../../hooks/use-quizzes";
 import { isAnswered, toAnswerInput, type DraftAnswer } from "./answer-model";
 
 /**
@@ -21,9 +21,17 @@ const SAVE_DEBOUNCE_MS = 1000;
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-/** The in-progress attempt's answers, saved in debounced batches. */
-export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
+/**
+ * The in-progress attempt's answers, saved in debounced batches. `onGone` runs once when a save is
+ * refused because the attempt ended elsewhere or isn't started (`isAttemptGone`): saving stops, and
+ * the hook has already asked for a fresh read that moves the screen on.
+ */
+export function useQuizAnswers(detail: StudentQuizDetail, quizId: number, onGone?: (err: unknown) => void) {
   const save = useSaveAnswers(quizId);
+  const onGoneRef = useRef(onGone);
+  onGoneRef.current = onGone;
+  // Set once the server says this attempt can take no more saves: nothing is sent after it.
+  const goneRef = useRef(false);
   const [answers, setAnswers] = useState<Record<number, DraftAnswer>>(() =>
     Object.fromEntries(detail.questions.map((q) => [q.id, q.answer])),
   );
@@ -39,6 +47,10 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
 
   /** One PATCH of the ids pending right now; edits made meanwhile stay pending. */
   const sendPending = async (): Promise<boolean> => {
+    if (goneRef.current) {
+      pendingRef.current.clear();
+      return false;
+    }
     const sent = [...pendingRef.current];
     if (sent.length === 0) return true;
     // Take exactly these ids out BEFORE the request: a question edited while
@@ -54,7 +66,15 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
       const settled = pendingRef.current.size === 0 && timerRef.current === null;
       setSaveState(settled ? "saved" : "saving");
       return true;
-    } catch {
+    } catch (err) {
+      if (isAttemptGone(err)) {
+        // No retry can land: drop what is pending, and let the fresh read show the result or the start card.
+        pendingRef.current.clear();
+        if (!goneRef.current) onGoneRef.current?.(err);
+        goneRef.current = true;
+        setSaveState("idle");
+        return false;
+      }
       // Nothing was saved: put the ids back so the next flush retries them.
       for (const qid of sent) pendingRef.current.add(qid);
       setSaveState("error");
@@ -128,6 +148,8 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
     answers,
     setAnswer,
     flush,
+    /** The server refused a save because the attempt ended or isn't started; the screen is moving on. */
+    isGone: () => goneRef.current,
     hasUnsentOffline,
     saveState,
     isComplete,

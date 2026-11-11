@@ -6,7 +6,7 @@ import { Screen } from "../../design/layout/screen";
 import { SaveBar } from "../../design/layout/save-bar";
 import { Badge, ConfirmDialog, Text } from "../../design/ui";
 import { useSubmitAttempt } from "../../hooks/use-quizzes";
-import { apiErrorMessage } from "../../lib/api-error";
+import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
 import { useIsOnline } from "../../lib/online";
 import { reportOutcome } from "../../lib/outcome";
 import { isAnswered, type DraftAnswer } from "./answer-model";
@@ -17,6 +17,8 @@ import { useQuizAnswers } from "./use-quiz-answers";
 
 const SUBMIT_FAILED = "Couldn't submit the quiz. Check your connection and try again.";
 const TIME_UP = "Time's up. Your answers were submitted.";
+/** Staff ended it, or the server's clock ran out first; the screen moves to the result. */
+const ENDED = "This attempt has ended.";
 
 /** One question of the attempt: its number, type and points, then the input for its type. */
 function AttemptQuestion({
@@ -57,9 +59,14 @@ export function AttemptForm({
   /** Re-reads the quiz after the deadline (the read closes the attempt); true once it is closed. */
   onTimeUp: () => Promise<boolean>;
 }) {
-  const { answers, setAnswer, flush, hasUnsentOffline, saveState, isComplete, savePending } = useQuizAnswers(
+  // Read by the save's refusal handler, which outlives the render: time-up has its own message.
+  const timeUpRef = useRef(false);
+  const { answers, setAnswer, flush, isGone, hasUnsentOffline, saveState, isComplete, savePending } = useQuizAnswers(
     detail,
     id,
+    (err) => {
+      if (apiErrorCode(err) === "attempt_closed" && !timeUpRef.current) reportOutcome("error", ENDED);
+    },
   );
   const submit = useSubmitAttempt(id);
   const online = useIsOnline();
@@ -85,6 +92,8 @@ export function AttemptForm({
     }
     if (!(await flush())) {
       submitting.current = false;
+      // Gone: the save's refusal already said so, and the screen is moving to where the attempt is.
+      if (isGone()) return;
       reportOutcome("error", "Couldn't save your answers, so the quiz wasn't submitted.");
       return;
     }
@@ -92,7 +101,8 @@ export function AttemptForm({
       // The screen swaps to the result as the cache updates, so the toast (global) is
       // what confirms it while the bar is still in view.
       onSuccess: () => reportOutcome("success", "Quiz submitted."),
-      onError: (err) => reportOutcome("error", apiErrorMessage(err, SUBMIT_FAILED)),
+      onError: (err) =>
+        reportOutcome("error", apiErrorCode(err) === "attempt_closed" ? ENDED : apiErrorMessage(err, SUBMIT_FAILED)),
       onSettled: () => {
         submitting.current = false;
       },
@@ -102,6 +112,7 @@ export function AttemptForm({
   // At zero: send what is still waiting, then re-read; the read closes the attempt on the server and
   // the runner swaps to the result. No submit call: the server submits what is saved, complete or not.
   const onExpire = async () => {
+    timeUpRef.current = true;
     setTimeUp(true);
     setConfirmOpen(false);
     // Offline, a flush would wait for the connection; the server already holds the last saves.
