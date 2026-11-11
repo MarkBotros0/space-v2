@@ -128,8 +128,60 @@ export async function seedActivity(people: SweepPeople) {
   await addQuizQuestion(onlineQuiz.id, { type: "ESSAY", prompt: "What do you hope to learn this season?", points: 1 });
   // Every question type, Arabic content and each attempt stage (quiz-types.ts).
   await seedQuizTypes(people);
+  await seedTimedQuizzes(people);
 
   return { reflection, reading, parts, onlineQuiz };
+}
+
+const HOUR = 60 * 60 * 1000;
+/**
+ * An open attempt's deadline. Hours rather than the 20 minutes a start would give: the server only
+ * compares `deadlineAt`, and the sweep runs a while after the seed, so the attempt must still be open
+ * then (the read closes one past its deadline). The countdown shows hours for it.
+ */
+const SWEEP_DEADLINE_MS = 6 * HOUR;
+
+/**
+ * Timed quizzes, quiz 8 and 9 (quiz-types.ts makes 3 to 7): a start window open now, 20 minutes each
+ * (docs/rules/quiz-integrity.md "Timing"). Quiz 8 is not started by the student, so the start card
+ * names the limit, and the classmate is part-way through it, so staff grading offers End attempt.
+ * Quiz 9 has the student's attempt running, so the countdown shows.
+ */
+async function seedTimedQuizzes({ admin, student, classmate, season }: SweepPeople) {
+  const now = Date.now();
+  const timed = {
+    seasonId: season.id,
+    kind: "ONLINE" as const,
+    maxScore: 2,
+    publishedAt: fromToday(-1),
+    createdById: admin.id,
+    startsFrom: new Date(now - HOUR),
+    startsUntil: fromToday(7),
+    timeLimitMinutes: 20,
+  };
+  const question = (prompt: string, right: string, wrong: string) => ({
+    type: "SINGLE_CHOICE" as const,
+    prompt,
+    points: 1,
+    options: [
+      { label: right, isCorrect: true },
+      { label: wrong, isCorrect: false },
+    ],
+  });
+  const open = (quizId: number, studentUserId: number) =>
+    db.quizAttempt.create({
+      data: { quizId, studentUserId, shuffleSeed: 424242, deadlineAt: new Date(now + SWEEP_DEADLINE_MS) },
+    });
+
+  const startCard = await db.quiz.create({ data: { ...timed, title: "Timed check-in" } });
+  await addQuizQuestion(startCard.id, question("Which hall do we meet in?", "Hall A", "Hall B"));
+  await addQuizQuestion(startCard.id, question("How long is a session?", "90 minutes", "2 hours"));
+  await open(startCard.id, classmate.id);
+
+  const running = await db.quiz.create({ data: { ...timed, title: "Timed practice" } });
+  await addQuizQuestion(running.id, question("Who leads the opening night?", "The season admin", "A student"));
+  await addQuizQuestion(running.id, question("Where are notes kept?", "In the app", "On paper"));
+  await open(running.id, student.id);
 }
 
 export type SweepActivity = Awaited<ReturnType<typeof seedActivity>>;

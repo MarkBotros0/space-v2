@@ -280,3 +280,70 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s26-32-add-matching
+# Timing in the details sheet (quiz 2: online, no attempts, so every field is live). Each field is
+# focused or opened and looked at; Save is never tapped.
+- openLink: spacev2://quiz/2/edit
+- extendedWaitUntil:
+    visible: 'Edit quiz details'
+    timeout: 40000
+- tapOn: 'Edit quiz details'
+- extendedWaitUntil:
+    visible: 'Quiz title'
+    timeout: 40000
+- scrollUntilVisible:
+    element: 'Time limit in minutes'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-33-details-timing
+- tapOn: 'Time limit in minutes'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-34-details-time-limit-kbd
+- hideKeyboard
+- tapOn: 'Can start from'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-35-details-start-from-picker
+# Quiz 8: timed, and the classmate has started it, so the limit is locked and the window is not.
+- openLink: spacev2://quiz/8/edit
+- extendedWaitUntil:
+    visible: 'Edit quiz details'
+    timeout: 40000
+- tapOn: 'Edit quiz details'
+- extendedWaitUntil:
+    visible: 'Quiz title'
+    timeout: 40000
+- scrollUntilVisible:
+    element: 'Students have started this quiz, so its time limit can no longer change\.'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-36-details-time-limit-locked
+# Quiz 8's grading: the classmate's open attempt has End attempt; its confirm is opened and cancelled.
+- openLink: spacev2://quiz/8/grade
+- extendedWaitUntil:
+    visible: 'Max score: \d+'
+    timeout: 40000
+- scrollUntilVisible:
+    element: 'End .*attempt'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-37-grade-end-attempt
+- tapOn: 'End .*attempt'
+- extendedWaitUntil:
+    visible: 'Their saved answers are submitted\.'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-38-grade-end-confirm
+- tapOn: 'Cancel'
