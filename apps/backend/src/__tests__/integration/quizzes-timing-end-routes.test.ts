@@ -6,7 +6,13 @@ import { closeAllExpired } from "../../lib/quizzes/close-attempt";
 import { getHandlers } from "../../lib/scheduler/registry";
 import { createFirstAttempt } from "../../lib/quizzes/start-attempt";
 import { bearer, cleanupTestData } from "./fixtures";
-import { buildPublishedQuizIn, seedQuizFixtures, setLatestAttempt, type QuizFixtures } from "./quizzes-setup";
+import {
+  buildPublishedQuizIn,
+  quizGradedCountFor,
+  seedQuizFixtures,
+  setLatestAttempt,
+  type QuizFixtures,
+} from "./quizzes-setup";
 
 /* Staff End (spec "Live screen") and the scheduler's quiz-deadlines handler. */
 jest.setTimeout(60000);
@@ -34,6 +40,19 @@ async function openQuiz() {
   return quizId;
 }
 
+/** An open attempt with a written essay saved: End leaves it SUBMITTED for a leader to mark. */
+async function openQuizWithEssayWritten() {
+  const { quizId, essayId } = await buildPublishedQuizIn(f.seasonId, f.sessionId, { withEssay: true });
+  const student = bearer(f.studentToken);
+  await request(app).put(`/api/v1/quizzes/${quizId}/attempt`).set(student);
+  const saved = await request(app)
+    .patch(`/api/v1/quizzes/${quizId}/attempt`)
+    .set(student)
+    .send({ answers: [{ type: "ESSAY", questionId: essayId, text: "Because." }] });
+  expect(saved.status).toBe(200);
+  return quizId;
+}
+
 const latest = (quizId: number) =>
   db.quizAttempt.findFirstOrThrow({
     where: { quizId, studentUserId: f.ownStudentId },
@@ -47,11 +66,29 @@ describe("POST /quizzes/:id/attempts/end", () => {
     const before = await latest(quizId);
     const res = await end(quizId, f.leaderToken, f.ownStudentId);
     expect(res.status).toBe(200);
-    expect(res.body.data).toEqual({ attemptId: before.id, status: expect.stringMatching(/^(SUBMITTED|GRADED)$/) });
+    expect(res.body.data).toEqual({ attemptId: before.id, status: "GRADED" });
     const after = await latest(quizId);
-    expect(after.status).toBe(res.body.data.status);
+    expect(after.status).toBe("GRADED");
     expect(after.endReason).toBe("ENDED_BY_STAFF");
     expect(after.endedById).not.toBeNull();
+  });
+
+  it("End that grades at once sends exactly one \"Your score is in\"", async () => {
+    const quizId = await openQuiz();
+    const before = await quizGradedCountFor(f.ownStudentId);
+    const res = await end(quizId, f.leaderToken, f.ownStudentId);
+    expect(res.body.data.status).toBe("GRADED");
+    expect(await quizGradedCountFor(f.ownStudentId)).toBe(before + 1);
+  });
+
+  it("End that leaves an essay for a leader is SUBMITTED and notifies nobody", async () => {
+    const quizId = await openQuizWithEssayWritten();
+    const before = await quizGradedCountFor(f.ownStudentId);
+    const res = await end(quizId, f.leaderToken, f.ownStudentId);
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe("SUBMITTED");
+    expect((await latest(quizId)).status).toBe("SUBMITTED");
+    expect(await quizGradedCountFor(f.ownStudentId)).toBe(before);
   });
 
   it("an admin and a super can end", async () => {
