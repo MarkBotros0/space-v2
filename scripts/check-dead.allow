@@ -7,5 +7,3 @@ packages/shared/src/import/headers.ts:IMPORT_PROFILE_FIELDS
 packages/shared/src/enums.ts:quizQuestionTypeSchema
 packages/shared/src/reports/exports.ts:exportKindSchema
 packages/shared/src/standing.ts:standingSchema
-# The student option type the mobile quiz runner imports; stays until plan quiz-question-types Task 15.
-packages/shared/src/quiz/student.ts:StudentOption

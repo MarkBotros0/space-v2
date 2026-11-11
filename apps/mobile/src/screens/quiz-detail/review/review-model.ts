@@ -10,7 +10,7 @@ type Of<T extends QuizQuestionStudent["type"]> = Extract<QuizQuestionStudent, { 
 export type ChoiceRow = { id: number; label: string; mine: boolean; correct: boolean; isAnswerKey: boolean };
 
 /** One left item of a matching question: what the student paired it with, and the right partner. */
-export type MatchRow = { left: string; mine: string | null; correctRight: string; correct: boolean };
+type MatchRow = { left: string; mine: string | null; correctRight: string; correct: boolean };
 
 /** One gap of a fill-in-the-blank question: what the student wrote and what was expected. */
 export type BlankRow = { index: number; text: string; expected: string; correct: boolean | null };

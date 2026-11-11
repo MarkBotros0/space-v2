@@ -107,10 +107,7 @@ const BASELINE: Record<string, Record<string, number>> = {
   },
   // An empty value says so in words ("Not answered"), never "—".
   emDashEmpty: {
-    "src/screens/alumni/alumni-dashboard.tsx": 1,
     "src/screens/announcements/meta.ts": 1,
-    "src/screens/quiz-detail/quiz-result-view.tsx": 1,
-    "src/screens/quiz-grade/quiz-essay-grader.tsx": 1,
     "src/screens/season/group-section.tsx": 1,
     "src/screens/staff-today/super-today.tsx": 1,
   },
@@ -118,7 +115,6 @@ const BASELINE: Record<string, Record<string, number>> = {
   inlinePoints: {
     "app/(app)/quizzes.tsx": 1,
     "src/screens/quiz-detail/leader-quizzes.tsx": 1,
-    "src/screens/quiz-detail/quiz-result-view.tsx": 1,
     "src/screens/quiz-edit/quiz-builder.tsx": 1,
     "src/screens/session-detail/quizzes-cards.tsx": 1,
     "src/screens/session-detail/video-sections.tsx": 1,
