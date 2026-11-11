@@ -166,8 +166,9 @@ With skip blocking off, a student who jumps to the end reaches the end but not 9
   assignment is not **submitted** — a returned essay makes it not submitted again. Students who
   submitted get nothing.
 - "The next session": the first session of the season starting after the assignment is published.
-  If there is none, no reminder is sent and the Details line says so ("No upcoming session yet —
-  no reminder").
+  If there is none, no reminder is sent and the Details line says so ("No session after it was
+  published — no reminder"; "The next session was too close — no reminder" when the reminder time
+  had already passed).
 - Push notification plus an in-app notification (existing notification system and settings; a new
   kind under the assignments setting), linking to the assignment. One reminder per assignment per
   student.
