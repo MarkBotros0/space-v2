@@ -68,7 +68,10 @@ function Choices({ a }: { a: Of<"SINGLE_CHOICE" | "TRUE_FALSE" | "MULTI_CHOICE">
   return (
     <View className="flex-col gap-2">
       {a.options.map((o) => (
-        <View key={o.id} className="flex-col gap-1 rounded-control bg-surface-raised px-3 py-2">
+        <View
+          key={o.id}
+          className="flex-col gap-1 rounded-control border border-control-border bg-surface-raised px-3 py-2"
+        >
           <ContentText variant="subhead">{o.label}</ContentText>
           {picked.has(o.id) ? (
             <Mark right={o.isCorrect} word={o.isCorrect ? "Picked, right" : "Picked, wrong"} />
@@ -89,7 +92,10 @@ function Matches({ a }: { a: Of<"MATCHING"> }) {
         const chosen = a.pairs.find((x) => x.rightId === chosenId)?.right ?? null;
         const right = chosenId === p.rightId;
         return (
-          <View key={p.leftId} className="flex-col gap-1 rounded-control bg-surface-raised px-3 py-2">
+          <View
+            key={p.leftId}
+            className="flex-col gap-1 rounded-control border border-control-border bg-surface-raised px-3 py-2"
+          >
             <ContentText variant="subhead" className="font-medium">
               {p.left}
             </ContentText>
@@ -108,7 +114,10 @@ function Blanks({ a, marks, readOnly, onMark }: { a: Of<"FILL_BLANK"> } & Markin
   return (
     <View className="flex-col gap-2">
       {sorted.map((b, i) => (
-        <View key={b.blankId} className="flex-col gap-2 rounded-control bg-surface-raised px-3 py-2">
+        <View
+          key={b.blankId}
+          className="flex-col gap-2 rounded-control border border-control-border bg-surface-raised px-3 py-2"
+        >
           <Text variant="caption" className="font-bold text-muted-foreground">{`Blank ${i + 1}`}</Text>
           <ContentText variant="subhead">{`Student's answer: ${b.text || "none"}`}</ContentText>
           <ContentText variant="subhead" className="text-muted-foreground">{`Expected: ${b.expected}`}</ContentText>
@@ -126,7 +135,10 @@ function Blanks({ a, marks, readOnly, onMark }: { a: Of<"FILL_BLANK"> } & Markin
 function Essay({ a, marks, readOnly, onMark }: { a: Of<"ESSAY"> } & Marking) {
   return (
     <View className="flex-col gap-2">
-      <ContentText variant="subhead" className="rounded-control bg-surface-raised px-3 py-2">
+      <ContentText
+        variant="subhead"
+        className="rounded-control border border-control-border bg-surface-raised px-3 py-2"
+      >
         {a.text || "No answer"}
       </ContentText>
       {isLegacyEssay(a) ? (

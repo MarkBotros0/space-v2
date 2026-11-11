@@ -28,7 +28,9 @@ export function Mark({ right, word }: { right: boolean; word: string }) {
   return (
     <View className="flex-row items-center gap-1">
       <Icon size={14} className={right ? "text-ok" : "text-bad"} />
-      <Text variant="caption" className={cn("font-medium", right ? "text-ok" : "text-bad")}>
+      {/* The row's width, not the word's: at font 1.3 Android measured "Your answer, right" short
+          and dropped "right" (UI sweep s06). */}
+      <Text variant="caption" className={cn("min-w-0 flex-1 font-medium", right ? "text-ok" : "text-bad")}>
         {word}
       </Text>
     </View>
