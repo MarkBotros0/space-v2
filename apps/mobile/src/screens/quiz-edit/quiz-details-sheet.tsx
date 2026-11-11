@@ -1,5 +1,5 @@
 /**
- * The quiz's name (and, for paper, its max score) in a sheet with its own
+ * The quiz's name (for paper, its max score; for online, the shuffle switch) in a sheet with its own
  * Save, so the builder page has one action of its own: Publish (owner,
  * 2026-11-07: a Publish button at the top and a Save at the bottom was messy).
  */
@@ -26,6 +26,7 @@ export function QuizDetailsSheet({
   const update = useUpdateQuiz(quiz.id);
   const [title, setTitle] = useState(quiz.title);
   const [maxScore, setMaxScore] = useState(String(quiz.maxScore));
+  const [shuffle, setShuffle] = useState(quiz.shuffleQuestions);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -34,12 +35,16 @@ export function QuizDetailsSheet({
   const titleChanged = title.trim() !== quiz.title;
   const scoreLocked = quiz.gradeCount > 0;
   const scoreChanged = isPaper && !scoreLocked && maxScore !== String(quiz.maxScore);
-  const dirty = titleChanged || scoreChanged;
+  // The server's own check (quiz_has_attempts) is whether any attempt exists.
+  const shuffleLocked = quiz.attemptCount > 0;
+  const shuffleChanged = !isPaper && !shuffleLocked && shuffle !== quiz.shuffleQuestions;
+  const dirty = titleChanged || scoreChanged || shuffleChanged;
 
   const close = () => {
     // Reopening starts from what is saved, not from an abandoned edit.
     setTitle(quiz.title);
     setMaxScore(String(quiz.maxScore));
+    setShuffle(quiz.shuffleQuestions);
     setErrors({});
     setSaveError(null);
     onClose();
@@ -47,8 +52,9 @@ export function QuizDetailsSheet({
 
   const save = () => {
     if (!dirty) return close();
-    const body: { title?: string; maxScore?: number } = {};
+    const body: { title?: string; maxScore?: number; shuffleQuestions?: boolean } = {};
     if (titleChanged) body.title = title.trim();
+    if (shuffleChanged) body.shuffleQuestions = shuffle;
     if (scoreChanged) body.maxScore = maxScore.trim() === "" ? Number.NaN : Number(maxScore);
     const parsed = updateQuizRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -80,9 +86,12 @@ export function QuizDetailsSheet({
         title={title}
         maxScore={maxScore}
         locked={scoreLocked}
+        shuffle={shuffle}
+        shuffleLocked={shuffleLocked}
         errors={errors}
         onTitle={setTitle}
         onMaxScore={setMaxScore}
+        onShuffle={setShuffle}
       />
     </Sheet>
   );

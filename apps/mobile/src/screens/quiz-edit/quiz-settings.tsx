@@ -1,26 +1,37 @@
 import { View } from "react-native";
 import type { QuizKind } from "@space/shared";
 
-import { FormField, Input } from "../../design/ui";
+import { FormField, Input, Switch, Text } from "../../design/ui";
 
-/** V2-ONLY (v1's builder had no settings block): rename and, for paper, the max score. Saved from its sheet (QuizDetailsSheet). */
+/**
+ * V2-ONLY (v1's builder had no settings block): rename; for paper, the max score; for online, whether
+ * each attempt shuffles the question order. Saved from its sheet (QuizDetailsSheet).
+ */
 export function QuizSettings({
   kind,
   title,
   maxScore,
   locked,
+  shuffle,
+  shuffleLocked,
   errors,
   onTitle,
   onMaxScore,
+  onShuffle,
 }: {
   kind: QuizKind;
   title: string;
   maxScore: string;
   /** Grades exist: the server refuses a new max score (quiz_has_grades). */
   locked: boolean;
+  /** Online only: each attempt gets its own question order. */
+  shuffle: boolean;
+  /** Attempts exist: the server refuses the change (quiz_has_attempts). */
+  shuffleLocked: boolean;
   errors: Record<string, string>;
   onTitle: (v: string) => void;
   onMaxScore: (v: string) => void;
+  onShuffle: (on: boolean) => void;
 }) {
   return (
     <View className="flex-col gap-4">
@@ -42,7 +53,26 @@ export function QuizSettings({
             keyboardType="number-pad"
           />
         </FormField>
-      ) : null}
+      ) : (
+        <View className="flex-row items-center justify-between gap-3">
+          <View className="min-w-0 flex-1 flex-col gap-0.5">
+            <Text variant="subhead" className="font-medium">
+              Shuffle questions
+            </Text>
+            <Text variant="caption" className="text-muted-foreground">
+              {shuffleLocked
+                ? "Students have started this quiz, so its question order can no longer change."
+                : "Each student gets the questions in their own order. Turn off when questions build on each other."}
+            </Text>
+          </View>
+          <Switch
+            accessibilityLabel="Shuffle questions"
+            checked={shuffle}
+            onCheckedChange={onShuffle}
+            disabled={shuffleLocked}
+          />
+        </View>
+      )}
     </View>
   );
 }

@@ -164,10 +164,7 @@ function QuizForm({
               </Text>
             ) : null}
             {count === 0 && !adding ? (
-              <EmptyState
-                title="No questions yet"
-                description="Add multiple-choice or essay questions, then publish the quiz."
-              />
+              <EmptyState title="No questions yet" description="Add questions of any type, then publish the quiz." />
             ) : (
               <View className="flex-col gap-2">
                 {data.questions.map((q, index) => (
@@ -212,7 +209,7 @@ function QuizForm({
         {published || isPaper ? <ReleaseResultsCard quiz={data} /> : null}
       </View>
       <QuizDetailsSheet
-        key={`${data.title}-${data.maxScore}`}
+        key={`${data.title}-${data.maxScore}-${data.shuffleQuestions}`}
         quiz={data}
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}

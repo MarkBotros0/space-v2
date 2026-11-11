@@ -14,6 +14,13 @@ export function splitBlanks(prompt: string): Segment[] {
   return out;
 }
 
+/** A prompt for reading: each blank shows as its number, "(1)", as the answer review does. */
+export function readablePrompt(prompt: string): string {
+  return splitBlanks(prompt)
+    .map((s) => (s.kind === "text" ? s.text : `(${s.index + 1})`))
+    .join("");
+}
+
 /** Gaps sit inline in the sentence unless the phone is under 360dp wide or the font is scaled past 1.15. */
 export function blanksInline({ width, fontScale }: { width: number; fontScale: number }): boolean {
   return width >= 360 && fontScale <= 1.15;

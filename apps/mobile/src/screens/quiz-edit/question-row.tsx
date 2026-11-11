@@ -5,9 +5,12 @@ import type { QuizAuthoringDetail, QuizQuestionAuthoring } from "@space/shared";
 
 import { QuestionEditor } from "./question-editor";
 import { iconWithClassName } from "../../design/lib/icon";
-import { Button, ConfirmDialog, StatusChip, Text } from "../../design/ui";
+import { Button, ConfirmDialog, ContentText, StatusChip, Text } from "../../design/ui";
 import { useDeleteQuestion, useReorderQuestions, useUpdateQuestion } from "../../hooks/use-quiz-authoring";
 import { apiErrorMessage } from "../../lib/api-error";
+import { plural } from "../../lib/plural";
+import { readablePrompt } from "../quiz-detail/blank-segments";
+import { questionSummary } from "./editors/editor-model";
 
 iconWithClassName(ChevronDown, ChevronUp, Pencil, Trash2);
 
@@ -84,31 +87,30 @@ export function QuestionRow({
     );
   }
 
-  const correct =
-    question.type === "MCQ" && question.correctIndex !== null ? question.options[question.correctIndex] : undefined;
+  const summary = questionSummary(question);
 
   return (
     <View className="flex-row items-start justify-between gap-3 rounded-group bg-surface p-4">
       <View className="min-w-0 flex-1">
         <View className="flex-row flex-wrap items-center gap-2">
           <Text variant="caption" className="font-bold text-muted-foreground">{`Q${n}`}</Text>
-          <StatusChip
-            tone={question.type === "MCQ" ? "info" : "neutral"}
-            label={question.type === "MCQ" ? "Multiple choice" : "Essay"}
-          />
-          <Text
-            variant="caption"
-            tabular
-            className="text-muted-foreground"
-          >{`${question.points} pt${question.points === 1 ? "" : "s"}`}</Text>
-        </View>
-        <Text variant="headline" className="mt-1">
-          {question.prompt}
-        </Text>
-        {question.type === "MCQ" ? (
-          <Text variant="caption" numberOfLines={1} className="mt-0.5 text-muted-foreground">
-            {`Correct: ${correct ?? "—"}`}
+          <StatusChip tone={question.type === "ESSAY" ? "neutral" : "info"} label={summary.type} />
+          <Text variant="caption" tabular className="text-muted-foreground">
+            {plural(question.points, "pt")}
           </Text>
+        </View>
+        <ContentText variant="headline" className="mt-1">
+          {readablePrompt(question.prompt)}
+        </ContentText>
+        {summary.count ? (
+          <Text variant="caption" className="mt-0.5 text-muted-foreground">
+            {summary.count}
+          </Text>
+        ) : null}
+        {summary.key ? (
+          <ContentText variant="caption" numberOfLines={2} className="mt-0.5 text-muted-foreground">
+            {`Correct: ${summary.key}`}
+          </ContentText>
         ) : null}
       </View>
       {editable ? (

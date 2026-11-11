@@ -290,17 +290,20 @@ describe("quiz runner", () => {
           gradeCount: 0,
           canEditStructure: false,
           canManage: false,
-          resultsReleasedAt: null,
+          answersReleasedAt: null,
           canReleaseResults: true,
+          shuffleQuestions: true,
           questions: [
             {
               id: 100,
               order: 0,
-              type: "MCQ",
+              type: "SINGLE_CHOICE",
               prompt: "Capital of France?",
               points: 2,
-              options: ["London", "Paris"],
-              correctIndex: 1,
+              options: [
+                { id: 1, label: "London", isCorrect: false },
+                { id: 2, label: "Paris", isCorrect: true },
+              ],
             },
           ],
         },
@@ -311,7 +314,11 @@ describe("quiz runner", () => {
 
     expect(await screen.findByText("Capital of France?")).toBeTruthy();
     // Staff DO see the key — that is the audience it exists for.
-    expect(screen.getByText("Correct answer: Paris")).toBeTruthy();
+    expect(screen.getByText("Paris")).toBeTruthy();
+    expect(screen.getByText("London")).toBeTruthy();
+    // One mark, on the right option.
+    expect(screen.getAllByText("Correct answer")).toHaveLength(1);
+    expect(screen.getByLabelText("Paris, correct answer")).toBeTruthy();
     expect(screen.queryByText("Edit quiz")).toBeNull();
     fireEvent.press(screen.getByText("Grade this quiz"));
     expect(mockPush).toHaveBeenCalledWith({

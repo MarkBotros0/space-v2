@@ -20,7 +20,7 @@ const TYPE_LABEL: Record<QuizQuestionStudent["type"], string> = {
 };
 
 /** The type's name for the question card's badge. */
-export function questionTypeLabel(q: QuizQuestionStudent): string {
+export function questionTypeLabel(q: { type: QuizQuestionStudent["type"] }): string {
   return TYPE_LABEL[q.type];
 }
 

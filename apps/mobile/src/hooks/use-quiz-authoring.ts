@@ -49,7 +49,7 @@ export function useCreateQuiz() {
 export function useUpdateQuiz(id: number) {
   const invalidate = useInvalidateQuiz(id);
   return useMutation({
-    mutationFn: (body: { title?: string; maxScore?: number }) =>
+    mutationFn: (body: { title?: string; maxScore?: number; shuffleQuestions?: boolean }) =>
       apiSend("patch", `/api/v1/quizzes/${id}`, body, quizUpdatedResponseSchema),
     onSuccess: invalidate,
   });

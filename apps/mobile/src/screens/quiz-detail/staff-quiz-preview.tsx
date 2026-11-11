@@ -8,8 +8,9 @@ import { Card } from "../../design/ui/card";
 import { Text } from "../../design/ui/text";
 import { useQuizAuthoringDetail } from "../../hooks/use-quizzes";
 import { ReleaseResultsCard } from "../quiz-grade/release-results";
+import { StaffQuestionKey } from "./staff-question-key";
 
-/** LEADER / ADMIN / SUPER: the quiz's questions with the answer key, plus Grade and Edit. */
+/** LEADER / ADMIN / SUPER: the quiz's questions in the author's order with the answer key, plus Grade and Edit. */
 export function StaffPreview({ id }: { id: number }) {
   const router = useRouter();
   const { data, isPending, isError, refetch } = useQuizAuthoringDetail(id, true);
@@ -52,23 +53,9 @@ export function StaffPreview({ id }: { id: number }) {
         </Card>
         <ReleaseResultsCard quiz={data} />
         {data.kind === "PAPER" ? (
-          <Text>This is a paper quiz — there are no questions to preview.</Text>
+          <Text>This is a paper quiz, so there are no questions to preview.</Text>
         ) : (
-          data.questions.map((q, index) => (
-            <Card key={q.id} className="p-4">
-              <Text className="text-xs text-muted-foreground">{`Question ${index + 1}`}</Text>
-              <Text className="text-sm font-medium">{q.prompt}</Text>
-              <Text className="text-xs text-muted-foreground">
-                {`${q.points} ${q.points === 1 ? "point" : "points"}`}
-              </Text>
-              {q.options.map((option, optionIndex) => (
-                <Text key={optionIndex}>{`${optionIndex + 1}. ${option}`}</Text>
-              ))}
-              {q.correctIndex !== null && q.options[q.correctIndex] !== undefined ? (
-                <Text className="text-sm font-medium">{`Correct answer: ${q.options[q.correctIndex]}`}</Text>
-              ) : null}
-            </Card>
-          ))
+          data.questions.map((q, index) => <StaffQuestionKey key={q.id} q={q} index={index} />)
         )}
       </View>
     </ShellFrame>

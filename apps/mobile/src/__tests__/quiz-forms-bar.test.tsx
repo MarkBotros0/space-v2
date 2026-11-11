@@ -43,11 +43,13 @@ const seasons = {
 const mcq = {
   id: 100,
   order: 0,
-  type: "MCQ" as const,
+  type: "SINGLE_CHOICE" as const,
   prompt: "Capital of France?",
   points: 2,
-  options: ["London", "Paris"],
-  correctIndex: 1,
+  options: [
+    { id: 1, label: "London", isCorrect: false },
+    { id: 2, label: "Paris", isCorrect: true },
+  ],
 };
 const authoring = (over: Record<string, unknown> = {}) => ({
   id: 41,
@@ -63,8 +65,9 @@ const authoring = (over: Record<string, unknown> = {}) => ({
   gradeCount: 0,
   canEditStructure: true,
   canManage: true,
-  resultsReleasedAt: null,
+  answersReleasedAt: null,
   canReleaseResults: true,
+  shuffleQuestions: true,
   questions: [mcq],
   ...over,
 });
@@ -181,8 +184,10 @@ describe("quiz builder: Publish in the footer, details in a sheet (owner, 2026-1
       id: 101,
       order: 1,
       prompt: "Capital of Spain?",
-      options: ["Madrid", "Paris"],
-      correctIndex: 0,
+      options: [
+        { id: 3, label: "Madrid", isCorrect: true },
+        { id: 4, label: "Paris", isCorrect: false },
+      ],
     };
     get.mockResolvedValue({ data: { data: authoring({ questions: [mcq, mcq2] }) } });
     renderStacked(<QuizEditScreen />);

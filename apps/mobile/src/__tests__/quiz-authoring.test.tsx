@@ -13,6 +13,7 @@ jest.mock("expo-router", () => ({
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
+import { adminSession, authoring, essay, mcq } from "./helpers/quiz-authoring-fixtures";
 import NewQuizScreen from "../../app/(app)/quiz/new";
 import QuizEditScreen from "../../app/(app)/quiz/[id]/edit";
 
@@ -22,10 +23,6 @@ const patch = apiClient.patch as jest.Mock;
 const put = apiClient.put as jest.Mock;
 const del = apiClient.delete as jest.Mock;
 
-const adminSession = {
-  user: { id: 2, name: "Test admin", email: "a@jpc.test", role: "ADMIN" as const, avatarPath: null, hasPassword: true },
-  scopes: { seasonAdminIds: [7], groupLeaderIds: [], activeSeasonId: null, graduationYear: null },
-};
 const leaderSession = {
   user: {
     id: 5,
@@ -81,47 +78,6 @@ const sessionsList = {
     },
   },
 };
-
-const mcq = {
-  id: 100,
-  order: 0,
-  type: "MCQ" as const,
-  prompt: "Capital of France?",
-  points: 2,
-  options: ["London", "Paris"],
-  correctIndex: 1,
-};
-const essay = {
-  id: 101,
-  order: 1,
-  type: "ESSAY" as const,
-  prompt: "Discuss.",
-  points: 5,
-  options: [] as string[],
-  correctIndex: null,
-};
-
-function authoring(over: Partial<Record<string, unknown>> = {}) {
-  return {
-    id: 41,
-    title: "Week 1 quiz",
-    kind: "ONLINE",
-    seasonId: 7,
-    seasonCode: "s26",
-    sessionId: 12,
-    sessionTitle: "Week 1",
-    publishedAt: null,
-    maxScore: 7,
-    attemptCount: 0,
-    gradeCount: 0,
-    canEditStructure: true,
-    canManage: true,
-    resultsReleasedAt: null,
-    canReleaseResults: true,
-    questions: [mcq, essay],
-    ...over,
-  };
-}
 
 const conflict = (code: string, message: string) =>
   Object.assign(new Error("409"), {
@@ -218,15 +174,26 @@ describe("QuizEditScreen (the builder)", () => {
     expect(await screen.findByText("Capital of France?")).toBeTruthy();
     expect(screen.getByText("Discuss.")).toBeTruthy();
     expect(screen.getByText("Correct: Paris")).toBeTruthy();
+    expect(screen.getByText("2 options")).toBeTruthy();
     expect(screen.getByText("Draft")).toBeTruthy();
     expect(screen.getByText("Online quiz · 2 questions · 7 pts")).toBeTruthy();
   });
 
-  it("adds an MCQ through the editor and sends exactly the form's question", async () => {
+  it("adds a single choice question through the editor and sends exactly the form's question", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     post.mockResolvedValue({
       data: {
-        data: { id: 102, order: 2, type: "MCQ", prompt: "2 + 2?", points: 2, options: ["3", "4"], correctIndex: 1 },
+        data: {
+          id: 102,
+          order: 2,
+          type: "SINGLE_CHOICE",
+          prompt: "2 + 2?",
+          points: 2,
+          options: [
+            { id: 5, label: "3", isCorrect: false },
+            { id: 6, label: "4", isCorrect: true },
+          ],
+        },
       },
     });
     renderWithProviders(<QuizEditScreen />);
@@ -241,16 +208,18 @@ describe("QuizEditScreen (the builder)", () => {
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/questions", {
-        type: "MCQ",
+        type: "SINGLE_CHOICE",
         prompt: "2 + 2?",
         points: 2,
-        options: ["3", "4"],
-        correctIndex: 1,
+        options: [
+          { label: "3", isCorrect: false },
+          { label: "4", isCorrect: true },
+        ],
       }),
     );
   });
 
-  it("refuses an MCQ with no correct answer marked, locally, with the schema's message", async () => {
+  it("refuses a single choice question with no correct answer marked, at the options, with the schema's message", async () => {
     get.mockResolvedValue({ data: { data: authoring() } });
     renderWithProviders(<QuizEditScreen />);
 
@@ -260,7 +229,7 @@ describe("QuizEditScreen (the builder)", () => {
     fireEvent.changeText(screen.getByLabelText("Option 2"), "4");
     fireEvent.press(screen.getByText("Add question"));
 
-    expect(await screen.findByText("Mark the correct answer.")).toBeTruthy();
+    expect(await screen.findByText("Mark exactly one correct answer.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
   });
 
@@ -275,11 +244,13 @@ describe("QuizEditScreen (the builder)", () => {
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/questions/100", {
-        type: "MCQ",
+        type: "SINGLE_CHOICE",
         prompt: "Capital of Italy?",
         points: 2,
-        options: ["London", "Paris"],
-        correctIndex: 1,
+        options: [
+          { label: "London", isCorrect: false },
+          { label: "Paris", isCorrect: true },
+        ],
       }),
     );
   });
