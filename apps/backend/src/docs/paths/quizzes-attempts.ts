@@ -8,7 +8,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Start or resume the caller's attempt",
       description:
-        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus who isn't studying in it, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key.",
+        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus who isn't studying in it, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key: the questions in this attempt's own shuffle (fixed for the life of the attempt; a retake gets a new one), options and matching columns shuffled, true/false not.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The open attempt."),
@@ -23,7 +23,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Save a batch of answers",
       description:
-        "STUDENT only, with an ACTIVE enrolment in the quiz's season (403 otherwise; 404 for an unknown quiz). Upserts one answer per question into the open attempt (1-100 per call); saving never grades. Validation, all-or-nothing before any write: 400 `question_not_in_quiz`; 400 `wrong_answer_type` (text on an MCQ, or an option index on an ESSAY); 400 `answer_out_of_range` (`selectedIndex` must be below **that question's** option count). 409 `no_attempt` if the quiz was never started; 409 `attempt_closed` once submitted.",
+        "STUDENT only, with an ACTIVE enrolment in the quiz's season (403 otherwise; 404 for an unknown quiz). Upserts one answer per question into the open attempt (1-100 per call); saving never grades. Answers are by identity (option, item and blank ids), never by position, one `QuizAnswerInput` shape per question type. Validation, all-or-nothing before any write: 400 `question_not_in_quiz`; 400 `wrong_answer_type` (the answer's type does not fit the question); 400 `answer_out_of_range` (an option, item or blank id that is not part of **that question**); 400 `too_many_choices` (\"Choose at most N.\" on a multiple-choice question). 409 `no_attempt` if the quiz was never started; 409 `attempt_closed` once submitted.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -37,15 +37,7 @@ export const quizAttemptsPaths = {
                   type: "array",
                   minItems: 1,
                   maxItems: 100,
-                  items: {
-                    type: "object",
-                    required: ["questionId"],
-                    properties: {
-                      questionId: { type: "integer", minimum: 1 },
-                      selectedIndex: { type: ["integer", "null"], minimum: 0 },
-                      text: { type: ["string", "null"], maxLength: 20000 },
-                    },
-                  },
+                  items: { $ref: "#/components/schemas/QuizAnswerInput" },
                 },
               },
             },
@@ -57,7 +49,9 @@ export const quizAttemptsPaths = {
           { type: "object", required: ["saved"], properties: { saved: { type: "integer" } } },
           "How many answers were saved.",
         ),
-        400: conflict("`bad_request`, `question_not_in_quiz`, `wrong_answer_type` or `answer_out_of_range`."),
+        400: conflict(
+          "`bad_request`, `question_not_in_quiz`, `wrong_answer_type`, `answer_out_of_range` or `too_many_choices`.",
+        ),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
@@ -70,7 +64,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Submit the open attempt",
       description:
-        "STUDENT only, with an ACTIVE enrolment in the quiz's season (403 otherwise). Every question must be answered (409 `attempt_incomplete`; an essay must be non-blank). MCQs are scored all-or-nothing against the key, read, scored and written inside ONE transaction that holds a row lock on the attempt (REG-111) — a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. A quiz with an ESSAY becomes `SUBMITTED` with `autoScore` set and no `totalScore` (a human must grade it, and nobody is notified). An all-MCQ quiz becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification (link `/student/quizzes`, v1's format) is created best-effort. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail`, now with `isCorrect`/`pointsAwarded` per MCQ but never the key.",
+        'STUDENT only, with an ACTIVE enrolment in the quiz\'s season (403 otherwise). Every question must be answered (409 `attempt_incomplete`): a choice needs a pick (at least one tick on multiple choice), matching needs every left item paired, each blank non-empty, an essay non-blank. Single-choice, multiple-choice, true/false and matching questions are scored by the server inside ONE transaction that holds a row lock on the attempt (REG-111), so a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. Multiple choice earns 1/N of the points per correct tick and a wrong tick costs nothing; matching earns 1/pairs per correct pair. An attempt with a FILL_BLANK or ESSAY question becomes `SUBMITTED` with `autoScore` set until a leader marks it, and nobody is notified. Otherwise it becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification, "Your score is in", is created best-effort. Scores are decimals to 2 places. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail` at the resulting `stage`: a handed-in attempt shows no questions and no answers, and a graded one shows its score only, until the answers are released',
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The submitted attempt."),
@@ -88,7 +82,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "The grading list for an ONLINE quiz",
       description:
-        "Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it). **The student set is derived on the server** from the caller's scope (a leader sees only their own groups' ACTIVE enrolments) and is never accepted from the client. Pages over that set by student id (`cursor` = last student id of the previous page). `items` holds each student's latest attempt when it is SUBMITTED or GRADED, with the answer key (grader audience). `waiting` lists students with no gradable attempt — never started, or latest attempt still IN_PROGRESS (including one just reopened) — so nobody vanishes from the screen.",
+        "Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it). **The student set is derived on the server** from the caller's scope (a leader sees only their own groups' ACTIVE enrolments) and is never accepted from the client. Pages over that set by student id (`cursor` = last student id of the previous page). `items` holds each student's latest attempt when it is SUBMITTED or GRADED, with the answer key (grader audience) and, for fill-in-the-blank, each blank beside its expected answer. `waiting` lists students with no gradable attempt — never started, or latest attempt still IN_PROGRESS (including one just reopened) — so nobody vanishes from the screen.",
       parameters: [
         idParam,
         { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
@@ -106,42 +100,25 @@ export const quizAttemptsPaths = {
   "/api/v1/quizzes/{id}/attempts/{attemptId}/grade": {
     post: {
       tags: ["Quizzes"],
-      summary: "Mark an attempt's essay answers",
+      summary: "Mark an attempt's blanks and essays",
       description:
-        "Staff with a scope in the season; the attempt's student must be in the caller's own student set (403 `student_not_in_scope`), and the attempt must belong to this quiz (404). 409 `attempt_not_submitted` for an IN_PROGRESS attempt. `awards` must name **every** ESSAY question exactly once (400 `awards_incomplete`) and each award may not exceed that question's points (400 `score_exceeds_max` — rejected, not clamped). Sets `manualScore` = sum of awards, `totalScore` = stored `autoScore` + `manualScore`, status GRADED, `gradedById` = caller. The student gets a `QUIZ_GRADED` notification on a first grade or whenever the total changes; an identical re-save is silent. The response carries `answers: []` — refetch the list for the recomputed page.",
+        "Staff with a scope in the season, which includes the season admin and a super (anything a leader can do, they can); the attempt's student must be in the caller's own student set (403 `student_not_in_scope`), and the attempt must belong to this quiz (404). 409 `attempt_not_submitted` for an IN_PROGRESS attempt. The body is right or wrong, never points: one mark per FILL_BLANK blank and one per ESSAY question, and the set must be complete (409 `marks_incomplete`) with every mark naming a real blank or essay of this quiz (400 `mark_out_of_range`). Each right blank earns 1/blanks of its question's points; a right essay earns all of them. Sets `manualScore`, `totalScore` = stored `autoScore` + `manualScore` (decimals to 2 places), status GRADED, `gradedById` = caller. Re-marking is allowed. The student gets a \"Your score is in\" `QUIZ_GRADED` notification on a first grade or whenever the total changes; an identical re-save is silent. The response carries `answers: []` — refetch the list for the recomputed page",
       parameters: [idParam, { name: "attemptId", in: "path", required: true, schema: { type: "integer", minimum: 1 } }],
       requestBody: {
         required: true,
         content: {
           "application/json": {
-            schema: {
-              type: "object",
-              required: ["awards"],
-              properties: {
-                awards: {
-                  type: "array",
-                  minItems: 1,
-                  items: {
-                    type: "object",
-                    required: ["questionId", "points"],
-                    properties: {
-                      questionId: { type: "integer", minimum: 1 },
-                      points: { type: "integer", minimum: 0 },
-                    },
-                  },
-                },
-              },
-            },
+            schema: { $ref: "#/components/schemas/MarkAttemptRequest" },
           },
         },
       },
       responses: {
         200: ok({ $ref: "#/components/schemas/QuizGradingAttempt" }, "The graded attempt (with an empty `answers`)."),
-        400: conflict("`bad_request`, `awards_incomplete` or `score_exceeds_max`."),
+        400: conflict("`bad_request` or `mark_out_of_range`."),
         401: errRef("Unauthorized"),
         403: conflict("`forbidden` or `student_not_in_scope`."),
         404: errRef("NotFound"),
-        409: conflict("`attempt_not_submitted`."),
+        409: conflict("`attempt_not_submitted` or `marks_incomplete`."),
       },
     },
   },

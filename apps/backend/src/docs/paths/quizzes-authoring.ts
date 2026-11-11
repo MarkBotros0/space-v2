@@ -25,7 +25,7 @@ export const quizAuthoringPaths = {
       tags: ["Quizzes"],
       summary: "List quizzes (row shape depends on the caller's role)",
       description:
-        "**The row shape differs by role.** Staff (SUPER, season admin, leader with a group in the season) receive `QuizSummary` rows. A STUDENT receives their own `StudentQuizResult` rows and `nextCursor` is always null: PAPER quizzes appear only once graded and released, ONLINE quizzes as soon as they are published.\n\n`seasonId` defaults to the caller's active season; with none, the list is empty. Staff outside the season get 403.\n\nOne definition each, computed server-side: `studentCount` is the ACTIVE enrolments of the quiz's season narrowed to the caller's scope (a leader sees only their own groups); `gradedCount` is, within that same student set, QuizGrade rows with a non-null score for PAPER and QuizAttempt rows with status GRADED for ONLINE.",
+        "**The row shape differs by role.** Staff (SUPER, season admin, leader with a group in the season) receive `QuizSummary` rows. A STUDENT receives their own `StudentQuizResult` rows and `nextCursor` is always null: PAPER quizzes appear once their grade is entered, ONLINE quizzes as soon as they are published. An ONLINE row's `score` is the best graded attempt and shows as soon as it is graded; answers wait for the release (`answersReleased`).\n\n`seasonId` defaults to the caller's active season; with none, the list is empty. Staff outside the season get 403.\n\nOne definition each, computed server-side: `studentCount` is the ACTIVE enrolments of the quiz's season narrowed to the caller's scope (a leader sees only their own groups); `gradedCount` is, within that same student set, QuizGrade rows with a non-null score for PAPER and QuizAttempt rows with status GRADED for ONLINE.",
       parameters: [
         { name: "seasonId", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "sessionId", in: "query", schema: { type: "integer", minimum: 1 } },
@@ -68,7 +68,7 @@ export const quizAuthoringPaths = {
       tags: ["Quizzes"],
       summary: "Quiz detail (the schema depends on the caller's role)",
       description:
-        "**Two response schemas, chosen by role on the server.** Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it) receive `QuizAuthoringDetail`, which **carries the answer key** because grading needs it. A STUDENT receives `StudentQuizDetail`, whose questions have **no `correctIndex` field at all**; this is enforced by separate loaders with separate selects and pinned by a raw-JSON integration test. A student gets 404 for a quiz that is unpublished, PAPER, or in a season they cannot access (indistinguishable from a missing quiz). A GET never creates an attempt.",
+        "**Two response schemas, chosen by role on the server.** Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it) receive `QuizAuthoringDetail`, which **carries the answer key** because grading needs it. A STUDENT receives `StudentQuizDetail`, whose questions have **no answer key at all** outside `review`, which stays null until the answers are released; this is enforced by separate loaders with separate selects and pinned by a raw-JSON integration test. A student gets 404 for a quiz that is unpublished, PAPER, or in a season they cannot access (indistinguishable from a missing quiz). A GET never creates an attempt.",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -88,9 +88,9 @@ export const quizAuthoringPaths = {
     },
     patch: {
       tags: ["Quizzes"],
-      summary: "Edit a quiz's title, session or max score",
+      summary: "Edit a quiz's title, session, max score or shuffle",
       description:
-        "Season-admin (or SUPER) of the quiz's season. `kind` can never change. `maxScore` is refused with 409 `wrong_quiz_kind` on an ONLINE quiz (it is derived), and with 409 `quiz_has_grades` on a PAPER quiz that already has grades — moving the denominator under awarded scores is refused, not silently applied. A new `sessionId` must belong to the quiz's season.",
+        "Season-admin (or SUPER) of the quiz's season. `kind` can never change. `maxScore` is refused with 409 `wrong_quiz_kind` on an ONLINE quiz (it is derived), and with 409 `quiz_has_grades` on a PAPER quiz that already has grades — moving the denominator under awarded scores is refused, not silently applied. A new `sessionId` must belong to the quiz's season. `shuffleQuestions` switches the per-attempt question shuffle (on by default).",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -115,7 +115,7 @@ export const quizAuthoringPaths = {
       tags: ["Quizzes"],
       summary: "Add a question to an ONLINE quiz",
       description:
-        "Season-admin (or SUPER) only — a leader is refused. Appended at the end (`order` = current count) and, in the same transaction, the quiz's `maxScore` is recomputed as the sum of question points.\n\n**Structural freeze (D3):** once any attempt exists, every question write (add, edit, delete, reorder) is refused with 409 `quiz_has_attempts`; nothing versions a quiz, so editing under attempts would rebase graded scores or cascade-delete graded answers. A PAPER quiz has no questions: 409 `wrong_quiz_kind`.",
+        "Season-admin (or SUPER) only — a leader is refused. The body is one of six shapes by `type` (single choice, multiple choice, true/false, matching, fill in the blank, essay), each with its whole-number points (1-100, set by the admin). Appended at the end (`order` = current count) and, in the same transaction, the quiz's `maxScore` is recomputed as the sum of question points.\n\n**Structural freeze (D3):** once any attempt exists, every question write (add, edit, delete, reorder) is refused with 409 `quiz_has_attempts`; nothing versions a quiz, so editing under attempts would rebase graded scores or cascade-delete graded answers. A PAPER quiz has no questions: 409 `wrong_quiz_kind`.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -248,9 +248,9 @@ export const quizAuthoringPaths = {
   "/api/v1/quizzes/{id}/release": {
     post: {
       tags: ["Quizzes"],
-      summary: "Release a quiz's results to its students",
+      summary: "Release a quiz's answers to its students",
       description:
-        "SUPER or admin of the quiz's season (owner, 2026-11-07). Until a quiz is released every student read hides the marking — no score, no `gradedAt`, no right or wrong answer, and a graded attempt reads SUBMITTED — so a student who takes it later can't learn the answers from one who took it first; grading stays silent too. One way: there is no un-release. An unpublished ONLINE quiz is refused (409 `quiz_not_published`). Only the request that flips it sends one `QUIZ_GRADED` notification, \"Results are out: <title>\", to each student with a PAPER grade or a GRADED latest attempt (best-effort); a repeat answers 200 with the stored time and sends nothing. Grades made after the release notify as usual.",
+        "SUPER or admin of the quiz's season; a leader is refused (403). Students see their score as soon as an attempt is graded, with no release. Until this call they see no questions, options, own answers or right and wrong, so a student who takes the quiz later can't learn the answers from one who took it first. Releasing lets them review every question with each option, tick, pair and blank marked right or wrong and the correct answer shown. One way: there is no un-release. An unpublished ONLINE quiz is refused (409 `quiz_not_published`). Only the request that flips it sends one `QUIZ_GRADED` notification, \"Answers are out: <title>\", to each student with a GRADED attempt on an ONLINE quiz (best-effort); a PAPER quiz notifies nobody on release (a paper grade notifies when entered or changed). A repeat answers 200 with the stored time and sends nothing",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -259,7 +259,7 @@ export const quizAuthoringPaths = {
             required: ["answersReleasedAt"],
             properties: { answersReleasedAt: { type: "string", format: "date-time" } },
           },
-          "When the results were released.",
+          "When the answers were released.",
         ),
         400: errRef("BadRequest"),
         401: errRef("Unauthorized"),

@@ -2,7 +2,7 @@ import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { questionRowsFor, toAuthoringQuestion, type QuizQuestionRequest } from "./question-rows";
 
-/** The authoring view of a question � the answer key included. */
+/** The authoring view of a question — the answer key included. */
 export const AUTHORING_QUESTION_SELECT = {
   id: true,
   order: true,
@@ -79,7 +79,7 @@ export async function addQuizQuestion(quizId: number, data: QuizQuestionRequest)
 /** Edits a question (never its `order`) and recomputes maxScore, in one transaction. */
 export async function updateQuizQuestion(quizId: number, questionId: number, data: QuizQuestionRequest) {
   return db.$transaction(async (tx) => {
-    // `order` is deliberately not writable here � reordering has its own
+    // `order` is deliberately not writable here — reordering has its own
     // endpoint, so a question edit cannot silently move a question.
     await tx.quizQuestion.update({ where: { id: questionId }, data: questionColumns(data), select: { id: true } });
     await writeRows(tx, questionId, data);

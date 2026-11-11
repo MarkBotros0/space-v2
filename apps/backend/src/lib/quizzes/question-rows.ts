@@ -6,7 +6,7 @@ import type { QuizOptionSide, QuizQuestionType } from "../../generated/prisma/en
 
 export type QuizQuestionRequest = z.infer<typeof quizQuestionRequestSchema>;
 
-export type OptionRow = {
+type OptionRow = {
   position: number;
   label: string;
   isCorrect: boolean;
@@ -15,7 +15,7 @@ export type OptionRow = {
   matchKey?: number;
 };
 
-export type BlankRow = { position: number; expected: string };
+type BlankRow = { position: number; expected: string };
 
 /** A question as the authoring select returns it. */
 export type AuthoringQuestionRow = {

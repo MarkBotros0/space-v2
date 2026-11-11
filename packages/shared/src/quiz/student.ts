@@ -9,7 +9,7 @@ import { z } from "zod";
 // raw-JSON leak tests on the backend are the guarantee; this is the type.
 // ---------------------------------------------------------------------------
 
-export const studentOptionSchema = z.object({ id: z.number(), label: z.string() }).strict();
+const studentOptionSchema = z.object({ id: z.number(), label: z.string() }).strict();
 export type StudentOption = z.infer<typeof studentOptionSchema>;
 
 const base = {

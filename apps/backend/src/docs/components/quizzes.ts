@@ -18,6 +18,10 @@ export const quizSchemas = {
       title: { type: "string", minLength: 1, maxLength: 200 },
       maxScore: { type: "integer", minimum: 1, maximum: 1000 },
       sessionId: { type: ["integer", "null"], minimum: 1 },
+      shuffleQuestions: {
+        type: "boolean",
+        description: "Shuffle the question order for each attempt (on by default). Options are always shuffled.",
+      },
     },
   },
   QuizSummary: {
@@ -55,48 +59,14 @@ export const quizSchemas = {
       answersReleasedAt: {
         type: ["string", "null"],
         format: "date-time",
-        description: "Null while students' results are held back.",
-      },
-    },
-  },
-  QuizQuestionAuthoring: {
-    type: "object",
-    description:
-      "The authoring projection — the only quiz question shape that carries the answer key (`correctIndex`).",
-    required: ["id", "order", "type", "prompt", "points", "options", "correctIndex"],
-    properties: {
-      id: { type: "integer" },
-      order: { type: "integer", description: "A 0-based position; renumbered on delete." },
-      type: { $ref: "#/components/schemas/QuizQuestionType" },
-      prompt: { type: "string" },
-      points: { type: "integer" },
-      options: { type: "array", items: { type: "string" } },
-      correctIndex: { type: ["integer", "null"] },
-    },
-  },
-  QuizQuestionRequest: {
-    type: "object",
-    required: ["type", "prompt", "points"],
-    properties: {
-      type: { $ref: "#/components/schemas/QuizQuestionType" },
-      prompt: { type: "string", minLength: 2, maxLength: 2000 },
-      points: { type: "integer", minimum: 1, maximum: 100 },
-      options: {
-        type: "array",
-        maxItems: 6,
-        items: { type: "string", minLength: 1, maxLength: 500 },
-        description: "MCQ needs at least 2. An ESSAY's options are discarded.",
-      },
-      correctIndex: {
-        type: ["integer", "null"],
-        minimum: 0,
-        description: "MCQ only; must be a valid index into `options`. Discarded for ESSAY.",
+        description: "When the answers were released to students; null while they are held back.",
       },
     },
   },
   QuizAuthoringDetail: {
     type: "object",
-    description: "Staff projection of a quiz. Carries the answer key (`questions[].correctIndex`).",
+    description:
+      "Staff projection of a quiz. Carries the answer key (each question's `isCorrect`, `correct`, pairs, blanks).",
     required: [
       "id",
       "title",
@@ -113,6 +83,7 @@ export const quizSchemas = {
       "canManage",
       "answersReleasedAt",
       "canReleaseResults",
+      "shuffleQuestions",
       "questions",
     ],
     properties: {
@@ -140,48 +111,20 @@ export const quizSchemas = {
         type: ["string", "null"],
         format: "date-time",
         description:
-          "Null while students' results are held back: they see no score and no right or wrong answer until it is set.",
+          "Null while the answers are held back: students see their score once graded, but no questions, answers or right or wrong until it is set.",
       },
       canReleaseResults: {
         type: "boolean",
-        description: "SUPER or admin of the quiz's season: who may `POST /quizzes/{id}/release`.",
+        description: "SUPER or admin of the quiz's season: who may `POST /quizzes/{id}/release`. A leader cannot.",
       },
+      shuffleQuestions: { type: "boolean", description: "Whether each attempt gets its own question order." },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionAuthoring" } },
-    },
-  },
-  QuizQuestionStudent: {
-    type: "object",
-    description:
-      "The student projection of a question. **There is no `correctIndex` field** — not null, not optional; it is a different shape from `QuizQuestionAuthoring`.",
-    required: [
-      "id",
-      "order",
-      "type",
-      "prompt",
-      "points",
-      "options",
-      "selectedIndex",
-      "text",
-      "isCorrect",
-      "pointsAwarded",
-    ],
-    properties: {
-      id: { type: "integer" },
-      order: { type: "integer" },
-      type: { $ref: "#/components/schemas/QuizQuestionType" },
-      prompt: { type: "string" },
-      points: { type: "integer" },
-      options: { type: "array", items: { type: "string" } },
-      selectedIndex: { type: ["integer", "null"] },
-      text: { type: ["string", "null"] },
-      isCorrect: { type: ["boolean", "null"], description: "Null until an auto-graded submit." },
-      pointsAwarded: { type: ["integer", "null"], description: "Null until graded." },
     },
   },
   StudentQuizDetail: {
     type: "object",
     description:
-      "A student's view of an ONLINE quiz and their own attempt. `autoScore`/`manualScore` are deliberately absent; `totalScore` is the only score shown.",
+      "A student's view of an ONLINE quiz and their own attempt. `autoScore`/`manualScore` are deliberately absent; `totalScore` is the only score shown. What else comes back depends on `stage`: `questions` is the attempt's (shuffled) questions while it is in progress, then empty after hand-in until the answers are released.",
     required: [
       "id",
       "title",
@@ -192,6 +135,7 @@ export const quizSchemas = {
       "attemptId",
       "attemptNumber",
       "status",
+      "stage",
       "totalScore",
       "submittedAt",
       "gradedAt",
@@ -209,7 +153,17 @@ export const quizSchemas = {
       attemptId: { type: ["integer", "null"], description: "Null until the student starts." },
       attemptNumber: { type: "integer", description: "0 when there is no attempt." },
       status: { oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }] },
-      totalScore: { type: ["integer", "null"] },
+      stage: {
+        type: "string",
+        enum: ["not_started", "in_progress", "submitted", "graded", "answers"],
+        description:
+          "Which screen the student is on: before starting, taking it, handed in and waiting for marking, score only, or answers shown.",
+      },
+      totalScore: {
+        type: ["number", "null"],
+        description:
+          "The best GRADED attempt's score (decimal to 2 places), also while a retake is open; null until one is graded.",
+      },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedAt: { type: ["string", "null"], format: "date-time" },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionStudent" } },
@@ -221,36 +175,8 @@ export const quizSchemas = {
       answersReleased: {
         type: "boolean",
         description:
-          "False until staff release the results. Until then a graded attempt reads SUBMITTED and `totalScore`, `gradedAt` and every question's `isCorrect`/`pointsAwarded` are null.",
+          "False until the season admin or a super releases the answers. Until then, once the attempt is handed in, `questions` is empty and no `review` is sent; the score still shows once graded.",
       },
-    },
-  },
-  QuizGradingAnswer: {
-    type: "object",
-    description: "Grader-only: carries the answer key by design.",
-    required: [
-      "questionId",
-      "type",
-      "prompt",
-      "points",
-      "options",
-      "correctIndex",
-      "selectedIndex",
-      "isCorrect",
-      "text",
-      "pointsAwarded",
-    ],
-    properties: {
-      questionId: { type: "integer" },
-      type: { $ref: "#/components/schemas/QuizQuestionType" },
-      prompt: { type: "string" },
-      points: { type: "integer" },
-      options: { type: "array", items: { type: "string" } },
-      correctIndex: { type: ["integer", "null"] },
-      selectedIndex: { type: ["integer", "null"] },
-      isCorrect: { type: ["boolean", "null"] },
-      text: { type: ["string", "null"] },
-      pointsAwarded: { type: ["integer", "null"] },
     },
   },
   QuizGradingAttempt: {
@@ -274,9 +200,9 @@ export const quizSchemas = {
       studentName: { type: ["string", "null"] },
       attemptNumber: { type: "integer" },
       status: { $ref: "#/components/schemas/QuizAttemptStatus" },
-      autoScore: { type: ["integer", "null"] },
-      manualScore: { type: ["integer", "null"] },
-      totalScore: { type: ["integer", "null"] },
+      autoScore: { type: ["number", "null"], description: "Decimal to 2 places." },
+      manualScore: { type: ["number", "null"], description: "Decimal to 2 places." },
+      totalScore: { type: ["number", "null"], description: "Decimal to 2 places." },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedByName: { type: ["string", "null"], description: "Who graded it; null for an auto-graded attempt." },
       answers: { type: "array", items: { $ref: "#/components/schemas/QuizGradingAnswer" } },
@@ -290,11 +216,15 @@ export const quizSchemas = {
       title: { type: "string" },
       kind: { $ref: "#/components/schemas/QuizKind" },
       maxScore: { type: "integer" },
-      hasEssays: { type: "boolean" },
+      hasEssays: {
+        type: "boolean",
+        description: "True when the quiz has FILL_BLANK or ESSAY questions, which a leader marks.",
+      },
       studentCount: { type: "integer", description: "The caller's whole student set, not just this page." },
       items: {
         type: "array",
-        description: "The latest attempt of each student on this page whose attempt is SUBMITTED or GRADED.",
+        description:
+          "The latest attempt of each student on this page whose attempt is SUBMITTED or GRADED, answers in the author's order.",
         items: { $ref: "#/components/schemas/QuizGradingAttempt" },
       },
       waiting: {
@@ -321,7 +251,7 @@ export const quizSchemas = {
       studentUserId: { type: "integer" },
       studentName: { type: ["string", "null"] },
       groupName: { type: ["string", "null"], description: "The student's group in the quiz's season." },
-      score: { type: ["integer", "null"] },
+      score: { type: ["number", "null"] },
       notes: { type: ["string", "null"] },
       gradedAt: { type: ["string", "null"], format: "date-time" },
       gradedByName: { type: ["string", "null"] },
@@ -362,19 +292,23 @@ export const quizSchemas = {
       title: { type: "string" },
       kind: { $ref: "#/components/schemas/QuizKind" },
       maxScore: { type: "integer" },
-      score: { type: ["integer", "null"] },
+      score: {
+        type: ["number", "null"],
+        description:
+          "ONLINE: the best graded attempt (decimal to 2 places), shown once graded and before any release. PAPER: the entered grade.",
+      },
       notes: { type: ["string", "null"] },
       gradedAt: { type: ["string", "null"], format: "date-time" },
       sessionTitle: { type: ["string", "null"] },
       sessionDate: { type: ["string", "null"], format: "date-time" },
       attemptStatus: {
         oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }],
-        description: "ONLINE only. A graded attempt reads SUBMITTED until results are released.",
+        description: "ONLINE only. A graded attempt reads GRADED at once; the answers have their own flag.",
       },
       answersReleased: {
         type: "boolean",
         description:
-          "False until staff release the results; `score` and `gradedAt` are null until then. A PAPER row appears only once released.",
+          "False until the season admin or a super releases the answers. The score does not wait for it. A PAPER row appears once its grade is entered.",
       },
     },
   },

@@ -10,7 +10,6 @@ export const enumsNotificationsNotesSchemas = {
   AssignmentType: { type: "string", enum: ["STANDARD", "FORUM"] },
 
   QuizKind: { type: "string", enum: ["PAPER", "ONLINE"] },
-  QuizQuestionType: { type: "string", enum: ["MCQ", "ESSAY"] },
   QuizAttemptStatus: { type: "string", enum: ["IN_PROGRESS", "SUBMITTED", "GRADED"] },
   NotificationTarget: {
     type: "object",

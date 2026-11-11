@@ -14,6 +14,8 @@ import { errorResponse } from "./helpers";
 import { videoEventsForumSchemas } from "./components/video-events-forum";
 import { enumsNotificationsNotesSchemas } from "./components/enums-notifications-notes";
 import { announcementSchemas } from "./components/announcements";
+import { quizAnswerSchemas } from "./components/quiz-answers";
+import { quizQuestionSchemas } from "./components/quiz-questions";
 import { quizSchemas } from "./components/quizzes";
 import { peopleSchemas } from "./components/people";
 import { sessionsAssignmentsSchemas } from "./components/sessions-assignments";
@@ -140,6 +142,8 @@ export const openApiDocument = {
       ...videoEventsForumSchemas,
       ...enumsNotificationsNotesSchemas,
       ...quizSchemas,
+      ...quizQuestionSchemas,
+      ...quizAnswerSchemas,
       ...peopleSchemas,
       ...sessionsAssignmentsSchemas,
       ...submissionsMeSchemas,

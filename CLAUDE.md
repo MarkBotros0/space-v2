@@ -25,7 +25,8 @@ This file holds what applies everywhere. The rest loads or is read only when nee
 | `docs/rules/graduating-seasons.md` | `graduatesOnPass`, End graduates, the override |
 | `docs/rules/mentor.md` | the mentor's nav, Home, follow-ups, Absent lately |
 | `docs/rules/announcements.md` | who posts and reads, unread, notifications, polls |
-| `docs/rules/quiz-results.md` | results held until released (`studentAttemptStatus`) |
+| `docs/rules/quiz-results.md` | the score shows once graded, the answers are held until the admin releases them; best attempt counts |
+| `docs/rules/quiz-integrity.md` | the six question types, points and marking, shuffling, leaders' marking (timing and exits come with their plans) |
 | `docs/rules/student-work.md` | the student's My work tab, season page and Home |
 | `docs/rules/season-overview.md` | the season page, People card, putting people into a season |
 | `docs/rules/people-signin-emails.md` | Community tab, students list, sign-in, inviting, emails |
