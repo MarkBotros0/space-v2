@@ -409,6 +409,7 @@ erDiagram
   Quiz ||--o{ QuizAttempt : "quiz"
   User ||--o{ QuizAttempt : "studentUser"
   User |o--o{ QuizAttempt : "gradedBy"
+  User |o--o{ QuizAttempt : "endedBy"
   QuizAttempt ||--o{ QuizAnswer : "attempt"
   QuizQuestion ||--o{ QuizAnswer : "question"
   QuizQuestion ||--o{ QuizOption : "question"
@@ -431,6 +432,9 @@ erDiagram
     Int createdById FK "nullable"
     DateTime resultsReleasedAt "nullable"
     Int resultsReleasedById FK "nullable"
+    DateTime startsFrom "nullable"
+    DateTime startsUntil "nullable"
+    Int timeLimitMinutes "nullable"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -489,6 +493,9 @@ erDiagram
     DateTime submittedAt "nullable"
     Int gradedById FK "nullable"
     DateTime gradedAt "nullable"
+    DateTime deadlineAt "nullable"
+    QuizAttemptEndReason endReason "nullable"
+    Int endedById FK "nullable"
     DateTime createdAt
     DateTime updatedAt
   }
@@ -676,7 +683,10 @@ Rules Prisma cannot declare. They live in `prisma/migrations` and are noted on t
 | AssignmentPartWork | INDEX | `AssignmentPartWork_reviewed_idx` | `(reviewedAt DESC, id DESC) WHERE reviewedAt IS NOT NULL (the mentor's reviewed feed)` |
 | MentorFollowUp | UNIQUE INDEX | `MentorFollowUp_one_open` | `(mentorUserId, studentUserId) WHERE doneAt IS NULL` |
 | MentorFollowUp | INDEX | `MentorFollowUp_due_open_idx` | `(dueAt) WHERE doneAt IS NULL AND remindedAt IS NULL` |
+| Quiz | CHECK | `Quiz_timeLimitMinutes_check` | `timeLimitMinutes IS NULL OR timeLimitMinutes BETWEEN 1 AND 300` |
+| Quiz | CHECK | `Quiz_start_window_check` | `startsFrom IS NULL OR startsUntil IS NULL OR startsFrom < startsUntil` |
 | QuizAttempt | UNIQUE INDEX | `QuizAttempt_one_in_progress_key` | `(quizId, studentUserId) WHERE status = 'IN_PROGRESS'` |
+| QuizAttempt | INDEX | `QuizAttempt_deadline_open_idx` | `(deadlineAt) WHERE status = 'IN_PROGRESS' AND deadlineAt IS NOT NULL` |
 | QuizAttempt | CHECK | `QuizAttempt_totalScore_check` | `totalScore IS NULL OR totalScore = coalesce(autoScore, 0) + coalesce(manualScore, 0)` |
 | QuizQuestion | CHECK | `QuizQuestion_points_check` | `points >= 0` |
 | Season | CHECK | `Season_endDate_check` | `endDate >= startDate` |

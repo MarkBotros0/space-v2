@@ -50,6 +50,9 @@ export type QuizQuestionType = z.infer<typeof quizQuestionTypeSchema>;
 export const quizAttemptStatusSchema = z.enum(["IN_PROGRESS", "SUBMITTED", "GRADED"]);
 export type QuizAttemptStatus = z.infer<typeof quizAttemptStatusSchema>;
 
+/** Why an attempt stopped being IN_PROGRESS; null on attempts that predate the column. */
+export const quizAttemptEndReasonSchema = z.enum(["SUBMITTED", "TIMED_OUT", "ENDED_BY_STAFF", "ENDED_BY_EXITS"]);
+
 export const notificationTypeSchema = z.enum([
   "ASSIGNMENT_CREATED",
   "SUBMISSION_REVIEWED",

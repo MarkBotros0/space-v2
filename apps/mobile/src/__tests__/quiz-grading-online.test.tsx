@@ -44,12 +44,10 @@ function authoring(over: Partial<Record<string, unknown>> = {}) {
     maxScore: 20,
     attemptCount: 0,
     gradeCount: 0,
-    canEditStructure: false,
-    canManage: false,
-    answersReleasedAt: null,
-    shuffleQuestions: true,
+    ...{ canEditStructure: false, canManage: false, answersReleasedAt: null, shuffleQuestions: true },
     canReleaseResults: false,
     questions: [],
+    ...{ startsFrom: null, startsUntil: null, timeLimitMinutes: null },
     ...over,
   };
 }

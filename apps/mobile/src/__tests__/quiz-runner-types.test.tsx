@@ -48,6 +48,12 @@ function inProgress(questions: unknown[]) {
     submittedAt: null,
     gradedAt: null,
     answersReleased: false,
+    startsFrom: null,
+    startsUntil: null,
+    timeLimitMinutes: null,
+    deadlineAt: null,
+    serverNow: "2026-11-14T10:00:00.000Z",
+    endReason: null,
     questionCount: questions.length,
     questions,
   };

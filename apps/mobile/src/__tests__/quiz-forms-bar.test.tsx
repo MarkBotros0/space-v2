@@ -68,6 +68,9 @@ const authoring = (over: Record<string, unknown> = {}) => ({
   answersReleasedAt: null,
   canReleaseResults: true,
   shuffleQuestions: true,
+  startsFrom: null,
+  startsUntil: null,
+  timeLimitMinutes: null,
   questions: [mcq],
   ...over,
 });

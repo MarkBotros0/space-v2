@@ -43,8 +43,20 @@ export const updateQuizRequestSchema = z
     maxScore: z.number().int().min(1).max(1000).optional(),
     sessionId: z.number().int().positive().nullable().optional(),
     shuffleQuestions: z.boolean().optional(),
+    /** The window in which students may START the quiz; null clears an end of it. */
+    startsFrom: z.iso.datetime().nullable().optional(),
+    startsUntil: z.iso.datetime().nullable().optional(),
+    /** Minutes each student gets once they open the attempt; null = untimed. */
+    timeLimitMinutes: z.number().int().min(1).max(300).nullable().optional(),
   })
-  .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update." });
+  .refine((v) => Object.keys(v).length > 0, { message: "Nothing to update." })
+  .refine((v) => !v.startsFrom || !v.startsUntil || Date.parse(v.startsFrom) < Date.parse(v.startsUntil), {
+    path: ["startsUntil"],
+    message: "The quiz must stop being startable after it can first be started.",
+  });
+
+/** POST /quizzes/:id/attempts/end: staff end a student's open attempt. */
+export const endAttemptRequestSchema = z.object({ studentUserId: z.number().int().positive() });
 
 /** New in v2 (R20: v1 had no reorder at all). Must be a permutation — checked server-side. */
 export const reorderQuestionsRequestSchema = z.object({

@@ -105,6 +105,7 @@ const AUDIT_FKS = new Set([
   "Quiz.resultsReleasedById",
   "QuizGrade.gradedById",
   "QuizAttempt.gradedById",
+  "QuizAttempt.endedById",
   "JpcEvent.createdById",
   "Announcement.authorId",
   "AnnouncementPoll.closedById",

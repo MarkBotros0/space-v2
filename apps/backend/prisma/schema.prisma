@@ -145,6 +145,14 @@ enum QuizAttemptStatus {
   GRADED
 }
 
+// Why an attempt stopped being IN_PROGRESS (null on attempts that predate it).
+enum QuizAttemptEndReason {
+  SUBMITTED
+  TIMED_OUT
+  ENDED_BY_STAFF
+  ENDED_BY_EXITS
+}
+
 // ---------------------------------------------------------------------------
 // Identity & auth
 // ---------------------------------------------------------------------------
@@ -226,6 +234,7 @@ model User {
 
   quizAttempts       QuizAttempt[] @relation("QuizAttemptStudent")
   quizAttemptsGraded QuizAttempt[] @relation("QuizAttemptGradedBy")
+  quizAttemptsEnded  QuizAttempt[] @relation("QuizAttemptEndedBy")
 
   forumCommentsAuthored ForumComment[] @relation("ForumCommentAuthor")
 
@@ -849,6 +858,10 @@ model Quiz {
   resultsReleasedAt   DateTime? @db.Timestamptz(3) // "answers released" since the quiz-types plan
   resultsReleasedById Int?
   resultsReleasedBy   User?     @relation("QuizResultsReleasedBy", fields: [resultsReleasedById], references: [id], onDelete: SetNull)
+  // ONLINE timing. The window limits STARTING only; the limit is per student, from the moment they open the attempt.
+  startsFrom       DateTime? @db.Timestamptz(3)
+  startsUntil      DateTime? @db.Timestamptz(3)
+  timeLimitMinutes Int?
   createdAt   DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
 
@@ -858,6 +871,10 @@ model Quiz {
 
   @@index([seasonId])
   @@index([sessionId])
+
+  // SQL-only (prisma/migrations; not expressible in this file):
+  // SQL-only CHECK Quiz_timeLimitMinutes_check: timeLimitMinutes IS NULL OR timeLimitMinutes BETWEEN 1 AND 300
+  // SQL-only CHECK Quiz_start_window_check: startsFrom IS NULL OR startsUntil IS NULL OR startsFrom < startsUntil
 }
 
 model QuizGrade {
@@ -926,6 +943,12 @@ model QuizAttempt {
   gradedById    Int?
   gradedBy      User?             @relation("QuizAttemptGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)
   gradedAt      DateTime? @db.Timestamptz(3)
+  // Server-clock end of the time limit, set when the student first opens the attempt (null = untimed).
+  deadlineAt    DateTime?            @db.Timestamptz(3)
+  endReason     QuizAttemptEndReason?
+  // Set only when staff end the attempt.
+  endedById     Int?
+  endedBy       User?                @relation("QuizAttemptEndedBy", fields: [endedById], references: [id], onDelete: SetNull)
   createdAt     DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
 
@@ -937,6 +960,7 @@ model QuizAttempt {
 
   // SQL-only (prisma/migrations; not expressible in this file):
   // SQL-only UNIQUE INDEX QuizAttempt_one_in_progress_key: (quizId, studentUserId) WHERE status = 'IN_PROGRESS'
+  // SQL-only INDEX QuizAttempt_deadline_open_idx: (deadlineAt) WHERE status = 'IN_PROGRESS' AND deadlineAt IS NOT NULL
   // SQL-only CHECK QuizAttempt_totalScore_check: totalScore IS NULL OR totalScore = coalesce(autoScore, 0) + coalesce(manualScore, 0)
 }
 

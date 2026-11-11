@@ -82,6 +82,12 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
     submittedAt: null,
     gradedAt: null,
     answersReleased: false,
+    startsFrom: null,
+    startsUntil: null,
+    timeLimitMinutes: null,
+    deadlineAt: null,
+    serverNow: "2026-11-14T10:00:00.000Z",
+    endReason: null,
     // The server sends questions only while the attempt is open; the start card counts them by questionCount.
     questionCount: 2,
     questions: stage === "in_progress" ? [mcq, essay] : [],
@@ -304,6 +310,9 @@ describe("quiz runner", () => {
           answersReleasedAt: null,
           canReleaseResults: true,
           shuffleQuestions: true,
+          startsFrom: null,
+          startsUntil: null,
+          timeLimitMinutes: null,
           questions: [
             {
               id: 100,

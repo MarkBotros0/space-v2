@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { quizAttemptStatusSchema } from "../enums";
 import { quizQuestionAuthoringSchema } from "./questions";
 
 // ---------------------------------------------------------------------------
@@ -26,4 +27,9 @@ export const saveQuizAnswersResponseSchema = z.object({ saved: z.number() });
 export const reopenAttemptResponseSchema = z.object({
   attemptId: z.number(),
   attemptNumber: z.number(),
+});
+/** POST /quizzes/:id/attempts/end */
+export const endAttemptResponseSchema = z.object({
+  attemptId: z.number(),
+  status: quizAttemptStatusSchema,
 });

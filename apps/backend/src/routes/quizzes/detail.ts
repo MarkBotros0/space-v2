@@ -28,6 +28,9 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
       session: { select: { title: true } },
       _count: { select: { attempts: true, grades: true } },
       shuffleQuestions: true,
+      startsFrom: true,
+      startsUntil: true,
+      timeLimitMinutes: true,
       questions: { orderBy: { order: "asc" }, select: AUTHORING_QUESTION_SELECT },
     },
   });
@@ -52,6 +55,9 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
     answersReleasedAt: quiz.resultsReleasedAt,
     canReleaseResults: canRelease(quiz.seasonId),
     shuffleQuestions: quiz.shuffleQuestions,
+    startsFrom: quiz.startsFrom,
+    startsUntil: quiz.startsUntil,
+    timeLimitMinutes: quiz.timeLimitMinutes,
     questions: quiz.questions.map(toAuthoringQuestion),
   };
 }

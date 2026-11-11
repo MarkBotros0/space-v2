@@ -41,6 +41,9 @@ export function authoring(over: Partial<Record<string, unknown>> = {}) {
     answersReleasedAt: null,
     canReleaseResults: true,
     shuffleQuestions: true,
+    startsFrom: null,
+    startsUntil: null,
+    timeLimitMinutes: null,
     questions: [mcq, essay],
     ...over,
   };

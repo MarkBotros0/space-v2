@@ -33,9 +33,16 @@ import {
  * from a keyless row. The loader's return type is the shared wire type with
  * its two timestamps as `Date` (the backend hands Dates to res.json()).
  */
-type StudentQuizDetailRow = Omit<StudentQuizDetail, "submittedAt" | "gradedAt"> & {
+type StudentQuizDetailRow = Omit<
+  StudentQuizDetail,
+  "submittedAt" | "gradedAt" | "startsFrom" | "startsUntil" | "deadlineAt" | "serverNow"
+> & {
   submittedAt: Date | null;
   gradedAt: Date | null;
+  startsFrom: Date | null;
+  startsUntil: Date | null;
+  deadlineAt: Date | null;
+  serverNow: Date;
 };
 
 type AttemptRow = {
@@ -46,6 +53,8 @@ type AttemptRow = {
   shuffleSeed: number;
   submittedAt: Date | null;
   gradedAt: Date | null;
+  deadlineAt: Date | null;
+  endReason: StudentQuizDetail["endReason"];
 };
 
 /** Question order for an attempt: shuffled by its seed when the quiz says so, else the author's. */
@@ -97,6 +106,9 @@ export async function loadStudentQuizDetail(
       maxScore: true,
       publishedAt: true,
       shuffleQuestions: true,
+      startsFrom: true,
+      startsUntil: true,
+      timeLimitMinutes: true,
       // "Answers released" since the quiz-types plan; the column keeps its name.
       resultsReleasedAt: true,
       session: { select: { title: true } },
@@ -117,6 +129,8 @@ export async function loadStudentQuizDetail(
       shuffleSeed: true,
       submittedAt: true,
       gradedAt: true,
+      deadlineAt: true,
+      endReason: true,
     },
   });
   const latest = attempts[0] ?? null;
@@ -141,6 +155,13 @@ export async function loadStudentQuizDetail(
     questions,
     readOnly,
     answersReleased,
+    startsFrom: quiz.startsFrom,
+    startsUntil: quiz.startsUntil,
+    timeLimitMinutes: quiz.timeLimitMinutes,
+    deadlineAt: latest?.deadlineAt ?? null,
+    // The countdown's reference: the phone corrects its own clock by this.
+    serverNow: new Date(),
+    endReason: latest?.endReason ?? null,
   };
 }
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { quizAttemptStatusSchema, quizKindSchema } from "../enums";
+import { quizAttemptEndReasonSchema, quizAttemptStatusSchema, quizKindSchema } from "../enums";
 import { quizQuestionAuthoringSchema } from "./questions";
 import { quizQuestionStudentSchema } from "./student";
 
@@ -75,6 +75,10 @@ export const quizAuthoringDetailSchema = z.object({
   canReleaseResults: z.boolean(),
   /** Whether each attempt's questions are shuffled for the student (on by default). */
   shuffleQuestions: z.boolean(),
+  /** Start window (ISO) and per-student time limit; null = not set. */
+  startsFrom: z.string().nullable(),
+  startsUntil: z.string().nullable(),
+  timeLimitMinutes: z.number().nullable(),
   questions: z.array(quizQuestionAuthoringSchema),
 });
 export type QuizAuthoringDetail = z.infer<typeof quizAuthoringDetailSchema>;
@@ -113,6 +117,15 @@ export const studentQuizDetailSchema = z.object({
    * after a hand-in and no `review` is sent.
    */
   answersReleased: z.boolean(),
+  /** Start window (ISO) and per-student time limit; null = not set. */
+  startsFrom: z.string().nullable(),
+  startsUntil: z.string().nullable(),
+  timeLimitMinutes: z.number().nullable(),
+  /** When the open attempt runs out (ISO); null when untimed or not yet opened. */
+  deadlineAt: z.string().nullable(),
+  /** The server's clock at this response: the countdown's reference, not the phone's. */
+  serverNow: z.string(),
+  endReason: quizAttemptEndReasonSchema.nullable(),
 });
 export type StudentQuizDetail = z.infer<typeof studentQuizDetailSchema>;
 
