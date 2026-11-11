@@ -94,14 +94,18 @@ export class ExitQueue {
 
   /** The student left (server time): kept until they come back, so a kill in the background still counts. */
   setLeft(leftAt: string): Promise<void> {
-    return write(leftKey(this.attemptId), leftAt);
+    const key = leftKey(this.attemptId);
+    return serial(key, () => write(key, leftAt));
   }
 
-  /** The leave not yet matched by a return, removed as it is read. */
-  async takeLeft(): Promise<string | null> {
-    const leftAt = await read(leftKey(this.attemptId));
-    if (leftAt !== null) await remove(leftKey(this.attemptId));
-    return leftAt;
+  /** The leave not yet matched by a return, removed as it is read: two takes at once, one gets it. */
+  takeLeft(): Promise<string | null> {
+    const key = leftKey(this.attemptId);
+    return serial(key, async () => {
+      const leftAt = await read(key);
+      if (leftAt !== null) await remove(key);
+      return leftAt;
+    });
   }
 
   /** The attempt is on screen: a later cold start with this still set is a relaunch. */
@@ -117,7 +121,7 @@ export class ExitQueue {
 /** Everything kept for this attempt, gone: it is no longer the open one. */
 export async function forgetAttempt(attemptId: number): Promise<void> {
   await serial(queueKey(attemptId), () => remove(queueKey(attemptId)));
-  await remove(leftKey(attemptId));
+  await serial(leftKey(attemptId), () => remove(leftKey(attemptId)));
   await remove(openKey(attemptId));
   if ((await read(CURRENT_KEY)) === String(attemptId)) await remove(CURRENT_KEY);
 }

@@ -86,4 +86,12 @@ describe("quiz exit queue", () => {
     await forgetAttempt(901);
     expect(mockStore.size).toBe(0);
   });
+
+  it("two takes of the left marker at once: only one gets it", async () => {
+    const q = new ExitQueue(900);
+    await q.setLeft(at);
+    const both = await Promise.all([q.takeLeft(), q.takeLeft()]);
+    expect(both.filter((v) => v === at)).toHaveLength(1);
+    expect(both).toContain(null);
+  });
 });

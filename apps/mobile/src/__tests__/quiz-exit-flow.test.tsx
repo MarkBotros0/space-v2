@@ -1,6 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
 import { onlineManager } from "@tanstack/react-query";
-import { AppState, BackHandler, type AppStateStatus } from "react-native";
 
 const mockStore = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
@@ -30,124 +29,37 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
 }));
 
-import { apiClient } from "../lib/api-client";
-import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import QuizDetailScreen from "../../app/(app)/quiz/[id]/index";
 
 /* Leaving an open attempt: docs/superpowers/plans/2026-11-10-quiz-integrity.md Task 4. */
 
-const get = apiClient.get as jest.Mock;
-const post = apiClient.post as jest.Mock;
-const EVENTS = "/api/v1/quizzes/41/attempt/events";
-const SERVER_NOW = "2026-11-14T10:00:00.000Z";
-/** Within the first second after SERVER_NOW: the phone's own clock reads 09:55. */
-const ON_SERVER_CLOCK = expect.stringMatching(/^2026-11-14T10:00:00\.\d{3}Z$/);
-const TITLE = "You left the quiz";
-const BODY = "Leaving the quiz isn't allowed and has been recorded. Leaving again may end your attempt.";
-const ENDED =
-  "Your attempt has ended because you left the quiz. Your answers were submitted. Ask your leader if this was a mistake.";
-
-const mcq = {
-  id: 100,
-  order: 0,
-  type: "SINGLE_CHOICE" as const,
-  prompt: "Capital of France?",
-  points: 2,
-  options: [
-    { id: 1001, label: "London" },
-    { id: 1002, label: "Paris" },
-  ],
-  answer: { optionId: null as number | null },
-  review: null,
-  pointsAwarded: null,
-};
-
-function detail(over: Partial<Record<string, unknown>> = {}) {
-  return {
-    id: 41,
-    title: "Week 1 quiz",
-    kind: "ONLINE",
-    seasonId: 7,
-    maxScore: 2,
-    sessionTitle: "Week 1",
-    attemptId: 900,
-    attemptNumber: 1,
-    readOnly: false,
-    status: "IN_PROGRESS",
-    stage: "in_progress",
-    totalScore: null,
-    submittedAt: null,
-    gradedAt: null,
-    answersReleased: false,
-    startsFrom: null,
-    startsUntil: null,
-    timeLimitMinutes: null,
-    deadlineAt: null,
-    serverNow: SERVER_NOW,
-    endReason: null,
-    questionCount: 1,
-    questions: [mcq],
-    ...over,
-  };
-}
-const report = (exits: number, ended = false, status = "IN_PROGRESS") => ({
-  data: { data: { exits, ended, status } },
-});
-
-let appListeners: ((s: AppStateStatus) => void)[] = [];
-type BackFn = Parameters<typeof BackHandler.addEventListener>[1];
-let backHandlers: BackFn[] = [];
-const appState = (s: AppStateStatus) =>
-  act(async () => {
-    for (const fn of appListeners) fn(s);
-    await jest.advanceTimersByTimeAsync(0);
-  });
-const tick = (ms = 0) =>
-  act(async () => {
-    await jest.advanceTimersByTimeAsync(ms);
-  });
-const eventPosts = () => post.mock.calls.filter(([url]) => url === EVENTS);
-const sentEvents = () => eventPosts().flatMap(([, body]) => body.events);
+import {
+  appState,
+  backHandlersNow,
+  BODY,
+  detail,
+  ENDED,
+  eventPosts,
+  get,
+  ON_SERVER_CLOCK,
+  openQuiz,
+  post,
+  report,
+  sentEvents,
+  SERVER_NOW,
+  setUpExitHarness,
+  tearDownExitHarness,
+  tick,
+  TITLE,
+} from "./helpers/quiz-exit-harness";
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  jest.useFakeTimers();
-  // The phone runs five minutes slow: every time it sends is on the server's clock.
-  jest.setSystemTime(Date.parse(SERVER_NOW) - 5 * 60_000);
   mockStore.clear();
   mockShot = null;
-  appListeners = [];
-  backHandlers = [];
-  onlineManager.setOnline(true);
-  jest.spyOn(AppState, "addEventListener").mockImplementation((_type, fn) => {
-    appListeners.push(fn as (s: AppStateStatus) => void);
-    return { remove: () => (appListeners = appListeners.filter((f) => f !== fn)) };
-  });
-  jest.spyOn(BackHandler, "addEventListener").mockImplementation((_type, fn) => {
-    backHandlers.push(fn);
-    return { remove: () => (backHandlers = backHandlers.filter((f) => f !== fn)) };
-  });
-  useSessionStore.setState(useSessionStore.getInitialState(), true);
-  useSessionStore.setState({
-    user: { id: 9, name: "S", email: "s@jpc.test", role: "STUDENT", avatarPath: null, hasPassword: true },
-    scopes: { seasonAdminIds: [], groupLeaderIds: [], activeSeasonId: 7, graduationYear: null },
-  });
+  setUpExitHarness();
 });
-
-afterEach(() => {
-  onlineManager.setOnline(true);
-  jest.useRealTimers();
-  jest.restoreAllMocks();
-});
-
-async function openQuiz(over: Partial<Record<string, unknown>> = {}) {
-  get.mockResolvedValue({ data: { data: detail(over) } });
-  const view = renderWithProviders(<QuizDetailScreen />);
-  await screen.findByText("Capital of France?");
-  await tick();
-  return view;
-}
+afterEach(tearDownExitHarness);
 
 describe("quiz exits", () => {
   it("background then active posts one EXIT and shows the warning", async () => {
@@ -296,8 +208,8 @@ describe("quiz exits", () => {
 
   it("Android back does nothing while the attempt is open", async () => {
     await openQuiz({ attemptId: 906 });
-    expect(backHandlers.length).toBeGreaterThan(0);
-    expect(backHandlers.every((fn) => fn({} as never) === true)).toBe(true);
+    expect(backHandlersNow().length).toBeGreaterThan(0);
+    expect(backHandlersNow().every((fn) => fn({} as never) === true)).toBe(true);
   });
 
   it("nothing is counted on a reopened timed attempt not started yet", async () => {
@@ -310,6 +222,6 @@ describe("quiz exits", () => {
     await appState("active");
     expect(eventPosts()).toHaveLength(0);
     expect(mockStore.has("quiz-open.907")).toBe(false);
-    expect(backHandlers).toHaveLength(0);
+    expect(backHandlersNow()).toHaveLength(0);
   });
 });
