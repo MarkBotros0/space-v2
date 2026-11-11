@@ -26,7 +26,7 @@ const assignment = (id: number, over: Record<string, unknown> = {}) => ({
 });
 const quiz = (quizId: number, over: Record<string, unknown> = {}) => ({
   ...quizResult,
-  resultsReleased: true,
+  answersReleased: true,
   quizId,
   title: `Quiz ${quizId}`,
   ...over,

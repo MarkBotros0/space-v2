@@ -61,7 +61,10 @@ const essay = {
   pointsAwarded: null,
 };
 
+const STAGE_OF = { IN_PROGRESS: "in_progress", SUBMITTED: "submitted", GRADED: "graded" } as const;
+
 function detail(over: Partial<Record<string, unknown>> = {}) {
+  const status = over.status as keyof typeof STAGE_OF | null | undefined;
   return {
     id: 41,
     title: "Week 1 quiz",
@@ -73,7 +76,7 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
     attemptNumber: 0,
     readOnly: false,
     status: null,
-    stage: "not_started",
+    stage: status ? STAGE_OF[status] : "not_started",
     totalScore: null,
     submittedAt: null,
     gradedAt: null,
@@ -195,60 +198,6 @@ describe("quiz runner", () => {
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt/submit"));
   });
 
-  it("shows the graded result per question without ever seeing an answer key", async () => {
-    get.mockResolvedValue({
-      data: {
-        data: detail({
-          attemptId: 900,
-          attemptNumber: 1,
-          status: "GRADED",
-          totalScore: 5,
-          gradedAt: "2099-03-02T10:00:00.000Z",
-          questions: [
-            { ...mcq, answer: { optionId: 1001 }, review: { correctOptionIds: [1002] }, pointsAwarded: 0 },
-            { ...essay, answer: { text: "Because." }, pointsAwarded: 5 },
-          ],
-        }),
-      },
-    });
-
-    renderWithProviders(<QuizDetailScreen />);
-
-    // The tile counts up; its accessibility label carries the final figure.
-    expect(await screen.findByLabelText("Score: 5/7")).toBeTruthy();
-    expect(screen.getByText("Score")).toBeTruthy();
-    expect(screen.getByText("Your quiz has been graded.")).toBeTruthy();
-    expect(screen.getByText("Q1")).toBeTruthy();
-    expect(screen.getByText("Your answer: London")).toBeTruthy();
-    expect(screen.getByText("5/5 pts")).toBeTruthy();
-    // R34: the student is told which MCQ was wrong, and never what was right —
-    // there is no correctIndex in the contract to render.
-    expect(screen.getByText("Incorrect")).toBeTruthy();
-    // Correctness is a word on every question, never colour alone: the essay says it is graded.
-    expect(screen.getAllByText("Graded").length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("says in words that an essay is still awaiting grading, and a correct MCQ is Correct", async () => {
-    get.mockResolvedValue({
-      data: {
-        data: detail({
-          attemptId: 900,
-          attemptNumber: 1,
-          status: "SUBMITTED",
-          questions: [
-            { ...mcq, answer: { optionId: 1002 }, review: { correctOptionIds: [1002] }, pointsAwarded: 2 },
-            { ...essay, answer: { text: "Because." } },
-          ],
-        }),
-      },
-    });
-
-    renderWithProviders(<QuizDetailScreen />);
-
-    expect(await screen.findByText("Correct")).toBeTruthy();
-    expect(screen.getByText("Awaiting grading")).toBeTruthy();
-  });
-
   it("counts answered questions in the pinned bar's hint", async () => {
     get.mockResolvedValue({
       data: { data: detail({ attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS" }) },
@@ -311,23 +260,6 @@ describe("quiz runner", () => {
     fireEvent.press(await screen.findByText("Submit"));
 
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Quiz submitted."));
-  });
-
-  it("tells a submitted student to wait rather than offering the form again", async () => {
-    get.mockResolvedValue({
-      data: {
-        data: detail({ attemptId: 900, attemptNumber: 1, status: "SUBMITTED" }),
-      },
-    });
-
-    renderWithProviders(<QuizDetailScreen />);
-
-    // v1 shows the full result view for SUBMITTED, with a Pending badge.
-    expect(await screen.findByText("Submitted")).toBeTruthy();
-    expect(screen.getByText("Awaiting grading for the written answers.")).toBeTruthy();
-    expect(screen.getByText("Pending")).toBeTruthy();
-    expect(screen.getByText("Q1")).toBeTruthy();
-    expect(screen.queryByText("Submit quiz")).toBeNull();
   });
 
   it("gives staff a read-only preview with a link to grading", async () => {

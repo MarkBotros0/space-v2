@@ -61,7 +61,7 @@ const takenQuiz = (quizId: number, title: string, sessionDate: string) => ({
   sessionTitle: null,
   sessionDate,
   attemptStatus: "GRADED",
-  resultsReleased: true,
+  answersReleased: true,
 });
 
 /** Routes by URL: the season, and the two lists the submissions card reads. */

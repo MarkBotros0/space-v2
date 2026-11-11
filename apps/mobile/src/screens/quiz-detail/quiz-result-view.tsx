@@ -1,81 +1,45 @@
 import { View } from "react-native";
-import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
+import type { StudentQuizDetail } from "@space/shared";
 
 import { Screen } from "../../design/layout/screen";
-import { StatTile, StatusChip, Text, statusChip, type ChipSpec } from "../../design/ui";
-import { QCARD, quizTitleProps } from "./quiz-header";
+import { StatTile, StatusChip, Text } from "../../design/ui";
+import { formatScore } from "../../lib/format";
+import { QuestionReview } from "./review/question-review";
+import { quizTitleProps } from "./quiz-header";
 
 /**
- * Correctness as a word on every question (the chip is never colour alone). The
- * student is told which MCQ was wrong, never what was right (R34).
+ * Where the student stands after handing in (owner, 2026-11-10): submitted shows only that; graded
+ * shows the score; answers adds the review. Questions are drawn from the `answers` stage ONLY:
+ * whatever the cache still holds from the attempt is never shown before then.
  */
-function questionChip(q: QuizQuestionStudent, released: boolean): ChipSpec | null {
-  // Held results (owner, 2026-11-07): nothing about the marking, not even "not graded".
-  if (!released) return null;
-  if (q.type === "MCQ") {
-    if (q.isCorrect === null) return { tone: "neutral", label: "Not graded yet" };
-    return q.isCorrect ? { tone: "ok", label: "Correct" } : { tone: "bad", label: "Incorrect" };
-  }
-  return q.pointsAwarded !== null ? { tone: "ok", label: "Graded" } : { tone: "warn", label: "Awaiting grading" };
-}
-
-/** What the card under the title says, from handed in to graded. */
-function resultLine(detail: StudentQuizDetail, graded: boolean): string {
-  if (graded) return "Your quiz has been graded.";
-  if (!detail.resultsReleased) return "Handed in. Your score will show here once your admin releases the results.";
-  return "Awaiting grading for the written answers.";
-}
-
-/** v1 Result: SUBMITTED and GRADED both list the answers (B2-15). */
 export function ResultView({ detail }: { detail: StudentQuizDetail }) {
-  const graded = detail.status === "GRADED";
+  const stage = detail.stage;
+  const submitted = stage === "submitted";
   return (
     <Screen {...quizTitleProps(detail)}>
       <View className="flex-col gap-3">
         <View className="flex-col gap-3 rounded-group bg-surface p-5">
-          <View className="flex-row flex-wrap items-center gap-1.5">
-            <StatusChip {...statusChip("quizAttempt", graded ? "GRADED" : "SUBMITTED")} />
-            {graded ? null : (
-              <StatusChip tone="warn" label={detail.resultsReleased ? "Pending" : "Results not out yet"} />
-            )}
-          </View>
+          {submitted ? <StatusChip tone="neutral" label="Submitted" /> : <StatusChip tone="ok" label="Graded" />}
           <Text variant="subhead" className="text-muted-foreground">
-            {resultLine(detail, graded)}
+            {submitted
+              ? "Your score appears once it's marked."
+              : stage === "graded"
+                ? "Answers appear when your admin releases them."
+                : "Your answers are marked below."}
           </Text>
-          {graded ? (
+          {detail.totalScore !== null && !submitted ? (
             <View className="flex-row">
-              <StatTile value={detail.totalScore ?? 0} suffix={`/${detail.maxScore}`} label="Score" />
+              <StatTile
+                value={formatScore(detail.totalScore)}
+                suffix={` / ${formatScore(detail.maxScore)}`}
+                label="Score"
+              />
             </View>
           ) : null}
         </View>
-        {detail.questions.map((q, index) => {
-          const chip = questionChip(q, detail.resultsReleased);
-          return (
-            <View key={q.id} className={QCARD}>
-              <View className="flex-row flex-wrap items-center justify-between gap-2">
-                <Text variant="caption" className="font-bold text-muted-foreground">{`Q${index + 1}`}</Text>
-                <View className="flex-row flex-wrap items-center gap-2">
-                  <Text variant="caption" tabular className="text-muted-foreground">
-                    {q.pointsAwarded !== null ? `${q.pointsAwarded}/${q.points} pts` : `${q.points} pts`}
-                  </Text>
-                  {chip ? <StatusChip {...chip} /> : null}
-                </View>
-              </View>
-              <Text variant="headline" className="mt-1">
-                {q.prompt}
-              </Text>
-              {q.type === "MCQ" ? (
-                <Text variant="subhead" className="mt-1 text-muted-foreground">
-                  {`Your answer: ${q.selectedIndex !== null ? (q.options[q.selectedIndex] ?? "—") : "—"}`}
-                </Text>
-              ) : (
-                <Text variant="subhead" className="mt-1 rounded-control bg-muted/40 px-3 py-2 text-foreground">
-                  {q.text || "—"}
-                </Text>
-              )}
-            </View>
-          );
-        })}
+        {stage === "answers"
+          ? detail.questions.map((q, index) => <QuestionReview key={q.id} q={q} index={index} />)
+          : null}
       </View>
     </Screen>
   );

@@ -37,13 +37,15 @@ const studentSession = {
 const mcq = {
   id: 100,
   order: 0,
-  type: "MCQ" as const,
+  type: "SINGLE_CHOICE" as const,
   prompt: "Capital of France?",
   points: 2,
-  options: ["London", "Paris"],
-  selectedIndex: null,
-  text: null,
-  isCorrect: null,
+  options: [
+    { id: 1001, label: "London" },
+    { id: 1002, label: "Paris" },
+  ],
+  answer: { optionId: null as number | null },
+  review: null,
   pointsAwarded: null,
 };
 const essay = {
@@ -52,10 +54,8 @@ const essay = {
   type: "ESSAY" as const,
   prompt: "Discuss.",
   points: 5,
-  options: [],
-  selectedIndex: null,
-  text: null,
-  isCorrect: null,
+  answer: { text: "" },
+  review: null,
   pointsAwarded: null,
 };
 
@@ -71,10 +71,11 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
     attemptNumber: 0,
     readOnly: false,
     status: null,
+    stage: "not_started",
     totalScore: null,
     submittedAt: null,
     gradedAt: null,
-    resultsReleased: true,
+    answersReleased: false,
     questions: [mcq, essay],
     ...over,
   };
@@ -102,7 +103,9 @@ describe("quiz runner, read-only (a finished season)", () => {
 
   it("does not offer to continue an attempt left in progress", async () => {
     get.mockResolvedValue({
-      data: { data: detail({ readOnly: true, attemptId: 9, attemptNumber: 1, status: "IN_PROGRESS" }) },
+      data: {
+        data: detail({ readOnly: true, attemptId: 9, attemptNumber: 1, status: "IN_PROGRESS", stage: "in_progress" }),
+      },
     });
     renderWithProviders(<QuizDetailScreen />);
     expect(await screen.findByText("You didn't finish this quiz.")).toBeTruthy();
@@ -112,10 +115,20 @@ describe("quiz runner, read-only (a finished season)", () => {
 
   it("still shows the result of a graded quiz", async () => {
     get.mockResolvedValue({
-      data: { data: detail({ readOnly: true, attemptId: 9, attemptNumber: 1, status: "GRADED", totalScore: 6 }) },
+      data: {
+        data: detail({
+          readOnly: true,
+          attemptId: 9,
+          attemptNumber: 1,
+          status: "GRADED",
+          stage: "graded",
+          totalScore: 6,
+          questions: [],
+        }),
+      },
     });
     renderWithProviders(<QuizDetailScreen />);
-    expect(await screen.findByText("Your quiz has been graded.")).toBeTruthy();
+    expect(await screen.findByText("Answers appear when your admin releases them.")).toBeTruthy();
     expect(screen.getByText("Score")).toBeTruthy();
   });
 
@@ -172,24 +185,22 @@ describe("quiz runner, read-only (a finished season)", () => {
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/release"));
   });
 
-  it("shows a student whose results are held no per-question verdicts", async () => {
+  it("shows a submitted student no verdicts and no questions", async () => {
     get.mockResolvedValue({
       data: {
         data: detail({
           attemptId: 900,
           attemptNumber: 1,
           status: "SUBMITTED",
-          resultsReleased: false,
-          totalScore: null,
+          stage: "submitted",
           submittedAt: "2099-01-01T00:00:00.000Z",
+          questions: [],
         }),
       },
     });
     renderWithProviders(<QuizDetailScreen />);
-    expect(
-      await screen.findByText("Handed in. Your score will show here once your admin releases the results."),
-    ).toBeTruthy();
-    expect(screen.queryByText("Correct")).toBeNull();
-    expect(screen.queryByText("Incorrect")).toBeNull();
+    expect(await screen.findByText("Your score appears once it's marked.")).toBeTruthy();
+    expect(screen.queryByText("Right")).toBeNull();
+    expect(screen.queryByText("Wrong")).toBeNull();
   });
 });

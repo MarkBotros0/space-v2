@@ -20,18 +20,19 @@ export function StudentRunner({ id }: { id: number }) {
     return <Screen>{isPending ? <RouteSkeleton /> : <RouteError onRetry={() => void refetch()} />}</Screen>;
   }
 
-  if (data.readOnly && data.status !== "GRADED" && data.status !== "SUBMITTED") {
+  const finished = data.stage === "submitted" || data.stage === "graded" || data.stage === "answers";
+  if (data.readOnly && !finished) {
     // A finished season: nothing to start, and an attempt left open can't be resumed.
     return (
       <Screen {...quizTitleProps(data)}>
         <Text variant="subhead" className="rounded-group bg-surface p-5 text-muted-foreground">
-          {data.status === "IN_PROGRESS" ? "You didn't finish this quiz." : "You didn't take this quiz."}
+          {data.stage === "in_progress" ? "You didn't finish this quiz." : "You didn't take this quiz."}
         </Text>
       </Screen>
     );
   }
-  if (data.status === "IN_PROGRESS") return <AttemptForm detail={data} id={id} />;
-  if (data.status === "GRADED" || data.status === "SUBMITTED") return <ResultView detail={data} />;
+  if (data.stage === "in_progress") return <AttemptForm detail={data} id={id} />;
+  if (finished) return <ResultView detail={data} />;
 
   const n = data.questions.length;
   return (

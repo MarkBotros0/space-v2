@@ -5,7 +5,7 @@ import type { SeasonRecord } from "@space/shared";
 
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { EmptyState, GroupedList, ListRow, StatusChip, statusChip } from "../../design/ui";
-import { formatDayKey, formatDate } from "../../lib/format";
+import { formatDayKey, formatDate, formatScore } from "../../lib/format";
 
 export function AssignmentsList({ record }: { record: SeasonRecord }) {
   const router = useRouter();
@@ -54,7 +54,7 @@ export function QuizzesList({ record }: { record: SeasonRecord }) {
           key={`${q.kind}-${q.id}`}
           title={q.title}
           titleLines={2}
-          subtitle={q.score !== null ? `Score: ${q.score}` : undefined}
+          subtitle={q.score !== null ? `Score: ${formatScore(q.score)}` : undefined}
           trailing={<StatusChip {...QUIZ_CHIP[q.status]} />}
           // A paper quiz has no screen of its own, as in Work.
           chevron={q.kind === "ONLINE"}

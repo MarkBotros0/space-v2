@@ -24,7 +24,7 @@ const quiz = (over: Partial<StudentQuizResult> & { quizId: number }): StudentQui
   sessionTitle: null,
   sessionDate: null,
   attemptStatus: null,
-  resultsReleased: true,
+  answersReleased: true,
   ...over,
 });
 
@@ -137,6 +137,12 @@ describe("quizRow", () => {
       tone: "neutral",
       label: "Awaiting grading",
     });
+  });
+
+  it("a score shows once graded, one decimal at most, even with a retake in progress", () => {
+    const row = quizRow(quiz({ quizId: 6, score: 7.5, attemptStatus: "IN_PROGRESS" }));
+    expect(row.score).toBe("7.5/10");
+    expect(row.chip).toBeUndefined();
   });
 
   it("paper without a score: Pending, and not a link", () => {

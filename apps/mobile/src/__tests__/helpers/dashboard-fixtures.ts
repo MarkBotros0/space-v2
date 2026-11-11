@@ -121,7 +121,7 @@ export const quizResult = {
   sessionTitle: null,
   sessionDate: null,
   attemptStatus: null,
-  resultsReleased: false,
+  answersReleased: false,
 };
 export const quizPage = { items: [quizResult], nextCursor: null };
 

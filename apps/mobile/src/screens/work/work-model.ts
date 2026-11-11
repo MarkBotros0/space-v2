@@ -8,7 +8,7 @@ import type { DashboardDueItem, StudentAssignmentListItem, StudentQuizResult } f
 
 import { dueChip, statusChip, type ChipSpec } from "../../design/ui/status-chip";
 import { daysBetween } from "../../lib/calendar-grid";
-import { formatDate, formatDayKey, unbreakable } from "../../lib/format";
+import { formatDate, formatDayKey, formatScore, unbreakable } from "../../lib/format";
 
 /** Where "See all" and the Assignments tile go. */
 export const WORK_HREF = "/work" as const;
@@ -118,7 +118,7 @@ export function quizRow(q: StudentQuizResult): WorkRow {
     title: q.title,
     ...(parts.length > 0 ? { subtitle: parts.join(" · ") } : {}),
     ...(chip ? { chip } : {}),
-    ...(scored ? { score: `${q.score}/${q.maxScore}` } : {}),
+    ...(scored ? { score: `${formatScore(q.score!)}/${formatScore(q.maxScore)}` } : {}),
     // v1: a paper quiz is a plain row, not a link.
     href: q.kind === "ONLINE" ? { pathname: "/quiz/[id]", params: { id: String(q.quizId) } } : null,
   };
@@ -203,9 +203,8 @@ function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
 function submittedQuizRow(q: StudentQuizResult): WorkRow {
   const base = quizRow(q);
   if (q.score !== null) return base;
-  // Held by staff (owner, 2026-11-07) reads differently from an essay still being marked.
-  const label = q.resultsReleased ? "Not graded yet" : "Results not out yet";
-  return { ...base, chip: { tone: "neutral", label } };
+  // No graded attempt yet: waiting for marking (the answers' release is a separate step).
+  return { ...base, chip: { tone: "neutral", label: "Not graded yet" } };
 }
 
 type SubmittedSections = { assignments: WorkRow[]; quizzes: WorkRow[] };
