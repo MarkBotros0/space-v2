@@ -14,11 +14,13 @@ describe("quiz attempt events", () => {
 
   it("accepts 1 to 20 events, a null returnedAt and every kind", () => {
     for (const kind of ["EXIT", "RELAUNCH", "SCREENSHOT"]) {
-      expect(quizAttemptEventsRequestSchema.safeParse({ events: [{ ...ok, kind }] }).success).toBe(true);
+      expect(quizAttemptEventsRequestSchema.safeParse({ attemptId: 7, events: [{ ...ok, kind }] }).success).toBe(true);
     }
-    expect(quizAttemptEventsRequestSchema.safeParse({ events: [{ ...ok, returnedAt: null }] }).success).toBe(true);
-    expect(quizAttemptEventsRequestSchema.safeParse({ events: [] }).success).toBe(false);
-    expect(quizAttemptEventsRequestSchema.safeParse({ events: Array(21).fill(ok) }).success).toBe(false);
+    expect(
+      quizAttemptEventsRequestSchema.safeParse({ attemptId: 7, events: [{ ...ok, returnedAt: null }] }).success,
+    ).toBe(true);
+    expect(quizAttemptEventsRequestSchema.safeParse({ attemptId: 7, events: [] }).success).toBe(false);
+    expect(quizAttemptEventsRequestSchema.safeParse({ attemptId: 7, events: Array(21).fill(ok) }).success).toBe(false);
   });
 
   it("refuses a non-UUID id, an unknown kind, a non-ISO time and extra keys", () => {
@@ -28,15 +30,20 @@ describe("quiz attempt events", () => {
       { ...ok, leftAt: "yesterday" },
       { ...ok, extra: true },
     ]) {
-      expect(quizAttemptEventsRequestSchema.safeParse({ events: [bad] }).success).toBe(false);
+      expect(quizAttemptEventsRequestSchema.safeParse({ attemptId: 7, events: [bad] }).success).toBe(false);
     }
+  });
+
+  it("needs the attempt id the phone saw", () => {
+    expect(quizAttemptEventsRequestSchema.safeParse({ events: [ok] }).success).toBe(false);
+    expect(quizAttemptEventsRequestSchema.safeParse({ attemptId: 0, events: [ok] }).success).toBe(false);
   });
 
   it("refuses a returnedAt before leftAt; accepts one equal to it", () => {
     const before = { ...ok, returnedAt: "2026-11-14T09:59:59.000Z" };
-    expect(quizAttemptEventsRequestSchema.safeParse({ events: [before] }).success).toBe(false);
+    expect(quizAttemptEventsRequestSchema.safeParse({ attemptId: 7, events: [before] }).success).toBe(false);
     const same = { ...ok, returnedAt: ok.leftAt };
-    expect(quizAttemptEventsRequestSchema.safeParse({ events: [same] }).success).toBe(true);
+    expect(quizAttemptEventsRequestSchema.safeParse({ attemptId: 7, events: [same] }).success).toBe(true);
   });
 
   it("the response is the count, whether this report ended it, and the status", () => {

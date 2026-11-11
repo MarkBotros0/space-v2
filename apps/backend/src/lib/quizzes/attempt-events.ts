@@ -20,6 +20,17 @@ const COUNTED = ["EXIT", "RELAUNCH"] as const;
 const exitCount = (tx: Prisma.TransactionClient, attemptId: number) =>
   tx.quizAttemptEvent.count({ where: { attemptId, kind: { in: [...COUNTED] } } });
 
+/** How far before the attempt's creation a phone's time is still taken as it is. */
+const PAST_BOUND_MS = 24 * 60 * 60_000;
+
+/**
+ * The phone's clock decides nothing (no exit is lost to it): a time later than the
+ * server's now is stored as now, and an absurdly early one as the attempt's creation
+ * minus a day. Monotone, so returnedAt >= leftAt (both from the same phone clock) holds.
+ */
+const clampToServer = (createdAt: Date, now: Date) => (iso: string) =>
+  new Date(Math.min(now.getTime(), Math.max(createdAt.getTime() - PAST_BOUND_MS, Date.parse(iso))));
+
 type Recorded = { exits: number; ended: boolean; closed: ClosedAttempt | null };
 
 async function recordLocked(
@@ -45,24 +56,23 @@ async function recordLocked(
     return { exits: await exitCount(tx, attemptId), ended: false, closed: null };
   }
 
-  // An event from before this attempt existed was queued for an earlier one (a replay
-  // landing on a retake): it is not this attempt's, so it is dropped, not stored or counted.
-  const { createdAt } = await tx.quizAttempt.findUniqueOrThrow({
-    where: { id: attemptId },
-    select: { createdAt: true },
-  });
-  const own = events.filter((e) => Date.parse(e.leftAt) >= createdAt.getTime());
-
-  await tx.quizAttemptEvent.createMany({
-    data: own.map((e) => ({
-      attemptId,
-      clientEventId: e.clientEventId,
-      kind: e.kind,
-      leftAt: new Date(e.leftAt),
-      returnedAt: e.returnedAt === null ? null : new Date(e.returnedAt),
-    })),
-    skipDuplicates: true,
-  });
+  if (events.length > 0) {
+    const { createdAt } = await tx.quizAttempt.findUniqueOrThrow({
+      where: { id: attemptId },
+      select: { createdAt: true },
+    });
+    const at = clampToServer(createdAt, now);
+    await tx.quizAttemptEvent.createMany({
+      data: events.map((e) => ({
+        attemptId,
+        clientEventId: e.clientEventId,
+        kind: e.kind,
+        leftAt: at(e.leftAt),
+        returnedAt: e.returnedAt === null ? null : at(e.returnedAt),
+      })),
+      skipDuplicates: true,
+    });
+  }
   const exits = await exitCount(tx, attemptId);
   if (exits < MAX_EXITS) return { exits, ended: false, closed: null };
   const closed = await closeLockedInTx(tx, attemptId, row, "ENDED_BY_EXITS", null);

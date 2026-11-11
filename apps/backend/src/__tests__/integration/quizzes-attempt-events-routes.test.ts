@@ -6,7 +6,13 @@ import { db } from "../../db/client";
 import { recordAttemptEvents } from "../../lib/quizzes/attempt-events";
 import { createFirstAttempt } from "../../lib/quizzes/start-attempt";
 import { bearer, cleanupTestData, login } from "./fixtures";
-import { buildPublishedQuizIn, quizGradedCountFor, seedQuizFixtures, type QuizFixtures } from "./quizzes-setup";
+import {
+  buildPublishedQuizIn,
+  quizGradedCountFor,
+  seedQuizFixtures,
+  setLatestAttempt,
+  type QuizFixtures,
+} from "./quizzes-setup";
 
 /* The phone's exit reports (plan "Quiz integrity", Task 1): the server counts, the third exit ends the attempt. */
 jest.setTimeout(60000);
@@ -26,7 +32,7 @@ afterAll(async () => {
 });
 
 type Kind = "EXIT" | "RELAUNCH" | "SCREENSHOT";
-/** An event that happened now: after the attempt was created, so it is that attempt's. */
+/** An event that happened just now, by the phone's clock. */
 const event = (kind: Kind = "EXIT", clientEventId = randomUUID(), leftAt = new Date()) => ({
   clientEventId,
   kind,
@@ -34,8 +40,23 @@ const event = (kind: Kind = "EXIT", clientEventId = randomUUID(), leftAt = new D
   returnedAt: new Date(leftAt.getTime() + 1_000).toISOString(),
 });
 
-const post = (quizId: number, events: unknown[], token = f.studentToken) =>
-  request(app).post(`/api/v1/quizzes/${quizId}/attempt/events`).set(bearer(token)).send({ events });
+/** Posts as the phone does: naming the attempt it saw, by default the own student's latest. */
+async function post(quizId: number, events: unknown[], token = f.studentToken, attemptId?: number) {
+  const seen =
+    attemptId ??
+    (
+      await db.quizAttempt.findFirst({
+        where: { quizId, studentUserId: f.ownStudentId },
+        orderBy: { attemptNumber: "desc" },
+        select: { id: true },
+      })
+    )?.id ??
+    1;
+  return request(app)
+    .post(`/api/v1/quizzes/${quizId}/attempt/events`)
+    .set(bearer(token))
+    .send({ attemptId: seen, events });
+}
 
 /** A started attempt with the choice question answered correctly, so a close has something to mark. */
 async function openQuiz() {
@@ -162,17 +183,25 @@ describe("POST /quizzes/:id/attempt/events", () => {
     expect(await quizGradedCountFor(f.ownStudentId)).toBe(before + 1);
   });
 
-  it("an event from before the attempt existed (a replay onto a retake) is dropped", async () => {
+  it("events queued for an older attempt (replayed onto a retake) are dropped", async () => {
     const quizId = await openQuiz();
-    const { id } = await latest(quizId);
-    const created = (await db.quizAttempt.findUniqueOrThrow({ where: { id }, select: { createdAt: true } })).createdAt;
-    const old = (n: number) => event("EXIT", randomUUID(), new Date(created.getTime() - n * 60_000));
-    const res = await post(quizId, [old(3), old(2), old(1)]);
-    expect(res.body.data).toEqual({ exits: 0, ended: false, status: "IN_PROGRESS" });
-    expect(await storedEvents(quizId)).toBe(0);
-    // Mixed with one of its own: only that one counts.
-    expect((await post(quizId, [old(1), event()])).body.data.exits).toBe(1);
-    expect(await storedEvents(quizId)).toBe(1);
+    const first = (await latest(quizId)).id;
+    await post(quizId, [event(), event()]);
+    await setLatestAttempt(quizId, f.ownStudentId, { status: "GRADED" });
+    const reopened = await request(app)
+      .post(`/api/v1/quizzes/${quizId}/attempts/reopen`)
+      .set(bearer(f.leaderToken))
+      .send({ studentUserId: f.ownStudentId });
+    expect(reopened.status).toBe(201);
+    const retake = reopened.body.data.attemptId as number;
+    await request(app).put(`/api/v1/quizzes/${quizId}/attempt`).set(bearer(f.studentToken));
+
+    const replay = await post(quizId, [event(), event(), event()], f.studentToken, first);
+    expect(replay.status).toBe(200);
+    expect(replay.body.data).toEqual({ exits: 0, ended: false, status: "IN_PROGRESS" });
+    expect(await db.quizAttemptEvent.count({ where: { attemptId: retake } })).toBe(0);
+    expect(await db.quizAttemptEvent.count({ where: { attemptId: first } })).toBe(2);
+    expect((await post(quizId, [event()], f.studentToken, retake)).body.data.exits).toBe(1);
   });
 
   it("a reopened timed attempt not started yet stores nothing", async () => {
@@ -197,13 +226,31 @@ describe("POST /quizzes/:id/attempt/events", () => {
     expect((await latest(quizId)).status).toBe("IN_PROGRESS");
   });
 
-  it("refuses an event from the future and a bad body", async () => {
+  it("a phone clock running fast or absurdly slow never loses an exit: times are clamped", async () => {
     const quizId = await openQuiz();
-    const future = { ...event(), leftAt: new Date(Date.now() + 5 * 60_000).toISOString(), returnedAt: null };
-    const res = await post(quizId, [future]);
-    expect(res.status).toBe(400);
-    expect(res.body.error.code).toBe("event_in_future");
+    const { id } = await latest(quizId);
+    const fast = new Date(Date.now() + 5 * 60_000);
+    const res = await post(quizId, [event("EXIT", randomUUID(), fast), event("EXIT", randomUUID(), new Date(0))]);
+    expect(res.status).toBe(200);
+    expect(res.body.data.exits).toBe(2);
+    const created = (await db.quizAttempt.findUniqueOrThrow({ where: { id }, select: { createdAt: true } })).createdAt;
+    const [slow, quick] = (
+      await db.quizAttemptEvent.findMany({ where: { attemptId: id }, orderBy: { leftAt: "asc" } })
+    ).map((r) => ({ leftAt: r.leftAt.getTime(), returnedAt: r.returnedAt?.getTime() ?? 0 }));
+    expect(slow?.leftAt).toBe(created.getTime() - 24 * 60 * 60_000);
+    expect(quick?.leftAt).toBeLessThanOrEqual(Date.now());
+    expect(quick?.returnedAt).toBeLessThanOrEqual(Date.now());
+    expect(quick?.returnedAt).toBeGreaterThanOrEqual(quick?.leftAt ?? Infinity);
+  });
+
+  it("refuses a bad body", async () => {
+    const quizId = await openQuiz();
     expect((await post(quizId, [])).status).toBe(400);
+    const noAttemptId = await request(app)
+      .post(`/api/v1/quizzes/${quizId}/attempt/events`)
+      .set(bearer(f.studentToken))
+      .send({ events: [event()] });
+    expect(noAttemptId.status).toBe(400);
     expect((await post(quizId, [{ ...event(), clientEventId: "not-a-uuid" }])).status).toBe(400);
     const backFirst = { ...event(), returnedAt: new Date(Date.now() - 60_000).toISOString() };
     expect((await post(quizId, [backFirst])).status).toBe(400);

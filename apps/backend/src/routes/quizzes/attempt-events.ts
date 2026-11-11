@@ -11,9 +11,6 @@ import { requireUser } from "../../middleware/require-auth";
 import { quizAttemptEventsRequestSchema } from "../../../../../packages/shared/src/index";
 import { loadTakeableQuiz } from "./attempts";
 
-/** How far ahead of the server's clock a phone's clock may run before its event is refused. */
-const CLOCK_SKEW_MS = 60_000;
-
 /**
  * The phone reports what it saw while the student's attempt was open (spec
  * "Leaving the quiz"). Gated like a save: a student, an active place in the
@@ -30,10 +27,6 @@ export async function postAttemptEvents(req: Request, res: Response) {
 
   const parsed = parseOr400(quizAttemptEventsRequestSchema, req.body, res, "Invalid events.");
   if (parsed === null) return;
-  const latestAllowed = Date.now() + CLOCK_SKEW_MS;
-  if (parsed.events.some((e) => Date.parse(e.leftAt) > latestAllowed)) {
-    return apiError(res, "event_in_future", "An event can't be later than now.", 400);
-  }
 
   const quiz = await loadTakeableQuiz(res, user, id);
   if (!quiz) return undefined;
@@ -48,7 +41,10 @@ export async function postAttemptEvents(req: Request, res: Response) {
   });
   if (!attempt) return apiError(res, "no_attempt", "Start the quiz first.", 409);
 
-  const { exits, ended } = await recordAttemptEvents(attempt.id, parsed.events);
+  // Events the phone queued for an older attempt (replayed onto a retake) aren't this
+  // attempt's: dropped, and the answer reflects the latest attempt.
+  const events = parsed.attemptId === attempt.id ? parsed.events : [];
+  const { exits, ended } = await recordAttemptEvents(attempt.id, events);
   const after = await db.quizAttempt.findUniqueOrThrow({ where: { id: attempt.id }, select: { status: true } });
   return apiOk(res, { exits, ended, status: after.status });
 }

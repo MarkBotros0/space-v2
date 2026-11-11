@@ -149,6 +149,10 @@ const quizAttemptEventInputSchema = z
   });
 export type QuizAttemptEventInput = z.output<typeof quizAttemptEventInputSchema>;
 
+/** `attemptId` is the attempt the phone saw (the student detail's): events for an older attempt are dropped. */
 export const quizAttemptEventsRequestSchema = z
-  .object({ events: z.array(quizAttemptEventInputSchema).min(1).max(20) })
+  .object({
+    attemptId: z.number().int().positive(),
+    events: z.array(quizAttemptEventInputSchema).min(1).max(20),
+  })
   .strict();
