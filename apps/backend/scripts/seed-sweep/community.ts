@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 
 import { db } from "../../src/db/client";
 import { newPublicId } from "../../src/lib/public-id";
+import { addQuizQuestion } from "../../src/lib/quizzes/questions";
 import type { SweepPeople } from "./people";
 import { fromToday, SWEEP_PASSWORD } from "./shared";
 
@@ -91,16 +92,14 @@ export async function seedCommunityScenario({ superUser, admin, leader, alumni, 
       createdById: admin.id,
     },
   });
-  await db.quizQuestion.create({
-    data: {
-      quizId: quiz.id,
-      order: 1,
-      type: "MCQ",
-      prompt: "Which hall did we meet in?",
-      points: 1,
-      options: ["Hall A", "Hall B"],
-      correctIndex: 0,
-    },
+  await addQuizQuestion(quiz.id, {
+    type: "SINGLE_CHOICE",
+    prompt: "Which hall did we meet in?",
+    points: 1,
+    options: [
+      { label: "Hall A", isCorrect: true },
+      { label: "Hall B", isCorrect: false },
+    ],
   });
   await db.quizAttempt.create({
     data: {

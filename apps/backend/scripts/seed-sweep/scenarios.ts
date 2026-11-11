@@ -1,5 +1,6 @@
 import { db } from "../../src/db/client";
 import { newPublicId } from "../../src/lib/public-id";
+import { saveAnswers, submitAnswers } from "../../src/lib/quizzes/attempts";
 import type { SweepActivity } from "./activity";
 import type { SweepPeople } from "./people";
 import { fromToday } from "./shared";
@@ -59,31 +60,21 @@ export async function seedLeaderScenario(
 
   // The online quiz has a submitted attempt with an essay answer waiting to
   // be graded, so the leader's grading page shows an attempt card.
-  const [mcq1, mcq2, essay] = await db.quizQuestion.findMany({
+  const [hall, length, essay] = await db.quizQuestion.findMany({
     where: { quizId: onlineQuiz.id },
     orderBy: { order: "asc" },
+    select: { id: true, quizOptions: { select: { id: true, label: true } } },
   });
-  if (!mcq1 || !mcq2 || !essay) throw new Error("seed-sweep: the online quiz needs two MCQs and an essay");
-  const attempt = await db.quizAttempt.create({
-    data: {
-      quizId: onlineQuiz.id,
-      studentUserId: classmate.id,
-      status: "SUBMITTED",
-      autoScore: 1,
-      submittedAt: fromToday(0),
-    },
-  });
-  await db.quizAnswer.createMany({
-    data: [
-      { attemptId: attempt.id, questionId: mcq1.id, selectedIndex: 0, isCorrect: true, pointsAwarded: 1 },
-      { attemptId: attempt.id, questionId: mcq2.id, selectedIndex: 0, isCorrect: false, pointsAwarded: 0 },
-      {
-        attemptId: attempt.id,
-        questionId: essay.id,
-        text: "I hope to learn how to lead a small group well.",
-      },
-    ],
-  });
+  if (!hall || !length || !essay) throw new Error("seed-sweep: the online quiz needs two choices and an essay");
+  const option = (q: typeof hall, label: string) => q.quizOptions.find((o) => o.label === label)!.id;
+  const attempt = await db.quizAttempt.create({ data: { quizId: onlineQuiz.id, studentUserId: classmate.id } });
+  await saveAnswers(attempt.id, [
+    { type: "SINGLE_CHOICE", questionId: hall.id, optionId: option(hall, "Hall A") },
+    { type: "SINGLE_CHOICE", questionId: length.id, optionId: option(length, "60 minutes") },
+    { type: "ESSAY", questionId: essay.id, text: "I hope to learn how to lead a small group well." },
+  ]);
+  // One right, one wrong, the essay waiting for the leader: SUBMITTED.
+  await submitAnswers(onlineQuiz.id, attempt.id);
 
   // Notes the leader has written, for My notes and the student's page.
   await db.engagementNote.createMany({

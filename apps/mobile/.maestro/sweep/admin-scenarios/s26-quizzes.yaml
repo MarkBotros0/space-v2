@@ -126,3 +126,157 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s26-16-quiz-new-bottom
+# The question-type quizzes (seed-sweep/quiz-types.ts). Quiz 5 has its answers released: the
+# staff view shows every type's question and key in Arabic.
+- openLink: spacev2://quiz/5
+- extendedWaitUntil:
+    visible: 'Online · Published'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-17-types-quiz
+- scrollUntilVisible:
+    element: 'Which verse did we memorise in Week 2\?'
+    direction: DOWN
+    centerElement: true
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-18-types-quiz-key
+- runFlow: ../_scroll-end.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-19-types-quiz-bottom
+# Quiz 4: graded, answers held, so the release card offers Release (never tapped).
+- openLink: spacev2://quiz/4/grade
+- extendedWaitUntil:
+    visible: 'Max score: \d+'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-20-types-grade-held
+# Quiz 7: a draft with no attempts, so every question opens its editor. Each is opened, looked
+# at and cancelled; Save is never tapped.
+- openLink: spacev2://quiz/7/edit
+- extendedWaitUntil:
+    visible: 'Edit quiz details'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-21-types-builder
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit question 1'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-22-edit-single
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Cancel'
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit question 2'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-23-edit-multi
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Cancel'
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit question 3'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-24-edit-true-false
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Cancel'
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit question 4'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-25-edit-matching
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Right item 5'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-26-edit-matching-kbd
+- hideKeyboard
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Cancel'
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit question 5'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-27-edit-blank
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Question prompt'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-28-edit-blank-kbd
+- hideKeyboard
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Answer for blank 2'
+- waitForAnimationToEnd:
+    timeout: 5000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-29-edit-blank-answer-kbd
+- hideKeyboard
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Cancel'
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Edit question 7'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-30-edit-essay
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Cancel'
+# A new question's type picker, then the empty matching editor (local; Add question is never tapped).
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Add question'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-31-add-question
+# The type chip, not question 4's "Matching" status chip further up.
+- scrollUntilVisible:
+    element: 'Question type'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- tapOn:
+    text: 'Matching'
+    below: 'Question type'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s26-32-add-matching

@@ -101,22 +101,70 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s16-10-attempt-sheet
-# Marks fields. Save marks is never tapped.
+# Right / Wrong is local until Save marks, which is never tapped. One essay: one toggle.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Marks for What do you hope to learn this season\?'
+      TARGET: 'Right'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-11-essay-marked
+- back
+- waitForAnimationToEnd:
+    timeout: 5000
+# Quiz 3 (seed-sweep/quiz-types.ts): the classmate's submitted attempt with every question type,
+# Arabic content, two blanks and an essay to mark. The auto-marked types show their marks.
+- openLink: spacev2://quiz/3/grade
+- extendedWaitUntil:
+    visible: 'Max score: \d+'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-12-types-grade
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '.*Awaiting grading.*'
+- extendedWaitUntil:
+    visible: 'Save marks'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-11-essay-marks-kbd
-- eraseText: 10
-- inputText: '1'
-- hideKeyboard
+- takeScreenshot: s16-13-types-sheet
+# Scrolls inside the sheet (it fills 90% of the screen, so the middle is its content).
+- scrollUntilVisible:
+    element: 'Student.s match: .*'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s16-12-essay-marks-typed
+- takeScreenshot: s16-14-types-sheet-matching
+- scrollUntilVisible:
+    element: 'Blank 2'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-15-types-sheet-blanks
+# Marks the first blank right and the second wrong: local until Save marks.
+# Relative to each blank's caption: the matching rows above also carry the words Right and Wrong.
+- tapOn:
+    text: 'Right'
+    below: 'Blank 1'
+- tapOn:
+    text: 'Wrong'
+    below: 'Blank 2'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-16-types-sheet-blanks-marked
+- runFlow: ../_scroll-end.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s16-17-types-sheet-bottom
 - back
 - waitForAnimationToEnd:
     timeout: 5000

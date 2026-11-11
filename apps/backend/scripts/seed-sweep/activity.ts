@@ -1,10 +1,13 @@
 import { db } from "../../src/db/client";
 import { newPublicId } from "../../src/lib/public-id";
+import { addQuizQuestion } from "../../src/lib/quizzes/questions";
 import type { SweepPeople } from "./people";
+import { seedQuizTypes } from "./quiz-types";
 import { fromToday } from "./shared";
 
 /** Sessions, attendance, assignments with the student's drafts, and quizzes. */
-export async function seedActivity({ admin, leader, student, classmate, season, pastSeason }: SweepPeople) {
+export async function seedActivity(people: SweepPeople) {
+  const { admin, leader, student, classmate, season, pastSeason } = people;
   const pastSession = await db.session.create({
     data: {
       seasonId: season.id,
@@ -115,35 +118,30 @@ export async function seedActivity({ admin, leader, student, classmate, season, 
       createdById: admin.id,
     },
   });
-  await db.quizQuestion.createMany({
-    data: [
-      {
-        quizId: onlineQuiz.id,
-        order: 1,
-        type: "MCQ",
-        prompt: "Which hall do we meet in?",
-        points: 1,
-        options: ["Hall A", "Hall B", "Online"],
-        correctIndex: 0,
-      },
-      {
-        quizId: onlineQuiz.id,
-        order: 2,
-        type: "MCQ",
-        prompt: "How long is a session?",
-        points: 1,
-        options: ["60 minutes", "90 minutes", "2 hours"],
-        correctIndex: 1,
-      },
-      {
-        quizId: onlineQuiz.id,
-        order: 3,
-        type: "ESSAY",
-        prompt: "What do you hope to learn this season?",
-        points: 1,
-      },
+  // Through the backend's own writer, so the options are QuizOption rows like the app's.
+  await addQuizQuestion(onlineQuiz.id, {
+    type: "SINGLE_CHOICE",
+    prompt: "Which hall do we meet in?",
+    points: 1,
+    options: [
+      { label: "Hall A", isCorrect: true },
+      { label: "Hall B", isCorrect: false },
+      { label: "Online", isCorrect: false },
     ],
   });
+  await addQuizQuestion(onlineQuiz.id, {
+    type: "SINGLE_CHOICE",
+    prompt: "How long is a session?",
+    points: 1,
+    options: [
+      { label: "60 minutes", isCorrect: false },
+      { label: "90 minutes", isCorrect: true },
+      { label: "2 hours", isCorrect: false },
+    ],
+  });
+  await addQuizQuestion(onlineQuiz.id, { type: "ESSAY", prompt: "What do you hope to learn this season?", points: 1 });
+  // Every question type, Arabic content and each attempt stage (quiz-types.ts).
+  await seedQuizTypes(people);
 
   return { reflection, reading, onlineQuiz };
 }
