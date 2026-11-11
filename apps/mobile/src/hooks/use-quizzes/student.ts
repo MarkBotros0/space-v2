@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
+import { useEffect } from "react";
 import {
   openQuizAttemptSchema,
   quizAttemptEventsResponseSchema,
@@ -53,20 +54,24 @@ export function useStudentQuizDetail(id: number | null): UseQueryResult<StudentQ
  */
 export function useOpenQuizAttempt(enabled: boolean): UseQueryResult<OpenQuizAttempt> {
   const queryClient = useQueryClient();
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.quizzes.openAttempt(),
-    queryFn: async () => {
-      const open = await apiGet("/api/v1/me/open-quiz-attempt", openQuizAttemptSchema);
-      const { lockedQuizId, setLockedQuiz } = useQuizLockStore.getState();
-      // Closed elsewhere (staff End, the scheduler): the held quiz's own read moves its screen on.
-      if (lockedQuizId !== null && lockedQuizId !== open.quizId) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(lockedQuizId) });
-      }
-      setLockedQuiz(open.quizId);
-      return open;
-    },
+    queryFn: () => apiGet("/api/v1/me/open-quiz-attempt", openQuizAttemptSchema),
     enabled,
   });
+  // Every answer, a cache hit included, is applied (keyed on its time: an unchanged answer keeps its object).
+  const quizId = query.data?.quizId;
+  const answeredAt = query.dataUpdatedAt;
+  useEffect(() => {
+    if (!enabled || quizId === undefined) return;
+    const { lockedQuizId, setLockedQuiz } = useQuizLockStore.getState();
+    // Closed elsewhere (staff End, the scheduler): the held quiz's own read moves its screen on.
+    if (lockedQuizId !== null && lockedQuizId !== quizId) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(lockedQuizId) });
+    }
+    setLockedQuiz(quizId);
+  }, [enabled, quizId, answeredAt, queryClient]);
+  return query;
 }
 
 /** Idempotent create-or-resume (ruling C6). Safe to call from a button that double-fires. */

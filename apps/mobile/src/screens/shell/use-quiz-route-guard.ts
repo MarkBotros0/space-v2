@@ -18,10 +18,8 @@ const heldQuizPath = (quizId: number) => `/quiz/${quizId}`;
  * does. Staff are never held. Returns the held quiz's id, or null.
  */
 export function useQuizRouteGuard(): number | null {
-  const isStudent = useSessionStore((s) => s.status === "authenticated" && s.user?.role === "STUDENT");
-  useOpenQuizAttempt(isStudent);
-  const lockedQuizId = useQuizLockStore((s) => s.lockedQuizId);
-  const held = isStudent ? lockedQuizId : null;
+  useOpenQuizAttempt(useSessionStore((s) => s.status === "authenticated" && s.user?.role === "STUDENT"));
+  const held = useHeldQuizId();
   const pathname = usePathname();
   const onTab = (useSegments() as string[]).includes("(tabs)");
 
@@ -33,4 +31,11 @@ export function useQuizRouteGuard(): number | null {
   }, [held, pathname, onTab]);
 
   return held;
+}
+
+/** The quiz a signed-in student is held on, or null. Root routes outside (app) redirect to it. */
+export function useHeldQuizId(): number | null {
+  const isStudent = useSessionStore((s) => s.status === "authenticated" && s.user?.role === "STUDENT");
+  const lockedQuizId = useQuizLockStore((s) => s.lockedQuizId);
+  return isStudent ? lockedQuizId : null;
 }

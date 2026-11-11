@@ -23,6 +23,7 @@ jest.mock("../hooks/use-notifications", () => ({
   flattenNotifications: () => [],
 }));
 
+import { AxiosError, type AxiosResponse } from "axios";
 import * as SecureStore from "expo-secure-store";
 
 import { apiClient } from "../lib/api-client";
@@ -108,11 +109,19 @@ function serve(open: { quizId: number | null } | Error, quiz: unknown = inProgre
   });
 }
 
-/** The route tree from disk, with app/index.tsx and the real quiz screen in place of their stubs. */
+const notFound = () =>
+  new AxiosError("nf", "ERR_BAD_REQUEST", undefined, undefined, {
+    status: 404,
+    data: { error: { code: "not_found", message: "Quiz not found." } },
+  } as AxiosResponse);
+
+/** The route tree from disk, with the real root routes and quiz screen in place of their stubs. */
 function context() {
   return {
     ...appContext(),
     index: require("../../app/index"),
+    "+not-found": require("../../app/+not-found"),
+    "checkin/[token]": require("../../app/checkin/[token]"),
     "(app)/quiz/[id]/index": require("../../app/(app)/quiz/[id]/index"),
   };
 }
@@ -213,6 +222,62 @@ describe("the guard", () => {
     useSessionStore.getState().clear();
     expect(useQuizLockStore.getState().lockedQuizId).toBeNull();
     await waitFor(() => expect(secure.has("quiz-route-lock")).toBe(false));
+  });
+});
+
+describe("fix round 1", () => {
+  it("a quiz that is gone (404 on re-read) lets the student go, even with its old read cached", async () => {
+    useQuizLockStore.setState({ lockedQuizId: 41 });
+    let reads = 0;
+    get.mockImplementation(async (url: string) => {
+      if (url === "/api/v1/me/open-quiz-attempt") return { data: { data: { quizId: null } } };
+      if (url === "/api/v1/quizzes/41") {
+        reads += 1;
+        if (reads === 1) return { data: { data: inProgress() } };
+        throw notFound();
+      }
+      return { data: { data: null } };
+    });
+    const result = await renderRouter(context(), { initialUrl: "/quiz/41" });
+
+    await waitFor(() => expect(reads).toBeGreaterThan(1));
+    await waitFor(() => expect(useQuizLockStore.getState().lockedQuizId).toBeNull());
+    await act(() => router.push("/notifications"));
+    expect(await screen.findByText("screen:/notifications")).toBeTruthy();
+    expect(result.getPathname()).toBe("/notifications");
+    expect(useQuizLockStore.getState().lockedQuizId).toBeNull();
+  });
+
+  it("a first read that 404s releases the hold too", async () => {
+    useQuizLockStore.setState({ lockedQuizId: 41 });
+    get.mockImplementation(async (url: string) => {
+      if (url === "/api/v1/me/open-quiz-attempt") throw new Error("Network Error");
+      throw notFound();
+    });
+    await renderRouter(context(), { initialUrl: "/quiz/41" });
+    await waitFor(() => expect(useQuizLockStore.getState().lockedQuizId).toBeNull());
+  });
+
+  it.each([["/checkin/ABC123"], ["/no/such/place"]])(
+    "a cold deep link outside the app shell (%s) lands on the quiz",
+    async (url) => {
+      useQuizLockStore.setState({ lockedQuizId: 41 });
+      serve({ quizId: 41 });
+      const result = await renderRouter(context(), { initialUrl: url });
+      expect(await screen.findByText("Capital of France?")).toBeTruthy();
+      expect(result.getPathname()).toBe("/quiz/41");
+    },
+  );
+
+  it("the held quiz's loading screen has no back bar", async () => {
+    useQuizLockStore.setState({ lockedQuizId: 41 });
+    get.mockImplementation(async (url: string) => {
+      if (url === "/api/v1/me/open-quiz-attempt") return { data: { data: { quizId: 41 } } };
+      return new Promise(() => {});
+    });
+    await renderRouter(context(), { initialUrl: "/quiz/41" });
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/quizzes/41"));
+    expect(screen.queryByLabelText("Back")).toBeNull();
   });
 });
 

@@ -11,6 +11,7 @@ import { Button } from "../../src/design/ui";
 import { useCheckIn } from "../../src/hooks/use-check-in";
 import { useCheckInTally } from "../../src/hooks/use-check-in-tally";
 import { checkInRefusalCode, type CheckInOutcome } from "../../src/lib/check-in-result";
+import { useHeldQuizId } from "../../src/screens/shell/use-quiz-route-guard";
 import { useSessionStore } from "../../src/store/session";
 
 /**
@@ -31,7 +32,12 @@ export default function CheckInLinkScreen() {
   const tally = useCheckInTally();
   const [outcome, setOutcome] = useState<CheckInOutcome | null>(null);
   const token = typeof raw === "string" ? parseCheckInCode(raw) : null;
+  // Outside the (app) guard: a student held on an open quiz goes back to it (spec "Relaunch").
+  const heldQuizId = useHeldQuizId();
 
+  if (heldQuizId !== null) {
+    return <Redirect href={{ pathname: "/quiz/[id]", params: { id: String(heldQuizId) } }} />;
+  }
   if (status !== "authenticated") {
     return <Redirect href={token ? { pathname: "/login", params: { returnTo: `/checkin/${token}` } } : "/login"} />;
   }
