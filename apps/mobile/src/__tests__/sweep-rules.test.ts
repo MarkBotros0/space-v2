@@ -104,7 +104,6 @@ const BASELINE: Record<string, Record<string, number>> = {
   },
   // An empty value says so in words ("Not answered"), never "—".
   emDashEmpty: {
-    "src/screens/alumni/alumni-dashboard.tsx": 1,
     "src/screens/announcements/meta.ts": 1,
     "src/screens/quiz-detail/quiz-result-view.tsx": 1,
     "src/screens/quiz-edit/question-row.tsx": 1,
