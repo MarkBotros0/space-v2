@@ -6,6 +6,7 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 
 import { hasActiveEnrollment } from "../../lib/permissions";
+import { addQuizQuestion } from "../../lib/quizzes/questions";
 import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
 
 jest.setTimeout(120000);
@@ -113,16 +114,17 @@ describe("a student on a draft's roster", () => {
   ])("publishing a quiz in a %s season sends %i notification", async (status, expected) => {
     const w = await world(status, `quiz-${status.toLowerCase()}`);
     const quiz = await db.quiz.create({
-      data: {
-        seasonId: w.seasonId,
-        title: "Q",
-        kind: "ONLINE",
-        maxScore: 1,
-        questions: {
-          create: [{ order: 1, type: "MCQ", prompt: "?", points: 1, options: ["a", "b"], correctIndex: 0 }],
-        },
-      },
+      data: { seasonId: w.seasonId, title: "Q", kind: "ONLINE", maxScore: 0 },
       select: { id: true },
+    });
+    await addQuizQuestion(quiz.id, {
+      type: "SINGLE_CHOICE",
+      prompt: "?",
+      points: 1,
+      options: [
+        { label: "a", isCorrect: true },
+        { label: "b", isCorrect: false },
+      ],
     });
     const res = await call("post", `/quizzes/${quiz.id}/publish`, adminT).send({ publish: true });
     expect(res.status).toBe(200);

@@ -49,7 +49,7 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
     // enforces, so the screen never has to guess whether the builder is live.
     canEditStructure: canManage && quiz.kind === "ONLINE" && quiz._count.attempts === 0,
     canManage,
-    resultsReleasedAt: quiz.resultsReleasedAt,
+    answersReleasedAt: quiz.resultsReleasedAt,
     canReleaseResults: canRelease(quiz.seasonId),
     shuffleQuestions: quiz.shuffleQuestions,
     questions: quiz.questions.map(toAuthoringQuestion),

@@ -124,7 +124,7 @@ describe("answers released (owner, 2026-11-07; spec 2026-11-10)", () => {
       totalScore: 2,
       answersReleased: true,
     });
-    expect(detail.body.data.questions[0].review).toMatchObject({ pointsAwarded: 2 });
+    expect(detail.body.data.questions[0]).toMatchObject({ pointsAwarded: 2 });
 
     // One way: a release cannot be taken back, and there is no route to try.
     const stored = await db.quiz.findUniqueOrThrow({ where: { id: quizId }, select: { resultsReleasedAt: true } });
@@ -196,7 +196,7 @@ describe("the best attempt counts (spec: honest accidents)", () => {
     const detail = await request(app).get(`/api/v1/quizzes/${quizId}`).set(bearer(f.studentToken));
     expect(detail.body.data).toMatchObject({ stage: "answers", totalScore: 2 });
     // The first attempt picked Paris and earned the 2 points.
-    expect(detail.body.data.questions[0].review).toMatchObject({ pointsAwarded: 2 });
+    expect(detail.body.data.questions[0]).toMatchObject({ pointsAwarded: 2 });
   });
 
   it("a retaken student counts once in gradedCount", async () => {
