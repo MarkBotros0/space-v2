@@ -73,11 +73,12 @@ export function Matching({ question, answer, onChange, disabled }: QuestionProps
   const numberOf = (leftId: number) => question.left.findIndex((l) => l.id === leftId) + 1;
   const chosenLabel = chosenLeft === null ? null : label(question.left, chosenLeft);
 
+  // With an item chosen, a tap chooses another (paired or not) or, on the chosen one, clears the
+  // choice; with nothing chosen, a tap on a paired item unpairs it.
   const pressLeft = (id: number) => {
-    if (pairOfLeft(id)) {
-      onChange(unpair(answer, id));
-      setChosenLeft(null);
-    } else setChosenLeft(chosenLeft === id ? null : id);
+    if (chosenLeft !== null) setChosenLeft(chosenLeft === id ? null : id);
+    else if (pairOfLeft(id)) onChange(unpair(answer, id));
+    else setChosenLeft(id);
   };
   const pressRight = (id: number) => {
     const paired = pairOfRight(id);
@@ -91,7 +92,7 @@ export function Matching({ question, answer, onChange, disabled }: QuestionProps
       <Text variant="caption" className="text-muted-foreground">
         Tap an item, then its match.
       </Text>
-      <View className={cn("gap-2", rtl ? "flex-row-reverse" : "flex-row")}>
+      <View testID="matching-columns" className="gap-2" style={{ flexDirection: rtl ? "row-reverse" : "row" }}>
         <View className="min-w-0 flex-1 flex-col gap-2">
           {question.left.map((item) => {
             const pair = pairOfLeft(item.id);

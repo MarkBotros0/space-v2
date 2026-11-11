@@ -26,6 +26,7 @@ import QuizDetailScreen from "../../app/(app)/quiz/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
+const post = apiClient.post as jest.Mock;
 
 const base = { order: 0, points: 3, review: null, pointsAwarded: null };
 const opts = (labels: string[], from: number) => labels.map((label, i) => ({ id: from + i, label }));
@@ -51,11 +52,11 @@ function inProgress(questions: unknown[]) {
   };
 }
 
-async function open(question: unknown) {
+async function open(question: unknown, answered = 0) {
   get.mockResolvedValue({ data: { data: inProgress([question]) } });
   patch.mockResolvedValue({ data: { data: { saved: 1 } } });
   renderWithProviders(<QuizDetailScreen />);
-  await screen.findByText(/0 of 1 answered/);
+  await screen.findByText(new RegExp(`${answered} of 1 answered`));
 }
 
 async function saved() {
@@ -147,6 +148,44 @@ describe("quiz runner, every question type", () => {
     expect(screen.getByText(/0 of 1 answered/)).toBeTruthy();
   });
 
+  const animals = (prompt: string, left = ["Cat", "Dog"], right = ["Woof", "Meow"]) => ({
+    ...base,
+    id: 300,
+    type: "MATCHING",
+    prompt,
+    left: opts(left, 3001),
+    right: opts(right, 3101),
+    answer: { pairs: [] },
+  });
+
+  it("matching: a right item paired again moves to its new left, and a paired left can be chosen", async () => {
+    await open(animals("Match each animal with its sound."));
+
+    fireEvent.press(screen.getByLabelText("Match Cat with …"));
+    fireEvent.press(screen.getByText("Meow"));
+    fireEvent.press(screen.getByLabelText("Match Dog with …"));
+    fireEvent.press(screen.getByText("Meow"));
+    expect(screen.getByLabelText("Match Cat with …")).toBeTruthy();
+    expect(screen.getByLabelText("Dog, matched with Meow")).toBeTruthy();
+    expect(await saved()).toEqual({ type: "MATCHING", questionId: 300, pairs: [{ leftId: 3002, rightId: 3102 }] });
+
+    // With an item chosen, a tap on a paired one chooses it instead of unpairing it.
+    fireEvent.press(screen.getByLabelText("Match Cat with …"));
+    fireEvent.press(screen.getByLabelText("Dog, matched with Meow"));
+    expect(screen.getByLabelText("Dog, matched with Meow").props.accessibilityState.selected).toBe(true);
+    expect(screen.getByLabelText("Match Cat with …").props.accessibilityState.selected).toBe(false);
+    // Tapping the chosen item again clears the choice and keeps the pair.
+    fireEvent.press(screen.getByLabelText("Dog, matched with Meow"));
+    expect(screen.getByLabelText("Dog, matched with Meow").props.accessibilityState.selected).toBe(false);
+  });
+
+  it("matching: the columns swap sides for an Arabic question", async () => {
+    await open(animals("صل كل حيوان بصوته.", ["قطة", "كلب"], ["هوهو", "مواء"]));
+    expect(screen.getByTestId("matching-columns").props.style).toEqual(
+      expect.objectContaining({ flexDirection: "row-reverse" }),
+    );
+  });
+
   it("fill blank typing saves blanks", async () => {
     await open({
       ...base,
@@ -177,6 +216,20 @@ describe("quiz runner, every question type", () => {
         { blankId: 4002, text: "Rome" },
       ],
     });
+  });
+
+  it("fill blank: an inline gap in an Arabic sentence types right to left", async () => {
+    await open({
+      ...base,
+      id: 400,
+      type: "FILL_BLANK",
+      prompt: "عاصمة مصر هي {{blank}}.",
+      blanks: [{ id: 4001, position: 0 }],
+      answer: { blanks: [] },
+    });
+    expect(style(screen.getByLabelText("Blank 1"))).toEqual(
+      expect.objectContaining({ writingDirection: "rtl", textAlign: "right" }),
+    );
   });
 
   it("fill blank falls back to labelled fields under the sentence on a small phone", async () => {
@@ -230,5 +283,16 @@ describe("quiz runner, every question type", () => {
     const box = screen.getByLabelText("Answer 1");
     expect(style(box)).toEqual(expect.objectContaining({ writingDirection: "rtl", textAlign: "right" }));
     expect(box.props.autoCorrect).toBe(false);
+  });
+
+  it("locks the answers while the quiz is being handed in", async () => {
+    post.mockReturnValue(new Promise(() => {}));
+    await open({ ...base, id: 600, type: "ESSAY", prompt: "Discuss.", answer: { text: "Done." } }, 1);
+    expect(screen.getByLabelText("Answer 1").props.editable).toBe(true);
+
+    fireEvent.press(screen.getByText("Submit quiz"));
+    fireEvent.press(await screen.findByText("Submit"));
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByLabelText("Answer 1").props.editable).toBe(false));
   });
 });

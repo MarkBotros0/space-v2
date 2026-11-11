@@ -4,7 +4,7 @@ import { cn } from "../../../design/lib/cn";
 import { useScreenReaderEnabled } from "../../../design/lib/screen-reader";
 import { textDirection } from "../../../design/lib/text-direction";
 import { ContentText, Input, Label } from "../../../design/ui";
-import { blanksInline, splitBlanks } from "../blank-segments";
+import { blanksInline, directionRuns, splitBlanks } from "../blank-segments";
 import { ANSWER_INPUT, type QuestionProps } from "./props";
 
 type Props = QuestionProps<"FILL_BLANK">;
@@ -67,14 +67,11 @@ export function FillBlank({ question, answer, onChange, disabled }: Props) {
       {splitBlanks(question.prompt).flatMap((s, i) =>
         s.kind === "blank"
           ? [field(s.index, "w-auto min-w-[88px] max-w-full")]
-          : s.text
-              .split(/\s+/)
-              .filter(Boolean)
-              .map((word, w) => (
-                <ContentText key={`${i}-${w}`} variant="headline">
-                  {word}
-                </ContentText>
-              )),
+          : directionRuns(s.text, direction).map((run, r) => (
+              <ContentText key={`${i}-${r}`} variant="headline">
+                {run.text}
+              </ContentText>
+            )),
       )}
     </View>
   );
