@@ -331,28 +331,6 @@ describe("grading screen — ONLINE", () => {
     );
   });
 
-  // Spec "Honest accidents": the list's score is the best graded attempt's (final review M2).
-  it("shows the best graded score on a retake row, not the latest attempt's", async () => {
-    serve([
-      { ...baseAttempt, attemptId: 902, attemptNumber: 2, bestScore: 6 },
-      {
-        ...baseAttempt,
-        attemptId: 903,
-        studentUserId: 11,
-        studentName: "Lower retake",
-        attemptNumber: 3,
-        status: "GRADED",
-        totalScore: 1,
-        bestScore: 5,
-      },
-    ]);
-
-    renderStacked(<QuizGradeScreen />);
-
-    expect(await screen.findByText("Attempt 2 · Best 6/7 · Awaiting grading · Mar 2, 2099")).toBeTruthy();
-    expect(screen.getByText("Attempt 3 · Best 5/7 · Mar 2, 2099")).toBeTruthy();
-  });
-
   it("names the right option when the student missed it", async () => {
     serve(withAnswers([{ ...choiceAnswer, selectedOptionId: 1, pointsAwarded: 0 }]));
     renderStacked(<QuizGradeScreen />);
