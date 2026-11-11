@@ -45,8 +45,16 @@ async function recordLocked(
     return { exits: await exitCount(tx, attemptId), ended: false, closed: null };
   }
 
+  // An event from before this attempt existed was queued for an earlier one (a replay
+  // landing on a retake): it is not this attempt's, so it is dropped, not stored or counted.
+  const { createdAt } = await tx.quizAttempt.findUniqueOrThrow({
+    where: { id: attemptId },
+    select: { createdAt: true },
+  });
+  const own = events.filter((e) => Date.parse(e.leftAt) >= createdAt.getTime());
+
   await tx.quizAttemptEvent.createMany({
-    data: events.map((e) => ({
+    data: own.map((e) => ({
       attemptId,
       clientEventId: e.clientEventId,
       kind: e.kind,

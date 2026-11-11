@@ -142,7 +142,11 @@ const quizAttemptEventInputSchema = z
     leftAt: z.iso.datetime({ offset: true }),
     returnedAt: z.iso.datetime({ offset: true }).nullable(),
   })
-  .strict();
+  .strict()
+  .refine((e) => e.returnedAt === null || Date.parse(e.returnedAt) >= Date.parse(e.leftAt), {
+    path: ["returnedAt"],
+    message: "The student can't come back before they left.",
+  });
 export type QuizAttemptEventInput = z.output<typeof quizAttemptEventInputSchema>;
 
 export const quizAttemptEventsRequestSchema = z

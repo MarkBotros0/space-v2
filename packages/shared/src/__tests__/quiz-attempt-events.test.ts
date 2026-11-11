@@ -32,6 +32,13 @@ describe("quiz attempt events", () => {
     }
   });
 
+  it("refuses a returnedAt before leftAt; accepts one equal to it", () => {
+    const before = { ...ok, returnedAt: "2026-11-14T09:59:59.000Z" };
+    expect(quizAttemptEventsRequestSchema.safeParse({ events: [before] }).success).toBe(false);
+    const same = { ...ok, returnedAt: ok.leftAt };
+    expect(quizAttemptEventsRequestSchema.safeParse({ events: [same] }).success).toBe(true);
+  });
+
   it("the response is the count, whether this report ended it, and the status", () => {
     expect(quizAttemptEventsResponseSchema.parse({ exits: 3, ended: true, status: "GRADED" })).toEqual({
       exits: 3,

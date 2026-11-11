@@ -26,10 +26,13 @@ afterAll(async () => {
 });
 
 type Kind = "EXIT" | "RELAUNCH" | "SCREENSHOT";
-const event = (kind: Kind = "EXIT", clientEventId = randomUUID()) => {
-  const leftAt = new Date(Date.now() - 20_000);
-  return { clientEventId, kind, leftAt: leftAt.toISOString(), returnedAt: new Date().toISOString() };
-};
+/** An event that happened now: after the attempt was created, so it is that attempt's. */
+const event = (kind: Kind = "EXIT", clientEventId = randomUUID(), leftAt = new Date()) => ({
+  clientEventId,
+  kind,
+  leftAt: leftAt.toISOString(),
+  returnedAt: new Date(leftAt.getTime() + 1_000).toISOString(),
+});
 
 const post = (quizId: number, events: unknown[], token = f.studentToken) =>
   request(app).post(`/api/v1/quizzes/${quizId}/attempt/events`).set(bearer(token)).send({ events });
@@ -148,6 +151,30 @@ describe("POST /quizzes/:id/attempt/events", () => {
     expect(await quizGradedCountFor(f.ownStudentId)).toBe(before + 1);
   });
 
+  it("two exits racing at a count of two close the attempt once", async () => {
+    const quizId = await openQuiz();
+    await post(quizId, [event(), event()]);
+    const before = await quizGradedCountFor(f.ownStudentId);
+    const [a, b] = await Promise.all([post(quizId, [event()]), post(quizId, [event()])]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect([a.body.data.ended, b.body.data.ended].filter(Boolean)).toHaveLength(1);
+    expect((await latest(quizId)).endReason).toBe("ENDED_BY_EXITS");
+    expect(await quizGradedCountFor(f.ownStudentId)).toBe(before + 1);
+  });
+
+  it("an event from before the attempt existed (a replay onto a retake) is dropped", async () => {
+    const quizId = await openQuiz();
+    const { id } = await latest(quizId);
+    const created = (await db.quizAttempt.findUniqueOrThrow({ where: { id }, select: { createdAt: true } })).createdAt;
+    const old = (n: number) => event("EXIT", randomUUID(), new Date(created.getTime() - n * 60_000));
+    const res = await post(quizId, [old(3), old(2), old(1)]);
+    expect(res.body.data).toEqual({ exits: 0, ended: false, status: "IN_PROGRESS" });
+    expect(await storedEvents(quizId)).toBe(0);
+    // Mixed with one of its own: only that one counts.
+    expect((await post(quizId, [old(1), event()])).body.data.exits).toBe(1);
+    expect(await storedEvents(quizId)).toBe(1);
+  });
+
   it("a reopened timed attempt not started yet stores nothing", async () => {
     const { quizId } = await buildPublishedQuizIn(f.seasonId, f.sessionId, { withEssay: false });
     await db.quiz.update({ where: { id: quizId }, data: { timeLimitMinutes: 30 } });
@@ -178,6 +205,8 @@ describe("POST /quizzes/:id/attempt/events", () => {
     expect(res.body.error.code).toBe("event_in_future");
     expect((await post(quizId, [])).status).toBe(400);
     expect((await post(quizId, [{ ...event(), clientEventId: "not-a-uuid" }])).status).toBe(400);
+    const backFirst = { ...event(), returnedAt: new Date(Date.now() - 60_000).toISOString() };
+    expect((await post(quizId, [backFirst])).status).toBe(400);
     expect(await storedEvents(quizId)).toBe(0);
   });
 
