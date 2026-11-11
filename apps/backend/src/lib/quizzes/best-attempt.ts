@@ -18,3 +18,22 @@ export function bestGraded<
   }
   return best;
 }
+
+/** Each student's best GRADED total (as `bestGraded` picks it); a student with none graded is left out. */
+export function bestScoreByStudent<
+  A extends {
+    studentUserId: number;
+    status: string;
+    totalScore: Prisma.Decimal | number | null;
+    attemptNumber: number;
+  },
+>(attempts: A[]): Map<number, number> {
+  const byStudent = new Map<number, A[]>();
+  for (const a of attempts) byStudent.set(a.studentUserId, [...(byStudent.get(a.studentUserId) ?? []), a]);
+  const out = new Map<number, number>();
+  for (const [studentUserId, own] of byStudent) {
+    const best = bestGraded(own);
+    if (best) out.set(studentUserId, toScore(best.totalScore) ?? 0);
+  }
+  return out;
+}

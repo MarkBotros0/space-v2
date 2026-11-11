@@ -101,7 +101,13 @@ export const quizGradingAttemptSchema = z.object({
   status: quizAttemptStatusSchema,
   autoScore: z.number().nullable(),
   manualScore: z.number().nullable(),
+  /** This attempt's total: the latest attempt, the one being marked. */
   totalScore: z.number().nullable(),
+  /**
+   * The student's best GRADED total across their attempts (spec "Honest
+   * accidents"), the score the list shows; null until one is graded.
+   */
+  bestScore: z.number().nullable(),
   submittedAt: z.string().nullable(),
   gradedByName: z.string().nullable(),
   answers: z.array(quizGradingAnswerSchema),

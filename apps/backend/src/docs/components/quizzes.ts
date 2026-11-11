@@ -196,6 +196,7 @@ export const quizSchemas = {
       "autoScore",
       "manualScore",
       "totalScore",
+      "bestScore",
       "submittedAt",
       "gradedByName",
       "answers",
@@ -208,7 +209,12 @@ export const quizSchemas = {
       status: { $ref: "#/components/schemas/QuizAttemptStatus" },
       autoScore: { type: ["number", "null"], description: "Decimal to 2 places." },
       manualScore: { type: ["number", "null"], description: "Decimal to 2 places." },
-      totalScore: { type: ["number", "null"], description: "Decimal to 2 places." },
+      totalScore: { type: ["number", "null"], description: "This attempt's total, decimal to 2 places." },
+      bestScore: {
+        type: ["number", "null"],
+        description:
+          "The student's best GRADED total across their attempts (decimal to 2 places): the score a grading list shows. The row itself is the latest attempt, the one marked or reopened. Null until one is graded.",
+      },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedByName: { type: ["string", "null"], description: "Who graded it; null for an auto-graded attempt." },
       answers: { type: "array", items: { $ref: "#/components/schemas/QuizGradingAnswer" } },

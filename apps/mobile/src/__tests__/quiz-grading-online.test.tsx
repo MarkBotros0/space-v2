@@ -71,6 +71,7 @@ const attemptsPage = {
       autoScore: 2,
       manualScore: null,
       totalScore: null,
+      bestScore: null,
       submittedAt: "2099-03-02T10:00:00.000Z",
       gradedByName: null,
       answers: [
@@ -309,6 +310,7 @@ describe("grading screen — ONLINE", () => {
         status: "GRADED",
         manualScore: 5,
         totalScore: 6.67, // shown to one place, like every quiz score
+        bestScore: 6.67,
         gradedByName: "Test leader",
       }),
     );
@@ -327,6 +329,28 @@ describe("grading screen — ONLINE", () => {
         studentUserId: 9,
       }),
     );
+  });
+
+  // Spec "Honest accidents": the list's score is the best graded attempt's (final review M2).
+  it("shows the best graded score on a retake row, not the latest attempt's", async () => {
+    serve([
+      { ...baseAttempt, attemptId: 902, attemptNumber: 2, bestScore: 6 },
+      {
+        ...baseAttempt,
+        attemptId: 903,
+        studentUserId: 11,
+        studentName: "Lower retake",
+        attemptNumber: 3,
+        status: "GRADED",
+        totalScore: 1,
+        bestScore: 5,
+      },
+    ]);
+
+    renderStacked(<QuizGradeScreen />);
+
+    expect(await screen.findByText("Attempt 2 · Best 6/7 · Awaiting grading · Mar 2, 2099")).toBeTruthy();
+    expect(screen.getByText("Attempt 3 · Best 5/7 · Mar 2, 2099")).toBeTruthy();
   });
 
   it("names the right option when the student missed it", async () => {

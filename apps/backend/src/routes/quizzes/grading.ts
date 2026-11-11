@@ -10,6 +10,7 @@ import { planLeaderMarks, recordLeaderMarks } from "../../lib/quizzes/grading";
 import { GRADING_ANSWER_SELECT, GRADING_QUESTION_SELECT, gradingAnswers } from "../../lib/quizzes/grading-view";
 import { isLeaderMarked, MARKABLE_QUESTION_SELECT, toMarkable } from "../../lib/quizzes/marking";
 import { round2, toScore } from "../../lib/quizzes/score";
+import { bestScoresFor } from "../../lib/queries/quiz-best-scores";
 import {
   markAttemptRequestSchema,
   quizAttemptsQuerySchema,
@@ -74,6 +75,10 @@ export async function listAttempts(req: Request, res: Response) {
     },
   });
 
+  // Spec "Honest accidents": the score a grading list shows is the best GRADED
+  // attempt's. The row stays the latest attempt, which is what gets marked or reopened.
+  const bestScores = await bestScoresFor(id, pageIds);
+
   const scored = attempts.filter((a) => a.status !== "IN_PROGRESS");
   const inProgress = attempts.filter((a) => a.status === "IN_PROGRESS");
   const startedIds = new Set(attempts.map((a) => a.studentUserId));
@@ -101,6 +106,7 @@ export async function listAttempts(req: Request, res: Response) {
       autoScore: toScore(att.autoScore),
       manualScore: toScore(att.manualScore),
       totalScore: toScore(att.totalScore),
+      bestScore: bestScores.get(att.studentUserId) ?? null,
       submittedAt: att.submittedAt,
       gradedByName: att.gradedBy?.name ?? null,
       // Projected over the quiz's CURRENT questions (R104), in the author's
@@ -208,6 +214,7 @@ export async function gradeAttempt(req: Request, res: Response) {
       gradedBy: { select: { name: true } },
     },
   });
+  const best = await bestScoresFor(id, [attempt.studentUserId]);
   return apiOk(res, {
     attemptId: page?.id,
     studentUserId: page?.studentUserId,
@@ -217,6 +224,7 @@ export async function gradeAttempt(req: Request, res: Response) {
     autoScore: toScore(page?.autoScore ?? null),
     manualScore: toScore(page?.manualScore ?? null),
     totalScore: toScore(page?.totalScore ?? null),
+    bestScore: best.get(attempt.studentUserId) ?? null,
     submittedAt: page?.submittedAt ?? null,
     gradedByName: page?.gradedBy?.name ?? null,
     answers: [],

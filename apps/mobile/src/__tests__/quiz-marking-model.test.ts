@@ -58,6 +58,7 @@ function attempt(answers: Answer[]): QuizGradingAttempt {
     autoScore: 2,
     manualScore: null,
     totalScore: null,
+    bestScore: null,
     submittedAt: "2099-03-02T10:00:00.000Z",
     gradedByName: null,
     answers,

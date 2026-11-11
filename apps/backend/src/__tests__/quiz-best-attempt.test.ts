@@ -1,4 +1,4 @@
-import { bestGraded } from "../lib/quizzes/best-attempt";
+import { bestGraded, bestScoreByStudent } from "../lib/quizzes/best-attempt";
 
 const attempt = (attemptNumber: number, status: string, totalScore: number | null) => ({
   attemptNumber,
@@ -24,5 +24,20 @@ describe("bestGraded", () => {
 
   it("gives a tie to the later attempt", () => {
     expect(bestGraded([attempt(2, "GRADED", 6), attempt(1, "GRADED", 6)])?.attemptNumber).toBe(2);
+  });
+});
+
+describe("bestScoreByStudent", () => {
+  it("maps each student to their best graded total, leaving out students with none", () => {
+    const rows = [
+      { studentUserId: 1, ...attempt(1, "GRADED", 8) },
+      { studentUserId: 1, ...attempt(2, "GRADED", 5) },
+      { studentUserId: 2, ...attempt(1, "SUBMITTED", null) },
+      { studentUserId: 3, ...attempt(1, "GRADED", 0) },
+    ];
+    const best = bestScoreByStudent(rows);
+    expect(best.get(1)).toBe(8);
+    expect(best.has(2)).toBe(false);
+    expect(best.get(3)).toBe(0);
   });
 });

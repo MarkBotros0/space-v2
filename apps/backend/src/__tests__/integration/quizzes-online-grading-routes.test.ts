@@ -117,6 +117,42 @@ describe("ONLINE grading", () => {
     expect(res.body.data.waiting[0].startedAt).not.toBeNull();
   });
 
+  // M2, spec "Honest accidents": the best GRADED attempt counts in grading lists too.
+  it("lists the latest attempt for marking, with the best graded total as the score", async () => {
+    expect((await grade(f.leaderToken, marksFor([true, true, true], true))).status).toBe(200);
+    const now = new Date();
+    const retake = await db.quizAttempt.create({
+      data: {
+        quizId,
+        studentUserId: f.ownStudentId,
+        attemptNumber: 2,
+        status: "GRADED",
+        autoScore: 0,
+        manualScore: 2,
+        totalScore: 2,
+        submittedAt: now,
+        gradedAt: now,
+      },
+      select: { id: true },
+    });
+    const graded = (await list(f.leaderToken)).body.data.items;
+    expect(graded).toEqual([
+      expect.objectContaining({ attemptId: retake.id, attemptNumber: 2, totalScore: 2, bestScore: 10 }),
+    ]);
+
+    // A retake still waiting for marking: the earlier graded total still counts.
+    await db.quizAttempt.update({
+      where: { id: retake.id },
+      data: { status: "SUBMITTED", manualScore: null, totalScore: null, gradedAt: null },
+    });
+    const waiting = (await list(f.leaderToken)).body.data.items;
+    expect(waiting).toEqual([expect.objectContaining({ attemptId: retake.id, status: "SUBMITTED", bestScore: 10 })]);
+  });
+
+  it("has no best score until an attempt is graded", async () => {
+    expect((await list(f.leaderToken)).body.data.items[0]).toMatchObject({ status: "SUBMITTED", bestScore: null });
+  });
+
   it("lists a never-started student as waiting with a null startedAt", async () => {
     const res = await list(f.adminToken);
     expect(res.body.data.studentCount).toBe(2);
@@ -129,7 +165,7 @@ describe("ONLINE grading", () => {
     const res = await grade(f.leaderToken, marksFor([true, true, false], true));
     expect(res.status).toBe(200);
     // 2/3 of 3 = 2, essay right = 5; auto 2 → total 9.
-    expect(res.body.data).toMatchObject({ status: "GRADED", autoScore: 2, manualScore: 7, totalScore: 9 });
+    expect(res.body.data).toMatchObject({ status: "GRADED", autoScore: 2, manualScore: 7, totalScore: 9, bestScore: 9 });
     expect(res.body.data.gradedByName).toBe("Test leader");
 
     const stored = await db.quizAnswerBlank.findMany({

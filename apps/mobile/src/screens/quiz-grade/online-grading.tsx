@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { View } from "react-native";
-import type { QuizAuthoringDetail } from "@space/shared";
+import type { QuizAuthoringDetail, QuizGradingAttempt } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
@@ -12,6 +12,19 @@ import { formatDate, formatScore, unbreakable } from "../../lib/format";
 import { AttemptSheet } from "./attempt-sheet";
 import { ReleaseResultsCard } from "./release-results";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
+
+/**
+ * A row is the latest attempt (the one marked or reopened), but its score is the
+ * best graded one (spec "Honest accidents"); "Best" says so when that isn't this attempt's own.
+ */
+function attemptSubtitle(a: QuizGradingAttempt, maxScore: number): string {
+  const graded = a.status === "GRADED";
+  const best = a.bestScore ?? (graded ? (a.totalScore ?? 0) : null);
+  const own = graded && best === a.totalScore;
+  const score = best === null ? null : `${own ? "" : "Best "}${formatScore(best)}/${maxScore}`;
+  const parts = [`Attempt ${a.attemptNumber}`, score, graded ? null : "Awaiting grading"];
+  return [...parts, unbreakable(formatDate(a.submittedAt))].filter((p) => p !== null).join(" · ");
+}
 
 export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthoringDetail }) {
   const attempts = useQuizAttempts(id, true);
@@ -56,7 +69,7 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
                 key={a.attemptId}
                 title={a.studentName ?? "Student"}
                 titleLines={2}
-                subtitle={`Attempt ${a.attemptNumber} · ${a.status === "GRADED" ? `${formatScore(a.totalScore ?? 0)}/${first.maxScore}` : "Awaiting grading"} · ${unbreakable(formatDate(a.submittedAt))}`}
+                subtitle={attemptSubtitle(a, first.maxScore)}
                 trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
                 chevron
                 onPress={() => {
