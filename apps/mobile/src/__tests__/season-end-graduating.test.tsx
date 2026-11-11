@@ -45,7 +45,7 @@ describe("End of a graduating season", () => {
     ended(12);
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
-    expect(screen.getByText("Passing makes them School of 2026")).toBeTruthy();
+    expect(screen.getByText("Passing makes them JPCS-26")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Student 2"));
     fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
@@ -86,7 +86,7 @@ describe("End of a graduating season", () => {
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 3) });
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
-    expect(screen.queryByText("Passing makes them School of 2026")).toBeNull();
+    expect(screen.queryByText("Passing makes them JPCS-26")).toBeNull();
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     await screen.findByText(/This finishes/);
     expect(screen.queryByText(/will graduate/)).toBeNull();
@@ -125,7 +125,7 @@ describe("Correcting a result on a graduating season", () => {
   };
   const KEEPS = "This doesn't remove their alumni status.";
   const WILL =
-    "Passing makes them School of 2026. Any regular season they're in now ends for them. A community-wide season carries on.";
+    "Passing makes them JPCS-26. Any regular season they're in now ends for them. A community-wide season carries on.";
 
   it("says Did not pass doesn't remove alumni status", async () => {
     await open(true);
@@ -190,7 +190,7 @@ describe("A stale review", () => {
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     markStudent2();
-    expect(screen.queryByText("Passing makes them School of 2026")).toBeNull();
+    expect(screen.queryByText("Passing makes them JPCS-26")).toBeNull();
 
     // A super ticks Graduating season and a student joins while the review is open.
     serve({ [BY_CODE]: detail(), [END_CHECK]: check({}, 3, true) });
@@ -198,7 +198,7 @@ describe("A stale review", () => {
     await screen.findByText(/This finishes/);
     confirmEnd();
 
-    expect(await screen.findByText("Passing makes them School of 2026")).toBeTruthy();
+    expect(await screen.findByText("Passing makes them JPCS-26")).toBeTruthy();
     expect(toast.error).toHaveBeenCalledWith("The roster changed; check the season again.");
     expect(await screen.findByText("Student 3")).toBeTruthy();
     expect(screen.getAllByText("Did not pass")).toHaveLength(1);

@@ -1,4 +1,9 @@
-import { endSeasonRequestSchema, seasonOutcomeLabel, updateSeasonResultRequestSchema } from "../season-lifecycle";
+import {
+  classLabel,
+  endSeasonRequestSchema,
+  seasonOutcomeLabel,
+  updateSeasonResultRequestSchema,
+} from "../season-lifecycle";
 
 describe("season lifecycle contracts", () => {
   it("labels every outcome in words", () => {
@@ -38,5 +43,13 @@ describe("season lifecycle contracts", () => {
       reviewed,
     };
     expect(endSeasonRequestSchema.safeParse(twice).success).toBe(false);
+  });
+});
+
+describe("classLabel", () => {
+  it("writes a class as JPCS and the year's last two digits (owner 2026-11-10)", () => {
+    expect(classLabel(2025)).toBe("JPCS-25");
+    expect(classLabel(2026)).toBe("JPCS-26");
+    expect(classLabel(2005)).toBe("JPCS-05");
   });
 });

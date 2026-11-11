@@ -13,7 +13,7 @@ import { Pencil } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
-import type { EnrollmentHistoryItem } from "@space/shared";
+import { classLabel, type EnrollmentHistoryItem } from "@space/shared";
 
 import { DropEnrollmentSheet } from "./drop-enrollment-sheet";
 import { GraduateStudentSheet } from "./graduate-student-sheet";
@@ -141,7 +141,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
     >
       <View className="flex-col gap-6">
         {data.graduationYear !== null ? (
-          <StatusChip tone="ok" label={`Alumnus · School of ${data.graduationYear}`} className="self-start" />
+          <StatusChip tone="ok" label={`Alumnus · ${classLabel(data.graduationYear)}`} className="self-start" />
         ) : null}
         {actions.canGraduate ? (
           <View testID="student-actions" className="flex-row flex-wrap gap-2">

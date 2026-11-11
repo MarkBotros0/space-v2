@@ -138,7 +138,7 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
     const { unmount } = renderWithProviders(<StudentDetailScreen />);
     expect(await screen.findByText("Graduated by exception")).toBeTruthy();
     expect(screen.getByText(/Sam Super on .* Finished abroad/)).toBeTruthy();
-    expect(screen.getByText("Alumnus · School of 2026")).toBeTruthy();
+    expect(screen.getByText("Alumnus · JPCS-26")).toBeTruthy();
     unmount();
 
     get.mockResolvedValue({ data: { data: { ...internalDetail, graduatedByException: null } } });
@@ -202,7 +202,9 @@ describe("StudentDetailScreen — lifecycle actions (Plan 10)", () => {
         ),
       ).toBeTruthy();
       expect(screen.getByText("They become an alumnus permanently. This can't be undone in the app.")).toBeTruthy();
-      expect(screen.getByText(`They'll be listed as School of ${new Date().getFullYear()}.`)).toBeTruthy();
+      expect(
+        screen.getByText(`They'll be listed as JPCS-${String(new Date().getFullYear() % 100).padStart(2, "0")}.`),
+      ).toBeTruthy();
       expect(
         screen.getByText("They can be appointed leader or admin, and can no longer join regular seasons as a student."),
       ).toBeTruthy();

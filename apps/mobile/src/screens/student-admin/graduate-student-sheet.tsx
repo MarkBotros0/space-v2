@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
-import { graduateStudentRequestSchema } from "@space/shared";
+import { classLabel, graduateStudentRequestSchema } from "@space/shared";
 
 import { useGraduateStudent } from "../../hooks/use-students";
 import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
@@ -144,7 +144,7 @@ export function GraduateStudentSheet({ visible, studentId, studentName, onClose 
               What happens
             </Text>
             <Text variant="subhead">They become an alumnus permanently. This can&apos;t be undone in the app.</Text>
-            <Text variant="subhead">{`They'll be listed as School of ${trimmedYear}.`}</Text>
+            <Text variant="subhead">{`They'll be listed as ${/^\d{4}$/.test(trimmedYear) ? classLabel(yearNum) : trimmedYear}.`}</Text>
             <Text variant="subhead">
               They can be appointed leader or admin, and can no longer join regular seasons as a student.
             </Text>

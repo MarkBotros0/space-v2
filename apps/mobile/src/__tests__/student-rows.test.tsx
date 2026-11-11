@@ -59,16 +59,16 @@ describe("ActiveStudentRow", () => {
 });
 
 describe("AlumnusRow", () => {
-  it("says the class and university, or just the class", () => {
+  it("says the class as JPCS-YY, never the university or faculty", () => {
     renderWithProviders(
       <GroupedList>
-        <AlumnusRow item={{ ...base, graduationYear: 2024, university: "AUC" }} />
-        <AlumnusRow item={{ ...base, id: 22, name: "Aya", graduationYear: 2023 }} />
+        <AlumnusRow item={{ ...base, graduationYear: 2024, university: "AUC", faculty: "Engineering" }} />
+        <AlumnusRow item={{ ...base, id: 22, name: "Aya", graduationYear: 2005 }} seasonless />
         <AlumnusRow item={{ ...base, id: 23, name: "Omar" }} />
       </GroupedList>,
     );
-    expect(screen.getByLabelText("Sara Student, School of 2024 · AUC")).toBeTruthy();
-    expect(screen.getByLabelText("Aya, School of 2023")).toBeTruthy();
+    expect(screen.getByLabelText("Sara Student, JPCS-24")).toBeTruthy();
+    expect(screen.getByLabelText("Aya, JPCS-05")).toBeTruthy();
     expect(screen.getByLabelText("Omar")).toBeTruthy();
   });
 });

@@ -109,7 +109,7 @@ describe("Profile — alumni", () => {
     useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }));
     serveProfile({ ...profile, graduationYear: 2024, activeSeasonTitle: null });
     renderWithProviders(<ProfileScreen />);
-    expect(await screen.findByText("School of 2024")).toBeTruthy();
+    expect(await screen.findByText("JPCS-24")).toBeTruthy();
     expect(screen.getByText("Cairo University")).toBeTruthy();
   });
 });

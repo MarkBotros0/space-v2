@@ -38,7 +38,7 @@ describe("End of a community-wide season", () => {
     serve({ [BY_CODE]: detail({ isCommunityWide: true }), "/api/v1/seasons/7/end-check": body });
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
-    expect(screen.getByText("School of 2025")).toBeTruthy();
+    expect(screen.getByText("JPCS-25")).toBeTruthy();
     expect(screen.queryByText(/Passing makes them/)).toBeNull();
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     expect(await screen.findByText(/This ends the season for 2 people\.$/)).toBeTruthy();
@@ -66,6 +66,6 @@ describe("End of a community-wide season", () => {
     fireEvent.press(await screen.findByText("Old Hand"));
     fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
     expect(screen.queryByText(/alumni status/)).toBeNull();
-    expect(screen.queryByText(/School of/)).toBeNull();
+    expect(screen.queryByText(/JPCS-\d{2}/)).toBeNull();
   });
 });

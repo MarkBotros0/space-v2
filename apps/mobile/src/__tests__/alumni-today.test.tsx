@@ -53,7 +53,7 @@ describe("AlumniDashboard", () => {
     serve({ [EVENTS]: { events: [event], total: 1 }, [HISTORY]: { seasons: [] } });
     renderWithProviders(<AlumniDashboard />);
     expect(await screen.findByText("Hi, Aya")).toBeTruthy();
-    expect(screen.getByText("School of 2025")).toBeTruthy();
+    expect(screen.getByText("JPCS-25")).toBeTruthy();
     await screen.findByText("No past seasons");
     expect(requested()).not.toContain("/api/v1/me/dashboard");
   });

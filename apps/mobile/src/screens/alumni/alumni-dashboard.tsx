@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { Linking, View } from "react-native";
-import { UPCOMING_EVENTS_LIMIT } from "@space/shared";
+import { classLabel, UPCOMING_EVENTS_LIMIT } from "@space/shared";
 
 import { InlineError } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
@@ -65,7 +65,7 @@ export function AlumniDashboard() {
     <Screen
       home
       title={`Hi, ${firstName(name)}`}
-      subtitle={`School of ${graduationYear ?? "—"}`}
+      subtitle={graduationYear === null ? "Alumni" : classLabel(graduationYear)}
       compactTitle="Home"
       onRefresh={refresh}
       refreshing={events.isRefetching || history.isRefetching}
