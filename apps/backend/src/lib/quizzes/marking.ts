@@ -32,7 +32,8 @@ export function toMarkable(
   return { id: row.id, type: row.type, points: row.points, options: row.quizOptions, blanks: row.quizBlanks };
 }
 
-const hasText = (s: string | null | undefined): boolean => (s ?? "").trim().length > 0;
+/** Typed text counts as an answer only when it isn't blank: the one test for an essay or a blank. */
+export const hasAnswerText = (s: string | null | undefined): boolean => (s ?? "").trim().length > 0;
 
 /** FILL_BLANK and ESSAY are marked by a leader; every other type is marked here. */
 export function isLeaderMarked(type: QuizQuestionType): boolean {
@@ -52,9 +53,11 @@ export function isAnswered(q: MarkableQuestion, a: StoredAnswer | undefined): bo
       );
     }
     case "FILL_BLANK":
-      return q.blanks.length > 0 && q.blanks.every((b) => hasText(a.blanks.find((x) => x.blankId === b.id)?.text));
+      return (
+        q.blanks.length > 0 && q.blanks.every((b) => hasAnswerText(a.blanks.find((x) => x.blankId === b.id)?.text))
+      );
     case "ESSAY":
-      return hasText(a.text);
+      return hasAnswerText(a.text);
     default:
       // MCQ (legacy), SINGLE_CHOICE, TRUE_FALSE
       return a.selections.length === 1;
@@ -91,12 +94,11 @@ export function autoMark(
   a: StoredAnswer | undefined,
 ): { pointsAwarded: number; isCorrect: boolean } {
   if (isLeaderMarked(q.type)) throw new Error(`Question type ${q.type} is marked by a leader, not automatically`);
-  if (!a || !isAnswered(q, a)) {
-    // A partly answered multi-choice or matching still earns its share; only an empty answer is 0.
-    if (!a || (q.type !== "MULTI_CHOICE" && q.type !== "MATCHING")) return NONE;
-  }
+  if (!a) return NONE;
+  // A partly answered multi-choice or matching still earns its share, so those mark whatever is there.
   if (q.type === "MULTI_CHOICE") return markMulti(q, a);
   if (q.type === "MATCHING") return markMatching(q, a);
+  if (!isAnswered(q, a)) return NONE;
   const picked = a.selections[0];
   const right = picked !== undefined && q.options.some((o) => o.id === picked.optionId && o.isCorrect);
   return right ? { pointsAwarded: q.points, isCorrect: true } : NONE;

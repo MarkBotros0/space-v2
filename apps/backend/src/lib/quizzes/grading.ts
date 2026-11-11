@@ -1,8 +1,18 @@
 import type { MarkAttemptInput } from "@space/shared";
 
 import { db } from "../../db/client";
-import { leaderMark, type MarkableQuestion } from "./marking";
-import { sumScores } from "./score";
+import type { Prisma } from "../../generated/prisma/client";
+import { ApiError } from "../api-error";
+import { lockAttempt, STORED_ANSWER_SELECT } from "./mark-and-close";
+import {
+  hasAnswerText,
+  leaderMark,
+  MARKABLE_QUESTION_SELECT,
+  toMarkable,
+  type MarkableQuestion,
+  type StoredAnswer,
+} from "./marking";
+import { round2, sumScores, toScore } from "./score";
 
 type LeaderMarkRow = {
   questionId: number;
@@ -12,57 +22,39 @@ type LeaderMarkRow = {
   blankMarks: { blankId: number; correct: boolean }[];
 };
 
-/**
- * Records an attempt's leader marks and its new totals, all or none, and marks
- * it GRADED by the caller. autoScore is trusted as stored and never recomputed
- * (R73); the caller has checked every leader-marked item is marked exactly once.
- *
- * The answer row is upserted: an attempt that ended with a leader-marked
- * question unanswered still gets its 0 on record. A blank the student left
- * without a row has nothing to mark, so `updateMany` simply touches no row.
- */
-export async function recordLeaderMarks(
-  attemptId: number,
-  perQuestion: LeaderMarkRow[],
-  scores: { manualScore: number; totalScore: number },
-  gradedById: number,
-  gradedAt: Date,
-): Promise<void> {
-  await db.$transaction(async (tx) => {
-    for (const q of perQuestion) {
-      const mark = { pointsAwarded: q.pointsAwarded, isCorrect: q.isCorrect };
-      const answer = await tx.quizAnswer.upsert({
-        where: { attemptId_questionId: { attemptId, questionId: q.questionId } },
-        create: { attemptId, questionId: q.questionId, ...mark },
-        update: mark,
-        select: { id: true },
-      });
-      for (const b of q.blankMarks) {
-        await tx.quizAnswerBlank.updateMany({
-          where: { answerId: answer.id, blankId: b.blankId },
-          data: { isCorrect: b.correct },
-        });
-      }
-    }
-    await tx.quizAttempt.update({
-      where: { id: attemptId },
-      data: { ...scores, status: "GRADED", gradedById, gradedAt },
-    });
-  });
-}
-
 type Mark = MarkAttemptInput["marks"][number];
 type Refusal = { code: "mark_out_of_range" | "marks_incomplete"; message: string; status: 400 | 409 };
 
-/** A mark that names nothing markable in this attempt, or names an item twice. */
-function outOfRange(byId: Map<number, MarkableQuestion>, marks: Mark[]): Refusal | null {
+const itemKey = (questionId: number, blankId: number | null) => `${questionId}:${blankId ?? "-"}`;
+
+/**
+ * The leader-marked items the student left empty, as `itemKey`s. Ruling C-a:
+ * they were marked wrong when the attempt closed and are never the leader's to mark.
+ */
+function emptyItems(questions: MarkableQuestion[], answerBy: Map<number, StoredAnswer>): Set<string> {
+  const empty = new Set<string>();
+  for (const q of questions) {
+    const a = answerBy.get(q.id);
+    if (q.type === "ESSAY" && !hasAnswerText(a?.text)) empty.add(itemKey(q.id, null));
+    for (const b of q.type === "FILL_BLANK" ? q.blanks : []) {
+      if (!hasAnswerText(a?.blanks.find((x) => x.blankId === b.id)?.text)) empty.add(itemKey(q.id, b.id));
+    }
+  }
+  return empty;
+}
+
+/** A mark that names nothing markable in this attempt, names an item twice, or names an empty one. */
+function outOfRange(byId: Map<number, MarkableQuestion>, marks: Mark[], empty: ReadonlySet<string>): Refusal | null {
   const seen = new Set<string>();
   for (const m of marks) {
     const q = byId.get(m.questionId);
     const fits =
       q !== undefined && (q.type === "ESSAY" ? m.blankId === null : q.blanks.some((b) => b.id === m.blankId));
     if (!fits) return { code: "mark_out_of_range", message: "That mark is not for this attempt.", status: 400 };
-    const key = `${m.questionId}:${m.blankId ?? "-"}`;
+    const key = itemKey(m.questionId, m.blankId);
+    if (empty.has(key)) {
+      return { code: "mark_out_of_range", message: "That item was left empty, so it is already wrong.", status: 400 };
+    }
     if (seen.has(key)) return { code: "mark_out_of_range", message: "That item is marked twice.", status: 400 };
     seen.add(key);
   }
@@ -72,30 +64,96 @@ function outOfRange(byId: Map<number, MarkableQuestion>, marks: Mark[]): Refusal
 /**
  * The leader's marks checked against the attempt's leader-marked questions and
  * turned into the rows to record. One mark per ESSAY (`blankId` null) and one
- * per blank of a FILL_BLANK, all required: a partial payload would otherwise
- * quietly lower the total (R72).
+ * per blank of a FILL_BLANK, all required except the `empty` ones (C-a), which
+ * count as wrong: a partial payload would otherwise quietly lower the total
+ * (R72). A question left wholly empty was recorded at close and needs no row.
  */
 export function planLeaderMarks(
   leaderQuestions: MarkableQuestion[],
   marks: Mark[],
+  empty: ReadonlySet<string> = new Set(),
 ): { refusal: Refusal } | { rows: LeaderMarkRow[]; manualScore: number } {
   const byId = new Map(leaderQuestions.map((q) => [q.id, q]));
-  const refusal = outOfRange(byId, marks);
+  const refusal = outOfRange(byId, marks, empty);
   if (refusal) return { refusal };
 
   const rows: LeaderMarkRow[] = [];
   for (const q of leaderQuestions) {
     const own = marks.filter((m) => m.questionId === q.id);
-    const needed = q.type === "ESSAY" ? 1 : q.blanks.length;
+    const items: (number | null)[] = q.type === "ESSAY" ? [null] : q.blanks.map((b) => b.id);
+    const needed = items.filter((blankId) => !empty.has(itemKey(q.id, blankId))).length;
     if (own.length !== needed) {
       return { refusal: { code: "marks_incomplete", message: "Mark every blank and essay first.", status: 409 } };
     }
+    if (needed === 0) continue;
     rows.push({
       questionId: q.id,
       pointsAwarded: leaderMark(q, own),
-      isCorrect: own.every((m) => m.correct),
+      // Whole-answer right only when every item was answered and marked right.
+      isCorrect: own.length === items.length && own.every((m) => m.correct),
       blankMarks: own.flatMap((m) => (m.blankId === null ? [] : [{ blankId: m.blankId, correct: m.correct }])),
     });
   }
   return { rows, manualScore: sumScores(rows.map((r) => r.pointsAwarded)) };
+}
+
+/** Writes the marks. Every marked blank was answered, so its row exists; `update` fails loudly if not (C-b). */
+async function recordLeaderMarks(tx: Prisma.TransactionClient, attemptId: number, rows: LeaderMarkRow[]) {
+  for (const q of rows) {
+    const mark = { pointsAwarded: q.pointsAwarded, isCorrect: q.isCorrect };
+    const answer = await tx.quizAnswer.update({
+      where: { attemptId_questionId: { attemptId, questionId: q.questionId } },
+      data: mark,
+      select: { id: true },
+    });
+    for (const b of q.blankMarks) {
+      await tx.quizAnswerBlank.update({
+        where: { answerId_blankId: { answerId: answer.id, blankId: b.blankId } },
+        data: { isCorrect: b.correct },
+      });
+    }
+  }
+}
+
+/**
+ * A leader marks a closed attempt: checked, recorded and GRADED, all or none,
+ * under the attempt row lock (C-c), so two first grades at once run one after
+ * the other and only the first sees a change. autoScore is trusted as stored
+ * and never recomputed (R73): recomputing it would need the questions as they
+ * were when taken, which nothing records. `scoreChanged` is D8's rule for
+ * telling the student: a first grade or a different total, never a re-save.
+ */
+export async function gradeAttempt(
+  quizId: number,
+  attemptId: number,
+  marks: Mark[],
+  gradedById: number,
+): Promise<{ scoreChanged: boolean }> {
+  return db.$transaction(async (tx) => {
+    const locked = await lockAttempt(tx, attemptId);
+    if (!locked || locked.status === "IN_PROGRESS") {
+      throw new ApiError("attempt_not_submitted", "This attempt has not been submitted.", 409);
+    }
+    const [rows, answers, attempt] = await Promise.all([
+      tx.quizQuestion.findMany({
+        where: { quizId, type: { in: ["FILL_BLANK", "ESSAY"] } },
+        select: MARKABLE_QUESTION_SELECT,
+      }),
+      tx.quizAnswer.findMany({ where: { attemptId }, select: STORED_ANSWER_SELECT }),
+      tx.quizAttempt.findUniqueOrThrow({ where: { id: attemptId }, select: { autoScore: true, totalScore: true } }),
+    ]);
+    const questions = rows.map(toMarkable);
+    const answerBy = new Map<number, StoredAnswer>(answers.map((a) => [a.questionId, a]));
+    const plan = planLeaderMarks(questions, marks, emptyItems(questions, answerBy));
+    if ("refusal" in plan) throw new ApiError(plan.refusal.code, plan.refusal.message, plan.refusal.status);
+
+    const totalScore = round2((toScore(attempt.autoScore) ?? 0) + plan.manualScore);
+    const scoreChanged = locked.status !== "GRADED" || toScore(attempt.totalScore) !== totalScore;
+    await recordLeaderMarks(tx, attemptId, plan.rows);
+    await tx.quizAttempt.update({
+      where: { id: attemptId },
+      data: { manualScore: plan.manualScore, totalScore, status: "GRADED", gradedById, gradedAt: new Date() },
+    });
+    return { scoreChanged };
+  });
 }

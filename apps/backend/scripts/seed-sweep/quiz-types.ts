@@ -1,7 +1,7 @@
 import type { QuizAnswerInput } from "../../../../packages/shared/src/index";
 import { db } from "../../src/db/client";
 import { submitAnswers, saveAnswers } from "../../src/lib/quizzes/attempts";
-import { planLeaderMarks, recordLeaderMarks } from "../../src/lib/quizzes/grading";
+import { gradeAttempt } from "../../src/lib/quizzes/grading";
 import { isLeaderMarked, MARKABLE_QUESTION_SELECT, toMarkable } from "../../src/lib/quizzes/marking";
 import { addQuizQuestion } from "../../src/lib/quizzes/questions";
 import type { QuizQuestionRequest } from "../../src/lib/quizzes/question-rows";
@@ -11,7 +11,7 @@ import { fromToday } from "./shared";
 /*
  * Online quizzes with every question type, Arabic and mixed Arabic/English content, for the UI
  * sweep (s06 student, s16 leader, s26 admin). Built through the backend's own services
- * (addQuizQuestion, saveAnswers, submitAnswers, recordLeaderMarks), so the rows are exactly what
+ * (addQuizQuestion, saveAnswers, submitAnswers, gradeAttempt), so the rows are exactly what
  * the app writes. Each quiz holds one state the sweep flows look at without writing:
  *
  *   "مراجعة الأسبوع الثالث"  student IN_PROGRESS (an answer of every type, some unfinished);
@@ -233,20 +233,9 @@ async function submitAndMark(quizId: number, attemptId: number, markedById: numb
           correct: !wrongBlanks.includes(typed.find((t) => t.blankId === b.id)?.text ?? ""),
         })),
   );
-  const plan = planLeaderMarks(leaderQuestions, marks);
-  if ("refusal" in plan) throw new Error(`seed-sweep: ${plan.refusal.message}`);
-  const { autoScore } = await db.quizAttempt.findUniqueOrThrow({
-    where: { id: attemptId },
-    select: { autoScore: true },
-  });
-  const totalScore = Number(autoScore ?? 0) + plan.manualScore;
-  await recordLeaderMarks(
-    attemptId,
-    plan.rows,
-    { manualScore: plan.manualScore, totalScore },
-    markedById,
-    fromToday(0, 9),
-  );
+  await gradeAttempt(quizId, attemptId, marks, markedById);
+  // A fixed time of day, so the sweep's shots don't change from run to run.
+  await db.quizAttempt.update({ where: { id: attemptId }, data: { gradedAt: fromToday(0, 9) } });
 }
 
 /** The question-type quizzes and the attempt states the sweep flows look at. */

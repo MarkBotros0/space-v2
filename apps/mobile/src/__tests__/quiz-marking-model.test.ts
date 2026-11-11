@@ -3,6 +3,7 @@ import type { QuizGradingAttempt } from "@space/shared";
 import {
   hasLegacyMarks,
   initialMarks,
+  isLeftEmpty,
   isLegacyEssay,
   markedCount,
   marksComplete,
@@ -34,7 +35,7 @@ const blanks: Answer = {
   blanks: [
     { blankId: 21, position: 0, expected: "wet", text: "wet", correct: null },
     { blankId: 22, position: 1, expected: "cold", text: "cool", correct: true },
-    { blankId: 23, position: 2, expected: "hot", text: null, correct: null },
+    { blankId: 23, position: 2, expected: "hot", text: "warm", correct: null },
   ],
 };
 
@@ -73,6 +74,23 @@ describe("marking model", () => {
       { questionId: 2, blankId: 23, correct: null },
       { questionId: 3, blankId: null, correct: null },
     ]);
+  });
+
+  it("never offers a blank or essay the student left empty: the server marked it wrong at close", () => {
+    const partly: Answer = {
+      ...blanks,
+      blanks: [
+        { blankId: 21, position: 0, expected: "wet", text: "wet", correct: null },
+        { blankId: 22, position: 1, expected: "cold", text: "  ", correct: false },
+        { blankId: 23, position: 2, expected: "hot", text: null, correct: false },
+      ],
+    };
+    const emptyEssay: Answer = { ...essay, text: null, correct: false, pointsAwarded: 0 };
+    const marks = initialMarks(attempt([single, partly, emptyEssay]));
+    expect(marks).toEqual([{ questionId: 2, blankId: 21, correct: null }]);
+    expect(marksComplete(setMark(marks, 2, 21, true))).toBe(true);
+    expect(isLeftEmpty("")).toBe(true);
+    expect(isLeftEmpty("ماء")).toBe(false);
   });
 
   it("is not complete while one blank is unmarked", () => {

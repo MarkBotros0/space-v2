@@ -4,6 +4,7 @@ import { db } from "../../db/client";
 import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason, canGradeQuiz, canManageQuiz, hasActiveEnrollment } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
+import { closeLatestIfExpired } from "../../lib/quizzes/close-attempt";
 import { AUTHORING_QUESTION_SELECT } from "../../lib/quizzes/questions";
 import { toAuthoringQuestion } from "../../lib/quizzes/question-rows";
 import { canReleaseQuizResults } from "./release";
@@ -86,6 +87,10 @@ export async function getQuiz(req: Request, res: Response) {
       // quiz that does not exist are indistinguishable from the response.
       return notFound(res, "Quiz");
     }
+    // Lazy close (spec "Timing"): a read past the deadline closes the attempt
+    // first, no grace, so the student sees it submitted. This is the path the
+    // app refetches when its countdown reaches zero.
+    await closeLatestIfExpired(id, user.userId, 0);
     const readOnly = !(await hasActiveEnrollment(user, quiz.seasonId));
     const detail = await loadStudentQuizDetail(id, user.userId, readOnly);
     if (!detail) return notFound(res, "Quiz");

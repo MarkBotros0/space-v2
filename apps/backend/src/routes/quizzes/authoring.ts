@@ -7,6 +7,7 @@ import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { findLiveSeason } from "../../lib/queries/seasons";
 import { createQuizRequestSchema, updateQuizRequestSchema } from "../../../../../packages/shared/src/index";
+import { updateQuizSettings } from "../../lib/quizzes/settings";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
@@ -101,24 +102,13 @@ export async function updateQuiz(req: Request, res: Response) {
     }
   }
 
-  if (body.shuffleQuestions !== undefined && (await db.quizAttempt.count({ where: { quizId: id } })) > 0) {
-    return apiError(
-      res,
-      "quiz_has_attempts",
-      "Students have started this quiz, so its settings can no longer change.",
-      409,
-    );
+  const timing = body.startsFrom !== undefined || body.startsUntil !== undefined || body.timeLimitMinutes !== undefined;
+  if (timing && quiz.kind !== "ONLINE") {
+    return apiError(res, "wrong_quiz_kind", "Only an online quiz has a start window or a time limit.", 409);
   }
 
-  await db.quiz.update({
-    where: { id },
-    data: {
-      ...(body.shuffleQuestions !== undefined ? { shuffleQuestions: body.shuffleQuestions } : {}),
-      ...(body.title !== undefined ? { title: body.title } : {}),
-      ...(body.maxScore !== undefined ? { maxScore: body.maxScore } : {}),
-      ...(body.sessionId !== undefined ? { sessionId: body.sessionId } : {}),
-    },
-  });
+  // The freeze checks (shuffle, time limit) and the write share one Quiz row lock.
+  await updateQuizSettings(id, body);
 
   return apiOk(res, { updated: true });
 }

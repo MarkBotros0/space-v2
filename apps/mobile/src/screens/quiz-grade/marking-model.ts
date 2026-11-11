@@ -1,7 +1,7 @@
 /**
  * The leader's right/wrong marks for one attempt, pure (spec "Marking (leaders)"). One mark per
  * blank of each fill-in-the-blank question and one per essay (`blankId: null`); every other type
- * is marked by the server. The server refuses a partial payload (`marks_incomplete`), so the
+ * is marked by the server, and so is a blank or essay left empty (wrong). The server refuses a partial payload (`marks_incomplete`), so the
  * sheet saves only once `marksComplete` holds.
  */
 import type { MarkAttemptInput, QuizGradingAttempt } from "@space/shared";
@@ -24,13 +24,24 @@ export function hasLegacyMarks(attempt: QuizGradingAttempt): boolean {
   return attempt.answers.some(isLegacyEssay);
 }
 
-/** The leader-marked items in the author's order, seeded from what the server holds. */
+/**
+ * A blank or essay the student left empty: the server marked it wrong when the attempt closed and
+ * refuses a mark on it, so it is shown as wrong and never offered for marking.
+ */
+export function isLeftEmpty(text: string | null): boolean {
+  return (text ?? "").trim().length === 0;
+}
+
+/** The leader-marked items the student answered, in the author's order, seeded from what the server holds. */
 export function initialMarks(attempt: QuizGradingAttempt): ItemMark[] {
   return attempt.answers.flatMap((a): ItemMark[] => {
-    if (a.type === "ESSAY") return [{ questionId: a.questionId, blankId: null, correct: a.correct }];
+    if (a.type === "ESSAY") {
+      return isLeftEmpty(a.text) ? [] : [{ questionId: a.questionId, blankId: null, correct: a.correct }];
+    }
     if (a.type !== "FILL_BLANK") return [];
     return [...a.blanks]
       .sort((x, y) => x.position - y.position)
+      .filter((b) => !isLeftEmpty(b.text))
       .map((b) => ({ questionId: a.questionId, blankId: b.blankId, correct: b.correct }));
   });
 }

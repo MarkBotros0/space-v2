@@ -10,7 +10,9 @@ import { answerRefusal, saveAnswers, submitAnswers } from "../../lib/quizzes/att
 import { saveQuizAnswersRequestSchema } from "../../../../../packages/shared/src/index";
 import { MARKABLE_QUESTION_SELECT, toMarkable } from "../../lib/quizzes/marking";
 import { notifyQuizGraded } from "../../lib/quizzes/notify";
-import { newShuffleSeed } from "../../lib/quizzes/shuffle";
+import { closeLatestIfExpired } from "../../lib/quizzes/close-attempt";
+import { createFirstAttempt, startClockIfUnset } from "../../lib/quizzes/start-attempt";
+import { SAVE_GRACE_MS } from "../../lib/quizzes/timing";
 import { loadStudentQuizDetail } from "./student-detail";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
@@ -71,13 +73,16 @@ export async function startAttempt(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { seasonId: true, kind: true, publishedAt: true },
+    select: { seasonId: true, kind: true, publishedAt: true, timeLimitMinutes: true },
   });
   if (!quiz) return notFound(res, "Quiz");
   if (quiz.kind !== "ONLINE" || quiz.publishedAt === null) {
     return apiError(res, "quiz_not_published", "This quiz is not available.", 409);
   }
   if (!(await canTakeQuizIn(user, quiz.seasonId))) return forbidden(res);
+
+  // A read: no grace. An expired attempt is closed and then reads as submitted.
+  await closeLatestIfExpired(id, user.userId, 0);
 
   const latest = await db.quizAttempt.findFirst({
     where: { quizId: id, studentUserId: user.userId },
@@ -90,26 +95,10 @@ export async function startAttempt(req: Request, res: Response) {
     return apiError(res, "attempt_closed", "You've already submitted this quiz. Ask your leader to reopen it.", 409);
   }
 
-  if (!latest) {
-    // A real upsert on the natural unique key, not v1's read-then-create with
-    // no transaction (R119/D15) — two concurrent calls both saw no attempt,
-    // both created attemptNumber 1, and the loser surfaced a raw Prisma error
-    // to the student instead of the friendly message.
-    await db.quizAttempt.upsert({
-      where: {
-        quizId_studentUserId_attemptNumber: {
-          quizId: id,
-          studentUserId: user.userId,
-          attemptNumber: 1,
-        },
-      },
-      // Empty update: the point is to return the existing row untouched.
-      update: {},
-      // The seed fixes this attempt's question and option order for its whole life.
-      create: { quizId: id, studentUserId: user.userId, attemptNumber: 1, shuffleSeed: newShuffleSeed() },
-      select: { id: true },
-    });
-  }
+  // The start window is checked here, on attempt 1 only; a reopened attempt
+  // just starts its clock (spec "Timing": the window doesn't block a reopen).
+  if (latest) await startClockIfUnset(latest.id, quiz.timeLimitMinutes);
+  else await createFirstAttempt(id, user.userId);
 
   const detail = await loadStudentQuizDetail(id, user.userId, false);
   if (!detail) return notFound(res, "Quiz");
@@ -147,6 +136,8 @@ export async function saveAttemptAnswers(req: Request, res: Response) {
 
   if (!(await loadTakeableQuiz(res, user, id))) return undefined;
 
+  // A write: the save grace, so a save in flight at the deadline still lands.
+  await closeLatestIfExpired(id, user.userId, SAVE_GRACE_MS);
   const attempt = await resolveOpenAttempt(res, id, user.userId);
   if (!attempt) return undefined;
 
@@ -173,6 +164,8 @@ export async function submitAttempt(req: Request, res: Response) {
   const quiz = await loadTakeableQuiz(res, user, id);
   if (!quiz) return undefined;
 
+  // Past the deadline (+ grace) the attempt is closed with what's saved, and this submit is attempt_closed.
+  await closeLatestIfExpired(id, user.userId, SAVE_GRACE_MS);
   const attempt = await resolveOpenAttempt(res, id, user.userId);
   if (!attempt) return undefined;
 

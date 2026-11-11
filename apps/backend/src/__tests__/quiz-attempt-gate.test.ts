@@ -10,6 +10,11 @@ const mockDb = {
   quizAttempt: { findFirst: jest.fn(), upsert: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
+// Past the gate the first attempt is created in a transaction; its window and clock have their own suites.
+jest.mock("../lib/quizzes/start-attempt", () => ({
+  createFirstAttempt: jest.fn().mockResolvedValue(undefined),
+  startClockIfUnset: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock("../routes/quizzes/student-detail", () => ({
   loadStudentQuizDetail: jest.fn().mockResolvedValue({ id: 7 }),
 }));

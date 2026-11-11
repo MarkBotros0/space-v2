@@ -1,5 +1,6 @@
 import type { QuizGradingAnswer } from "../../../../../packages/shared/src/index";
 import type { Prisma } from "../../generated/prisma/client";
+import { hasAnswerText } from "./marking";
 import { toScore } from "./score";
 
 /*
@@ -53,12 +54,14 @@ function matchingAnswer(q: GradingQuestionRow, a: GradingAnswerRow | undefined) 
 }
 
 /**
- * An essay's mark. A legacy essay was marked with points, not right/wrong: its
+ * An essay's mark. An empty one is wrong (C-a); the leader marks only what was
+ * written. A legacy essay was marked with points, not right/wrong: its
  * `pointsAwarded` is kept as it is and it shows as marked (right when it earned
  * anything).
  */
 function essayCorrect(a: GradingAnswerRow | undefined): boolean | null {
-  if (!a) return null;
+  // Ruling C-a: left empty = wrong, never waiting for a mark.
+  if (!a || !hasAnswerText(a.text)) return false;
   if (a.isCorrect !== null) return a.isCorrect;
   const points = toScore(a.pointsAwarded);
   return points === null ? null : points > 0;
@@ -92,7 +95,8 @@ function toGradingAnswer(q: GradingQuestionRow, a: GradingAnswerRow | undefined)
             position: b.position,
             expected: b.expected,
             text: given?.text ?? null,
-            correct: given?.isCorrect ?? null,
+            // C-a: an empty blank is wrong (a row or not), never waiting for a mark.
+            correct: hasAnswerText(given?.text) ? (given?.isCorrect ?? null) : false,
           };
         }),
       };

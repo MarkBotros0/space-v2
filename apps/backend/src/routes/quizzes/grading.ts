@@ -6,10 +6,10 @@ import { parseId } from "../../lib/parse-id";
 import { canGradeQuiz } from "../../lib/permissions";
 import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
-import { planLeaderMarks, recordLeaderMarks } from "../../lib/quizzes/grading";
+import { gradeAttempt as gradeLeaderMarks } from "../../lib/quizzes/grading";
 import { GRADING_ANSWER_SELECT, GRADING_QUESTION_SELECT, gradingAnswers } from "../../lib/quizzes/grading-view";
-import { isLeaderMarked, MARKABLE_QUESTION_SELECT, toMarkable } from "../../lib/quizzes/marking";
-import { round2, toScore } from "../../lib/quizzes/score";
+import { isLeaderMarked } from "../../lib/quizzes/marking";
+import { toScore } from "../../lib/quizzes/score";
 import { bestScoresFor } from "../../lib/queries/quiz-best-scores";
 import {
   markAttemptRequestSchema,
@@ -18,6 +18,7 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizGraded, notifyQuizRetake } from "../../lib/quizzes/notify";
 import { newShuffleSeed } from "../../lib/quizzes/shuffle";
+import { closeExpiredForQuiz } from "../../lib/quizzes/close-attempt";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
@@ -37,6 +38,10 @@ export async function listAttempts(req: Request, res: Response) {
   const parsed = parseOr400(quizAttemptsQuerySchema, req.query, res, "Invalid query.");
   if (parsed === null) return;
   const { cursor, limit } = parsed;
+
+  // A phone that died mid-quiz never comes back to close its attempt: every
+  // staff read closes the quiz's expired ones first (spec "Timing").
+  await closeExpiredForQuiz(id);
 
   // Derived, never accepted (R105). visibleStudentIdsForQuiz returns them
   // sorted, so paging over the ids is stable and needs no second sort.
@@ -151,8 +156,6 @@ export async function gradeAttempt(req: Request, res: Response) {
       quizId: true,
       studentUserId: true,
       status: true,
-      autoScore: true,
-      totalScore: true,
     },
   });
   // Addressed through its quiz: a bare attempt id can never reach another quiz.
@@ -175,22 +178,9 @@ export async function gradeAttempt(req: Request, res: Response) {
   const parsed = parseOr400(markAttemptRequestSchema, req.body, res, "Invalid marks.");
   if (parsed === null) return;
 
-  // Leaders mark right or wrong; the points follow from the admin's per-question points.
-  const leaderQuestions = await db.quizQuestion.findMany({
-    where: { quizId: id, type: { in: ["FILL_BLANK", "ESSAY"] } },
-    select: MARKABLE_QUESTION_SELECT,
-  });
-  const plan = planLeaderMarks(leaderQuestions.map(toMarkable), parsed.marks);
-  if ("refusal" in plan) return apiError(res, plan.refusal.code, plan.refusal.message, plan.refusal.status);
-
-  const { manualScore } = plan;
-  // autoScore is trusted as stored and never recomputed (R73) — recomputing it
-  // would need the questions as they were when taken, which nothing records.
-  const totalScore = round2((toScore(attempt.autoScore) ?? 0) + manualScore);
-  const scoreChanged = attempt.status !== "GRADED" || toScore(attempt.totalScore) !== totalScore;
-  const now = new Date();
-
-  await recordLeaderMarks(attemptId, plan.rows, { manualScore, totalScore }, user.userId, now);
+  // Leaders mark right or wrong; the points follow from the admin's per-question
+  // points. Checked and recorded under the attempt row lock (lib/quizzes/grading.ts).
+  const { scoreChanged } = await gradeLeaderMarks(id, attemptId, parsed.marks, user.userId);
 
   // The score shows once graded, released answers or not (spec "What students
   // see"), so the student hears now. D8's single rule for both grading paths:
@@ -237,9 +227,9 @@ export async function gradeAttempt(req: Request, res: Response) {
  * Gated on canGradeQuiz, not canManageQuiz — spec D5's recommendation. v1 made
  * this admin-only (R79), so the leader actually looking at the grading screen
  * could see a student stuck behind a dead attempt and had to find an admin. And
- * because there is no expiry, no timeout and no ABANDONED status (R47), a
- * dropped connection mid-quiz makes
- * this endpoint the ONLY way that student ever takes the quiz.
+ * because an untimed attempt has no expiry and no ABANDONED status (R47), a dropped
+ * connection mid-quiz makes this endpoint the ONLY way that student ever
+ * takes the quiz.
  */
 export async function reopenAttempt(req: Request, res: Response) {
   const user = requireUser(req);
@@ -283,7 +273,8 @@ export async function reopenAttempt(req: Request, res: Response) {
       studentUserId: parsed.studentUserId,
       // R81: a NEW attempt; the previous one and its answers stay intact.
       attemptNumber: latest.attemptNumber + 1,
-      // A retake gets its own shuffle.
+      // A retake gets its own shuffle. deadlineAt stays null: its fresh time
+      // limit starts when the student opens it (lib/quizzes/start-attempt.ts).
       shuffleSeed: newShuffleSeed(),
     },
     select: { id: true, attemptNumber: true },

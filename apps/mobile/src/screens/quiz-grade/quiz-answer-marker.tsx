@@ -2,7 +2,8 @@
  * One attempt's answers as the grader sees them, the answer key beside each (R103), in the
  * author's order. Choice and matching questions are marked by the server and show read-only;
  * each fill-in-the-blank gap shows the student's text beside the expected answer, and each essay
- * its text, with Right / Wrong for the leader (spec "Marking (leaders)"). An essay marked with
+ * its text, with Right / Wrong for the leader (spec "Marking (leaders)"); one left empty shows
+ * as wrong, with nothing to mark. An essay marked with
  * points before right/wrong existed shows its points read-only. The sheet owns the marks and the
  * save; this draws them. "Reopen retake" shows on SUBMITTED attempts too, for every grader
  * (spec 12 D5).
@@ -19,7 +20,7 @@ import { formatScore } from "../../lib/format";
 import { plural } from "../../lib/plural";
 import { splitBlanks } from "../quiz-detail/blank-segments";
 import { Mark } from "../quiz-detail/review/question-review";
-import { isLegacyEssay, type ItemMark } from "./marking-model";
+import { isLeftEmpty, isLegacyEssay, type ItemMark } from "./marking-model";
 
 iconWithClassName(RotateCcw);
 
@@ -58,6 +59,11 @@ function RightWrong({
       onChange={(v) => onChange(v === "right")}
     />
   );
+}
+
+/** An item the student left empty: wrong already, nothing for the leader to mark. */
+function LeftEmpty() {
+  return <Mark right={false} word="Left empty, wrong" />;
 }
 
 const markOf = (marks: ItemMark[], questionId: number, blankId: number | null) =>
@@ -121,11 +127,15 @@ function Blanks({ a, marks, readOnly, onMark }: { a: Of<"FILL_BLANK"> } & Markin
           <Text variant="caption" className="font-bold text-muted-foreground">{`Blank ${i + 1}`}</Text>
           <ContentText variant="subhead">{`Student's answer: ${b.text || "none"}`}</ContentText>
           <ContentText variant="subhead" className="text-muted-foreground">{`Expected: ${b.expected}`}</ContentText>
-          <RightWrong
-            value={markOf(marks, a.questionId, b.blankId)}
-            readOnly={readOnly}
-            onChange={(c) => onMark(a.questionId, b.blankId, c)}
-          />
+          {isLeftEmpty(b.text) ? (
+            <LeftEmpty />
+          ) : (
+            <RightWrong
+              value={markOf(marks, a.questionId, b.blankId)}
+              readOnly={readOnly}
+              onChange={(c) => onMark(a.questionId, b.blankId, c)}
+            />
+          )}
         </View>
       ))}
     </View>
@@ -145,6 +155,8 @@ function Essay({ a, marks, readOnly, onMark }: { a: Of<"ESSAY"> } & Marking) {
         <Text variant="caption" className="font-medium text-muted-foreground">
           {`Marked: ${plural(a.pointsAwarded ?? 0, "pt")}`}
         </Text>
+      ) : isLeftEmpty(a.text) ? (
+        <LeftEmpty />
       ) : (
         <RightWrong
           value={markOf(marks, a.questionId, null)}

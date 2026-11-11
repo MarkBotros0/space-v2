@@ -3,33 +3,13 @@ import type { ApiErrorCode, QuizAnswerInput } from "@space/shared";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api-error";
-import {
-  autoMark,
-  isAnswered,
-  isLeaderMarked,
-  MARKABLE_QUESTION_SELECT,
-  toMarkable,
-  type MarkableQuestion,
-  type StoredAnswer,
-} from "./marking";
-import { sumScores } from "./score";
+import { lockAttempt, markAndClose } from "./mark-and-close";
+import type { MarkableQuestion } from "./marking";
+import { isExpired, SAVE_GRACE_MS } from "./timing";
 
 type Refusal = { code: ApiErrorCode; message: string };
 
 const attemptClosed = () => new ApiError("attempt_closed", "This attempt is closed.", 409);
-
-/**
- * Lock the attempt row and return its CURRENT status (REG-111 / R120). The
- * pre-transaction status check in resolveOpenAttempt is only a fast refusal;
- * this is the authoritative one. Both the answer save and the submit take this
- * lock first, so a save can never land between submit's read of the answers and
- * its commit, and two submits cannot both score the same attempt.
- */
-async function lockAttemptStatus(tx: Prisma.TransactionClient, attemptId: number): Promise<string | null> {
-  const rows = await tx.$queryRaw<{ status: string }[]>`
-    SELECT "status"::text AS "status" FROM "QuizAttempt" WHERE "id" = ${attemptId} FOR UPDATE`;
-  return rows[0]?.status ?? null;
-}
 
 const outOfRange: Refusal = { code: "answer_out_of_range", message: "That answer is not part of this question." };
 
@@ -124,74 +104,35 @@ async function writeAnswer(tx: Prisma.TransactionClient, attemptId: number, answ
   }
 }
 
-/** Saves answers to an open attempt, under its lock. A closed attempt is attempt_closed (409), nothing written. */
-export async function saveAnswers(attemptId: number, answers: QuizAnswerInput[]): Promise<void> {
+/**
+ * Saves answers to an open attempt, under its lock. A closed attempt, or one
+ * past its deadline by more than `graceMs`, is attempt_closed (409), nothing
+ * written; the route has already closed an expired one, so this only catches
+ * a deadline crossed between that check and the lock.
+ */
+export async function saveAnswers(
+  attemptId: number,
+  answers: QuizAnswerInput[],
+  graceMs = SAVE_GRACE_MS,
+): Promise<void> {
   await db.$transaction(async (tx) => {
-    if ((await lockAttemptStatus(tx, attemptId)) !== "IN_PROGRESS") throw attemptClosed();
+    const row = await lockAttempt(tx, attemptId);
+    if (row?.status !== "IN_PROGRESS" || isExpired(row.deadlineAt, new Date(), graceMs)) throw attemptClosed();
     for (const answer of answers) await writeAnswer(tx, attemptId, answer);
   });
 }
 
-const STORED_ANSWER_SELECT = {
-  questionId: true,
-  text: true,
-  isCorrect: true,
-  selections: { select: { optionId: true, matchedOptionId: true } },
-  blanks: { select: { blankId: true, text: true, isCorrect: true } },
-} as const satisfies Prisma.QuizAnswerSelect;
-
 /**
- * Submits an attempt: read, validate, mark and write all inside ONE
- * transaction that holds the attempt row lock (REG-111 / R120), so the answers
- * marked are exactly the answers committed with the status change. Both
- * refusals (attempt_closed, attempt_incomplete) are thrown before any write.
- * The auto types are marked here; an attempt with no leader-marked question
- * (FILL_BLANK, ESSAY) is GRADED at once, otherwise it waits SUBMITTED.
+ * Submits an attempt: read, validate, mark and write inside ONE transaction
+ * that holds the attempt row lock (REG-111 / R120), so the answers marked are
+ * exactly the answers committed with the status change. Both refusals
+ * (attempt_closed, attempt_incomplete) are thrown before any write. Marking is
+ * `markAndClose`, the path every close shares.
  */
 export async function submitAnswers(quizId: number, attemptId: number): Promise<{ graded: boolean }> {
   return db.$transaction(async (tx) => {
-    if ((await lockAttemptStatus(tx, attemptId)) !== "IN_PROGRESS") throw attemptClosed();
-
-    const [rows, answers] = await Promise.all([
-      tx.quizQuestion.findMany({ where: { quizId }, select: MARKABLE_QUESTION_SELECT }),
-      tx.quizAnswer.findMany({ where: { attemptId }, select: STORED_ANSWER_SELECT }),
-    ]);
-    const questions = rows.map(toMarkable);
-    const answerBy = new Map<number, StoredAnswer>(answers.map((a) => [a.questionId, a]));
-
-    // R59: one unanswered question rejects the whole submit.
-    if (questions.some((q) => !isAnswered(q, answerBy.get(q.id)))) {
-      throw new ApiError("attempt_incomplete", "Answer every question before submitting.", 409);
-    }
-
-    const marked = questions
-      .filter((q) => !isLeaderMarked(q.type))
-      .map((q) => ({ questionId: q.id, ...autoMark(q, answerBy.get(q.id)) }));
-    for (const m of marked) {
-      await tx.quizAnswer.update({
-        where: { attemptId_questionId: { attemptId, questionId: m.questionId } },
-        data: { isCorrect: m.isCorrect, pointsAwarded: m.pointsAwarded },
-      });
-    }
-
-    // Summed from the stored (rounded) awards, so totalScore = sum of pointsAwarded exactly.
-    const autoScore = sumScores(marked.map((m) => m.pointsAwarded));
-    const graded = !questions.some((q) => isLeaderMarked(q.type));
-    const now = new Date();
-    await tx.quizAttempt.update({
-      where: { id: attemptId },
-      data: graded
-        ? {
-            status: "GRADED",
-            submittedAt: now,
-            autoScore,
-            manualScore: 0,
-            totalScore: autoScore,
-            gradedAt: now,
-            // gradedById stays null: nobody graded it (R64).
-          }
-        : { status: "SUBMITTED", submittedAt: now, autoScore },
-    });
-    return { graded };
+    const row = await lockAttempt(tx, attemptId);
+    if (row?.status !== "IN_PROGRESS" || isExpired(row.deadlineAt, new Date(), SAVE_GRACE_MS)) throw attemptClosed();
+    return markAndClose(tx, quizId, attemptId, { requireComplete: true, endReason: "SUBMITTED", endedById: null });
   });
 }
