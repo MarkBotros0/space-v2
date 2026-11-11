@@ -6,13 +6,14 @@ import type { StudentQuizDetail } from "@space/shared";
 
 import { Text } from "../../design/ui";
 import { useStudentQuizDetail } from "../../hooks/use-quizzes";
+import { BeforeYouStart } from "./before-you-start";
 import { clockOffsetMs } from "./countdown";
 import { forgetAttempt } from "./lock/exit-queue";
 import { AttemptForm } from "./quiz-attempt-form";
 import { quizTitleProps } from "./quiz-header";
 import { ResultView } from "./quiz-result-view";
-import { QuizStartCard } from "./quiz-start-card";
 import type { TimeUpOutcome } from "./use-time-up";
+import { useQuizLockStore } from "../../store/quiz-lock";
 
 /** Tries after the deadline before giving up on seeing the attempt closed (the server closes it on the read). */
 const TIME_UP_READS = 3;
@@ -23,7 +24,23 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const timeLeftOnServer = (fresh: StudentQuizDetail) =>
   fresh.deadlineAt !== null && Date.parse(fresh.deadlineAt) > Date.parse(fresh.serverNow);
 
-/** STUDENT: the start card, the attempt in progress, or the result. */
+/**
+ * Hold the student on this quiz while its read shows the attempt open (a reopened one awaiting its
+ * start too), and let go once it shows it closed: submitted, timed out or ended. A finished season's
+ * open attempt can't be worked on, so it holds nothing. Re-asserted if a stale server read let go.
+ */
+function useHoldWhileOpen(id: number, data: StudentQuizDetail | undefined) {
+  const lockedQuizId = useQuizLockStore((s) => s.lockedQuizId);
+  const open = data === undefined ? null : data.stage === "in_progress" && !data.readOnly;
+  useEffect(() => {
+    if (open === null) return;
+    const { setLockedQuiz } = useQuizLockStore.getState();
+    if (open && lockedQuizId !== id) setLockedQuiz(id);
+    if (!open && lockedQuizId === id) setLockedQuiz(null);
+  }, [id, open, lockedQuizId]);
+}
+
+/** STUDENT: before you start, the attempt in progress, or the result. */
 export function StudentRunner({ id }: { id: number }) {
   const { data, isPending, refetch, dataUpdatedAt } = useStudentQuizDetail(id);
 
@@ -32,6 +49,8 @@ export function StudentRunner({ id }: { id: number }) {
   useEffect(() => {
     if (finishedAttemptId !== null) void forgetAttempt(finishedAttemptId);
   }, [finishedAttemptId]);
+
+  useHoldWhileOpen(id, data);
 
   // Only a first read that failed is an error page. A re-read that fails keeps the data it had, so an
   // open attempt's form (and its time-up state) stays on screen rather than being swapped away.
@@ -77,5 +96,5 @@ export function StudentRunner({ id }: { id: number }) {
     return <AttemptForm detail={data} id={id} offsetMs={offsetMs} onTimeUp={readAfterDeadline} />;
   }
   if (finished) return <ResultView detail={data} />;
-  return <QuizStartCard detail={data} id={id} offsetMs={offsetMs} reopened={awaitingStart} />;
+  return <BeforeYouStart detail={data} id={id} offsetMs={offsetMs} reopened={awaitingStart} />;
 }

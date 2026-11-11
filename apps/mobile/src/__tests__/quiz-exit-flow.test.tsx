@@ -217,11 +217,13 @@ describe("quiz exits", () => {
       data: { data: detail({ attemptId: 907, attemptNumber: 2, timeLimitMinutes: 20, questions: [] }) },
     });
     renderWithProviders(<QuizDetailScreen />);
-    expect(await screen.findByText("Start quiz · 20 minutes")).toBeTruthy();
+    expect(await screen.findByText("I'm ready")).toBeTruthy();
     await appState("background");
     await appState("active");
     expect(eventPosts()).toHaveLength(0);
     expect(mockStore.has("quiz-open.907")).toBe(false);
-    expect(backHandlersNow()).toHaveLength(0);
+    // The student is held on it (relaunch lock), so Android back does nothing here either; no exit watch runs.
+    expect(backHandlersNow()).toHaveLength(1);
+    expect(backHandlersNow().every((fn) => fn({} as never) === true)).toBe(true);
   });
 });

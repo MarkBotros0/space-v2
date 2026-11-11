@@ -126,7 +126,7 @@ describe("quiz runner", () => {
     expect(await screen.findByText("Week 1 quiz")).toBeTruthy();
     expect(put).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByText("Start quiz"));
+    fireEvent.press(screen.getByText("I'm ready"));
     await waitFor(() => expect(put).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt"));
     expect(await screen.findByText("Capital of France?")).toBeTruthy();
   });

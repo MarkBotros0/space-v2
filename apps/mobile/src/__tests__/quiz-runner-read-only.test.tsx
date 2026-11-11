@@ -106,7 +106,7 @@ describe("quiz runner, read-only (a finished season)", () => {
     get.mockResolvedValue({ data: { data: detail({ readOnly: true }) } });
     renderWithProviders(<QuizDetailScreen />);
     expect(await screen.findByText("You didn't take this quiz.")).toBeTruthy();
-    expect(screen.queryByText("Start quiz")).toBeNull();
+    expect(screen.queryByText("I'm ready")).toBeNull();
     expect(put).not.toHaveBeenCalled();
   });
 
@@ -119,7 +119,7 @@ describe("quiz runner, read-only (a finished season)", () => {
     renderWithProviders(<QuizDetailScreen />);
     expect(await screen.findByText("You didn't finish this quiz.")).toBeTruthy();
     expect(screen.queryByText("Submit")).toBeNull();
-    expect(screen.queryByText("Start quiz")).toBeNull();
+    expect(screen.queryByText("I'm ready")).toBeNull();
   });
 
   it("still shows the result of a graded quiz", async () => {

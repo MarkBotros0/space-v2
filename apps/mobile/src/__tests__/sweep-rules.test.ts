@@ -85,7 +85,6 @@ const BASELINE: Record<string, Record<string, number>> = {
     "src/screens/leader-today/session-section.tsx": 1,
     "src/screens/quiz-detail/leader-quizzes.tsx": 2,
     "src/screens/quiz-detail/quiz-attempt-form.tsx": 1,
-    "src/screens/quiz-detail/quiz-start-card.tsx": 1,
     "src/screens/quiz-edit/quiz-builder.tsx": 1,
     "src/screens/quiz-grade/attempt-sheet.tsx": 1,
     "src/screens/quiz-grade/attempt-subtitle.ts": 1,

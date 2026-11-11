@@ -137,7 +137,7 @@ describe("quiz runner: the attempt ended elsewhere", () => {
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
     await tick(1000);
 
-    expect(await screen.findByText("Start quiz · 20 minutes")).toBeTruthy();
+    expect(await screen.findByText("I'm ready")).toBeTruthy();
     expect(toast.error).not.toHaveBeenCalled();
     expect(patch).toHaveBeenCalledTimes(1);
   });

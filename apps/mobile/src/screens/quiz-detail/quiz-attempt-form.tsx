@@ -157,6 +157,8 @@ export function AttemptForm({
   return (
     <Screen
       {...quizTitleProps(detail)}
+      // The student is held on an open attempt (spec "Relaunch"): no way back but handing it in.
+      back={null}
       pinned={
         detail.deadlineAt ? (
           <QuizCountdown deadlineAt={detail.deadlineAt} offsetMs={offsetMs} onExpire={onExpire} />

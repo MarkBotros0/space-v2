@@ -190,6 +190,8 @@ export const queryKeys = {
     staffBySeason: (seasonId: number | null) => [...queryKeys.quizzes.bySeason(seasonId), "staff"] as const,
     studentBySeason: (seasonId: number | null) => [...queryKeys.quizzes.bySeason(seasonId), "student"] as const,
     details: () => [...queryKeys.quizzes.all, "detail"] as const,
+    /** GET /me/open-quiz-attempt: the relaunch lock's read. */
+    openAttempt: () => [...queryKeys.quizzes.all, "open-attempt"] as const,
     // number | null, like sessions.bySeason: a null key never collides with a
     // real quiz's cache entry, so no -1 sentinel anywhere.
     detail: (id: number | null) => [...queryKeys.quizzes.details(), { id }] as const,

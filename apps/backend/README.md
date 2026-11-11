@@ -35,6 +35,7 @@ All paths below are relative to the server root. Everything except
 | PATCH | `/api/v1/seasons/:id/results/:studentUserId` | SUPER only. Correct one result. |
 | GET | `/api/v1/me/season-history` | Past seasons with how each ended. |
 | GET | `/api/v1/me/seasons/:seasonId` | A student's own read-only record of a season. |
+| GET | `/api/v1/me/open-quiz-attempt` | `{ quizId }`: the quiz whose attempt the student has open (after the lazy close), else null; staff always null. The app's relaunch lock. |
 | GET | `/api/v1/groups/:id` | |
 | GET | `/api/v1/sessions/:id` | |
 | GET | `/api/v1/sessions/:id/attendance` | |

@@ -50,6 +50,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   clear: () => {
     // Every way out (sign-out, a forced one, the boot retry's) ends here: no quiz lock outlives the user.
     useQuizLockStore.getState().setOpenAttempt(null);
+    useQuizLockStore.getState().setLockedQuiz(null);
     set({ user: null, scopes: null, pushToken: null, status: "anonymous" });
   },
   nav: () => {

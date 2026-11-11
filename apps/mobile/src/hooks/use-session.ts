@@ -11,6 +11,7 @@ import {
 import { googleIdToken } from "../lib/google-sign-in";
 import { isRefreshIndeterminate, apiErrorStatus } from "../lib/api-error";
 import { clearSession, loadAccessToken } from "../lib/token-storage";
+import { restoreQuizLock } from "../store/quiz-lock";
 import { useSessionStore } from "../store/session";
 import { syncPushRegistration, unregisterPushToken } from "../lib/push";
 
@@ -34,6 +35,8 @@ export async function bootSession(): Promise<void> {
     return;
   }
 
+  // Before the session settles, so app/index.tsx can open an offline launch into a held quiz.
+  await restoreQuizLock();
   try {
     const res = await apiClient.get("/api/v1/me");
     const me = meResponseSchema.parse(res.data.data);

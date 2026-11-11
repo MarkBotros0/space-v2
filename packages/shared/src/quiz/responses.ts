@@ -42,3 +42,9 @@ export const quizAttemptEventsResponseSchema = z.object({
   ended: z.boolean(),
   status: quizAttemptStatusSchema,
 });
+/**
+ * GET /me/open-quiz-attempt: the quiz whose attempt the signed-in student has open (after the lazy
+ * close), or null. The app opens straight into it and keeps the student there until it closes.
+ */
+export const openQuizAttemptSchema = z.object({ quizId: z.number().int().nullable() });
+export type OpenQuizAttempt = z.infer<typeof openQuizAttemptSchema>;

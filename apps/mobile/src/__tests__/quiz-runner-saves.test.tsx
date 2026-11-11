@@ -197,7 +197,7 @@ describe("quiz runner saves", () => {
     );
 
     const view = render(wrap(<QuizDetailScreen />));
-    fireEvent.press(await screen.findByText("Start quiz"));
+    fireEvent.press(await screen.findByText("I'm ready"));
     fireEvent.press(await screen.findByLabelText("Answer 1 option 2: Paris"));
     act(() => {
       jest.advanceTimersByTime(1000);

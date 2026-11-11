@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
+  openQuizAttemptSchema,
   quizAttemptEventsResponseSchema,
   saveQuizAnswersResponseSchema,
   studentQuizDetailSchema,
   studentQuizListPageSchema,
+  type OpenQuizAttempt,
   type StudentQuizDetail,
   type StudentQuizResult,
   type QuizAnswerInput,
@@ -15,6 +17,7 @@ import { apiErrorCode } from "../../lib/api-error";
 import { DASHBOARD_META } from "../../lib/dashboard-invalidation";
 import { queryKeys } from "../../lib/query-keys";
 import { apiGet, apiSend } from "../../lib/api-request";
+import { useQuizLockStore } from "../../store/quiz-lock";
 
 /**
  * Student list.
@@ -40,6 +43,29 @@ export function useStudentQuizDetail(id: number | null): UseQueryResult<StudentQ
     queryKey: queryKeys.quizzes.studentDetail(id),
     queryFn: () => apiGet(`/api/v1/quizzes/${id}`, studentQuizDetailSchema),
     enabled: id !== null,
+  });
+}
+
+/**
+ * The student's open attempt, as the server sees it after its lazy close (spec "Relaunch"). Its
+ * answer sets the quiz lock: a quiz id holds the student on that quiz, null releases them. A failed
+ * read (offline at launch) leaves the last known lock in place, so airplane mode is no way out.
+ */
+export function useOpenQuizAttempt(enabled: boolean): UseQueryResult<OpenQuizAttempt> {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.quizzes.openAttempt(),
+    queryFn: async () => {
+      const open = await apiGet("/api/v1/me/open-quiz-attempt", openQuizAttemptSchema);
+      const { lockedQuizId, setLockedQuiz } = useQuizLockStore.getState();
+      // Closed elsewhere (staff End, the scheduler): the held quiz's own read moves its screen on.
+      if (lockedQuizId !== null && lockedQuizId !== open.quizId) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(lockedQuizId) });
+      }
+      setLockedQuiz(open.quizId);
+      return open;
+    },
+    enabled,
   });
 }
 

@@ -7,6 +7,7 @@ import { TabBarPresenceContext } from "../../src/design/layout/shell-context";
 import { isBlockedForAlumni } from "../../src/lib/alumni-guard";
 import { PUSHED_NAV_ROUTE_NAMES } from "../../src/lib/route-names";
 import { TABS_ROUTE, singularTabsRouter } from "../../src/lib/tabs-stack-router";
+import { useQuizRouteGuard } from "../../src/screens/shell/use-quiz-route-guard";
 import { useAlumnusNotStudying, useSessionStore } from "../../src/store/session";
 
 /** A detail screen that throws while rendering shows a retry, not a crashed app. */
@@ -99,6 +100,19 @@ export const DETAIL_SCREEN_OPTIONS = {
 
 const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
 
+/** The quiz a student is held on: no swipe back (the screen draws no back bar either). */
+const HELD_QUIZ_OPTIONS = { ...DETAIL_SCREEN_OPTIONS, gestureEnabled: false, fullScreenGestureEnabled: false } as const;
+const QUIZ_ROUTE = "quiz/[id]/index";
+
+/** The options for one detail route: the held quiz loses its swipe back. */
+function detailOptions(name: string, heldQuizId: number | null) {
+  if (name !== QUIZ_ROUTE || heldQuizId === null) return DETAIL_SCREEN_OPTIONS;
+  return ({ route }: { route: { params?: object } }) =>
+    (route.params as { id?: string } | undefined)?.id === String(heldQuizId)
+      ? HELD_QUIZ_OPTIONS
+      : DETAIL_SCREEN_OPTIONS;
+}
+
 /**
  * `(app)/_layout.tsx` — the signed-in area: a `Stack` with the tabs
  * (`(tabs)/_layout.tsx`, the `Tabs` navigator and the pill) at the bottom
@@ -106,13 +120,15 @@ const TABS_SCREEN_OPTIONS = { headerShown: false } as const;
  * detail was opened from. Groups add no URL segment: `/settings` and
  * `/student/12` are the same URLs they were when everything was one `Tabs`.
  *
- * The anonymous redirect and the alumni guard live here, above both
- * navigators, so they cover detail routes as well as tabs.
+ * The anonymous redirect, the alumni guard and the quiz lock live here, above
+ * both navigators, so they cover detail routes as well as tabs.
  */
 export default function AppLayout() {
   const status = useSessionStore((s) => s.status);
   const alumnusNotStudying = useAlumnusNotStudying();
   const segments = useSegments();
+  // A student with an attempt open is kept on that quiz (spec "Relaunch"); staff never are.
+  const heldQuizId = useQuizRouteGuard();
 
   // The boot gate (Task 6, app/_layout.tsx) has already resolved "idle" and
   // "restoring" by the time this mounts — the only unauthenticated status
@@ -139,7 +155,7 @@ export default function AppLayout() {
         <Stack UNSTABLE_router={singularTabsRouter}>
           <Stack.Screen name={TABS_ROUTE} options={TABS_SCREEN_OPTIONS} />
           {DETAIL_ROUTE_NAMES.map((name) => (
-            <Stack.Screen key={name} name={name} options={DETAIL_SCREEN_OPTIONS} />
+            <Stack.Screen key={name} name={name} options={detailOptions(name, heldQuizId)} />
           ))}
           {/* Settings, Notifications, Events, …: opened from More,
               so they push like a detail and Back returns there (ruling R19). */}

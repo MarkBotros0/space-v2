@@ -110,7 +110,7 @@ describe("quiz runner: start window and time limit", () => {
     renderStacked(<QuizDetailScreen />);
     expect(await screen.findByText(/^Opens at /)).toBeTruthy();
     act(() => jest.advanceTimersByTime(2_500));
-    expect(screen.getByText("Start quiz · 20 minutes")).toBeTruthy();
+    expect(screen.getByText("I'm ready")).toBeTruthy();
   });
 
   it("says when starting closed, and offers no start", async () => {
@@ -123,20 +123,25 @@ describe("quiz runner: start window and time limit", () => {
     expect(button.props.accessibilityState?.disabled).toBe(true);
   });
 
-  it("names the time limit on the start button", async () => {
+  it("names the time limit before the start", async () => {
     get.mockResolvedValue({ data: { data: detail() } });
     renderStacked(<QuizDetailScreen />);
-    expect(await screen.findByText("Start quiz · 20 minutes")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "You have 20 minutes from when you start. When time runs out, your saved answers are submitted.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("I'm ready")).toBeTruthy();
   });
 
-  it("a reopened timed attempt shows the start card, even after the window, and starts the clock on the tap", async () => {
+  it("a reopened timed attempt shows before-you-start, even after the window, and starts the clock on the tap", async () => {
     // Reopened: IN_PROGRESS with no deadline until the student taps start (controller ruling).
     get.mockResolvedValue({ data: { data: inProgress({ attemptNumber: 2, startsUntil: isoAt(-60_000) }) } });
     put.mockResolvedValue({ data: { data: inProgress({ attemptNumber: 2, deadlineAt: isoAt(20 * 60_000) }) } });
 
     renderStacked(<QuizDetailScreen />);
 
-    fireEvent.press(await screen.findByText("Start quiz · 20 minutes"));
+    fireEvent.press(await screen.findByText("I'm ready"));
     await waitFor(() => expect(put).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt"));
     expect(await screen.findByText("Capital of France?")).toBeTruthy();
     expect(screen.getByText("20:00")).toBeTruthy();

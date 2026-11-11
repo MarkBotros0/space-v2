@@ -85,6 +85,10 @@ export function expoRouterMock() {
     Tabs,
     Stack,
     useSegments: () => captured.segments,
+    // The URL the segments make: groups add no segment.
+    usePathname: () => `/${captured.segments.filter((s) => !s.startsWith("(")).join("/")}`,
+    // The quiz lock's guard (use-quiz-route-guard.ts) navigates with these.
+    router: { push: () => {}, dismissTo: () => {} },
     useRouter: () => ({ push: () => {} }),
     useFocusEffect: () => {},
     Redirect: ({ href }: { href: string }) => <Text testID="redirect">{href}</Text>,

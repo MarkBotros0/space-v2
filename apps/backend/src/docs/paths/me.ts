@@ -130,6 +130,21 @@ export const mePaths = {
   },
 
   ...meDashboardPaths,
+  "/api/v1/me/open-quiz-attempt": {
+    get: {
+      tags: ["Me"],
+      summary: "The quiz whose attempt the caller has open (the relaunch lock)",
+      description:
+        "A student's IN_PROGRESS attempt, timed or untimed (a reopened timed attempt not started yet counts), read after the lazy close: one past its deadline is closed TIMED_OUT first and not reported. Only a published ONLINE quiz in an ACTIVE season where the student holds an ACTIVE place. The app opens straight into this quiz and keeps the student there until it closes. Staff get `quizId: null`.",
+      responses: {
+        200: ok(
+          { type: "object", required: ["quizId"], properties: { quizId: { type: ["integer", "null"] } } },
+          "The open attempt's quiz, or null.",
+        ),
+        401: errRef("Unauthorized"),
+      },
+    },
+  },
   "/api/v1/me/season-history": {
     get: {
       tags: ["Me"],
