@@ -14,6 +14,7 @@ import {
   reopenAttemptResponseSchema,
   type QuizGradeSheet,
   type QuizGradingPage,
+  type MarkAttemptInput,
   type QuizGradeEntry,
 } from "@space/shared";
 
@@ -85,18 +86,17 @@ export function flattenGradingPages(pages: QuizGradingPage[]): {
   };
 }
 
-export function useGradeEssays(id: number) {
+/** The leader's right/wrong marks for one attempt (fill-in-the-blank blanks and essays). */
+export function useMarkAttempt(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
     // Spec 19 D24: this write moves a number on some role's Home.
     meta: DASHBOARD_META,
-    mutationFn: (input: { attemptId: number; awards: { questionId: number; points: number }[] }) =>
+    mutationFn: (input: { attemptId: number } & MarkAttemptInput) =>
       apiSend(
         "post",
         `/api/v1/quizzes/${id}/attempts/${input.attemptId}/grade`,
-        {
-          awards: input.awards,
-        },
+        { marks: input.marks } satisfies MarkAttemptInput,
         quizGradingAttemptSchema,
       ),
     onSuccess: () => {

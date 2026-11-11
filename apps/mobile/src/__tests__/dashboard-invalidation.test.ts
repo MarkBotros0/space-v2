@@ -16,7 +16,7 @@ const TAGGED: readonly (readonly [file: string, hook: string])[] = [
   ["use-check-in.ts", "useCheckIn"],
   ["use-quizzes/student.ts", "useSubmitAttempt"],
   ["use-quizzes/grading.ts", "useSaveQuizGrades"],
-  ["use-quizzes/grading.ts", "useGradeEssays"],
+  ["use-quizzes/grading.ts", "useMarkAttempt"],
   ["use-quizzes/grading.ts", "useReopenAttempt"],
   ["use-quiz-authoring.ts", "useCreateQuiz"],
   ["use-quiz-authoring.ts", "usePublishQuiz"],

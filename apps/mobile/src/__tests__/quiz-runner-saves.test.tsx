@@ -27,13 +27,15 @@ const patch = apiClient.patch as jest.Mock;
 const mcq = {
   id: 100,
   order: 0,
-  type: "MCQ" as const,
+  type: "SINGLE_CHOICE" as const,
   prompt: "Capital of France?",
   points: 2,
-  options: ["London", "Paris"],
-  selectedIndex: null,
-  text: null,
-  isCorrect: null,
+  options: [
+    { id: 1001, label: "London" },
+    { id: 1002, label: "Paris" },
+  ],
+  answer: { optionId: null as number | null },
+  review: null,
   pointsAwarded: null,
 };
 const essay = {
@@ -42,10 +44,8 @@ const essay = {
   type: "ESSAY" as const,
   prompt: "Discuss.",
   points: 5,
-  options: [],
-  selectedIndex: null,
-  text: null,
-  isCorrect: null,
+  answer: { text: "" },
+  review: null,
   pointsAwarded: null,
 };
 
@@ -61,15 +61,16 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
     attemptNumber: 0,
     readOnly: false,
     status: null,
+    stage: "not_started",
     totalScore: null,
     submittedAt: null,
     gradedAt: null,
-    resultsReleased: true,
+    answersReleased: false,
     questions: [mcq, essay],
     ...over,
   };
 }
-const inProgress = () => detail({ attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS" });
+const inProgress = () => detail({ attemptId: 900, attemptNumber: 1, status: "IN_PROGRESS", stage: "in_progress" });
 
 function deferred<T>() {
   let resolve!: (v: T) => void;
@@ -119,7 +120,7 @@ describe("quiz runner saves", () => {
 
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
     expect(patch).toHaveBeenLastCalledWith("/api/v1/quizzes/41/attempt", {
-      answers: [{ questionId: 101, selectedIndex: null, text: "Second draft" }],
+      answers: [{ type: "ESSAY", questionId: 101, text: "Second draft" }],
     });
   });
 
@@ -134,7 +135,7 @@ describe("quiz runner saves", () => {
 
     await waitFor(() =>
       expect(patch).toHaveBeenCalledWith("/api/v1/quizzes/41/attempt", {
-        answers: [{ questionId: 100, selectedIndex: 1, text: null }],
+        answers: [{ type: "SINGLE_CHOICE", questionId: 100, optionId: 1002 }],
       }),
     );
   });

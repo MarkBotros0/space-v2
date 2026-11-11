@@ -4,6 +4,7 @@ import { AppState } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { useSaveAnswers, type AnswerInput } from "../../hooks/use-quizzes";
+import { isAnswered, toAnswerInput, type DraftAnswer } from "./answer-model";
 
 /**
  * How long after the last edit the pending answers are flushed.
@@ -19,17 +20,12 @@ import { useSaveAnswers, type AnswerInput } from "../../hooks/use-quizzes";
 const SAVE_DEBOUNCE_MS = 1000;
 
 type SaveState = "idle" | "saving" | "saved" | "error";
-export type Answer = { selectedIndex: number | null; text: string };
-
-function isAnswered(q: QuizQuestionStudent, a: Answer): boolean {
-  return q.type === "MCQ" ? a.selectedIndex !== null : a.text.trim().length > 0;
-}
 
 /** The in-progress attempt's answers, saved in debounced batches. */
 export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
   const save = useSaveAnswers(quizId);
-  const [answers, setAnswers] = useState<Record<number, Answer>>(() =>
-    Object.fromEntries(detail.questions.map((q) => [q.id, { selectedIndex: q.selectedIndex, text: q.text ?? "" }])),
+  const [answers, setAnswers] = useState<Record<number, DraftAnswer>>(() =>
+    Object.fromEntries(detail.questions.map((q) => [q.id, q.answer])),
   );
   // Always the latest answers, readable from the debounce timer's closure.
   const answersRef = useRef(answers);
@@ -51,12 +47,7 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
     for (const qid of sent) pendingRef.current.delete(qid);
     const payload: AnswerInput[] = detail.questions
       .filter((q) => sent.includes(q.id))
-      .map((q) => {
-        const a = answersRef.current[q.id];
-        return q.type === "MCQ"
-          ? { questionId: q.id, selectedIndex: a?.selectedIndex ?? null, text: null }
-          : { questionId: q.id, selectedIndex: null, text: a?.text ?? "" };
-      });
+      .map((q) => toAnswerInput(q, answersRef.current[q.id] ?? q.answer));
     setSaveState("saving");
     try {
       await save.mutateAsync(payload);
@@ -110,18 +101,12 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number) {
     }, SAVE_DEBOUNCE_MS);
   };
 
-  const setAnswer = (q: QuizQuestionStudent, patch: { selectedIndex?: number | null; text?: string }) => {
+  /** Replace a question's whole answer; the model helpers (toggleChoice, pairUp, …) build the next one. */
+  const setAnswer = (q: QuizQuestionStudent, next: DraftAnswer) => {
     setAnswers((prev) => {
-      const next = {
-        ...prev,
-        [q.id]: {
-          selectedIndex: prev[q.id]?.selectedIndex ?? null,
-          text: prev[q.id]?.text ?? "",
-          ...patch,
-        },
-      };
-      answersRef.current = next;
-      return next;
+      const merged = { ...prev, [q.id]: next };
+      answersRef.current = merged;
+      return merged;
     });
     queueSave(q.id);
   };

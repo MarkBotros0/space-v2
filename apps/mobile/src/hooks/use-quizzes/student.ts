@@ -54,6 +54,25 @@ export function useStartAttempt(id: number) {
 
 export type AnswerInput = QuizAnswerInput;
 
+/** The `answer` a saved input leaves on a question of the same type; undefined if the shapes disagree. */
+function savedAnswer(q: StudentQuizDetail["questions"][number], a: AnswerInput): DraftAnswerShape | undefined {
+  switch (a.type) {
+    case "SINGLE_CHOICE":
+    case "TRUE_FALSE":
+      return q.type === "SINGLE_CHOICE" || q.type === "TRUE_FALSE" ? { optionId: a.optionId } : undefined;
+    case "MULTI_CHOICE":
+      return q.type === "MULTI_CHOICE" ? { optionIds: a.optionIds } : undefined;
+    case "MATCHING":
+      return q.type === "MATCHING" ? { pairs: a.pairs } : undefined;
+    case "FILL_BLANK":
+      return q.type === "FILL_BLANK" ? { blanks: a.blanks } : undefined;
+    case "ESSAY":
+      return q.type === "ESSAY" ? { text: a.text } : undefined;
+  }
+}
+
+type DraftAnswerShape = StudentQuizDetail["questions"][number]["answer"];
+
 /** The cached student detail with these saved answers written into it. */
 function mergeSavedAnswers(
   detail: StudentQuizDetail | undefined,
@@ -65,7 +84,8 @@ function mergeSavedAnswers(
     ...detail,
     questions: detail.questions.map((q) => {
       const a = byId.get(q.id);
-      return a ? { ...q, selectedIndex: a.selectedIndex, text: a.text } : q;
+      const answer = a ? savedAnswer(q, a) : undefined;
+      return answer ? ({ ...q, answer } as typeof q) : q;
     }),
   };
 }
