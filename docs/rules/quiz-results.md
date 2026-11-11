@@ -5,8 +5,11 @@
 > `apps/backend/src/`, mobile paths under `apps/mobile/src/`, unless written in full.
 
 Students may take a quiz at different times, so the score and the answers are released separately.
-A student's online quiz is in one of these stages (`lib/quizzes/student-stage.ts`, the one place
-that decides; every student read goes through it):
+A student's online quiz is in one of these stages. `lib/quizzes/student-stage.ts` decides the
+stage for the quiz detail read (`routes/quizzes/student-detail.ts`, which also serves the start and
+submit responses). The results list (`routes/quizzes/list.ts`) and the season record
+(`lib/queries/me/season-record.ts`) show no questions at all, only the attempt status and the best
+graded score, which they take from `lib/quizzes/best-attempt.ts` directly:
 
 1. **Submitted, until marked.** The student sees "Submitted" and nothing else: no question text, no
    options, none of their own answers. The result screen never lists the questions, so a student
@@ -21,9 +24,11 @@ that decides; every student read goes through it):
 
 **The best attempt counts.** Wherever a student's quiz score is used (their own score, the season
 record, exports and the workbook, dashboards, grading lists) it is the highest score among their
-GRADED attempts. An attempt still waiting for marking does not count until graded. While a retake
-is open the student keeps seeing their best graded score; with no graded attempt the quiz reads as
-awaiting marking.
+GRADED attempts (`bestGraded` in `lib/quizzes/best-attempt.ts`). An attempt still waiting for
+marking does not count until graded. While a retake is open the student keeps seeing their best
+graded score; with no graded attempt the quiz reads as awaiting marking. The staff grading list
+(`GET /quizzes/:id/attempts`) lists each student's latest attempt, the one marked or reopened, and
+shows `bestScore` (`lib/queries/quiz-best-scores.ts`) as the score.
 
 **A paper grade** shows to the student as soon as it is entered; it has no answers to hold.
 
@@ -32,7 +37,8 @@ entered or changed. "Answers are out" when the answers are released, sent once t
 students who have a graded attempt. Paper quizzes send nothing on release. A re-save that changes
 nothing stays silent.
 
-A new student read of quiz results must go through `lib/quizzes/student-stage.ts`. Staff see
+A new student read that shows questions must take its stage from `lib/quizzes/student-stage.ts`;
+one that shows only a score takes it from `bestGraded`. Staff see
 `answersReleasedAt` and `canReleaseResults`; the release card
 (`screens/quiz-grade/release-results.tsx`) sits on the grading screen and the quiz page. Quizzes
 graded before this existed were backfilled as released.
