@@ -9,7 +9,25 @@ import { Badge, ContentText, Text } from "../../../design/ui";
 import { pairUp, unpair } from "../answer-model";
 import type { QuestionProps } from "./props";
 
-/** One item of a column: highlighted while chosen, numbered like its partner once paired. */
+/** The item's badges. Not colour alone: the chosen item says so in words too. */
+function ItemMarks({ chosen, number }: { chosen: boolean; number: number | null }) {
+  return (
+    <>
+      {chosen ? (
+        <Badge variant="default" className="shrink-0">
+          Selected
+        </Badge>
+      ) : null}
+      {number !== null ? (
+        <Badge variant="info" className="shrink-0">
+          {String(number)}
+        </Badge>
+      ) : null}
+    </>
+  );
+}
+
+/** One item of a column: highlighted and marked "Selected" while chosen, numbered like its partner once paired. */
 function PairItem({
   item,
   number,
@@ -50,11 +68,7 @@ function PairItem({
       >
         {item.label}
       </ContentText>
-      {number !== null ? (
-        <Badge variant="info" className="shrink-0">
-          {String(number)}
-        </Badge>
-      ) : null}
+      <ItemMarks chosen={chosen} number={number} />
     </Pressable>
   );
 }

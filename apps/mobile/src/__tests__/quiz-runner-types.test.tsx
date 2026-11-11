@@ -121,11 +121,15 @@ describe("quiz runner, every question type", () => {
       answer: { pairs: [] },
     });
 
+    expect(screen.queryByText("Selected")).toBeNull();
     fireEvent.press(screen.getByLabelText("Match Cat with …"));
     expect(screen.getByLabelText("Match Cat with …").props.accessibilityState).toEqual(
       expect.objectContaining({ selected: true }),
     );
+    // Not colour alone (final review M4): the chosen item says so in words.
+    expect(screen.getByText("Selected")).toBeTruthy();
     fireEvent.press(screen.getByText("Meow"));
+    expect(screen.queryByText("Selected")).toBeNull();
     // Both items of the pair carry the same number.
     expect(screen.getAllByText("1")).toHaveLength(2);
     expect(screen.getByLabelText("Cat, matched with Meow")).toBeTruthy();
