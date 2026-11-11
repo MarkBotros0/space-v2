@@ -6,6 +6,7 @@ export * from "./checkbox";
 export * from "./choice-chip";
 export * from "./combobox";
 export * from "./confirm-dialog";
+export * from "./content-text";
 export * from "./data-table";
 export * from "./date-picker";
 export * from "./empty-state";

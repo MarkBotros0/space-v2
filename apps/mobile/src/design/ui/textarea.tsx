@@ -14,8 +14,8 @@ import { useThemeColors } from "../theme/use-theme-colors";
 
 const Textarea = forwardRef<
   TextInputInstance,
-  TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean }
->(({ className, disabled, "aria-invalid": invalid, numberOfLines: _rows, ...props }, ref) => {
+  TextInputProps & { className?: string; disabled?: boolean; "aria-invalid"?: boolean; direction?: "rtl" | "ltr" }
+>(({ className, disabled, "aria-invalid": invalid, numberOfLines: _rows, direction, style, ...props }, ref) => {
   const colors = useThemeColors();
   return (
     <TextInput
@@ -30,6 +30,7 @@ const Textarea = forwardRef<
         disabled && "opacity-50",
         className,
       )}
+      style={[direction && { writingDirection: direction, textAlign: direction === "rtl" ? "right" : "left" }, style]}
       {...props}
     />
   );

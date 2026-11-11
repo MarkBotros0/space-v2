@@ -29,10 +29,20 @@ const inputVariants = cva(
 );
 
 type InputProps = TextInputProps &
-  VariantProps<typeof inputVariants> & { className?: string; disabled?: boolean; "aria-invalid"?: boolean };
+  VariantProps<typeof inputVariants> & {
+    className?: string;
+    disabled?: boolean;
+    "aria-invalid"?: boolean;
+    direction?: "rtl" | "ltr";
+  };
+
+const directionStyle = (d: "rtl" | "ltr") => ({
+  writingDirection: d,
+  textAlign: d === "rtl" ? ("right" as const) : ("left" as const),
+});
 
 const Input = forwardRef<TextInputInstance, InputProps>(
-  ({ className, size, disabled, "aria-invalid": invalid, ...props }, ref) => {
+  ({ className, size, disabled, "aria-invalid": invalid, direction, style, ...props }, ref) => {
     const colors = useThemeColors();
     return (
       <TextInput
@@ -46,6 +56,7 @@ const Input = forwardRef<TextInputInstance, InputProps>(
           props.readOnly && "text-muted-foreground",
           className,
         )}
+        style={[direction && directionStyle(direction), style]}
         {...props}
       />
     );
