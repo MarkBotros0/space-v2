@@ -2,8 +2,10 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
   quizAuthoringDetailSchema,
   quizListPageSchema,
+  quizLiveSchema,
   type QuizAuthoringDetail,
   type QuizListPage,
+  type QuizLive,
 } from "@space/shared";
 
 import { apiClient } from "../../lib/api-client";
@@ -56,5 +58,23 @@ export function useQuizAuthoringDetail(id: number | null, enabled: boolean): Use
     queryKey: queryKeys.quizzes.staffDetail(id),
     queryFn: () => apiGet(`/api/v1/quizzes/${id}`, quizAuthoringDetailSchema),
     enabled: enabled && id !== null,
+  });
+}
+
+/** How often the live screen re-reads while it is in front (spec "Live screen": polling). */
+export const QUIZ_LIVE_POLL_MS = 4000;
+
+/**
+ * The staff live screen: every student in scope, where they are now. Polls every 4 s only while
+ * `polling` (the screen is focused and the app in the foreground); the caller decides that, so a
+ * screen left open under another or a phone in a pocket never polls.
+ */
+export function useQuizLive(id: number | null, polling: boolean): UseQueryResult<QuizLive> {
+  return useQuery({
+    queryKey: queryKeys.quizzes.live(id),
+    queryFn: () => apiGet(`/api/v1/quizzes/${id}/live`, quizLiveSchema),
+    enabled: id !== null,
+    refetchInterval: polling ? QUIZ_LIVE_POLL_MS : false,
+    refetchIntervalInBackground: false,
   });
 }

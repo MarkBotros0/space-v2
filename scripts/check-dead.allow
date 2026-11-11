@@ -8,5 +8,3 @@ packages/shared/src/import/headers.ts:IMPORT_PROFILE_FIELDS
 packages/shared/src/enums.ts:quizQuestionTypeSchema
 packages/shared/src/reports/exports.ts:exportKindSchema
 packages/shared/src/standing.ts:standingSchema
-# The live screen's contract: the backend parses nothing with it; the mobile live screen (a later task of the integrity plan) imports it.
-packages/shared/src/quiz/live.ts:quizLiveSchema

@@ -2,6 +2,7 @@ import type { QuizGradingAttempt } from "@space/shared";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
+import { ExitLog } from "./exit-log";
 import { hasLegacyMarks, initialMarks, markedCount, marksComplete, setMark, toMarkInput } from "./marking-model";
 import { QuizAttemptAnswers, ReopenButton } from "./quiz-answer-marker";
 import { haptic } from "../../design/motion";
@@ -105,6 +106,7 @@ export function AttemptSheet({
         <Text variant="caption" className="text-muted-foreground">
           {`Attempt ${attempt.attemptNumber} · ${graded ? `Graded · ${formatScore(attempt.totalScore ?? 0)}/${maxScore}` : "Awaiting grading"}`}
         </Text>
+        <ExitLog attempt={attempt} />
         <QuizAttemptAnswers
           attempt={attempt}
           marks={marks}

@@ -123,6 +123,7 @@ export function useReopenAttempt(id: number) {
       ),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.live(id) });
       // A reopened attempt is no longer graded, so the lists' "2/2 graded" moves.
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
@@ -144,6 +145,7 @@ export function useEndAttempt(id: number) {
       apiSend("post", `/api/v1/quizzes/${id}/attempts/end`, { studentUserId }, endAttemptResponseSchema),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.live(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
   });

@@ -199,6 +199,8 @@ export const queryKeys = {
     studentDetail: (id: number | null) => [...queryKeys.quizzes.detail(id), "student"] as const,
     attempts: (id: number | null) => [...queryKeys.quizzes.detail(id), "attempts"] as const,
     grades: (id: number | null) => [...queryKeys.quizzes.detail(id), "grades"] as const,
+    /** GET /quizzes/:id/live: the staff live screen, polled while it is open. */
+    live: (id: number | null) => [...queryKeys.quizzes.detail(id), "live"] as const,
   },
   /**
    * The caller's own resources (/api/v1/me/*). Keys that the server resolves

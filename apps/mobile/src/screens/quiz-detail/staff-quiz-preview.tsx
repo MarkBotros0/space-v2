@@ -5,6 +5,7 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { ShellFrame } from "../../design/layout/shell-frame";
 import { Button } from "../../design/ui/button";
 import { Card } from "../../design/ui/card";
+import { PillButton } from "../../design/ui/pill-button";
 import { Text } from "../../design/ui/text";
 import { useQuizAuthoringDetail } from "../../hooks/use-quizzes";
 import { ReleaseResultsCard } from "../quiz-grade/release-results";
@@ -38,6 +39,14 @@ export function StaffPreview({ id }: { id: number }) {
           <Text className="text-sm font-medium text-muted-foreground">
             {data.kind === "PAPER" ? "Paper" : data.publishedAt === null ? "Online · Draft" : "Online · Published"}
           </Text>
+          {data.kind === "ONLINE" && data.publishedAt !== null ? (
+            <PillButton
+              label="Live"
+              accessibilityLabel="Live: where every student is"
+              className="self-start"
+              onPress={() => router.push({ pathname: "/quiz/[id]/live", params: { id: String(id) } })}
+            />
+          ) : null}
           <Button size="md" onPress={() => router.push({ pathname: "/quiz/[id]/grade", params: { id: String(id) } })}>
             Grade this quiz
           </Button>
