@@ -85,6 +85,41 @@ describe("submitting an attempt", () => {
     expect((await quizGradedCount()) - before).toBe(0);
   });
 
+  // M6: the key markers on a REAL submit response for a quiz that stays SUBMITTED.
+  it("a submit that stays SUBMITTED sends no key, no question and no own answer", async () => {
+    const built = await buildPublishedQuizIn(seasonId, sessionId, {
+      withEssay: true,
+      withTypes: ["MATCHING", "FILL_BLANK"],
+      released: false,
+    });
+    const [matchingId, blankId] = built.questionIds.slice(2) as [number, number];
+    const matching = await keyOf(matchingId);
+    const blank = await keyOf(blankId);
+    await start(built.quizId);
+    const saved = await save(built.quizId, [
+      await pick(built.mcqId, "Paris"),
+      { type: "ESSAY", questionId: built.essayId, text: "Because of the river." },
+      {
+        type: "MATCHING",
+        questionId: matchingId,
+        pairs: matching.lefts.map((l) => ({ leftId: l.id, rightId: l.matchId as number })),
+      },
+      { type: "FILL_BLANK", questionId: blankId, blanks: [{ blankId: blank.blankIds[0] as number, text: "France" }] },
+    ]);
+    expect(saved.status).toBe(200);
+
+    const res = await submit(built.quizId);
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({ status: "SUBMITTED", stage: "submitted", totalScore: null, questions: [] });
+    const raw = JSON.stringify(res.body);
+    for (const marker of ["correctIndex", "isCorrect", "matchId", "expected", "correctOptionIds", "correctPairs"]) {
+      expect(raw).not.toContain(marker);
+    }
+    for (const word of ["Capital of France?", "Paris", "Rome", "Because of the river.", "France"]) {
+      expect(raw).not.toContain(word);
+    }
+  });
+
   it('auto-grades an all-auto quiz and notifies "score is in" before answers are released (R64)', async () => {
     const built = await buildPublishedQuizIn(seasonId, sessionId, { withEssay: false, released: false });
     const before = await quizGradedCount();
