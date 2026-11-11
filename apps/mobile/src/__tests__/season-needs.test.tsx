@@ -43,7 +43,7 @@ describe("A running season's Needs attention (owner, 2026-11-07)", () => {
     renderWithProviders(<SeasonDetailScreen />);
 
     expect(await screen.findByText("NEEDS ATTENTION")).toBeTruthy();
-    fireEvent.press(await screen.findByLabelText("Submissions to review: 3"));
+    fireEvent.press(await screen.findByLabelText("Essays to review: 3"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByLabelText("Students at risk: 2"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/at-risk", params: { seasonId: "7" } });
@@ -58,7 +58,7 @@ describe("A running season's Needs attention (owner, 2026-11-07)", () => {
     useSessionStore.setState(makeSession("ADMIN"));
     serve(detail({ status: "ACTIVE" }));
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByLabelText("Submissions to review: 3")).toBeTruthy();
+    expect(await screen.findByLabelText("Essays to review: 3")).toBeTruthy();
   });
 
   it("is not shown on a draft, a finished season, or to someone who doesn't administer it", async () => {

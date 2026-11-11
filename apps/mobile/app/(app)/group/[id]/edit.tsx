@@ -46,23 +46,9 @@ function DeleteGroup({ groupId }: { groupId: number }) {
       ) : impact.isError ? (
         <RouteError onRetry={() => void impact.refetch()} />
       ) : (
-        <>
-          <Text variant="subhead">
-            {`Deleting unassigns ${countOf(impact.data.studentCount, "student")} and removes ${countOf(impact.data.leaderCount, "leader")}.`}
-          </Text>
-          {impact.data.soleTargetAssignments.length > 0 ? (
-            <View className="flex-col gap-1">
-              <Text variant="subhead" className="font-medium">
-                These assignments target only this group — retarget them first:
-              </Text>
-              {impact.data.soleTargetAssignments.map((a) => (
-                <Text key={a.id} variant="caption" className="text-muted-foreground">
-                  {a.title}
-                </Text>
-              ))}
-            </View>
-          ) : null}
-        </>
+        <Text variant="subhead">
+          {`Deleting unassigns ${countOf(impact.data.studentCount, "student")} and removes ${countOf(impact.data.leaderCount, "leader")}.`}
+        </Text>
       )}
       <FormErrorBox message={message} />
       <Button variant="destructive" className="self-start" disabled={remove.isPending} onPress={onDelete}>

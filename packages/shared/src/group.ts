@@ -88,8 +88,6 @@ export const groupImpactSchema = z.object({
   /** ACTIVE enrolments that would lose their group. */
   studentCount: z.number().int().nonnegative(),
   leaderCount: z.number().int().nonnegative(),
-  /** Live assignments targeted at this group ONLY. Non-empty → delete is refused. */
-  soleTargetAssignments: z.array(z.object({ id: z.number(), title: z.string() })),
 });
 export type GroupImpact = z.infer<typeof groupImpactSchema>;
 

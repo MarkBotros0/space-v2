@@ -1,9 +1,11 @@
 import { db } from "../../../db/client";
-import type { SubmissionStatus } from "../../../generated/prisma/enums";
+import type { AssignmentProgress } from "../../../../../../packages/shared/src/index";
+import { ApiError } from "../../api-error";
 import { orgDayKey } from "../../org-time";
 import { seasonParticipant } from "../season-participants";
-import { isLate, isOverdue } from "./rules";
-import { liveAssignment } from "../../db/live";
+import { isOverdue } from "./rules";
+import { liveAssignment, liveUser } from "../../db/live";
+import { loadWorkIndex, partWorksFor, PART_SELECT } from "./part-work";
 
 export interface AssignmentListRow {
   id: number;
@@ -11,89 +13,52 @@ export interface AssignmentListRow {
   dueAt: Date | null;
   dueOrgDay: string | null;
   isOverdue: boolean;
-  isAllGroups: boolean;
-  targetGroupIds: number[];
+  partsCount: number;
   submissionCount: number;
   expectedCount: number;
   seasonCode: string;
 }
 
+/**
+ * The season's assignments for staff. An assignment is for the whole season,
+ * so every row's expected count is the season's participants (one count), and
+ * its submission count those of them who have tapped Submit.
+ */
 export async function listAssignmentsForSeason(seasonId: number): Promise<AssignmentListRow[]> {
-  const rows = await db.assignment.findMany({
-    where: { seasonId, ...liveAssignment },
-    orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
-    select: {
-      id: true,
-      title: true,
-      dueAt: true,
-      isAllGroups: true,
-      _count: { select: { submissions: { where: { status: { not: "DRAFT" } } } } },
-      targets: { select: { groupId: true } },
-      season: { select: { code: true, id: true } },
-    },
-  });
+  // One denominator with the progress roster: live users only.
+  const participant = { ...liveUser, seasonEnrollments: { some: { seasonId, ...seasonParticipant } } };
+  const [rows, expectedCount] = await Promise.all([
+    db.assignment.findMany({
+      where: { seasonId, ...liveAssignment },
+      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        dueAt: true,
+        _count: {
+          select: {
+            parts: true,
+            submissions: { where: { submittedAt: { not: null }, studentUser: participant } },
+          },
+        },
+        season: { select: { code: true } },
+      },
+    }),
+    db.seasonEnrollment.count({ where: { seasonId, ...seasonParticipant, studentUser: liveUser } }),
+  ]);
 
   const now = new Date();
-
-  // Expected count: students in targeted groups (or all season-enrolled if
-  // isAllGroups). Both count SeasonEnrollment, never GroupStudent, which counts
-  // every student whose *current* group is targeted, regardless of season, so
-  // a past season's assignment was measured against this season's roster
-  // (ruling C9). One grouped count for the season instead of one count per
-  // assignment (refactor BE-072): a row's figure is the sum over its unique
-  // target groups, and the ungrouped bucket counts only toward the season total,
-  // just as `groupId in [...]` never matches null.
-  const perGroup =
-    rows.length === 0
-      ? []
-      : await db.seasonEnrollment.groupBy({
-          by: ["groupId"],
-          where: { seasonId, ...seasonParticipant },
-          _count: { _all: true },
-        });
-  const byGroup = new Map(perGroup.map((g) => [g.groupId, g._count._all]));
-  const seasonTotal = perGroup.reduce((sum, g) => sum + g._count._all, 0);
-
-  return rows.map((a) => {
-    const targetGroupIds = a.targets.map((t) => t.groupId);
-    const expected = a.isAllGroups
-      ? seasonTotal
-      : [...new Set(targetGroupIds)].reduce((sum, id) => sum + (byGroup.get(id) ?? 0), 0);
-    return {
-      id: a.id,
-      title: a.title,
-      dueAt: a.dueAt,
-      dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
-      isOverdue: isOverdue(a.dueAt, now),
-      isAllGroups: a.isAllGroups,
-      targetGroupIds,
-      submissionCount: a._count.submissions,
-      expectedCount: expected,
-      seasonCode: a.season.code,
-    };
-  });
-}
-
-export interface AssignmentTrackerRowData {
-  studentUserId: number;
-  name: string | null;
-  email: string;
-  groupId: number | null;
-  groupName: string | null;
-  status: SubmissionStatus | "PENDING";
-  isLate: boolean;
-  submittedAt: Date | null;
-  reviewedAt: Date | null;
-  submissionPublicId: string | null;
-}
-
-export interface AssignmentTrackerData {
-  assignmentId: number;
-  dueAt: Date | null;
-  isOverdue: boolean;
-  submittedCount: number;
-  expectedCount: number;
-  rows: AssignmentTrackerRowData[];
+  return rows.map((a) => ({
+    id: a.id,
+    title: a.title,
+    dueAt: a.dueAt,
+    dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
+    isOverdue: isOverdue(a.dueAt, now),
+    partsCount: a._count.parts,
+    submissionCount: a._count.submissions,
+    expectedCount,
+    seasonCode: a.season.code,
+  }));
 }
 
 function compareNullsLast(a: string | null, b: string | null): number {
@@ -104,108 +69,55 @@ function compareNullsLast(a: string | null, b: string | null): number {
 }
 
 /**
- * Who was given this assignment and what they have done about it.
- *
- * `restrictToGroupIds` narrows the roster for a leader, who may see only their
- * own groups — the same scoping the attendance roster needed, for the same
- * reason: the rows carry every student's name and email.
- *
- * The population comes from SeasonEnrollment, not from who happens to have a
- * Submission row, so a student who has done nothing still appears. That is the
- * whole point of a tracker, and it is also why `expectedCount` here and the
- * list's agree — one definition, ruling C5.
+ * `loadAssignmentProgress`: every participant of the season with their work on
+ * each part. `restrictGroupIds` narrows it to a leader's own groups, the same
+ * scoping the attendance roster has, because the rows name students. The
+ * population comes from SeasonEnrollment, so a student who has done nothing
+ * still appears. Students who haven't submitted come first, then by name.
+ * A draft essay or forum post is the student's alone: it reads as not started.
  */
-export async function loadAssignmentTracker(
-  assignmentId: number,
-  restrictToGroupIds?: number[],
-): Promise<AssignmentTrackerData | null> {
+export async function loadAssignmentProgress(id: number, restrictGroupIds?: number[]): Promise<AssignmentProgress> {
   const assignment = await db.assignment.findFirst({
-    where: { id: assignmentId, ...liveAssignment },
-    select: {
-      id: true,
-      seasonId: true,
-      dueAt: true,
-      isAllGroups: true,
-      targets: { select: { groupId: true } },
-    },
+    where: { id, ...liveAssignment },
+    select: { seasonId: true, parts: { orderBy: { position: "asc" }, select: PART_SELECT } },
   });
-  if (!assignment) return null;
-
-  const targetGroupIds = assignment.targets.map((t) => t.groupId);
-  const groupFilter = assignment.isAllGroups ? undefined : { in: targetGroupIds };
-  const groupId =
-    restrictToGroupIds === undefined
-      ? groupFilter
-      : {
-          in: assignment.isAllGroups
-            ? restrictToGroupIds
-            : restrictToGroupIds.filter((id) => targetGroupIds.includes(id)),
-        };
+  if (!assignment) throw new ApiError("not_found", "Assignment not found.", 404);
 
   const enrollments = await db.seasonEnrollment.findMany({
-    where: { seasonId: assignment.seasonId, ...seasonParticipant, ...(groupId ? { groupId } : {}) },
-    select: {
-      studentUserId: true,
-      groupId: true,
-      group: { select: { name: true } },
-      studentUser: { select: { name: true, email: true } },
-    },
-  });
-
-  // A DRAFT is the student's unfinished work and exists only for its author,
-  // so the tracker shows that student as PENDING, with no link to open.
-  const submissions = await db.submission.findMany({
     where: {
-      assignmentId,
-      studentUserId: { in: enrollments.map((e) => e.studentUserId) },
-      status: { not: "DRAFT" },
+      seasonId: assignment.seasonId,
+      ...seasonParticipant,
+      studentUser: liveUser,
+      ...(restrictGroupIds ? { groupId: { in: restrictGroupIds } } : {}),
     },
-    select: {
-      studentUserId: true,
-      publicId: true,
-      status: true,
-      submittedAt: true,
-      reviewedAt: true,
-    },
+    select: { studentUserId: true, studentUser: { select: { name: true, avatarPath: true } } },
   });
-  const byStudent = new Map(submissions.map((s) => [s.studentUserId, s]));
+  const studentIds = enrollments.map((e) => e.studentUserId);
+  const [submissions, index] = await Promise.all([
+    db.submission.findMany({
+      where: { assignmentId: id, studentUserId: { in: studentIds } },
+      select: { studentUserId: true, submittedAt: true },
+    }),
+    loadWorkIndex(
+      assignment.parts.map((p) => p.id),
+      studentIds,
+    ),
+  ]);
+  const submittedAt = new Map(submissions.map((s) => [s.studentUserId, s.submittedAt]));
 
-  const rows: AssignmentTrackerRowData[] = enrollments
-    .map((e) => {
-      const sub = byStudent.get(e.studentUserId);
-      return {
-        studentUserId: e.studentUserId,
-        name: e.studentUser.name,
-        email: e.studentUser.email,
-        groupId: e.groupId,
-        groupName: e.group?.name ?? null,
-        status: sub?.status ?? ("PENDING" as const),
-        isLate: isLate(sub?.submittedAt ?? null, assignment.dueAt),
-        submittedAt: sub?.submittedAt ?? null,
-        reviewedAt: sub?.reviewedAt ?? null,
-        submissionPublicId: sub?.publicId ?? null,
-      };
-    })
-    // v1's order (REG-84): group name, then student name. A student with no
-    // group sorts after every named group; name ties fall back to id so the
-    // order is deterministic.
+  const rows = enrollments
+    .map((e) => ({
+      studentUserId: e.studentUserId,
+      name: e.studentUser.name,
+      avatarPath: e.studentUser.avatarPath,
+      submittedAt: submittedAt.get(e.studentUserId)?.toISOString() ?? null,
+      parts: partWorksFor(assignment.parts, e.studentUserId, index, { forStaff: true }),
+    }))
     .sort(
       (a, b) =>
-        compareNullsLast(a.groupName, b.groupName) ||
+        Number(a.submittedAt !== null) - Number(b.submittedAt !== null) ||
         compareNullsLast(a.name, b.name) ||
         a.studentUserId - b.studentUserId,
     );
-
-  return {
-    assignmentId: assignment.id,
-    dueAt: assignment.dueAt,
-    isOverdue: isOverdue(assignment.dueAt, new Date()),
-    // "Submitted" means a row exists and is not a DRAFT — the same definition
-    // the list's submissionCount uses. Ruling C5: one denominator, one
-    // numerator, no second opinion.
-    // Drafts were filtered out above, so any row with a status was turned in.
-    submittedCount: rows.filter((r) => r.status !== "PENDING").length,
-    expectedCount: rows.length,
-    rows,
-  };
+  return { rows };
 }

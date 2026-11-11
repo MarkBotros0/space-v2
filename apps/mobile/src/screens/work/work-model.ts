@@ -9,6 +9,7 @@ import type { DashboardDueItem, StudentAssignmentListItem, StudentQuizResult } f
 import { dueChip, statusChip, type ChipSpec } from "../../design/ui/status-chip";
 import { daysBetween } from "../../lib/calendar-grid";
 import { formatDate, formatDayKey, formatScore, unbreakable } from "../../lib/format";
+import { plural } from "../../lib/plural";
 
 /** Where "See all" and the Assignments tile go. */
 export const WORK_HREF = "/work" as const;
@@ -21,6 +22,8 @@ export type WorkRow = {
   kind: "assignment" | "quiz";
   id: number;
   title: string;
+  /** One line of its own above the subtitle: an assignment's parts or its returned note. */
+  detail?: string;
   subtitle?: string;
   chip?: ChipSpec;
   score?: string;
@@ -31,27 +34,39 @@ export type WorkRow = {
 const DATE_CHIP = /^Due [A-Z][a-z]{2} \d{1,2}$/;
 
 /** A deadline chip that names the date itself ("Due Nov 14"), not "Overdue", "Due Fri" or "Due in 2 days". */
-export function chipNamesDate(chip: ChipSpec): boolean {
+function chipNamesDate(chip: ChipSpec): boolean {
   return DATE_CHIP.test(chip.label);
 }
 
 /**
- * The note, then the date it was due: a status chip or a relative deadline chip
- * ("Overdue", "Due Fri") does not say when, so the date follows. A chip that
- * already names the date does not get it repeated, except across a year
- * boundary, since the chip has no year. From the org day, so it is zone-safe.
+ * The note on its own line (`detail`), then the date it was due (`subtitle`): two lines,
+ * never one dotted line, which wraps apart at 1.3. A status chip or a relative deadline
+ * chip ("Overdue", "Due Fri") does not say when, so the date follows. A chip that
+ * already names the date does not get it repeated, except across a year boundary,
+ * since the chip has no year. From the org day, so it is zone-safe.
  */
-function assignmentSubtitle(
+function assignmentLines(
   note: string | null,
   dueOrgDay: string | null,
   chip: ChipSpec,
   todayOrgDay: string,
-): { subtitle?: string } {
+): { detail?: string; subtitle?: string } {
   const chipHasDate = chipNamesDate(chip);
   const sameYear = dueOrgDay !== null && dueOrgDay.slice(0, 4) === todayOrgDay.slice(0, 4);
   const due = dueOrgDay !== null && !(chipHasDate && sameYear) ? `Due ${formatDayKey(dueOrgDay)}` : null;
-  const subtitle = [note, due].filter((part) => part !== null).join(" · ");
-  return subtitle ? { subtitle } : {};
+  return { ...(note !== null ? { detail: note } : {}), ...(due !== null ? { subtitle: due } : {}) };
+}
+
+/**
+ * How far through its parts an open assignment is, in words: "3 parts" before any
+ * is done, then "2 of 3 done", then, once every part is done, that Submit is what
+ * is left (multi-part spec, "My work").
+ */
+function partsNote(a: StudentAssignmentListItem): string | null {
+  if (a.partsTotal === 0) return null;
+  if (a.partsDone === 0) return plural(a.partsTotal, "part");
+  if (a.partsDone >= a.partsTotal) return "Ready to submit";
+  return `${a.partsDone} of ${a.partsTotal} done`;
 }
 
 export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string): WorkRow {
@@ -62,29 +77,21 @@ export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string)
     title: a.title,
     href: { pathname: "/assignment/[id]" as const, params: { id: String(a.id) } },
   };
+  // Any returned essay makes the whole row "Returned — needs changes", whatever else is done.
+  if (a.returned || a.status === "RETURNED") {
+    const chip = statusChip("submission", "RETURNED");
+    return { ...row, chip, ...assignmentLines("Returned — needs changes", a.dueOrgDay, chip, todayOrgDay) };
+  }
   switch (a.status) {
-    case "RETURNED": {
-      const chip = statusChip("submission", "RETURNED");
-      return {
-        ...row,
-        chip,
-        ...assignmentSubtitle("Returned with comments", a.dueOrgDay, chip, todayOrgDay),
-      };
-    }
     case "SUBMITTED":
     case "REVIEWED": {
       const chip = statusChip("submission", a.status);
-      return { ...row, chip, ...assignmentSubtitle(null, a.dueOrgDay, chip, todayOrgDay) };
+      return { ...row, chip, ...assignmentLines(null, a.dueOrgDay, chip, todayOrgDay) };
     }
-    case "DRAFT": {
+    default: {
+      // PENDING or DRAFT: still to do.
       const chip = dueChip({ ...a, todayOrgDay });
-      // Not "Draft saved": Start working makes a DRAFT with nothing in it, and the
-      // list row can't tell that one from a saved draft.
-      return { ...row, chip, ...assignmentSubtitle("In progress", a.dueOrgDay, chip, todayOrgDay) };
-    }
-    case "PENDING": {
-      const chip = dueChip({ ...a, todayOrgDay });
-      return { ...row, chip, ...assignmentSubtitle(null, a.dueOrgDay, chip, todayOrgDay) };
+      return { ...row, chip, ...assignmentLines(partsNote(a), a.dueOrgDay, chip, todayOrgDay) };
     }
   }
 }
@@ -135,8 +142,8 @@ export function isOpenQuiz(q: StudentQuizResult): boolean {
  * deadline, so a returned row past it is filed by its status, as its chip says.
  */
 export function todayWork(open: DashboardDueItem[], quizzes: StudentQuizResult[], todayOrgDay: string): WorkRow[] {
-  const returned = open.filter((a) => a.status === "RETURNED");
-  const rest = open.filter((a) => a.status !== "RETURNED");
+  const returned = open.filter((a) => a.returned || a.status === "RETURNED");
+  const rest = open.filter((a) => !(a.returned || a.status === "RETURNED"));
   const overdue = rest.filter((a) => a.isOverdue);
   const dueSoon = rest.filter(
     (a) => !a.isOverdue && a.dueOrgDay !== null && daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
@@ -160,8 +167,9 @@ export function todoGroups(
   quizzes: StudentQuizResult[],
   todayOrgDay: string,
 ): WorkGroup[] {
-  const open = assignments.filter((a) => a.status === "PENDING" || a.status === "DRAFT");
-  const returned = assignments.filter((a) => a.status === "RETURNED");
+  const isReturned = (a: StudentAssignmentListItem) => a.returned || a.status === "RETURNED";
+  const open = assignments.filter((a) => !isReturned(a) && (a.status === "PENDING" || a.status === "DRAFT"));
+  const returned = assignments.filter(isReturned);
   const overdue = open.filter((a) => a.isOverdue);
   const thisWeek = open.filter(
     (a) => !a.isOverdue && a.dueOrgDay !== null && daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
@@ -184,18 +192,29 @@ export function todoGroups(
  */
 function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
   const reviewed = a.status === "REVIEWED";
-  return {
+  const base = {
     key: `assignment-${a.id}`,
-    kind: "assignment",
+    kind: "assignment" as const,
     id: a.id,
     title: a.title,
+    href: { pathname: "/assignment/[id]" as const, params: { id: String(a.id) } },
+  };
+  // Videos and a forum post are never reviewed: with no essay, a submitted assignment is done.
+  if (!a.hasEssay) {
+    return {
+      ...base,
+      ...(a.submittedAt ? { subtitle: unbreakable(`Submitted ${formatDate(a.submittedAt)}`) } : {}),
+      chip: { tone: "ok", label: "Done" },
+    };
+  }
+  return {
+    ...base,
     subtitle: reviewed
       ? a.reviewedAt
         ? unbreakable(`Reviewed ${formatDate(a.reviewedAt)}`) + " · Open to read the feedback"
         : "Open to read the feedback"
       : "Your leader hasn't reviewed it yet",
     chip: reviewed ? { tone: "ok", label: "Reviewed" } : { tone: "info", label: "Waiting for review" },
-    href: { pathname: "/assignment/[id]" as const, params: { id: String(a.id) } },
   };
 }
 
@@ -221,7 +240,7 @@ function quizRecency(q: StudentQuizResult): string {
 
 function handedIn(assignments: StudentAssignmentListItem[]): StudentAssignmentListItem[] {
   return assignments
-    .filter((a) => a.status === "SUBMITTED" || a.status === "REVIEWED")
+    .filter((a) => !a.returned && (a.status === "SUBMITTED" || a.status === "REVIEWED"))
     .sort((a, b) => handedInAt(b).localeCompare(handedInAt(a)));
 }
 

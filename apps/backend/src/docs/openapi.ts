@@ -76,7 +76,7 @@ export const openApiDocument = {
     { name: "Users", description: "SUPER-only user administration: list, detail, role change, activation, invites" },
     { name: "Students", description: "Student lists, role-shaped detail, profile edits and enrollment transitions" },
     { name: "Sessions", description: "Sessions, attendance, and check-in" },
-    { name: "Assignments", description: "Assignment detail, authoring and the submission tracker" },
+    { name: "Assignments", description: "Assignment detail, authoring and the leader's progress" },
     { name: "Submissions", description: "Submissions and their files" },
     { name: "Quizzes", description: "Quiz authoring, attempts and grading" },
     {
@@ -88,7 +88,10 @@ export const openApiDocument = {
       description:
         "Interactive session-video questions: student view, ordered answers, progress (authoring and results below)",
     },
-    { name: "Forum", description: "Forum assignments: the group thread, the post that unlocks it, and comments" },
+    {
+      name: "Forum",
+      description: "The forum part of an assignment: the group thread, the post that unlocks it, and comments",
+    },
     {
       name: "Events",
       description:

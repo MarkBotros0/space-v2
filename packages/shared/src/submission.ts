@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { submissionStatusSchema } from "./enums";
+import { isoDaySchema, wallTimeSchema } from "./org-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
 //
@@ -8,26 +9,66 @@ import { submissionStatusSchema } from "./enums";
 // client parses every response against these instead of casting, so a backend
 // drift fails at the client boundary rather than downstream.
 
-export const updateSubmissionRequestSchema = z.object({
+/** `PUT /assignments/:id/parts/:partId/essay`: save the essay's draft. Never hands it in. */
+export const saveEssayDraftRequestSchema = z.object({
   // The same cap as a forum response and a review's feedback.
   text: z.string().max(20_000),
-  /** Omitted or false saves a draft; true submits and stamps submittedAt. */
-  submit: z.boolean().optional(),
+});
+
+/** The essay work the draft was saved to (made on the first save) and its count. */
+export const saveEssayDraftResponseSchema = z.object({
+  /** The essay work's handle: files, the detail and a hand-in address it. */
+  publicId: z.string(),
+  wordCount: z.number().int().nonnegative(),
+  reviewStatus: submissionStatusSchema,
 });
 
 /**
- * A reviewer's verdict.
- *
- * `returnForRevision` produces `RETURNED` rather than `REVIEWED`. v1 has
- * `RETURNED` in its vocabulary with no producer anywhere except the seed
- * script, while four call sites read it — it is the state a reviewer needs when
- * the work is not finished, and without it the only way back to editable was
- * v1's accidental one, where saving a draft silently demoted a reviewed
- * submission and dropped it out of the queue.
+ * Why an essay can't be handed in at this count (`essayWordCount`), or null
+ * when it can. An essay needs typed words whatever its range:
+ * files are extras, never the essay.
  */
-export const reviewSubmissionRequestSchema = z.object({
-  feedback: z.string().max(20000),
-  returnForRevision: z.boolean().optional(),
+export function essayWordRangeMessage(words: number, min: number | null, max: number | null): string | null {
+  const counted = `This is ${words} ${words === 1 ? "word" : "words"}`;
+  if (words === 0) return "Write your essay before handing it in.";
+  if (min !== null && words < min) return `${counted}; it needs at least ${min}.`;
+  if (max !== null && words > max) return `${counted}; it needs at most ${max}.`;
+  return null;
+}
+
+/** `POST /submissions/:publicId/hand-in`: a returned essay, handed in again. */
+export const handInEssayResponseSchema = z.object({
+  reviewStatus: z.literal("SUBMITTED"),
+  /** True when every part is done again, so the assignment counts as submitted. */
+  assignmentSubmitted: z.boolean(),
+});
+
+/**
+ * `POST /assignments/:id/submit`: the assignment handed in, its draft essays
+ * with it. `completedAt` is set at once when there is no essay to review.
+ */
+export const submitAssignmentResponseSchema = z.object({
+  submittedAt: z.string(),
+  completedAt: z.string().nullable(),
+});
+
+/**
+ * A reviewer's verdict on one essay. `reviewed` may carry feedback; `return`
+ * sends the essay back to the student and needs a note saying what to change.
+ */
+export const reviewEssayRequestSchema = z
+  .object({
+    action: z.enum(["reviewed", "return"]),
+    feedback: z.string().max(20_000).nullable(),
+  })
+  .refine((v) => v.action !== "return" || (v.feedback ?? "").trim() !== "", {
+    message: "Say what to change",
+    path: ["feedback"],
+  });
+
+/** `POST /submissions/:publicId/review` success payload. */
+export const reviewEssayResponseSchema = z.object({
+  reviewStatus: z.enum(["REVIEWED", "RETURNED"]),
 });
 
 const submissionFileSummarySchema = z.object({
@@ -37,11 +78,23 @@ const submissionFileSummarySchema = z.object({
   sizeBytes: z.number(),
 });
 
+/**
+ * One student's essay: the essay work (`publicId` is the work's), its part's
+ * question and limits, and the assignment it belongs to.
+ */
 export const submissionDetailSchema = z.object({
   id: z.number(),
   publicId: z.string(),
   status: submissionStatusSchema,
   text: z.string().nullable(),
+  wordCount: z.number().int().nonnegative(),
+  partId: z.number(),
+  prompt: z.string(),
+  minWords: z.number().nullable(),
+  maxWords: z.number().nullable(),
+  /** Null: this essay takes no files. */
+  maxFileSizeMb: z.number().nullable(),
+  allowedMimeCategories: z.array(z.string()),
   feedback: z.string().nullable(),
   submittedAt: z.string().nullable(),
   reviewedAt: z.string().nullable(),
@@ -54,6 +107,9 @@ export const submissionDetailSchema = z.object({
   assignmentId: z.number(),
   assignmentTitle: z.string(),
   assignmentDueAt: z.string().nullable(),
+  /** Org-calendar day and org wall-clock time of the assignment's due date; null with no due date. */
+  dueOrgDay: isoDaySchema.nullable(),
+  dueOrgTime: wallTimeSchema.nullable(),
   assignmentDescription: z.string().nullable(),
   seasonCode: z.string(),
   studentUserId: z.number(),
@@ -67,9 +123,9 @@ export const submissionDetailSchema = z.object({
   groupName: z.string().nullable(),
   files: z.array(submissionFileSummarySchema),
   /**
-   * Whether uploading a new file would currently succeed. `false` while
-   * ENABLE_UPLOADS is off, so the screen can explain the gap instead of
-   * offering a control that returns 503. Reading and deleting recorded files
+   * Whether uploading a new file would currently succeed: the essay takes files
+   * and ENABLE_UPLOADS is on, so the screen can explain the gap instead of
+   * offering a control that is refused. Reading and deleting recorded files
    * are unaffected either way.
    */
   canUploadFiles: z.boolean(),
@@ -78,29 +134,22 @@ export const submissionDetailSchema = z.object({
 });
 export type SubmissionDetail = z.infer<typeof submissionDetailSchema>;
 
-/** One row of a reviewer's queue. Deliberately narrower than the detail. */
+/** One row of a reviewer's queue: one essay of one student. Deliberately narrower than the detail. */
 const submissionQueueItemSchema = z.object({
+  /** The essay work's handle into the review screen. */
   publicId: z.string(),
-  status: submissionStatusSchema,
-  submittedAt: z.string().nullable(),
-  isLate: z.boolean(),
   assignmentId: z.number(),
   assignmentTitle: z.string(),
-  assignmentDueAt: z.string().nullable(),
-  seasonCode: z.string(),
-  studentUserId: z.number(),
+  prompt: z.string(),
   studentName: z.string().nullable(),
-  groupId: z.number().nullable(),
-  groupName: z.string().nullable(),
+  submittedAt: z.string().nullable(),
+  isLate: z.boolean(),
+  reviewStatus: submissionStatusSchema,
+  /** When the essay was last reviewed or returned; null before any verdict. */
+  reviewedAt: z.string().nullable(),
 });
 export type SubmissionQueueItem = z.infer<typeof submissionQueueItemSchema>;
 
-/**
- * v1's leader queue was unscoped and unpaginated — every submission in every
- * season the reader could reach, in one response. On a phone that is both a
- * privacy problem and a payload problem, so this one is scoped to the caller's
- * own students and returns a page at a time.
- */
 /**
  * v1's queue header: "N pending review · M total · K late" (REG-89). Counted
  * over everything the caller's scope (and the seasonId filter) reaches,
@@ -108,14 +157,19 @@ export type SubmissionQueueItem = z.infer<typeof submissionQueueItemSchema>;
  * is filtered or scrolled. DRAFTs are never counted.
  */
 const submissionQueueCountsSchema = z.object({
-  /** Status SUBMITTED — awaiting a verdict. */
+  /** Essays handed in and awaiting a verdict. */
   pending: z.number().int().nonnegative(),
-  /** Every non-DRAFT submission in scope. */
+  /** Every essay in scope that was handed in (a draft never counts). */
   total: z.number().int().nonnegative(),
-  /** Submitted after the assignment's due date. */
+  /** Essays handed in after the assignment's due date. */
   late: z.number().int().nonnegative(),
 });
 
+/**
+ * v1's leader queue was unscoped and unpaginated. This one is scoped to the
+ * caller's own students, lists essays (one item per student per essay), and
+ * returns a page at a time.
+ */
 export const submissionQueueSchema = z.object({
   items: z.array(submissionQueueItemSchema),
   /**
@@ -130,7 +184,7 @@ export const submissionQueueSchema = z.object({
 export type SubmissionQueue = z.infer<typeof submissionQueueSchema>;
 
 export const submissionQueueQuerySchema = z.object({
-  /** Only submissions awaiting a verdict. Defaults to true — it is a queue. */
+  /** Only essays awaiting a verdict. Defaults to true — it is a queue. */
   pendingOnly: z
     .enum(["true", "false"])
     .default("true")
@@ -138,22 +192,4 @@ export const submissionQueueQuerySchema = z.object({
   seasonId: z.coerce.number().int().positive().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
-});
-
-/** `PUT /submissions/by-assignment/:assignmentId` — idempotent create-or-fetch. */
-export const ensureSubmissionResponseSchema = z.object({
-  publicId: z.string(),
-  status: submissionStatusSchema,
-});
-
-/** `PATCH /submissions/:publicId`. `saved` is always true on success. */
-export const saveSubmissionResponseSchema = z.object({
-  saved: z.literal(true),
-  submitted: z.boolean(),
-});
-
-/** `POST /submissions/:publicId/review` success payload. */
-export const reviewSubmissionResponseSchema = z.object({
-  reviewed: z.literal(true),
-  returnedForRevision: z.boolean(),
 });

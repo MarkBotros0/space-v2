@@ -7,17 +7,12 @@ export interface AssignmentWriteFixtures {
   seasonId: number;
   otherSeasonId: number;
   groupAId: number;
-  groupBId: number;
-  otherGroupId: number;
-  sessionId: number;
-  otherSessionId: number;
   superId: number;
   adminId: number;
   studentAId: number;
   studentBId: number;
   optedOutId: number;
   withdrawnId: number;
-  movedId: number;
   superToken: string;
   adminToken: string;
   otherAdminToken: string;
@@ -40,118 +35,78 @@ export async function seedAssignmentWriteFixtures(app: Express): Promise<Assignm
   const studentB = await createTestUser("student-b", "STUDENT");
   const optedOut = await createTestUser("opted-out", "STUDENT");
   const withdrawn = await createTestUser("withdrawn", "STUDENT");
-  const moved = await createTestUser("moved", "STUDENT");
-  const superId = superUser.id;
-  const adminId = admin.id;
-  const studentAId = studentA.id;
-  const studentBId = studentB.id;
-  const optedOutId = optedOut.id;
-  const withdrawnId = withdrawn.id;
-  const movedId = moved.id;
 
   // Grants must exist before login: the token carries seasonAdminIds.
   await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
   await db.seasonAdmin.create({ data: { seasonId: otherSeasonId, userId: otherAdmin.id } });
 
-  const groupAId = (
-    await db.group.create({
-      data: {
-        seasonId,
-        name: "Group A",
-        students: { create: [{ studentUserId: studentA.id }, { studentUserId: optedOut.id }] },
-      },
-      select: { id: true },
-    })
-  ).id;
-  const groupBId = (
-    await db.group.create({
-      data: { seasonId, name: "Group B", students: { create: { studentUserId: studentB.id } } },
-      select: { id: true },
-    })
-  ).id;
-  // The moved student's only GroupStudent row points at another season's
-  // group (no row for this season). Their enrolment in THIS season
-  // records Group A. Ruling C9: this season's targeting must follow the
-  // enrolment — GroupStudent would leave them un-notified.
-  const otherGroupId = (
-    await db.group.create({
-      data: { seasonId: otherSeasonId, name: "Elsewhere", students: { create: { studentUserId: moved.id } } },
-      select: { id: true },
-    })
-  ).id;
+  const groupAId = (await db.group.create({ data: { seasonId, name: "Group A" }, select: { id: true } })).id;
+  const groupBId = (await db.group.create({ data: { seasonId, name: "Group B" }, select: { id: true } })).id;
   await db.groupLeader.create({ data: { groupId: groupAId, userId: leader.id } });
 
   await db.seasonEnrollment.createMany({
     data: [
       { seasonId, studentUserId: studentA.id, groupId: groupAId, status: "ACTIVE" },
       { seasonId, studentUserId: optedOut.id, groupId: groupAId, status: "ACTIVE" },
-      { seasonId, studentUserId: moved.id, groupId: groupAId, status: "ACTIVE" },
       { seasonId, studentUserId: studentB.id, groupId: groupBId, status: "ACTIVE" },
       { seasonId, studentUserId: withdrawn.id, groupId: groupBId, status: "WITHDRAWN" },
     ],
   });
   await db.notificationPreference.create({ data: { userId: optedOut.id, assignmentCreated: false } });
 
-  const sessionId = (
-    await db.session.create({
-      data: { seasonId, title: "Linked", startsAt: new Date("2099-03-01T18:00:00.000Z"), durationMinutes: 60 },
-      select: { id: true },
-    })
-  ).id;
-  const otherSessionId = (
-    await db.session.create({
-      data: {
-        seasonId: otherSeasonId,
-        title: "Not this season",
-        startsAt: new Date("2100-03-01T18:00:00.000Z"),
-        durationMinutes: 60,
-      },
-      select: { id: true },
-    })
-  ).id;
-
-  const superToken = await login(app, superUser.email);
-  const adminToken = await login(app, admin.email);
-  const otherAdminToken = await login(app, otherAdmin.email);
-  const leaderToken = await login(app, leader.email);
-  const studentToken = await login(app, studentA.email);
-
   return {
     seasonId,
     otherSeasonId,
     groupAId,
-    groupBId,
-    otherGroupId,
-    sessionId,
-    otherSessionId,
-    superId,
-    adminId,
-    studentAId,
-    studentBId,
-    optedOutId,
-    withdrawnId,
-    movedId,
-    superToken,
-    adminToken,
-    otherAdminToken,
-    leaderToken,
-    studentToken,
+    superId: superUser.id,
+    adminId: admin.id,
+    studentAId: studentA.id,
+    studentBId: studentB.id,
+    optedOutId: optedOut.id,
+    withdrawnId: withdrawn.id,
+    superToken: await login(app, superUser.email),
+    adminToken: await login(app, admin.email),
+    otherAdminToken: await login(app, otherAdmin.email),
+    leaderToken: await login(app, leader.email),
+    studentToken: await login(app, studentA.email),
   };
 }
+
+export const videoPart = (over: Record<string, unknown> = {}) => ({
+  kind: "VIDEO",
+  title: "Watch this first",
+  youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  blockSkipping: false,
+  durationSeconds: 600,
+  ...over,
+});
+
+export const essayPart = (over: Record<string, unknown> = {}) => ({
+  kind: "ESSAY",
+  prompt: "What did you learn?",
+  minWords: 50,
+  maxWords: 500,
+  maxFileSizeMb: 10,
+  allowedMimeCategories: ["pdf"],
+  ...over,
+});
+
+export const forumPart = (over: Record<string, unknown> = {}) => ({
+  kind: "FORUM",
+  prompt: "Share one idea with your group",
+  minWords: null,
+  postToRead: true,
+  allowComments: false,
+  ...over,
+});
 
 export const body = (over: Record<string, unknown> = {}) => ({
   title: "Week 4 reflection",
   description: "Write a page.",
   dueDay: "2099-03-10",
   dueTime: "23:59",
-  sessionId: null,
-  type: "STANDARD",
-  forumMinWords: null,
-  forumAllowComments: false,
-  maxFileSizeMb: 10,
-  allowedMimeCategories: ["pdf"],
-  isAllGroups: true,
-  groupIds: [],
+  reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+  parts: [essayPart()],
   ...over,
 });
 
@@ -160,4 +115,71 @@ export function notificationsFor(userId: number, assignmentId: number) {
     where: { userId, type: "ASSIGNMENT_CREATED", link: `/student/assignments/${assignmentId}` },
     select: { title: true, body: true, link: true },
   });
+}
+
+/** An assignment's parts as stored, in order. */
+export function storedParts(assignmentId: number) {
+  return db.assignmentPart.findMany({
+    where: { assignmentId },
+    orderBy: { position: "asc" },
+    select: { id: true, position: true, kind: true, youtubeId: true, minWords: true, maxWords: true },
+  });
+}
+
+/**
+ * A student's work on one part, with the submission it belongs to. `submitted`
+ * stamps the assignment as handed in; the essay status follows it.
+ */
+export async function seedWork(
+  assignmentId: number,
+  partId: number,
+  studentUserId: number,
+  opts: { submitted?: boolean; watchedSeconds?: number } = {},
+) {
+  const at = opts.submitted ? new Date() : null;
+  const submission = await db.submission.upsert({
+    where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
+    create: {
+      assignmentId,
+      studentUserId,
+      publicId: `space-v2-test-s${assignmentId}-${studentUserId}`,
+      submittedAt: at,
+      completedAt: at,
+    },
+    update: {},
+    select: { id: true },
+  });
+  return db.assignmentPartWork.create({
+    data: {
+      publicId: `space-v2-test-w${partId}-${studentUserId}`,
+      partId,
+      submissionId: submission.id,
+      studentUserId,
+      status: opts.submitted ? "SUBMITTED" : "DRAFT",
+      submittedAt: at,
+      text: "Some words",
+      watchedSeconds: opts.watchedSeconds ?? 0,
+    },
+    select: { id: true },
+  });
+}
+
+/**
+ * Task 2 leaves the link between a part's work and its submission to the
+ * services: the part and the submission are the same assignment's, and the
+ * work and the submission the same student's. Every write must keep that.
+ */
+export async function inconsistentWorks(assignmentId: number) {
+  const works = await db.assignmentPartWork.findMany({
+    where: { OR: [{ part: { assignmentId } }, { submission: { assignmentId } }] },
+    select: {
+      id: true,
+      studentUserId: true,
+      part: { select: { assignmentId: true } },
+      submission: { select: { assignmentId: true, studentUserId: true } },
+    },
+  });
+  return works.filter(
+    (w) => w.part.assignmentId !== w.submission.assignmentId || w.studentUserId !== w.submission.studentUserId,
+  );
 }

@@ -3,6 +3,7 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { createAssignmentWithParts, seedEssays, seedVideoWork } from "./assignment-reads-setup";
 
 jest.setTimeout(60000);
 
@@ -81,21 +82,25 @@ beforeAll(async () => {
   await db.attendance.create({ data: { sessionId: past.id, studentUserId: s1, status: "PRESENT" } });
   await db.attendance.create({ data: { sessionId: past.id, studentUserId: sWithdrawn, status: "PRESENT" } });
 
-  const assignment = await db.assignment.create({ data: { seasonId, title: "Essay" } });
-  const deletedAssignment = await db.assignment.create({
-    data: { seasonId, title: "Gone", deletedAt: new Date() },
-  });
+  // An essay and a video: only an essay waiting review holds the season open.
+  const assignment = await createAssignmentWithParts({ seasonId, title: "Essay" }, [
+    { kind: "ESSAY" },
+    { kind: "VIDEO" },
+  ]);
+  const deletedAssignment = await createAssignmentWithParts({ seasonId, title: "Gone", deletedAt: new Date() });
   const sub = (
     assignmentId: number,
     studentUserId: number,
     status: "DRAFT" | "SUBMITTED" | "RETURNED",
     publicId: string,
-  ) => db.submission.create({ data: { assignmentId, studentUserId, status, publicId } });
+  ) => seedEssays([{ assignmentId, studentUserId, status, publicId }]);
   await sub(assignment.id, s1, "SUBMITTED", "endchk-submitted");
   await sub(assignment.id, s2, "DRAFT", "endchk-draft");
   await sub(assignment.id, student.id, "RETURNED", "endchk-returned");
   await sub(deletedAssignment.id, s1, "SUBMITTED", "endchk-delassign");
   await sub(assignment.id, sDeleted, "SUBMITTED", "endchk-delstudent");
+  // s2 watched part of the video and never finished it: not a blocker.
+  await seedVideoWork(assignment.id, assignment.partIds[1]!, s2, 30);
 
   const quiz = await db.quiz.create({ data: { seasonId, title: "Quiz 1", kind: "ONLINE" } });
   await db.quizAttempt.create({ data: { quizId: quiz.id, studentUserId: s1, status: "SUBMITTED" } });
@@ -152,8 +157,9 @@ describe("GET /seasons/:id/end-check", () => {
     }
   });
 
-  it("lists exactly the blockers: SUBMITTED work and unmarked past sessions", async () => {
+  it("lists exactly the blockers: an unreviewed essay blocks End; an unwatched video does not", async () => {
     const { blockers } = (await get(seasonId, superToken)).body.data;
+    // The essay work's publicId: the review screen opens that essay.
     expect(blockers.submissions).toEqual([
       { publicId: "endchk-submitted", assignmentTitle: "Essay", studentName: "Test s1" },
     ]);

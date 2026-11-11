@@ -103,6 +103,13 @@ erDiagram
     Int hits
     DateTime resetAt
   }
+  SchedulerLease {
+    String name PK
+    DateTime lockedUntil
+    DateTime lastRunAt "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
 ```
 
 ## 2. Seasons, groups & enrolment
@@ -197,7 +204,8 @@ erDiagram
 ```mermaid
 erDiagram
   Season ||--o{ Session : "season"
-  Session ||--o{ SessionVideoQuestion : "session"
+  Session |o--o{ SessionVideoQuestion : "session"
+  AssignmentPart |o--o{ SessionVideoQuestion : "assignmentPart"
   User |o--o{ SessionVideoQuestion : "createdBy"
   SessionVideoQuestion ||--o{ SessionVideoQuestionResponse : "question"
   User ||--o{ SessionVideoQuestionResponse : "studentUser"
@@ -237,7 +245,8 @@ erDiagram
   }
   SessionVideoQuestion {
     Int id PK
-    Int sessionId FK
+    Int sessionId FK "nullable"
+    Int assignmentPartId FK "nullable"
     Int atSeconds
     String prompt
     String_arr options
@@ -264,6 +273,9 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  AssignmentPart {
+    Int id PK
+  }
   Season {
     Int id PK
   }
@@ -277,46 +289,71 @@ erDiagram
 ```mermaid
 erDiagram
   Season ||--o{ Assignment : "season"
-  Session |o--o{ Assignment : "session"
   User |o--o{ Assignment : "createdBy"
   User |o--o{ Assignment : "updatedBy"
-  Assignment ||--o{ AssignmentTarget : "assignment"
-  Group ||--o{ AssignmentTarget : "group"
+  Assignment ||--o{ AssignmentPart : "assignment"
   Assignment ||--o{ Submission : "assignment"
   User ||--o{ Submission : "studentUser"
-  User |o--o{ Submission : "reviewedBy"
-  Submission ||--o{ SubmissionFile : "submission"
-  Submission ||--o{ ForumComment : "submission"
+  AssignmentPart ||--o{ AssignmentPartWork : "part"
+  Submission ||--o{ AssignmentPartWork : "submission"
+  User ||--o{ AssignmentPartWork : "studentUser"
+  User |o--o{ AssignmentPartWork : "reviewedBy"
+  AssignmentPartWork ||--o{ SubmissionFile : "partWork"
+  AssignmentPartWork ||--o{ ForumComment : "partWork"
   User ||--o{ ForumComment : "authorUser"
   Assignment {
     Int id PK
     Int seasonId FK
-    Int sessionId FK "nullable"
     String title
     String description "nullable"
     DateTime dueAt "nullable"
-    Boolean isAllGroups
-    AssignmentType type
-    Int forumMinWords "nullable"
-    Boolean forumAllowComments
-    Boolean forumPostToRead
-    Int maxFileSizeMb "nullable"
-    String_arr allowedMimeCategories
+    Boolean reminderEnabled
+    Int reminderDays
+    ReminderAnchor reminderAnchor
+    String reminderTime
+    DateTime remindAt "nullable"
+    DateTime remindedAt "nullable"
     Int createdById FK "nullable"
     Int updatedById FK "nullable"
     DateTime deletedAt "nullable"
     DateTime createdAt
     DateTime updatedAt
   }
-  AssignmentTarget {
-    Int assignmentId PK, FK
-    Int groupId PK, FK
+  AssignmentPart {
+    Int id PK
+    Int assignmentId FK
+    Int position
+    AssignmentPartKind kind
+    String title "nullable"
+    String youtubeId "nullable"
+    String youtubeUrl "nullable"
+    Int durationSeconds "nullable"
+    Boolean blockSkipping
+    String prompt "nullable"
+    Int minWords "nullable"
+    Int maxWords "nullable"
+    Int maxFileSizeMb "nullable"
+    String_arr allowedMimeCategories
+    Boolean postToRead
+    Boolean allowComments
     DateTime createdAt
+    DateTime updatedAt
   }
   Submission {
     Int id PK
     String publicId UK
     Int assignmentId FK
+    Int studentUserId FK
+    DateTime submittedAt "nullable"
+    DateTime completedAt "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  AssignmentPartWork {
+    Int id PK
+    String publicId UK
+    Int partId FK
+    Int submissionId FK
     Int studentUserId FK
     String text "nullable"
     SubmissionStatus status
@@ -324,12 +361,17 @@ erDiagram
     DateTime reviewedAt "nullable"
     String feedback "nullable"
     Int reviewedById FK "nullable"
+    Json watchedIntervals
+    Int watchedSeconds
+    Int furthestSeconds
+    DateTime lastReportAt "nullable"
+    DateTime doneAt "nullable"
     DateTime createdAt
     DateTime updatedAt
   }
   SubmissionFile {
     Int id PK
-    Int submissionId FK
+    Int partWorkId FK
     String originalName
     String storagePath
     String mimeType
@@ -338,19 +380,13 @@ erDiagram
   }
   ForumComment {
     Int id PK
-    Int submissionId FK
+    Int partWorkId FK
     Int authorUserId FK
     String body
     DateTime createdAt
     DateTime updatedAt
   }
-  Group {
-    Int id PK
-  }
   Season {
-    Int id PK
-  }
-  Session {
     Int id PK
   }
   User {
@@ -628,7 +664,16 @@ Rules Prisma cannot declare. They live in `prisma/migrations` and are noted on t
 | Table | Kind | Name | Definition |
 |---|---|---|---|
 | Announcement | CHECK | `Announcement_audience_season_check` | `(audience = 'SEASON') = (seasonId IS NOT NULL)` |
-| Assignment | CHECK | `Assignment_allowedMimeCategories_check` | `allowedMimeCategories <@ {image, pdf, doc, audio, video, text}` |
+| Assignment | CHECK | `Assignment_reminderDays_check` | `reminderDays BETWEEN 1 AND 14` |
+| Assignment | CHECK | `Assignment_reminderTime_check` | `reminderTime ~ '^[0-2][0-9]:[0-5][0-9]$'` |
+| Assignment | INDEX | `Assignment_remind_due_idx` | `(remindAt) WHERE remindedAt IS NULL AND deletedAt IS NULL` |
+| AssignmentPart | CHECK | `AssignmentPart_video_check` | `kind <> VIDEO OR youtubeId IS NOT NULL` |
+| AssignmentPart | CHECK | `AssignmentPart_prompt_check` | `kind NOT IN (ESSAY, FORUM) OR prompt IS NOT NULL` |
+| AssignmentPart | CHECK | `AssignmentPart_words_check` | `minWords <= maxWords` |
+| AssignmentPart | CHECK | `AssignmentPart_allowedMimeCategories_check` | `allowedMimeCategories <@ {image, pdf, doc, audio, video, text}` |
+| AssignmentPart | UNIQUE INDEX | `AssignmentPart_one_forum` | `(assignmentId) WHERE kind = FORUM` |
+| AssignmentPartWork | INDEX | `AssignmentPartWork_queue_idx` | `(status, submittedAt DESC NULLS LAST, id DESC) WHERE status <> 'DRAFT' (the review queue and the mentor's handed-in feed)` |
+| AssignmentPartWork | INDEX | `AssignmentPartWork_reviewed_idx` | `(reviewedAt DESC, id DESC) WHERE reviewedAt IS NOT NULL (the mentor's reviewed feed)` |
 | MentorFollowUp | UNIQUE INDEX | `MentorFollowUp_one_open` | `(mentorUserId, studentUserId) WHERE doneAt IS NULL` |
 | MentorFollowUp | INDEX | `MentorFollowUp_due_open_idx` | `(dueAt) WHERE doneAt IS NULL AND remindedAt IS NULL` |
 | QuizAttempt | UNIQUE INDEX | `QuizAttempt_one_in_progress_key` | `(quizId, studentUserId) WHERE status = 'IN_PROGRESS'` |
@@ -639,4 +684,5 @@ Rules Prisma cannot declare. They live in `prisma/migrations` and are noted on t
 | Session | CHECK | `Session_durationMinutes_check` | `durationMinutes > 0` |
 | SessionVideoQuestion | CHECK | `SessionVideoQuestion_points_check` | `points >= 0` |
 | SessionVideoQuestion | CHECK | `SessionVideoQuestion_correctIndex_check` | `0 <= correctIndex < cardinality(options)` |
+| SessionVideoQuestion | CHECK | `SessionVideoQuestion_owner_check` | `num_nonnulls(sessionId, assignmentPartId) = 1` |
 | User | CHECK | `User_email_lowercase_check` | `email = lower(email) (so the unique is case-insensitive in effect; write it trimmed and lowercased)` |

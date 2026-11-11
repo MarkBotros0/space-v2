@@ -93,6 +93,11 @@ export async function loadSeasonRecord(
       isOverdue: a.isOverdue,
       status: a.status,
       reviewedAt: a.reviewedAt?.toISOString() ?? null,
+      submittedAt: a.submittedAt?.toISOString() ?? null,
+      partsTotal: a.partsTotal,
+      partsDone: a.partsDone,
+      returned: a.returned,
+      hasEssay: a.hasEssay,
     })),
     quizzes: quizzes.map((q): RecordQuiz => {
       const attempt = q.attempts[0]; // newest first

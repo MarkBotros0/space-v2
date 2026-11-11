@@ -1,5 +1,6 @@
 // apps/backend/src/lib/queries/dashboard.ts
 import { db } from "../../../db/client";
+import type { SubmissionStatus } from "../../../generated/prisma/enums";
 import type { SessionUser } from "../../auth/tokens";
 import { isQuizDraft, quizRollupFrom } from "../../dashboard-figures";
 import { orgDayKey } from "../../org-time";
@@ -70,8 +71,13 @@ export async function loadSeasonStaffDashboard(user: SessionUser, seasonId: numb
         ])
       : [[], null];
 
+  // The review queue's own scope over essays: one item per student per essay.
   const queueScope = await submissionQueueScopeFor(user);
-  const inSeason = { assignment: { seasonId, ...liveAssignment } };
+  const essaysInScope = (status: SubmissionStatus[]) => ({
+    status: { in: status },
+    part: { kind: "ESSAY" as const },
+    submission: { AND: [queueScope ?? {}, { assignment: { seasonId, ...liveAssignment } }] },
+  });
 
   const [rows, progress, next, pendingReview, reviewed, quizzes, studentIds] = await Promise.all([
     computeEngagementForSeasons(
@@ -80,14 +86,10 @@ export async function loadSeasonStaffDashboard(user: SessionUser, seasonId: numb
     ),
     loadSeasonProgress(seasonId, now),
     loadCurrentOrNextSession(seasonId, now),
+    queueScope === null ? Promise.resolve(0) : db.assignmentPartWork.count({ where: essaysInScope(["SUBMITTED"]) }),
     queueScope === null
       ? Promise.resolve(0)
-      : db.submission.count({ where: { AND: [queueScope, inSeason, { status: "SUBMITTED" }] } }),
-    queueScope === null
-      ? Promise.resolve(0)
-      : db.submission.count({
-          where: { AND: [queueScope, inSeason, { status: { in: ["REVIEWED", "RETURNED"] } }] },
-        }),
+      : db.assignmentPartWork.count({ where: essaysInScope(["REVIEWED", "RETURNED"]) }),
     db.quiz.findMany({ where: { seasonId }, select: { id: true, kind: true, publishedAt: true } }),
     visibleStudentIdsForQuiz(user, seasonId),
   ]);

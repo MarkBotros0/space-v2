@@ -3,9 +3,9 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { newPublicId } from "../../lib/public-id";
 import { mentorDashboardSchema, studentDashboardSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 
 // The shared Neon staging Postgres autosuspends; the first query after idle has
 // been measured around 18s.
@@ -105,74 +105,49 @@ beforeAll(async () => {
     ],
   });
 
-  const aAll = await db.assignment.create({
-    data: { seasonId, title: "For everyone", isAllGroups: true, dueAt: at("2020-01-10T10:00:00.000Z") },
-    select: { id: true },
+  // An assignment is for the whole season: every student has all three.
+  const aAll = await createAssignmentWithParts({
+    seasonId,
+    title: "For everyone",
+    dueAt: at("2020-01-10T10:00:00.000Z"),
   });
-  aAId = (
-    await db.assignment.create({
-      data: {
-        seasonId,
-        title: "Group A essay",
-        dueAt: at("2099-06-01T10:00:00.000Z"),
-        targets: { create: { groupId: groupAId } },
-      },
-      select: { id: true },
-    })
-  ).id;
-  aOldId = (
-    await db.assignment.create({
-      data: {
-        seasonId,
-        title: "Group A old",
-        dueAt: at("2020-01-05T10:00:00.000Z"),
-        targets: { create: { groupId: groupAId } },
-      },
-      select: { id: true },
-    })
-  ).id;
-  const aDeleted = await db.assignment.create({
-    data: { seasonId, title: "Deleted", isAllGroups: true, deletedAt: new Date() },
-    select: { id: true },
-  });
+  aAId = (await createAssignmentWithParts({ seasonId, title: "Group A essay", dueAt: at("2099-06-01T10:00:00.000Z") }))
+    .id;
+  aOldId = (await createAssignmentWithParts({ seasonId, title: "Group A old", dueAt: at("2020-01-05T10:00:00.000Z") }))
+    .id;
+  const aDeleted = await createAssignmentWithParts({ seasonId, title: "Deleted", deletedAt: new Date() });
 
-  await db.submission.createMany({
-    data: [
-      // Late: submitted 2020-01-12, due 2020-01-10.
-      {
-        publicId: newPublicId(),
-        assignmentId: aAll.id,
-        studentUserId: s1,
-        status: "SUBMITTED",
-        submittedAt: at("2020-01-12T10:00:00.000Z"),
-      },
-      { publicId: newPublicId(), assignmentId: aAId, studentUserId: s1, status: "DRAFT" },
-      {
-        publicId: newPublicId(),
-        assignmentId: aAll.id,
-        studentUserId: s2,
-        status: "REVIEWED",
-        submittedAt: at("2020-01-09T10:00:00.000Z"),
-        reviewedAt: at("2020-01-11T10:00:00.000Z"),
-      },
-      {
-        publicId: newPublicId(),
-        assignmentId: aAll.id,
-        studentUserId: s3,
-        status: "RETURNED",
-        submittedAt: at("2020-01-09T10:00:00.000Z"),
-        reviewedAt: at("2020-01-11T10:00:00.000Z"),
-      },
-      // On a soft-deleted assignment: must count nowhere.
-      {
-        publicId: newPublicId(),
-        assignmentId: aDeleted.id,
-        studentUserId: s2,
-        status: "SUBMITTED",
-        submittedAt: at("2020-01-09T10:00:00.000Z"),
-      },
-    ],
-  });
+  await seedEssays([
+    // Late: submitted 2020-01-12, due 2020-01-10.
+    {
+      assignmentId: aAll.id,
+      studentUserId: s1,
+      status: "SUBMITTED",
+      submittedAt: at("2020-01-12T10:00:00.000Z"),
+    },
+    { assignmentId: aAId, studentUserId: s1, status: "DRAFT" },
+    {
+      assignmentId: aAll.id,
+      studentUserId: s2,
+      status: "REVIEWED",
+      submittedAt: at("2020-01-09T10:00:00.000Z"),
+      reviewedAt: at("2020-01-11T10:00:00.000Z"),
+    },
+    {
+      assignmentId: aAll.id,
+      studentUserId: s3,
+      status: "RETURNED",
+      submittedAt: at("2020-01-09T10:00:00.000Z"),
+      reviewedAt: at("2020-01-11T10:00:00.000Z"),
+    },
+    // On a soft-deleted assignment: must count nowhere.
+    {
+      assignmentId: aDeleted.id,
+      studentUserId: s2,
+      status: "SUBMITTED",
+      submittedAt: at("2020-01-09T10:00:00.000Z"),
+    },
+  ]);
 
   const paper = await db.quiz.create({ data: { seasonId, title: "Paper", kind: "PAPER" }, select: { id: true } });
   const online = await db.quiz.create({
@@ -207,10 +182,7 @@ beforeAll(async () => {
     data: { seasonId: deletedSeasonId, title: "Gone session", startsAt: at("2099-04-01T16:00:00.000Z") },
     select: { id: true },
   });
-  const feedAssignment = await db.assignment.create({
-    data: { seasonId: feedSeasonId, title: "Feed essay", isAllGroups: true },
-    select: { id: true },
-  });
+  const feedAssignment = await createAssignmentWithParts({ seasonId: feedSeasonId, title: "Feed essay" });
   m1 = (await createTestUser("dash-m1", "STUDENT")).id;
   m2 = (await createTestUser("dash-m2", "STUDENT")).id;
   const m3 = (await createTestUser("dash-m3", "STUDENT")).id;
@@ -231,33 +203,28 @@ beforeAll(async () => {
       { sessionId: deletedSession.id, studentUserId: m1, status: "PRESENT", markedAt: at("2099-06-03T09:00:00.000Z") },
     ],
   });
-  await db.submission.createMany({
-    data: [
-      {
-        publicId: newPublicId(),
-        assignmentId: feedAssignment.id,
-        studentUserId: m1,
-        status: "SUBMITTED",
-        submittedAt: at("2099-05-02T09:00:00.000Z"),
-      },
-      {
-        publicId: newPublicId(),
-        assignmentId: feedAssignment.id,
-        studentUserId: m2,
-        status: "REVIEWED",
-        submittedAt: at("2099-04-01T09:00:00.000Z"),
-        reviewedAt: at("2099-05-03T09:00:00.000Z"),
-      },
-      // DRAFT never appears (spec 08 D8), whatever its timestamps.
-      {
-        publicId: newPublicId(),
-        assignmentId: feedAssignment.id,
-        studentUserId: m3,
-        status: "DRAFT",
-        submittedAt: at("2099-06-01T09:00:00.000Z"),
-      },
-    ],
-  });
+  await seedEssays([
+    {
+      assignmentId: feedAssignment.id,
+      studentUserId: m1,
+      status: "SUBMITTED",
+      submittedAt: at("2099-05-02T09:00:00.000Z"),
+    },
+    {
+      assignmentId: feedAssignment.id,
+      studentUserId: m2,
+      status: "REVIEWED",
+      submittedAt: at("2099-04-01T09:00:00.000Z"),
+      reviewedAt: at("2099-05-03T09:00:00.000Z"),
+    },
+    // DRAFT never appears (spec 08 D8), whatever its timestamps.
+    {
+      assignmentId: feedAssignment.id,
+      studentUserId: m3,
+      status: "DRAFT",
+      submittedAt: at("2099-06-01T09:00:00.000Z"),
+    },
+  ]);
 
   tokens.admin = await login(app, admin.email);
   tokens.adminOther = await login(app, adminOther.email);
@@ -299,24 +266,29 @@ describe("STUDENT", () => {
     expect(d.nextSession).toMatchObject({ id: liveSessionId, isInProgress: true });
     expect(d.nextSession?.dayKey).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(d.nextSession?.time).toMatch(/^\d{2}:\d{2}$/);
-    // Outstanding: aOld (PENDING, overdue) and aA (DRAFT). Late: aAll. Deleted: nowhere.
+    // Outstanding: aOld (PENDING, overdue) and aA (DRAFT: a part written, not submitted).
+    // Late: aAll, submitted after its due date. Deleted: nowhere.
     expect(d.assignments).toMatchObject({ outstandingCount: 2, overdueCount: 1, lateSubmittedCount: 1 });
     expect(d.assignments?.dueSoon.map((a) => [a.id, a.status, a.isOverdue, a.dueOrgDay])).toEqual([
       [aOldId, "PENDING", true, "2020-01-05"],
       [aAId, "DRAFT", false, "2099-06-01"],
     ]);
-    // Nothing returned for s1, so open is the same two rows (no SUBMITTED).
+    // Open is every outstanding row, uncapped: the same two (no SUBMITTED).
     expect(d.assignments?.open.map((a) => a.id)).toEqual([aOldId, aAId]);
   });
 
-  it("lists a RETURNED row in assignments.open, though it is not outstanding (P2-4, C5)", async () => {
+  it("an essay returned makes its assignment outstanding again; every assignment is the student's", async () => {
     const res = await get("/api/v1/me/dashboard", tokens.student3);
     expect(res.status).toBe(200);
     const d = studentDashboardSchema.parse(res.body.data);
-    expect(d.assignments?.outstandingCount).toBe(0);
-    expect(d.assignments?.overdueCount).toBe(0);
-    expect(d.assignments?.dueSoon).toEqual([]);
-    expect(d.assignments?.open.map((a) => [a.status, a.dueOrgDay])).toEqual([["RETURNED", "2020-01-10"]]);
+    // s3 is in group B, and still has all three: no targeting.
+    expect(d.assignments?.outstandingCount).toBe(3);
+    expect(d.assignments?.overdueCount).toBe(2);
+    expect(d.assignments?.open.map((a) => [a.status, a.returned, a.dueOrgDay])).toEqual([
+      ["PENDING", false, "2020-01-05"],
+      ["RETURNED", true, "2020-01-10"],
+      ["PENDING", false, "2099-06-01"],
+    ]);
   });
 
   it("states 'not enrolled' itself: season null and everything else null (R63)", async () => {

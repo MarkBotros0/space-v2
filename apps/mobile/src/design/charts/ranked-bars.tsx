@@ -21,6 +21,12 @@ interface RankedBar {
  * not fit at 375 px. Spec §9: "Use a horizontal bar list with the title as a
  * row label, not an axis."
  */
+/** A bar with no figure is read as its caption, mid-sentence: "Week four: no students in the season". */
+function spokenCaption(caption: string | undefined): string {
+  if (!caption) return "no figure";
+  return caption.charAt(0).toLowerCase() + caption.slice(1);
+}
+
 export function RankedBars({ bars }: { bars: RankedBar[] }) {
   const chart = useChartColors();
 
@@ -32,7 +38,7 @@ export function RankedBars({ bars }: { bars: RankedBar[] }) {
           accessible
           accessibilityLabel={
             bar.value === null
-              ? `${bar.label}: no students targeted`
+              ? `${bar.label}: ${spokenCaption(bar.caption)}`
               : `${bar.label}: ${bar.value}%${bar.caption ? `, ${bar.caption}` : ""}`
           }
         >

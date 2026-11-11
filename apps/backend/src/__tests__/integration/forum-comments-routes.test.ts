@@ -3,7 +3,8 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { OWN_TEXT, resetSubmissions, seedForumFixtures } from "./forum-setup";
+import { addForumComment } from "../../lib/assignments/forum";
+import { createForum, forumPath, OWN_TEXT, resetSubmissions, seedForumFixtures } from "./forum-setup";
 import { cleanupTestData } from "./fixtures";
 
 jest.setTimeout(60000);
@@ -12,6 +13,9 @@ const app = createApp();
 
 let seasonId: number;
 let assignmentId: number;
+let partId: number;
+let essayPartId: number;
+let base: string;
 let studentAId: number;
 let studentAToken: string;
 let studentA2Token: string;
@@ -25,6 +29,8 @@ beforeAll(async () => {
   ({
     seasonId,
     assignmentId,
+    partId,
+    essayPartId,
     studentAId,
     studentAToken,
     studentA2Token,
@@ -34,6 +40,7 @@ beforeAll(async () => {
     adminToken,
     mentorToken,
   } = await seedForumFixtures(app));
+  base = forumPath({ assignmentId, partId });
 });
 
 beforeEach(() => resetSubmissions(seasonId));
@@ -42,47 +49,44 @@ afterAll(async () => {
   await cleanupTestData();
 });
 
-describe("the generic submission routes refuse a FORUM assignment", () => {
-  it("PUT /submissions/by-assignment/:id → 409 use_forum_endpoint, and no row", async () => {
+describe("the essay routes never reach a forum post", () => {
+  it("an essay save on the forum part is 404, and makes no row", async () => {
     const res = await request(app)
-      .put(`/api/v1/submissions/by-assignment/${assignmentId}`)
-      .set("authorization", `Bearer ${studentAToken}`);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("use_forum_endpoint");
-    expect(await db.submission.count({ where: { assignmentId, studentUserId: studentAId } })).toBe(0);
+      .put(`/api/v1/assignments/${assignmentId}/parts/${partId}/essay`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: "<b>x</b>" });
+    expect(res.status).toBe(404);
+    expect(await db.assignmentPartWork.count({ where: { partId, studentUserId: studentAId } })).toBe(0);
   });
 
-  it("PATCH /submissions/:publicId → 409 for save and for submit, text untouched", async () => {
-    // A row can exist (posted through the forum PUT, or written by v1).
+  it("the essay read, hand-in and review answer 404 for a forum post, text untouched", async () => {
     const posted = await request(app)
-      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .put(`${base}/response`)
       .set("authorization", `Bearer ${studentAToken}`)
       .send({ text: OWN_TEXT });
-    const publicId = posted.body.data.submissionPublicId as string;
+    const publicId = posted.body.data.publicId as string;
 
-    for (const body of [{ text: "<b>x</b>" }, { text: "", submit: true }]) {
-      const res = await request(app)
-        .patch(`/api/v1/submissions/${publicId}`)
-        .set("authorization", `Bearer ${studentAToken}`)
-        .send(body);
-      expect(res.status).toBe(409);
-      expect(res.body.error.code).toBe("use_forum_endpoint");
-    }
-    const row = await db.submission.findUnique({
-      where: { publicId },
-      select: { text: true },
-    });
-    expect(row?.text).toBe(`<p>${OWN_TEXT}</p>`);
+    const read = await request(app).get(`/api/v1/submissions/${publicId}`).set("authorization", `Bearer ${adminToken}`);
+    expect(read.status).toBe(404);
+    const handIn = await request(app)
+      .post(`/api/v1/submissions/${publicId}/hand-in`)
+      .set("authorization", `Bearer ${studentAToken}`);
+    expect(handIn.status).toBe(404);
+    const review = await request(app)
+      .post(`/api/v1/submissions/${publicId}/review`)
+      .set("authorization", `Bearer ${adminToken}`)
+      .send({ action: "return", feedback: "space-v2-test redo" });
+    expect(review.status).toBe(404);
+
+    const row = await db.assignmentPartWork.findUnique({ where: { publicId }, select: { text: true, status: true } });
+    expect(row).toEqual({ text: `<p>${OWN_TEXT}</p>`, status: "SUBMITTED" });
   });
 
-  it("still serves a STANDARD assignment as before", async () => {
-    const standard = await db.assignment.create({
-      data: { seasonId, title: "space-v2-test-standard-ok", type: "STANDARD", isAllGroups: true },
-      select: { id: true },
-    });
+  it("the essay part beside the forum still takes its draft", async () => {
     const res = await request(app)
-      .put(`/api/v1/submissions/by-assignment/${standard.id}`)
-      .set("authorization", `Bearer ${studentAToken}`);
+      .put(`/api/v1/assignments/${assignmentId}/parts/${essayPartId}/essay`)
+      .set("authorization", `Bearer ${studentAToken}`)
+      .send({ text: "space-v2-test essay draft" });
     expect(res.status).toBe(200);
   });
 });
@@ -92,10 +96,10 @@ describe("forum comments", () => {
 
   async function postFor(token: string): Promise<string> {
     const res = await request(app)
-      .put(`/api/v1/assignments/${assignmentId}/forum/response`)
+      .put(`${base}/response`)
       .set("authorization", `Bearer ${token}`)
       .send({ text: OWN_TEXT });
-    return res.body.data.submissionPublicId as string;
+    return res.body.data.publicId as string;
   }
 
   it("lets a group-mate who has posted comment on a peer's response", async () => {
@@ -103,7 +107,7 @@ describe("forum comments", () => {
     await postFor(studentAToken);
 
     const res = await request(app)
-      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .post(`${base}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${studentAToken}`)
       .send({ body: COMMENT });
 
@@ -116,7 +120,7 @@ describe("forum comments", () => {
     const peerPost = await postFor(studentA2Token);
 
     const res = await request(app)
-      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .post(`${base}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${studentAToken}`)
       .send({ body: COMMENT });
 
@@ -129,7 +133,7 @@ describe("forum comments", () => {
     await postFor(studentBToken);
 
     const res = await request(app)
-      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .post(`${base}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${studentBToken}`)
       .send({ body: COMMENT });
     expect(res.status).toBe(403);
@@ -141,7 +145,7 @@ describe("forum comments", () => {
     const peerPost = await postFor(studentAToken);
 
     const res = await request(app)
-      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .post(`${base}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${leaderAToken}`)
       .send({ body: COMMENT });
     expect(res.status).toBe(201);
@@ -150,29 +154,19 @@ describe("forum comments", () => {
   it("refuses a mentor, who stays read-only", async () => {
     const peerPost = await postFor(studentAToken);
     const res = await request(app)
-      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .post(`${base}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${mentorToken}`)
       .send({ body: COMMENT });
     expect(res.status).toBe(403);
   });
 
   it("refuses a post that belongs to a different assignment (spec 14 D14)", async () => {
-    const other = await db.assignment.create({
-      data: {
-        seasonId,
-        title: "space-v2-test-forum-other",
-        type: "FORUM",
-        forumMinWords: 0,
-        forumAllowComments: true,
-        isAllGroups: true,
-      },
-      select: { id: true },
-    });
+    const other = await createForum(seasonId, "space-v2-test-forum-other");
     const peerPost = await postFor(studentA2Token);
     await postFor(studentAToken);
 
     const res = await request(app)
-      .post(`/api/v1/assignments/${other.id}/forum/posts/${peerPost}/comments`)
+      .post(`${forumPath(other)}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${studentAToken}`)
       .send({ body: COMMENT });
     expect(res.status).toBe(404);
@@ -184,7 +178,7 @@ describe("forum comments", () => {
 
     for (const body of ["   ", "x".repeat(5001)]) {
       const res = await request(app)
-        .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+        .post(`${base}/posts/${peerPost}/comments`)
         .set("authorization", `Bearer ${studentAToken}`)
         .send({ body });
       expect(res.status).toBe(400);
@@ -197,20 +191,18 @@ describe("forum comments", () => {
 
     for (let i = 0; i < 5; i += 1) {
       await request(app)
-        .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+        .post(`${base}/posts/${peerPost}/comments`)
         .set("authorization", `Bearer ${studentAToken}`)
         .send({ body: `${COMMENT} ${i}` });
     }
 
-    const feed = await request(app)
-      .get(`/api/v1/assignments/${assignmentId}/forum`)
-      .set("authorization", `Bearer ${studentAToken}`);
+    const feed = await request(app).get(base).set("authorization", `Bearer ${studentAToken}`);
     // Three inline plus a count — v1 returns every comment on every post.
     expect(feed.body.data.posts[0].commentCount).toBe(5);
     expect(feed.body.data.posts[0].comments).toHaveLength(3);
 
     const page = await request(app)
-      .get(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments?limit=2`)
+      .get(`${base}/posts/${peerPost}/comments?limit=2`)
       .set("authorization", `Bearer ${studentAToken}`);
     expect(page.body.data.comments).toHaveLength(2);
     expect(page.body.data.nextCursor).toEqual(expect.any(Number));
@@ -223,14 +215,12 @@ describe("forum comments", () => {
     const peerPost = await postFor(studentA2Token);
     await postFor(studentAToken);
     const created = await request(app)
-      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .post(`${base}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${studentAToken}`)
       .send({ body: COMMENT });
     const commentId = created.body.data.comment.id as number;
 
-    const asLeader = await request(app)
-      .get(`/api/v1/assignments/${assignmentId}/forum`)
-      .set("authorization", `Bearer ${leaderAToken}`);
+    const asLeader = await request(app).get(base).set("authorization", `Bearer ${leaderAToken}`);
     const seen = asLeader.body.data.posts
       .flatMap((p: { comments: { id: number; canDelete: boolean }[] }) => p.comments)
       .find((c: { id: number }) => c.id === commentId);
@@ -247,7 +237,7 @@ describe("forum comments", () => {
     const peerPost = await postFor(studentA2Token);
     await postFor(studentAToken);
     const created = await request(app)
-      .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+      .post(`${base}/posts/${peerPost}/comments`)
       .set("authorization", `Bearer ${studentAToken}`)
       .send({ body: COMMENT });
     const commentId = created.body.data.comment.id as number;
@@ -274,20 +264,16 @@ describe("forum comments", () => {
     ];
     for (const [label, token] of roles) {
       const created = await request(app)
-        .post(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
+        .post(`${base}/posts/${peerPost}/comments`)
         .set("authorization", `Bearer ${studentAToken}`)
         .send({ body: COMMENT });
       const commentId = created.body.data.comment.id as number;
 
-      const feed = await request(app)
-        .get(`/api/v1/assignments/${assignmentId}/forum`)
-        .set("authorization", `Bearer ${token}`);
+      const feed = await request(app).get(base).set("authorization", `Bearer ${token}`);
       const inFeed = (feed.body.data?.posts ?? [])
         .flatMap((p: { comments: { id: number; canDelete: boolean }[] }) => p.comments)
         .find((c: { id: number }) => c.id === commentId);
-      const list = await request(app)
-        .get(`/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`)
-        .set("authorization", `Bearer ${token}`);
+      const list = await request(app).get(`${base}/posts/${peerPost}/comments`).set("authorization", `Bearer ${token}`);
       const inList = (list.body.data?.comments ?? []).find((c: { id: number }) => c.id === commentId);
       // A reader who can't see the comment is shown no control at all.
       const shown = inList?.canDelete ?? false;
@@ -304,7 +290,7 @@ describe("forum comments", () => {
   it("does not serve another group's comments, nor a draft's, nor before posting", async () => {
     const peerPost = await postFor(studentA2Token);
     await postFor(studentBToken);
-    const url = `/api/v1/assignments/${assignmentId}/forum/posts/${peerPost}/comments`;
+    const url = `${base}/posts/${peerPost}/comments`;
 
     const otherGroup = await request(app).get(url).set("authorization", `Bearer ${studentBToken}`);
     expect(otherGroup.status).toBe(403);
@@ -315,6 +301,40 @@ describe("forum comments", () => {
 
     const wrongLeader = await request(app).get(url).set("authorization", `Bearer ${leaderBToken}`);
     expect(wrongLeader.status).toBe(403);
+  });
+
+  it("a part removed before the comment lands answers 404, not 500", async () => {
+    const gone = await createForum(seasonId, "space-v2-test-forum-gone");
+    const posted = await request(app)
+      .put(`${forumPath(gone)}/response`)
+      .set("authorization", `Bearer ${studentA2Token}`)
+      .send({ text: OWN_TEXT });
+    const work = await db.assignmentPartWork.findUniqueOrThrow({
+      where: { publicId: posted.body.data.publicId as string },
+      select: { id: true },
+    });
+    await db.assignmentPart.delete({ where: { id: gone.partId } });
+    await expect(addForumComment(gone.partId, work.id, studentAId, COMMENT)).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("comments switched off before the comment lands are refused inside the write", async () => {
+    // The route's gate has passed; an edit turns comments off; the service
+    // re-reads the part under the lock and refuses as the gate would.
+    const quiet = await createForum(seasonId, "space-v2-test-forum-quiet");
+    const posted = await request(app)
+      .put(`${forumPath(quiet)}/response`)
+      .set("authorization", `Bearer ${studentA2Token}`)
+      .send({ text: OWN_TEXT });
+    const work = await db.assignmentPartWork.findUniqueOrThrow({
+      where: { publicId: posted.body.data.publicId as string },
+      select: { id: true },
+    });
+    await db.assignmentPart.update({ where: { id: quiet.partId }, data: { allowComments: false } });
+    await expect(addForumComment(quiet.partId, work.id, studentAId, COMMENT)).rejects.toMatchObject({
+      status: 403,
+      code: "forbidden",
+    });
+    expect(await db.forumComment.count({ where: { partWorkId: work.id } })).toBe(0);
   });
 
   it("404s an unknown comment", async () => {

@@ -4,7 +4,6 @@ import { isMentor, isSuper } from "../../rbac";
 import { groupIdInSeason } from "../enrollment";
 import { seasonParticipant, seasonRosterMember } from "../season-participants";
 import { ledGroupIdsInSeason } from "../led-groups";
-import { liveAssignment } from "../../db/live";
 
 export interface GroupListRow {
   id: number;
@@ -171,29 +170,11 @@ export async function listSeasonRoster(seasonId: number): Promise<SeasonRosterRo
   }));
 }
 
-/**
- * What deleting a group would do (spec 05 §10 item 5, Plan 6 D-16.13).
- * `soleTargetAssignments`: live assignments that are not "all groups" and
- * whose ONLY target is this group — deleting it would cascade their last
- * AssignmentTarget away and leave them visible to nobody (R44).
- */
-export async function loadGroupImpact(groupId: number): Promise<{
-  studentCount: number;
-  leaderCount: number;
-  soleTargetAssignments: { id: number; title: string }[];
-}> {
-  const [studentCount, leaderCount, targeted] = await Promise.all([
+/** What deleting a group would do (spec 05 §10 item 5, Plan 6 D-16.13). */
+export async function loadGroupImpact(groupId: number): Promise<{ studentCount: number; leaderCount: number }> {
+  const [studentCount, leaderCount] = await Promise.all([
     db.seasonEnrollment.count({ where: { groupId, ...seasonParticipant } }),
     db.groupLeader.count({ where: { groupId } }),
-    db.assignment.findMany({
-      where: { ...liveAssignment, isAllGroups: false, targets: { some: { groupId } } },
-      orderBy: { id: "asc" },
-      select: { id: true, title: true, _count: { select: { targets: true } } },
-    }),
   ]);
-  return {
-    studentCount,
-    leaderCount,
-    soleTargetAssignments: targeted.filter((a) => a._count.targets === 1).map((a) => ({ id: a.id, title: a.title })),
-  };
+  return { studentCount, leaderCount };
 }

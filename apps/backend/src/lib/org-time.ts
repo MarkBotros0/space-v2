@@ -197,6 +197,39 @@ export function formatDayInOrgTime(date: Date): string {
   return dayFormatter.format(date);
 }
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** The weekday of an instant on the organisation's clock: "Thursday". */
+export function formatWeekdayInOrgTime(date: Date): string {
+  const p = orgWallClock(date);
+  return WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()] ?? "";
+}
+
+/** The org-clock day of an instant, short: "Tue 11 Nov". Built from fields, so no locale can reorder it. */
+export function formatShortDayInOrgTime(date: Date): string {
+  const p = orgWallClock(date);
+  return `${formatWeekdayInOrgTime(date).slice(0, 3)} ${p.day} ${MONTHS[p.month - 1] ?? ""}`;
+}
+
+/** The org-clock time of an instant, 12-hour: "9:00 AM" (a plain space, whatever the ICU version). */
+export function formatClockInOrgTime(date: Date): string {
+  const p = orgWallClock(date);
+  const hour = p.hour % 12 === 0 ? 12 : p.hour % 12;
+  return `${hour}:${String(p.minute).padStart(2, "0")} ${p.hour < 12 ? "AM" : "PM"}`;
+}
+
+/**
+ * The instant `days` calendar days before `anchor`'s org day, at `time` on the
+ * org clock: a reminder's send time. Across a DST change the wall time holds.
+ */
+export function orgDaysBeforeAt(anchor: Date, days: number, time: string): Date {
+  const p = orgWallClock(anchor);
+  // Noon of the earlier day, so no DST hour can tip it into a neighbouring day.
+  const earlier = fromOrgWallClock({ ...p, day: p.day - days, hour: 12, minute: 0, second: 0, millisecond: 0 });
+  return orgWallClockToInstant(orgDayKey(earlier), time);
+}
+
 export const MS_PER_MINUTE = 60_000;
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const MS_PER_DAY = 24 * MS_PER_HOUR;

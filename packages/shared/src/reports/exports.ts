@@ -76,9 +76,9 @@ export type ExportManifest = z.infer<typeof exportManifestSchema>;
  */
 export const REPORT_METRIC_NOTES: readonly string[] = [
   "Attendance % counts PRESENT and LATE alike, over the sessions that ran on or after the student enrolled. A student who joined mid-season is not scored against the weeks before they arrived.",
-  "Submission % counts only assignments assigned to that student — all-groups assignments plus those targeting their group for this season. An assignment a student was never given does not count against them.",
+  "Submission % counts the assignments of the student's season that they have submitted: every part done and Submit tapped. An assignment whose essay was returned counts again once it is handed back in.",
   "The per-session attendance figure divides by the students enrolled at the time of that session, not by today's roster, so it cannot exceed 100%.",
   "“At risk” means either component is below 60%. A student who has stopped attending but is still submitting is at risk, even though the combined score may look healthy.",
   "Late arrivals show as “L”. Recorded minutes are withheld because the older system measured them from when staff opened check-in rather than from the session start; they return once the historic records have been corrected.",
-  "Blank means no record. “n/a” on the Assignments sheet means the assignment was not assigned to that student.",
+  "Blank means no record. On the Assignments sheet a cell reads Submitted, Not submitted, or how many parts are done (for example “2 of 3 done”).",
 ] as const;

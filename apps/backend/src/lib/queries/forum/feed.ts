@@ -4,11 +4,11 @@ import type { SubmissionStatus } from "../../../generated/prisma/client";
 import type { SessionUser } from "../../auth/tokens";
 import { canDeleteLoadedComment, commentDeleteCtx, type ForumAudience } from "../../permissions";
 import { seasonParticipant } from "../season-participants";
-import { displayNameFor, loadForumAssignment } from "./shared";
+import { displayNameFor, ownForumWork, type ForumPartRow } from "./shared";
 import { FORUM_COMMENT_SELECT, toForumComment, type ForumCommentData } from "./comments";
 
 interface ForumPostData {
-  submissionPublicId: string;
+  publicId: string;
   studentUserId: number;
   authorDisplayName: string;
   text: string;
@@ -19,17 +19,17 @@ interface ForumPostData {
 }
 
 interface ForumOwnData {
-  submissionPublicId: string | null;
+  publicId: string | null;
   text: string;
   status: SubmissionStatus;
   wordCount: number;
   posted: boolean;
-  feedback: string | null;
-  reviewedAt: Date | null;
 }
 
 interface ForumViewData {
   assignmentId: number;
+  partId: number;
+  prompt: string;
   dueAt: Date | null;
   own: ForumOwnData | null;
   locked: boolean;
@@ -40,57 +40,44 @@ interface ForumViewData {
   nextCursor: string | null;
 }
 
+const NOT_POSTED: ForumOwnData = { publicId: null, text: "", status: "DRAFT", wordCount: 0, posted: false };
+
+/** The student's own post on this part, or the empty compose state. */
+async function ownPost(partId: number, studentUserId: number): Promise<ForumOwnData> {
+  const row = await ownForumWork(partId, studentUserId);
+  if (row === null) return NOT_POSTED;
+  const plain = htmlToPlainText(row.text ?? "");
+  return {
+    publicId: row.publicId,
+    text: plain,
+    status: row.status,
+    wordCount: countWords(plain),
+    posted: row.status !== "DRAFT",
+  };
+}
+
+/** The forum view of one FORUM part (the route has loaded it, so it exists). */
 export async function loadForumView(
-  assignmentId: number,
+  part: ForumPartRow,
   user: SessionUser,
   audience: ForumAudience,
   query: { cursor?: string; limit: number },
-): Promise<ForumViewData | null> {
-  const assignment = await loadForumAssignment(assignmentId);
-  if (assignment === null) return null;
-
-  // Own response: looked up by (assignment, caller), never by a client id (R3).
-  let own: ForumOwnData | null = null;
-  if (audience.kind === "student") {
-    const row = await db.submission.findUnique({
-      where: { assignmentId_studentUserId: { assignmentId, studentUserId: user.userId } },
-      select: { publicId: true, text: true, status: true, feedback: true, reviewedAt: true },
-    });
-    if (row === null) {
-      own = {
-        submissionPublicId: null,
-        text: "",
-        status: "DRAFT",
-        wordCount: 0,
-        posted: false,
-        feedback: null,
-        reviewedAt: null,
-      };
-    } else {
-      const plain = htmlToPlainText(row.text ?? "");
-      own = {
-        submissionPublicId: row.publicId,
-        text: plain,
-        status: row.status,
-        wordCount: countWords(plain),
-        posted: row.status !== "DRAFT",
-        feedback: row.feedback ? htmlToPlainText(row.feedback) : null,
-        reviewedAt: row.reviewedAt,
-      };
-    }
-  }
+): Promise<ForumViewData> {
+  const own = audience.kind === "student" ? await ownPost(part.id, user.userId) : null;
 
   const base = {
-    assignmentId,
-    dueAt: assignment.dueAt,
+    assignmentId: part.assignmentId,
+    partId: part.id,
+    prompt: part.prompt,
+    dueAt: part.dueAt,
     own,
-    minWords: assignment.forumMinWords,
-    allowComments: assignment.forumAllowComments,
+    minWords: part.minWords,
+    allowComments: part.allowComments,
     groupId: audience.kind === "student" ? audience.groupId : null,
   };
 
   // Only a forum set to "post before reading others" holds a student back.
-  const locked = audience.kind === "student" && assignment.forumPostToRead && !(own?.posted ?? false);
+  const locked = audience.kind === "student" && part.postToRead && !(own?.posted ?? false);
   if (locked) return { ...base, locked: true, posts: [], nextCursor: null };
 
   // Peer scope — from SeasonEnrollment, not GroupStudent (ruling C9, D-14.3).
@@ -105,7 +92,7 @@ export async function loadForumView(
   }
   const enrolments = await db.seasonEnrollment.findMany({
     where: {
-      seasonId: assignment.seasonId,
+      seasonId: part.seasonId,
       // A student only reaches this while live (forumAudienceFor), so in a
       // finished season this is staff reading the posts.
       ...seasonParticipant,
@@ -118,16 +105,16 @@ export async function loadForumView(
 
   let cursorId: number | null = null;
   if (query.cursor) {
-    const c = await db.submission.findFirst({
-      where: { publicId: query.cursor, assignmentId },
+    const c = await db.assignmentPartWork.findFirst({
+      where: { publicId: query.cursor, partId: part.id },
       select: { id: true },
     });
     cursorId = c?.id ?? null;
   }
 
-  const rows = await db.submission.findMany({
+  const rows = await db.assignmentPartWork.findMany({
     where: {
-      assignmentId,
+      partId: part.id,
       studentUserId: { in: peerIds },
       // Both are the privacy rule (R23): an unposted draft is never served.
       status: { not: "DRAFT" },
@@ -155,15 +142,15 @@ export async function loadForumView(
 
   const page = rows.slice(0, query.limit);
   const canComment =
-    assignment.forumAllowComments &&
-    (audience.kind === "student" ? !assignment.forumPostToRead || (own?.posted ?? false) : user.role !== "MENTOR");
+    part.allowComments &&
+    (audience.kind === "student" ? !part.postToRead || (own?.posted ?? false) : user.role !== "MENTOR");
 
   const posts: ForumPostData[] = await Promise.all(
     page.map(async (p) => {
       // One context per post: every comment under it shares the season and the post's author (BE-071).
-      const ctx = await commentDeleteCtx(user, assignment.seasonId, p.studentUserId);
+      const ctx = await commentDeleteCtx(user, part.seasonId, p.studentUserId);
       return {
-        submissionPublicId: p.publicId,
+        publicId: p.publicId,
         studentUserId: p.studentUserId,
         authorDisplayName: displayNameFor(p.studentUser.name),
         text: htmlToPlainText(p.text ?? ""),

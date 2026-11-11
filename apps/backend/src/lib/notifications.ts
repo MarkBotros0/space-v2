@@ -17,7 +17,8 @@ interface CreateNotificationInput {
 /**
  * NotificationType → the matching Boolean column on NotificationPreference.
  * Typed as a full Record so adding a NotificationType without a preference
- * column is a compile error rather than a silent opt-out failure.
+ * column is a compile error rather than a silent opt-out failure. Two types
+ * may share a column (ASSIGNMENT_REMINDER answers to `assignmentCreated`).
  */
 const PREF_FIELD = {
   ASSIGNMENT_CREATED: "assignmentCreated",
@@ -30,6 +31,8 @@ const PREF_FIELD = {
   SUBMISSION_RECEIVED: "submissionReceived",
   SESSION_CANCELLED: "sessionCancelled",
   ANNOUNCEMENT: "announcement",
+  // Shares the assignments setting: no column of its own.
+  ASSIGNMENT_REMINDER: "assignmentCreated",
 } as const satisfies Record<NotificationType, string>;
 
 interface BulkNotificationResult {

@@ -17,3 +17,4 @@ tools/ui-reference/node_modules/
 
 # Personal Claude Code overrides
 .claude/settings.local.json
+.superpowers/

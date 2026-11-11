@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
-  apiClient: { get: jest.fn(), put: jest.fn(), patch: jest.fn() },
+  apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn() },
 }));
 jest.mock("../design/ui/toaster", () => ({
   toast: { success: jest.fn(), error: jest.fn() },
@@ -14,6 +14,7 @@ jest.mock("expo-router", () => ({
 
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
+import { assignmentDetail, essayWork, forumWork, videoWork } from "./helpers/assignment-fixtures";
 import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
@@ -21,55 +22,8 @@ import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
 
 const get = apiClient.get as jest.Mock;
 
-const detail = {
-  id: 41,
-  seasonId: 7,
-  seasonCode: "S26",
-  seasonTitle: "Spring 2026",
-  sessionId: null,
-  sessionTitle: null,
-  title: "Essay one",
-  description: "Write about the thing.",
-  dueAt: "2099-04-01T21:59:00.000Z",
-  dueOrgDay: "2099-04-01",
-  dueOrgTime: "23:59",
-  isOverdue: false,
-  isAllGroups: true,
-  type: "STANDARD" as const,
-  forumMinWords: null,
-  forumAllowComments: false,
-  forumPostToRead: true,
-  maxFileSizeMb: 10,
-  allowedMimeCategories: ["pdf" as const],
-  groupIds: null,
-  mySubmission: null,
-  canManage: false,
-  readOnly: false,
-};
-
-const submissionFor = (status: "REVIEWED" | "SUBMITTED", isLate: boolean, feedback: string | null) => ({
-  id: 900,
-  publicId: "abc123defg",
-  status,
-  text: "the work",
-  feedback,
-  submittedAt: "2099-03-30T10:00:00.000Z",
-  reviewedAt: status === "REVIEWED" ? "2099-03-31T10:00:00.000Z" : null,
-  isLate,
-  assignmentId: 41,
-  assignmentTitle: "Essay one",
-  assignmentDueAt: null,
-  assignmentDescription: null,
-  seasonCode: "S26",
-  studentUserId: 9,
-  studentName: "Test student",
-  studentEmail: "s@jpc.test",
-  groupId: null,
-  groupName: null,
-  files: [],
-  canUploadFiles: false,
-  canReview: false,
-});
+const detail = (over: Parameters<typeof assignmentDetail>[1] = {}) =>
+  assignmentDetail([videoWork(0), essayWork("DRAFT", 0), forumWork(false)], over);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -79,17 +33,15 @@ beforeEach(() => {
   );
 });
 
-describe("AssignmentDetailScreen", () => {
-  it("renders title, description and due date from the detail contract", async () => {
-    get.mockResolvedValue({ data: { data: detail } });
-
+describe("AssignmentDetailScreen (student)", () => {
+  it("renders title, instructions and the season from the detail contract", async () => {
+    get.mockResolvedValue({ data: { data: detail() } });
     renderStacked(<AssignmentDetailScreen />);
 
-    expect(await screen.findByText("Essay one")).toBeTruthy();
-    expect(screen.getByText("Write about the thing.")).toBeTruthy();
+    expect(await screen.findByText("The lost son")).toBeTruthy();
+    expect(screen.getByText("Watch, write, then share.")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1); // the pinned bar (R23)
-    expect(screen.queryByText("← Assignments")).toBeNull();
-    expect(screen.getByText("BRIEF")).toBeTruthy();
+    expect(screen.getByText("INSTRUCTIONS")).toBeTruthy();
     expect(screen.getByText("Spring 2026")).toBeTruthy(); // the Screen subtitle
     expect(get).toHaveBeenCalledWith("/api/v1/assignments/41");
   });
@@ -97,7 +49,7 @@ describe("AssignmentDetailScreen", () => {
   it("shows a v2 plain-text brief verbatim, angle brackets and all", async () => {
     // v2's form stores plain text; the column also holds v1's TipTap HTML.
     get.mockResolvedValue({
-      data: { data: { ...detail, description: "Read pages <intro> & <summary>.\nThen reflect." } },
+      data: { data: detail({ description: "Read pages <intro> & <summary>.\nThen reflect." }) },
     });
     renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText("Read pages <intro> & <summary>.")).toBeTruthy();
@@ -105,59 +57,32 @@ describe("AssignmentDetailScreen", () => {
   });
 
   it("renders a v1 HTML brief as markup", async () => {
-    get.mockResolvedValue({ data: { data: { ...detail, description: "<p><strong>Bold</strong> brief</p>" } } });
+    get.mockResolvedValue({ data: { data: detail({ description: "<p><strong>Bold</strong> brief</p>" }) } });
     renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText("Bold")).toBeTruthy();
     expect(screen.queryByText(/<strong>/)).toBeNull();
   });
 
-  it("shows reviewed feedback from mySubmission", async () => {
-    const assignment = {
-      ...detail,
-      mySubmission: {
-        publicId: "abc123defg",
-        status: "REVIEWED" as const,
-        submittedAt: "2099-03-30T10:00:00.000Z",
-        reviewedAt: "2099-03-31T10:00:00.000Z",
-        feedback: "Solid work.",
-        isLate: false,
-      },
-    };
-    get.mockImplementation((url: string) =>
-      Promise.resolve({
-        data: { data: url === "/api/v1/assignments/41" ? assignment : submissionFor("REVIEWED", false, "Solid work.") },
-      }),
-    );
-
+  it("with no instructions, shows no empty section", async () => {
+    get.mockResolvedValue({ data: { data: detail({ description: null }) } });
     renderStacked(<AssignmentDetailScreen />);
-
-    expect(await screen.findByText("Solid work.")).toBeTruthy();
-    expect(screen.getByText("LEADER FEEDBACK")).toBeTruthy();
-    expect(screen.getByText("Reviewed")).toBeTruthy();
+    expect(await screen.findByText("0 of 3 done")).toBeTruthy();
+    expect(screen.queryByText("INSTRUCTIONS")).toBeNull();
   });
 
-  it("shows the late badge from the contract flag", async () => {
-    const assignment = {
-      ...detail,
-      mySubmission: {
-        publicId: "abc123defg",
-        status: "SUBMITTED" as const,
-        submittedAt: "2099-04-02T10:00:00.000Z",
-        reviewedAt: null,
-        feedback: null,
-        isLate: true,
-      },
-    };
-    get.mockImplementation((url: string) =>
-      Promise.resolve({
-        data: { data: url === "/api/v1/assignments/41" ? assignment : submissionFor("SUBMITTED", true, null) },
-      }),
-    );
-
+  it("not-started parts say so in words, never a dash", async () => {
+    get.mockResolvedValue({ data: { data: detail() } });
     renderStacked(<AssignmentDetailScreen />);
+    expect(await screen.findByText("0 of 3 done")).toBeTruthy();
+    expect(screen.getAllByText("Not started")).toHaveLength(2);
+    expect(screen.getByText("Not posted")).toBeTruthy();
+    expect(screen.queryByText("—")).toBeNull();
+  });
 
-    // v1 has no late badge here; v2 keeps the flag as an extra "Late" badge (B2-16).
-    expect(await screen.findByText("Late")).toBeTruthy();
-    expect(screen.getByText("Submitted")).toBeTruthy();
+  it("an assignment with no parts says so", async () => {
+    get.mockResolvedValue({ data: { data: detail({ parts: [], my: { submittedAt: null, parts: [] } }) } });
+    renderStacked(<AssignmentDetailScreen />);
+    expect(await screen.findByText("This assignment has no parts yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Submit" })).toBeNull();
   });
 });

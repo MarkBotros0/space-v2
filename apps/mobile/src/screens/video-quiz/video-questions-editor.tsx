@@ -2,7 +2,12 @@ import { useState } from "react";
 import { View, type TextInputProps } from "react-native";
 import { formatTimestamp, type VideoQuestionAdmin } from "@space/shared";
 
-import { useVideoQuestions, useVideoQuestionWrites, useVideoQuizResults } from "../../hooks/use-video-quiz";
+import {
+  useVideoQuestions,
+  useVideoQuestionWrites,
+  useVideoQuizResults,
+  type VideoOwner,
+} from "../../hooks/use-video-quiz";
 import { FormErrorBox } from "../../design/forms/form-parts";
 import { InlineError } from "../../design/layout/route-states";
 import { Button } from "../../design/ui/button";
@@ -73,9 +78,14 @@ export function VideoQuizResultsTable({ sessionId }: { sessionId: number }) {
   );
 }
 
-export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
-  const questions = useVideoQuestions(sessionId, true);
-  const { create, update, remove } = useVideoQuestionWrites(sessionId);
+/**
+ * The timed questions on a video: a session's, or a video part's of an
+ * assignment. Each question saves on its own. A session's editor also shows
+ * its results; a part's results are on the assignment's progress.
+ */
+export function VideoQuestionsEditor({ owner }: { owner: VideoOwner }) {
+  const questions = useVideoQuestions(owner, true);
+  const { create, update, remove } = useVideoQuestionWrites(owner);
 
   const [form, setForm] = useState<VideoQuestionFormState | null>(null);
   const [timestampError, setTimestampError] = useState<string | undefined>(undefined);
@@ -148,6 +158,12 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
   return (
     <View className="mt-4 flex-col gap-4">
       <Text className="text-lg font-semibold">Video questions</Text>
+      {/* Ruling (I1): a part's question changes who is done with it; no dialog, this line says so. */}
+      {owner.kind === "part" ? (
+        <Text className="text-muted-foreground">
+          Students who already finished this video will need to answer new questions.
+        </Text>
+      ) : null}
       {questions.isPending ? (
         <View accessible accessibilityLabel="Loading">
           <Skeleton className="h-24 rounded-group" />
@@ -241,7 +257,7 @@ export function VideoQuestionsEditor({ sessionId }: { sessionId: number }) {
           )}
         </>
       )}
-      <VideoQuizResultsTable sessionId={sessionId} />
+      {owner.kind === "session" ? <VideoQuizResultsTable sessionId={owner.sessionId} /> : null}
     </View>
   );
 }

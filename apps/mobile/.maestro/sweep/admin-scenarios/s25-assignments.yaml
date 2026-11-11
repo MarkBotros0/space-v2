@@ -37,39 +37,40 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s25-04-assignment-detail-bottom
-# Salma Student's submitted response is the first row, so its Open button is the first match; opening does not change it.
+# Progress per student: Salma's row opens her handed-in essay; opening does not change it.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Open'
+      TARGET: 'Salma Student.*'
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s25-05-submission-review
-# The feedback form is a sheet behind the pinned "Add feedback" bar. Never tap its save button.
+# The Return sheet, opened from the pinned bar (ruling: a flow may open it and focus its note,
+# never type; its Return stays disabled until a note is typed). The Mark reviewed sheet is never
+# opened: its save button would write.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Add feedback'
+      TARGET: 'Return'
 - extendedWaitUntil:
-    visible: 'What did the student do well.*'
-    timeout: 40000
+    visible: 'What to change'
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-06-return-sheet
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'What did the student do well.*'
+      TARGET: 'What to change'
 - waitForAnimationToEnd:
     timeout: 5000
-- waitForAnimationToEnd:
-    timeout: 5000
-- takeScreenshot: s25-06-submission-feedback-kbd
-- inputText: 'Sweep feedback, never saved'
+- takeScreenshot: s25-07-return-note-kbd
 - hideKeyboard
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s25-07-submission-feedback-typed
-# Dismiss the sheet without saving.
+# Close the sheet without returning anything.
 - back
 - waitForAnimationToEnd:
     timeout: 5000

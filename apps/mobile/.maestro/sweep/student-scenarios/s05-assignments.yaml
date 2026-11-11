@@ -21,8 +21,7 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s05-02-work-todo-bottom
-# The seeded overdue assignment (seed-sweep/activity.ts), with a draft behind it,
-# so the page shows the editable response box rather than "Start working".
+# The seeded overdue assignment (seed-sweep/activity.ts), with a draft essay behind it.
 # Optional and not centred: the list is short, so the row is usually already on screen at the top,
 # where it can't be centred (the centred scroll failed on the small phones).
 - scrollUntilVisible:
@@ -31,20 +30,28 @@ appId: com.jpc.space
     timeout: 10000
     optional: true
 - tapOn: '(?s)Opening night reflection.*'
-# The pinned bar (Start working, or Save draft / Submit) is the screen's footer.
+# The pinned Submit is the checklist's footer.
 - extendedWaitUntil:
-    visible: '(Start working|Save draft|Submit)'
+    visible: 'Submit'
     timeout: 20000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s05-03-assignment-detail
-# Keyboard on the response box and its Save draft / Submit buttons. Never tap them.
-# Nothing is typed: the editor writes a changed draft out on leaving and on going to
-# the background (use-draft-flush.ts), so typed text would be saved when the flow ends.
+# The assignment is a checklist of parts now; its one essay opens on its own screen, with the
+# keyboard on the field. Never tap Save draft or Submit, and nothing is typed: the screen writes a
+# changed draft out on leaving and on going to the background (use-draft-flush.ts), so typed text
+# would be saved when the flow ends.
 - runFlow:
     file: ../_tap.yaml
     env:
-      TARGET: 'Your response'
+      TARGET: '(?s)Essay: What stayed with you from the opening night\?.*'
+- extendedWaitUntil:
+    visible: 'Save draft'
+    timeout: 20000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'What stayed with you from the opening night\?'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s05-04-assignment-response-kbd

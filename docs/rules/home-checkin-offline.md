@@ -28,8 +28,7 @@
   false and a scan answers 409 `not_open`. Staff see the real state.
 - **Offline:** `OfflineScreen` (`design/layout/offline-screen.tsx`, mounted in `app/_layout.tsx`) covers
   the app after 1.5 s without a connection and leaves by itself on reconnect.
-- **Assignments always go to the whole season:** the form has no "Assign to" (the API still accepts
-  `groupIds`; saving an older group-targeted assignment widens it to the season).
+- **Assignments always go to the whole season:** the form has no "Assign to" (`docs/rules/assignments.md`).
 - **Pull to refresh:** `design/lib/pull-refresh.ts` drops a pull on blur and remounts the
   RefreshControl on focus, because iOS leaves the spinner hanging if `refreshing` turns false while the
   screen is off the window. No input auto-focuses on open.

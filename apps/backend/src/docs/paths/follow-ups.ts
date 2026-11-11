@@ -71,20 +71,6 @@ export const followUpPaths = {
       },
     },
   },
-  "/api/v1/internal/follow-ups/remind": {
-    get: {
-      tags: ["Follow-ups"],
-      summary: "Send due follow-up reminders (Vercel Cron)",
-      description:
-        "Called daily by Vercel Cron (`vercel.json`) with `Authorization: Bearer <CRON_SECRET>`. 404 while `CRON_SECRET` is unset, 401 with any other header. Each open follow-up past `dueAt` with no `remindedAt` is claimed by stamping `remindedAt`, then one `MENTOR_FOLLOWUP` goes to its mentor (in-app always; push and email by their settings), so overlapping runs never send twice. A mentor who is no longer a live MENTOR, or a deleted student, is skipped. At most 200 a run.",
-      security: [],
-      responses: {
-        200: ok({ type: "object", properties: { sent: { type: "integer" } } }, "How many reminders went."),
-        401: errRef("Unauthorized"),
-        404: errRef("NotFound"),
-      },
-    },
-  },
   "/api/v1/me/mentor-summary": {
     get: {
       tags: ["Follow-ups"],

@@ -12,7 +12,7 @@ jest.mock("../design/ui/toaster", () => ({
 jest.mock("expo-camera", () => require("./helpers/expo-camera"));
 jest.mock("react-native-qrcode-svg", () => "QRCode");
 jest.mock("expo-router", () => ({
-  useLocalSearchParams: () => ({ id: "41" }),
+  useLocalSearchParams: () => ({ id: "41", partId: "2" }),
   useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
   useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
@@ -23,11 +23,20 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
+import {
+  assignmentDetail,
+  essayDetail,
+  essayPart,
+  essayWork,
+  forumWork,
+  videoWork,
+  words,
+} from "./helpers/assignment-fixtures";
 import AssignmentDetailScreen from "../../app/(app)/assignment/[id]/index";
+import PartScreen from "../../app/(app)/assignment/[id]/part/[partId]";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
-const patch = apiClient.patch as jest.Mock;
 const post = apiClient.post as jest.Mock;
 
 // What axios rejects with on a device with no connection: no response at all.
@@ -53,70 +62,18 @@ const session = {
   canManageCheckIn: false,
 };
 
-const assignment = {
-  id: 41,
-  seasonId: 7,
-  seasonCode: "S26",
-  seasonTitle: "Spring 2026",
-  sessionId: null,
-  sessionTitle: null,
-  title: "Essay one",
-  description: null,
-  dueAt: null,
-  dueOrgDay: null,
-  dueOrgTime: null,
-  isOverdue: false,
-  isAllGroups: true,
-  type: "STANDARD" as const,
-  forumMinWords: null,
-  forumAllowComments: false,
-  forumPostToRead: true,
-  maxFileSizeMb: null,
-  allowedMimeCategories: [],
-  groupIds: null,
-  mySubmission: null,
-  canManage: false,
-  readOnly: false,
-};
-const draft = {
-  publicId: "abc123defg",
-  status: "DRAFT" as const,
-  submittedAt: null,
-  reviewedAt: null,
-  feedback: null,
-  isLate: false,
-};
-const submission = {
-  id: 900,
-  publicId: "abc123defg",
-  status: "DRAFT" as const,
-  text: "my essay",
-  feedback: null,
-  submittedAt: null,
-  reviewedAt: null,
-  isLate: false,
-  assignmentId: 41,
-  assignmentTitle: "Essay one",
-  assignmentDueAt: null,
-  assignmentDescription: null,
-  seasonCode: "S26",
-  studentUserId: 9,
-  studentName: "S",
-  studentEmail: "s@jpc.test",
-  groupId: null,
-  groupName: null,
-  files: [],
-  canUploadFiles: false,
-  canReview: false,
-};
-
 const announce = jest.spyOn(AccessibilityInfo, "announceForAccessibility");
 
-function serveAssignment(mySubmission: typeof draft | null) {
+/** The checklist with every part done, and its essay (a draft, or returned). */
+function serveAssignment(status: "DRAFT" | "RETURNED" = "DRAFT") {
+  const works = [videoWork(1000), essayWork(status, 200, status === "RETURNED" ? "More." : null), forumWork(true)];
   get.mockImplementation((url: string) =>
     Promise.resolve({
       data: {
-        data: url === "/api/v1/assignments/41" ? { ...assignment, mySubmission } : submission,
+        data:
+          url === "/api/v1/assignments/41"
+            ? assignmentDetail(works)
+            : essayDetail(status, words(200), { feedback: status === "RETURNED" ? "More." : null }),
       },
     }),
   );
@@ -166,50 +123,52 @@ describe("offline writes fail at once instead of hanging", () => {
     expect(post).toHaveBeenCalledTimes(1);
   });
 
-  it("submit closes the confirm dialog with its error, and keeps the text", async () => {
-    serveAssignment(draft);
-    patch.mockRejectedValue(noNetwork());
+  it("Submit closes the confirm dialog with its error", async () => {
+    serveAssignment();
+    post.mockRejectedValue(noNetwork());
     renderWithProviders(<AssignmentDetailScreen />);
-    await screen.findByLabelText("Your response");
+    fireEvent.press(await screen.findByRole("button", { name: "Submit" }));
     goOffline();
-
-    fireEvent.press(screen.getByText("Submit"));
     fireEvent.press(await screen.findByText("Yes, submit"));
 
-    await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByText("Submit your work?")).toBeNull());
+    await waitFor(() => expect(post).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText("Submit this assignment?")).toBeNull());
     expect(screen.queryByText("Working…")).toBeNull();
     expect(toast.error).toHaveBeenCalledWith("Couldn't submit. Check your connection and try again.");
     expect(announce).toHaveBeenCalledWith("Couldn't submit. Check your connection and try again.");
-    expect(screen.getByDisplayValue("my essay")).toBeTruthy();
+    act(() => onlineManager.setOnline(true));
+    await act(() => new Promise<void>((resolve) => setTimeout(resolve, 20)));
+    expect(post).toHaveBeenCalledTimes(1);
   });
 
-  it("Save draft fails at once", async () => {
-    serveAssignment(draft);
-    patch.mockRejectedValue(noNetwork());
-    renderWithProviders(<AssignmentDetailScreen />);
-    await screen.findByLabelText("Your response");
+  it("Save draft fails at once and keeps the text", async () => {
+    serveAssignment();
+    put.mockRejectedValue(noNetwork());
+    renderWithProviders(<PartScreen />);
+    fireEvent.changeText(await screen.findByLabelText(essayPart.prompt), "my essay");
     goOffline();
 
     fireEvent.press(screen.getByText("Save draft"));
-    await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(1));
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith("Couldn't save. Check your connection and try again."),
     );
     expect(await screen.findByText("Save draft")).toBeTruthy();
     expect(screen.queryByText("Saving…")).toBeNull();
+    expect(screen.getByDisplayValue("my essay")).toBeTruthy();
   });
 
-  it("Start working fails at once into its own message", async () => {
-    serveAssignment(null);
-    put.mockRejectedValue(noNetwork());
-    renderWithProviders(<AssignmentDetailScreen />);
-    const start = await screen.findByText("Start working");
+  it("Hand in again fails at once into its own message", async () => {
+    serveAssignment("RETURNED");
+    post.mockRejectedValue(noNetwork());
+    renderWithProviders(<PartScreen />);
+    fireEvent.press(await screen.findByText("Hand in again"));
     goOffline();
+    fireEvent.press(await screen.findByText("Yes, hand it in"));
 
-    fireEvent.press(start);
-    expect(await screen.findByText(/Couldn't start your submission/)).toBeTruthy();
-    expect(put).toHaveBeenCalledTimes(1);
-    expect(announce).toHaveBeenCalledWith("Couldn't start your submission. Try again.");
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("Couldn't hand it in. Check your connection and try again."),
+    );
+    expect(post).toHaveBeenCalledTimes(1);
   });
 });

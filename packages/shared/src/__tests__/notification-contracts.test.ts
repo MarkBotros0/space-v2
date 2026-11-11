@@ -15,7 +15,7 @@ import {
 } from "../index";
 
 describe("notificationTypeSchema", () => {
-  it("mirrors the ten values of NotificationType in prisma/schema.prisma", () => {
+  it("mirrors the eleven values of NotificationType in prisma/schema.prisma", () => {
     expect(notificationTypeSchema.options).toEqual([
       "ASSIGNMENT_CREATED",
       "SUBMISSION_REVIEWED",
@@ -27,20 +27,26 @@ describe("notificationTypeSchema", () => {
       "SUBMISSION_RECEIVED",
       "SESSION_CANCELLED",
       "ANNOUNCEMENT",
+      "ASSIGNMENT_REMINDER",
     ]);
   });
 });
 
 describe("notificationPreferencesSchema", () => {
-  it("carries one key per notification type — all ten, derived from the enum", () => {
+  it("carries one key per preference column — ten, derived from the enum", () => {
     // v1 lost quizGraded precisely by hand-writing five of six field names
     // (spec R56, R57). The shape is derived here, and this is the runtime
     // half of that guarantee; the `satisfies` in the source is the compile half.
     expect(Object.keys(notificationPreferencesSchema.shape).sort()).toEqual(
-      notificationTypeSchema.options.map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t]).sort(),
+      [...new Set(notificationTypeSchema.options.map((t) => NOTIFICATION_PREFERENCE_KEY_BY_TYPE[t]))].sort(),
     );
-    expect(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).toHaveLength(10);
+    expect(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).toHaveLength(11);
+    expect(new Set(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).size).toBe(10);
     expect(Object.values(NOTIFICATION_PREFERENCE_KEY_BY_TYPE)).toContain("quizGraded");
+  });
+
+  it("turns the assignment reminder off with the assignments setting (no column of its own)", () => {
+    expect(NOTIFICATION_PREFERENCE_KEY_BY_TYPE.ASSIGNMENT_REMINDER).toBe("assignmentCreated");
   });
 
   it("maps each of the three new types to its own column", () => {
@@ -168,6 +174,7 @@ describe("push policy", () => {
     expect([...PUSH_NOTIFICATION_TYPES].sort()).toEqual([
       "ANNOUNCEMENT",
       "ASSIGNMENT_CREATED",
+      "ASSIGNMENT_REMINDER",
       "LOW_ATTENDANCE_FLAG",
       "MENTOR_FOLLOWUP",
       "QUIZ_GRADED",

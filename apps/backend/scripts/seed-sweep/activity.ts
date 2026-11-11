@@ -1,8 +1,9 @@
 import { db } from "../../src/db/client";
-import { newPublicId } from "../../src/lib/public-id";
 import { addQuizQuestion } from "../../src/lib/quizzes/questions";
 import type { SweepPeople } from "./people";
 import { seedQuizTypes } from "./quiz-types";
+import { createEssayAssignment, seedTextWork } from "./assignment-work";
+import { seedThreePartAssignment } from "./three-part";
 import { fromToday } from "./shared";
 
 /** Sessions, attendance, assignments with the student's drafts, and quizzes. */
@@ -46,47 +47,32 @@ export async function seedActivity(people: SweepPeople) {
     },
   });
 
-  const reflection = await db.assignment.create({
-    data: {
-      seasonId: season.id,
-      sessionId: pastSession.id,
-      title: "Opening night reflection",
-      description: "<p>Write a short reflection on the opening night.</p>",
-      dueAt: fromToday(-2),
-      isAllGroups: true,
-      createdById: admin.id,
-    },
+  const reflection = await createEssayAssignment({
+    seasonId: season.id,
+    title: "Opening night reflection",
+    description: "<p>Write a short reflection on the opening night.</p>",
+    dueAt: fromToday(-2),
+    createdById: admin.id,
+    prompt: "What stayed with you from the opening night?",
   });
-  const reading = await db.assignment.create({
-    data: {
-      seasonId: season.id,
-      title: "Read chapter 2",
-      description: "<p>Read chapter 2 and note three questions.</p>",
-      dueAt: fromToday(10),
-      isAllGroups: true,
-      createdById: admin.id,
-    },
+  const reading = await createEssayAssignment({
+    seasonId: season.id,
+    title: "Read chapter 2",
+    description: "<p>Read chapter 2 and note three questions.</p>",
+    dueAt: fromToday(10),
+    createdById: admin.id,
+    prompt: "Note three questions chapter 2 raised for you.",
   });
-  // Drafts on both, so whichever assignment a flow opens shows the editable
-  // response box. Without a submission the page offers "Start working",
-  // which creates one, and sweep flows never save.
-  await db.submission.createMany({
-    data: [
-      {
-        publicId: newPublicId(),
-        assignmentId: reflection.id,
-        studentUserId: student.id,
-        text: "It was a good start to the season.",
-        status: "DRAFT",
-      },
-      {
-        publicId: newPublicId(),
-        assignmentId: reading.id,
-        studentUserId: student.id,
-        status: "DRAFT",
-      },
-    ],
+  // A draft on the overdue one, so its essay screen shows saved text; the reading
+  // stays untouched ("Not started").
+  await seedTextWork({
+    assignmentId: reflection.id,
+    partId: reflection.essayPartId,
+    studentUserId: student.id,
+    text: "It was a good start to the season.",
+    status: "DRAFT",
   });
+  const parts = await seedThreePartAssignment({ admin, leader, student, classmate, season });
 
   // A graded paper quiz for the performance table, and a published online
   // quiz the student has not started, so "Take quiz" shows.
@@ -143,7 +129,7 @@ export async function seedActivity(people: SweepPeople) {
   // Every question type, Arabic content and each attempt stage (quiz-types.ts).
   await seedQuizTypes(people);
 
-  return { reflection, reading, onlineQuiz };
+  return { reflection, reading, parts, onlineQuiz };
 }
 
 export type SweepActivity = Awaited<ReturnType<typeof seedActivity>>;

@@ -1,7 +1,7 @@
 import { db } from "../../src/db/client";
-import { newPublicId } from "../../src/lib/public-id";
 import { saveAnswers, submitAnswers } from "../../src/lib/quizzes/attempts";
 import type { SweepActivity } from "./activity";
+import { markSubmitted, seedTextWork } from "./assignment-work";
 import type { SweepPeople } from "./people";
 import { fromToday } from "./shared";
 
@@ -32,31 +32,29 @@ export async function seedLeaderScenario(
   { leader, student, classmate, season }: SweepPeople,
   { reflection, reading, onlineQuiz }: SweepActivity,
 ): Promise<void> {
-  // Leader review queue: the classmate's late submission waits for review and
-  // a reviewed one carries feedback, so the queue shows both badges.
-  await db.submission.createMany({
-    data: [
-      {
-        publicId: newPublicId(),
-        assignmentId: reflection.id,
-        studentUserId: classmate.id,
-        text: "Opening night reminded me why I joined. The worship set was my favourite part.",
-        status: "SUBMITTED",
-        submittedAt: fromToday(-1),
-      },
-      {
-        publicId: newPublicId(),
-        assignmentId: reading.id,
-        studentUserId: classmate.id,
-        text: "Three questions: who wrote it, why now, and what changes?",
-        status: "REVIEWED",
-        submittedAt: fromToday(-1),
-        reviewedAt: fromToday(0),
-        reviewedById: leader.id,
-        feedback: "Good questions. Bring them to the next session.",
-      },
-    ],
+  // Leader review queue: the classmate's late essay waits for review and a
+  // reviewed one carries feedback, so the queue shows both chips.
+  await seedTextWork({
+    assignmentId: reflection.id,
+    partId: reflection.essayPartId,
+    studentUserId: classmate.id,
+    text: "Opening night reminded me why I joined. The worship set was my favourite part.",
+    status: "SUBMITTED",
+    submittedAt: fromToday(-1),
   });
+  await markSubmitted(reflection.id, classmate.id, fromToday(-1));
+  await seedTextWork({
+    assignmentId: reading.id,
+    partId: reading.essayPartId,
+    studentUserId: classmate.id,
+    text: "Three questions: who wrote it, why now, and what changes?",
+    status: "REVIEWED",
+    submittedAt: fromToday(-1),
+    reviewedAt: fromToday(0),
+    reviewedById: leader.id,
+    feedback: "Good questions. Bring them to the next session.",
+  });
+  await markSubmitted(reading.id, classmate.id, fromToday(-1), fromToday(0));
 
   // The online quiz has a submitted attempt with an essay answer waiting to
   // be graded, so the leader's grading page shows an attempt card.

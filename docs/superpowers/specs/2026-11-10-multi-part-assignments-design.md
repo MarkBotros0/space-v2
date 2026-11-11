@@ -166,16 +166,17 @@ With skip blocking off, a student who jumps to the end reaches the end but not 9
   assignment is not **submitted** — a returned essay makes it not submitted again. Students who
   submitted get nothing.
 - "The next session": the first session of the season starting after the assignment is published.
-  If there is none, no reminder is sent and the Details line says so ("No upcoming session yet —
-  no reminder").
+  If there is none, no reminder is sent and the Details line says so ("No session after it was
+  published — no reminder"; "The next session was too close — no reminder" when the reminder time
+  had already passed).
 - Push notification plus an in-app notification (existing notification system and settings; a new
   kind under the assignments setting), linking to the assignment. One reminder per assignment per
   student.
 - **The schedule lives in the backend, driven by requests (owner, 2026-11-10: "I want the schedule
   to be inside the backend", "I don't want to use the Vercel scheduler", picked option 1).** The
   backend is serverless, so nothing runs between requests and an in-process timer would never fire.
-  Instead each reminder is a row with its send time (`remindAt`); on any API request, at most once
-  every ~5 minutes, the backend takes a database lease (one row, `UPDATE … WHERE lockedUntil < now()`,
+  Instead each reminder is a row with its send time (`remindAt`); on any API request, about once a
+  minute per server instance, one sweep at a time, the backend takes a database lease (one row, `UPDATE … WHERE lockedUntil < now()`,
   so concurrent requests don't both sweep) and, after the response has been sent (Vercel's
   `waitUntil`), sends every reminder that is due and marks it sent. No Vercel Cron, no Vercel
   Schedules, no outside pinger.

@@ -1,9 +1,7 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { db } from "../db/client";
 import { FOLLOW_UP_DAYS, type FollowUp } from "../../../../packages/shared/src/index";
 import { createNotificationsBulk } from "./notifications";
-import { MS_PER_DAY } from "./org-time";
+import { MS_PER_DAY, orgDayKey, orgWallClockToInstant, orgWallTime } from "./org-time";
 import { notificationLink } from "./notification-target";
 import { liveUser } from "./db/live";
 
@@ -82,22 +80,34 @@ export async function createFollowUp(mentorUserId: number, studentUserId: number
   return toFollowUp(row);
 }
 
-/** The most reminders one cron run claims; the rest go out on the next run. */
+/** The org-clock time of day a due follow-up is reminded. */
+export const REMINDER_HOUR = "09:00";
+
+/**
+ * Follow-ups with `dueAt <= followUpCutoff(now)` are due. From 9:00 org time it
+ * is `now`; before that, the start of the org day, so one due today waits for
+ * 9:00 while an earlier-day one goes at once.
+ */
+export function followUpCutoff(now: Date): Date {
+  return orgWallTime(now) >= REMINDER_HOUR ? now : orgWallClockToInstant(orgDayKey(now), "00:00");
+}
+
+/** The most reminders one scheduler run claims; the rest go out on the next run. */
 const REMINDER_BATCH = 200;
 
 /**
- * The daily reminder: one MENTOR_FOLLOWUP to the mentor who made each open
+ * The follow-up reminder: one MENTOR_FOLLOWUP to the mentor who made each open
  * follow-up past its due date, never twice. Each row is claimed by stamping
  * `remindedAt` where it is still null, so two overlapping runs cannot both send
  * it. A mentor who is no longer a live MENTOR, or a deleted student, is skipped.
  * Returns how many reminders went out.
  */
-export async function sendDueFollowUpReminders(now = new Date()): Promise<number> {
+export async function sendDueFollowUpReminders(now: Date = new Date()): Promise<number> {
   const due = await db.mentorFollowUp.findMany({
     where: {
       doneAt: null,
       remindedAt: null,
-      dueAt: { lte: now },
+      dueAt: { lte: followUpCutoff(now) },
       mentorUser: { role: "MENTOR", ...liveUser },
       studentUser: liveUser,
     },
@@ -127,11 +137,4 @@ export async function sendDueFollowUpReminders(now = new Date()): Promise<number
     sent += 1;
   }
   return sent;
-}
-
-/** Constant-time check of Vercel Cron's `Authorization: Bearer <CRON_SECRET>`. */
-export function isCronAuthorized(header: string | undefined, secret: string): boolean {
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const given = Buffer.from(header ?? "");
-  return given.length === expected.length && timingSafeEqual(given, expected);
 }

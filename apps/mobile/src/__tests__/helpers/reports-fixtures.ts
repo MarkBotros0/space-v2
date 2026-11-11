@@ -90,7 +90,6 @@ export const summary = {
       assignmentId: 3,
       seasonId: 7,
       title: "Reflection one",
-      targeting: "targeted" as const,
       completed: 4,
       expected: 8,
       completionRate: 50,
@@ -98,8 +97,7 @@ export const summary = {
     {
       assignmentId: 4,
       seasonId: 7,
-      title: "Targeted at nobody",
-      targeting: "targeted" as const,
+      title: "Nobody expected",
       completed: 0,
       expected: 0,
       completionRate: null,

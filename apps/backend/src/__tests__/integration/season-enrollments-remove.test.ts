@@ -26,6 +26,26 @@ jest.setTimeout(180000);
 beforeAll(seedEnrollmentFixtures);
 afterAll(teardownEnrollmentFixtures);
 
+/** A draft essay on a one-essay assignment: real part work, as the app writes it (never a bare Submission). */
+async function seedEssayWork(seasonId: number, studentUserId: number) {
+  const assignment = await db.assignment.create({
+    data: { seasonId, title: "Essay", parts: { create: [{ position: 0, kind: "ESSAY", prompt: "Why?" }] } },
+    select: { id: true, parts: { select: { id: true } } },
+  });
+  const submission = await db.submission.create({
+    data: { publicId: randomUUID(), assignmentId: assignment.id, studentUserId },
+  });
+  await db.assignmentPartWork.create({
+    data: {
+      publicId: randomUUID().slice(0, 10),
+      partId: assignment.parts[0]!.id,
+      submissionId: submission.id,
+      studentUserId,
+      text: "A start",
+    },
+  });
+}
+
 describe("DELETE /seasons/:id/enrollments/:userId", () => {
   const placed = async (status: Status) => {
     const target = await season(status);
@@ -86,10 +106,7 @@ describe("DELETE /seasons/:id/enrollments/:userId", () => {
 
   it("refuses has_work for a submission or an attempt", async () => {
     const withSubmission = await placed("DRAFT");
-    const assignment = await db.assignment.create({ data: { seasonId: withSubmission.target, title: "Essay" } });
-    await db.submission.create({
-      data: { publicId: randomUUID(), assignmentId: assignment.id, studentUserId: withSubmission.student.id },
-    });
+    await seedEssayWork(withSubmission.target, withSubmission.student.id);
     const first = await remove(withSubmission.target, withSubmission.student.id);
     expect(first.status).toBe(409);
     expect(first.body.error.code).toBe("has_work");
@@ -131,10 +148,7 @@ describe("DELETE /seasons/:id/enrollments/:userId", () => {
   it("ignores work in another season", async () => {
     const { target, student } = await placed("DRAFT");
     const elsewhere = await season("COMPLETED");
-    const assignment = await db.assignment.create({ data: { seasonId: elsewhere, title: "Essay" } });
-    await db.submission.create({
-      data: { publicId: randomUUID(), assignmentId: assignment.id, studentUserId: student.id },
-    });
+    await seedEssayWork(elsewhere, student.id);
     const session = await db.session.create({
       data: { seasonId: elsewhere, title: "One", startsAt: new Date(Date.UTC(2099, 0, 2)) },
     });

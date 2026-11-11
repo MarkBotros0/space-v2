@@ -89,7 +89,7 @@ describe("End season screen", () => {
       }),
     });
     renderStacked(<EndSeasonScreen />);
-    expect(await screen.findByText("6 submissions not reviewed")).toBeTruthy();
+    expect(await screen.findByText("6 essays waiting review")).toBeTruthy();
     expect(screen.getByText("1 quiz attempt not graded")).toBeTruthy();
     expect(screen.getByText("1 session without attendance")).toBeTruthy();
     expect(screen.queryByText("Passed")).toBeNull();

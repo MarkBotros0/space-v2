@@ -2,6 +2,7 @@
 # The return type of an exported function in another file (declaration emit needs the name, TS4058).
 apps/backend/src/lib/dashboard-figures.ts:StudentAssignmentSummaryFigures
 apps/backend/src/lib/dashboard-figures.ts:QuizRollupFigures
+apps/backend/src/lib/queries/assignments/part-work.ts:AnswerTally
 # A schema whose only use is the exported type derived from it (`typeof`); unexported, lint calls it unused.
 packages/shared/src/import/headers.ts:IMPORT_PROFILE_FIELDS
 packages/shared/src/enums.ts:quizQuestionTypeSchema

@@ -33,7 +33,7 @@ describe("super reads", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/check-in`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/video-questions`, 200],
       ["get", `/api/v1/assignments/${w.otherAssignmentId}`, 200],
-      ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 200],
+      ["get", `/api/v1/assignments/${w.assignmentId}/progress`, 200],
       ["get", `/api/v1/groups/${w.groupBId}/impact`, 200],
       ["get", `/api/v1/students/${w.ids.studentB}/notes`, 200],
       ["get", `/api/v1/submissions/${w.submissionBPublicId}`, 200],
@@ -56,7 +56,7 @@ describe("super reads", () => {
     await expectStatuses(app, w.tokens.super, [
       ["get", "/api/v1/me/season", 403],
       ["get", "/api/v1/me/profile", 403],
-      ["put", `/api/v1/submissions/by-assignment/${w.assignmentId}`, 403],
+      ["put", `/api/v1/assignments/${w.assignmentId}/parts/${w.essayPartId}/essay`, 403, { text: "x" }],
     ]);
   });
 });
@@ -74,7 +74,7 @@ describe("super writes", () => {
     const review = await request(app)
       .post(`/api/v1/submissions/${w.submissionBPublicId}/review`)
       .set({ authorization: `Bearer ${w.tokens.super}` })
-      .send({ feedback: "Reviewed by super" });
+      .send({ action: "reviewed", feedback: "Reviewed by super" });
     expect(review.status).toBe(200);
   });
 });

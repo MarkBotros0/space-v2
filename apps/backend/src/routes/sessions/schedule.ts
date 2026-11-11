@@ -102,7 +102,7 @@ export async function updateSession(req: Request, res: Response) {
     description: body.description ?? null,
   };
 
-  await editSessions(targets, fields, delta);
+  await editSessions(existing.seasonId, targets, fields, delta);
 
   if (delta !== 0) {
     const enrolled = await db.seasonEnrollment.findMany({
@@ -159,7 +159,7 @@ export async function deleteSession(req: Request, res: Response) {
   // after it commits. Never throws into the delete.
   const notice = await prepareSessionCancelledNotice(existing.seasonId, targetIds);
 
-  const removed = await deleteSessionsWithRecords(targetIds);
+  const removed = await deleteSessionsWithRecords(existing.seasonId, targetIds);
 
   if (removed.count > 0) await sendSessionCancelledNotice(notice);
   return apiOk(res, { deleted: removed.count });

@@ -63,7 +63,7 @@ describe("mentor reads", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/quizzes`, 403],
       ["get", `/api/v1/sessions/${w.sessionId}/video-questions`, 403],
       ["get", `/api/v1/sessions/${w.sessionId}/video-quiz/results`, 403],
-      ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 403],
+      ["get", `/api/v1/assignments/${w.assignmentId}/progress`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/roster`, 403],
       ["get", `/api/v1/seasons/${w.seasonId}/exports/manifest`, 403],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 403],
@@ -89,7 +89,12 @@ describe("mentor writes", () => {
 
   it("never reviews, marks attendance, grades or administers", async () => {
     await expectStatuses(app, w.tokens.mentor, [
-      ["post", `/api/v1/submissions/${w.submissionBPublicId}/review`, 403, { feedback: "Mentor verdict" }],
+      [
+        "post",
+        `/api/v1/submissions/${w.submissionBPublicId}/review`,
+        403,
+        { action: "reviewed", feedback: "Mentor verdict" },
+      ],
       [
         "post",
         `/api/v1/sessions/${w.sessionId}/attendance`,
@@ -112,7 +117,8 @@ describe("mentor writes", () => {
       ["post", "/api/v1/quizzes", 403, { seasonId: w.seasonId, title: "Mentor quiz", kind: "PAPER", maxScore: 10 }],
       ["patch", `/api/v1/groups/${w.groupAId}`, 403, { name: "Mentor group" }],
     ]);
-    expect((await db.submission.findUnique({ where: { publicId: w.submissionBPublicId } }))?.status).toBe("SUBMITTED");
+    const essay = await db.assignmentPartWork.findUnique({ where: { publicId: w.submissionBPublicId } });
+    expect(essay?.status).toBe("SUBMITTED");
     expect(await db.attendance.count({ where: { sessionId: w.sessionId } })).toBe(0);
   });
 });

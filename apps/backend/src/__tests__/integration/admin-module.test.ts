@@ -42,7 +42,7 @@ describe("reads a season admin is allowed", () => {
       ["get", `/api/v1/sessions/${w.sessionId}/check-in`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/video-questions`, 200],
       ["get", `/api/v1/sessions/${w.sessionId}/video-quiz/results`, 200],
-      ["get", `/api/v1/assignments/${w.assignmentId}/tracker`, 200],
+      ["get", `/api/v1/assignments/${w.assignmentId}/progress`, 200],
       ["get", `/api/v1/groups/${w.groupAId}`, 200],
       ["get", `/api/v1/groups/${w.groupBId}`, 200],
       ["get", `/api/v1/groups/${w.groupAId}/impact`, 200],
@@ -144,13 +144,14 @@ describe("season-admin writes", () => {
     expect(res.body.data.saved).toBe(2);
   });
 
-  it("reviews a submission from either group", async () => {
+  it("reviews an essay from either group", async () => {
     const res = await request(app)
       .post(`/api/v1/submissions/${w.submissionBPublicId}/review`)
       .set(asAdmin())
-      .send({ feedback: "Well done" });
+      .send({ action: "reviewed", feedback: "Well done" });
     expect(res.status).toBe(200);
-    expect((await db.submission.findUnique({ where: { publicId: w.submissionBPublicId } }))?.status).toBe("REVIEWED");
+    const essay = await db.assignmentPartWork.findUnique({ where: { publicId: w.submissionBPublicId } });
+    expect(essay?.status).toBe("REVIEWED");
   });
 
   it("renames a group in their season", async () => {

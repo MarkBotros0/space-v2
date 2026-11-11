@@ -3,10 +3,16 @@ import request from "supertest";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
+import {
+  createAssignmentWithParts,
+  seedEssays,
+  seedTextWork,
+  seedVideoWork,
+  setSubmitted,
+} from "./assignment-reads-setup";
 
-// 60s, not the Jest default: the shared Neon staging database autosuspends, so
-// the first query after idle costs ~18s and this suite's beforeAll performs
-// several sequential writes.
+// 60s, not the Jest default: the first query after idle can be slow and this
+// suite's beforeAll performs several sequential writes.
 jest.setTimeout(60000);
 
 const app = createApp();
@@ -14,8 +20,11 @@ const app = createApp();
 let seasonId: number;
 let groupAId: number;
 let groupBId: number;
-let allGroupsAssignmentId: number;
-let targetedAssignmentId: number;
+let threePartId: number;
+let videoPartId: number;
+let essayPartId: number;
+let forumPartId: number;
+let undatedId: number;
 let superToken: string;
 let studentToken: string;
 let otherStudentToken: string;
@@ -23,6 +32,7 @@ let outsiderToken: string;
 let leaderToken: string;
 let movedToken: string;
 let studentUserId: number;
+let otherStudentUserId: number;
 let movedUserId: number;
 
 beforeAll(async () => {
@@ -36,17 +46,10 @@ beforeAll(async () => {
   const otherStudent = await createTestUser("other", "STUDENT");
   const outsider = await createTestUser("outsider", "STUDENT");
   studentUserId = student.id;
+  otherStudentUserId = otherStudent.id;
 
-  const groupA = await db.group.create({
-    data: { seasonId, name: "Group A", students: { create: { studentUserId: student.id } } },
-    select: { id: true },
-  });
-  groupAId = groupA.id;
-  const groupB = await db.group.create({
-    data: { seasonId, name: "Group B", students: { create: { studentUserId: otherStudent.id } } },
-    select: { id: true },
-  });
-  groupBId = groupB.id;
+  groupAId = (await db.group.create({ data: { seasonId, name: "Group A" }, select: { id: true } })).id;
+  groupBId = (await db.group.create({ data: { seasonId, name: "Group B" }, select: { id: true } })).id;
 
   await db.seasonEnrollment.createMany({
     data: [
@@ -55,41 +58,31 @@ beforeAll(async () => {
     ],
   });
 
-  const openToAll = await db.assignment.create({
-    data: {
+  // Video, essay, forum: the order the admin set.
+  const three = await createAssignmentWithParts(
+    {
       seasonId,
-      title: "Open To All",
-      description: "Everyone does this one",
-      isAllGroups: true,
+      title: "Luke 15",
+      description: "Watch, write, share",
       dueAt: new Date("2099-04-01T00:00:00.000Z"),
     },
-    select: { id: true },
-  });
-  allGroupsAssignmentId = openToAll.id;
+    [
+      { kind: "VIDEO", title: "Luke 15 talk", durationSeconds: 1080, questions: 2 },
+      { kind: "ESSAY", prompt: "What changed?", minWords: 3, maxWords: 300 },
+      { kind: "FORUM", prompt: "Share one idea" },
+    ],
+  );
+  threePartId = three.id;
+  [videoPartId, essayPartId, forumPartId] = three.partIds as [number, number, number];
+  undatedId = (await createAssignmentWithParts({ seasonId, title: "No date" })).id;
 
-  const targeted = await db.assignment.create({
-    data: {
-      seasonId,
-      title: "Group B Only",
-      isAllGroups: false,
-      targets: { create: { groupId: groupBId } },
-    },
-    select: { id: true },
-  });
-  targetedAssignmentId = targeted.id;
-
-  // A leader of Group B only, for the tracker's scoping.
+  // A leader of Group B only, for the progress view's scoping.
   const leader = await createTestUser("leader", "LEADER");
   await db.groupLeader.create({ data: { groupId: groupBId, userId: leader.id } });
 
-  // A student who has since moved on. Their SeasonEnrollment for *this* season
-  // still records Group B — the historic, per-season fact — while their single
-  // GroupStudent row points at a group in a later season, and they have no
-  // GroupStudent row for this one.
-  //
-  // This is the divergence ruling C9 exists for, and the fixtures above cannot
-  // expose it: they keep both tables in agreement, so a GroupStudent-based
-  // lookup and a SeasonEnrollment-based one give the same answer.
+  // A student who has since moved on: their enrolment for *this* season still
+  // records Group B, while their GroupStudent row points at a later season's
+  // group. Ruling C9: this season's enrolment is what counts.
   const laterSeason = await createTestSeason({ year: 2100 });
   const laterGroup = await db.group.create({
     data: { seasonId: laterSeason.id, name: "Later Group" },
@@ -101,6 +94,17 @@ beforeAll(async () => {
   await db.seasonEnrollment.create({
     data: { seasonId, studentUserId: moved.id, groupId: groupBId, status: "ACTIVE" },
   });
+
+  // The student: 6 of 18 minutes watched, one of two questions answered, a
+  // draft essay inside the range, the forum post up.
+  await seedVideoWork(threePartId, videoPartId, student.id, 360, { answered: 1 });
+  await seedTextWork(threePartId, essayPartId, student.id, "DRAFT", { text: "I came home again" });
+  await seedTextWork(threePartId, forumPartId, student.id, "SUBMITTED");
+  // The other student: everything done and submitted, the essay waiting review.
+  await seedVideoWork(threePartId, videoPartId, otherStudent.id, 1000, { answered: 2, correct: 1 });
+  await seedTextWork(threePartId, essayPartId, otherStudent.id, "SUBMITTED", { text: "The son came home" });
+  await seedTextWork(threePartId, forumPartId, otherStudent.id, "SUBMITTED");
+  await setSubmitted(threePartId, otherStudent.id, new Date("2099-03-01T10:00:00.000Z"));
 
   superToken = await login(app, superUser.email);
   studentToken = await login(app, student.email);
@@ -115,241 +119,232 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
+const get = (path: string, token: string) => request(app).get(`/api/v1${path}`).set("authorization", `Bearer ${token}`);
+
 describe("GET /api/v1/seasons/:id/assignments", () => {
-  it("returns the staff shape with submission and expected counts", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/assignments`)
-      .set("authorization", `Bearer ${superToken}`);
+  it("returns the staff shape: every participant expected, submitted counted by Submit", async () => {
+    const res = await get(`/seasons/${seasonId}/assignments`, superToken);
 
     expect(res.status).toBe(200);
     expect(res.body.data.assignments).toHaveLength(2);
-    const all = res.body.data.assignments.find((a: { id: number }) => a.id === allGroupsAssignmentId);
-    expect(all).toEqual({
-      id: allGroupsAssignmentId,
-      title: "Open To All",
+    const three = res.body.data.assignments.find((a: { id: number }) => a.id === threePartId);
+    expect(three).toEqual({
+      id: threePartId,
+      title: "Luke 15",
       dueAt: expect.any(String),
       // 2099-04-01T00:00Z is 02:00 on the 1st in Cairo (UTC+2): the org day.
       dueOrgDay: "2099-04-01",
-      // Due 2099 — derived server-side, never by the reader (ruling C4).
       isOverdue: false,
-      isAllGroups: true,
-      targetGroupIds: [],
-      submissionCount: 0,
-      // All three ACTIVE enrolments in the season.
+      partsCount: 3,
+      // Only the other student tapped Submit.
+      submissionCount: 1,
+      // All three ACTIVE enrolments: an assignment is for the whole season.
       expectedCount: 3,
       seasonCode: expect.any(String),
     });
-
-    const targeted = res.body.data.assignments.find((a: { id: number }) => a.id === targetedAssignmentId);
-    // Group B's two enrolments: the other student, and the moved student whose
-    // GroupStudent row points elsewhere. Counting GroupStudent would find one.
-    expect(targeted.expectedCount).toBe(2);
-    expect(targeted.targetGroupIds).toEqual([groupBId]);
-    expect(targeted.dueOrgDay).toBeNull(); // no due date
+    const undated = res.body.data.assignments.find((a: { id: number }) => a.id === undatedId);
+    expect(undated).toMatchObject({ dueOrgDay: null, partsCount: 1, submissionCount: 0, expectedCount: 3 });
   });
 
-  it("returns the student shape, filtered to assignments that apply to them", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/assignments`)
-      .set("authorization", `Bearer ${studentToken}`);
+  it("gives a student every assignment of the season with how many parts are done", async () => {
+    const res = await get(`/seasons/${seasonId}/assignments`, studentToken);
 
     expect(res.status).toBe(200);
-    // The Group-B-only assignment must not appear for a Group A student.
-    expect(res.body.data.assignments).toEqual([
-      {
-        id: allGroupsAssignmentId,
-        title: "Open To All",
-        dueAt: expect.any(String),
-        dueOrgDay: "2099-04-01",
-        isOverdue: false,
-        status: "PENDING",
-        reviewedAt: null,
-        submittedAt: null,
-      },
-    ]);
-  });
-
-  it("includes the targeted assignment for the student it targets", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/assignments`)
-      .set("authorization", `Bearer ${otherStudentToken}`);
-
-    expect(res.status).toBe(200);
-    const ids = res.body.data.assignments.map((a: { id: number }) => a.id);
-    expect(ids).toEqual(expect.arrayContaining([allGroupsAssignmentId, targetedAssignmentId]));
+    expect(res.body.data.assignments.map((a: { id: number }) => a.id)).toEqual([threePartId, undatedId]);
+    // Video not watched far enough, essay in range (a draft counts before Submit), forum posted.
+    expect(res.body.data.assignments[0]).toEqual({
+      id: threePartId,
+      title: "Luke 15",
+      dueAt: expect.any(String),
+      dueOrgDay: "2099-04-01",
+      isOverdue: false,
+      status: "DRAFT",
+      reviewedAt: null,
+      submittedAt: null,
+      partsTotal: 3,
+      partsDone: 2,
+      returned: false,
+      hasEssay: true,
+    });
+    expect(res.body.data.assignments[1]).toMatchObject({ status: "PENDING", partsTotal: 1, partsDone: 0 });
   });
 
   it("returns 403 for a user with no access to the season", async () => {
-    const res = await request(app)
-      .get(`/api/v1/seasons/${seasonId}/assignments`)
-      .set("authorization", `Bearer ${outsiderToken}`);
+    const res = await get(`/seasons/${seasonId}/assignments`, outsiderToken);
     expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/v1/assignments/:id", () => {
-  it("returns detail for a SUPER with mySubmission null", async () => {
-    const res = await request(app)
-      .get(`/api/v1/assignments/${allGroupsAssignmentId}`)
-      .set("authorization", `Bearer ${superToken}`);
+  it("returns the detail with parts in order and no `my` for staff", async () => {
+    const res = await get(`/assignments/${threePartId}`, superToken);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toMatchObject({
-      id: allGroupsAssignmentId,
+      id: threePartId,
       seasonId,
-      title: "Open To All",
-      description: "Everyone does this one",
-      isAllGroups: true,
-      type: "STANDARD",
-      groupIds: [],
-      mySubmission: null,
+      title: "Luke 15",
+      description: "Watch, write, share",
       dueOrgDay: "2099-04-01",
       dueOrgTime: "02:00",
+      reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+      // The season has no session after the assignment was published.
+      reminderLine: "No session after it was published — no reminder",
+      my: null,
       canManage: true,
+      readOnly: false,
     });
+    expect(res.body.data.parts.map((p: { kind: string }) => p.kind)).toEqual(["VIDEO", "ESSAY", "FORUM"]);
+    expect(res.body.data.parts[0]).toMatchObject({ title: "Luke 15 talk", videoId: "dQw4w9WgXcQ", position: 0 });
+    expect(res.body.data).not.toHaveProperty("isAllGroups");
+    expect(res.body.data).not.toHaveProperty("groupIds");
   });
 
   it("returns null org due fields when there is no due date", async () => {
-    const res = await request(app)
-      .get(`/api/v1/assignments/${targetedAssignmentId}`)
-      .set("authorization", `Bearer ${superToken}`);
+    const res = await get(`/assignments/${undatedId}`, superToken);
     expect(res.status).toBe(200);
     expect(res.body.data.dueOrgDay).toBeNull();
     expect(res.body.data.dueOrgTime).toBeNull();
   });
 
-  it("returns a student's own submission summary", async () => {
-    const submission = await db.submission.create({
-      data: {
-        assignmentId: allGroupsAssignmentId,
-        studentUserId,
-        publicId: `space-v2-test-sub-${allGroupsAssignmentId}`,
-        status: "DRAFT",
+  it("a student sees parts in order with their own progress", async () => {
+    const res = await get(`/assignments/${threePartId}`, studentToken);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.canManage).toBe(false);
+    expect(res.body.data.my.submittedAt).toBeNull();
+    expect(res.body.data.my.parts).toEqual([
+      {
+        partId: videoPartId,
+        kind: "VIDEO",
+        status: "IN_PROGRESS",
+        video: { watchedSeconds: 360, durationSeconds: 1080, answered: 1, questionCount: 2, correct: 1 },
       },
-      select: { publicId: true },
-    });
-
-    const res = await request(app)
-      .get(`/api/v1/assignments/${allGroupsAssignmentId}`)
-      .set("authorization", `Bearer ${studentToken}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.mySubmission).toMatchObject({
-      publicId: submission.publicId,
-      status: "DRAFT",
-      submittedAt: null,
-      reviewedAt: null,
-    });
+      {
+        partId: essayPartId,
+        kind: "ESSAY",
+        status: "DONE",
+        essay: { publicId: expect.any(String), wordCount: 4, reviewStatus: "DRAFT", feedback: null },
+      },
+      { partId: forumPartId, kind: "FORUM", status: "DONE", forum: { posted: true } },
+    ]);
   });
 
-  it("refuses a student an assignment targeted at another group", async () => {
-    const res = await request(app)
-      .get(`/api/v1/assignments/${targetedAssignmentId}`)
-      .set("authorization", `Bearer ${studentToken}`);
+  it("lets every season participant read it, whatever their group, through this season's enrolment", async () => {
+    for (const token of [otherStudentToken, movedToken]) {
+      const res = await get(`/assignments/${threePartId}`, token);
+      expect(res.status).toBe(200);
+      expect(res.body.data.readOnly).toBe(false);
+    }
+  });
+
+  it("refuses a student with no place in the season", async () => {
+    const res = await get(`/assignments/${threePartId}`, outsiderToken);
     expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("forbidden");
-  });
-
-  it("allows the targeted group's student through", async () => {
-    const res = await request(app)
-      .get(`/api/v1/assignments/${targetedAssignmentId}`)
-      .set("authorization", `Bearer ${otherStudentToken}`);
-    expect(res.status).toBe(200);
-    expect(res.body.data.id).toBe(targetedAssignmentId);
-    // groupIds is null here by design — the targeting check that used to need
-    // it on the client now runs server-side. See the payload-narrowing test
-    // below, which pins both halves of that.
-    expect(res.body.data.groupIds).toBeNull();
-  });
-
-  it("resolves targeting from the season's enrolment, not the student's current group", async () => {
-    // This student's GroupStudent row points at a group in a later season; their
-    // enrolment in *this* season records Group B, which the assignment targets.
-    // Reading membership from GroupStudent denies them an assignment they were
-    // genuinely given — the failure ruling C9 describes.
-    const res = await request(app)
-      .get(`/api/v1/assignments/${targetedAssignmentId}`)
-      .set("authorization", `Bearer ${movedToken}`);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.id).toBe(targetedAssignmentId);
-  });
-
-  it("withholds the target group ids from a student and sends them to staff", async () => {
-    const student = await request(app)
-      .get(`/api/v1/assignments/${targetedAssignmentId}`)
-      .set("authorization", `Bearer ${otherStudentToken}`);
-    expect(student.status).toBe(200);
-    expect(student.body.data.groupIds).toBeNull();
-    expect(student.body.data.canManage).toBe(false);
-
-    const staff = await request(app)
-      .get(`/api/v1/assignments/${targetedAssignmentId}`)
-      .set("authorization", `Bearer ${superToken}`);
-    expect(staff.body.data.groupIds).toEqual([groupBId]);
-    expect(staff.body.data.canManage).toBe(true);
   });
 
   it("returns 400 for a non-numeric id and 404 for a missing one", async () => {
-    const bad = await request(app).get("/api/v1/assignments/abc").set("authorization", `Bearer ${superToken}`);
-    expect(bad.status).toBe(400);
-
-    const missing = await request(app)
-      .get("/api/v1/assignments/2147483000")
-      .set("authorization", `Bearer ${superToken}`);
-    expect(missing.status).toBe(404);
+    expect((await get("/assignments/abc", superToken)).status).toBe(400);
+    expect((await get("/assignments/2147483000", superToken)).status).toBe(404);
   });
 });
 
-describe("GET /api/v1/assignments/:id/tracker", () => {
-  it("lists every targeted student, including those who have done nothing", async () => {
-    const res = await request(app)
-      .get(`/api/v1/assignments/${targetedAssignmentId}/tracker`)
-      .set("authorization", `Bearer ${superToken}`);
+describe("GET /api/v1/assignments/:id/progress", () => {
+  type Row = { studentUserId: number; name: string; submittedAt: string | null; parts: { status: string }[] };
+
+  it("lists every participant, unfinished first, then by name", async () => {
+    const res = await get(`/assignments/${threePartId}/progress`, superToken);
 
     expect(res.status).toBe(200);
-    // Group B holds the other student and the moved student. Neither has a
-    // Submission row, and both must still appear — a tracker built from
-    // submissions rather than enrolments shows nobody at all.
-    expect(res.body.data.rows).toHaveLength(2);
-    const ids = res.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId);
-    expect(ids).toContain(movedUserId);
-    expect(ids).not.toContain(studentUserId);
-    expect(res.body.data.rows.every((r: { status: string }) => r.status === "PENDING")).toBe(true);
-    expect(res.body.data.expectedCount).toBe(res.body.data.rows.length);
-    expect(res.body.data.submittedCount).toBe(0);
+    const rows = res.body.data.rows as Row[];
+    // "Test moved" and "Test student" haven't submitted; "Test other" has.
+    expect(rows.map((r) => r.studentUserId)).toEqual([movedUserId, studentUserId, otherStudentUserId]);
+    expect(rows[0]!.parts.map((p) => p.status)).toEqual(["NOT_STARTED", "NOT_STARTED", "NOT_STARTED"]);
+    expect(rows[2]!.submittedAt).not.toBeNull();
   });
 
-  it("orders rows by group name, then student name (REG-84, v1 order)", async () => {
-    const res = await request(app)
-      .get(`/api/v1/assignments/${allGroupsAssignmentId}/tracker`)
-      .set("authorization", `Bearer ${superToken}`);
-    expect(res.status).toBe(200);
-    const rows = res.body.data.rows as { groupName: string | null; name: string | null }[];
-    const pairs = rows.map((r) => `${r.groupName}/${r.name}`);
-    // Name-only order would put "Test moved" first and "Test student" last.
-    expect(pairs).toEqual(["Group A/Test student", "Group B/Test moved", "Group B/Test other"]);
-    // "Test student" holds a DRAFT here (seeded above). A draft exists only for
-    // its author, so staff see that student as PENDING with nothing to open.
-    expect(res.body.data.rows[0]).toMatchObject({ status: "PENDING", submissionPublicId: null });
+  it("progress says how far into each video, and keeps a draft essay private", async () => {
+    const res = await get(`/assignments/${threePartId}/progress`, superToken);
+    const rows = res.body.data.rows as Array<{ studentUserId: number; parts: Record<string, unknown>[] }>;
+    const mine = rows.find((r) => r.studentUserId === studentUserId)!;
+    expect(mine.parts[0]).toMatchObject({
+      status: "IN_PROGRESS",
+      video: { watchedSeconds: 360, durationSeconds: 1080 },
+    });
+    // The draft is the student's alone: staff see the essay as not started.
+    expect(mine.parts[1]).toEqual({ partId: essayPartId, kind: "ESSAY", status: "NOT_STARTED" });
+    expect(mine.parts[2]).toMatchObject({ status: "DONE", forum: { posted: true } });
+
+    const other = rows.find((r) => r.studentUserId === otherStudentUserId)!;
+    expect(other.parts[0]).toMatchObject({
+      status: "DONE",
+      video: { watchedSeconds: 1000, answered: 2, questionCount: 2, correct: 1 },
+    });
+    expect(other.parts[1]).toMatchObject({ status: "DONE", essay: { reviewStatus: "SUBMITTED" } });
   });
 
-  it("narrows the roster to a leader's own groups", async () => {
-    // The leader leads Group B. The all-groups assignment covers the whole
-    // season, but they may only see their own students' names and addresses.
-    const res = await request(app)
-      .get(`/api/v1/assignments/${allGroupsAssignmentId}/tracker`)
-      .set("authorization", `Bearer ${leaderToken}`);
+  it("a leader's progress lists only their groups, unfinished first", async () => {
+    const res = await get(`/assignments/${threePartId}/progress`, leaderToken);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.rows.every((r: { groupId: number }) => r.groupId === groupBId)).toBe(true);
-    expect(JSON.stringify(res.body)).not.toContain("space-v2-test-student");
+    // Group B: the moved student (nothing done) before the other student (submitted).
+    expect((res.body.data.rows as Row[]).map((r) => r.studentUserId)).toEqual([movedUserId, otherStudentUserId]);
   });
 
-  it("refuses a student outright", async () => {
-    const res = await request(app)
-      .get(`/api/v1/assignments/${allGroupsAssignmentId}/tracker`)
-      .set("authorization", `Bearer ${studentToken}`);
-    expect(res.status).toBe(403);
+  it("refuses a student outright, and the old tracker is gone", async () => {
+    expect((await get(`/assignments/${threePartId}/progress`, studentToken)).status).toBe(403);
+    expect((await get(`/assignments/${threePartId}/tracker`, superToken)).status).toBe(404);
+  });
+});
+
+describe("a returned essay, and a deleted participant", () => {
+  it("shows a returned essay as RETURNED with its feedback, and the list row says returned", async () => {
+    const returned = await createAssignmentWithParts({ seasonId, title: "Returned one" });
+    await seedEssays([
+      {
+        assignmentId: returned.id,
+        studentUserId,
+        status: "RETURNED",
+        text: "Too short",
+        feedback: "Say more about the father",
+      },
+    ]);
+
+    const detail = await get(`/assignments/${returned.id}`, studentToken);
+    expect(detail.body.data.my.parts).toEqual([
+      {
+        partId: returned.partIds[0],
+        kind: "ESSAY",
+        status: "RETURNED",
+        essay: {
+          publicId: expect.any(String),
+          wordCount: 2,
+          reviewStatus: "RETURNED",
+          feedback: "Say more about the father",
+        },
+      },
+    ]);
+    const list = await get(`/seasons/${seasonId}/assignments`, studentToken);
+    const row = list.body.data.assignments.find((a: { id: number }) => a.id === returned.id);
+    expect(row).toMatchObject({ status: "RETURNED", returned: true, partsDone: 0, submittedAt: null });
+
+    await db.assignment.update({ where: { id: returned.id }, data: { deletedAt: new Date() } });
+  });
+
+  it("drops a deleted participant from the list's counts and the progress rows alike", async () => {
+    const gone = await createTestUser("gone", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId, studentUserId: gone.id, groupId: groupAId, status: "ACTIVE" },
+    });
+    await setSubmitted(threePartId, gone.id, new Date());
+    await db.user.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
+
+    const list = await get(`/seasons/${seasonId}/assignments`, superToken);
+    const three = list.body.data.assignments.find((a: { id: number }) => a.id === threePartId);
+    const progress = await get(`/assignments/${threePartId}/progress`, superToken);
+    // One denominator: 3 live participants, 1 of them submitted.
+    expect(three).toMatchObject({ expectedCount: 3, submissionCount: 1 });
+    expect(progress.body.data.rows).toHaveLength(three.expectedCount);
+    expect(progress.body.data.rows.map((r: { studentUserId: number }) => r.studentUserId)).not.toContain(gone.id);
   });
 });

@@ -25,7 +25,7 @@ export function VideoSection({ detail }: { detail: SessionDetail }) {
 
   if (detail.youtubeUrl === null) return null;
 
-  if (canAuthorVideo) return <VideoQuestionsEditor sessionId={detail.id} />;
+  if (canAuthorVideo) return <VideoQuestionsEditor owner={{ kind: "session", sessionId: detail.id }} />;
   if (canSeeResults) {
     return (
       <View>

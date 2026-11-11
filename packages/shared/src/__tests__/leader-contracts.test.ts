@@ -1,4 +1,4 @@
-import { attendanceRosterRowSchema, reviewSubmissionResponseSchema, saveAttendanceResponseSchema } from "../index";
+import { attendanceRosterRowSchema, reviewEssayResponseSchema, saveAttendanceResponseSchema } from "../index";
 
 describe("attendanceRosterRowSchema", () => {
   it("parses a row exactly as the backend's AttendanceRosterEntry emits it", () => {
@@ -36,11 +36,9 @@ describe("saveAttendanceResponseSchema", () => {
   });
 });
 
-describe("reviewSubmissionResponseSchema", () => {
+describe("reviewEssayResponseSchema", () => {
   it("parses the review route's payload", () => {
-    expect(reviewSubmissionResponseSchema.parse({ reviewed: true, returnedForRevision: false })).toEqual({
-      reviewed: true,
-      returnedForRevision: false,
-    });
+    expect(reviewEssayResponseSchema.parse({ reviewStatus: "RETURNED" })).toEqual({ reviewStatus: "RETURNED" });
+    expect(reviewEssayResponseSchema.safeParse({ reviewStatus: "DRAFT" }).success).toBe(false);
   });
 });

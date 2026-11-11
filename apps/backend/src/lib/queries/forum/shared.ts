@@ -16,33 +16,56 @@ export function displayNameFor(name: string | null): string {
   return trimmed ? trimmed : "Group member";
 }
 
-interface ForumAssignmentRow {
+/** A FORUM part with what the forum surface needs of it and its assignment. */
+export interface ForumPartRow {
   id: number;
+  assignmentId: number;
   seasonId: number;
   dueAt: Date | null;
-  forumMinWords: number | null;
-  forumAllowComments: boolean;
-  forumPostToRead: boolean;
+  prompt: string;
+  minWords: number | null;
+  allowComments: boolean;
+  postToRead: boolean;
 }
 
 /**
- * The one existence check for the forum surface. `type: "FORUM"` in the where
- * is what makes every forum endpoint refuse a standard assignment (404) rather
- * than serve an empty thread — and because routes call this before
+ * The one existence check for the forum surface: the part must be the FORUM
+ * part of this live assignment. That is what makes every forum endpoint refuse
+ * an essay or video part, or a part named under another assignment (404),
+ * rather than serve an empty thread — and because routes call this before
  * `forumAudienceFor`, the answer is 404 for every caller, never a 403 that
  * depends on who is asking.
  */
-export async function loadForumAssignment(assignmentId: number): Promise<ForumAssignmentRow | null> {
-  return db.assignment.findFirst({
-    where: { id: assignmentId, ...liveAssignment, type: "FORUM" },
+export async function loadForumPart(assignmentId: number, partId: number): Promise<ForumPartRow | null> {
+  const part = await db.assignmentPart.findFirst({
+    where: { id: partId, assignmentId, kind: "FORUM", assignment: liveAssignment },
     select: {
       id: true,
-      seasonId: true,
-      dueAt: true,
-      forumMinWords: true,
-      forumAllowComments: true,
-      forumPostToRead: true,
+      prompt: true,
+      minWords: true,
+      allowComments: true,
+      postToRead: true,
+      assignment: { select: { seasonId: true, dueAt: true } },
     },
+  });
+  if (!part) return null;
+  return {
+    id: part.id,
+    assignmentId,
+    seasonId: part.assignment.seasonId,
+    dueAt: part.assignment.dueAt,
+    prompt: part.prompt ?? "",
+    minWords: part.minWords,
+    allowComments: part.allowComments,
+    postToRead: part.postToRead,
+  };
+}
+
+/** The caller's own forum work on this part, if any (looked up by caller, never by a client id, R3). */
+export function ownForumWork(partId: number, studentUserId: number) {
+  return db.assignmentPartWork.findUnique({
+    where: { partId_studentUserId: { partId, studentUserId } },
+    select: { publicId: true, text: true, status: true },
   });
 }
 

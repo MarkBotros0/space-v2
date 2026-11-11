@@ -26,11 +26,11 @@ Paths are under `apps/mobile/` unless written in full. A screen is four layers; 
 | Groups | `(tabs)/groups.tsx`, `group/` | `src/screens/groups-admin/`, `leader-groups/`, `group-form/`, `group-import/` | `use-groups.ts`, `use-group-admin.ts`, `use-import.ts` |
 | Students and community | `(tabs)/students/`, `(tabs)/community.tsx`, `student/`, `students/new.tsx` | `src/screens/students-list/`, `student-detail/` (shared by staff and mentor pages), `student-admin/`, `community/` | `use-students/`, `use-users.ts` |
 | Users and import | `user/`, `users/` | `src/screens/user-import/`, `user-form/` | `use-users.ts`, `use-import.ts` |
-| Assignments and submissions | `assignment/`, `assignments.tsx`, `submission/`, `(tabs)/submissions.tsx`, `(tabs)/work.tsx` | `src/screens/assignment-form/`, `assignment-detail/`, `submission-review/`, `staff-queue/`, `staff-work/`, `work/`, `leader-submissions/` | `use-assignments.ts`, `use-assignment-writes.ts`, `use-submission.ts`, `use-submission-queue.ts` |
+| Assignments and submissions (`docs/rules/assignments.md`) | `assignment/` (`assignment/[id]/index.tsx`: the student's checklist or the staff page with progress; `assignment/[id]/part/[partId].tsx`: one part; `assignment/new.tsx`, `assignment/[id]/edit.tsx`), `assignments.tsx`, `submission/` (one essay's review), `(tabs)/submissions.tsx`, `(tabs)/work.tsx` | `src/screens/assignment-form/` (Details and Parts tabs, `assignment-form/part-sheets/`, `assignment-form/video-preview.tsx`), `assignment-detail/` (`assignment-detail/student-assignment.tsx` checklist, `assignment-detail/video-part-screen.tsx`, `assignment-detail/essay-part-screen.tsx`, `assignment-detail/forum-part-screen.tsx`, `assignment-detail/staff-assignment.tsx`, `assignment-detail/assignment-progress.tsx`; pure models `assignment-detail/essay-model.ts`, `assignment-detail/progress-model.ts`), `submission-review/`, `staff-queue/`, `staff-work/`, `work/`, `leader-submissions/` | `use-assignments.ts` (`useAssignmentProgress` too), `use-assignment-writes.ts`, `use-submission.ts` (essay draft, hand-in, Submit, review), `use-submission-queue.ts`, `use-video-quiz.ts` (`usePartVideo`, `useSavePartVideoProgress`, `useSubmitPartVideoAnswer`), `use-forum.ts` (the forum part), `use-youtube-meta.ts` |
 | Quizzes | `quiz/`, `quizzes.tsx` | `src/screens/quiz-detail/`, `quiz-edit/`, `quiz-grade/` | `use-quizzes/`, `use-quiz-authoring.ts`, `use-session-quizzes.ts` |
-| Video questions | `session/` | `src/screens/video-quiz/`, `src/lib/video-question-form.ts` | `use-video-quiz.ts` |
+| Video questions | `session/`, `assignment/` (a video part) | `src/screens/video-quiz/` (player, track and question editor, for a session or a video part: `VideoOwner`), `src/lib/video-question-form.ts` | `use-video-quiz.ts` |
 | Announcements and polls | `announcements/` | `src/screens/announcements/` (poll in `src/screens/announcements/poll/`) | `use-announcements.ts` |
-| Forum | `session/` | `src/screens/forum/` | `use-forum.ts` |
+| Forum | `assignment/[id]/part/` (an assignment's forum part) | `src/screens/forum/` | `use-forum.ts` |
 | Notes and follow-ups | `(tabs)/notes.tsx`, `(tabs)/follow-ups.tsx` | `src/screens/staff-notes/`, `mentor/` | `use-notes.ts`, `use-follow-ups.ts` |
 | Reports and exports | `reports.tsx`, `attention/` | `src/screens/reports/`, `attention/`, charts in `src/design/charts/` | `use-reports.ts`, `use-engagement.ts`, `use-report-export.ts` |
 | Events | `events.tsx`, `event/` | `src/screens/events/` | `use-events.ts` |
@@ -97,7 +97,11 @@ keys are hierarchical factories in `src/lib/query-keys.ts`; hooks live in
 `src/hooks/` and **parse responses with a Zod schema from `packages/shared`**
 rather than casting, so a backend drift fails at the boundary. A hook calls `apiGet(url, schema)` / `apiSend(method, url, body, schema)`
 (`src/lib/api-request.ts`); an error is read with `apiErrorStatus` / `apiErrorCode` (`src/lib/api-error.ts`), and
-only the API plumbing (`api-client`, `api-error`, `auth-error`) imports axios. Queries
+only the API plumbing (`api-client`, `api-error`, `auth-error`) imports axios. **The one fetch that
+isn't our API** is YouTube's oEmbed, through `react-native-youtube-iframe`'s `getYoutubeMeta` in
+`src/hooks/use-youtube-meta.ts`: the assignment form's video part defaults its title to YouTube's.
+It is best effort (no retry; a failure only means the author types the title); add no other
+third-party call without saying so here. Queries
 depending on `scopes.activeSeasonId` (or any nullable id) must pass `enabled`
 — and guard manual `refetch()` too, since `enabled` only gates the automatic
 run. Map states to the primitives: `RouteSkeleton`, `RouteError` with `onRetry`

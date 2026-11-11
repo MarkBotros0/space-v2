@@ -22,6 +22,11 @@ const assignment = (id: number, over: Record<string, unknown> = {}) => ({
   isOverdue: false,
   status: "PENDING",
   reviewedAt: null,
+  submittedAt: null,
+  partsTotal: 1,
+  partsDone: 0,
+  returned: over.status === "RETURNED",
+  hasEssay: true,
   ...over,
 });
 const quiz = (quizId: number, over: Record<string, unknown> = {}) => ({
@@ -134,10 +139,12 @@ describe("My work: what to do", () => {
   });
 
   it("the chip reads the server's org day and flag, never the device clock", async () => {
-    serve(routes([assignment(1), assignment(2, { status: "DRAFT", isOverdue: true })]));
+    serve(routes([assignment(1), assignment(2, { status: "DRAFT", isOverdue: true, partsTotal: 3, partsDone: 1 })]));
     renderWithProviders(<WorkScreen />);
     expect(await screen.findByText("Due in 2 days")).toBeTruthy();
-    expect(screen.getByText("In progress · Due Mar 3, 2099")).toBeTruthy();
+    // The parts note and the due date each take their own line.
+    expect(screen.getByText("1 of 3 done")).toBeTruthy();
+    expect(screen.getAllByText("Due Mar 3, 2099").length).toBeGreaterThan(0);
   });
 
   it("rows open the assignment and the quiz", async () => {

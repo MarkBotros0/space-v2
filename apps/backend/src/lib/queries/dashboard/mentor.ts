@@ -36,11 +36,19 @@ const FEED_STUDYING_ALUMNUS = {
  * The at-risk list is NOT here: it is GET /reports/engagement (D17).
  */
 export async function loadMentorDashboard() {
-  const openAssignment = { ...liveAssignment, season: liveSeason };
-  const submissionAuthor = [
+  // Essays, one event per student per essay: the review screen opens one.
+  const openEssay = { part: { kind: "ESSAY" as const, assignment: { ...liveAssignment, season: liveSeason } } };
+  const essayAuthor = [
     { studentUser: FEED_STUDENT },
-    { studentUser: FEED_STUDYING_ALUMNUS, assignment: { season: LIVE_WIDE_SEASON } },
+    { studentUser: FEED_STUDYING_ALUMNUS, part: { assignment: { season: LIVE_WIDE_SEASON } } },
   ];
+  const essaySelect = {
+    id: true,
+    publicId: true,
+    studentUserId: true,
+    studentUser: { select: { name: true } },
+    part: { select: { assignment: { select: { title: true } } } },
+  } as const;
   const [marks, submitted, reviewedRows] = await Promise.all([
     db.attendance.findMany({
       where: {
@@ -61,41 +69,25 @@ export async function loadMentorDashboard() {
         session: { select: { title: true } },
       },
     }),
-    db.submission.findMany({
+    db.assignmentPartWork.findMany({
       where: {
         status: { in: ["SUBMITTED", "REVIEWED", "RETURNED"] },
         submittedAt: { not: null },
-        assignment: openAssignment,
-        OR: submissionAuthor,
+        AND: [openEssay, { OR: essayAuthor }],
       },
       orderBy: [{ submittedAt: "desc" }, { id: "desc" }],
       take: RECENT_ACTIVITY_LIMIT,
-      select: {
-        id: true,
-        publicId: true,
-        submittedAt: true,
-        studentUserId: true,
-        studentUser: { select: { name: true } },
-        assignment: { select: { title: true } },
-      },
+      select: { ...essaySelect, submittedAt: true },
     }),
-    db.submission.findMany({
+    db.assignmentPartWork.findMany({
       where: {
         status: { in: ["REVIEWED", "RETURNED"] },
         reviewedAt: { not: null },
-        assignment: openAssignment,
-        OR: submissionAuthor,
+        AND: [openEssay, { OR: essayAuthor }],
       },
       orderBy: [{ reviewedAt: "desc" }, { id: "desc" }],
       take: RECENT_ACTIVITY_LIMIT,
-      select: {
-        id: true,
-        publicId: true,
-        reviewedAt: true,
-        studentUserId: true,
-        studentUser: { select: { name: true } },
-        assignment: { select: { title: true } },
-      },
+      select: { ...essaySelect, reviewedAt: true },
     }),
   ]);
 
@@ -120,7 +112,7 @@ export async function loadMentorDashboard() {
               at: s.submittedAt,
               studentUserId: s.studentUserId,
               studentName: s.studentUser.name,
-              subjectTitle: s.assignment.title,
+              subjectTitle: s.part.assignment.title,
               attendanceStatus: null,
               submissionPublicId: s.publicId,
             },
@@ -139,7 +131,7 @@ export async function loadMentorDashboard() {
               at: s.reviewedAt,
               studentUserId: s.studentUserId,
               studentName: s.studentUser.name,
-              subjectTitle: s.assignment.title,
+              subjectTitle: s.part.assignment.title,
               attendanceStatus: null,
               submissionPublicId: s.publicId,
             },

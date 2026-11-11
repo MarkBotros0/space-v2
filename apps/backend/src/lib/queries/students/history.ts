@@ -3,7 +3,7 @@ import type { StudentAttendanceHistoryItem, StudentSubmissionItem } from "@space
 import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
 import { isAdminOfSeason, isMentor, isSuper } from "../../rbac";
-import { isLate } from "../assignments";
+import { assignmentStatusOf, isLate, loadWorkIndex, PART_SELECT, partWorksFor, reviewedAtOf } from "../assignments";
 import { liveAssignment } from "../../db/live";
 
 /**
@@ -148,10 +148,11 @@ export async function loadStudentAttendanceHistory(
 }
 
 /**
- * `GET /students/:id/submissions` — newest first across readable seasons.
- * Never a DRAFT: that is the student's private work in progress, hidden from
- * every reviewer surface (the queue, canReviewSubmission's callers), and v1's
- * list showing it was the same leak by another door.
+ * `GET /students/:id/submissions` — newest first across readable seasons: the
+ * assignments this student has submitted, or had an essay returned on. Never
+ * one they are still working on: unfinished work is the student's own, hidden
+ * from every reviewer surface. `publicId` is the Submission's; `status` and
+ * `reviewedAt` are the student list's words for the same assignment.
  */
 export async function loadStudentSubmissions(
   user: SessionUser,
@@ -162,16 +163,14 @@ export async function loadStudentSubmissions(
   const rows = await db.submission.findMany({
     where: {
       studentUserId,
-      status: { not: "DRAFT" },
       assignment: { seasonId: { in: seasonIds }, ...liveAssignment },
+      OR: [{ submittedAt: { not: null } }, { partWork: { some: { status: "RETURNED", part: { kind: "ESSAY" } } } }],
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: HISTORY_LIMIT,
     select: {
       publicId: true,
-      status: true,
       submittedAt: true,
-      reviewedAt: true,
       assignment: {
         select: {
           id: true,
@@ -179,19 +178,29 @@ export async function loadStudentSubmissions(
           dueAt: true,
           seasonId: true,
           season: { select: { title: true } },
+          parts: { orderBy: { position: "asc" }, select: PART_SELECT },
         },
       },
     },
   });
-  return rows.map((r) => ({
-    publicId: r.publicId,
-    assignmentId: r.assignment.id,
-    assignmentTitle: r.assignment.title,
-    status: r.status,
-    isLate: isLate(r.submittedAt, r.assignment.dueAt),
-    submittedAt: r.submittedAt?.toISOString() ?? null,
-    reviewedAt: r.reviewedAt?.toISOString() ?? null,
-    seasonId: r.assignment.seasonId,
-    seasonTitle: r.assignment.season.title,
-  }));
+  const index = await loadWorkIndex(
+    rows.flatMap((r) => r.assignment.parts.map((p) => p.id)),
+    [studentUserId],
+  );
+  return rows.map((r) => {
+    const works = partWorksFor(r.assignment.parts, studentUserId, index, { forStaff: true });
+    const status = assignmentStatusOf(r.submittedAt, works, true);
+    return {
+      publicId: r.publicId,
+      assignmentId: r.assignment.id,
+      assignmentTitle: r.assignment.title,
+      // Submitted or returned by the query above, so never PENDING or DRAFT.
+      status: status === "PENDING" || status === "DRAFT" ? "SUBMITTED" : status,
+      isLate: isLate(r.submittedAt, r.assignment.dueAt),
+      submittedAt: r.submittedAt?.toISOString() ?? null,
+      reviewedAt: reviewedAtOf(r.assignment.parts, studentUserId, index)?.toISOString() ?? null,
+      seasonId: r.assignment.seasonId,
+      seasonTitle: r.assignment.season.title,
+    };
+  });
 }

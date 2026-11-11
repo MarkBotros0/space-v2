@@ -16,7 +16,9 @@
   leader's Submissions received and Low-attendance flags, a season admin's Low-attendance
   flags, a mentor's Follow-up reminders; every role also gets New announcements, so Super has a switch too. A note's
   follow-up flag notifies nobody (owner, 2026-11-07); the mentor's own follow-ups (see
-  `docs/rules/mentor.md`) send the only `MENTOR_FOLLOWUP`.
+  `docs/rules/mentor.md`) send the only `MENTOR_FOLLOWUP`. An assignment's reminder
+  (`ASSIGNMENT_REMINDER`) has no switch of its own: the student's New assignments switch
+  (`assignmentCreated`) turns both off.
 - A student's page (staff view): the This season card shows Attendance, Assignments and
   Quizzes (`quizzesGiven/Taken/quizPct` on the staff engagement arm), never the composite
   score; its tabs run Submissions, Attendance, Notes, Seasons, the first open.

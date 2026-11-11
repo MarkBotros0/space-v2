@@ -95,8 +95,11 @@ describe("alumni writes", () => {
     expect(res.body.error.message).toMatch(/read-only/);
   });
 
-  it("cannot start a submission on the current season's assignment", async () => {
-    const res = await request(app).put(`/api/v1/submissions/by-assignment/${w.assignmentId}`).set(asAlumnus());
+  it("cannot write an essay on the current season's assignment", async () => {
+    const res = await request(app)
+      .put(`/api/v1/assignments/${w.assignmentId}/parts/${w.essayPartId}/essay`)
+      .set(asAlumnus())
+      .send({ text: "x" });
     expect([403, 404]).toContain(res.status);
   });
 });

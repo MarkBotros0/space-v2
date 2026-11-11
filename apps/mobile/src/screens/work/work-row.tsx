@@ -23,6 +23,7 @@ export function WorkListRow({ row, subtitleLines }: { row: WorkRow; subtitleLine
   return (
     <ListRow
       title={row.title}
+      detail={row.detail}
       subtitle={row.subtitle}
       titleLines={2}
       subtitleLines={subtitleLines}

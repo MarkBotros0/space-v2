@@ -13,7 +13,7 @@ describe("reviewInvalidations", () => {
         queryKeys.students.submissions(9),
         queryKeys.engagement.student(9),
         queryKeys.assignments.detail(41),
-        queryKeys.assignments.tracker(41),
+        queryKeys.assignments.progress(41),
       ]),
     );
   });
@@ -33,7 +33,7 @@ describe("reviewInvalidations", () => {
         queryKeys.students.details(),
         queryKeys.engagement.all,
         queryKeys.assignments.details(),
-        queryKeys.assignments.trackers(),
+        queryKeys.assignments.progresses(),
       ]),
     );
   });

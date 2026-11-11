@@ -40,3 +40,8 @@ process.env.IMPORT_PREVIEW_RATE_LIMIT = "1000";
 // Postgres store is proven by rate-limit-store.test.ts (mocked) and
 // integration/rate-limit-store.test.ts (live), which build it explicitly.
 process.env.RATE_LIMIT_STORE = "memory";
+
+// Off so no request in an integration suite starts a background sweep that
+// changes rows behind the suite's own assertions. The scheduler is covered by
+// scheduler-unit.test.ts and integration/scheduler-lease.test.ts directly.
+process.env.SCHEDULER_TICK = "off";

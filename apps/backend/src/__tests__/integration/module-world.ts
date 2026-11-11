@@ -12,6 +12,7 @@ import type { Express } from "express";
 import { db } from "../../db/client";
 import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestSeason, createTestUser, login, testEventTitle } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 
 export interface ModuleWorld {
   seasonId: number;
@@ -21,7 +22,11 @@ export interface ModuleWorld {
   sessionId: number;
   otherSessionId: number;
   assignmentId: number;
+  /** `assignmentId`'s one essay part. */
+  essayPartId: number;
   otherAssignmentId: number;
+  /** `otherAssignmentId`'s one essay part (in the other season). */
+  otherEssayPartId: number;
   submissionBPublicId: string;
   noteOnAId: number;
   eventAllId: number;
@@ -106,34 +111,28 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
     })
   ).id;
 
-  const assignmentId = (
-    await db.assignment.create({
-      data: {
-        seasonId,
-        title: "MW Assignment",
-        description: "Write a page.",
-        dueAt: new Date("2099-03-10T21:59:00.000Z"),
-        isAllGroups: true,
-        createdById: users.admin.id,
-      },
-      select: { id: true },
-    })
-  ).id;
-  const otherAssignmentId = (
-    await db.assignment.create({
-      data: {
-        seasonId: otherSeasonId,
-        title: "MW Other Assignment",
-        dueAt: new Date("2100-03-10T21:59:00.000Z"),
-        isAllGroups: true,
-      },
-      select: { id: true },
-    })
-  ).id;
+  // One essay part each: an assignment is for the whole season.
+  const assignment = await createAssignmentWithParts({
+    seasonId,
+    title: "MW Assignment",
+    description: "Write a page.",
+    dueAt: new Date("2099-03-10T21:59:00.000Z"),
+  });
+  const assignmentId = assignment.id;
+  const essayPartId = assignment.partIds[0]!;
+  await db.assignment.update({ where: { id: assignmentId }, data: { createdById: users.admin.id } });
+  const otherAssignment = await createAssignmentWithParts({
+    seasonId: otherSeasonId,
+    title: "MW Other Assignment",
+    dueAt: new Date("2100-03-10T21:59:00.000Z"),
+  });
+  const otherAssignmentId = otherAssignment.id;
+  const otherEssayPartId = otherAssignment.partIds[0]!;
 
+  // Student B's essay, handed in: its publicId is the review screen's handle.
   const submissionBPublicId = newPublicId();
-  await db.submission.create({
-    data: {
+  await seedEssays([
+    {
       publicId: submissionBPublicId,
       assignmentId,
       studentUserId: users.studentB.id,
@@ -141,7 +140,7 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
       status: "SUBMITTED",
       submittedAt: new Date(),
     },
-  });
+  ]);
 
   const noteOnAId = (
     await db.engagementNote.create({
@@ -191,7 +190,9 @@ export async function seedModuleWorld(app: Express): Promise<ModuleWorld> {
     sessionId,
     otherSessionId,
     assignmentId,
+    essayPartId,
     otherAssignmentId,
+    otherEssayPartId,
     submissionBPublicId,
     noteOnAId,
     eventAllId,

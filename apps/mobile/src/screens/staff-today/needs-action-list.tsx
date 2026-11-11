@@ -39,10 +39,10 @@ export function NeedsActionList({
   const unknown: string[] = [];
   const { pendingReview: review, unmarkedSessions: unmarked, atRisk, pendingInvites: invites } = needs;
 
-  if (review === null) unknown.push("submissions waiting for review");
+  if (review === null) unknown.push("essays waiting for review");
   else
     tiles.push({
-      label: "Submissions to review",
+      label: "Essays to review",
       value: review,
       icon: FileText,
       tone: "info",

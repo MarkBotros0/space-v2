@@ -72,7 +72,7 @@ describe("videoProgressRequestSchema", () => {
 });
 
 describe("submitForumResponseRequestSchema", () => {
-  it("requires at least one word regardless of forumMinWords (spec 14 D8)", () => {
+  it("requires at least one word regardless of the part's minWords (spec 14 D8)", () => {
     expect(submitForumResponseRequestSchema.safeParse({ text: "   " }).success).toBe(false);
     expect(submitForumResponseRequestSchema.safeParse({ text: "" }).success).toBe(false);
     expect(submitForumResponseRequestSchema.safeParse({ text: "one" }).success).toBe(true);

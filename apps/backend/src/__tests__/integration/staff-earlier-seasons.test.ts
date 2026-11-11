@@ -4,8 +4,8 @@
 import request from "supertest";
 
 import { db } from "../../db/client";
-import { newPublicId } from "../../lib/public-id";
 import { createTestUser, login } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 import {
   app,
   as,
@@ -39,20 +39,16 @@ async function workIn(seasonId: number, label: string) {
     select: { id: true },
   });
   await db.attendance.create({ data: { sessionId: sessionRow.id, studentUserId: studentId, status: "PRESENT" } });
-  const assignment = await db.assignment.create({
-    data: { seasonId, title: `${label} essay`, isAllGroups: true },
-    select: { id: true },
-  });
-  await db.submission.create({
-    data: {
-      publicId: newPublicId(),
+  const assignment = await createAssignmentWithParts({ seasonId, title: `${label} essay` });
+  await seedEssays([
+    {
       assignmentId: assignment.id,
       studentUserId: studentId,
       text: "<p>work</p>",
       status: "SUBMITTED",
       submittedAt: new Date(),
     },
-  });
+  ]);
 }
 
 const note = (

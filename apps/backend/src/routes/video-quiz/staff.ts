@@ -2,35 +2,45 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, forbidden } from "../../lib/api-response";
-import { canManageSessionVideo, staffScopeForSeason } from "../../lib/permissions";
+import { liveAssignment } from "../../lib/db/live";
+import { canManageAssignment, canManageSessionVideo, staffScopeForSeason } from "../../lib/permissions";
 import { loadVideoQuizResults } from "../../lib/queries/video-quiz";
 import { requireUser } from "../../middleware/require-auth";
-import { ADMIN_SELECT, deleteQuestionCountingResponses, updateAndRegrade } from "../../lib/video-quiz/questions";
+import {
+  assertInsideVideo,
+  createQuestionFor,
+  deleteQuestionCountingResponses,
+  listQuestionsFor,
+  toAdminRow,
+  updateAndRegrade,
+} from "../../lib/video-quiz/questions";
+import { deletePartQuestion } from "../../lib/assignments/part-questions";
 import { videoQuestionInputSchema } from "../../../../../packages/shared/src/index";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
 
-/** The admin row shape — the only place `correctIndex` may be selected. */
+type Gate = { maxSeconds: number | null } | null;
 
-function toAdminRow(q: {
-  id: number;
-  atSeconds: number;
-  prompt: string;
-  options: string[];
-  correctIndex: number;
-  points: number;
-  _count: { responses: number };
-}) {
-  return {
-    id: q.id,
-    atSeconds: q.atSeconds,
-    prompt: q.prompt,
-    options: q.options,
-    correctIndex: q.correctIndex,
-    points: q.points,
-    responseCount: q._count.responses,
-  };
+/**
+ * Who may edit or delete a question: for a session's, an admin of its season
+ * (canManageSessionVideo); for a video part's, whoever manages the
+ * assignment's season (canManageAssignment), and only while the assignment is
+ * live. A part's question must also stay inside the video, whose length is
+ * stored (a session's is not). Null is a refusal.
+ */
+async function questionGate(
+  user: ReturnType<typeof requireUser>,
+  q: { sessionId: number | null; assignmentPartId: number | null },
+): Promise<Gate> {
+  if (q.sessionId !== null) return (await canManageSessionVideo(user, q.sessionId)) ? { maxSeconds: null } : null;
+  if (q.assignmentPartId === null) return null;
+  const part = await db.assignmentPart.findFirst({
+    where: { id: q.assignmentPartId, assignment: liveAssignment },
+    select: { durationSeconds: true, assignment: { select: { seasonId: true } } },
+  });
+  if (!part || !canManageAssignment(user, part.assignment.seasonId)) return null;
+  return { maxSeconds: part.durationSeconds };
 }
 
 export async function listVideoQuestions(req: Request, res: Response) {
@@ -44,12 +54,7 @@ export async function listVideoQuestions(req: Request, res: Response) {
   // nothing and the admin page is the only gate (spec 13 R68/R73).
   if (!(await canManageSessionVideo(user, sessionId))) return forbidden(res);
 
-  const rows = await db.sessionVideoQuestion.findMany({
-    where: { sessionId },
-    orderBy: [{ atSeconds: "asc" }, { id: "asc" }],
-    select: ADMIN_SELECT,
-  });
-  return apiOk(res, { questions: rows.map(toAdminRow) });
+  return apiOk(res, { questions: await listQuestionsFor({ sessionId }) });
 }
 
 export async function createVideoQuestion(req: Request, res: Response) {
@@ -65,25 +70,11 @@ export async function createVideoQuestion(req: Request, res: Response) {
 
   const parsed = parseOr400(videoQuestionInputSchema, req.body, res, "Invalid question.");
   if (parsed === null) return;
-  const body = parsed;
 
-  // createdById is stamped on create only — there is no updatedById column,
-  // so it means "who first authored this". Deliberately
-  // no check that the session has a youtubeUrl or that atSeconds fits the video
-  // (v1 R14/R18; the length is not stored). The client guards the deadlock.
-  const created = await db.sessionVideoQuestion.create({
-    data: {
-      sessionId,
-      atSeconds: body.atSeconds,
-      prompt: body.prompt,
-      options: body.options,
-      correctIndex: body.correctIndex,
-      points: body.points,
-      createdById: user.userId,
-    },
-    select: ADMIN_SELECT,
-  });
-  return apiOk(res, { question: toAdminRow(created) }, 201);
+  // Deliberately no check that the session has a youtubeUrl or that atSeconds
+  // fits the video (v1 R14/R18; the length is not stored). The client guards
+  // the deadlock.
+  return apiOk(res, { question: await createQuestionFor({ sessionId }, parsed, user.userId) }, 201);
 }
 
 export async function updateVideoQuestion(req: Request, res: Response) {
@@ -93,14 +84,16 @@ export async function updateVideoQuestion(req: Request, res: Response) {
 
   const existing = await db.sessionVideoQuestion.findUnique({
     where: { id: questionId },
-    select: { id: true, sessionId: true, options: true, correctIndex: true, points: true },
+    select: { id: true, sessionId: true, assignmentPartId: true, options: true, correctIndex: true, points: true },
   });
   if (!existing) return notFound(res, "Question");
-  if (!(await canManageSessionVideo(user, existing.sessionId))) return forbidden(res);
+  const gate = await questionGate(user, existing);
+  if (gate === null) return forbidden(res);
 
   const parsed = parseOr400(videoQuestionInputSchema, req.body, res, "Invalid question.");
   if (parsed === null) return;
   const body = parsed;
+  assertInsideVideo(body.atSeconds, gate.maxSeconds);
 
   const keyChanged =
     body.correctIndex !== existing.correctIndex ||
@@ -130,15 +123,19 @@ export async function deleteVideoQuestion(req: Request, res: Response) {
 
   const existing = await db.sessionVideoQuestion.findUnique({
     where: { id: questionId },
-    select: { id: true, sessionId: true },
+    select: { id: true, sessionId: true, assignmentPartId: true },
   });
   if (!existing) return notFound(res, "Question");
-  if (!(await canManageSessionVideo(user, existing.sessionId))) return forbidden(res);
+  if ((await questionGate(user, existing)) === null) return forbidden(res);
 
   // The database cascade removes the responses; the count exists so the client
-  // can warn before and confirm after. SessionVideoProgress is deliberately left
-  // alone (v1 R11): there is no soft-delete column to do better with.
-  const responsesRemoved = await deleteQuestionCountingResponses(questionId);
+  // can warn before and confirm after. A session's SessionVideoProgress is
+  // deliberately left alone (v1 R11). A video part's students are settled under
+  // the assignment's lock (ruling I1): the question changed who is done.
+  const responsesRemoved =
+    existing.assignmentPartId === null
+      ? await deleteQuestionCountingResponses(questionId)
+      : await deletePartQuestion(questionId, existing.assignmentPartId);
 
   return apiOk(res, { deleted: true as const, responsesRemoved });
 }

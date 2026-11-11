@@ -168,9 +168,8 @@ export const reportsImportsPaths = {
         "Roles: SUPER, or an ADMIN of this season. MENTOR is REFUSED — a deliberate " +
         "divergence from v1, whose only mentor protection was an unrendered button " +
         "(spec D6 #3). A soft-deleted season is 404.\n\n" +
-        "`Submitted %` divides by the assignments assigned to that student (ruling C5), " +
-        "which CHANGES its value relative to v1 for any season with a group-targeted " +
-        'assignment. LATE attendance cells render "L": the recorded minutes are ' +
+        "`Submitted %` divides by every assignment of the student's season: an assignment is " +
+        'always for the whole season. LATE attendance cells render "L": the recorded minutes are ' +
         "measured from the wrong instant for v1-era rows, and nothing tells those apart, so they are withheld " +
         "(ruling C3).",
       parameters: [{ name: "id", in: "path", required: true, schema: { type: "integer" } }],

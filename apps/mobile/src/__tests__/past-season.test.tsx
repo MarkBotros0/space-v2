@@ -25,6 +25,11 @@ const assignment = (id: number, status: string) => ({
   isOverdue: false,
   status,
   reviewedAt: null,
+  submittedAt: status === "SUBMITTED" || status === "REVIEWED" ? "2025-02-28T10:00:00.000Z" : null,
+  partsTotal: 1,
+  partsDone: status === "SUBMITTED" || status === "REVIEWED" ? 1 : 0,
+  returned: status === "RETURNED",
+  hasEssay: true,
 });
 
 const record = {
@@ -38,7 +43,12 @@ const record = {
   outcome: "PASSED",
   groupName: "Group A",
   attendancePct: 92,
-  assignments: [assignment(41, "REVIEWED"), assignment(42, "PENDING")],
+  assignments: [
+    assignment(41, "REVIEWED"),
+    assignment(42, "PENDING"),
+    { ...assignment(43, "DRAFT"), partsTotal: 3, partsDone: 2 },
+    { ...assignment(44, "SUBMITTED"), hasEssay: false },
+  ],
   quizzes: [
     { id: 61, title: "Quiz one", kind: "ONLINE", status: "GRADED", score: 8 },
     { id: 62, title: "Quiz two", kind: "ONLINE", status: "NOT_TAKEN", score: null },
@@ -63,7 +73,7 @@ describe("past season page", () => {
     expect(screen.getByText("Finished")).toBeTruthy();
     expect(screen.getByText("Passed - 92% attendance")).toBeTruthy();
     expect(screen.getByText("Group: Group A")).toBeTruthy();
-    expect(screen.getByText("Assignments (2)")).toBeTruthy();
+    expect(screen.getByText("Assignments (4)")).toBeTruthy();
     expect(screen.getByText("Quizzes (2)")).toBeTruthy();
     expect(screen.getByText("Attendance (2 sessions)")).toBeTruthy();
   });
@@ -79,7 +89,7 @@ describe("past season page", () => {
 
   it("opens each list", async () => {
     renderStacked(<PastSeasonScreen />);
-    fireEvent.press(await screen.findByText("Assignments (2)"));
+    fireEvent.press(await screen.findByText("Assignments (4)"));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/past-season/[seasonId]/assignments",
       params: { seasonId: "5" },
@@ -116,7 +126,11 @@ describe("past season lists", () => {
     renderStacked(<PastAssignments />);
     expect(await screen.findByText("Essay 41")).toBeTruthy();
     expect(screen.getByText("Reviewed")).toBeTruthy();
-    expect(screen.getByText("Not submitted")).toBeTruthy();
+    // Started or not, an unsubmitted one says so, and how far its parts got.
+    expect(screen.getAllByText("Not submitted")).toHaveLength(2);
+    expect(screen.getByText("2 of 3 parts done")).toBeTruthy();
+    // No essay to review: submitted is done.
+    expect(screen.getByText("Done")).toBeTruthy();
     fireEvent.press(screen.getByText("Essay 41"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "41" } });
   });

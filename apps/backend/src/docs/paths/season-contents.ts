@@ -131,7 +131,7 @@ export const seasonContentPaths = {
       tags: ["Seasons"],
       summary: "Assignments in a season",
       description:
-        "**The row shape depends on the caller's role.** Staff receive `StaffAssignmentListItem` (season-wide counts); a STUDENT receives `StudentAssignmentListItem` (their own status), filtered to assignments that target them.",
+        "**The row shape depends on the caller's role.** Staff receive `StaffAssignmentListItem` (season-wide counts); a STUDENT receives `StudentAssignmentListItem` (their own status and how many parts are done) for every assignment of the season.",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -160,7 +160,7 @@ export const seasonContentPaths = {
       tags: ["Assignments"],
       summary: "Create an assignment in a season",
       description:
-        "Season admins (SUPER passes). Row and targets commit in one transaction. Afterwards, in an ACTIVE season (a draft's roster is not told), every ACTIVE enrolled student the assignment targets — resolved through SeasonEnrollment (ruling C9), opted-out students skipped — gets ASSIGNMENT_CREATED titled `New assignment: <title>`, body `Due <org time>` (omitted with no due date), link `/student/assignments/<id>` (v1's path, ruling X1). A notification failure never fails the create.",
+        "Season admins (SUPER passes). The row and its parts, in the body's order, commit together. Afterwards, in an ACTIVE season (a draft's roster is not told), every live student with an ACTIVE enrolment gets ASSIGNMENT_CREATED once, titled `New assignment: <title>`, body `Due <org time>` (omitted with no due date), link `/student/assignments/<id>` (v1's path, ruling X1). A notification failure never fails the create.",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -169,11 +169,9 @@ export const seasonContentPaths = {
       responses: {
         201: ok(
           { $ref: "#/components/schemas/AssignmentDetail" },
-          "Created — the same shape GET /assignments/{id} returns.",
+          "Created: the assignment as GET returns it to staff.",
         ),
-        400: conflict(
-          "`bad_request` (body; message names the first failing field), `invalid_group`, or `invalid_session`.",
-        ),
+        400: conflict("`bad_request` (body; message names the first failing field)."),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),

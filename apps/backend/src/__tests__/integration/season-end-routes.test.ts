@@ -5,6 +5,7 @@ import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 
 import { bearer, cleanupTestData, createTestSeason, createTestUser, login, reviewedOf, tokenFor } from "./fixtures";
+import { createAssignmentWithParts, seedEssays } from "./assignment-reads-setup";
 
 jest.setTimeout(60000);
 
@@ -186,10 +187,11 @@ describe("POST /seasons/:id/end", () => {
 
   it("is 409 season_unfinished while work blocks, and changes nothing", async () => {
     const { season, peter, sara, adminToken } = await setupSeason();
-    const assignment = await db.assignment.create({ data: { seasonId: season.id, title: "Essay" } });
-    await db.submission.create({
-      data: { assignmentId: assignment.id, studentUserId: peter, status: "SUBMITTED", publicId: `endrt-${season.id}` },
-    });
+    const assignment = await createAssignmentWithParts({ seasonId: season.id, title: "Essay" });
+    // An essay handed in and waiting review.
+    await seedEssays([
+      { assignmentId: assignment.id, studentUserId: peter, status: "SUBMITTED", publicId: `endrt-${season.id}` },
+    ]);
     const res = await post(`/seasons/${season.id}/end`, adminToken, {
       notPassed: [{ userId: sara, reason: null }],
       reviewed: await reviewedOf(season.id),

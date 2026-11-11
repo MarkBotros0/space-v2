@@ -69,3 +69,31 @@ it("scores live students only", async () => {
     expect.objectContaining({ studentUser: { deletedAt: null }, ...seasonParticipant }),
   );
 });
+
+it("counts an assignment done once submitted, out of every assignment of the season", async () => {
+  mockDb.seasonEnrollment.findMany.mockResolvedValue([
+    {
+      studentUserId: 11,
+      seasonId: 8,
+      enrolledAt: new Date("2099-01-01T00:00:00.000Z"),
+      groupId: 4,
+      group: { name: "G" },
+      studentUser: { name: "S" },
+      season: { title: "Season" },
+    },
+  ]);
+  mockDb.session.findMany.mockResolvedValue([]);
+  // Two assignments, no targeting: both are the student's.
+  mockDb.assignment.findMany.mockResolvedValue([
+    { id: 1, seasonId: 8 },
+    { id: 2, seasonId: 8 },
+  ]);
+  mockDb.submission.findMany.mockResolvedValue([{ studentUserId: 11, assignmentId: 1 }]);
+
+  const [row] = await computeEngagementForSeason(8);
+
+  expect(mockDb.submission.findMany.mock.calls[0][0].where).toEqual(
+    expect.objectContaining({ submittedAt: { not: null } }),
+  );
+  expect(row).toMatchObject({ submissionsExpected: 2, submissionsCompleted: 1, submissionPct: 50 });
+});

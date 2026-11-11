@@ -13,8 +13,16 @@ iconWithClassName(Trash2);
 
 import { PersonAvatar } from "./shared";
 
-export function CommentRow({ comment, assignmentId }: { comment: ForumComment; assignmentId: number }) {
-  const remove = useDeleteComment(assignmentId);
+export function CommentRow({
+  comment,
+  assignmentId,
+  partId,
+}: {
+  comment: ForumComment;
+  assignmentId: number;
+  partId: number;
+}) {
+  const remove = useDeleteComment(assignmentId, partId);
   const [confirming, setConfirming] = useState(false);
 
   return (

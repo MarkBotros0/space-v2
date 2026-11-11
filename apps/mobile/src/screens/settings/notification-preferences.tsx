@@ -23,8 +23,8 @@ type ShownKey = keyof Prefs;
  */
 const LABELS: Record<ShownKey, { label: string; help: string }> = {
   assignmentCreated: {
-    label: "New assignments",
-    help: "When an admin creates an assignment you're targeted by.",
+    label: "New assignments and reminders",
+    help: "When an admin creates an assignment in your season, and a reminder before it's due.",
   },
   submissionReviewed: {
     label: "Submission reviewed",

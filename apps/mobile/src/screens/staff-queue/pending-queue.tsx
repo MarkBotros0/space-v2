@@ -1,38 +1,17 @@
-import { useRouter } from "expo-router";
 import { View } from "react-native";
-import type { SubmissionQueueItem } from "@space/shared";
 
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
-import { EmptyState, GroupedList, ListRow, StatusChip, statusChip } from "../../design/ui";
-import { useSubmissionQueue } from "../../hooks/use-submission-queue";
-import { joinMeta } from "../../lib/join-meta";
+import { EmptyState, GroupedList } from "../../design/ui";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
-
-function Row({ item }: { item: SubmissionQueueItem }) {
-  const router = useRouter();
-  const chip = statusChip("submission", item.status);
-  return (
-    <ListRow
-      title={item.studentName ?? "Unnamed"}
-      subtitle={joinMeta([item.assignmentTitle, item.groupName])}
-      trailing={
-        <View className="flex-row flex-wrap justify-end gap-1.5">
-          <StatusChip {...chip} />
-          {item.isLate ? <StatusChip tone="warn" label="Late" /> : null}
-        </View>
-      }
-      chevron
-      onPress={() => router.push({ pathname: "/submission/[publicId]", params: { publicId: item.publicId } })}
-    />
-  );
-}
+import { useSubmissionQueue } from "../../hooks/use-submission-queue";
+import { EssayQueueRow, pendingLine, QueueTotals } from "./essay-queue-row";
 
 /**
- * ADMIN / SUPER / MENTOR on /submissions: submissions waiting for review. The
- * header count is the queue's own `counts.pending` (the number Today shows);
- * `seasonId`, when valid, is the season that count was taken in.
+ * ADMIN / SUPER / MENTOR on /submissions: essays waiting for review, one row
+ * per student per essay. The header count is the queue's own `counts.pending`
+ * (the number Today shows); `seasonId`, when valid, is the season it was taken in.
  */
 export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }) {
   const q = useSubmissionQueue(seasonId === undefined ? { pendingOnly: true } : { pendingOnly: true, seasonId }, true);
@@ -46,14 +25,15 @@ export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }
   else if (q.isError) body = <RouteError onRetry={refetch} />;
   else if (items.length === 0)
     body = (
-      <EmptyState icon={NAV_ICONS.submissions} title="All caught up" description="No submissions waiting for review." />
+      <EmptyState icon={NAV_ICONS.submissions} title="All caught up" description="No essays waiting for review." />
     );
   else
     body = (
       <View className="flex-col gap-4">
+        {counts && counts.total > 0 ? <QueueTotals counts={counts} /> : null}
         <GroupedList>
           {items.map((item) => (
-            <Row key={item.publicId} item={item} />
+            <EssayQueueRow key={item.publicId} item={item} />
           ))}
         </GroupedList>
         <LoadMoreButton query={q} />
@@ -63,15 +43,7 @@ export function StaffPendingQueue({ seasonId }: { seasonId: number | undefined }
   return (
     <Screen
       title="Submissions"
-      subtitle={
-        counts
-          ? joinMeta([
-              `${counts.pending} waiting for review`,
-              `${counts.total} total`,
-              counts.late > 0 && `${counts.late} late`,
-            ])
-          : undefined
-      }
+      subtitle={counts ? pendingLine(counts) : undefined}
       refreshing={q.isRefetching}
       onRefresh={refetch}
     >

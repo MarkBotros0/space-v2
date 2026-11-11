@@ -14,8 +14,9 @@ route now, a tab for no role).
   Members. Then recent notes and events.
 - **Follow-ups** (`MentorFollowUp`): flagged from the student's page ("Remind me to follow up",
   optional reason), due 7 days later, one open per mentor and student (409
-  `already_following_up`). The daily Vercel Cron (`vercel.json`) calls
-  `GET /internal/follow-ups/remind` with `CRON_SECRET`; unset, it is a 404 and nothing is sent.
+  `already_following_up`). The backend's own scheduler
+  (`lib/scheduler/`, run by incoming requests) sends it around 9:00 AM Cairo on the due day, at the
+  first request after that.
   Each due follow-up is claimed by stamping `remindedAt`, then one `MENTOR_FOLLOWUP` goes to that
   mentor alone. It stays open until Mark done.
 - **Absent lately:** the last two marked sessions that have started, any season, both ABSENT

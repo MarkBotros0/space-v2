@@ -71,11 +71,9 @@ const BASELINE: Record<string, Record<string, number>> = {
     "app/(app)/session/[id]/attendance.tsx": 1,
     "app/(app)/session/[id]/edit.tsx": 1,
     "src/design/calendar/season-calendar-agenda.tsx": 1,
-    "src/lib/assignment-labels.ts": 1,
     "src/screens/alumni/event-day-list.tsx": 2,
     "src/screens/announcements/meta.ts": 1,
     "src/screens/announcements/poll/poll-results.tsx": 1,
-    "src/screens/assignment-detail/student-assignment.tsx": 1,
     "src/screens/calendar/calendar-entries.tsx": 1,
     "src/screens/calendar/calendar-list.tsx": 1,
     "src/screens/group-form/members-model.ts": 1,
@@ -83,7 +81,6 @@ const BASELINE: Record<string, Record<string, number>> = {
     "src/screens/home/count-tile.tsx": 1,
     "src/screens/home/session-card.tsx": 2,
     "src/screens/leader-groups/index.tsx": 1,
-    "src/screens/leader-submissions/index.tsx": 1,
     "src/screens/leader-today/at-risk-reason.ts": 1,
     "src/screens/leader-today/session-section.tsx": 1,
     "src/screens/quiz-detail/leader-quizzes.tsx": 2,
@@ -103,7 +100,7 @@ const BASELINE: Record<string, Record<string, number>> = {
     "src/screens/student-detail/grouped-tabs.tsx": 1,
     "src/screens/students-list/student-filter-sheet.tsx": 1,
     "src/screens/user-import/import-result-step.tsx": 1,
-    "src/screens/work/work-model.ts": 3,
+    "src/screens/work/work-model.ts": 2,
   },
   // An empty value says so in words ("Not answered"), never "—".
   emDashEmpty: {

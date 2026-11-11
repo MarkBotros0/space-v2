@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { MAX_PART_VIDEO_SECONDS } from "./assignment-parts";
 import { MAX_VIDEO_SECONDS } from "./video-time";
 
 // Wire shapes — see the note in season.ts on why timestamps are strings.
@@ -123,6 +124,41 @@ export type VideoProgressRequest = z.infer<typeof videoProgressRequestSchema>;
 export const videoProgressResponseSchema = z.object({
   furthestSeconds: z.number(),
   completedAt: z.string().nullable(),
+});
+
+// A video part of an assignment (not a session's video). Its watching is
+// counted, not claimed: the client reports the ranges that actually played and
+// the server merges them, clamps them to wall-clock time and, with skipping
+// blocked, drops a range that starts past the furthest point reached.
+
+const partSecond = z.number().min(0).max(MAX_PART_VIDEO_SECONDS);
+
+/** What a video part's player sends every ~10 s while playing and on pause or leave. */
+export const videoPartProgressRequestSchema = z.object({
+  intervals: z
+    .array(z.tuple([partSecond, partSecond]).refine(([from, to]) => from < to, "A range must end after it starts."))
+    .max(50),
+  position: z.number().int().min(0).max(MAX_PART_VIDEO_SECONDS),
+});
+
+/** A part's watching after a report. `completedAt` is when it counted as done (watched and every question answered). */
+export const videoPartProgressResponseSchema = z.object({
+  watchedSeconds: z.number(),
+  durationSeconds: z.number(),
+  answered: z.number(),
+  questionCount: z.number(),
+  correct: z.number(),
+  furthestSeconds: z.number(),
+  completedAt: z.string().nullable(),
+});
+
+/** The student's video screen for a part: the session quiz's shape plus the watching. */
+export const studentVideoPartSchema = studentVideoQuizSchema.extend({
+  title: z.string(),
+  durationSeconds: z.number(),
+  blockSkipping: z.boolean(),
+  watchedSeconds: z.number(),
+  watchedIntervals: z.array(z.tuple([z.number(), z.number()])),
 });
 
 /** New capability — v1 shows no student's video-quiz result to anybody (R74). */

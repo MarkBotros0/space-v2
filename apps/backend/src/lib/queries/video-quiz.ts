@@ -1,5 +1,7 @@
 import { parseYouTubeId } from "../../../../../packages/shared/src/index";
 import { db } from "../../db/client";
+import { liveAssignment } from "../db/live";
+import { questionsOf, type VideoOwner } from "../video-quiz/owner";
 import { seasonParticipant } from "./season-participants";
 
 interface VideoQuizQuestionRow {
@@ -13,8 +15,19 @@ interface VideoQuizQuestionRow {
   isCorrect: boolean | null;
 }
 
+/** A video part's own fields: its title and length and the student's watching. */
+interface VideoPartFields {
+  title: string;
+  durationSeconds: number;
+  blockSkipping: boolean;
+  watchedSeconds: number;
+  watchedIntervals: [number, number][];
+}
+
 interface StudentVideoQuizData {
   seasonId: number;
+  /** Set for a video part, null for a session. */
+  part: VideoPartFields | null;
   videoId: string | null;
   youtubeUrl: string | null;
   questions: VideoQuizQuestionRow[];
@@ -26,8 +39,74 @@ interface StudentVideoQuizData {
   nextQuestionId: number | null;
 }
 
+type Progress = { furthestSeconds: number; completedAt: Date | null };
+
+interface QuizHeader {
+  seasonId: number;
+  videoId: string | null;
+  youtubeUrl: string | null;
+  progress: Progress | null;
+  part: VideoPartFields | null;
+}
+
+async function sessionHeader(sessionId: number, studentUserId: number): Promise<QuizHeader | null> {
+  const [session, progress] = await Promise.all([
+    db.session.findUnique({ where: { id: sessionId }, select: { seasonId: true, youtubeUrl: true } }),
+    db.sessionVideoProgress.findUnique({
+      where: { sessionId_studentUserId: { sessionId, studentUserId } },
+      select: { furthestSeconds: true, completedAt: true },
+    }),
+  ]);
+  if (!session) return null;
+  return {
+    seasonId: session.seasonId,
+    // Resolved once, here. v1 parsed the URL in the page and handed the id to
+    // the player; a React Native client re-implementing that parser is how the
+    // two drift (spec 13 §7).
+    videoId: session.youtubeUrl ? parseYouTubeId(session.youtubeUrl) : null,
+    youtubeUrl: session.youtubeUrl,
+    progress,
+    part: null,
+  };
+}
+
+/** A live assignment's video part; its progress is the student's work row (`doneAt` is its completion). */
+async function partHeader(partId: number, studentUserId: number): Promise<QuizHeader | null> {
+  const [part, work] = await Promise.all([
+    db.assignmentPart.findFirst({
+      where: { id: partId, kind: "VIDEO", assignment: liveAssignment },
+      select: {
+        title: true,
+        youtubeId: true,
+        youtubeUrl: true,
+        durationSeconds: true,
+        blockSkipping: true,
+        assignment: { select: { seasonId: true } },
+      },
+    }),
+    db.assignmentPartWork.findUnique({
+      where: { partId_studentUserId: { partId, studentUserId } },
+      select: { watchedIntervals: true, watchedSeconds: true, furthestSeconds: true, doneAt: true },
+    }),
+  ]);
+  if (!part) return null;
+  return {
+    seasonId: part.assignment.seasonId,
+    videoId: part.youtubeId ?? (part.youtubeUrl ? parseYouTubeId(part.youtubeUrl) : null),
+    youtubeUrl: part.youtubeUrl,
+    progress: work ? { furthestSeconds: work.furthestSeconds, completedAt: work.doneAt } : null,
+    part: {
+      title: part.title ?? "",
+      durationSeconds: part.durationSeconds ?? 0,
+      blockSkipping: part.blockSkipping,
+      watchedSeconds: work?.watchedSeconds ?? 0,
+      watchedIntervals: (work?.watchedIntervals ?? []) as [number, number][],
+    },
+  };
+}
+
 /**
- * The student's view of a session's video quiz.
+ * The student's view of a session's or a video part's timed questions.
  *
  * The select list is the enforcement of the answer-key split: `correctIndex`
  * is not read here, so it cannot be forwarded by accident. v1's equivalent got
@@ -40,18 +119,18 @@ interface StudentVideoQuizData {
  * evaporated the moment an API existed.
  */
 export async function loadStudentVideoQuiz(
-  sessionId: number,
+  owner: VideoOwner,
   studentUserId: number,
 ): Promise<StudentVideoQuizData | null> {
-  const session = await db.session.findUnique({
-    where: { id: sessionId },
-    select: { seasonId: true, youtubeUrl: true },
-  });
-  if (!session) return null;
+  const header =
+    "sessionId" in owner
+      ? await sessionHeader(owner.sessionId, studentUserId)
+      : await partHeader(owner.partId, studentUserId);
+  if (header === null) return null;
 
-  const [questions, responses, progress] = await Promise.all([
+  const [questions, responses] = await Promise.all([
     db.sessionVideoQuestion.findMany({
-      where: { sessionId },
+      where: questionsOf(owner),
       // atSeconds is indexed but NOT unique — two questions may share a
       // timestamp (spec 13 R13), so id is the tiebreak that makes "the next
       // question" a single deterministic answer on the server and the client.
@@ -59,14 +138,11 @@ export async function loadStudentVideoQuiz(
       select: { id: true, atSeconds: true, prompt: true, options: true, points: true },
     }),
     db.sessionVideoQuestionResponse.findMany({
-      where: { studentUserId, question: { sessionId } },
+      where: { studentUserId, question: questionsOf(owner) },
       select: { questionId: true, selectedIndex: true, isCorrect: true },
     }),
-    db.sessionVideoProgress.findUnique({
-      where: { sessionId_studentUserId: { sessionId, studentUserId } },
-      select: { furthestSeconds: true, completedAt: true },
-    }),
   ]);
+  const { progress } = header;
 
   const byQuestion = new Map(responses.map((r) => [r.questionId, r]));
   let earnedPoints = 0;
@@ -91,12 +167,10 @@ export async function loadStudentVideoQuiz(
   });
 
   return {
-    seasonId: session.seasonId,
-    // Resolved once, here. v1 parsed the URL in the page and handed the id to
-    // the player; a React Native client re-implementing that parser is how the
-    // two drift (spec 13 §7).
-    videoId: session.youtubeUrl ? parseYouTubeId(session.youtubeUrl) : null,
-    youtubeUrl: session.youtubeUrl,
+    seasonId: header.seasonId,
+    videoId: header.videoId,
+    youtubeUrl: header.youtubeUrl,
+    part: header.part,
     questions: rows,
     furthestSeconds: progress?.furthestSeconds ?? 0,
     completedAt: progress?.completedAt ?? null,

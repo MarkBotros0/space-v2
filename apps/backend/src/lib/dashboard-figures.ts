@@ -37,39 +37,42 @@ export interface StudentAssignmentSummaryFigures {
   overdueCount: number;
   lateSubmittedCount: number;
   dueSoon: StudentAssignmentSummaryRow[];
-  /** PENDING | DRAFT | RETURNED, uncapped, `dueAt` asc nulls last then id. */
+  /** Every outstanding row, uncapped, `dueAt` asc nulls last then id. */
   open: StudentAssignmentSummaryRow[];
 }
 
+const outstanding = (r: StudentAssignmentStateRow) =>
+  isAssignmentOutstanding({
+    submittedAt: r.submittedAt?.toISOString() ?? null,
+    partsLeft: r.partsTotal - r.partsDone,
+    returned: r.returned,
+  });
+
 /**
- * The student's assignment figures over their TARGETED rows (the rows come
- * from `listAssignmentStatesForStudent`, which applies C9 targeting).
+ * The student's assignment figures over every assignment of their season (the
+ * rows come from `listAssignmentStatesForStudent`).
  *
- * Outstanding is the one shared predicate (C5, D15). Late is the row's
- * `isLate`, computed by the exported `isLate` in lib/queries/assignments.ts
- * (D16) — counted only on turned-in rows, so a DRAFT can never be "late".
+ * Outstanding is the one shared predicate (C5, D15): not submitted, parts
+ * left, or an essay returned. Late is the row's `isLate`, computed by the
+ * exported `isLate` in lib/queries/assignments (D16) — counted only on
+ * submitted rows, so unfinished work can never be "late".
  */
 export function summarizeStudentAssignments(
   rows: readonly StudentAssignmentStateRow[],
   limit: number,
 ): StudentAssignmentSummaryFigures {
-  const outstanding = rows.filter((r) => isAssignmentOutstanding(r.status));
   const dueKey = (r: StudentAssignmentStateRow) => (r.dueAt === null ? Number.POSITIVE_INFINITY : r.dueAt.getTime());
   const byDue = (a: StudentAssignmentStateRow, b: StudentAssignmentStateRow) => dueKey(a) - dueKey(b) || a.id - b.id;
   const toWire = ({ isLate: _isLate, ...wire }: StudentAssignmentStateRow) => wire;
-  const dueSoon = [...outstanding].sort(byDue).slice(0, limit).map(toWire);
-  // P2-4: work the student still has to do, RETURNED (sent back for rework) included.
-  const open = rows
-    .filter((r) => isAssignmentOutstanding(r.status) || r.status === "RETURNED")
-    .sort(byDue)
-    .map(toWire);
+  // P2-4: work the student still has to do, a returned essay included.
+  const open = rows.filter(outstanding).sort(byDue);
 
   return {
-    outstandingCount: outstanding.length,
-    overdueCount: outstanding.filter((r) => r.isOverdue).length,
-    lateSubmittedCount: rows.filter((r) => !isAssignmentOutstanding(r.status) && r.isLate).length,
-    dueSoon,
-    open,
+    outstandingCount: open.length,
+    overdueCount: open.filter((r) => r.isOverdue).length,
+    lateSubmittedCount: rows.filter((r) => !outstanding(r) && r.isLate).length,
+    dueSoon: open.slice(0, limit).map(toWire),
+    open: open.map(toWire),
   };
 }
 

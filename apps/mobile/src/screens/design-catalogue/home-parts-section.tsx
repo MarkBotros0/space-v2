@@ -14,12 +14,12 @@ export function HomePartsSection() {
     <CatalogueSection id="home-parts" title="Home parts">
       <CountGrid
         tiles={[
-          { label: "Submissions to review", value: 3, icon: FileText, tone: "info", onPress: noop },
+          { label: "Essays to review", value: 3, icon: FileText, tone: "info", onPress: noop },
           { label: "Sessions without attendance", value: 0, icon: CalendarX, tone: "warn", onPress: noop },
           { label: "Students at risk", value: 2, icon: TriangleAlert, tone: "bad", onPress: noop },
         ]}
       />
-      <CountGrid tiles={[{ label: "Submissions to review", value: 0, icon: FileText, tone: "info", onPress: noop }]} />
+      <CountGrid tiles={[{ label: "Essays to review", value: 0, icon: FileText, tone: "info", onPress: noop }]} />
       <FigureGrid
         tiles={[
           { label: "Students", value: "128", icon: Users, onPress: noop },

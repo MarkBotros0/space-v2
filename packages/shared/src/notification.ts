@@ -129,6 +129,8 @@ export const NOTIFICATION_PREFERENCE_KEY_BY_TYPE = {
   SUBMISSION_RECEIVED: "submissionReceived",
   SESSION_CANCELLED: "sessionCancelled",
   ANNOUNCEMENT: "announcement",
+  // A reminder is about an assignment: the same switch turns both off (no column of its own).
+  ASSIGNMENT_REMINDER: "assignmentCreated",
 } as const satisfies Record<NotificationType, string>;
 
 type NotificationPreferenceKey = (typeof NOTIFICATION_PREFERENCE_KEY_BY_TYPE)[NotificationType];
@@ -196,6 +198,7 @@ export const PUSH_NOTIFICATION_TYPES = [
   "SUBMISSION_RECEIVED",
   "SESSION_CANCELLED",
   "ANNOUNCEMENT",
+  "ASSIGNMENT_REMINDER",
 ] as const satisfies readonly NotificationType[];
 
 export function shouldPush(type: NotificationType): boolean {

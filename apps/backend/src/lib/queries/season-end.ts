@@ -7,7 +7,9 @@ import { liveAssignment, liveUser } from "../db/live";
 
 /**
  * What stops a season from ending, and the students it would end for.
- * Blockers: SUBMITTED submissions and quiz attempts awaiting a grade, and
+ * Blockers: essays handed in and awaiting review (one per student per essay;
+ * an unwatched video or a missing forum post never blocks), quiz attempts
+ * awaiting a grade, and
  * sessions that have finished with an ACTIVE student unmarked. Soft-deleted
  * students and assignments never block.
  */
@@ -38,16 +40,16 @@ export async function loadSeasonEndCheck(
       orderBy: { startsAt: "asc" },
       select: { id: true, title: true, startsAt: true, durationMinutes: true },
     }),
-    client.submission.findMany({
+    client.assignmentPartWork.findMany({
       where: {
         status: "SUBMITTED",
-        assignment: { seasonId, ...liveAssignment },
+        part: { kind: "ESSAY", assignment: { seasonId, ...liveAssignment } },
         studentUser: activeStudentInSeason,
       },
       orderBy: { id: "asc" },
       select: {
         publicId: true,
-        assignment: { select: { title: true } },
+        part: { select: { assignment: { select: { title: true } } } },
         studentUser: { select: { name: true } },
       },
     }),
@@ -95,7 +97,7 @@ export async function loadSeasonEndCheck(
     blockers: {
       submissions: submissions.map((s) => ({
         publicId: s.publicId,
-        assignmentTitle: s.assignment.title,
+        assignmentTitle: s.part.assignment.title,
         studentName: s.studentUser.name,
       })),
       quizAttempts: attempts.map((a) => ({

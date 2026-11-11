@@ -66,6 +66,11 @@ const row = (id: number, over: Record<string, unknown> = {}) => ({
   isOverdue: false,
   status: "PENDING",
   reviewedAt: null,
+  submittedAt: null,
+  partsTotal: 1,
+  partsDone: 0,
+  returned: over.status === "RETURNED",
+  hasEssay: true,
   ...over,
 });
 const withOpen = (open: unknown[]) => ({
@@ -177,12 +182,19 @@ describe("StudentToday: To do", () => {
   });
 
   it("shows chips, the open quiz, and pushes the row's route", async () => {
-    serve(routes({ [DASHBOARD]: withOpen([row(1, { isOverdue: true }), row(2, { status: "DRAFT" })]) }));
+    serve(
+      routes({
+        [DASHBOARD]: withOpen([row(1, { isOverdue: true }), row(2, { status: "DRAFT", partsTotal: 3, partsDone: 2 })]),
+      }),
+    );
     renderWithProviders(<StudentToday />);
     expect(await screen.findByText("Week 6 quiz")).toBeTruthy();
     expect(screen.getByText("Overdue")).toBeTruthy();
     expect(screen.getByText("Due in 2 days")).toBeTruthy();
-    expect(screen.getByText("In progress · Due Mar 3, 2099")).toBeTruthy();
+    // A row counts its parts (multi-part assignments), not one status.
+    // The parts note and the due date each take their own line.
+    expect(screen.getByText("2 of 3 done")).toBeTruthy();
+    expect(screen.getAllByText("Due Mar 3, 2099").length).toBeGreaterThan(0);
     expect(screen.getByText("Take quiz")).toBeTruthy();
     fireEvent.press(screen.getByText("Essay 1"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "1" } });

@@ -6,6 +6,7 @@ import { db } from "../../db/client";
 import { newPublicId } from "../../lib/public-id";
 import { cleanupTestData, createTestUser, reviewedOf, tokenFor } from "./fixtures";
 import { seedModuleWorld, type ModuleWorld } from "./module-world";
+import { createAssignmentWithParts, seedEssays, seedTextWork } from "./assignment-reads-setup";
 
 jest.setTimeout(180000);
 
@@ -26,10 +27,12 @@ async function call(method: Method, path: string, token: string, body?: object) 
 /** Everything one student can write to, in one season. */
 interface Kit {
   assignmentId: number;
-  draft: string; // the student's own DRAFT submission
+  essayPartId: number;
+  draft: string; // the student's own DRAFT essay
   quizId: number;
-  forumId: number;
-  matePost: string; // a group-mate's REVIEWED forum post
+  forumId: number; // an assignment with one FORUM part
+  forumPartId: number;
+  matePost: string; // a group-mate's forum post
   ownCommentId: number; // the student's own comment on it
   sessionId: number;
   questionId: number;
@@ -52,44 +55,24 @@ async function buildKit(o: {
   token: string;
 }): Promise<Kit> {
   const draft = newPublicId();
-  await db.submission.create({
-    data: {
-      publicId: draft,
-      assignmentId: o.assignmentId,
-      studentUserId: o.student,
-      text: "my draft",
-      status: "DRAFT",
-    },
-  });
-  const forum = await db.assignment.create({
-    data: {
-      seasonId: o.seasonId,
-      title: "MW Forum",
-      type: "FORUM",
-      forumAllowComments: true,
-      isAllGroups: true,
-      createdById: o.adminId,
-    },
+  await seedEssays([
+    { publicId: draft, assignmentId: o.assignmentId, studentUserId: o.student, text: "my draft", status: "DRAFT" },
+  ]);
+  const essayPart = await db.assignmentPart.findFirstOrThrow({
+    where: { assignmentId: o.assignmentId, kind: "ESSAY" },
     select: { id: true },
   });
+  const forum = await createAssignmentWithParts({ seasonId: o.seasonId, title: "MW Forum" }, [{ kind: "FORUM" }]);
+  const forumPartId = forum.partIds[0]!;
+  await db.assignment.update({ where: { id: forum.id }, data: { createdById: o.adminId } });
+  await db.assignmentPart.update({ where: { id: forumPartId }, data: { allowComments: true } });
   const matePost = newPublicId();
   const post = (publicId: string, studentUserId: number) =>
-    db.submission.create({
-      data: {
-        publicId,
-        assignmentId: forum.id,
-        studentUserId,
-        text: "<p>post</p>",
-        status: "REVIEWED",
-        submittedAt: new Date(),
-        reviewedAt: new Date(),
-      },
-      select: { id: true },
-    });
+    seedTextWork(forum.id, forumPartId, studentUserId, "SUBMITTED", { publicId, text: "<p>post</p>" });
   const mateRow = await post(matePost, o.mate);
   await post(newPublicId(), o.student); // the student has posted too, so post-first is satisfied
   const comment = await db.forumComment.create({
-    data: { submissionId: mateRow.id, authorUserId: o.student, body: "earlier comment" },
+    data: { partWorkId: mateRow.id, authorUserId: o.student, body: "earlier comment" },
     select: { id: true },
   });
   const quiz = await db.quiz.create({
@@ -120,9 +103,11 @@ async function buildKit(o: {
   });
   return {
     assignmentId: o.assignmentId,
+    essayPartId: essayPart.id,
     draft,
     quizId: quiz.id,
     forumId: forum.id,
+    forumPartId,
     matePost,
     ownCommentId: comment.id,
     sessionId: o.sessionId,
@@ -135,8 +120,8 @@ beforeAll(async () => {
   w = await seedModuleWorld(app);
   const { seasonId, otherSeasonId } = w;
 
-  // The ended season: studentB's submission reviewed so End is not blocked; a group-mate for studentA.
-  await db.submission.update({
+  // The ended season: studentB's essay reviewed so End is not blocked; a group-mate for studentA.
+  await db.assignmentPartWork.update({
     where: { publicId: w.submissionBPublicId },
     data: { status: "REVIEWED", reviewedAt: new Date() },
   });
@@ -184,8 +169,9 @@ beforeAll(async () => {
     token: "mwdroppedtoken",
   });
   alumnusSubmission = newPublicId();
-  await db.submission.create({
-    data: {
+  activeAssignmentSubmission = newPublicId();
+  await seedEssays([
+    {
       publicId: alumnusSubmission,
       assignmentId: w.otherAssignmentId,
       studentUserId: w.ids.alumnus,
@@ -193,17 +179,14 @@ beforeAll(async () => {
       status: "REVIEWED",
       submittedAt: new Date(),
     },
-  });
-  activeAssignmentSubmission = newPublicId();
-  await db.submission.create({
-    data: {
+    {
       publicId: activeAssignmentSubmission,
       assignmentId: w.otherAssignmentId,
       studentUserId: activeId,
       text: "active work",
       status: "DRAFT",
     },
-  });
+  ]);
 
   const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, {
     notPassed: [],
@@ -223,11 +206,22 @@ afterAll(async () => {
   await db.$disconnect();
 });
 
+const assignmentBody = (title: string) => ({
+  title,
+  description: null,
+  dueDay: null,
+  dueTime: null,
+  reminder: { enabled: false, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+  parts: [
+    { kind: "ESSAY", prompt: "Why?", minWords: null, maxWords: null, maxFileSizeMb: null, allowedMimeCategories: [] },
+  ],
+});
+
 describe("a finished season is locked to its former staff", () => {
   const writes = (): [Method, string, object?][] => [
     ["patch", `/seasons/${w.seasonId}`, { description: "x" }],
     ["post", `/seasons/${w.seasonId}/groups`, { name: "Late group" }],
-    ["post", `/seasons/${w.seasonId}/assignments`, { title: "Late", isAllGroups: true, type: "TEXT" }],
+    ["post", `/seasons/${w.seasonId}/assignments`, assignmentBody("Late")],
     [
       "put",
       `/seasons/${w.seasonId}/group-assignments`,
@@ -250,8 +244,8 @@ describe("a finished season is locked to its former staff", () => {
       { entries: [{ studentUserId: w.ids.studentA, status: "PRESENT" }] },
     ],
     ["post", `/sessions/${w.sessionId}/check-in-open`],
-    ["patch", `/assignments/${w.assignmentId}`, { title: "Renamed", isAllGroups: true }],
-    ["post", `/submissions/${reviewedPublicId}/review`, { feedback: "late" }],
+    ["patch", `/assignments/${w.assignmentId}`, assignmentBody("Renamed")],
+    ["post", `/submissions/${reviewedPublicId}/review`, { action: "reviewed", feedback: "late" }],
     ["post", `/quizzes`, { seasonId: w.seasonId, title: "Late quiz", kind: "PAPER", maxScore: 5 }],
     ["post", `/quizzes/${w.quizId}/grades`, { entries: [{ studentUserId: w.ids.studentA, score: 5 }] }],
     [
@@ -289,8 +283,12 @@ describe("a finished season is locked to its former staff", () => {
 
   it("still lets the super admin write, and a mentor read, in the finished season", async () => {
     expect(
-      (await call("patch", `/assignments/${w.assignmentId}`, t.super, { title: "Super edit", isAllGroups: true }))
-        .status,
+      (
+        await call("patch", `/assignments/${w.assignmentId}`, t.super, {
+          ...assignmentBody("Super edit"),
+          confirm: true,
+        })
+      ).status,
     ).toBe(200);
     expect(
       (

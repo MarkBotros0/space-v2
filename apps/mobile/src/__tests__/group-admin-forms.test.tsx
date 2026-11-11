@@ -134,7 +134,6 @@ function routeGets(extra: Record<string, unknown> = {}) {
       "/api/v1/groups/3/impact": {
         studentCount: 1,
         leaderCount: 1,
-        soleTargetAssignments: [{ id: 70, title: "Only A" }],
       },
       ...extra,
     };
@@ -309,7 +308,7 @@ describe("/group/[id]/edit", () => {
     ).toBeTruthy();
   });
 
-  it("shows the delete impact, and the server's refusal while an assignment targets only this group", async () => {
+  it("shows the delete impact, and the server's refusal", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { id: "3" };
     routeGets();
@@ -317,34 +316,26 @@ describe("/group/[id]/edit", () => {
       Object.assign(new Error("409"), {
         isAxiosError: true,
         response: {
-          status: 409,
-          data: {
-            error: {
-              code: "group_has_sole_targets",
-              message: "1 assignment(s) target only this group. Retarget them before deleting it.",
-            },
-          },
+          status: 403,
+          data: { error: { code: "forbidden", message: "You don't have access to this group." } },
         },
       }),
     );
     renderWithProviders(<EditGroupScreen />);
 
     expect(await screen.findByText("Deleting unassigns 1 student and removes 1 leader.")).toBeTruthy();
-    expect(screen.getByText("Only A")).toBeTruthy();
     fireEvent.press(screen.getByText("Delete group"));
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Really delete?"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/groups/3"));
-    expect(
-      await screen.findByText("1 assignment(s) target only this group. Retarget them before deleting it."),
-    ).toBeTruthy();
+    expect(await screen.findByText("You don't have access to this group.")).toBeTruthy();
   });
 
   it("deletes and returns to /groups", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
     mockParams = { id: "3" };
     routeGets({
-      "/api/v1/groups/3/impact": { studentCount: 1, leaderCount: 1, soleTargetAssignments: [] },
+      "/api/v1/groups/3/impact": { studentCount: 1, leaderCount: 1 },
     });
     del.mockResolvedValue({ data: { data: { deleted: true, orphanedStudentIds: [21] } } });
     renderWithProviders(<EditGroupScreen />);

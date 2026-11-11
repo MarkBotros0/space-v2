@@ -1,4 +1,4 @@
-import { conflict, errRef, errorResponse, ok } from "../helpers";
+import { errRef, errorResponse, ok } from "../helpers";
 import { idParam } from "../shared/params";
 
 /** `/api/v1/groups/*`. Assembled into the document by `../openapi.ts`. */
@@ -32,7 +32,7 @@ export const groupPaths = {
       tags: ["Groups"],
       summary: "What deleting a group would do",
       description:
-        "Season-admin only. studentCount (the season's participants who would lose their group: ACTIVE, in a finished season also COMPLETED), leaderCount, and soleTargetAssignments: live assignments targeted at this group ONLY, which make DELETE refuse (spec 05 R44).",
+        "Season-admin only. studentCount (the season's participants who would lose their group: ACTIVE, in a finished season also COMPLETED) and leaderCount.",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -41,10 +41,6 @@ export const groupPaths = {
             properties: {
               studentCount: { type: "integer" },
               leaderCount: { type: "integer" },
-              soleTargetAssignments: {
-                type: "array",
-                items: { type: "object", properties: { id: { type: "integer" }, title: { type: "string" } } },
-              },
             },
           },
           "The impact.",
@@ -61,7 +57,7 @@ export const groupPaths = {
       tags: ["Groups"],
       summary: "Delete a group",
       description:
-        "Season-admin only. Designed rather than ported: v1's delete action was unreachable (C12). Its leaders refresh into their new role, still signed in. Refuses with 409 `group_has_sole_targets` while any live non-all-groups assignment targets only this group, so none is left visible to nobody. Otherwise, in one transaction that re-checks that condition: unassigns every enrolment pointing at the group, deletes its leaders, memberships and target rows, and hard-deletes the group. Returns `{ deleted: true, orphanedStudentIds }`.",
+        "Season-admin only. Designed rather than ported: v1's delete action was unreachable (C12). Its leaders refresh into their new role, still signed in. In one transaction: unassigns every enrolment pointing at the group, deletes its leaders and memberships, and hard-deletes the group. Assignments are for the whole season, so none depends on a group. Returns `{ deleted: true, orphanedStudentIds }`.",
       parameters: [idParam],
       responses: {
         200: ok(
@@ -78,7 +74,6 @@ export const groupPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`group_has_sole_targets`."),
       },
     },
     patch: {

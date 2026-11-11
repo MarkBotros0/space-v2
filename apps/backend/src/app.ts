@@ -7,6 +7,8 @@ import { config } from "./lib/config";
 import { healthRouter } from "./routes/health";
 import { authRouter } from "./routes/auth";
 import { assignmentsRouter } from "./routes/assignments";
+import { assignmentEssayRouter } from "./routes/assignments/essay";
+import { assignmentVideoRouter } from "./routes/assignments/video";
 import { groupsRouter } from "./routes/groups";
 import { meRouter } from "./routes/me";
 import { devicesRouter } from "./routes/me/devices";
@@ -17,7 +19,7 @@ import { studentsRouter } from "./routes/students";
 import { submissionsRouter } from "./routes/submissions";
 import { quizzesRouter } from "./routes/quizzes";
 import { studentEngagementRouter } from "./routes/engagement";
-import { followUpsRouter, internalRouter, studentFollowUpsRouter } from "./routes/follow-ups";
+import { followUpsRouter, studentFollowUpsRouter } from "./routes/follow-ups";
 import { mentorSummaryRouter } from "./routes/mentor-summary";
 import { myNotesRouter, notesRouter, studentNotesRouter } from "./routes/notes";
 import { notificationsRouter } from "./routes/notifications";
@@ -30,6 +32,7 @@ import { docsRouter } from "./routes/docs";
 import { reportsRouter } from "./routes/reports";
 import { importsRouter, seasonImportsRouter } from "./routes/imports";
 import { reportExportsRouter, seasonExportsRouter } from "./routes/exports";
+import { schedulerTick } from "./lib/scheduler/middleware";
 import { notFoundHandler } from "./middleware/not-found";
 import { errorHandler } from "./middleware/error-handler";
 
@@ -42,10 +45,9 @@ export function createApp(): Express {
   app.set("trust proxy", config.trustProxy);
 
   app.use(helmet());
-  // PUT belongs here: PUT /api/v1/submissions/by-assignment/:assignmentId is
-  // the idempotent create-or-fetch a student's submission screen calls. It was
-  // added to the router without this list being updated, so a browser client
-  // would have had its preflight refused for an endpoint that exists.
+  // PUT belongs here: an essay's draft and a video's progress are saved with
+  // PUT (/api/v1/assignments/:id/parts/:partId/...). Leaving a method off this
+  // list refuses a browser client's preflight for an endpoint that exists.
   app.use(
     cors({
       origin: config.mobileAppOrigin,
@@ -61,6 +63,7 @@ export function createApp(): Express {
   app.use("/api/v1/imports", importsRouter);
   app.use("/api/v1/seasons", seasonImportsRouter);
   app.use(express.json());
+  app.use(schedulerTick());
   if (config.nodeEnv !== "test") {
     // Coloured "dev" lines locally; Apache combined format in production,
     // which log drains parse. Neither logs bodies or the Authorization header.
@@ -93,6 +96,9 @@ export function createApp(): Express {
   app.use("/api/v1/seasons", seasonsRouter);
   app.use("/api/v1/groups", groupsRouter);
   app.use("/api/v1/sessions", sessionsRouter);
+  // Ahead of assignmentsRouter (router-wide requireAuth); these guard per route and fall through.
+  app.use("/api/v1/assignments", assignmentVideoRouter);
+  app.use("/api/v1/assignments", assignmentEssayRouter);
   app.use("/api/v1/assignments", assignmentsRouter);
   app.use("/api/v1/submissions", submissionsRouter);
   app.use("/api/v1/quizzes", quizzesRouter);
@@ -107,7 +113,6 @@ export function createApp(): Express {
   // A mentor's follow-ups, mounted the same fall-through way (/students/:id/follow-ups).
   app.use("/api/v1/follow-ups", followUpsRouter);
   app.use("/api/v1/students", studentFollowUpsRouter);
-  app.use("/api/v1/internal", internalRouter);
   app.use("/api/v1/me", mentorSummaryRouter);
   // Same fall-through mounting as the notes routers: /students/:id/engagement
   // and /seasons/:id/engagement cannot be matched by those domains' /:id

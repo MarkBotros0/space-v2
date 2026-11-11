@@ -1,16 +1,25 @@
 import { conflict, errRef, ok } from "../helpers";
 import { idParam, publicIdParam } from "../shared/params";
 
+const partIdParam = {
+  name: "partId",
+  in: "path",
+  required: true,
+  schema: { type: "integer" },
+  description: "The assignment's FORUM part.",
+} as const;
+
 /** Forum and events. Assembled into the document by `../openapi.ts`. */
 export const forumEventsPaths = {
-  "/api/v1/assignments/{id}/forum": {
+  "/api/v1/assignments/{id}/parts/{partId}/forum": {
     get: {
       tags: ["Forum"],
       summary: "The forum thread",
       description:
-        "Existence first: a missing, deleted or non-FORUM assignment is 404 for every caller, then the audience gate (403). A STUDENT sees their own response plus their own group's posted responses once they have posted; until then `locked` is true and `posts` is empty — a product mechanic, not an error. LEADER: the groups they lead; ADMIN/SUPER: the season; MENTOR: read-only across the season (a widening of v1, taken so that moderation is possible). An unposted draft is never served. **This read never creates the submission row** — `PUT .../forum/response` does. No email address or avatar appears anywhere in the payload. Moderation beyond comment deletion does not exist (plan 14 D-14.4).",
+        "The forum is the assignment's FORUM part (at most one per assignment); its prompt and settings come from the part. Existence first: a missing part, a part that isn't a forum, one named under another assignment, or a deleted assignment is 404 for every caller, then the audience gate (403). The assignment covers the whole season (no group targeting): a STUDENT with a live place in it sees their own response plus their own group's posted responses once they have posted; until then `locked` is true and `posts` is empty — a product mechanic, not an error. LEADER: the groups they lead; ADMIN/SUPER: the season; MENTOR: read-only across the season (a widening of v1, taken so that moderation is possible). An unposted draft is never served. **This read never creates the post** — `PUT .../forum/response` does. No email address or avatar appears anywhere in the payload. Moderation beyond comment deletion does not exist (plan 14 D-14.4).",
       parameters: [
         idParam,
+        partIdParam,
         { name: "cursor", in: "query", schema: { type: "string" }, description: "`nextCursor` of the previous page." },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 50, default: 10 } },
       ],
@@ -23,13 +32,13 @@ export const forumEventsPaths = {
       },
     },
   },
-  "/api/v1/assignments/{id}/forum/response": {
+  "/api/v1/assignments/{id}/parts/{partId}/forum/response": {
     put: {
       tags: ["Forum"],
       summary: "Post (or re-post) the caller's response",
       description:
-        "**This PUT creates the submission row** (ruling C6 forbids a read-time write, so a GET must not). One upsert writes the body, `status = SUBMITTED` and `submittedAt` together; re-posting overwrites and re-stamps. It is the only writer of a FORUM submission — the generic submission routes answer 409 `use_forum_endpoint`. STUDENT only, targeted and ACTIVE-enrolled. `text` is plain text and is stored as escaped HTML. `forumMinWords` is applied to the same word count the client shows (400 `too_few_words`), and at least one word is always required. **A late post is allowed on purpose**: a discussion that closes at a deadline stops being a discussion.",
-      parameters: [idParam],
+        "**This PUT creates the post** (ruling C6 forbids a read-time write, so a GET must not): the student's work on the FORUM part, made with the assignment's Submission if missing, written with the body, `status = SUBMITTED` and `submittedAt` together; re-posting overwrites and re-stamps. Posting marks the forum part done (there is no review); it is not Submit. The essay routes answer 404 for a forum post. STUDENT only, with an ACTIVE place in the live season. `text` is plain text and is stored as escaped HTML. The part's `minWords` is applied to the same word count the client shows (400 `too_few_words`), and at least one word is always required. **A late post is allowed on purpose**: a discussion that closes at a deadline stops being a discussion.",
+      parameters: [idParam, partIdParam],
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/SubmitForumResponseRequest" } } },
@@ -43,14 +52,15 @@ export const forumEventsPaths = {
       },
     },
   },
-  "/api/v1/assignments/{id}/forum/posts/{publicId}/comments": {
+  "/api/v1/assignments/{id}/parts/{partId}/forum/posts/{publicId}/comments": {
     get: {
       tags: ["Forum"],
       summary: "A post's comments",
       description:
-        "Oldest first, numeric cursor. The thread inlines only the first three per post. Same gates as the feed: assignment 404 first, then the audience (403), then the post must be a real (non-DRAFT) post inside the caller's audience, and a student must have posted their own response (403 `post_first` — a rule, not an error condition). `canDelete` is authoritative; the client must not re-derive it.",
+        "Oldest first, numeric cursor. The thread inlines only the first three per post. Same gates as the feed: part 404 first, then the audience (403), then the post must be a real (non-DRAFT) post inside the caller's audience, and a student must have posted their own response (403 `post_first` — a rule, not an error condition). `canDelete` is authoritative; the client must not re-derive it.",
       parameters: [
         idParam,
+        partIdParam,
         publicIdParam,
         { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },
         { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100, default: 20 } },
@@ -67,8 +77,8 @@ export const forumEventsPaths = {
       tags: ["Forum"],
       summary: "Comment on a post",
       description:
-        "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the assignment in the path (404 otherwise). No notification is sent (`NotificationType` has no forum member). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
-      parameters: [idParam, publicIdParam],
+        "Allowed for a student in the post author's group who has posted their own response first (403 `post_first` otherwise), for the LEADER of that group and for the season ADMIN / SUPER without posting anything. A MENTOR stays read-only. The post must belong to the FORUM part in the path (404 otherwise, also when the part is removed while the request is on its way). No notification is sent (`NotificationType` has no forum member). **No moderation beyond comment deletion exists** — there is no way to hide a post or report one (plan 14, D-14.4).",
+      parameters: [idParam, partIdParam, publicIdParam],
       requestBody: {
         required: true,
         content: { "application/json": { schema: { $ref: "#/components/schemas/AddForumCommentRequest" } } },

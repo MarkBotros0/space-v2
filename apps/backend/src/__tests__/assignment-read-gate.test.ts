@@ -12,7 +12,13 @@ jest.mock("../lib/auth/session-validity", () => ({ isAccessTokenInvalidated: asy
 const mockLoad = jest.fn();
 jest.mock("../lib/queries/assignments", () => ({
   ...jest.requireActual("../lib/queries/assignments"),
-  loadAssignmentById: (...args: unknown[]) => mockLoad(...args),
+  loadAssignmentDetail: (...args: unknown[]) => mockLoad(...args),
+}));
+// A student whose place has ended reads, read-only.
+const mockActive = jest.fn();
+jest.mock("../lib/permissions", () => ({
+  ...jest.requireActual("../lib/permissions"),
+  hasActiveEnrollment: (...args: unknown[]) => mockActive(...args),
 }));
 
 import express from "express";
@@ -40,9 +46,10 @@ async function tokenFor(over: Partial<SessionUser>): Promise<string> {
 beforeEach(() => {
   jest.resetAllMocks();
   mockDb.assignment.findFirst.mockResolvedValue({ seasonId: 7 });
-  // Past the gate, the loader answering null gives a 404 — enough to prove the
-  // gate let the caller through without building a whole assignment.
-  mockLoad.mockResolvedValue(null);
+  // Past the gate the loader answers; enough to prove the gate let the caller
+  // through without building a whole assignment.
+  mockLoad.mockResolvedValue({ id: 3 });
+  mockActive.mockResolvedValue(true);
 });
 
 async function get(token: string) {
@@ -56,16 +63,19 @@ describe("GET /assignments/:id — the student read gate", () => {
       season: { status: "ACTIVE", deletedAt: null },
     });
     const res = await get(await tokenFor({ activeSeasonId: 8 }));
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    // The whole season's: the student is the viewer, whatever their group.
+    expect(mockLoad).toHaveBeenCalledWith(3, { studentUserId: 10, canManage: false, readOnly: false });
   });
 
   it.each(["WITHDRAWN", "COMPLETED"])(
     "lets a %s student read their past season's assignment (it comes back readOnly)",
     async (status) => {
       mockDb.seasonEnrollment.findUnique.mockResolvedValue({ status });
+      mockActive.mockResolvedValue(false);
       const res = await get(await tokenFor({ activeSeasonId: 8, graduationYear: 2098 }));
-      expect(res.status).toBe(404); // past the gate; the loader answers null
-      expect(mockLoad).toHaveBeenCalled();
+      expect(res.status).toBe(200);
+      expect(mockLoad).toHaveBeenCalledWith(3, expect.objectContaining({ readOnly: true }));
     },
   );
 

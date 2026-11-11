@@ -20,6 +20,7 @@ const DOMAINS: { title: string; models: string[] }[] = [
       "NotificationPreference",
       "DeviceToken",
       "RateLimitHit",
+      "SchedulerLease",
     ],
   },
   {
@@ -32,7 +33,7 @@ const DOMAINS: { title: string; models: string[] }[] = [
   },
   {
     title: "Assignments & submissions",
-    models: ["Assignment", "AssignmentTarget", "Submission", "SubmissionFile", "ForumComment"],
+    models: ["Assignment", "AssignmentPart", "Submission", "AssignmentPartWork", "SubmissionFile", "ForumComment"],
   },
   {
     title: "Quizzes",

@@ -9,13 +9,12 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { config } from "../../lib/config";
+import { sendDueFollowUpReminders } from "../../lib/follow-ups";
 import { cleanupTestData, createTestUser, login } from "./fixtures";
 
 jest.setTimeout(60000);
 
 const app = createApp();
-const SECRET = "test-cron-secret-0123456789";
 
 let mentorId: number;
 let mentorToken: string;
@@ -24,10 +23,6 @@ let superToken: string;
 let studentId: number;
 let student2Id: number;
 
-const remind = (auth?: string) => {
-  const r = request(app).get("/api/v1/internal/follow-ups/remind");
-  return auth ? r.set("authorization", auth) : r;
-};
 const reminders = (userId: number) => db.notification.count({ where: { userId, type: "MENTOR_FOLLOWUP" } });
 
 beforeAll(async () => {
@@ -44,7 +39,6 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  (config as { cronSecret?: string }).cronSecret = undefined;
   await cleanupTestData();
   await db.$disconnect();
 });
@@ -89,25 +83,16 @@ describe("follow-ups", () => {
     expect(done.status).toBe(404);
   });
 
-  it("the reminder is a 404 with no CRON_SECRET, and 401 with a wrong one", async () => {
-    (config as { cronSecret?: string }).cronSecret = undefined;
-    expect((await remind(`Bearer ${SECRET}`)).status).toBe(404);
-    (config as { cronSecret?: string }).cronSecret = SECRET;
-    expect((await remind("Bearer nope")).status).toBe(401);
-    expect((await remind()).status).toBe(401);
-  });
-
   it("sends nothing before 7 days, then exactly one reminder to that mentor", async () => {
-    (config as { cronSecret?: string }).cronSecret = SECRET;
     const before = await reminders(mentorId);
-    await remind(`Bearer ${SECRET}`);
+    expect(await sendDueFollowUpReminders(new Date())).toBe(0);
     expect(await reminders(mentorId)).toBe(before);
 
-    await db.mentorFollowUp.update({ where: { id: followUpId }, data: { dueAt: new Date(Date.now() - 1000) } });
-    const first = await remind(`Bearer ${SECRET}`);
-    expect(first.status).toBe(200);
+    const at = new Date("2026-11-12T10:00:00Z"); // 12:00 Cairo
+    await db.mentorFollowUp.update({ where: { id: followUpId }, data: { dueAt: new Date("2026-11-12T04:00:00Z") } });
+    expect(await sendDueFollowUpReminders(at)).toBe(1);
     expect(await reminders(mentorId)).toBe(before + 1);
-    await remind(`Bearer ${SECRET}`);
+    expect(await sendDueFollowUpReminders(at)).toBe(0);
     expect(await reminders(mentorId)).toBe(before + 1);
 
     const note = await db.notification.findFirst({
@@ -115,6 +100,27 @@ describe("follow-ups", () => {
       orderBy: { id: "desc" },
     });
     expect(note).toMatchObject({ title: "Follow up with Test fu-student", body: "Check in after the exam" });
+  });
+
+  it("waits for 9:00 on the due day", async () => {
+    await db.mentorFollowUp.update({
+      where: { id: followUpId },
+      data: { dueAt: new Date("2026-11-12T04:00:00Z"), remindedAt: null },
+    }); // 06:00 Cairo
+    expect(await sendDueFollowUpReminders(new Date("2026-11-12T05:00:00Z"))).toBe(0); // 07:00
+    expect(await sendDueFollowUpReminders(new Date("2026-11-12T07:05:00Z"))).toBe(1); // 09:05
+  });
+
+  it("an overdue one from an earlier day goes at once", async () => {
+    await db.mentorFollowUp.update({
+      where: { id: followUpId },
+      data: { dueAt: new Date("2026-11-11T18:00:00Z"), remindedAt: null }, // 20:00 Cairo, 11 Nov
+    });
+    expect(await sendDueFollowUpReminders(new Date("2026-11-12T04:30:00Z"))).toBe(1); // 06:30 Cairo, 12 Nov
+  });
+
+  it("GET /api/v1/internal/follow-ups/remind is gone", async () => {
+    expect((await request(app).get("/api/v1/internal/follow-ups/remind")).status).toBe(404);
   });
 
   it("stays open until marked done, and a done one can be flagged again", async () => {

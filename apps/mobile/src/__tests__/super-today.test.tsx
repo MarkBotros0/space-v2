@@ -58,7 +58,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
 
     expect(await screen.findByText("Season 7")).toBeTruthy();
     expect(screen.queryByText("NEEDS ACTION")).toBeNull();
-    expect(screen.queryByText(/Submissions to review/)).toBeNull();
+    expect(screen.queryByText(/Essays to review/)).toBeNull();
     expect(screen.queryByText(/Sessions without attendance/)).toBeNull();
     expect(screen.queryByText(/Students at risk/)).toBeNull();
     expect(screen.queryByText("Happening now")).toBeNull();

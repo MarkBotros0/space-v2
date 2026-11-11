@@ -32,8 +32,6 @@ interface CompletionAssignment {
   id: number;
   seasonId: number;
   title: string;
-  isAllGroups: boolean;
-  targets: Array<{ groupId: number }>;
 }
 
 /** The students under each key: rows grouped by `key`, studentUserId collected. */
@@ -103,13 +101,11 @@ export function completionRows(
   submittedBy: Map<number, Set<number>>,
 ): AssignmentCompletionRow[] {
   return assignments.map((a) => {
-    // v1 counted GroupStudent rows (R20) — then a table unique on
-    // studentUserId across the ENTIRE database (R21, fixed by Plan 18 M1), so
-    // it held one group per student regardless of season.
-    const expectedIds = expectedStudentIds(enrollmentsBySeason.get(a.seasonId) ?? [], a);
+    // Every enrolment of the season, whatever its group: there is no targeting.
+    const expectedIds = expectedStudentIds(enrollmentsBySeason.get(a.seasonId) ?? []);
     // Intersecting the numerator is the fix for R23: v1 counted submissions
-    // from ANY student against a denominator of targeted students, so the bar
-    // could exceed 100 and neither end was clamped.
+    // from ANY student against its denominator, so the bar could exceed 100
+    // and neither end was clamped.
     const submitters = submittedBy.get(a.id) ?? new Set<number>();
     let completed = 0;
     for (const id of submitters) if (expectedIds.has(id)) completed += 1;
@@ -118,12 +114,10 @@ export function completionRows(
       assignmentId: a.id,
       seasonId: a.seasonId,
       title: a.title,
-      targeting: a.isAllGroups ? "all_groups" : "targeted",
       completed,
       expected: expectedIds.size,
-      // null for a targeted assignment with no AssignmentTarget rows. v1 showed
-      // 0 %, which reads as total cohort failure and is a mis-configured
-      // assignment (R22).
+      // null for a season with nobody in it yet. v1 showed 0 %, which reads
+      // as total cohort failure (R22).
       completionRate: expectedIds.size > 0 ? Math.round((completed / expectedIds.size) * 100) : null,
     };
   });

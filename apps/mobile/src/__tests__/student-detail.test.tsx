@@ -211,7 +211,8 @@ describe("StudentDetailScreen history (REG-83)", () => {
     expect(screen.getAllByText("Late").length).toBeGreaterThan(0);
     fireEvent.press(screen.getByText("Submissions"));
     fireEvent.press(await screen.findByText("Essay one"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
+    // A history row is the whole Submission, not one essay: it opens the assignment's progress.
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "41" } });
   });
 
   it("never asks a student's own record for the staff-only history", async () => {

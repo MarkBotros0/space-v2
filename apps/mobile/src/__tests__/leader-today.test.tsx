@@ -180,11 +180,11 @@ describe("LeaderToday", () => {
   it("waiting for you: tiles open the same season's queue and the quizzes", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByLabelText("Submissions to review: 1")).toBeTruthy();
+    expect(await screen.findByLabelText("Essays to review: 1")).toBeTruthy();
     expect(screen.getByLabelText("Quizzes to grade: 2")).toBeTruthy();
     // Named in the list below instead of a tile of their own.
     expect(screen.queryByLabelText(/^Students at risk:/)).toBeNull();
-    fireEvent.press(screen.getByLabelText("Submissions to review: 1"));
+    fireEvent.press(screen.getByLabelText("Essays to review: 1"));
     // The figures are this season's, so the queue opens on the same season.
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByLabelText("Quizzes to grade: 2"));
@@ -204,7 +204,7 @@ describe("LeaderToday", () => {
     );
     renderWithProviders(<LeaderToday />);
     expect(await screen.findByLabelText("All caught up")).toBeTruthy();
-    expect(screen.queryByLabelText(/^Submissions to review/)).toBeNull();
+    expect(screen.queryByLabelText(/^Essays to review/)).toBeNull();
     expect(screen.queryByLabelText(/^Quizzes to grade/)).toBeNull();
   });
 
@@ -254,7 +254,7 @@ describe("LeaderToday", () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5] }, { name: "" }));
     serveDash(dash({ nextSession: null }));
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByLabelText("Submissions to review: 1")).toBeTruthy();
+    expect(await screen.findByLabelText("Essays to review: 1")).toBeTruthy();
     expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });

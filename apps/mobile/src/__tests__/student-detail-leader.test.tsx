@@ -176,7 +176,8 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/submissions");
     expect(requested().some((u) => u.endsWith("/attendance") || u.includes("/notes"))).toBe(false);
     fireEvent.press(screen.getByText("Essay one"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "abc123defg" } });
+    // A history row is the whole Submission, not one essay: it opens the assignment's progress.
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "41" } });
 
     fireEvent.press(screen.getByText("Seasons"));
     expect(await screen.findByText(/83% attendance/)).toBeTruthy();

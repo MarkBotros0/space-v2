@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 
 import { db } from "../../src/db/client";
-import { newPublicId } from "../../src/lib/public-id";
 import { addQuizQuestion } from "../../src/lib/quizzes/questions";
+import { createEssayAssignment, markSubmitted, seedTextWork } from "./assignment-work";
 import type { SweepPeople } from "./people";
 import { fromToday, SWEEP_PASSWORD } from "./shared";
 
@@ -58,30 +58,26 @@ export async function seedCommunityScenario({ superUser, admin, leader, alumni, 
 
   // Behind the three lists of the finished season.
   const finale = await db.session.findFirstOrThrow({ where: { seasonId: pastSeason.id } });
-  const assignment = await db.assignment.create({
-    data: {
-      seasonId: pastSeason.id,
-      sessionId: finale.id,
-      title: "Closing reflection",
-      description: "<p>Write what you take away from the season.</p>",
-      dueAt: fromToday(-385),
-      isAllGroups: true,
-      createdById: admin.id,
-    },
+  const assignment = await createEssayAssignment({
+    seasonId: pastSeason.id,
+    title: "Closing reflection",
+    description: "<p>Write what you take away from the season.</p>",
+    dueAt: fromToday(-385),
+    createdById: admin.id,
+    prompt: "What do you take away from the season?",
   });
-  await db.submission.create({
-    data: {
-      publicId: newPublicId(),
-      assignmentId: assignment.id,
-      studentUserId: finished.id,
-      text: "I learned to ask better questions.",
-      status: "REVIEWED",
-      submittedAt: fromToday(-386),
-      reviewedAt: fromToday(-384),
-      reviewedById: leader.id,
-      feedback: "Well said.",
-    },
+  await seedTextWork({
+    assignmentId: assignment.id,
+    partId: assignment.essayPartId,
+    studentUserId: finished.id,
+    text: "I learned to ask better questions.",
+    status: "REVIEWED",
+    submittedAt: fromToday(-386),
+    reviewedAt: fromToday(-384),
+    reviewedById: leader.id,
+    feedback: "Well said.",
   });
+  await markSubmitted(assignment.id, finished.id, fromToday(-386), fromToday(-384));
   const quiz = await db.quiz.create({
     data: {
       seasonId: pastSeason.id,

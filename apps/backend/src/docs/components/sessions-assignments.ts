@@ -118,19 +118,16 @@ export const sessionsAssignmentsSchemas = {
         description:
           "Derived server-side. Do not recompute from `dueAt` on the client — a device in another timezone would disagree with the badge its leader is looking at.",
       },
-      isAllGroups: { type: "boolean" },
-      targetGroupIds: {
-        type: "array",
-        items: { type: "integer" },
-        description: "Empty when `isAllGroups`.",
-      },
+      partsCount: { type: "integer", description: "How many parts the assignment has." },
       submissionCount: {
         type: "integer",
-        description: "Submissions that are not DRAFT. The one definition of 'submitted'.",
+        description:
+          "Season participants who have tapped Submit (`submittedAt` set). The one definition of 'submitted'.",
       },
       expectedCount: {
         type: "integer",
-        description: "ACTIVE season enrolments in the targeted groups (SeasonEnrollment is the authority, ruling C9).",
+        description:
+          "Every participant of the season (SeasonEnrollment is the authority, ruling C9): an assignment is for the whole season.",
       },
       seasonCode: { type: "string" },
     },
@@ -156,7 +153,14 @@ export const sessionsAssignmentsSchemas = {
       submittedAt: {
         type: ["string", "null"],
         format: "date-time",
-        description: "When they last handed it in; null before they ever have.",
+        description: "When they tapped Submit; null before they have, or since an essay was returned.",
+      },
+      partsTotal: { type: "integer" },
+      partsDone: { type: "integer", description: "Parts done by the completion rules; a returned essay is not done." },
+      returned: { type: "boolean", description: "A reviewer returned one of the essays." },
+      hasEssay: {
+        type: "boolean",
+        description: "The assignment has an essay part, so a submitted one waits for review; without one it is done.",
       },
     },
   },
@@ -167,8 +171,6 @@ export const sessionsAssignmentsSchemas = {
       seasonId: { type: "integer" },
       seasonCode: { type: "string" },
       seasonTitle: { type: "string" },
-      sessionId: { type: ["integer", "null"] },
-      sessionTitle: { type: ["string", "null"] },
       title: { type: "string" },
       description: { type: ["string", "null"] },
       dueAt: { type: ["string", "null"], format: "date-time" },
@@ -183,26 +185,29 @@ export const sessionsAssignmentsSchemas = {
         description:
           "Organisation wall-clock time of `dueAt`, 24-hour `HH:mm`; null when there is no due date. With `dueOrgDay`, exactly what the write body's `dueDay`/`dueTime` take.",
       },
-      isAllGroups: { type: "boolean" },
-      type: { $ref: "#/components/schemas/AssignmentType" },
-      forumMinWords: { type: ["integer", "null"] },
-      forumAllowComments: { type: "boolean" },
-      forumPostToRead: {
-        type: "boolean",
-        description: "True: a student sees group-mates' responses only after posting their own.",
-      },
-      maxFileSizeMb: { type: ["integer", "null"] },
-      allowedMimeCategories: {
-        type: "array",
-        items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
-        description: "Empty means any MIME type is accepted.",
-      },
       isOverdue: { type: "boolean", description: "Derived server-side." },
-      groupIds: {
-        type: ["array", "null"],
-        items: { type: "integer" },
+      reminder: {
+        type: "object",
+        properties: {
+          enabled: { type: "boolean" },
+          days: { type: "integer", minimum: 1, maximum: 14 },
+          anchor: { type: "string", enum: ["NEXT_SESSION", "DUE_DATE"] },
+          time: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        },
+      },
+      reminderLine: {
+        type: ["string", "null"],
         description:
-          "**Null for a STUDENT.** v1 sent the authoring shape so its own page could re-check targeting; that check now runs server-side, so the ids need not travel to the one role that should not enumerate them.",
+          'When the reminder goes out, on the organisation\'s clock: "Tue 11 Nov, around 9:00 AM — students who haven\'t finished"; "No session after it was published — no reminder"; "The next session was too close — no reminder"; "Sent Tue 11 Nov, around 9:00 AM" once it has gone. Null when it is off.',
+      },
+      parts: { type: "array", items: { $ref: "#/components/schemas/AssignmentPart" } },
+      my: {
+        type: ["object", "null"],
+        description: "Populated only for a STUDENT: when they submitted, and their work on each part in order.",
+        properties: {
+          submittedAt: { type: ["string", "null"], format: "date-time" },
+          parts: { type: "array", items: { $ref: "#/components/schemas/PartWork" } },
+        },
       },
       canManage: {
         type: "boolean",
@@ -214,50 +219,55 @@ export const sessionsAssignmentsSchemas = {
         description:
           "True for a student whose enrolment is no longer ACTIVE (finished, dropped, alumnus): they can read the assignment and their own work, not change it. False for everyone else.",
       },
-      mySubmission: {
-        type: ["object", "null"],
-        description: "Populated only for a STUDENT.",
-        properties: {
-          publicId: { type: "string" },
-          status: { $ref: "#/components/schemas/SubmissionStatus" },
-          submittedAt: { type: ["string", "null"], format: "date-time" },
-          reviewedAt: { type: ["string", "null"], format: "date-time" },
-          feedback: { type: ["string", "null"] },
-          isLate: {
-            type: "boolean",
-            description:
-              "submittedAt is after dueAt. Derived server-side once; v1 recomputed this comparison at five separate render sites.",
-          },
-        },
-      },
     },
   },
-  AssignmentTrackerRow: {
+  AssignmentPart: {
     type: "object",
+    description:
+      "A stored part: `id`, `position` and `kind`, then the kind's fields as in `AssignmentPartInput`. A VIDEO also carries `videoId`, the YouTube id.",
     properties: {
-      studentUserId: { type: "integer" },
-      name: { type: ["string", "null"] },
-      email: { type: "string", format: "email" },
-      groupId: { type: ["integer", "null"] },
-      groupName: { type: ["string", "null"] },
-      status: {
-        oneOf: [{ $ref: "#/components/schemas/SubmissionStatus" }, { type: "string", enum: ["PENDING"] }],
-        description: "PENDING means no Submission row exists.",
+      id: { type: "integer" },
+      position: { type: "integer" },
+      kind: { type: "string", enum: ["VIDEO", "ESSAY", "FORUM"] },
+      videoId: { type: ["string", "null"] },
+    },
+    additionalProperties: true,
+  },
+  PartWork: {
+    type: "object",
+    description:
+      "One student's work on one part. VIDEO: done once 90% is watched and every timed question answered. ESSAY: done when written within the word range, until a reviewer returns it. FORUM: done once posted. A draft essay or forum post is the student's alone and reads as NOT_STARTED to staff.",
+    properties: {
+      partId: { type: "integer" },
+      kind: { type: "string", enum: ["VIDEO", "ESSAY", "FORUM"] },
+      status: { type: "string", enum: ["NOT_STARTED", "IN_PROGRESS", "DONE", "RETURNED"] },
+      essay: {
+        type: "object",
+        properties: {
+          publicId: { type: "string", description: "The essay's handle into the review screen." },
+          wordCount: { type: "integer" },
+          reviewStatus: { $ref: "#/components/schemas/SubmissionStatus" },
+          feedback: { type: ["string", "null"] },
+        },
       },
-      isLate: { type: "boolean" },
-      submittedAt: { type: ["string", "null"], format: "date-time" },
-      reviewedAt: { type: ["string", "null"], format: "date-time" },
-      submissionPublicId: {
-        type: ["string", "null"],
-        description: "The handle into the review screen; null when nothing was started.",
+      video: {
+        type: "object",
+        properties: {
+          watchedSeconds: { type: "integer" },
+          durationSeconds: { type: "integer" },
+          answered: { type: "integer" },
+          questionCount: { type: "integer" },
+          correct: { type: "integer" },
+        },
       },
+      forum: { type: "object", properties: { posted: { type: "boolean" } } },
     },
   },
   AssignmentWriteRequest: {
     type: "object",
-    required: ["title", "isAllGroups"],
+    required: ["title", "description", "dueDay", "dueTime", "reminder", "parts"],
     description:
-      "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season.",
+      "One full-replace body for create (POST) and update (PATCH). There is no `seasonId`: create takes it from the path and an assignment never moves season. There is no session and no group targeting: an assignment is for the whole season.",
     properties: {
       title: { type: "string", minLength: 2, maxLength: 160 },
       description: { type: ["string", "null"], maxLength: 20000 },
@@ -265,67 +275,104 @@ export const sessionsAssignmentsSchemas = {
         type: ["string", "null"],
         format: "date",
         description:
-          "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2) — a client never sends an instant.",
+          "Organisation-calendar day the assignment is due; null = no due date. The server composes the instant in ORG_TIMEZONE (ruling C2): a client never sends an instant.",
       },
       dueTime: {
         type: ["string", "null"],
         pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
-        default: "23:59",
         description: "Organisation wall-clock time, 24-hour. Ignored when `dueDay` is null.",
       },
-      sessionId: {
-        type: ["integer", "null"],
-        description: "Must be a session of the assignment's season (400 `invalid_session`).",
+      reminder: {
+        type: "object",
+        required: ["enabled", "days", "anchor", "time"],
+        description: "`days` before the anchor at `time` (org clock). `DUE_DATE` needs a due date (400).",
+        properties: {
+          enabled: { type: "boolean" },
+          days: { type: "integer", minimum: 1, maximum: 14 },
+          anchor: { type: "string", enum: ["NEXT_SESSION", "DUE_DATE"] },
+          time: { type: "string", pattern: "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        },
       },
-      type: { $ref: "#/components/schemas/AssignmentType" },
-      forumMinWords: {
-        type: ["integer", "null"],
-        minimum: 0,
-        maximum: 2000,
-        description: "Kept only for FORUM; forced null for STANDARD.",
-      },
-      forumAllowComments: {
-        type: "boolean",
-        default: false,
-        description: "Kept only for FORUM; forced false for STANDARD.",
-      },
-      forumPostToRead: {
-        type: "boolean",
-        default: true,
-        description:
-          "FORUM only: a student reads group-mates' responses only after posting their own. Forced true for STANDARD.",
-      },
-      maxFileSizeMb: {
-        type: ["integer", "null"],
-        minimum: 1,
-        maximum: 100,
-        description: "Null = accepts no files. Forced null for FORUM.",
-      },
-      allowedMimeCategories: {
+      parts: {
         type: "array",
-        items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
-        default: [],
-        description: "Empty = any type. Forced empty for FORUM.",
-      },
-      isAllGroups: { type: "boolean" },
-      groupIds: {
-        type: "array",
-        items: { type: "integer" },
-        default: [],
+        minItems: 1,
+        maxItems: 20,
+        items: { $ref: "#/components/schemas/AssignmentPartInput" },
         description:
-          "Required non-empty when `isAllGroups` is false; every id must be a group of the assignment's season (400 `invalid_group`). Duplicates collapse. Ignored when `isAllGroups` is true.",
+          "Every part, in order; at most one FORUM. On PATCH a part with an `id` keeps its row and the students' work on it, one without is new, a stored part left out is removed. An `id` this assignment doesn't have is 400 `unknown_part`; a part can't change kind (400).",
+      },
+      confirm: {
+        type: "boolean",
+        description: "PATCH: re-sent as true to apply an edit the server answered with 409 `needs_confirmation`.",
       },
     },
   },
-  AssignmentTracker: {
+  AssignmentPartInput: {
+    oneOf: [
+      {
+        type: "object",
+        required: ["kind", "title", "youtubeUrl", "blockSkipping", "durationSeconds"],
+        properties: {
+          id: { type: "integer" },
+          kind: { type: "string", enum: ["VIDEO"] },
+          title: { type: "string", minLength: 1, maxLength: 200 },
+          youtubeUrl: { type: "string", description: "Must parse as a YouTube video; its id is stored." },
+          blockSkipping: { type: "boolean" },
+          durationSeconds: {
+            type: "integer",
+            minimum: 1,
+            maximum: 43200,
+            description: "The length the form's player reports; the server has no YouTube API key.",
+          },
+        },
+      },
+      {
+        type: "object",
+        required: ["kind", "prompt", "minWords", "maxWords", "maxFileSizeMb", "allowedMimeCategories"],
+        properties: {
+          id: { type: "integer" },
+          kind: { type: "string", enum: ["ESSAY"] },
+          prompt: { type: "string", minLength: 1, maxLength: 2000 },
+          minWords: { type: ["integer", "null"], minimum: 1, maximum: 5000 },
+          maxWords: { type: ["integer", "null"], minimum: 1, maximum: 5000, description: "At least `minWords`." },
+          maxFileSizeMb: { type: ["integer", "null"], minimum: 1, maximum: 100, description: "Null = no files." },
+          allowedMimeCategories: {
+            type: "array",
+            items: { type: "string", enum: ["image", "pdf", "doc", "audio", "video", "text"] },
+            description: "Empty = any type.",
+          },
+        },
+      },
+      {
+        type: "object",
+        required: ["kind", "prompt", "minWords", "postToRead", "allowComments"],
+        properties: {
+          id: { type: "integer" },
+          kind: { type: "string", enum: ["FORUM"] },
+          prompt: { type: "string", minLength: 1, maxLength: 2000 },
+          minWords: { type: ["integer", "null"], minimum: 1, maximum: 5000 },
+          postToRead: { type: "boolean", description: "Group-mates' posts show only after the student's own." },
+          allowComments: { type: "boolean" },
+        },
+      },
+    ],
+  },
+  AssignmentProgress: {
     type: "object",
     properties: {
-      assignmentId: { type: "integer" },
-      dueAt: { type: ["string", "null"], format: "date-time" },
-      isOverdue: { type: "boolean" },
-      submittedCount: { type: "integer" },
-      expectedCount: { type: "integer" },
-      rows: { type: "array", items: { $ref: "#/components/schemas/AssignmentTrackerRow" } },
+      rows: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            studentUserId: { type: "integer" },
+            name: { type: ["string", "null"] },
+            avatarPath: { type: ["string", "null"] },
+            submittedAt: { type: ["string", "null"], format: "date-time" },
+            parts: { type: "array", items: { $ref: "#/components/schemas/PartWork" } },
+          },
+        },
+      },
     },
   },
 } as const;

@@ -4,10 +4,12 @@ import { plainTextToHtml, type SubmissionDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { RichTextView } from "../../design/ui/rich-text-view";
+import { StatusChip } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
-import { storedTextToHtml } from "../../lib/stored-text";
-import { formatKb } from "../../lib/format";
+import { formatKb, formatOrgDue, formatShortDateTime } from "../../lib/format";
+import { plural } from "../../lib/plural";
+import { essayStatusChip } from "./essay-status";
 
 iconWithClassName(FileIcon);
 
@@ -20,57 +22,101 @@ function Section({ header, children }: { header: string; children: React.ReactNo
   );
 }
 
-/** The assignment's prompt, when it has one. */
-export function PromptSection({ description }: { description: string | null }) {
-  if (!description) return null;
+type ChipFields = "status" | "isLate" | "groupName" | "submittedAt" | "reviewedAt" | "dueOrgDay" | "dueOrgTime";
+
+/**
+ * When the essay last changed hands: a returned essay is back with the student, so it
+ * says when it was returned; otherwise when it was handed in.
+ */
+function handOffLabel(data: Pick<SubmissionDetail, ChipFields>): string | null {
+  if (data.status === "RETURNED") {
+    return data.reviewedAt ? `Returned ${formatShortDateTime(data.reviewedAt)}` : null;
+  }
+  return data.submittedAt ? `Handed in ${formatShortDateTime(data.submittedAt)}` : null;
+}
+
+/**
+ * The essay's status, Late, the student's group, when it was handed in (or returned) and
+ * when it is due: one chip each, wrapping. The due date is the org's day and clock, never
+ * the device's.
+ */
+export function EssayChips({ data }: { data: Pick<SubmissionDetail, ChipFields> }) {
+  const handOff = handOffLabel(data);
   return (
-    <Section header="Assignment prompt">
-      <RichTextView html={storedTextToHtml(description)} />
+    <View className="flex-row flex-wrap gap-2">
+      <StatusChip {...essayStatusChip(data.status)} />
+      {data.isLate ? <StatusChip tone="warn" label="Late" /> : null}
+      {data.groupName ? <StatusChip tone="neutral" label={data.groupName} /> : null}
+      {handOff ? <StatusChip tone="neutral" label={handOff} /> : null}
+      {data.dueOrgDay ? (
+        <StatusChip tone="neutral" label={`Due ${formatOrgDue(data.dueOrgDay, data.dueOrgTime)}`} />
+      ) : null}
+    </View>
+  );
+}
+
+/** The essay's own question, as the student saw it above the field. */
+export function QuestionSection({ prompt }: { prompt: string }) {
+  return (
+    <Section header="Question">
+      <Text variant="body">{prompt}</Text>
     </Section>
   );
 }
 
-/** The written response and the attached files (which can't be opened in the app yet). */
-export function WorkSection({ text, files }: { text: string | null; files: SubmissionDetail["files"] }) {
+function Attachments({ files }: { files: SubmissionDetail["files"] }) {
   return (
-    <Section header="Submission">
-      <View className="flex-col gap-4">
-        <RichTextView html={text ? plainTextToHtml(text) : null} emptyText="No written response." />
-        {files.length > 0 ? (
-          <View className="flex-col gap-1.5">
-            <Text variant="subhead" className="font-medium">
-              Attachments
-            </Text>
-            {files.map((f) => (
-              <View key={f.id} className="flex-row items-center justify-between gap-2 py-1.5">
-                <View className="min-w-0 flex-1 flex-row items-center gap-2">
-                  <FileIcon size={16} className="shrink-0 text-muted-foreground" />
-                  <Text variant="subhead" numberOfLines={1} className="shrink">
-                    {f.originalName}
-                  </Text>
-                </View>
-                <Text variant="caption" className="shrink-0 text-muted-foreground">
-                  {formatKb(f.sizeBytes)}
-                </Text>
-              </View>
-            ))}
-            <Text variant="caption" className="italic text-muted-foreground">
-              Files can't be opened in the app yet.
+    <View className="flex-col gap-1.5">
+      <Text variant="subhead" className="font-medium">
+        Attachments
+      </Text>
+      {files.map((f) => (
+        <View key={f.id} className="flex-row items-center justify-between gap-2 py-1.5">
+          <View className="min-w-0 flex-1 flex-row items-center gap-2">
+            <FileIcon
+              size={16}
+              className="shrink-0 text-muted-foreground"
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <Text variant="subhead" numberOfLines={1} className="shrink">
+              {f.originalName}
             </Text>
           </View>
-        ) : null}
+          <Text variant="caption" className="shrink-0 text-muted-foreground">
+            {formatKb(f.sizeBytes)}
+          </Text>
+        </View>
+      ))}
+      <Text variant="caption" className="italic text-muted-foreground">
+        Files can't be opened in the app yet.
+      </Text>
+    </View>
+  );
+}
+
+/** The essay as handed in (plain text), its word count, and any files (which can't be opened in the app yet). */
+export function EssaySection({ data }: { data: Pick<SubmissionDetail, "text" | "wordCount" | "files"> }) {
+  return (
+    <Section header="Essay">
+      <View className="flex-col gap-4">
+        <RichTextView html={data.text ? plainTextToHtml(data.text) : null} emptyText="No written answer." />
+        <Text variant="caption" className="text-muted-foreground">
+          {plural(data.wordCount, "word")}
+        </Text>
+        {data.files.length > 0 ? <Attachments files={data.files} /> : null}
       </View>
     </Section>
   );
 }
 
-/** Returned work is the student's to edit; a reviewer only waits. */
+/** A returned essay is the student's to change; a reviewer only waits. */
 export function ReturnedSection({ feedback }: { feedback: string | null }) {
   return (
     <Section header="Returned to the student">
       <View className="flex-col gap-3">
         <Text variant="subhead" className="text-muted-foreground">
-          They can edit and submit again. You'll review it once they do.
+          They can change it and hand it in again. You can review it once they do.
         </Text>
         {feedback ? <RichTextView html={plainTextToHtml(feedback)} /> : null}
       </View>
@@ -78,7 +124,7 @@ export function ReturnedSection({ feedback }: { feedback: string | null }) {
   );
 }
 
-/** Feedback on its own surface: read-only for someone who can't review, the current one above the bar for someone who can. */
+/** Feedback on its own surface: read-only for someone who can't review, the current one for someone who can. */
 export function FeedbackSection({ header, feedback }: { header: string; feedback: string }) {
   return (
     <Section header={header}>

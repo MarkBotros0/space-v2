@@ -12,9 +12,9 @@ import { ComposeCard } from "./compose-card";
 import { PostCard } from "./post-card";
 
 /** v1 components/forum/forum-view.tsx, with v2's paging and own-post feedback. */
-export function ForumThread({ assignmentId }: { assignmentId: number }) {
+export function ForumThread({ assignmentId, partId }: { assignmentId: number; partId: number }) {
   const role = useRole();
-  const query = useForumThread(assignmentId, true);
+  const query = useForumThread(assignmentId, partId, true);
 
   if (query.isPending) return <Skeleton className="h-40 rounded-group" />;
   if (query.isError) {
@@ -29,7 +29,7 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
 
   return (
     <View className="flex-col gap-4">
-      <ComposeCard assignmentId={assignmentId} view={view} />
+      <ComposeCard assignmentId={assignmentId} partId={partId} view={view} />
 
       {view.locked ? (
         <EmptyState
@@ -53,8 +53,9 @@ export function ForumThread({ assignmentId }: { assignmentId: number }) {
           <Eyebrow>{`Group discussion · ${posts.length}`}</Eyebrow>
           {posts.map((p) => (
             <PostCard
-              key={p.submissionPublicId}
+              key={p.publicId}
               assignmentId={assignmentId}
+              partId={partId}
               post={p}
               allowComments={view.allowComments}
             />

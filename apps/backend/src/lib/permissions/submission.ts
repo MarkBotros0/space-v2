@@ -23,7 +23,11 @@ export async function leadsStudentInSeason(
   return groupId !== null && isLeaderOfGroup(user, groupId);
 }
 
-/** A submission's author and season, or null when it does not exist. */
+/**
+ * A submission's author and season, or null when it does not exist. An essay
+ * is gated through its Submission (`AssignmentPartWork.submissionId`): the
+ * essay's student and season are the submission's.
+ */
 async function submissionSubject(submissionId: number): Promise<{ studentUserId: number; seasonId: number } | null> {
   const submission = await db.submission.findUnique({
     where: { id: submissionId },
@@ -37,13 +41,14 @@ async function submissionSubject(submissionId: number): Promise<{ studentUserId:
 }
 
 /**
- * Is this submission a DRAFT someone other than its author is asking for?
+ * Is this essay a DRAFT someone other than its author is asking for?
  *
  * A DRAFT is the student's unfinished work (owner decision, 2026-11): it
- * exists only for its author. Every route that addresses a submission by
- * publicId answers a hidden draft with 404, exactly as if the row did not
- * exist, before any role check — a 403 would tell staff the draft is there.
- * RETURNED is not a draft: it was turned in and sent back, and stays visible.
+ * exists only for its author until Submit hands it in. Every route that
+ * addresses an essay by publicId answers a hidden draft with 404, exactly as
+ * if the row did not exist, before any role check — a 403 would tell staff
+ * the draft is there. RETURNED is not a draft: it was handed in and sent back,
+ * and stays visible.
  */
 export function isHiddenDraft(user: SessionUser, submission: { status: string; studentUserId: number }): boolean {
   return submission.status === "DRAFT" && submission.studentUserId !== user.userId;
@@ -67,7 +72,7 @@ export async function canViewSubmission(user: SessionUser, submissionId: number)
 }
 
 /**
- * Who may record a verdict on a submission.
+ * Who may record a verdict on an essay of this submission.
  *
  * Strictly narrower than canViewSubmission, and deliberately not derived from
  * it: a MENTOR reads every submission in the system but reviews none, and the
@@ -89,12 +94,12 @@ export async function canReviewSubmission(user: SessionUser, submissionId: numbe
 }
 
 /**
- * Whose submissions sit in this caller's review queue.
+ * Whose essays sit in this caller's review queue, as a filter over their
+ * Submission (the queue and the dashboard apply it as `{ submission: scope }`).
  *
- * Extracted verbatim from `GET /api/v1/submissions` so the dashboard's
- * "pending review" / "reviewed" counts are computed over exactly the rows the
- * tile opens (spec 19 D11). A second hand-written scope would let the count
- * and the queue disagree.
+ * Shared with `GET /api/v1/submissions` so the dashboard's "pending review" /
+ * "reviewed" counts are computed over exactly the rows the tile opens (spec 19
+ * D11). A second hand-written scope would let the count and the queue disagree.
  *
  * A LEADER's scope cannot be one Prisma filter: the constraint is "the
  * student's enrolment *in this assignment's season* names a group I lead",
@@ -127,14 +132,11 @@ export async function submissionQueueScopeFor(user: SessionUser): Promise<Prisma
 }
 
 /**
- * The states in which a student may still change their own submission.
- *
- * Mirrors the mobile editor exactly (`assignment/[id]/index.tsx`: editable is
- * DRAFT or RETURNED). Once submitted the work is the reviewer's to judge, and
- * once reviewed the feedback refers to this text — a write after either would
- * leave a verdict on words the reviewer never saw, and `{submit:true}` on a
- * REVIEWED row would silently pull it back into the queue. The way back to
- * editable is a reviewer's returnForRevision, never a student write.
+ * The states in which a student may still change their own essay (its text and
+ * its files): DRAFT and RETURNED. Once handed in the essay is the reviewer's to
+ * judge, and once reviewed the feedback refers to this text — a write after
+ * either would leave a verdict on words the reviewer never saw. The way back
+ * to editable is a reviewer's `return`, never a student write.
  */
 export const EDITABLE_STATUSES: readonly SubmissionStatus[] = ["DRAFT", "RETURNED"];
 
@@ -143,8 +145,8 @@ function isEditableStatus(status: SubmissionStatus): boolean {
 }
 
 /**
- * Why a student's write to their own submission must be refused, or null when
- * it may proceed. The caller has already established authorship.
+ * Why a student's write to their own essay must be refused, or null when it
+ * may proceed. The caller has already established authorship.
  *
  * Active enrolment, not `canAccessSeason`: that predicate's student branch
  * accepts any enrolment row whatever its status, so a dropped, completed or

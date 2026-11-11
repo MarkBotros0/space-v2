@@ -1,6 +1,5 @@
 import { db } from "../../db/client";
 import type { SessionUser } from "../auth/tokens";
-import { studentCanSeeAssignment } from "../queries/assignments";
 import { groupIdInSeason } from "../queries/enrollment";
 import { isAdminOfSeason, isLeaderOfGroup, isMentor, isSuper } from "../rbac";
 import { hasActiveEnrollment, staffScopeForSeason } from "./season";
@@ -8,7 +7,7 @@ import { leadsStudentInSeason } from "./submission";
 import { liveAssignment } from "../db/live";
 
 /**
- * Who may comment on a forum post.
+ * Who may comment on a forum post (a FORUM part's work).
  *
  * v1's `canCommentOnForumSubmission` is the one gate in domain 14 that would
  * have survived an API — it re-reads the target, re-checks the type and the
@@ -26,32 +25,37 @@ import { liveAssignment } from "../db/live";
  * Also new: a DRAFT target is refused. v1 read only `assignmentId` from the
  * target row, so a group-mate's unposted draft was a valid comment target for
  * anyone who could name its sequential id (spec 14 R43).
+ *
+ * The target is a work row: it must be the post on a FORUM part (an essay or a
+ * video is never a comment target) of a live assignment, on a part whose
+ * comments are on.
  */
-export async function canCommentOnForumSubmission(user: SessionUser, submissionId: number): Promise<boolean> {
-  const sub = await db.submission.findUnique({
-    where: { id: submissionId },
+export async function canCommentOnForumPost(user: SessionUser, workId: number): Promise<boolean> {
+  const post = await db.assignmentPartWork.findFirst({
+    where: { id: workId, part: { kind: "FORUM", assignment: liveAssignment } },
     select: {
       studentUserId: true,
       status: true,
-      assignment: { select: { seasonId: true, type: true, forumAllowComments: true } },
+      part: { select: { allowComments: true, assignment: { select: { seasonId: true } } } },
     },
   });
-  if (!sub) return false;
-  if (sub.assignment.type !== "FORUM" || !sub.assignment.forumAllowComments) return false;
-  if (sub.status === "DRAFT") return false;
+  if (!post) return false;
+  if (!post.part.allowComments) return false;
+  if (post.status === "DRAFT") return false;
+  const seasonId = post.part.assignment.seasonId;
 
   if (isSuper(user)) return true;
-  if (isAdminOfSeason(user, sub.assignment.seasonId)) return true;
+  if (isAdminOfSeason(user, seasonId)) return true;
 
-  const authorGroupId = await groupIdInSeason(sub.studentUserId, sub.assignment.seasonId);
+  const authorGroupId = await groupIdInSeason(post.studentUserId, seasonId);
   if (authorGroupId === null) return false;
 
   if (user.role === "LEADER") return isLeaderOfGroup(user, authorGroupId);
   if (user.role === "STUDENT") {
     // A finished season is locked: group membership survives End and
     // withdrawal, so the place in the season must still be live.
-    if (!(await hasActiveEnrollment(user, sub.assignment.seasonId))) return false;
-    const mine = await groupIdInSeason(user.userId, sub.assignment.seasonId);
+    if (!(await hasActiveEnrollment(user, seasonId))) return false;
+    const mine = await groupIdInSeason(user.userId, seasonId);
     return mine !== null && mine === authorGroupId;
   }
   return false;
@@ -72,13 +76,14 @@ export async function canDeleteForumComment(user: SessionUser, commentId: number
     where: { id: commentId },
     select: {
       authorUserId: true,
-      submission: {
-        select: { studentUserId: true, assignment: { select: { seasonId: true } } },
+      partWork: {
+        select: { studentUserId: true, part: { select: { assignment: { select: { seasonId: true } } } } },
       },
     },
   });
   if (!comment) return false;
-  const ctx = await commentDeleteCtx(user, comment.submission.assignment.seasonId, comment.submission.studentUserId);
+  const post = comment.partWork;
+  const ctx = await commentDeleteCtx(user, post.part.assignment.seasonId, post.studentUserId);
   return canDeleteLoadedComment(user, comment, ctx);
 }
 
@@ -134,36 +139,28 @@ export function canDeleteLoadedComment(
  * `groupIds: null` means every group in the season. The staff arm is new
  * capability — v1 has no staff forum screen whatsoever, so nobody could see a
  * thread to moderate it (spec 14 §10 D2/D3).
+ *
+ * No group targeting: an assignment is for the whole season, so a student with
+ * a live place in it reads their own group's thread. Staff read by their scope
+ * in the season (`staffScopeForSeason`: SUPER and the season's ADMIN every
+ * group, a LEADER the groups they lead); a MENTOR reads every group.
  */
 export type ForumAudience = { kind: "student"; groupId: number | null } | { kind: "staff"; groupIds: number[] | null };
 
 export async function forumAudienceFor(user: SessionUser, assignmentId: number): Promise<ForumAudience | null> {
   const assignment = await db.assignment.findFirst({
-    where: { id: assignmentId, ...liveAssignment, type: "FORUM" },
-    select: { seasonId: true, isAllGroups: true, targets: { select: { groupId: true } } },
+    where: { id: assignmentId, ...liveAssignment },
+    select: { seasonId: true },
   });
   if (!assignment) return null;
+  const { seasonId } = assignment;
 
-  if (isSuper(user) || isMentor(user) || isAdminOfSeason(user, assignment.seasonId)) {
-    return { kind: "staff", groupIds: null };
+  if (user.role === "STUDENT") {
+    if (!(await hasActiveEnrollment(user, seasonId))) return null;
+    return { kind: "student", groupId: await groupIdInSeason(user.userId, seasonId) };
   }
-
-  if (user.role === "LEADER") {
-    const scope = await staffScopeForSeason(user, assignment.seasonId);
-    if (scope === null || scope.kind !== "groups") return null;
-    return { kind: "staff", groupIds: scope.groupIds };
-  }
-
-  if (user.role !== "STUDENT") return null;
-  if (!(await hasActiveEnrollment(user, assignment.seasonId))) return null;
-  // The targeting rule v1 enforced only by refusing to render the page (R15),
-  // from the same helper the assignment reads use.
-  const targeted = await studentCanSeeAssignment(
-    user.userId,
-    assignment.seasonId,
-    assignment.isAllGroups,
-    assignment.targets.map((t) => t.groupId),
-  );
-  if (!targeted) return null;
-  return { kind: "student", groupId: await groupIdInSeason(user.userId, assignment.seasonId) };
+  if (isMentor(user)) return { kind: "staff", groupIds: null };
+  const scope = await staffScopeForSeason(user, seasonId);
+  if (scope === null) return null;
+  return { kind: "staff", groupIds: scope.kind === "season" ? null : scope.groupIds };
 }

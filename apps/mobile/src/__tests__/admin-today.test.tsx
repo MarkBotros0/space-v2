@@ -56,7 +56,7 @@ describe("Admin Today", () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByLabelText("Submissions to review: 3")).toBeTruthy();
+    expect(await screen.findByLabelText("Essays to review: 3")).toBeTruthy();
     expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
     expect(screen.getByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Week 6")).toBeTruthy();
@@ -106,7 +106,7 @@ describe("Admin Today", () => {
     serveStaff(get);
     renderWithProviders(<DashboardScreen />);
 
-    fireEvent.press(await screen.findByLabelText("Submissions to review: 3"));
+    fireEvent.press(await screen.findByLabelText("Essays to review: 3"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByLabelText("Sessions without attendance: 1"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/attention/sessions", params: { seasonId: "7" } });
@@ -120,7 +120,7 @@ describe("Admin Today", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByLabelText("Sessions without attendance: 1")).toBeTruthy();
-    expect(screen.queryByLabelText(/^Submissions to review/)).toBeNull();
+    expect(screen.queryByLabelText(/^Essays to review/)).toBeNull();
     expect(screen.queryByText(/All clear/)).toBeNull();
     expect(screen.queryByTestId("all-caught-up")).toBeNull();
   });
@@ -134,7 +134,7 @@ describe("Admin Today", () => {
     renderWithProviders(<DashboardScreen />);
 
     expect(await screen.findByLabelText("All caught up")).toBeTruthy();
-    expect(screen.queryByLabelText(/^Submissions to review/)).toBeNull();
+    expect(screen.queryByLabelText(/^Essays to review/)).toBeNull();
     expect(screen.queryByLabelText(/^Sessions without attendance/)).toBeNull();
     expect(screen.queryByTestId("count-grid")).toBeNull();
   });
@@ -177,6 +177,6 @@ describe("Admin Today", () => {
     expect(await screen.findByText("No season yet")).toBeTruthy();
     expect(await screen.findByText("Open day")).toBeTruthy();
     expect(requested().some((u) => u.startsWith("/api/v1/me/dashboard"))).toBe(false);
-    expect(screen.queryByLabelText(/Submissions to review/)).toBeNull();
+    expect(screen.queryByLabelText(/Essays to review/)).toBeNull();
   });
 });

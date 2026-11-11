@@ -8,6 +8,7 @@ import { db } from "../../db/client";
 import { hasActiveEnrollment } from "../../lib/permissions";
 import { addQuizQuestion } from "../../lib/quizzes/questions";
 import { cleanupTestData, createTestSeason, createTestUser, tokenFor } from "./fixtures";
+import { createAssignmentWithParts } from "./assignment-reads-setup";
 
 jest.setTimeout(120000);
 
@@ -30,11 +31,14 @@ async function world(status: "DRAFT" | "ACTIVE", label: string) {
   const season = await createTestSeason({ status });
   const student = await createTestUser(`draft-${label}`, "STUDENT");
   await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: student.id, status: "ACTIVE" } });
-  const assignment = await db.assignment.create({
-    data: { seasonId: season.id, title: "Set work", isAllGroups: true },
-    select: { id: true },
-  });
-  return { seasonId: season.id, studentId: student.id, assignmentId: assignment.id, token: await tokenFor(student.id) };
+  const assignment = await createAssignmentWithParts({ seasonId: season.id, title: "Set work" });
+  return {
+    seasonId: season.id,
+    studentId: student.id,
+    assignmentId: assignment.id,
+    essayPath: `/assignments/${assignment.id}/parts/${assignment.partIds[0]}/essay`,
+    token: await tokenFor(student.id),
+  };
 }
 const notices = (userId: number) => db.notification.count({ where: { userId } });
 
@@ -60,12 +64,12 @@ describe("hasActiveEnrollment", () => {
 });
 
 describe("a student on a draft's roster", () => {
-  it("reads an assignment as readOnly and can't start a submission", async () => {
+  it("reads an assignment as readOnly and can't write an essay", async () => {
     const w = await world("DRAFT", "readonly");
     const read = await call("get", `/assignments/${w.assignmentId}`, w.token);
     expect(read.status).toBe(200);
     expect(read.body.data.readOnly).toBe(true);
-    const start = await call("put", `/submissions/by-assignment/${w.assignmentId}`, w.token);
+    const start = await call("put", w.essayPath, w.token).send({ text: "x" });
     expect(start.status).toBe(403);
     expect(await db.submission.count({ where: { assignmentId: w.assignmentId } })).toBe(0);
   });
@@ -74,7 +78,7 @@ describe("a student on a draft's roster", () => {
     const w = await world("ACTIVE", "works");
     const read = await call("get", `/assignments/${w.assignmentId}`, w.token);
     expect(read.body.data.readOnly).toBe(false);
-    expect((await call("put", `/submissions/by-assignment/${w.assignmentId}`, w.token)).status).toBe(200);
+    expect((await call("put", w.essayPath, w.token).send({ text: "x" })).status).toBe(200);
   });
 
   it("can't check in to a draft's session", async () => {
@@ -101,8 +105,11 @@ describe("a student on a draft's roster", () => {
     const w = await world(status, `assign-${status.toLowerCase()}`);
     const res = await call("post", `/seasons/${w.seasonId}/assignments`, adminT).send({
       title: "New work",
-      isAllGroups: true,
-      groupIds: [],
+      description: null,
+      dueDay: null,
+      dueTime: null,
+      reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
+      parts: [{ kind: "FORUM", prompt: "Say hello", minWords: null, postToRead: true, allowComments: false }],
     });
     expect(res.status).toBe(201);
     expect(await notices(w.studentId)).toBe(expected);

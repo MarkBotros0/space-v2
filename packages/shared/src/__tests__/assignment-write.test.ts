@@ -1,5 +1,4 @@
 import {
-  DEFAULT_DUE_TIME,
   assignmentDeletedResponseSchema,
   assignmentDetailSchema,
   assignmentWriteRequestSchema,
@@ -9,9 +8,35 @@ import {
   wallTimeSchema,
 } from "../index";
 
+const video = {
+  kind: "VIDEO",
+  title: "Talk",
+  youtubeUrl: "https://youtu.be/dQw4w9WgXcQ",
+  blockSkipping: false,
+  durationSeconds: 600,
+};
+const essay = {
+  kind: "ESSAY",
+  prompt: "Reflect",
+  minWords: 100,
+  maxWords: 300,
+  maxFileSizeMb: null,
+  allowedMimeCategories: [],
+};
+const forum = { kind: "FORUM", prompt: "Discuss", minWords: null, postToRead: true, allowComments: false };
+const reminder = { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" };
 const valid = {
   title: "Week 4 reflection",
-  isAllGroups: true,
+  description: null,
+  dueDay: null,
+  dueTime: null,
+  reminder,
+  parts: [video, essay, forum],
+};
+
+const firstMessage = (body: unknown) => {
+  const r = assignmentWriteRequestSchema.safeParse(body);
+  return r.success ? null : r.error.issues[0]?.message;
 };
 
 describe("isoDaySchema / wallTimeSchema (org wall clock on the wire, ruling C2)", () => {
@@ -31,101 +56,83 @@ describe("isoDaySchema / wallTimeSchema (org wall clock on the wire, ruling C2)"
 });
 
 describe("assignmentWriteRequestSchema", () => {
-  it("is the one body for create and update — seasonId is never part of it (R68)", () => {
+  it("is the one body for create and update, and seasonId is never part of it (R68)", () => {
     expect(createAssignmentRequestSchema).toBe(assignmentWriteRequestSchema);
     expect(updateAssignmentRequestSchema).toBe(assignmentWriteRequestSchema);
-    const parsed = assignmentWriteRequestSchema.parse({ ...valid, seasonId: 99 });
-    expect(parsed).not.toHaveProperty("seasonId");
+    expect(assignmentWriteRequestSchema.parse({ ...valid, seasonId: 99 })).not.toHaveProperty("seasonId");
   });
 
-  it("applies v1's defaults (R5, R7, R9) and nulls what was not sent", () => {
-    expect(assignmentWriteRequestSchema.parse(valid)).toEqual({
-      title: "Week 4 reflection",
-      description: null,
-      dueDay: null,
-      dueTime: null,
-      sessionId: null,
-      type: "STANDARD",
-      forumMinWords: null,
-      forumAllowComments: false,
-      forumPostToRead: true,
-      maxFileSizeMb: null,
-      allowedMimeCategories: [],
-      isAllGroups: true,
-      groupIds: [],
-    });
+  it("accepts video, essay and forum parts together", () => {
+    expect(assignmentWriteRequestSchema.safeParse(valid).success).toBe(true);
   });
 
-  it("defaults a picked day's time to 23:59 (R19) and drops the time when there is no day", () => {
-    expect(assignmentWriteRequestSchema.parse({ ...valid, dueDay: "2099-04-01" }).dueTime).toBe(DEFAULT_DUE_TIME);
-    expect(assignmentWriteRequestSchema.parse({ ...valid, dueDay: null, dueTime: "18:00" }).dueTime).toBeNull();
+  it("refuses two forums", () => {
+    expect(firstMessage({ ...valid, parts: [forum, forum] })).toBe("One forum per assignment");
   });
 
-  it("no longer accepts a device-composed instant: dueAt is not a field (C2)", () => {
-    const parsed = assignmentWriteRequestSchema.parse({ ...valid, dueAt: "2099-04-01T21:59:00Z" });
-    expect(parsed).not.toHaveProperty("dueAt");
-    expect(parsed.dueDay).toBeNull();
+  it("refuses zero parts", () => {
+    expect(firstMessage({ ...valid, parts: [] })).toBe("Add at least one part");
   });
 
-  it("bounds title at the server truth, 2–160 (R1, R18)", () => {
+  it("an off reminder needs no due date, whatever its anchor", () => {
+    expect(
+      assignmentWriteRequestSchema.safeParse({
+        ...valid,
+        dueDay: null,
+        reminder: { ...reminder, enabled: false, anchor: "DUE_DATE" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("needs a due date for a due-date reminder", () => {
+    expect(firstMessage({ ...valid, reminder: { ...reminder, anchor: "DUE_DATE" } })).toBe("Set a due date first");
+    expect(
+      assignmentWriteRequestSchema.safeParse({
+        ...valid,
+        dueDay: "2099-04-01",
+        reminder: { ...reminder, anchor: "DUE_DATE" },
+      }).success,
+    ).toBe(true);
+  });
+
+  it("refuses an essay whose minimum is above its maximum", () => {
+    expect(firstMessage({ ...valid, parts: [{ ...essay, minWords: 300, maxWords: 150 }] })).toBe(
+      "The minimum is more than the maximum",
+    );
+  });
+
+  it("refuses a link that is not YouTube", () => {
+    expect(firstMessage({ ...valid, parts: [{ ...video, youtubeUrl: "https://example.com/x" }] })).toBe(
+      "That isn't a YouTube link",
+    );
+  });
+
+  it("bounds a video's duration to 1..43200 seconds and the reminder to 1..14 days", () => {
+    expect(
+      assignmentWriteRequestSchema.safeParse({ ...valid, parts: [{ ...video, durationSeconds: 0 }] }).success,
+    ).toBe(false);
+    expect(
+      assignmentWriteRequestSchema.safeParse({ ...valid, parts: [{ ...video, durationSeconds: 43201 }] }).success,
+    ).toBe(false);
+    expect(assignmentWriteRequestSchema.safeParse({ ...valid, reminder: { ...reminder, days: 15 } }).success).toBe(
+      false,
+    );
+  });
+
+  it("bounds title at 2..160 (R1, R18)", () => {
     expect(assignmentWriteRequestSchema.safeParse({ ...valid, title: "x" }).success).toBe(false);
     expect(assignmentWriteRequestSchema.safeParse({ ...valid, title: "x".repeat(161) }).success).toBe(false);
   });
 
-  it("FORUM keeps forum config and drops file config (R14, R15)", () => {
+  it("no longer takes targeting, a session, or a device-composed instant", () => {
     const parsed = assignmentWriteRequestSchema.parse({
       ...valid,
+      groupIds: [1],
+      sessionId: 2,
       type: "FORUM",
-      forumMinWords: 120,
-      forumAllowComments: true,
-      maxFileSizeMb: 20,
-      allowedMimeCategories: ["pdf"],
+      dueAt: "x",
     });
-    expect(parsed).toMatchObject({
-      forumMinWords: 120,
-      forumAllowComments: true,
-      maxFileSizeMb: null,
-      allowedMimeCategories: [],
-    });
-  });
-
-  it("STANDARD keeps file config and drops forum config (R16)", () => {
-    const parsed = assignmentWriteRequestSchema.parse({
-      ...valid,
-      forumMinWords: 50,
-      forumAllowComments: true,
-      maxFileSizeMb: 10,
-      allowedMimeCategories: ["image", "pdf"],
-    });
-    expect(parsed).toMatchObject({
-      forumMinWords: null,
-      forumAllowComments: false,
-      maxFileSizeMb: 10,
-      allowedMimeCategories: ["image", "pdf"],
-    });
-  });
-
-  it("post-before-reading defaults on, keeps off for FORUM, is forced on for STANDARD", () => {
-    expect(assignmentWriteRequestSchema.parse({ ...valid, type: "FORUM" }).forumPostToRead).toBe(true);
-    expect(
-      assignmentWriteRequestSchema.parse({ ...valid, type: "FORUM", forumPostToRead: false }).forumPostToRead,
-    ).toBe(false);
-    expect(assignmentWriteRequestSchema.parse({ ...valid, forumPostToRead: false }).forumPostToRead).toBe(true);
-  });
-
-  it("refuses 'specific groups' with none chosen — deliberate divergence from R13", () => {
-    const result = assignmentWriteRequestSchema.safeParse({ ...valid, isAllGroups: false });
-    expect(result.success).toBe(false);
-    expect(result.success ? null : result.error.issues[0]?.message).toBe(
-      "Choose at least one group, or target the whole season.",
-    );
-  });
-
-  it("collapses duplicate group ids (closes R70) and drops them when targeting everyone (R24)", () => {
-    expect(assignmentWriteRequestSchema.parse({ ...valid, isAllGroups: false, groupIds: [4, 4, 3] }).groupIds).toEqual([
-      4, 3,
-    ]);
-    expect(assignmentWriteRequestSchema.parse({ ...valid, groupIds: [4] }).groupIds).toEqual([]);
+    for (const k of ["groupIds", "sessionId", "type", "dueAt"]) expect(parsed).not.toHaveProperty(k);
   });
 });
 
@@ -135,23 +142,19 @@ describe("response additions", () => {
     seasonId: 7,
     seasonCode: "s7",
     seasonTitle: "Spring 2099",
-    sessionId: null,
-    sessionTitle: null,
     title: "Essay one",
     description: null,
     dueAt: "2099-04-01T21:59:00.000Z",
     dueOrgDay: "2099-04-01",
     dueOrgTime: "23:59",
     isOverdue: false,
-    isAllGroups: true,
-    type: "STANDARD",
-    forumMinWords: null,
-    forumAllowComments: false,
-    forumPostToRead: true,
-    maxFileSizeMb: null,
-    allowedMimeCategories: [],
-    groupIds: [],
-    mySubmission: null,
+    reminder,
+    reminderLine: "2 days before the next session",
+    parts: [
+      { ...video, id: 1, position: 0, videoId: "dQw4w9WgXcQ" },
+      { ...essay, id: 2, position: 1 },
+    ],
+    my: null,
     canManage: true,
     readOnly: false,
   };

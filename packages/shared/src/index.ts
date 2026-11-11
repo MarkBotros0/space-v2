@@ -9,6 +9,8 @@ export * from "./standing";
 export * from "./group";
 export * from "./session";
 export * from "./assignment";
+export * from "./assignment-parts";
+export * from "./assignment-progress";
 export * from "./attendance";
 export * from "./submission";
 export * from "./quiz";

@@ -29,7 +29,7 @@ export {
 export { canEditStudent, canViewStudent, staffRosterWhere, type StaffRoster } from "./student";
 export { canEditNote, canWriteNote, noteSeasonWhere, noteVisibilityWhere } from "./note";
 export {
-  canCommentOnForumSubmission,
+  canCommentOnForumPost,
   canDeleteForumComment,
   canDeleteLoadedComment,
   commentDeleteCtx,

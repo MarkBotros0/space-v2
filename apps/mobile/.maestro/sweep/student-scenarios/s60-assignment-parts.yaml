@@ -1,0 +1,124 @@
+# UI sweep s60 — one assignment of three parts, as a student: the checklist, each part's screen,
+# the essay's keyboard and the leave-video notice. Read-only: nothing is typed or saved. Never tap
+# Submit, Hand in, Save draft or Post. The seed (apps/backend/scripts/seed-sweep/three-part.ts)
+# leaves the student part-way: the video partly watched, a short essay draft, no forum post.
+# (s57 was already taken by s57-announcements, so this flow is s60.)
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${STUDENT_EMAIL}
+# Assignment 3 is "The lost son" (insertion order in the seed).
+- openLink: spacev2://assignment/3
+# The pinned Submit stays put while the title collapses.
+- extendedWaitUntil:
+    visible: 'Submit'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-01-checklist
+# Last row and the locked Submit's reason have to clear the pinned bar and the system bar.
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-02-checklist-bottom
+# The video part. Its row reads "Video: Placeholder video", then its status.
+- openLink: spacev2://assignment/3
+- extendedWaitUntil:
+    visible: 'Submit'
+    timeout: 40000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '(?s)Video: Placeholder video.*'
+- extendedWaitUntil:
+    visible: 'Watched .*'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-03-video
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-04-video-bottom
+# Leaving before it counts shows "Not finished yet". Keep watching is the safe choice: it only
+# closes the notice. Optional: a video the emulator can't play shows a link instead, and then
+# leaving needs no notice.
+- back
+- extendedWaitUntil:
+    visible: 'Not finished yet'
+    timeout: 10000
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-05-video-leave-notice
+- tapOn:
+    text: 'Keep watching'
+    optional: true
+# The essay part: a short draft below the 50-word minimum. Nothing is typed: the screen saves a
+# changed draft on leaving, so typed text would be written when the flow moves on.
+- openLink: spacev2://assignment/3
+- extendedWaitUntil:
+    visible: 'Submit'
+    timeout: 40000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '(?s)Essay: Who are you in the story, and why\?.*'
+- extendedWaitUntil:
+    visible: 'Save draft'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-06-essay
+# The field is labelled by its question.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Who are you in the story, and why\?'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-07-essay-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- scroll
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-08-essay-bottom
+# The forum part: not posted yet, so the student sees the box before anyone's post.
+- openLink: spacev2://assignment/3
+- extendedWaitUntil:
+    visible: 'Submit'
+    timeout: 40000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: '(?s)Forum: Share one takeaway with your group\..*'
+- extendedWaitUntil:
+    visible: 'Your response'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-09-forum
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Your response'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-10-forum-kbd
+- hideKeyboard
+- waitForAnimationToEnd:
+    timeout: 5000
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s60-11-forum-bottom

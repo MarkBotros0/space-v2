@@ -9,7 +9,6 @@ const mockDb = {
   group: { create: jest.fn(), createMany: jest.fn() },
   session: { create: jest.fn(), createMany: jest.fn() },
   assignment: { create: jest.fn() },
-  assignmentTarget: { createMany: jest.fn() },
   $transaction: jest.fn(),
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
@@ -160,15 +159,29 @@ describe("POST /seasons/:id/duplicate", () => {
           title: "Essay",
           description: null,
           dueAt: null,
-          isAllGroups: false,
-          type: "FILE",
-          forumMinWords: null,
-          forumAllowComments: true,
-          forumPostToRead: true,
-          maxFileSizeMb: 10,
-          allowedMimeCategories: [],
-          sessionId: 11,
-          targets: [{ groupId: 2 }, { groupId: 99 }],
+          reminderEnabled: true,
+          reminderDays: 2,
+          reminderAnchor: "NEXT_SESSION",
+          reminderTime: "09:00",
+          parts: [
+            {
+              position: 0,
+              kind: "ESSAY",
+              title: null,
+              youtubeId: null,
+              youtubeUrl: null,
+              durationSeconds: null,
+              blockSkipping: false,
+              prompt: "Why?",
+              minWords: null,
+              maxWords: null,
+              maxFileSizeMb: 10,
+              allowedMimeCategories: [],
+              postToRead: true,
+              allowComments: false,
+              videoQuestions: [],
+            },
+          ],
         },
       ],
     });
@@ -185,23 +198,20 @@ describe("POST /seasons/:id/duplicate", () => {
     expect(res.status).toBe(201);
 
     expect(mockDb.$transaction.mock.calls[0][1]).toEqual({ timeout: 30_000 });
-    // Groups A and C are targeted by nothing: one createMany. B is created alone.
-    expect(mockDb.group.createMany.mock.calls[0][0].data.map((g: { name: string }) => g.name)).toEqual(["A", "C"]);
-    expect(mockDb.group.create).toHaveBeenCalledTimes(1);
-    // Only S2 is linked from an assignment.
-    expect(mockDb.session.createMany.mock.calls[0][0].data.map((s: { title: string }) => s.title)).toEqual([
-      "S1",
-      "S3",
-    ]);
-    expect(mockDb.session.create).toHaveBeenCalledTimes(1);
+    // An assignment names no group or session, so nothing needs an id mapped
+    // back: each kind goes in one createMany.
+    expect(mockDb.group.createMany.mock.calls[0][0].data.map((g: { name: string }) => g.name)).toEqual(["A", "B", "C"]);
+    expect(mockDb.group.create).not.toHaveBeenCalled();
+    const sessions = mockDb.session.createMany.mock.calls[0][0].data;
+    expect(sessions.map((s: { title: string }) => s.title)).toEqual(["S1", "S2", "S3"]);
+    expect(mockDb.session.create).not.toHaveBeenCalled();
     // One series in, one FRESH series id out, shared by both its clones.
-    const s1 = mockDb.session.createMany.mock.calls[0][0].data[0].recurrenceGroupId;
-    const s2 = mockDb.session.create.mock.calls[0][0].data.recurrenceGroupId;
-    expect(s1).toBe(s2);
-    expect(s1).not.toBe("r1");
-    expect(mockDb.assignment.create.mock.calls[0][0].data.sessionId).toBe(300);
-    // R60: the unmappable target (group 99) is dropped; the rest in one createMany.
-    expect(mockDb.assignmentTarget.createMany).toHaveBeenCalledTimes(1);
-    expect(mockDb.assignmentTarget.createMany.mock.calls[0][0].data).toEqual([{ assignmentId: 400, groupId: 200 }]);
+    expect(sessions[0].recurrenceGroupId).toBe(sessions[1].recurrenceGroupId);
+    expect(sessions[0].recurrenceGroupId).not.toBe("r1");
+    expect(sessions[2].recurrenceGroupId).toBeNull();
+    // The assignment comes with its parts in order.
+    expect(mockDb.assignment.create.mock.calls[0][0].data.parts.create).toEqual([
+      expect.objectContaining({ position: 0, kind: "ESSAY", prompt: "Why?", videoQuestions: { create: [] } }),
+    ]);
   });
 });

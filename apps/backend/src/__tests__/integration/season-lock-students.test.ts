@@ -8,6 +8,7 @@ import { newPublicId } from "../../lib/public-id";
 import { studentQuizDetailSchema } from "../../../../../packages/shared/src/index";
 import { cleanupTestData, createTestUser, reviewedOf, tokenFor } from "./fixtures";
 import { seedModuleWorld, type ModuleWorld } from "./module-world";
+import { createAssignmentWithParts, seedEssays, seedTextWork } from "./assignment-reads-setup";
 
 jest.setTimeout(180000);
 
@@ -28,10 +29,12 @@ async function call(method: Method, path: string, token: string, body?: object) 
 /** Everything one student can write to, in one season. */
 interface Kit {
   assignmentId: number;
-  draft: string; // the student's own DRAFT submission
+  essayPartId: number;
+  draft: string; // the student's own DRAFT essay
   quizId: number;
-  forumId: number;
-  matePost: string; // a group-mate's REVIEWED forum post
+  forumId: number; // an assignment with one FORUM part
+  forumPartId: number;
+  matePost: string; // a group-mate's forum post
   ownCommentId: number; // the student's own comment on it
   sessionId: number;
   questionId: number;
@@ -56,44 +59,24 @@ async function buildKit(o: {
   token: string;
 }): Promise<Kit> {
   const draft = newPublicId();
-  await db.submission.create({
-    data: {
-      publicId: draft,
-      assignmentId: o.assignmentId,
-      studentUserId: o.student,
-      text: "my draft",
-      status: "DRAFT",
-    },
-  });
-  const forum = await db.assignment.create({
-    data: {
-      seasonId: o.seasonId,
-      title: "MW Forum",
-      type: "FORUM",
-      forumAllowComments: true,
-      isAllGroups: true,
-      createdById: o.adminId,
-    },
+  await seedEssays([
+    { publicId: draft, assignmentId: o.assignmentId, studentUserId: o.student, text: "my draft", status: "DRAFT" },
+  ]);
+  const essayPart = await db.assignmentPart.findFirstOrThrow({
+    where: { assignmentId: o.assignmentId, kind: "ESSAY" },
     select: { id: true },
   });
+  const forum = await createAssignmentWithParts({ seasonId: o.seasonId, title: "MW Forum" }, [{ kind: "FORUM" }]);
+  const forumPartId = forum.partIds[0]!;
+  await db.assignment.update({ where: { id: forum.id }, data: { createdById: o.adminId } });
+  await db.assignmentPart.update({ where: { id: forumPartId }, data: { allowComments: true } });
   const matePost = newPublicId();
   const post = (publicId: string, studentUserId: number) =>
-    db.submission.create({
-      data: {
-        publicId,
-        assignmentId: forum.id,
-        studentUserId,
-        text: "<p>post</p>",
-        status: "REVIEWED",
-        submittedAt: new Date(),
-        reviewedAt: new Date(),
-      },
-      select: { id: true },
-    });
+    seedTextWork(forum.id, forumPartId, studentUserId, "SUBMITTED", { publicId, text: "<p>post</p>" });
   const mateRow = await post(matePost, o.mate);
   await post(newPublicId(), o.student); // the student has posted too, so post-first is satisfied
   const comment = await db.forumComment.create({
-    data: { submissionId: mateRow.id, authorUserId: o.student, body: "earlier comment" },
+    data: { partWorkId: mateRow.id, authorUserId: o.student, body: "earlier comment" },
     select: { id: true },
   });
   const quiz = await db.quiz.create({
@@ -132,9 +115,11 @@ async function buildKit(o: {
   });
   return {
     assignmentId: o.assignmentId,
+    essayPartId: essayPart.id,
     draft,
     quizId: quiz.id,
     forumId: forum.id,
+    forumPartId,
     matePost,
     ownCommentId: comment.id,
     sessionId: o.sessionId,
@@ -147,8 +132,8 @@ beforeAll(async () => {
   w = await seedModuleWorld(app);
   const { seasonId, otherSeasonId } = w;
 
-  // The ended season: studentB's submission reviewed so End is not blocked; a group-mate for studentA.
-  await db.submission.update({
+  // The ended season: studentB's essay reviewed so End is not blocked; a group-mate for studentA.
+  await db.assignmentPartWork.update({
     where: { publicId: w.submissionBPublicId },
     data: { status: "REVIEWED", reviewedAt: new Date() },
   });
@@ -198,8 +183,9 @@ beforeAll(async () => {
   });
   droppedQuizId = kit.dropped.quizId;
   alumnusSubmission = newPublicId();
-  await db.submission.create({
-    data: {
+  activeAssignmentSubmission = newPublicId();
+  await seedEssays([
+    {
       publicId: alumnusSubmission,
       assignmentId: w.otherAssignmentId,
       studentUserId: w.ids.alumnus,
@@ -207,17 +193,14 @@ beforeAll(async () => {
       status: "REVIEWED",
       submittedAt: new Date(),
     },
-  });
-  activeAssignmentSubmission = newPublicId();
-  await db.submission.create({
-    data: {
+    {
       publicId: activeAssignmentSubmission,
       assignmentId: w.otherAssignmentId,
       studentUserId: activeId,
       text: "active work",
       status: "DRAFT",
     },
-  });
+  ]);
 
   const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, {
     notPassed: [],
@@ -242,15 +225,29 @@ type Row = [name: string, method: Method, path: string, body: object | undefined
 
 function studentWrites(k: Kit): Row[] {
   return [
-    ["start submission", "put", `/submissions/by-assignment/${k.assignmentId}`, {}, 403, "forbidden"],
-    ["save submission", "patch", `/submissions/${k.draft}`, { text: "edited after end" }, 403, "forbidden"],
+    [
+      "save essay",
+      "put",
+      `/assignments/${k.assignmentId}/parts/${k.essayPartId}/essay`,
+      { text: "edited after end" },
+      403,
+      "forbidden",
+    ],
+    ["hand in essay", "post", `/submissions/${k.draft}/hand-in`, undefined, 403, "forbidden"],
     ["start attempt", "put", `/quizzes/${k.quizId}/attempt`, undefined, 403, "forbidden"],
     ["submit attempt", "post", `/quizzes/${k.quizId}/attempt/submit`, {}, 403, "forbidden"],
-    ["forum response", "put", `/assignments/${k.forumId}/forum/response`, { text: "late post" }, 403, "forbidden"],
+    [
+      "forum response",
+      "put",
+      `/assignments/${k.forumId}/parts/${k.forumPartId}/forum/response`,
+      { text: "late post" },
+      403,
+      "forbidden",
+    ],
     [
       "forum comment",
       "post",
-      `/assignments/${k.forumId}/forum/posts/${k.matePost}/comments`,
+      `/assignments/${k.forumId}/parts/${k.forumPartId}/forum/posts/${k.matePost}/comments`,
       { body: "late comment" },
       403,
       "forbidden",
@@ -278,10 +275,8 @@ async function expectRefused(who: "studentA" | "dropped", k: Kit) {
   }
   expect(bad).toEqual([]);
   const sid = who === "studentA" ? w.ids.studentA : droppedUserId;
-  expect((await db.submission.findUniqueOrThrow({ where: { publicId: k.draft } })).text).toBe("my draft");
-  expect(await db.forumComment.count({ where: { submission: { assignmentId: k.forumId }, authorUserId: sid } })).toBe(
-    1,
-  ); // the seeded one only
+  expect((await db.assignmentPartWork.findUniqueOrThrow({ where: { publicId: k.draft } })).text).toBe("my draft");
+  expect(await db.forumComment.count({ where: { partWork: { partId: k.forumPartId }, authorUserId: sid } })).toBe(1); // the seeded one only
   expect(await db.forumComment.findUnique({ where: { id: k.ownCommentId } })).not.toBeNull();
   expect(
     await db.quizAttempt.count({ where: { quizId: k.quizId, studentUserId: sid, status: { not: "IN_PROGRESS" } } }),
@@ -290,7 +285,7 @@ async function expectRefused(who: "studentA" | "dropped", k: Kit) {
     await db.attendance.count({ where: { sessionId: k.sessionId, studentUserId: sid, checkedInAt: { not: null } } }),
   ).toBe(0);
   expect(await db.sessionVideoQuestionResponse.count({ where: { questionId: k.questionId } })).toBe(0);
-  expect(await db.submission.count({ where: { assignmentId: k.forumId, studentUserId: sid } })).toBe(1);
+  expect(await db.assignmentPartWork.count({ where: { partId: k.forumPartId, studentUserId: sid } })).toBe(1);
 }
 
 describe("a former student can read their work but not change it", () => {
@@ -300,7 +295,7 @@ describe("a former student can read their work but not change it", () => {
     const a = await call("get", `/assignments/${w.assignmentId}`, t.studentA);
     expect(a.status).toBe(200);
     expect(a.body.data.readOnly).toBe(true);
-    expect(a.body.data.mySubmission.publicId).toBe(kit.former.draft);
+    expect(a.body.data.my.parts[0].essay.publicId).toBe(kit.former.draft);
     const s = await call("get", `/submissions/${kit.former.draft}`, t.studentA);
     expect(s.status).toBe(200);
     const q = await call("get", `/quizzes/${kit.former.quizId}`, t.studentA);
@@ -373,13 +368,18 @@ describe("a student with an active place", () => {
 
   it("can comment on a group-mate's post and delete its own comment", async () => {
     // Post-first: the active student needs their own post; the forum response creates it.
-    const posted = await call("put", `/assignments/${kit.dropped.forumId}/forum/response`, t.active, {
-      text: "my take",
-    });
+    const posted = await call(
+      "put",
+      `/assignments/${kit.dropped.forumId}/parts/${kit.dropped.forumPartId}/forum/response`,
+      t.active,
+      {
+        text: "my take",
+      },
+    );
     expect(posted.status).toBe(200);
     const c = await call(
       "post",
-      `/assignments/${kit.dropped.forumId}/forum/posts/${kit.dropped.matePost}/comments`,
+      `/assignments/${kit.dropped.forumId}/parts/${kit.dropped.forumPartId}/forum/posts/${kit.dropped.matePost}/comments`,
       t.active,
       { body: "hi" },
     );

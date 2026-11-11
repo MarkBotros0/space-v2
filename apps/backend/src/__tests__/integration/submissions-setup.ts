@@ -1,14 +1,18 @@
 import type { Express } from "express";
 
 import { db } from "../../db/client";
-import { newPublicId } from "../../lib/public-id";
+import { createAssignmentWithParts, seedTextWork, setSubmitted } from "./assignment-reads-setup";
 import { cleanupTestData, createTestSeason, createTestUser, login } from "./fixtures";
 
 export interface SubmissionFixtures {
   seasonId: number;
   assignmentId: number;
+  /** The essay part of `assignmentId`. */
+  partId: number;
+  /** The owner's DRAFT essay work on `partId` ("first draft"). */
   publicId: string;
   studentUserId: number;
+  peerUserId: number;
   leaderUserId: number;
   groupAId: number;
   mentorToken: string;
@@ -42,10 +46,9 @@ export async function seedSubmissionFixtures(app: Express): Promise<SubmissionFi
   });
   const groupAId = group.id;
   await db.seasonAdmin.create({ data: { seasonId, userId: admin.id } });
-  // groupId on the enrolment as well as the GroupStudent row above. v1's group
-  // form writes both, so this is what real data looks like — and since ruling
-  // C9 made the per-season enrolment the authority on membership, an enrolment
-  // without it describes a student in no group at all.
+  // groupId on the enrolment as well as the GroupStudent row above: since
+  // ruling C9 made the per-season enrolment the authority on membership, an
+  // enrolment without it describes a student in no group at all.
   await db.seasonEnrollment.createMany({
     data: [
       { seasonId, studentUserId: owner.id, groupId: group.id, status: "ACTIVE" },
@@ -53,70 +56,52 @@ export async function seedSubmissionFixtures(app: Express): Promise<SubmissionFi
     ],
   });
 
-  const assignment = await db.assignment.create({
-    data: {
-      seasonId,
-      title: "Essay",
-      description: "Write it",
-      isAllGroups: true,
-      dueAt: new Date("2099-04-01T00:00:00.000Z"),
-    },
-    select: { id: true },
-  });
+  const assignment = await createAssignmentWithParts(
+    { seasonId, title: "Essay", description: "Write it", dueAt: new Date("2099-04-01T00:00:00.000Z") },
+    [{ kind: "ESSAY", prompt: "What did you learn?" }],
+  );
   const assignmentId = assignment.id;
-
-  // Same generator production uses — publicId is a @unique column, and a
-  // hand-rolled short id collides with a previous interrupted run (Ruling F2).
-  const publicId = newPublicId();
-  await db.submission.create({
-    data: { assignmentId, studentUserId: owner.id, publicId, status: "DRAFT", text: "first draft" },
-  });
+  const partId = assignment.partIds[0]!;
+  const work = await seedTextWork(assignmentId, partId, owner.id, "DRAFT", { text: "first draft" });
 
   const mentor = await createTestUser("mentor", "MENTOR");
-
-  const ownerToken = await login(app, owner.email);
-  const peerToken = await login(app, peer.email);
-  const leaderToken = await login(app, leader.email);
-  const leaderUserId = leader.id;
-  const adminToken = await login(app, admin.email);
-  const mentorToken = await login(app, mentor.email);
 
   return {
     seasonId,
     assignmentId,
-    publicId,
+    partId,
+    publicId: work.publicId,
     studentUserId,
-    leaderUserId,
+    peerUserId: peer.id,
+    leaderUserId: leader.id,
     groupAId,
-    mentorToken,
-    ownerToken,
-    peerToken,
-    leaderToken,
-    adminToken,
+    mentorToken: await login(app, mentor.email),
+    ownerToken: await login(app, owner.email),
+    peerToken: await login(app, peer.email),
+    leaderToken: await login(app, leader.email),
+    adminToken: await login(app, admin.email),
   };
 }
 
-/** A submission of the owner's on a brand-new assignment, in a known state. */
+/**
+ * The student's essay on a brand-new one-essay assignment, in a known state.
+ * A handed-in essay (SUBMITTED, REVIEWED) also stamps the assignment submitted,
+ * as Submit would. Returns the essay work's publicId.
+ */
 export async function seedSubmissionFor(
   seasonId: number,
   studentUserId: number,
-  status: "SUBMITTED" | "DRAFT",
+  status: "SUBMITTED" | "DRAFT" | "REVIEWED",
   title: string,
+  opts: { dueAt?: Date | null; submittedAt?: Date; text?: string } = {},
 ): Promise<string> {
-  const assignment = await db.assignment.create({
-    data: { seasonId, title, isAllGroups: true },
-    select: { id: true },
+  const a = await createAssignmentWithParts({ seasonId, title, dueAt: opts.dueAt ?? null }, [
+    { kind: "ESSAY", prompt: `${title}?` },
+  ]);
+  const work = await seedTextWork(a.id, a.partIds[0]!, studentUserId, status, {
+    at: opts.submittedAt,
+    text: opts.text ?? "work",
   });
-  const pid = newPublicId();
-  await db.submission.create({
-    data: {
-      assignmentId: assignment.id,
-      studentUserId,
-      publicId: pid,
-      status,
-      text: "work",
-      submittedAt: status === "SUBMITTED" ? new Date() : null,
-    },
-  });
-  return pid;
+  if (status !== "DRAFT") await setSubmitted(a.id, studentUserId, opts.submittedAt ?? new Date());
+  return work.publicId;
 }

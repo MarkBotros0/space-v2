@@ -1,29 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Pause, Play, Video } from "lucide-react-native";
+import { useCallback, useEffect, useRef } from "react";
+import { Video } from "lucide-react-native";
 import { AppState, Linking, View } from "react-native";
 import { useRouter } from "expo-router";
-import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
-import type { StudentVideoQuestion, StudentVideoQuiz } from "@space/shared";
+import type { StudentVideoQuiz } from "@space/shared";
 
 import { useSaveVideoProgress, useSubmitVideoAnswer } from "../../hooks/use-video-quiz";
-import { apiErrorMessage } from "../../lib/api-error";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Eyebrow } from "../../design/layout/page-title";
-import { InlineError } from "../../design/layout/route-states";
 import { Button, Text } from "../../design/ui";
-import { VideoProgressTrack } from "./video-progress-track";
-import { VideoQuestionModal, type AnswerFeedback } from "./video-question-modal";
+import { useVideoPlayback } from "./use-video-playback";
+import { VideoPlayerFrame } from "./video-player-frame";
+import { VideoQuestionModal } from "./video-question-modal";
 
-iconWithClassName(Pause, Play, Video);
+iconWithClassName(Video);
 
-/**
- * getCurrentTime() crosses the webview bridge as a promise, so v1's 0.1 s
- * tolerance (a synchronous call) is far too tight here (spec 13 §10 D11).
- */
-const POLL_MS = 400;
-const TOLERANCE_SECONDS = 0.75;
 const PROGRESS_SAVE_MS = 15_000;
-const LOAD_TIMEOUT_MS = 15_000;
 
 interface VideoQuizPlayerProps {
   sessionId: number;
@@ -59,76 +50,32 @@ function VideoFallback({ youtubeUrl }: { youtubeUrl: string | null }) {
 
 export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: VideoQuizPlayerProps) {
   const router = useRouter();
-  const playerRef = useRef<YoutubeIframeRef>(null);
   const submit = useSubmitVideoAnswer(sessionId);
   const saveProgress = useSaveVideoProgress(sessionId);
 
-  const [playing, setPlaying] = useState(false);
-  const [current, setCurrent] = useState(0);
-  const [duration, setDuration] = useState<number | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [deadlocked, setDeadlocked] = useState(false);
-  const [open, setOpen] = useState<StudentVideoQuestion | null>(null);
-  const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
-  const [answerError, setAnswerError] = useState<string | null>(null);
-
-  // The barrier is the server's derivation, never recomputed from the answered
-  // set (ruling C4): nextQuestionId is also the question the server will accept.
-  const barrier = quiz.questions.find((q) => q.id === quiz.nextQuestionId)?.atSeconds ?? Number.POSITIVE_INFINITY;
-  const barrierQuestion = quiz.questions.find((q) => q.id === quiz.nextQuestionId) ?? null;
-
-  const furthestRef = useRef(quiz.furthestSeconds);
   const lastSavedRef = useRef(quiz.furthestSeconds);
-  const barrierRef = useRef(barrier);
-  const barrierQuestionRef = useRef(barrierQuestion);
-  const openRef = useRef(open);
-  const deadlockedRef = useRef(deadlocked);
-  const playingRef = useRef(playing);
-  barrierRef.current = barrier;
-  barrierQuestionRef.current = barrierQuestion;
-  openRef.current = open;
-  deadlockedRef.current = deadlocked;
-  playingRef.current = playing;
-
-  const clock = useCallback(
-    () => (readCurrentTime ?? (() => playerRef.current?.getCurrentTime() ?? Promise.resolve(0)))(),
-    [readCurrentTime],
-  );
-
   const saveRef = useRef(saveProgress.mutate);
   saveRef.current = saveProgress.mutate;
+  // Reads the playback's furthest point, which the hook below fills in.
+  const furthest = useRef<{ current: number } | null>(null);
   const flushProgress = useCallback((): void => {
-    const seconds = Math.floor(furthestRef.current);
+    const seconds = Math.floor(furthest.current?.current ?? 0);
     if (seconds <= lastSavedRef.current) return;
     lastSavedRef.current = seconds;
     saveRef.current(seconds);
   }, []);
 
-  // The poll starts on mount; the deadlock guard stops it only once
-  // getDuration() has answered, so a player that never fires onReady still gates.
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (openRef.current !== null || deadlockedRef.current) return;
-      void clock()
-        .then((t) => {
-          if (openRef.current !== null || deadlockedRef.current) return;
-          if (t > furthestRef.current) furthestRef.current = t;
-          setCurrent(t);
-          const gate = barrierRef.current;
-          const question = barrierQuestionRef.current;
-          if (question !== null && t >= gate - TOLERANCE_SECONDS) {
-            setPlaying(false);
-            playerRef.current?.seekTo(gate, true);
-            setFeedback(null);
-            setAnswerError(null);
-            setOpen(question);
-          }
-        })
-        .catch(() => undefined);
-    }, POLL_MS);
-    return () => clearInterval(timer);
-  }, [clock]);
+  const playback = useVideoPlayback({
+    source: quiz,
+    answer: submit,
+    readCurrentTime,
+    onStop: flushProgress,
+    onAnswered: (res) => {
+      lastSavedRef.current = Math.max(lastSavedRef.current, res.furthestSeconds);
+    },
+  });
+  furthest.current = playback.furthestRef;
+  const { playing, setPlaying } = playback;
 
   // Advisory progress: every 15 s while playing, on pause, on leaving the
   // foreground, and on unmount. v1 saves only on three edge events (R49).
@@ -148,135 +95,26 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
     };
   }, [flushProgress]);
 
-  // A player that never becomes ready is the same dead end as an error.
-  useEffect(() => {
-    if (ready) return undefined;
-    const timer = setTimeout(() => setFailed(true), LOAD_TIMEOUT_MS);
-    return () => clearTimeout(timer);
-  }, [ready]);
-
-  const onReady = useCallback((): void => {
-    setReady(true);
-    // v1 interactive-video-player.tsx:127-129: reopen where the student got to, never past the barrier.
-    const resumeTo = Math.min(furthestRef.current, barrierRef.current);
-    if (resumeTo > 0) {
-      playerRef.current?.seekTo(resumeTo, true);
-      setCurrent(resumeTo);
-    }
-    void playerRef.current
-      ?.getDuration()
-      .then((d) => {
-        setDuration(d);
-        // Deadlock guard (spec 13 §10 D2): a question past the end of the
-        // recording can never be reached. The duration is not stored, so it is read here.
-        if (Number.isFinite(barrierRef.current) && barrierRef.current > d + 1) setDeadlocked(true);
-      })
-      .catch(() => undefined);
-  }, []);
-
   const handleLeave = useCallback((): void => {
     setPlaying(false);
     flushProgress();
     router.back();
-  }, [flushProgress, router]);
+  }, [flushProgress, router, setPlaying]);
 
-  const onAnswer = (selectedIndex: number): void => {
-    if (open === null) return;
-    setAnswerError(null);
-    submit.mutate(
-      { questionId: open.id, selectedIndex },
-      {
-        onSuccess: (res) => {
-          if (res.furthestSeconds > furthestRef.current) furthestRef.current = res.furthestSeconds;
-          lastSavedRef.current = Math.max(lastSavedRef.current, res.furthestSeconds);
-          setFeedback({ isCorrect: res.isCorrect, correctIndex: res.correctIndex });
-        },
-        onError: (err) => setAnswerError(apiErrorMessage(err, "Couldn't save your answer.")),
-      },
-    );
-  };
-
-  const onContinue = (): void => {
-    setOpen(null);
-    setFeedback(null);
-    setPlaying(true);
-  };
-
-  const onSeek = (fraction: number): void => {
-    if (duration === null || duration <= 0) return;
-    const requested = fraction * duration;
-    // Forward seeks are clamped to the barrier; backwards seeking is free, as in v1.
-    const target = Math.min(requested, barrier);
-    playerRef.current?.seekTo(target, true);
-    setCurrent(target);
-  };
-
-  if (quiz.videoId === null || failed) {
+  if (quiz.videoId === null || playback.failed) {
     return <VideoFallback youtubeUrl={quiz.youtubeUrl} />;
   }
 
-  const deadlockMessage = "A question on this video is set past the end of the recording. Ask your leader to fix it.";
-  const total = duration ?? 0;
-
   return (
     <View className="flex-col gap-3">
-      {deadlocked ? (
-        <InlineError
-          className="rounded-group bg-surface dark:border dark:border-separator p-4"
-          message={deadlockMessage}
-          onRetry={() => onRetry?.()}
-        />
-      ) : (
-        <View className="overflow-hidden rounded-group border border-border bg-black">
-          <YoutubePlayer
-            ref={playerRef}
-            height={211}
-            videoId={quiz.videoId}
-            play={playing}
-            initialPlayerParams={{
-              controls: false,
-              modestbranding: true,
-              rel: false,
-              preventFullScreen: true,
-            }}
-            onReady={onReady}
-            onError={() => setFailed(true)}
-            onChangeState={(state: string) => {
-              if (state === "playing") setPlaying(true);
-              if (state === "paused" || state === "ended") {
-                setPlaying(false);
-                flushProgress();
-              }
-            }}
-          />
-          <View className="bg-black px-3 py-2">
-            <VideoProgressTrack
-              questions={quiz.questions}
-              current={current}
-              total={total}
-              barrier={barrier}
-              onSeek={onSeek}
-            />
-            {/* v1 plays and pauses by tapping the YouTube frame; the native
-                player has no controls, so the app keeps explicit ones. */}
-            <View className="mt-1 flex-row items-center justify-between">
-              <Button
-                variant="plain"
-                size="sm"
-                textClassName="text-white"
-                accessibilityLabel={playing ? "Pause" : "Play"}
-                onPress={() => setPlaying((p) => !p)}
-              >
-                {playing ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
-                {playing ? "Pause" : "Play"}
-              </Button>
-              <Button variant="plain" size="sm" textClassName="text-white/70" onPress={handleLeave}>
-                Leave the quiz
-              </Button>
-            </View>
-          </View>
-        </View>
-      )}
+      <VideoPlayerFrame
+        videoId={quiz.videoId}
+        questions={quiz.questions}
+        playback={playback}
+        onRetry={onRetry}
+        onLeave={handleLeave}
+        leaveLabel="Leave the quiz"
+      />
 
       <View className="flex-row items-center justify-between rounded-group bg-surface p-4 dark:border dark:border-separator">
         <View>
@@ -295,12 +133,12 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
       </View>
 
       <VideoQuestionModal
-        question={open}
-        feedback={feedback}
-        pending={submit.isPending}
-        answerError={answerError}
-        onAnswer={onAnswer}
-        onContinue={onContinue}
+        question={playback.open}
+        feedback={playback.feedback}
+        pending={playback.pending}
+        answerError={playback.answerError}
+        onAnswer={playback.onAnswer}
+        onContinue={playback.onContinue}
         onLeave={handleLeave}
       />
     </View>

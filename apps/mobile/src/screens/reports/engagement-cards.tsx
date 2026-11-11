@@ -215,10 +215,7 @@ export function EngagementCards({
               key: String(r.assignmentId),
               label: r.title,
               value: r.completionRate,
-              caption:
-                r.expected === 0
-                  ? "No students targeted"
-                  : `${r.completed} of ${r.expected} ${r.targeting === "all_groups" ? "in the season" : "in the target groups"}`,
+              caption: r.expected === 0 ? "No students in the season" : `${r.completed} of ${r.expected} in the season`,
             }))}
           />
         )}

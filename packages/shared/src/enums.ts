@@ -28,8 +28,11 @@ export type AttendanceStatus = z.infer<typeof attendanceStatusSchema>;
 export const submissionStatusSchema = z.enum(["DRAFT", "SUBMITTED", "REVIEWED", "RETURNED"]);
 export type SubmissionStatus = z.infer<typeof submissionStatusSchema>;
 
-export const assignmentTypeSchema = z.enum(["STANDARD", "FORUM"]);
-export type AssignmentType = z.infer<typeof assignmentTypeSchema>;
+export const assignmentPartKindSchema = z.enum(["VIDEO", "ESSAY", "FORUM"]);
+export type AssignmentPartKind = z.infer<typeof assignmentPartKindSchema>;
+
+export const reminderAnchorSchema = z.enum(["NEXT_SESSION", "DUE_DATE"]);
+export type ReminderAnchor = z.infer<typeof reminderAnchorSchema>;
 
 export const quizKindSchema = z.enum(["PAPER", "ONLINE"]);
 export type QuizKind = z.infer<typeof quizKindSchema>;
@@ -58,6 +61,7 @@ export const notificationTypeSchema = z.enum([
   "SUBMISSION_RECEIVED",
   "SESSION_CANCELLED",
   "ANNOUNCEMENT",
+  "ASSIGNMENT_REMINDER",
 ]);
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 

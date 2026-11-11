@@ -154,8 +154,9 @@ export const queryKeys = {
     // The staff arm of the same endpoint, keyed apart from the student arm so
     // one role's cached shape can never be served to the other's parser.
     staffBySeason: (seasonId: number | null) => [...queryKeys.assignments.lists(), "staff", { seasonId }] as const,
-    trackers: () => [...queryKeys.assignments.all, "tracker"] as const,
-    tracker: (id: number | null) => [...queryKeys.assignments.trackers(), id] as const,
+    /** GET /assignments/:id/progress: every student's work on each part (the leader's view). */
+    progresses: () => [...queryKeys.assignments.all, "progress"] as const,
+    progress: (id: number | null) => [...queryKeys.assignments.progresses(), id] as const,
   },
   submissions: {
     all: ["submissions"] as const,
@@ -212,15 +213,26 @@ export const queryKeys = {
     attendance: (seasonId: number | null) => [...queryKeys.me.all, "attendance", { seasonId }] as const,
     profile: () => [...queryKeys.me.all, "profile"] as const,
   },
+  youtube: {
+    all: ["youtube"] as const,
+    /** What YouTube says about a video (its title), for the part editor. */
+    meta: (videoId: string) => [...queryKeys.youtube.all, "meta", videoId] as const,
+  },
   videoQuiz: {
     all: ["video-quiz"] as const,
     forSession: (sessionId: number) => [...queryKeys.videoQuiz.all, "student", sessionId] as const,
     questions: (sessionId: number) => [...queryKeys.videoQuiz.all, "admin", sessionId] as const,
     results: (sessionId: number) => [...queryKeys.videoQuiz.all, "results", sessionId] as const,
+    /** A video part of an assignment: the student's player data. */
+    part: (assignmentId: number, partId: number) => [...queryKeys.videoQuiz.all, "part", assignmentId, partId] as const,
+    /** A video part's questions with their answer key (the author's read). */
+    partQuestions: (assignmentId: number, partId: number) =>
+      [...queryKeys.videoQuiz.all, "part-admin", assignmentId, partId] as const,
   },
   forum: {
     all: ["forum"] as const,
-    thread: (assignmentId: number) => [...queryKeys.forum.all, "thread", assignmentId] as const,
+    /** The FORUM part's thread (at most one per assignment; the part id keeps a replaced part apart). */
+    thread: (assignmentId: number, partId: number) => [...queryKeys.forum.all, "thread", assignmentId, partId] as const,
     /** Every expanded comment list of one assignment's thread (a prefix of `comments`). */
     allComments: (assignmentId: number) => [...queryKeys.forum.all, "comments", assignmentId] as const,
     comments: (assignmentId: number, postPublicId: string) =>
