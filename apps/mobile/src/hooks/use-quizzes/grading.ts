@@ -132,7 +132,8 @@ export function useReopenAttempt(id: number) {
 /**
  * Staff End: closes a student's open attempt and submits what is saved (endReason ENDED_BY_STAFF,
  * docs/rules/quiz-integrity.md "Timing"). Refreshes on a refusal too: `attempt_closed` means the
- * list is out of date (the student submitted, or time ran out).
+ * list is out of date (the student submitted, or the scheduler timed it out). An attempt past its
+ * deadline that End itself closes answers 200, closed TIMED_OUT.
  */
 export function useEndAttempt(id: number) {
   const queryClient = useQueryClient();
