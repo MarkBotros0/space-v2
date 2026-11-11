@@ -4,9 +4,9 @@
  * character decides: Arabic/Hebrew ranges are rtl, a Latin letter is ltr;
  * digits (Western and Arabic-Indic), punctuation and spaces are skipped.
  */
-const RTL_CHAR = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
+const RTL_CHAR = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
 const DIGIT = /[0-9\u0660-\u0669\u06F0-\u06F9]/;
-const LTR_CHAR = /[A-Za-zÀ-ɏ]/;
+const LTR_CHAR = /[A-Za-z\u00C0-\u024F]/;
 
 function textDirection(s: string): "rtl" | "ltr" {
   for (const ch of s) {
