@@ -308,7 +308,7 @@ describe("grading screen — ONLINE", () => {
       withAnswers([choiceAnswer, { ...essayAnswer, pointsAwarded: 5, correct: true }], {
         status: "GRADED",
         manualScore: 5,
-        totalScore: 7,
+        totalScore: 6.67, // shown to one place, like every quiz score
         gradedByName: "Test leader",
       }),
     );
@@ -316,10 +316,10 @@ describe("grading screen — ONLINE", () => {
 
     renderStacked(<QuizGradeScreen />);
 
-    expect(await screen.findByText("Attempt 1 · 7/7 · Mar 2, 2099")).toBeTruthy();
+    expect(await screen.findByText("Attempt 1 · 6.7/7 · Mar 2, 2099")).toBeTruthy();
     expect(screen.getByText("Graded")).toBeTruthy();
     openRow("Test student");
-    expect(await screen.findByText("Save marks")).toBeTruthy();
+    expect(await screen.findByText("Attempt 1 · Graded · 6.7/7")).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Right", checked: true })).toBeTruthy();
     fireEvent.press(screen.getByText("Reopen retake"));
     await waitFor(() =>

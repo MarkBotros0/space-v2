@@ -10,6 +10,7 @@ import { Text } from "../../design/ui/text";
 import { toast } from "../../design/ui/toaster";
 import { useMarkAttempt, useReopenAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
+import { formatScore } from "../../lib/format";
 
 /**
  * One online attempt in a bottom sheet: the answers with the key (shown to the grader, R103),
@@ -102,7 +103,7 @@ export function AttemptSheet({
     >
       <View className="flex-col gap-4 pb-4">
         <Text variant="caption" className="text-muted-foreground">
-          {`Attempt ${attempt.attemptNumber} · ${graded ? `Graded · ${attempt.totalScore ?? 0}/${maxScore}` : "Awaiting grading"}`}
+          {`Attempt ${attempt.attemptNumber} · ${graded ? `Graded · ${formatScore(attempt.totalScore ?? 0)}/${maxScore}` : "Awaiting grading"}`}
         </Text>
         <QuizAttemptAnswers
           attempt={attempt}

@@ -8,7 +8,7 @@ import { EmptyState } from "../../design/ui";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { StatusChip, statusChip } from "../../design/ui/status-chip";
 import { flattenGradingPages, useQuizAttempts } from "../../hooks/use-quizzes";
-import { formatDate, unbreakable } from "../../lib/format";
+import { formatDate, formatScore, unbreakable } from "../../lib/format";
 import { AttemptSheet } from "./attempt-sheet";
 import { ReleaseResultsCard } from "./release-results";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
@@ -56,7 +56,7 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
                 key={a.attemptId}
                 title={a.studentName ?? "Student"}
                 titleLines={2}
-                subtitle={`Attempt ${a.attemptNumber} · ${a.status === "GRADED" ? `${a.totalScore ?? 0}/${first.maxScore}` : "Awaiting grading"} · ${unbreakable(formatDate(a.submittedAt))}`}
+                subtitle={`Attempt ${a.attemptNumber} · ${a.status === "GRADED" ? `${formatScore(a.totalScore ?? 0)}/${first.maxScore}` : "Awaiting grading"} · ${unbreakable(formatDate(a.submittedAt))}`}
                 trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
                 chevron
                 onPress={() => {
