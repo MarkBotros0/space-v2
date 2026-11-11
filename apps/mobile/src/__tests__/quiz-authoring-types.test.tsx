@@ -90,12 +90,20 @@ describe("QuizEditScreen, question types and the shuffle switch", () => {
       nativeEvent: { selection: { start: 7, end: 7 } },
     });
     fireEvent.press(screen.getByLabelText("Insert blank"));
+    expect(screen.getByLabelText("Question prompt").props.value).toBe("In the {{blank}} was the ");
+    // The caret is set after the new blank, once.
+    expect(screen.getByLabelText("Question prompt").props.selection).toEqual({ start: 16, end: 16 });
     expect(screen.getByLabelText("Answer for blank 1")).toBeTruthy();
     expect(screen.queryByLabelText("Answer for blank 2")).toBeNull();
+    // Move the caret to the end for the second blank.
+    fireEvent(screen.getByLabelText("Question prompt"), "selectionChange", {
+      nativeEvent: { selection: { start: 25, end: 25 } },
+    });
+    expect(screen.getByLabelText("Question prompt").props.selection).toBeUndefined();
     fireEvent.press(screen.getByLabelText("Insert blank"));
+    expect(screen.getByLabelText("Question prompt").props.value).toBe("In the {{blank}} was the {{blank}}");
     expect(screen.getByLabelText("Answer for blank 2")).toBeTruthy();
-    // The cursor sat after the first blank; move it to the end for the second.
-    fireEvent.changeText(screen.getByLabelText("Question prompt"), "In the {{blank}} was the {{blank}}");
+    expect(screen.getByText('Blank 2, after "was the"')).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Answer for blank 1"), "beginning");
     fireEvent.changeText(screen.getByLabelText("Answer for blank 2"), "Word");
     fireEvent.changeText(screen.getByLabelText("Points"), "2");
@@ -109,6 +117,22 @@ describe("QuizEditScreen, question types and the shuffle switch", () => {
         answers: ["beginning", "Word"],
       }),
     );
+  });
+
+  it("inserting a blank before an answered one keeps that answer with its gap", async () => {
+    get.mockResolvedValue({ data: { data: authoring() } });
+    renderWithProviders(<QuizEditScreen />);
+
+    fireEvent.press(await screen.findByText("Add question"));
+    fireEvent.press(screen.getByLabelText("Fill in the blank"));
+    fireEvent.changeText(screen.getByLabelText("Question prompt"), "A {{blank}} B ");
+    fireEvent.changeText(screen.getByLabelText("Answer for blank 1"), "x");
+    fireEvent(screen.getByLabelText("Question prompt"), "selectionChange", {
+      nativeEvent: { selection: { start: 0, end: 0 } },
+    });
+    fireEvent.press(screen.getByLabelText("Insert blank"));
+    expect(screen.getByLabelText("Answer for blank 1").props.value).toBe("");
+    expect(screen.getByLabelText("Answer for blank 2").props.value).toBe("x");
   });
 
   it("refuses a fill in the blank question with no blank, at the answers, with the schema's message", async () => {

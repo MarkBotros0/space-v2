@@ -77,6 +77,28 @@ export function insertBlank(prompt: string, cursor: number): { prompt: string; c
   return { prompt: prompt.slice(0, at) + BLANK_TOKEN + prompt.slice(at), cursor: at + BLANK_TOKEN.length };
 }
 
+/**
+ * Insert blank, keeping the answer key in step: the new blank's empty answer goes in at its place
+ * among the gaps, so a blank inserted before an existing one doesn't hand it the next gap's answer.
+ */
+export function insertBlankWithAnswer(
+  prompt: string,
+  cursor: number,
+  answers: string[],
+): { prompt: string; cursor: number; answers: string[] } {
+  const at = insertBlank(prompt, cursor);
+  const k = countBlanks(prompt.slice(0, Math.max(0, Math.min(cursor, prompt.length))));
+  const kept = syncBlankAnswers(prompt, answers);
+  return { ...at, answers: [...kept.slice(0, k), "", ...kept.slice(k)] };
+}
+
+/** The few words before a gap ("after \"the\""), so a field's blank is recognisable; "at the start" for a leading gap. */
+export function blankContext(prompt: string, index: number): string {
+  const before = (prompt.split(BLANK_TOKEN)[index] ?? "").trim().split(/\s+/).filter(Boolean);
+  if (before.length === 0) return index === 0 ? "at the start" : "right after the previous blank";
+  return `after "${before.slice(-3).join(" ")}"`;
+}
+
 /** One answer per blank in the prompt, keeping the existing answers by index. */
 export function syncBlankAnswers(prompt: string, answers: string[]): string[] {
   return Array.from({ length: countBlanks(prompt) }, (_, i) => answers[i] ?? "");

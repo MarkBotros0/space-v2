@@ -1,9 +1,9 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { View } from "react-native";
 
 import { textDirection } from "../../../design/lib/text-direction";
-import { FieldError, FormField, Input, Label, PillButton, Text, Textarea } from "../../../design/ui";
-import { insertBlank, syncBlankAnswers } from "./editor-model";
+import { ContentText, FieldError, FormField, Input, Label, PillButton, Text, Textarea } from "../../../design/ui";
+import { blankContext, insertBlankWithAnswer, syncBlankAnswers } from "./editor-model";
 
 /**
  * Fill in the blank: the sentence with its gaps, and the expected answer for
@@ -27,10 +27,15 @@ export function FillBlankEditor({
 
   const setPrompt = (next: string) => onChange({ prompt: next, answers: syncBlankAnswers(next, answers) });
 
+  // Set once after an insert so the caret sits after the new blank, then released on the next report.
+  const [caret, setCaret] = useState<{ start: number; end: number } | undefined>(undefined);
+
+  // Free typing keeps answers by index (syncBlankAnswers); an insert puts the new answer at its gap.
   const addBlank = () => {
-    const at = insertBlank(prompt, cursor.current ?? prompt.length);
+    const at = insertBlankWithAnswer(prompt, cursor.current ?? prompt.length, answers);
     cursor.current = at.cursor;
-    setPrompt(at.prompt);
+    setCaret({ start: at.cursor, end: at.cursor });
+    onChange({ prompt: at.prompt, answers: at.answers });
   };
 
   return (
@@ -44,8 +49,10 @@ export function FillBlankEditor({
           accessibilityLabel="Question prompt"
           value={prompt}
           onChangeText={setPrompt}
+          selection={caret}
           onSelectionChange={(e) => {
             cursor.current = e.nativeEvent.selection.end;
+            setCaret(undefined);
           }}
           placeholder="In the {{blank}} was the Word."
           direction={textDirection(prompt)}
@@ -70,7 +77,10 @@ export function FillBlankEditor({
           const error = errors[`answers.${index}`];
           return (
             <View key={index} className="flex-col gap-1">
-              <Text variant="caption" className="font-semibold text-muted-foreground">{`Blank ${n}`}</Text>
+              {/* The words before the gap, so a shifted answer after free typing is visible. */}
+              <ContentText variant="caption" className="font-semibold text-muted-foreground">
+                {`Blank ${n}, ${blankContext(prompt, index)}`}
+              </ContentText>
               <Input
                 accessibilityLabel={`Answer for blank ${n}`}
                 value={answer}

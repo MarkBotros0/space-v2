@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import type { QuizKind } from "@space/shared";
 
 import { FormField, Input, Switch, Text } from "../../design/ui";
@@ -54,7 +54,15 @@ export function QuizSettings({
           />
         </FormField>
       ) : (
-        <View className="flex-row items-center justify-between gap-3">
+        // The whole row is the switch, so the target is the row (44pt or taller), not the 24pt track.
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityLabel="Shuffle questions"
+          accessibilityState={{ checked: shuffle, disabled: shuffleLocked }}
+          disabled={shuffleLocked}
+          onPress={() => onShuffle(!shuffle)}
+          className="min-h-11 flex-row items-center justify-between gap-3"
+        >
           <View className="min-w-0 flex-1 flex-col gap-0.5">
             <Text variant="subhead" className="font-medium">
               Shuffle questions
@@ -65,13 +73,10 @@ export function QuizSettings({
                 : "Each student gets the questions in their own order. Turn off when questions build on each other."}
             </Text>
           </View>
-          <Switch
-            accessibilityLabel="Shuffle questions"
-            checked={shuffle}
-            onCheckedChange={onShuffle}
-            disabled={shuffleLocked}
-          />
-        </View>
+          <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Switch checked={shuffle} disabled={shuffleLocked} />
+          </View>
+        </Pressable>
       )}
     </View>
   );

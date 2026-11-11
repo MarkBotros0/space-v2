@@ -4,7 +4,9 @@ import {
   emptyDraft,
   fieldErrors,
   fromAuthoring,
+  blankContext,
   insertBlank,
+  insertBlankWithAnswer,
   questionSummary,
   switchType,
   syncBlankAnswers,
@@ -24,6 +26,26 @@ describe("insertBlank", () => {
 describe("readablePrompt", () => {
   it("numbers the blanks for reading", () => {
     expect(readablePrompt("In the {{blank}} was the {{blank}}.")).toBe("In the (1) was the (2).");
+  });
+});
+
+describe("insertBlankWithAnswer", () => {
+  it("puts the new blank's empty answer at its place, so the key does not shift", () => {
+    expect(insertBlankWithAnswer("A {{blank}} B", 0, ["x"])).toEqual({
+      prompt: "{{blank}}A {{blank}} B",
+      cursor: 9,
+      answers: ["", "x"],
+    });
+    expect(insertBlankWithAnswer("A {{blank}} B", 13, ["x"]).answers).toEqual(["x", ""]);
+  });
+});
+
+describe("blankContext", () => {
+  it("names the words before each gap", () => {
+    const prompt = "{{blank}} In the very first {{blank}}{{blank}}";
+    expect(blankContext(prompt, 0)).toBe("at the start");
+    expect(blankContext(prompt, 1)).toBe('after "the very first"');
+    expect(blankContext(prompt, 2)).toBe("right after the previous blank");
   });
 });
 
