@@ -38,8 +38,15 @@ export function timingDraft(q: {
   };
 }
 
-const sameInstant = (a: string | null, b: string | null) =>
-  a === null || b === null ? a === b : Date.parse(a) === Date.parse(b);
+/**
+ * Whether the draft's end is the stored one, at the minute the sheet shows: the stored value goes
+ * through the same draft format first, so seconds written by the API or a seed don't mark an
+ * untouched window as changed (and a title-only save never moves `startsUntil` earlier).
+ */
+const sameInstant = (draftIso: string | null, savedIso: string | null) => {
+  const saved = endToIso(endFromIso(savedIso));
+  return draftIso === null || saved === null ? draftIso === saved : Date.parse(draftIso) === Date.parse(saved);
+};
 
 /** A new end starts here: the start of a day for "from", its end for "until". */
 export const DEFAULT_FROM_TIME = "09:00";
