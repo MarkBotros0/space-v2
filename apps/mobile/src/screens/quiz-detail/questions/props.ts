@@ -11,5 +11,15 @@ export type QuestionProps<T extends QuizQuestionStudent["type"]> = {
   disabled?: boolean;
 };
 
-/** Answer inputs never autocorrect or spell-check: what the student types is what is marked. */
-export const ANSWER_INPUT = { autoCorrect: false, spellCheck: false } as const;
+/**
+ * Answer inputs never autocorrect, spell-check, autofill or offer the paste menu: what the student
+ * types is what is marked. (A hardware-keyboard paste cannot be blocked from React Native.)
+ */
+export const ANSWER_INPUT = {
+  autoCorrect: false,
+  spellCheck: false,
+  contextMenuHidden: true,
+  autoComplete: "off",
+  importantForAutofill: "no",
+  textContentType: "none",
+} as const;

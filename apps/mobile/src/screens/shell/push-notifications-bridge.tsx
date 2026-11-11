@@ -5,18 +5,12 @@ import { useEffect, useRef } from "react";
 import { Platform } from "react-native";
 
 import { queryKeys } from "../../lib/query-keys";
+import { presentNotification } from "../../lib/notification-presentation";
 import { routeForPushData } from "../../lib/push-routing";
 
 // A push that arrives while the app is open still shows as a banner; without a
 // handler iOS and Android drop it silently.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+Notifications.setNotificationHandler({ handleNotification: presentNotification });
 
 /**
  * Mounted once while signed in (root layout). Opens the right screen when a
