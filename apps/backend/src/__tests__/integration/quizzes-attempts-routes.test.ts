@@ -71,7 +71,12 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     // not_started
     const before = await get();
     expect(before.status).toBe(200);
-    expect(before.body.data).toMatchObject({ stage: "not_started", questions: [] });
+    // The count is not the key: the start card needs it before any question is sent.
+    expect(before.body.data).toMatchObject({
+      stage: "not_started",
+      questions: [],
+      questionCount: quiz.questionIds.length,
+    });
     noKey(before.body);
     noKey((await list()).body);
 
@@ -86,6 +91,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     noKey(started.body);
     noKey(during.body);
     expect(during.body.data.questions).toHaveLength(quiz.questionIds.length);
+    expect(during.body.data.questionCount).toBe(quiz.questionIds.length);
     const single = during.body.data.questions.find((q: { id: number }) => q.id === quiz.mcqId);
     expect(Object.keys(single).sort()).toEqual(
       ["answer", "id", "options", "order", "points", "pointsAwarded", "prompt", "review", "type"].sort(),
@@ -97,7 +103,11 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     for (const status of ["SUBMITTED", "GRADED"] as const) {
       await setLatestAttempt(quiz.quizId, ownStudentId, { status, totalScore: 2 });
       const after = await get();
-      expect(after.body.data).toMatchObject({ stage: status === "GRADED" ? "graded" : "submitted", questions: [] });
+      expect(after.body.data).toMatchObject({
+        stage: status === "GRADED" ? "graded" : "submitted",
+        questions: [],
+        questionCount: quiz.questionIds.length,
+      });
       noKey(after.body);
       expect(JSON.stringify(after.body)).not.toContain("Capital of France?");
       expect(JSON.stringify(after.body)).not.toContain("Paris");

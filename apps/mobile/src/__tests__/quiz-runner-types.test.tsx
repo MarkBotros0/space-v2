@@ -48,6 +48,7 @@ function inProgress(questions: unknown[]) {
     submittedAt: null,
     gradedAt: null,
     answersReleased: false,
+    questionCount: questions.length,
     questions,
   };
 }

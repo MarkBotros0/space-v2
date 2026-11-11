@@ -34,7 +34,8 @@ export function StudentRunner({ id }: { id: number }) {
   if (data.stage === "in_progress") return <AttemptForm detail={data} id={id} />;
   if (finished) return <ResultView detail={data} />;
 
-  const n = data.questions.length;
+  // No questions are sent before the start; the count comes on its own.
+  const n = data.questionCount;
   return (
     <Screen {...quizTitleProps(data)}>
       <View className="flex-col gap-3">

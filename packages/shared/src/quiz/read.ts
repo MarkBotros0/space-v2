@@ -100,6 +100,11 @@ export const studentQuizDetailSchema = z.object({
   totalScore: z.number().nullable(),
   submittedAt: z.string().nullable(),
   gradedAt: z.string().nullable(),
+  /**
+   * How many questions the quiz has, at every stage. A count is not the key,
+   * and `questions` is empty before the start, so the start card reads this.
+   */
+  questionCount: z.number(),
   questions: z.array(quizQuestionStudentSchema),
   /** True when the student's enrolment is no longer ACTIVE: they can read the quiz, not take it. */
   readOnly: z.boolean(),

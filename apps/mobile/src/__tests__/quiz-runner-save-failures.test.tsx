@@ -53,6 +53,7 @@ const essay = {
 };
 
 function detail(over: Partial<Record<string, unknown>> = {}) {
+  const stage = (over.stage as string | undefined) ?? "not_started";
   return {
     id: 41,
     title: "Week 1 quiz",
@@ -64,12 +65,14 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
     attemptNumber: 0,
     readOnly: false,
     status: null,
-    stage: "not_started",
+    stage,
     totalScore: null,
     submittedAt: null,
     gradedAt: null,
     answersReleased: false,
-    questions: [mcq, essay],
+    // The server sends questions only while the attempt is open; the start card counts them by questionCount.
+    questionCount: 2,
+    questions: stage === "in_progress" ? [mcq, essay] : [],
     ...over,
   };
 }

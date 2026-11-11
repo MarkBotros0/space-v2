@@ -100,6 +100,7 @@ export async function loadStudentQuizDetail(
       // "Answers released" since the quiz-types plan; the column keeps its name.
       resultsReleasedAt: true,
       session: { select: { title: true } },
+      _count: { select: { questions: true } },
     },
   });
   // R32: a non-ONLINE or unpublished quiz simply does not exist for a student.
@@ -136,6 +137,7 @@ export async function loadStudentQuizDetail(
     sessionTitle: quiz.session?.title ?? null,
     ...attemptFields(latest, best),
     stage,
+    questionCount: quiz._count.questions,
     questions,
     readOnly,
     answersReleased,

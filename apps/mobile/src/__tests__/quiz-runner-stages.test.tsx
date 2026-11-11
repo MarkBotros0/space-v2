@@ -62,6 +62,7 @@ const STAGE_OF = { IN_PROGRESS: "in_progress", SUBMITTED: "submitted", GRADED: "
 
 function detail(over: Partial<Record<string, unknown>> = {}) {
   const status = over.status as keyof typeof STAGE_OF | null | undefined;
+  const stage = (over.stage as string | undefined) ?? (status ? STAGE_OF[status] : "not_started");
   return {
     id: 41,
     title: "Week 1 quiz",
@@ -73,12 +74,14 @@ function detail(over: Partial<Record<string, unknown>> = {}) {
     attemptNumber: 0,
     readOnly: false,
     status: null,
-    stage: status ? STAGE_OF[status] : "not_started",
+    stage,
     totalScore: null,
     submittedAt: null,
     gradedAt: null,
     answersReleased: false,
-    questions: [mcq, essay],
+    // The server sends questions only while the attempt is open; the start card counts them by questionCount.
+    questionCount: 2,
+    questions: stage === "in_progress" ? [mcq, essay] : [],
     ...over,
   };
 }

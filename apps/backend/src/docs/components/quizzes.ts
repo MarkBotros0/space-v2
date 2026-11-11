@@ -139,6 +139,7 @@ export const quizSchemas = {
       "totalScore",
       "submittedAt",
       "gradedAt",
+      "questionCount",
       "questions",
       "readOnly",
       "answersReleased",
@@ -166,6 +167,11 @@ export const quizSchemas = {
       },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedAt: { type: ["string", "null"], format: "date-time" },
+      questionCount: {
+        type: "integer",
+        description:
+          "How many questions the quiz has, at every stage. Not the key: `questions` is empty before the start, so the start card counts from this.",
+      },
       questions: { type: "array", items: { $ref: "#/components/schemas/QuizQuestionStudent" } },
       readOnly: {
         type: "boolean",
