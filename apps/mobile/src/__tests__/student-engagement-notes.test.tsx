@@ -101,7 +101,7 @@ const progress = {
   numbers: {
     attendance: { attended: 2, total: 4 },
     assignments: { submitted: 2, total: 2 },
-    quizzes: { scored: 30, max: 40 },
+    quizzes: { scored: 3, max: 4 },
   },
   assignments: [],
   quizzes: [],
@@ -138,7 +138,7 @@ describe("student detail — season progress block", () => {
 
     expect(await screen.findByLabelText("Attendance 50%, 2 of 4 sessions")).toBeTruthy();
     expect(screen.getByLabelText("Assignments 100%, 2 of 2 submitted")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes 75%, 30 of 40 marks")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes 75%, average of 4 quizzes")).toBeTruthy();
     expect(screen.queryByText("Score")).toBeNull();
     expect(get).toHaveBeenCalledWith("/api/v1/students/21/progress");
   });

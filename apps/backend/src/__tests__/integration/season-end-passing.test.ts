@@ -27,7 +27,7 @@ describe("End by the weighted score", () => {
     expect(high.numbers).toEqual({
       attendance: { attended: 0, total: 0 },
       assignments: { submitted: 2, total: 2 },
-      quizzes: { scored: 80, max: 100 },
+      quizzes: { scored: 0.8, max: 1 },
     });
     expect(high.attendancePct).toBe(0);
 
@@ -95,7 +95,7 @@ describe("End by the weighted score", () => {
     expect(Number((await enrolmentOf(w.seasonId, w.users.low.id)).passScore)).toBe(65);
   });
 
-  it("a quiz score above its max counts as the max: End stores it and progress shows it", async () => {
+  it("a quiz score above its max counts as 100%: End stores it and progress shows it", async () => {
     // v1 had no cap on paper grades and kept old attempt totals when a quiz's points changed.
     const w = await seedEndWorld();
     await db.quizGrade.update({
@@ -120,17 +120,17 @@ describe("End by the weighted score", () => {
 
     const progress = await request(app).get(`/api/v1/students/${w.users.high.id}/progress`).set(bearer(w.tokens.admin));
     expect(progress.status).toBe(200);
-    expect(progress.body.data.numbers.quizzes).toEqual({ scored: 110, max: 110 });
+    expect(progress.body.data.numbers.quizzes).toEqual({ scored: 2, max: 2 });
 
     const check = await endCheck(w.seasonId, w.tokens.admin);
     expect(check.students.find((s) => s.userId === w.users.high.id)!.numbers.quizzes).toEqual({
-      scored: 110,
-      max: 110,
+      scored: 2,
+      max: 2,
     });
     const res = await postEnd(w.seasonId, w.tokens.admin, bodyFrom(check));
     expect(res.status).toBe(200);
     const h = await enrolmentOf(w.seasonId, w.users.high.id);
-    expect(h.passNumbers).toMatchObject({ quizzes: { scored: 110, max: 110 } });
+    expect(h.passNumbers).toMatchObject({ quizzes: { scored: 2, max: 2 } });
     expect(Number(h.passScore)).toBe(100);
   });
 

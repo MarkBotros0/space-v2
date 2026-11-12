@@ -104,7 +104,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     numbers: {
       attendance: { attended: 2, total: 4 },
       assignments: { submitted: 2, total: 2 },
-      quizzes: { scored: 5, max: 10 },
+      quizzes: { scored: 1, max: 2 },
     },
     assignments: [],
     quizzes: [],
@@ -184,7 +184,7 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     for (const label of ["University", "Faculty", "Graduation year"]) expect(screen.getByText(label)).toBeTruthy();
     expect(await screen.findByLabelText("Attendance 50%, 2 of 4 sessions")).toBeTruthy();
     expect(screen.getByLabelText("Assignments 100%, 2 of 2 submitted")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes 50%, 5 of 10 marks")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes 50%, average of 2 quizzes")).toBeTruthy();
     expect(screen.queryByText("At risk")).toBeNull();
   });
 

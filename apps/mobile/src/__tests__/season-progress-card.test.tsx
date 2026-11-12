@@ -25,7 +25,7 @@ const progress: StudentProgress = {
   numbers: {
     attendance: { attended: 17, total: 20 },
     assignments: { submitted: 7, total: 9 },
-    quizzes: { scored: 36, max: 50 },
+    quizzes: { scored: 3.6, max: 5 },
   },
   assignments: [
     { id: 41, title: "Week four", dueAt: null, submitted: null, staffMark: null },
@@ -88,13 +88,13 @@ describe("SeasonProgressCard", () => {
     expect(screen.getByText("Spring 2099")).toBeTruthy();
     expect(screen.getByText("17 of 20 sessions")).toBeTruthy();
     expect(screen.getByText("7 / 9")).toBeTruthy();
-    expect(screen.getByText("36 of 50 marks")).toBeTruthy();
+    expect(screen.getByText("average of 5 quizzes")).toBeTruthy();
     expect(screen.getByText("85%")).toBeTruthy();
     expect(screen.getByText("78%")).toBeTruthy();
     expect(screen.getByText("72%")).toBeTruthy();
     expect(screen.getByLabelText("Attendance 85%, 17 of 20 sessions")).toBeTruthy();
     expect(screen.getByLabelText("Assignments 78%, 7 of 9 submitted")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes 72%, 36 of 50 marks")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes 72%, average of 5 quizzes")).toBeTruthy();
     expect(screen.getAllByRole("progressbar")).toHaveLength(3);
     // No composite score on this card (owner, 2026-11-07).
     expect(screen.queryByText(/Score/)).toBeNull();
@@ -160,7 +160,7 @@ describe("SeasonProgressCard", () => {
   it("tapping Quizzes lists the lowest first with Reopen retake", async () => {
     serve(progress);
     renderCard();
-    fireEvent.press(await screen.findByLabelText("Quizzes 72%, 36 of 50 marks"));
+    fireEvent.press(await screen.findByLabelText("Quizzes 72%, average of 5 quizzes"));
     const rows = await screen.findAllByTestId("progress-quiz-row");
     expect(within(rows[0]!).getByText("Quiz two")).toBeTruthy();
     expect(within(rows[0]!).getByText("2 of 10 marks, 20%")).toBeTruthy();

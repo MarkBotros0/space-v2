@@ -88,6 +88,8 @@ describe("loadPassingNumbers", () => {
     const online = await quiz(seasonId, { title: "Online", kind: "ONLINE", maxScore: 20, publishedAt: at(-3) });
     const draft = await quiz(seasonId, { title: "Draft", kind: "ONLINE", maxScore: 50, publishedAt: null });
     const notTaken = await quiz(seasonId, { title: "Not taken", kind: "PAPER", maxScore: 5 });
+    // Published with no questions yet: nothing to score, so it is left out.
+    await quiz(seasonId, { title: "No points", kind: "ONLINE", maxScore: 0, publishedAt: at(-3) });
     await db.quizGrade.createMany({
       data: [
         { quizId: paper.id, studentUserId: early.id, score: 7.5 },
@@ -106,18 +108,39 @@ describe("loadPassingNumbers", () => {
     expect(numbers.get(early.id)).toEqual({
       attendance: { attended: 2, total: 3 },
       assignments: { submitted: 2, total: 2 },
-      quizzes: { scored: 19.5, max: 35 },
+      // Every quiz weighs the same: 7.5/10 + 12/20 + 0/5 = 0.75 + 0.6 + 0 of 3 quizzes (45%).
+      quizzes: { scored: 1.35, max: 3 },
     });
     expect(numbers.get(late.id)).toEqual({
       attendance: { attended: 1, total: 2 },
       assignments: { submitted: 0, total: 2 },
-      quizzes: { scored: 5, max: 35 },
+      quizzes: { scored: 1, max: 3 },
     });
 
     // Asked for one student: only that one.
     const one = await loadPassingNumbers(seasonId, [late.id], db, now);
     expect([...one.numbers.keys()]).toEqual([late.id]);
     expect(one.numbers.get(late.id)).toEqual(numbers.get(late.id));
+  });
+
+  it("every quiz weighs the same, whatever its points", async () => {
+    const seasonId = (await createTestSeason()).id;
+    const student = await createTestUser("pass-equal", "STUDENT");
+    await db.seasonEnrollment.create({ data: { seasonId, studentUserId: student.id, status: "ACTIVE" } });
+    const small = await quiz(seasonId, { title: "Small", kind: "PAPER", maxScore: 4 });
+    const big = await quiz(seasonId, { title: "Big", kind: "PAPER", maxScore: 40 });
+    const over = await quiz(seasonId, { title: "Over", kind: "PAPER", maxScore: 16 });
+    await db.quizGrade.createMany({
+      data: [
+        { quizId: small.id, studentUserId: student.id, score: 4 }, // 100%
+        { quizId: big.id, studentUserId: student.id, score: 10 }, // 25%, not four times the weight
+        { quizId: over.id, studentUserId: student.id, score: 20 }, // above its max: 100%
+      ],
+    });
+
+    const { numbers } = await loadPassingNumbers(seasonId, null, db, now);
+    // (100 + 25 + 100) / 3 = 75%; by points it would have been 34 / 60.
+    expect(numbers.get(student.id)?.quizzes).toEqual({ scored: 2.25, max: 3 });
   });
 
   it("a deleted assignment or student is left out", async () => {

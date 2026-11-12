@@ -6,7 +6,7 @@ import { SUBMITTED_WHERE } from "../assignments/submitted";
 import { liveAssignment, liveUser } from "../db/live";
 import { seasonParticipant } from "../queries/season-participants";
 import { countingScore } from "../quizzes/best-attempt";
-import { round2, toScore } from "../quizzes/score";
+import { toScore } from "../quizzes/score";
 
 /*
  * THE three numbers of season passing (docs/superpowers/plans/2026-11-12-season-passing.md,
@@ -16,13 +16,18 @@ import { round2, toScore } from "../quizzes/score";
  *   own enrolment on (the student page's `attendancePctForEnrollments`).
  * - Assignments: submitted (`SUBMITTED_WHERE`: in the app or marked by staff) over the season's
  *   live assignments. Every assignment is for the whole season.
- * - Quizzes: Σ counting score over Σ maxScore of every PAPER quiz and every published ONLINE quiz.
- *   ONLINE counts `countingScore` (the admin's score, else the best GRADED attempt), PAPER its
- *   grade; nothing is 0; each quiz at most its maxScore.
+ * - Quizzes (owner, 2026-11-13): every quiz weighs the same, whatever its points. Each quiz is the
+ *   student's share of it (score ÷ maxScore, 0..1); `scored` is the sum of those shares and `max`
+ *   the number of quizzes, so scored ÷ max is the average quiz percentage. Every PAPER quiz and
+ *   every published ONLINE quiz with points counts. ONLINE counts `countingScore` (the admin's
+ *   score, else the best GRADED attempt), PAPER its grade; nothing is 0; a share is at most 1.
  */
 
-/** The quizzes that count: every PAPER quiz and every published ONLINE quiz. */
-export const COUNTED_QUIZ = { OR: [{ kind: "PAPER" as const }, { publishedAt: { not: null } }] };
+/** The quizzes that count: every PAPER quiz and every published ONLINE quiz, with points to score. */
+export const COUNTED_QUIZ = {
+  maxScore: { gt: 0 },
+  OR: [{ kind: "PAPER" as const }, { publishedAt: { not: null } }],
+};
 
 type Client = Prisma.TransactionClient;
 
@@ -68,14 +73,13 @@ export async function loadPassingNumbers(
 
   const started = sessions.filter((s) => s.startsAt.getTime() <= now.getTime());
   const rows = await loadStudentRows(client, seasonId, ids, started, quizzes);
-  const maxTotal = quizzes.reduce((total, q) => total + q.maxScore, 0);
   for (const e of enrolments) {
     const eligible = started.filter((s) => s.startsAt.getTime() >= e.enrolledAt.getTime());
     const attended = eligible.filter((s) => rows.present.has(`${e.studentUserId}:${s.id}`)).length;
     numbers.set(e.studentUserId, {
       attendance: { attended, total: eligible.length },
       assignments: { submitted: rows.submittedBy.get(e.studentUserId) ?? 0, total: assignmentCount },
-      quizzes: { scored: quizTotal(e.studentUserId, quizzes, rows), max: maxTotal },
+      quizzes: { scored: quizShares(e.studentUserId, quizzes, rows), max: quizzes.length },
     });
   }
   return { available, numbers };
@@ -127,11 +131,12 @@ async function loadStudentRows(
 }
 
 /**
- * Σ the student's counting score: PAPER its grade, ONLINE `countingScore`; nothing is 0. Each quiz
- * counts at most its maxScore (and never below 0): v1 left grades and attempt totals above a quiz's
- * max, and End's CHECK holds `scored <= max`.
+ * Σ the student's share of each quiz: PAPER its grade, ONLINE `countingScore`, over the quiz's
+ * maxScore; nothing is 0. A share is kept to 0..1: v1 left grades and attempt totals above a quiz's
+ * max, and End's CHECK holds `scored <= max`. Six decimals, so the percentage stays exact enough
+ * for the one-decimal score.
  */
-function quizTotal(studentUserId: number, quizzes: CountedQuiz[], rows: StudentRows): number {
+function quizShares(studentUserId: number, quizzes: CountedQuiz[], rows: StudentRows): number {
   let scored = 0;
   for (const q of quizzes) {
     const key = `${studentUserId}:${q.id}`;
@@ -140,9 +145,9 @@ function quizTotal(studentUserId: number, quizzes: CountedQuiz[], rows: StudentR
       q.kind === "ONLINE"
         ? (countingScore(grade, rows.attemptsOf.get(key) ?? [])?.score ?? 0)
         : (toScore(grade?.score ?? null) ?? 0);
-    scored += Math.min(q.maxScore, Math.max(0, raw));
+    scored += Math.min(1, Math.max(0, raw / q.maxScore));
   }
-  return round2(scored);
+  return Math.round(scored * 1e6) / 1e6;
 }
 
 function countBy(keys: number[]): Map<number, number> {

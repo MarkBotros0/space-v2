@@ -24,10 +24,17 @@ One loader, `lib/passing/numbers.ts`, gives them to the progress card, the outlo
 - **Assignments**: submitted over the season's live assignments (all are for the whole season).
   Submitted means handed in in the app **or** marked by staff (`lib/assignments/submitted.ts`, the one
   definition). A deleted assignment drops out of the total, and its staff marks with it.
-- **Quizzes (owner)**: "the total score that the user got against the whole total quizzes grades". The
-  student's counting score on every published online quiz and every paper quiz, over their max
-  scores. A quiz not taken or not graded counts 0 of its max. The counting score is the admin's score
-  if there is one, else the best graded attempt; a paper quiz uses its grade.
+- **Quizzes (owner, 2026-11-13): every quiz weighs the same.** "All the quizzes will have the same
+  weight at the end, but each quiz may have whatever points." Each quiz is the student's percentage of
+  it (their counting score over its full mark), and the number is the average of those percentages
+  over every published online quiz and every paper quiz with points. A 4-point quiz and a 40-point
+  quiz count alike. A quiz not taken or not graded counts 0%; a score above the full mark counts 100%.
+  The counting score is the admin's score if there is one, else the best graded attempt; a paper quiz
+  uses its grade. Staff see "Quizzes 72% · average of 5 quizzes", and each quiz's own score in its
+  list ("12 of 16 marks, 75%"). Stored as `{ scored, max }`: `max` the number of quizzes, `scored` the
+  sum of the student's shares (0 to 1 each).
+- **A quiz's points (owner, 2026-11-13):** a new question starts at 1 point and the admin may raise
+  it; the quiz's full mark is the sum of its question points (`quiz-integrity.md`).
 - A number with nothing to count shows "None this season" and carries no weight.
 
 ## The score and rounding *(builder's call)*

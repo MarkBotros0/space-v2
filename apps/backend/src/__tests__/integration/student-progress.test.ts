@@ -50,7 +50,7 @@ describe("GET /students/:id/progress", () => {
       numbers: {
         attendance: { attended: 0, total: 0 },
         assignments: { submitted: 1, total: 2 },
-        quizzes: { scored: 62, max: 110 },
+        quizzes: { scored: 0.8, max: 2 }, // 60% and 20%: each quiz weighs the same
       },
     });
     expect(data.assignments).toEqual([

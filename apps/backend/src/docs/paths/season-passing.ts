@@ -38,7 +38,7 @@ export const seasonPassingSchemas = {
     type: "object",
     required: ["attendance", "assignments", "quizzes"],
     description:
-      "One student's three raw numbers in a season. A zero denominator means nothing to count. Attendance: PRESENT or LATE over the sessions that have started since the student's enrolment. Assignments: submitted in the app or marked by staff, over the season's live assignments. Quizzes: the counting scores over the max of every PAPER and published ONLINE quiz; nothing taken or graded is 0.",
+      "One student's three raw numbers in a season. A zero denominator means nothing to count. Attendance: PRESENT or LATE over the sessions that have started since the student's enrolment. Assignments: submitted in the app or marked by staff, over the season's live assignments. Quizzes: every quiz weighs the same; `scored` is the sum of the student's share of each PAPER and published ONLINE quiz with points (counting score over its max, 0 to 1) and `max` the number of those quizzes, so scored over max is the average quiz percentage; nothing taken or graded is 0.",
     properties: {
       attendance: { type: "object", required: ["attended", "total"], properties: { attended: count, total: count } },
       assignments: {

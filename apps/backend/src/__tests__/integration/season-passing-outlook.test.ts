@@ -51,7 +51,7 @@ describe("GET /seasons/:id/passing", () => {
       numbers: {
         attendance: { attended: 0, total: 0 },
         assignments: { submitted: 2, total: 2 },
-        quizzes: { scored: 4, max: 100 },
+        quizzes: { scored: 0.04, max: 1 },
       },
       score: 52,
       rescaled: false,

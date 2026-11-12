@@ -39,7 +39,7 @@ export function progressLines(p: StudentProgress): ProgressLine[] {
       key: "quizzes",
       label: "Quizzes",
       pct: roundPct(pcts.quizzes),
-      figure: quizzes.max > 0 ? `${formatScore(quizzes.scored)} of ${plural(quizzes.max, "mark")}` : NONE_THIS_SEASON,
+      figure: quizzes.max > 0 ? `average of ${plural(quizzes.max, "quiz", "quizzes")}` : NONE_THIS_SEASON,
     },
   ];
 }

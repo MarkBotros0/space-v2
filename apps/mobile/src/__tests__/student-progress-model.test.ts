@@ -19,7 +19,7 @@ const progress = (numbers: Partial<StudentProgress["numbers"]> = {}): StudentPro
   numbers: {
     attendance: { attended: 17, total: 20 },
     assignments: { submitted: 7, total: 9 },
-    quizzes: { scored: 36, max: 50 },
+    quizzes: { scored: 3.6, max: 5 },
     ...numbers,
   },
   assignments: [],
@@ -31,13 +31,19 @@ describe("progressLines", () => {
     expect(progressLines(progress())).toEqual([
       { key: "attendance", label: "Attendance", pct: 85, figure: "17 of 20 sessions" },
       { key: "assignments", label: "Assignments", pct: 78, figure: "7 / 9" },
-      { key: "quizzes", label: "Quizzes", pct: 72, figure: "36 of 50 marks" },
+      { key: "quizzes", label: "Quizzes", pct: 72, figure: "average of 5 quizzes" },
     ]);
   });
 
-  it("keeps fractional marks", () => {
-    const quizzes = progressLines(progress({ quizzes: { scored: 36.5, max: 50 } }))[2];
-    expect(quizzes).toEqual({ key: "quizzes", label: "Quizzes", pct: 73, figure: "36.5 of 50 marks" });
+  it("every quiz weighs the same: the average percent, and one quiz in the singular", () => {
+    // 100%, 25% and 100% average 75%, whatever each quiz's points.
+    expect(progressLines(progress({ quizzes: { scored: 2.25, max: 3 } }))[2]).toEqual({
+      key: "quizzes",
+      label: "Quizzes",
+      pct: 75,
+      figure: "average of 3 quizzes",
+    });
+    expect(progressLines(progress({ quizzes: { scored: 0.725, max: 1 } }))[2]?.figure).toBe("average of 1 quiz");
   });
 
   it("says one session, not one sessions", () => {

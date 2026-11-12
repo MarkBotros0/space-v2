@@ -6,7 +6,7 @@
 
 ## Question types
 
-An online quiz question is one of six types. The admin who builds the quiz sets each question's
+An online quiz question is one of six types. A new question starts at 1 point; the admin who builds the quiz sets each question's
 points as a whole number from 1 to 100; leaders never type points.
 
 | Type | Student does | Marked by | Points |

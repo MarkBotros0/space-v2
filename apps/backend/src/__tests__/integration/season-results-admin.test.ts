@@ -49,7 +49,7 @@ describe("results after End", () => {
       passScore: 90,
       againstScore: false,
       setByName: "Test end-pass-admin",
-      numbers: { assignments: { submitted: 2, total: 2 }, quizzes: { scored: 80, max: 100 } },
+      numbers: { assignments: { submitted: 2, total: 2 }, quizzes: { scored: 0.8, max: 1 } },
     });
     expect(typeof highRow.setAt).toBe("string");
 
