@@ -76,6 +76,10 @@ appId: com.jpc.space
 - extendedWaitUntil:
     visible: 'Answers appear when your admin releases them\.'
     timeout: 40000
+# The admin's score for this quiz (seed-sweep/activity.ts) shows with its label and note.
+- extendedWaitUntil:
+    visible: 'Score entered by your admin'
+    timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s06-17-graded

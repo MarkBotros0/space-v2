@@ -129,6 +129,7 @@ export async function seedActivity(people: SweepPeople) {
   // Every question type, Arabic content and each attempt stage (quiz-types.ts).
   await seedQuizTypes(people);
   await seedTimedQuizzes(people);
+  await seedAdminScore(people);
 
   return { reflection, reading, parts, onlineQuiz };
 }
@@ -252,6 +253,31 @@ async function seedTimedQuizzes({ admin, classmate, season }: SweepPeople) {
         returnedAt: null,
       },
     ],
+  });
+}
+
+/**
+ * The season admin's score (docs/rules/quiz-results.md "Manual score"): the student's "Week 1 review"
+ * (quiz 4, online, published, graded) carries an admin score below their graded app score, with a
+ * note. The student is no one's open attempt (held.ts holds student4 and the classmate), so the score
+ * can be entered. Appended last, so no id a flow names moves: it adds a row, never a quiz.
+ */
+async function seedAdminScore({ admin, student }: SweepPeople) {
+  const quiz = await db.quiz.findFirstOrThrow({ where: { title: "Week 1 review" }, select: { id: true } });
+  const best = await db.quizAttempt.findFirstOrThrow({
+    where: { quizId: quiz.id, studentUserId: student.id, status: "GRADED" },
+    select: { totalScore: true },
+  });
+  const app = Number(best.totalScore ?? 0);
+  await db.quizGrade.create({
+    data: {
+      quizId: quiz.id,
+      studentUserId: student.id,
+      score: Math.max(0, app - 1.5),
+      notes: "Adjusted after the leaders reviewed the essay answers together.",
+      gradedById: admin.id,
+      gradedAt: fromToday(0, 11),
+    },
   });
 }
 
