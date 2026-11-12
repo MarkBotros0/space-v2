@@ -27,6 +27,7 @@ function GroupedStudentPage({ id, role }: { id: number; role: UserRole | null })
     void refetch();
     for (const key of [
       queryKeys.engagement.student(id),
+      queryKeys.passing.student(id),
       queryKeys.students.attendance(id),
       queryKeys.students.submissions(id),
       queryKeys.notes.byStudent(id),

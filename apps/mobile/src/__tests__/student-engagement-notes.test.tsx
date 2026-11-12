@@ -92,9 +92,25 @@ const note = {
   canEdit: true,
 };
 
+const progress = {
+  seasonId: 7,
+  seasonTitle: "Spring 2099",
+  seasonActive: true,
+  canMark: true,
+  available: { attendance: true, assignments: true, quizzes: true },
+  numbers: {
+    attendance: { attended: 2, total: 4 },
+    assignments: { submitted: 2, total: 2 },
+    quizzes: { scored: 30, max: 40 },
+  },
+  assignments: [],
+  quizzes: [],
+};
+
 function mockAllEndpoints(overrides: { notes?: unknown[]; engagementStatus?: "ok" } = {}) {
   get.mockImplementation((url: string) => {
     if (url === "/api/v1/students/21") return Promise.resolve({ data: { data: detail } });
+    if (url === "/api/v1/students/21/progress") return Promise.resolve({ data: { data: progress } });
     if (url === "/api/v1/students/21/engagement") {
       return Promise.resolve({ data: { data: engagement } });
     }
@@ -113,18 +129,18 @@ beforeEach(() => {
   useSessionStore.setState(superSession);
 });
 
-describe("student detail — engagement block", () => {
+describe("student detail — season progress block", () => {
   // Owner 2026-11-07: attendance, assignments and quizzes; no composite score.
-  it("renders the server's attendance, assignments and quizzes without recomputing anything", async () => {
+  it("renders the server's attendance, assignments and quizzes counts without a score", async () => {
     mockAllEndpoints();
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
-    expect(screen.getByLabelText("Assignments: 100%, 2 of 2")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes: 75%, 3 of 4")).toBeTruthy();
+    expect(await screen.findByLabelText("Attendance 50%, 2 of 4 sessions")).toBeTruthy();
+    expect(screen.getByLabelText("Assignments 100%, 2 of 2 submitted")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes 75%, 30 of 40 marks")).toBeTruthy();
     expect(screen.queryByText("Score")).toBeNull();
-    expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement");
+    expect(get).toHaveBeenCalledWith("/api/v1/students/21/progress");
   });
 
   it("takes the at-risk flag from the contract, not from a local threshold", async () => {
@@ -154,8 +170,9 @@ describe("student detail — engagement block", () => {
     renderWithProviders(<StudentDetailScreen />);
 
     // v1 draws no card for a student with no season.
-    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
-    expect(screen.queryByTestId("engagement-summary")).toBeNull();
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/progress"));
+    await waitFor(() => expect(screen.queryByTestId("season-progress-loading")).toBeNull());
+    expect(screen.queryByTestId("season-progress")).toBeNull();
   });
 
   it("shows a retryable error — not 'no season' — for any other failure", async () => {
@@ -172,8 +189,8 @@ describe("student detail — engagement block", () => {
 
     renderWithProviders(<StudentDetailScreen />);
 
-    expect(await screen.findByText("Couldn't load engagement.")).toBeTruthy();
-    expect(screen.queryByTestId("engagement-summary")).toBeNull();
+    expect(await screen.findByText("Couldn't load season progress.")).toBeTruthy();
+    expect(screen.queryByTestId("season-progress")).toBeNull();
   });
 });
 

@@ -1,10 +1,11 @@
 import { useRouter } from "expo-router";
 import { classLabel, type StudentListItem } from "@space/shared";
 
-import { Avatar, AvatarFallback, ListRow } from "../../design/ui";
+import { Avatar, AvatarFallback, ListRow, Text } from "../../design/ui";
 import { formatDate, keepTogether } from "../../lib/format";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
+import { progressCaptions } from "../student-detail/progress-model";
 
 type RowProps = {
   item: StudentListItem;
@@ -35,17 +36,32 @@ export function seasonLine(item: StudentListItem): string | null {
   return item.lastSeasonTitle ? `Last season: ${item.lastSeasonTitle}` : null;
 }
 
-/** A student: name over their season, group and university; the email when none of those is known. */
+/**
+ * A student: name over their season, group and university; the email when none of those is known.
+ * Under them, for staff who may score the season, its three numbers (season passing), one caption
+ * each so they wrap apart at 1.3; a leader scans a group without opening every student.
+ */
 export function ActiveStudentRow({ item, seasonless = false }: RowProps) {
   const open = useOpenStudent(item);
   const meta = seasonless
     ? joinMeta([item.university, item.faculty])
     : joinMeta([seasonLine(item), item.currentGroupName, item.university]);
+  const captions = seasonless ? [] : progressCaptions(item.progress);
   return (
     <ListRow
       title={item.name}
       subtitle={meta || item.email}
       leading={<StudentAvatar item={item} />}
+      footer={
+        captions.length > 0
+          ? captions.map((c) => (
+              <Text key={c} variant="caption" className="mr-2 text-foreground">
+                {c}
+              </Text>
+            ))
+          : undefined
+      }
+      trailingLabel={captions.length > 0 ? captions.join(", ") : undefined}
       chevron
       onPress={open}
     />

@@ -1,8 +1,7 @@
 /**
  * SUPER and ADMIN on /student/[id] (v1 app/admin/students/[id]): the name
- * over the current group with Edit beside it, Graduate, this season at a
- * glance (after Resend invite while the account isn't set up), the details
- * when there are any (the phone row calls), then
+ * over the current group with Edit beside it, Graduate, Season progress
+ * (after Resend invite while the account isn't set up), the details when there are any (the phone row calls), then
  * Submissions, Attendance, Notes and Seasons behind a segmented control, the same layout as the leader's page (owner,
  * 2026-11-07). V2-ONLY Delete and a per-season Drop (Remove on a draft) show
  * only where `studentActionsFor` (the server's rules) allows. Delete leaves
@@ -21,8 +20,8 @@ import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Screen } from "../../design/layout/screen";
 import { GroupedAttendanceTab, GroupedNotesTab, GroupedSubmissionsTab } from "../student-detail/grouped-tabs";
-import { EngagementSummary } from "../student-detail/engagement-summary";
 import { NoteSheet } from "../student-detail/note-sheet";
+import { SeasonProgressCard } from "../student-detail/season-progress-card";
 import { studentSubtitle } from "../student-detail/student-detail-grouped";
 import { StudentDetails } from "../student-detail/student-details";
 import { type StudentSection, StudentSections } from "../student-detail/student-sections";
@@ -57,6 +56,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
     void refetch();
     for (const key of [
       queryKeys.engagement.student(id),
+      queryKeys.passing.student(id),
       queryKeys.students.attendance(id),
       queryKeys.students.submissions(id),
       queryKeys.notes.byStudent(id),
@@ -155,7 +155,7 @@ export function AdminStudentDetail({ id }: { id: number }) {
         {actions.canEdit && data.invite ? (
           <InviteCallout studentId={data.id} email={data.email} invite={data.invite} />
         ) : null}
-        <EngagementSummary studentId={data.id} />
+        <SeasonProgressCard studentId={data.id} studentName={data.name} />
         <StudentDetails profile={data.profile} exception={data.graduatedByException} />
         <StudentSections sections={sections} />
 

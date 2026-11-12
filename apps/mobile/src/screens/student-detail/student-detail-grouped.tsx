@@ -2,7 +2,7 @@
  * The student page body for a leader and a mentor (v1 leader/ and
  * mentor/students/[id]), and a student reading their own record. Top to
  * bottom (owner, 2026-11-07): the alumnus chip when there is one, this season
- * at a glance (one card), the details that are filled in, then the sections
+ * in one card (Season progress), the details that are filled in, then the sections
  * behind choice chips. Their payload carries the phone but no date of birth or
  * internal notes (spec 06 D3/C8), so those rows are absent. `staffTabs={false}`
  * is the student's own view: Seasons only, as the staff endpoints refuse the rest.
@@ -13,9 +13,9 @@ import { View } from "react-native";
 
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
 import { StatusChip } from "../../design/ui/status-chip";
-import { EngagementSummary } from "./engagement-summary";
 import { GroupedAttendanceTab, GroupedNotesTab, GroupedSeasonsTab, GroupedSubmissionsTab } from "./grouped-tabs";
 import { NoteSheet } from "./note-sheet";
+import { SeasonProgressCard } from "./season-progress-card";
 import { StudentDetails } from "./student-details";
 import { type StudentSection, StudentSections } from "./student-sections";
 
@@ -27,7 +27,7 @@ export function StudentDetailGrouped({
 }: {
   student: StudentDetailData;
   canWriteNote: boolean;
-  /** False for a student viewing their own page: no engagement, attendance, submissions or notes. */
+  /** False for a student viewing their own page: no season progress, attendance, submissions or notes. */
   staffTabs?: boolean;
   /** Who a new note is visible to until the writer changes it. Omitted: NoteSheet's own default. */
   noteDefaultVisibility?: ComponentProps<typeof NoteSheet>["defaultVisibility"];
@@ -60,7 +60,7 @@ export function StudentDetailGrouped({
       {student.graduationYear !== null ? (
         <StatusChip tone="ok" label={`Alumnus · ${classLabel(student.graduationYear)}`} className="self-start" />
       ) : null}
-      {staffTabs ? <EngagementSummary studentId={student.id} /> : null}
+      {staffTabs ? <SeasonProgressCard studentId={student.id} studentName={student.name} /> : null}
       <StudentDetails profile={student.profile} canCall={staffTabs} />
       <StudentSections sections={sections} />
 

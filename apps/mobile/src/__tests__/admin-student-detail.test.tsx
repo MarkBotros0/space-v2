@@ -214,5 +214,36 @@ describe("admin student detail", () => {
     await screen.findByRole("tab", { name: "Notes" });
     expect(screen.queryByLabelText("Edit profile")).toBeNull();
     expect(screen.queryByTestId("sheet-save-bar")).toBeNull();
+    // A mentor sees nothing season-shaped (mentor.md): no progress card, and nothing asked.
+    expect(screen.queryByText("Season progress")).toBeNull();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/progress");
+  });
+
+  it("shows Season progress in place of the engagement card", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    const progress = {
+      seasonId: 7,
+      seasonTitle: "Season 7",
+      seasonActive: true,
+      canMark: true,
+      available: { attendance: true, assignments: true, quizzes: false },
+      numbers: {
+        attendance: { attended: 3, total: 4 },
+        assignments: { submitted: 1, total: 2 },
+        quizzes: { scored: 0, max: 0 },
+      },
+      assignments: [],
+      quizzes: [],
+    };
+    const orig = get.getMockImplementation()!;
+    get.mockImplementation((url: string) =>
+      url === "/api/v1/students/21/progress" ? Promise.resolve({ data: { data: progress } }) : orig(url),
+    );
+    renderWithProviders(<StudentDetailScreen />);
+    expect(await screen.findByText("Season progress")).toBeTruthy();
+    expect(screen.getByLabelText("Attendance 75%, 3 of 4 sessions")).toBeTruthy();
+    expect(screen.getByLabelText("Assignments 50%, 1 of 2 submitted")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes, None this season")).toBeTruthy();
+    expect(screen.queryByText("THIS SEASON")).toBeNull();
   });
 });

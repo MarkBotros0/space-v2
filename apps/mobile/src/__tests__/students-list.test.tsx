@@ -286,3 +286,55 @@ describe("Students on the Dropped filter (?show=dropped)", () => {
     expect(get).not.toHaveBeenCalledWith("/api/v1/students?status=dropped");
   });
 });
+
+describe("Students list: each row's season progress", () => {
+  it("list rows show the three numbers and none on alumni", async () => {
+    useSessionStore.setState(superSession);
+    get.mockResolvedValue(
+      page([
+        { ...activeRow, progress: { attendancePct: 85, assignmentsPct: 78, quizPct: null } },
+        {
+          ...activeRow,
+          id: 22,
+          name: "New Student",
+          progress: { attendancePct: null, assignmentsPct: null, quizPct: null },
+        },
+      ]),
+    );
+    const { unmount } = renderWithProviders(<StudentsScreen />);
+    expect(await screen.findByText("Attendance 85%")).toBeTruthy();
+    expect(screen.getByText("Assignments 78%")).toBeTruthy();
+    expect(screen.getByText("Quizzes: none this season")).toBeTruthy();
+    expect(screen.getByText("None this season")).toBeTruthy();
+    // The numbers are part of what the row says aloud.
+    expect(
+      screen.getByLabelText(/^Sara Student, .*Attendance 85%, Assignments 78%, Quizzes: none this season$/),
+    ).toBeTruthy();
+    unmount();
+
+    mockParams = { show: "alumni" };
+    get.mockResolvedValue(
+      page([
+        {
+          ...activeRow,
+          graduationYear: 2024,
+          activeSeasonTitle: null,
+          currentGroupName: null,
+          progress: { attendancePct: 90, assignmentsPct: 90, quizPct: 90 },
+        },
+      ]),
+    );
+    renderWithProviders(<StudentsScreen />);
+    expect(await screen.findByLabelText(/JPCS-24/)).toBeTruthy();
+    expect(screen.queryByText(/Attendance/)).toBeNull();
+  });
+
+  it("a row without progress (a mentor's list) shows no numbers", async () => {
+    useSessionStore.setState(mentorSession);
+    get.mockResolvedValue(page([{ ...activeRow, progress: null }]));
+    renderWithProviders(<StudentsScreen />);
+    expect(await screen.findByText("Sara Student")).toBeTruthy();
+    expect(screen.queryByText(/Attendance/)).toBeNull();
+    expect(screen.queryByText("None this season")).toBeNull();
+  });
+});

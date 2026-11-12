@@ -4,7 +4,7 @@
  * is the confirm: it says what the mark means before anything is sent, so no second modal opens.
  * The season's admin, a super or the student's own leader get here, on an active season; the
  * server is the gate and its refusal (season_finished, work_changed) is shown in the bar.
- * Reused on the student's page (Task 6).
+ * Reused on the student's page, where the confirm sits inside its progress sheet (useStaffMarkAction, StaffMarkBody).
  */
 import { useEffect, useState } from "react";
 import { View } from "react-native";
@@ -45,7 +45,7 @@ function useLastShown(student: StaffMarkStudent | null, mark: StaffMarkSummary |
 }
 
 /** Mark or undo for the student shown, with the refusal kept for the bar. */
-function useStaffMarkAction(assignmentId: number, userId: number | null, onClose: () => void) {
+export function useStaffMarkAction(assignmentId: number, userId: number | null, onClose: () => void) {
   const markIt = useMarkSubmitted(assignmentId);
   const undo = useUndoMarkSubmitted(assignmentId);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +80,7 @@ function useStaffMarkAction(assignmentId: number, userId: number | null, onClose
   return { run, pending, error };
 }
 
-function SheetBody({ name, mark }: { name: string; mark: StaffMarkSummary | null }) {
+export function StaffMarkBody({ name, mark }: { name: string; mark: StaffMarkSummary | null }) {
   return (
     <View className="flex-col gap-2 pb-4">
       {mark !== null ? (
@@ -122,7 +122,7 @@ export function StaffMarkSheet({ student, mark, assignmentId, onClose }: Props) 
         />
       }
     >
-      <SheetBody name={name} mark={shown.mark} />
+      <StaffMarkBody name={name} mark={shown.mark} />
     </Sheet>
   );
 }

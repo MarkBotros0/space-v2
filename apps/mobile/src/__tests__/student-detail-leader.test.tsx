@@ -95,8 +95,31 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     quizzesTaken: 1,
     quizPct: 50,
   };
+  const progress = {
+    seasonId: 7,
+    seasonTitle: "Spring 2099",
+    seasonActive: true,
+    canMark: true,
+    available: { attendance: true, assignments: true, quizzes: true },
+    numbers: {
+      attendance: { attended: 2, total: 4 },
+      assignments: { submitted: 2, total: 2 },
+      quizzes: { scored: 5, max: 10 },
+    },
+    assignments: [],
+    quizzes: [],
+  };
   function serveLeader(over: { engagementError?: boolean } = {}) {
     get.mockImplementation((url: string) => {
+      if (url === "/api/v1/students/21/progress")
+        return over.engagementError
+          ? Promise.reject(
+              Object.assign(new Error("404"), {
+                isAxiosError: true,
+                response: { status: 404, data: { error: { code: "no_season", message: "x" } } },
+              }),
+            )
+          : Promise.resolve({ data: { data: progress } });
       if (url === "/api/v1/students/21")
         return Promise.resolve({
           data: {
@@ -159,9 +182,9 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(screen.queryByText("Date of birth")).toBeNull();
     expect(screen.queryByText("Internal notes · staff only")).toBeNull();
     for (const label of ["University", "Faculty", "Graduation year"]) expect(screen.getByText(label)).toBeTruthy();
-    expect(await screen.findByLabelText("Attendance: 50%, 2 of 4")).toBeTruthy();
-    expect(screen.getByLabelText("Assignments: 100%, 2 of 2")).toBeTruthy();
-    expect(screen.getByLabelText("Quizzes: 50%, 1 of 2")).toBeTruthy();
+    expect(await screen.findByLabelText("Attendance 50%, 2 of 4 sessions")).toBeTruthy();
+    expect(screen.getByLabelText("Assignments 100%, 2 of 2 submitted")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes 50%, 5 of 10 marks")).toBeTruthy();
     expect(screen.queryByText("At risk")).toBeNull();
   });
 
@@ -236,12 +259,13 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     expect(await screen.findByText("At risk")).toBeTruthy();
   });
 
-  it("shows no engagement card when the student has no season (v1)", async () => {
+  it("shows no progress card when the student has no season (v1)", async () => {
     useSessionStore.setState(leaderSession);
     serveLeader({ engagementError: true });
     renderWithProviders(<StudentDetailScreen />);
     expect(await screen.findByText("Group A")).toBeTruthy();
-    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/engagement"));
-    expect(screen.queryByText("Engagement (current season)")).toBeNull();
+    await waitFor(() => expect(get).toHaveBeenCalledWith("/api/v1/students/21/progress"));
+    await waitFor(() => expect(screen.queryByTestId("season-progress-loading")).toBeNull());
+    expect(screen.queryByText("Season progress")).toBeNull();
   });
 });
