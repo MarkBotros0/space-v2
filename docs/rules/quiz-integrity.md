@@ -16,7 +16,7 @@ points as a whole number from 1 to 100; leaders never type points.
 | True / false | picks True or False | server | all or nothing |
 | Matching | pairs every left item with one right item (2 to 6 pairs) | server | each correct pair earns 1/pairs of the points |
 | Fill in the blank | types a word or phrase into each gap of a sentence (one or more gaps) | leader, right or wrong per blank | each right blank earns 1/blanks of the points |
-| Essay | free text | leader, right or wrong | all or nothing |
+| Essay | free text | leader, points from 0 to the question's points (owner, 2026-11-13) | the points the leader gives |
 
 - A fill-in-the-blank author writes the sentence, marks the gaps and gives the expected answer for
   each. The expected answer is shown to the leader while marking, never to the student before the
@@ -49,11 +49,16 @@ record, exports, dashboards, graduation checks and the grading screens, uses the
   screen, reopening, the exit log. `canGradeQuiz` is the one gate for all of them; "leader" below
   means any of them.
 - The grading screen shows each blank as the student's answer next to the expected answer, with
-  right or wrong per blank; essays show the text with right or wrong. A leader marks right or
-  wrong, never points.
+  right or wrong per blank. Essays show the text with the points to give (owner, 2026-11-13: "I can
+  give 1 mark from a total of 2"): whole points from 0 to the question's points, one button per
+  score up to 5 points and a field with one point less / more above that. Leaders, the season's
+  admin and a super all give essay points. A blank is right or wrong, never points.
+- An essay given all its points is right, none is wrong, anything between reads "Partly right" to
+  the student, with the points in the question's header.
 - Once every leader-marked item is marked the attempt is GRADED. Marking can be changed afterwards.
-- The server refuses an incomplete set of marks (`marks_incomplete`) and a mark for something that
-  is not a blank or essay of the quiz (`mark_out_of_range`).
+- The server refuses an incomplete set of marks (`marks_incomplete`), and a mark for something that
+  is not a blank or essay of the quiz, points on a blank, or more points than the essay is worth
+  (`mark_out_of_range`).
 
 ## Honest accidents
 

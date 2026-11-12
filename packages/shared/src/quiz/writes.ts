@@ -120,10 +120,12 @@ export const manualScoreWriteSchema = z.object({
 export type ManualScoreWrite = z.output<typeof manualScoreWriteSchema>;
 
 /**
- * Right or wrong for every leader-marked item of an attempt: one mark per FILL_BLANK
- * blank (`blankId`) and one per ESSAY question (`blankId: null`). Completeness is
- * checked server-side against the attempt, since a partial payload would otherwise
- * silently lower a student's total (R72). Replaces the old essay point awards.
+ * A mark for every leader-marked item of an attempt: right or wrong (`correct`) for each FILL_BLANK
+ * blank (`blankId`), and the points awarded (`points`, a whole number from 0 to the question's
+ * points; owner 2026-11-13) for each ESSAY (`blankId: null`). An essay may still carry `correct`
+ * instead (full or none), as app builds before partial points send it. Completeness and the upper
+ * bound are checked server-side against the attempt, since a partial payload would otherwise
+ * silently lower a student's total (R72).
  */
 export const markAttemptRequestSchema = z
   .object({
@@ -133,9 +135,13 @@ export const markAttemptRequestSchema = z
           .object({
             questionId: z.number().int().positive(),
             blankId: z.number().int().positive().nullable(),
-            correct: z.boolean(),
+            correct: z.boolean().optional(),
+            points: z.number().int().min(0).max(100).optional(),
           })
-          .strict(),
+          .strict()
+          .refine((m) => (m.correct === undefined) !== (m.points === undefined), {
+            message: "Give each mark either right or wrong, or points.",
+          }),
       )
       .min(1)
       .max(200),

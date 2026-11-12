@@ -18,7 +18,7 @@ import { round2, sumScores, toScore } from "./score";
 type LeaderMarkRow = {
   questionId: number;
   pointsAwarded: number;
-  /** Whole-answer right/wrong: an essay's mark, or every blank of a FILL_BLANK right. */
+  /** Whole-answer right/wrong: an essay given all its points, or every blank of a FILL_BLANK right. */
   isCorrect: boolean | null;
   blankMarks: { blankId: number; correct: boolean }[];
 };
@@ -44,6 +44,21 @@ function emptyItems(questions: MarkableQuestion[], answerBy: Map<number, StoredA
   return empty;
 }
 
+/**
+ * Points belong to essays only, whole and at most the question's points (owner 2026-11-13); a
+ * blank is right or wrong.
+ */
+function markShapeRefusal(q: MarkableQuestion, m: Mark): Refusal | null {
+  if (m.points === undefined) return null;
+  if (q.type !== "ESSAY") {
+    return { code: "mark_out_of_range", message: "Mark each blank right or wrong.", status: 400 };
+  }
+  if (m.points > q.points) {
+    return { code: "mark_out_of_range", message: `This question is worth ${q.points} at most.`, status: 400 };
+  }
+  return null;
+}
+
 /** A mark that names nothing markable in this attempt, names an item twice, or names an empty one. */
 function outOfRange(byId: Map<number, MarkableQuestion>, marks: Mark[], empty: ReadonlySet<string>): Refusal | null {
   const seen = new Set<string>();
@@ -52,6 +67,8 @@ function outOfRange(byId: Map<number, MarkableQuestion>, marks: Mark[], empty: R
     const fits =
       q !== undefined && (q.type === "ESSAY" ? m.blankId === null : q.blanks.some((b) => b.id === m.blankId));
     if (!fits) return { code: "mark_out_of_range", message: "That mark is not for this attempt.", status: 400 };
+    const shapeRefusal = markShapeRefusal(q, m);
+    if (shapeRefusal) return shapeRefusal;
     const key = itemKey(m.questionId, m.blankId);
     if (empty.has(key)) {
       return { code: "mark_out_of_range", message: "That item was left empty, so it is already wrong.", status: 400 };
@@ -87,12 +104,15 @@ export function planLeaderMarks(
       return { refusal: { code: "marks_incomplete", message: "Mark every blank and essay first.", status: 409 } };
     }
     if (needed === 0) continue;
+    const pointsAwarded = leaderMark(q, own);
     rows.push({
       questionId: q.id,
-      pointsAwarded: leaderMark(q, own),
-      // Whole-answer right only when every item was answered and marked right.
-      isCorrect: own.length === items.length && own.every((m) => m.correct),
-      blankMarks: own.flatMap((m) => (m.blankId === null ? [] : [{ blankId: m.blankId, correct: m.correct }])),
+      pointsAwarded,
+      // Whole-answer right only when it earned every point: an essay given part of its points is
+      // not right (the student sees "Partly right" from the points), nor a blank marked wrong.
+      isCorrect:
+        q.type === "ESSAY" ? pointsAwarded >= q.points : own.length === items.length && own.every((m) => m.correct),
+      blankMarks: own.flatMap((m) => (m.blankId === null ? [] : [{ blankId: m.blankId, correct: m.correct === true }])),
     });
   }
   return { rows, manualScore: sumScores(rows.map((r) => r.pointsAwarded)) };

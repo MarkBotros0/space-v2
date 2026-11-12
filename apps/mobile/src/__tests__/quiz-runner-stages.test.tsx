@@ -156,6 +156,28 @@ describe("quiz runner, result stages", () => {
     expect(screen.getAllByText("Right").length).toBeGreaterThan(0);
   });
 
+  it("answers: an essay given part of its points reads Partly right, never Wrong", async () => {
+    get.mockResolvedValue({
+      data: {
+        data: detail({
+          attemptId: 900,
+          attemptNumber: 1,
+          status: "GRADED",
+          stage: "answers",
+          answersReleased: true,
+          totalScore: 2,
+          questions: [{ ...essay, answer: { text: "Because." }, review: { correct: false }, pointsAwarded: 2 }],
+        }),
+      },
+    });
+
+    renderWithProviders(<QuizDetailScreen />);
+
+    expect(await screen.findByText("2 / 5 pts")).toBeTruthy();
+    expect(screen.getAllByText("Partly right").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Wrong")).toBeNull();
+  });
+
   it("tells a submitted student to wait, with no questions and no score", async () => {
     get.mockResolvedValue({
       data: { data: detail({ attemptId: 900, attemptNumber: 1, status: "SUBMITTED", questions: [] }) },

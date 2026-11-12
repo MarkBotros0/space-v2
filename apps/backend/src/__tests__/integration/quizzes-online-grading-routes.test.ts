@@ -27,7 +27,7 @@ function quizGradedCount(): Promise<number> {
   return quizGradedCountFor(f.ownStudentId);
 }
 
-type Mark = { questionId: number; blankId: number | null; correct: boolean };
+type Mark = { questionId: number; blankId: number | null; correct?: boolean; points?: number };
 
 describe("ONLINE grading", () => {
   let quizId: number;
@@ -39,7 +39,7 @@ describe("ONLINE grading", () => {
   let attemptId: number;
 
   const list = (token: string) => request(app).get(`/api/v1/quizzes/${quizId}/attempts`).set(bearer(token));
-  const grade = (token: string, marks: Mark[], id = attemptId) =>
+  const grade = (token: string, marks: object[], id = attemptId) =>
     request(app).post(`/api/v1/quizzes/${quizId}/attempts/${id}/grade`).set(bearer(token)).send({ marks });
   /** One mark per blank of the fill-blank question, then the essay's. */
   const marksFor = (blanks: boolean[], essay: boolean): Mark[] => [
@@ -200,6 +200,58 @@ describe("ONLINE grading", () => {
     expect(toScore(essay.pointsAwarded)).toBe(0);
     const answers = await db.quizAnswer.findMany({ where: { attemptId }, select: { pointsAwarded: true } });
     expect(answers.reduce((sum, a) => sum + (toScore(a.pointsAwarded) ?? 0), 0)).toBe(5);
+  });
+
+  it("an essay can earn part of its points: 3 of 5 counts 3 and is not right", async () => {
+    const marks = [
+      ...marksFor([true, true, true], true).slice(0, 3),
+      { questionId: essayId, blankId: null, points: 3 },
+    ];
+    const res = await grade(f.leaderToken, marks);
+    expect(res.status).toBe(200);
+    // Blanks 3 + essay 3 = manual 6; auto 2 → total 8.
+    expect(res.body.data).toMatchObject({ status: "GRADED", manualScore: 6, totalScore: 8 });
+    const essay = await db.quizAnswer.findFirstOrThrow({
+      where: { attemptId, questionId: essayId },
+      select: { isCorrect: true, pointsAwarded: true },
+    });
+    expect(toScore(essay.pointsAwarded)).toBe(3);
+    expect(essay.isCorrect).toBe(false);
+
+    // All of its points is right; the grading list reads the points back.
+    const full = [...marks.slice(0, 3), { questionId: essayId, blankId: null, points: 5 }];
+    expect((await grade(f.leaderToken, full)).body.data).toMatchObject({ manualScore: 8, totalScore: 10 });
+    const after = await db.quizAnswer.findFirstOrThrow({ where: { attemptId, questionId: essayId } });
+    expect(after.isCorrect).toBe(true);
+    const listed = (await list(f.leaderToken)).body.data.items[0].answers.find(
+      (a: { questionId: number }) => a.questionId === essayId,
+    );
+    expect(listed.pointsAwarded).toBe(5);
+  });
+
+  it("refuses essay points above the question's, points on a blank, and a mark with both or neither", async () => {
+    const blanks = marksFor([true, true, true], true).slice(0, 3);
+    const tooMany = await grade(f.leaderToken, [...blanks, { questionId: essayId, blankId: null, points: 6 }]);
+    expect(tooMany.status).toBe(400);
+    expect(tooMany.body.error.code).toBe("mark_out_of_range");
+
+    const onBlank = await grade(f.leaderToken, [
+      { questionId: fillId, blankId: blankIds[0] as number, points: 1 },
+      ...blanks.slice(1),
+      { questionId: essayId, blankId: null, points: 2 },
+    ]);
+    expect(onBlank.status).toBe(400);
+    expect(onBlank.body.error.code).toBe("mark_out_of_range");
+
+    for (const essay of [
+      { questionId: essayId, blankId: null, points: 2, correct: true },
+      { questionId: essayId, blankId: null },
+    ]) {
+      const res = await grade(f.leaderToken, [...blanks, essay]);
+      expect(res.status).toBe(400);
+    }
+    const attempt = await db.quizAttempt.findUniqueOrThrow({ where: { id: attemptId }, select: { status: true } });
+    expect(attempt.status).toBe("SUBMITTED");
   });
 
   it("refuses marks_incomplete when a blank is missing, and out-of-range or repeated marks", async () => {

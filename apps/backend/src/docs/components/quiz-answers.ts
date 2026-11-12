@@ -301,7 +301,7 @@ export const quizAnswerSchemas = {
     type: "object",
     required: ["marks"],
     description:
-      "Right or wrong for every leader-marked item of the attempt: one mark per FILL_BLANK blank (`blankId`) and one per ESSAY question (`blankId` null). The set must be complete (409 `marks_incomplete`).",
+      "A mark for every leader-marked item of the attempt: right or wrong (`correct`) for each FILL_BLANK blank (`blankId`), and the points awarded (`points`, a whole number from 0 to the question's points) for each ESSAY question (`blankId` null). An essay may carry `correct` instead (all or none of its points). Each mark has exactly one of the two. The set must be complete (409 `marks_incomplete`); points on a blank, or more than the essay's points, are 400 `mark_out_of_range`.",
     properties: {
       marks: {
         type: "array",
@@ -309,11 +309,12 @@ export const quizAnswerSchemas = {
         maxItems: 200,
         items: {
           type: "object",
-          required: ["questionId", "blankId", "correct"],
+          required: ["questionId", "blankId"],
           properties: {
             questionId: { type: "integer", minimum: 1 },
             blankId: { type: ["integer", "null"], minimum: 1 },
             correct: { type: "boolean" },
+            points: { type: "integer", minimum: 0, maximum: 100 },
           },
         },
       },

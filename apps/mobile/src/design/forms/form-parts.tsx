@@ -25,7 +25,8 @@ export function ToggleButtons<T extends string>({
   value,
   onChange,
 }: {
-  options: readonly { value: T; label: string }[];
+  /** `spoken`: what a screen reader says when the label alone is too short ("2" → "2 points"). */
+  options: readonly { value: T; label: string; spoken?: string }[];
   value: T;
   onChange: (value: T) => void;
 }) {
@@ -37,7 +38,7 @@ export function ToggleButtons<T extends string>({
           <Pressable
             key={o.value}
             accessibilityRole="radio"
-            accessibilityLabel={o.label}
+            accessibilityLabel={o.spoken ?? o.label}
             accessibilityState={{ checked: selected }}
             onPress={() => onChange(o.value)}
             className={cn(

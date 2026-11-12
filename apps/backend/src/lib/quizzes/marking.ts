@@ -105,8 +105,15 @@ export function autoMark(
 }
 
 /** Points for a leader-marked question from the leader's per-blank (or whole-answer) marks. */
-export function leaderMark(q: MarkableQuestion, marks: { blankId: number | null; correct: boolean }[]): number {
-  if (q.type === "ESSAY") return marks.some((m) => m.correct) ? q.points : 0;
+export function leaderMark(
+  q: MarkableQuestion,
+  marks: { blankId: number | null; correct?: boolean; points?: number }[],
+): number {
+  if (q.type === "ESSAY") {
+    const m = marks[0];
+    if (m?.points !== undefined) return m.points;
+    return m?.correct ? q.points : 0;
+  }
   if (q.blanks.length === 0) return 0;
   const right = q.blanks.filter((b) => marks.some((m) => m.blankId === b.id && m.correct)).length;
   return round2((right / q.blanks.length) * q.points);

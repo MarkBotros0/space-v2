@@ -1,5 +1,5 @@
 import type { QuizGradingAttempt } from "@space/shared";
-import { screen } from "@testing-library/react-native";
+import { fireEvent, screen } from "@testing-library/react-native";
 
 import { initialMarks } from "../screens/quiz-grade/marking-model";
 import { QuizAttemptAnswers } from "../screens/quiz-grade/quiz-answer-marker";
@@ -46,10 +46,62 @@ const attempt: QuizGradingAttempt = {
 describe("QuizAttemptAnswers with items left empty", () => {
   it('shows each empty blank and essay as "Left empty, wrong" and offers Right / Wrong only for the answered blank', () => {
     renderWithProviders(
-      <QuizAttemptAnswers attempt={attempt} marks={initialMarks(attempt)} readOnly={false} onMark={jest.fn()} />,
+      <QuizAttemptAnswers attempt={attempt} marks={initialMarks(attempt)} onMark={jest.fn()} onPoints={jest.fn()} />,
     );
     expect(screen.getAllByText("Left empty, wrong")).toHaveLength(2);
     expect(screen.getAllByText("Right")).toHaveLength(1);
     expect(screen.getAllByText("Wrong")).toHaveLength(1);
+  });
+
+  it("offers an answered essay its points, one button per score, and saves the one pressed", () => {
+    const answered: QuizGradingAttempt = {
+      ...attempt,
+      answers: [
+        {
+          questionId: 3,
+          type: "ESSAY",
+          prompt: "Discuss.",
+          points: 2,
+          pointsAwarded: null,
+          text: "Mine.",
+          correct: null,
+        },
+      ],
+    };
+    const onPoints = jest.fn();
+    renderWithProviders(
+      <QuizAttemptAnswers attempt={answered} marks={initialMarks(answered)} onMark={jest.fn()} onPoints={onPoints} />,
+    );
+    expect(screen.getByText("Points, out of 2")).toBeTruthy();
+    expect(screen.getByLabelText("0 points of 2")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("1 point of 2"));
+    expect(onPoints).toHaveBeenCalledWith(3, 1);
+    expect(screen.queryByText("Right")).toBeNull();
+  });
+
+  it("gives a big essay a field with one point less and more", () => {
+    const big: QuizGradingAttempt = {
+      ...attempt,
+      answers: [
+        {
+          questionId: 3,
+          type: "ESSAY",
+          prompt: "Discuss.",
+          points: 10,
+          pointsAwarded: 4,
+          text: "Mine.",
+          correct: false,
+        },
+      ],
+    };
+    const onPoints = jest.fn();
+    renderWithProviders(
+      <QuizAttemptAnswers attempt={big} marks={initialMarks(big)} onMark={jest.fn()} onPoints={onPoints} />,
+    );
+    expect(screen.getByLabelText("Points, out of 10").props.value).toBe("4");
+    fireEvent.press(screen.getByLabelText("One point more"));
+    expect(onPoints).toHaveBeenCalledWith(3, 5);
+    fireEvent.press(screen.getByLabelText("One point less"));
+    expect(onPoints).toHaveBeenCalledWith(3, 3);
   });
 });

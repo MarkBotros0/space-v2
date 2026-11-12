@@ -115,12 +115,29 @@ function Blanks({ q }: { q: Extract<QuizQuestionStudent, { type: "FILL_BLANK" }>
   );
 }
 
+/**
+ * The essay with its mark. An essay can earn part of its points (owner 2026-11-13), which reads
+ * "Partly right" in a neutral row rather than "Wrong"; the points are in the card's header.
+ */
 function Essay({ q }: { q: Extract<QuizQuestionStudent, { type: "ESSAY" }> }) {
-  const correct = q.review?.correct ?? null;
+  const marked = q.review !== null && q.review.correct !== null;
+  const verdict = marked ? verdictOf(q) : "pending";
+  const text = <ContentText variant="subhead">{q.answer.text || "No answer"}</ContentText>;
+  if (verdict === "partly") {
+    return (
+      <Row right={null}>
+        {text}
+        <Text variant="caption" className="font-medium text-muted-foreground">
+          Partly right
+        </Text>
+      </Row>
+    );
+  }
+  const right = verdict === "pending" ? null : verdict === "right";
   return (
-    <Row right={correct}>
-      <ContentText variant="subhead">{q.answer.text || "No answer"}</ContentText>
-      {correct === null ? null : <Mark right={correct} word={correct ? "Right" : "Wrong"} />}
+    <Row right={right}>
+      {text}
+      {right === null ? null : <Mark right={right} word={right ? "Right" : "Wrong"} />}
     </Row>
   );
 }

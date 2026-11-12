@@ -1,15 +1,30 @@
 import type { QuizGradingAttempt } from "@space/shared";
 
 import {
-  hasLegacyMarks,
   initialMarks,
   isLeftEmpty,
-  isLegacyEssay,
   markedCount,
   marksComplete,
   setMark,
+  setPoints,
   toMarkInput,
+  type ItemMark,
 } from "../screens/quiz-grade/marking-model";
+
+const blank = (blankId: number, correct: boolean | null): ItemMark => ({
+  questionId: 2,
+  blankId,
+  correct,
+  points: null,
+  max: 0,
+});
+const essayMark = (points: number | null): ItemMark => ({
+  questionId: 3,
+  blankId: null,
+  correct: null,
+  points,
+  max: 5,
+});
 
 type Answer = QuizGradingAttempt["answers"][number];
 
@@ -75,11 +90,14 @@ function attempt(answers: Answer[]): QuizGradingAttempt {
 describe("marking model", () => {
   it("seeds one mark per blank and per essay from what the server holds, none for auto types", () => {
     expect(initialMarks(attempt([single, blanks, essay]))).toEqual([
-      { questionId: 2, blankId: 21, correct: null },
-      { questionId: 2, blankId: 22, correct: true },
-      { questionId: 2, blankId: 23, correct: null },
-      { questionId: 3, blankId: null, correct: null },
+      blank(21, null),
+      blank(22, true),
+      blank(23, null),
+      essayMark(null),
     ]);
+    // An essay already marked comes back with its points, whole and within its points.
+    expect(initialMarks(attempt([{ ...essay, pointsAwarded: 3 }]))).toEqual([essayMark(3)]);
+    expect(initialMarks(attempt([{ ...essay, pointsAwarded: 2.5 }]))).toEqual([essayMark(3)]);
   });
 
   it("never offers a blank or essay the student left empty: the server marked it wrong at close", () => {
@@ -93,7 +111,7 @@ describe("marking model", () => {
     };
     const emptyEssay: Answer = { ...essay, text: null, correct: false, pointsAwarded: 0 };
     const marks = initialMarks(attempt([single, partly, emptyEssay]));
-    expect(marks).toEqual([{ questionId: 2, blankId: 21, correct: null }]);
+    expect(marks).toEqual([blank(21, null)]);
     expect(marksComplete(setMark(marks, 2, 21, true))).toBe(true);
     expect(isLeftEmpty("")).toBe(true);
     expect(isLeftEmpty("ماء")).toBe(false);
@@ -103,40 +121,33 @@ describe("marking model", () => {
     const a = attempt([blanks, essay]);
     let marks = initialMarks(a);
     marks = setMark(marks, 2, 21, true);
-    marks = setMark(marks, 3, null, false);
+    marks = setPoints(marks, 3, 0);
     expect(markedCount(marks)).toBe(3);
     expect(marksComplete(marks)).toBe(false);
     marks = setMark(marks, 2, 23, false);
     expect(marksComplete(marks)).toBe(true);
   });
 
-  it("turns marks into one per blank and blankId null for an essay", () => {
-    const marks = [
-      { questionId: 2, blankId: 21, correct: true },
-      { questionId: 2, blankId: 22, correct: false },
-      { questionId: 2, blankId: 23, correct: true },
-      { questionId: 3, blankId: null, correct: false },
-    ];
+  it("turns marks into right or wrong per blank and the points for an essay", () => {
+    const marks = [blank(21, true), blank(22, false), blank(23, true), essayMark(2)];
     expect(toMarkInput(marks)).toEqual({
       marks: [
         { questionId: 2, blankId: 21, correct: true },
         { questionId: 2, blankId: 22, correct: false },
         { questionId: 2, blankId: 23, correct: true },
-        { questionId: 3, blankId: null, correct: false },
+        { questionId: 3, blankId: null, points: 2 },
       ],
     });
   });
 
-  it("refuses to build a payload with an unmarked item", () => {
-    expect(() => toMarkInput([{ questionId: 3, blankId: null, correct: null }])).toThrow();
+  it("keeps an essay's points whole and between 0 and its points", () => {
+    expect(setPoints([essayMark(null)], 3, 7)[0]?.points).toBe(5);
+    expect(setPoints([essayMark(null)], 3, -1)[0]?.points).toBe(0);
+    expect(setPoints([essayMark(null)], 3, 1)[0]?.points).toBe(1);
   });
 
-  it("knows a legacy essay by points that are neither none nor full", () => {
-    expect(isLegacyEssay({ ...essay, pointsAwarded: 3, correct: true })).toBe(true);
-    expect(isLegacyEssay({ ...essay, pointsAwarded: 5, correct: true })).toBe(false);
-    expect(isLegacyEssay({ ...essay, pointsAwarded: 0, correct: false })).toBe(false);
-    expect(isLegacyEssay(essay)).toBe(false);
-    expect(hasLegacyMarks(attempt([single, { ...essay, pointsAwarded: 3, correct: true }]))).toBe(true);
-    expect(hasLegacyMarks(attempt([single, essay]))).toBe(false);
+  it("refuses to build a payload with an unmarked item", () => {
+    expect(() => toMarkInput([essayMark(null)])).toThrow();
+    expect(() => toMarkInput([blank(21, null)])).toThrow();
   });
 });

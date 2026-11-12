@@ -112,8 +112,11 @@ beforeEach(() => {
 const openRow = (name: string) => fireEvent.press(screen.getByLabelText(new RegExp(`^${name}`)));
 const [baseAttempt] = attemptsPage.items as [(typeof attemptsPage.items)[number]];
 const [choiceAnswer, essayAnswer] = baseAttempt.answers as [object, object];
-const right = () => screen.getAllByRole("radio", { name: "Right" });
-const wrong = () => screen.getAllByRole("radio", { name: "Wrong" });
+const radios = (name: string) => screen.getAllByRole("radio", { name });
+const right = () => radios("Right");
+const wrong = () => radios("Wrong");
+/** The essay (5 points) as a row of scores, 0 to 5. */
+const essayScore = (n: number) => radios(`${n === 1 ? "1 point" : `${n} points`} of 5`)[0]!;
 
 /** The quiz read and the attempts page; `items` replaces the page's attempts. */
 function serve(items: unknown[] = attemptsPage.items, over: Partial<Record<string, unknown>> = {}) {
@@ -138,11 +141,10 @@ const withAnswers = (answers: object[], over: object = {}) => [{ ...baseAttempt,
 describe("grading screen — ONLINE", () => {
   beforeEach(() => serve());
 
-  it("lists submitted attempts, shows the key to the grader, and marks an essay right or wrong", async () => {
+  it("lists submitted attempts, shows the key to the grader, and gives an essay part of its points", async () => {
     post.mockResolvedValue({ data: { data: baseAttempt } });
 
     renderStacked(<QuizGradeScreen />);
-
     expect(await screen.findByText("Test student")).toBeTruthy();
     expect(screen.getByText("Attempt 1 · Awaiting grading · Mar 2, 2099")).toBeTruthy();
     expect(screen.getByText("Submitted")).toBeTruthy();
@@ -156,13 +158,14 @@ describe("grading screen — ONLINE", () => {
     expect(screen.getByText("2/2")).toBeTruthy();
     expect(screen.getByText("0 of 1 marked")).toBeTruthy();
 
-    fireEvent.press(wrong()[0]!);
+    expect(screen.getByText("Points, out of 5")).toBeTruthy();
+    fireEvent.press(essayScore(3));
     expect(screen.getByText("1 of 1 marked")).toBeTruthy();
     fireEvent.press(screen.getByText("Save marks"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/900/grade", {
-        marks: [{ questionId: 101, blankId: null, correct: false }],
+        marks: [{ questionId: 101, blankId: null, points: 3 }],
       }),
     );
   });
@@ -209,22 +212,20 @@ describe("grading screen — ONLINE", () => {
     );
   });
 
-  it("shows a legacy point-marked essay read-only, with no save", async () => {
-    serve(withAnswers([choiceAnswer, { ...essayAnswer, pointsAwarded: 3, correct: true }], { status: "GRADED" }));
+  it("an essay marked with part of its points shows them and can be marked again", async () => {
+    serve(withAnswers([choiceAnswer, { ...essayAnswer, pointsAwarded: 3, correct: false }], { status: "GRADED" }));
     renderStacked(<QuizGradeScreen />);
     await screen.findByText("Test student");
     openRow("Test student");
-
-    expect(await screen.findByText("Marked: 3 pts")).toBeTruthy();
-    expect(screen.queryByRole("radio", { name: "Right" })).toBeNull();
-    expect(screen.queryByText("Save marks")).toBeNull();
+    await screen.findByText("Because of the river.");
+    expect(essayScore(3).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByText("Save marks")).toBeTruthy();
     expect(screen.getByText("Reopen retake")).toBeTruthy();
   });
 
   it("release card says Release answers, and only to whoever may release", async () => {
     serve(attemptsPage.items, { canReleaseResults: true });
     renderStacked(<QuizGradeScreen />);
-
     expect(await screen.findByText("Answers")).toBeTruthy();
     expect(screen.getByText("Held")).toBeTruthy();
     fireEvent.press(screen.getByText("Release answers"));
@@ -235,7 +236,6 @@ describe("grading screen — ONLINE", () => {
 
   it("shows students who have not finished rather than dropping them (R102, D5)", async () => {
     renderStacked(<QuizGradeScreen />);
-
     expect(await screen.findByText("WAITING")).toBeTruthy();
     expect(screen.getByText("Second student")).toBeTruthy();
     expect(screen.getByText("Not started")).toBeTruthy();
@@ -265,7 +265,6 @@ describe("grading screen — ONLINE", () => {
           }),
     );
     renderStacked(<QuizGradeScreen />);
-
     expect(await screen.findByText("In progress since Mar 2, 2099")).toBeTruthy();
     expect(screen.queryByText("Reopen retake")).toBeNull();
   });
@@ -289,7 +288,6 @@ describe("grading screen — ONLINE", () => {
             : Promise.reject(new Error(`unexpected GET ${url}`)),
     );
     renderStacked(<QuizGradeScreen />);
-
     expect(await screen.findByText("Test student")).toBeTruthy();
     expect(screen.queryByText("Page two student")).toBeNull();
     fireEvent.press(screen.getByText("Load more"));
@@ -317,12 +315,11 @@ describe("grading screen — ONLINE", () => {
     post.mockResolvedValue({ data: { data: { attemptId: 901, attemptNumber: 2 } } });
 
     renderStacked(<QuizGradeScreen />);
-
     expect(await screen.findByText("Attempt 1 · 6.67/7 · Mar 2, 2099")).toBeTruthy();
     expect(screen.getByText("Graded")).toBeTruthy();
     openRow("Test student");
     expect(await screen.findByText("Attempt 1 · Graded · 6.67/7")).toBeTruthy();
-    expect(screen.getByRole("radio", { name: "Right", checked: true })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "5 points of 5", checked: true })).toBeTruthy();
     fireEvent.press(screen.getByText("Reopen retake"));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/reopen", {
@@ -353,10 +350,9 @@ describe("grading screen — ONLINE", () => {
       post.mockRejectedValue(axiosError("That mark is not for this attempt."));
       renderStacked(<QuizGradeScreen />);
       await screen.findByText("Test student");
-
       openRow("Test student");
       await screen.findByText("Because of the river.");
-      fireEvent.press(right()[0]!);
+      fireEvent.press(essayScore(5));
       fireEvent.press(screen.getByText("Save marks"));
       expect(await screen.findByText("That mark is not for this attempt.")).toBeTruthy();
 
@@ -368,33 +364,31 @@ describe("grading screen — ONLINE", () => {
     it("keeps a mark across dismiss and reopen while the server's marks are unchanged", async () => {
       renderStacked(<QuizGradeScreen />);
       await screen.findByText("Test student");
-
       openRow("Test student");
       await screen.findByText("Because of the river.");
-      fireEvent.press(wrong()[0]!);
+      fireEvent.press(essayScore(2));
       dismissSheet();
       openRow("Test student");
 
-      expect(await screen.findByRole("radio", { name: "Wrong", checked: true })).toBeTruthy();
+      expect(await screen.findByRole("radio", { name: "2 points of 5", checked: true })).toBeTruthy();
     });
 
     it("re-seeds from the server when the marks change after a refetch", async () => {
       post.mockResolvedValue({ data: { data: baseAttempt } });
       renderStacked(<QuizGradeScreen />);
       await screen.findByText("Test student");
-
       openRow("Test student");
       await screen.findByText("Because of the river.");
-      fireEvent.press(right()[0]!);
-      // A co-grader's Wrong lands before this save's refetch.
+      fireEvent.press(essayScore(5));
+      // A co-grader's 0 lands before this save's refetch.
       serve(withAnswers([choiceAnswer, { ...essayAnswer, pointsAwarded: 0, correct: false }]));
       fireEvent.press(screen.getByText("Save marks"));
       await waitFor(() => expect(post).toHaveBeenCalled());
       await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marks saved."));
 
       openRow("Test student");
-      expect(await screen.findByRole("radio", { name: "Wrong", checked: true })).toBeTruthy();
-      expect(screen.queryByRole("radio", { name: "Right", checked: true })).toBeNull();
+      expect(await screen.findByRole("radio", { name: "0 points of 5", checked: true })).toBeTruthy();
+      expect(screen.queryByRole("radio", { name: "5 points of 5", checked: true })).toBeNull();
     });
   });
 });

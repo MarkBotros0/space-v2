@@ -6,7 +6,7 @@ import { adminScoreLabel } from "./attempt-subtitle";
 import { ExitLog } from "./exit-log";
 import { manualScoreTarget } from "./manual-score-model";
 import { useManualScoreSheet } from "./manual-score-sheet";
-import { hasLegacyMarks, initialMarks, markedCount, marksComplete, setMark, toMarkInput } from "./marking-model";
+import { initialMarks, markedCount, marksComplete, setMark, setPoints, toMarkInput } from "./marking-model";
 import { QuizAttemptAnswers, ReopenButton } from "./quiz-answer-marker";
 import { haptic } from "../../design/motion";
 import { Button } from "../../design/ui/button";
@@ -19,7 +19,7 @@ import { formatScore } from "../../lib/format";
 
 /**
  * One online attempt in a bottom sheet: the answers with the key (shown to the grader, R103),
- * Right / Wrong per blank and essay, and Reopen retake. Keyed by attempt by the caller, so the
+ * Right / Wrong per blank, points per essay, and Reopen retake. Keyed by attempt by the caller, so the
  * marks survive a dismiss and reopen of the same attempt. Save waits until every item is
  * marked: the server refuses a partial set (marks_incomplete). The season's admin (`canScore`) can
  * enter or edit the student's own score (plan 4), shown in place of the answers: one modal at a
@@ -68,9 +68,7 @@ export function AttemptSheet({
     setError(null);
     setScoring(false);
   }, [open]);
-  // An essay marked with points before right/wrong existed would lose them to a re-mark.
-  const readOnly = hasLegacyMarks(attempt);
-  const canMark = marks.length > 0 && !readOnly;
+  const canMark = marks.length > 0;
   const complete = marksComplete(marks);
   const graded = attempt.status === "GRADED";
 
@@ -141,8 +139,8 @@ export function AttemptSheet({
         <QuizAttemptAnswers
           attempt={attempt}
           marks={marks}
-          readOnly={readOnly}
           onMark={(questionId, blankId, correct) => setMarks((prev) => setMark(prev, questionId, blankId, correct))}
+          onPoints={(questionId, points) => setMarks((prev) => setPoints(prev, questionId, points))}
         />
         {error && !canMark ? (
           <Text variant="subhead" className="text-bad">

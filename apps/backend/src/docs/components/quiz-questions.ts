@@ -108,7 +108,7 @@ export const quizQuestionSchemas = {
       {
         type: "object",
         required: ["type", "prompt", "points"],
-        description: "ESSAY: a leader marks it right or wrong.",
+        description: "ESSAY: a leader gives it points, from 0 to its points.",
         properties: { type: { const: "ESSAY" }, ...requestBase },
       },
     ],

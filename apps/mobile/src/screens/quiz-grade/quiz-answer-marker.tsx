@@ -1,11 +1,9 @@
 /**
  * One attempt's answers as the grader sees them, the answer key beside each (R103), in the
  * author's order. Choice and matching questions are marked by the server and show read-only;
- * each fill-in-the-blank gap shows the student's text beside the expected answer, and each essay
- * its text, with Right / Wrong for the leader (spec "Marking (leaders)"); one left empty shows
- * as wrong, with nothing to mark. An essay marked with
- * points before right/wrong existed shows its points read-only. The sheet owns the marks and the
- * save; this draws them. "Reopen retake" shows on SUBMITTED attempts too, for every grader
+ * each fill-in-the-blank gap shows the student's text beside the expected answer with Right / Wrong,
+ * and each essay its text with the points to give (`EssayPoints`, owner 2026-11-13); one left empty
+ * shows as wrong, with nothing to mark. The sheet owns the marks and the save; this draws them. "Reopen retake" shows on SUBMITTED attempts too, for every grader
  * (spec 12 D5).
  */
 import type { QuizGradingAttempt } from "@space/shared";
@@ -17,17 +15,18 @@ import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, ContentText, Text } from "../../design/ui";
 import { formatScore } from "../../lib/format";
-import { plural } from "../../lib/plural";
 import { splitBlanks } from "../quiz-detail/blank-segments";
 import { Mark } from "../quiz-detail/review/question-review";
-import { isLeftEmpty, isLegacyEssay, type ItemMark } from "./marking-model";
+import { EssayPoints } from "./essay-points";
+import { isLeftEmpty, type ItemMark } from "./marking-model";
 
 iconWithClassName(RotateCcw);
 
 type Answer = QuizGradingAttempt["answers"][number];
 type Of<T extends Answer["type"]> = Extract<Answer, { type: T }>;
-type OnMark = (questionId: number, blankId: number | null, correct: boolean) => void;
-type Marking = { marks: ItemMark[]; readOnly: boolean; onMark: OnMark };
+type OnMark = (questionId: number, blankId: number, correct: boolean) => void;
+type OnPoints = (questionId: number, points: number) => void;
+type Marking = { marks: ItemMark[]; onMark: OnMark; onPoints: OnPoints };
 
 export function ReopenButton({ onPress, disabled }: { onPress: () => void; disabled: boolean }) {
   return (
@@ -38,17 +37,8 @@ export function ReopenButton({ onPress, disabled }: { onPress: () => void; disab
   );
 }
 
-/** Right / Wrong for one item, or the mark it holds when the attempt is read-only. Never colour alone. */
-function RightWrong({
-  value,
-  readOnly,
-  onChange,
-}: {
-  value: boolean | null;
-  readOnly: boolean;
-  onChange: (correct: boolean) => void;
-}) {
-  if (readOnly) return value === null ? null : <Mark right={value} word={value ? "Right" : "Wrong"} />;
+/** Right / Wrong for one item. Never colour alone: the words carry the mark. */
+function RightWrong({ value, onChange }: { value: boolean | null; onChange: (correct: boolean) => void }) {
   return (
     <ToggleButtons<"right" | "wrong" | "">
       options={[
@@ -67,7 +57,7 @@ function LeftEmpty() {
 }
 
 const markOf = (marks: ItemMark[], questionId: number, blankId: number | null) =>
-  marks.find((m) => m.questionId === questionId && m.blankId === blankId)?.correct ?? null;
+  marks.find((m) => m.questionId === questionId && m.blankId === blankId);
 
 function Choices({ a }: { a: Of<"SINGLE_CHOICE" | "TRUE_FALSE" | "MULTI_CHOICE"> }) {
   const picked = new Set(a.type === "MULTI_CHOICE" ? a.selectedOptionIds : [a.selectedOptionId]);
@@ -115,7 +105,7 @@ function Matches({ a }: { a: Of<"MATCHING"> }) {
   );
 }
 
-function Blanks({ a, marks, readOnly, onMark }: { a: Of<"FILL_BLANK"> } & Marking) {
+function Blanks({ a, marks, onMark }: { a: Of<"FILL_BLANK"> } & Marking) {
   const sorted = [...a.blanks].sort((x, y) => x.position - y.position);
   return (
     <View className="flex-col gap-2">
@@ -131,8 +121,7 @@ function Blanks({ a, marks, readOnly, onMark }: { a: Of<"FILL_BLANK"> } & Markin
             <LeftEmpty />
           ) : (
             <RightWrong
-              value={markOf(marks, a.questionId, b.blankId)}
-              readOnly={readOnly}
+              value={markOf(marks, a.questionId, b.blankId)?.correct ?? null}
               onChange={(c) => onMark(a.questionId, b.blankId, c)}
             />
           )}
@@ -142,7 +131,7 @@ function Blanks({ a, marks, readOnly, onMark }: { a: Of<"FILL_BLANK"> } & Markin
   );
 }
 
-function Essay({ a, marks, readOnly, onMark }: { a: Of<"ESSAY"> } & Marking) {
+function Essay({ a, marks, onPoints }: { a: Of<"ESSAY"> } & Marking) {
   return (
     <View className="flex-col gap-2">
       <ContentText
@@ -151,17 +140,13 @@ function Essay({ a, marks, readOnly, onMark }: { a: Of<"ESSAY"> } & Marking) {
       >
         {a.text || "No answer"}
       </ContentText>
-      {isLegacyEssay(a) ? (
-        <Text variant="caption" className="font-medium text-muted-foreground">
-          {`Marked: ${plural(a.pointsAwarded ?? 0, "pt")}`}
-        </Text>
-      ) : isLeftEmpty(a.text) ? (
+      {isLeftEmpty(a.text) ? (
         <LeftEmpty />
       ) : (
-        <RightWrong
-          value={markOf(marks, a.questionId, null)}
-          readOnly={readOnly}
-          onChange={(c) => onMark(a.questionId, null, c)}
+        <EssayPoints
+          points={markOf(marks, a.questionId, null)?.points ?? null}
+          max={a.points}
+          onChange={(points) => onPoints(a.questionId, points)}
         />
       )}
     </View>
@@ -189,7 +174,6 @@ function promptOf(a: Answer): string {
     .join("");
 }
 
-/** `readOnly`: nothing to save (a legacy point-marked attempt), so marks show as they stand. */
 export function QuizAttemptAnswers({ attempt, ...marking }: { attempt: QuizGradingAttempt } & Marking) {
   return (
     <View className="flex-col gap-3">
