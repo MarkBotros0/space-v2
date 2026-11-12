@@ -143,7 +143,9 @@ describe("POST /quizzes/:id/attempt/events", () => {
 
   it("exit on a closed attempt is ignored", async () => {
     const quizId = await openQuiz();
-    await post(quizId, [event(), event()]);
+    // Two exits that left before the deadline below.
+    const early = () => event("EXIT", randomUUID(), new Date(Date.now() - 120_000));
+    await post(quizId, [early(), early()]);
     // The deadline closed it (past the save grace) before the third exit arrived.
     await db.quiz.update({ where: { id: quizId }, data: { timeLimitMinutes: 30 } });
     await db.quizAttempt.updateMany({ where: { quizId }, data: { deadlineAt: new Date(Date.now() - 60_000) } });
@@ -170,6 +172,22 @@ describe("POST /quizzes/:id/attempt/events", () => {
     expect((await latest(quizId)).endReason).toBe("TIMED_OUT");
     expect(await storedEvents(quizId)).toBe(0);
     expect(await quizGradedCountFor(f.ownStudentId)).toBe(before + 1);
+  });
+
+  it("an exit that left at or after the deadline (inside the save grace) is stored but not counted", async () => {
+    const quizId = await openQuiz();
+    await db.quiz.update({ where: { id: quizId }, data: { timeLimitMinutes: 30 } });
+    const deadline = new Date(Date.now() - 3_000);
+    await db.quizAttempt.updateMany({ where: { quizId }, data: { deadlineAt: deadline } });
+    const before = (ms: number) => event("EXIT", randomUUID(), new Date(deadline.getTime() - ms));
+    expect((await post(quizId, [before(60_000), before(30_000)])).body.data.exits).toBe(2);
+
+    // Time had run out when these left: logged, never the third exit.
+    const late = await post(quizId, [event("EXIT", randomUUID(), deadline), event("RELAUNCH")]);
+    expect(late.status).toBe(200);
+    expect(late.body.data).toEqual({ exits: 2, ended: false, status: "IN_PROGRESS" });
+    expect(await storedEvents(quizId)).toBe(4);
+    expect((await latest(quizId)).endReason).toBeNull();
   });
 
   it("two exits racing at a count of two close the attempt once", async () => {

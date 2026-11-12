@@ -104,6 +104,16 @@ describe("GET /me/open-quiz-attempt", () => {
     }
   });
 
+  it("raw JSON of the response is the quiz id and nothing of the quiz", async () => {
+    const { quizId } = await buildPublishedQuizIn(f.seasonId, f.sessionId, { withEssay: false });
+    expect((await start(quizId)).status).toBe(200);
+    const res = await openAttempt(f.studentToken);
+    expect(Object.keys(res.body.data)).toEqual(["quizId"]);
+    for (const word of ["isCorrect", "optionId", "answers", "Paris", "prompt", "totalScore", "points"]) {
+      expect(res.text).not.toContain(word);
+    }
+  });
+
   it("is null for staff, who are never held on a quiz", async () => {
     const res = await openAttempt(f.leaderToken);
     expect(res.status).toBe(200);

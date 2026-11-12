@@ -8,7 +8,8 @@ import { isExpired, SAVE_GRACE_MS } from "./timing";
 /*
  * The phone's exit reports (spec "Integrity" → "Leaving the quiz"). The server's
  * count is the truth: EXIT and RELAUNCH rows count, SCREENSHOT is logged only,
- * and the report that brings the count to MAX_EXITS ends the attempt
+ * (an exit that left at or after the deadline is logged, not counted: the time had
+ * already run out), and the report that brings the count to MAX_EXITS ends the attempt
  * ENDED_BY_EXITS in the same transaction, under the attempt row lock, so two
  * reports racing can't both close it and a save can't land between the count
  * and the close. `(attemptId, clientEventId)` is unique: a retry or an offline
@@ -17,8 +18,10 @@ import { isExpired, SAVE_GRACE_MS } from "./timing";
 
 const COUNTED = ["EXIT", "RELAUNCH"] as const;
 
-const exitCount = (tx: Prisma.TransactionClient, attemptId: number) =>
-  tx.quizAttemptEvent.count({ where: { attemptId, kind: { in: [...COUNTED] } } });
+const exitCount = (tx: Prisma.TransactionClient, attemptId: number, deadlineAt: Date | null) =>
+  tx.quizAttemptEvent.count({
+    where: { attemptId, kind: { in: [...COUNTED] }, ...(deadlineAt === null ? {} : { leftAt: { lt: deadlineAt } }) },
+  });
 
 /** How far before the attempt's creation a phone's time is still taken as it is. */
 const PAST_BOUND_MS = 24 * 60 * 60_000;
@@ -40,20 +43,23 @@ async function recordLocked(
   now: Date,
 ): Promise<Recorded> {
   const row = await lockAttempt(tx, attemptId);
-  if (row?.status !== "IN_PROGRESS") return { exits: await exitCount(tx, attemptId), ended: false, closed: null };
+  if (row?.status !== "IN_PROGRESS") {
+    return { exits: await exitCount(tx, attemptId, row?.deadlineAt ?? null), ended: false, closed: null };
+  }
+  const counted = () => exitCount(tx, attemptId, row.deadlineAt);
 
   // Past the deadline (+ the save grace): the time ran out before this report, so the
   // attempt closes TIMED_OUT and the report is ignored like any on a closed attempt.
   if (isExpired(row.deadlineAt, now, SAVE_GRACE_MS)) {
     const closed = await closeLockedInTx(tx, attemptId, row, "TIMED_OUT", null);
-    return { exits: await exitCount(tx, attemptId), ended: false, closed };
+    return { exits: await counted(), ended: false, closed };
   }
 
   // A timed attempt whose clock hasn't started (a reopened one before the student's
   // start PUT) shows no questions, so leaving it is not an exit. Untimed counts from the start.
   const quiz = await tx.quiz.findUniqueOrThrow({ where: { id: row.quizId }, select: { timeLimitMinutes: true } });
   if (quiz.timeLimitMinutes !== null && row.deadlineAt === null) {
-    return { exits: await exitCount(tx, attemptId), ended: false, closed: null };
+    return { exits: await counted(), ended: false, closed: null };
   }
 
   if (events.length > 0) {
@@ -73,7 +79,7 @@ async function recordLocked(
       skipDuplicates: true,
     });
   }
-  const exits = await exitCount(tx, attemptId);
+  const exits = await counted();
   if (exits < MAX_EXITS) return { exits, ended: false, closed: null };
   const closed = await closeLockedInTx(tx, attemptId, row, "ENDED_BY_EXITS", null);
   return { exits, ended: true, closed };
