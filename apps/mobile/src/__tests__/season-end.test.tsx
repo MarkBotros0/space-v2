@@ -16,7 +16,7 @@ import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
-import { check, detail, subs } from "./helpers/season-end-fixtures";
+import { check, detail, endBody, subs } from "./helpers/season-end-fixtures";
 import { makeSession } from "./helpers/session";
 import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
 import EndSeasonScreen from "../../app/(app)/seasons/[code]/end";
@@ -133,13 +133,16 @@ describe("End season screen", () => {
     confirmEnd();
 
     await waitFor(() => expect(post).toHaveBeenCalled());
-    expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/end", {
-      notPassed: [
-        { userId: 2, reason: "Missed most sessions" },
-        { userId: 3, reason: null },
-      ],
-      reviewed: { graduatesOnPass: false, userIds: Array.from({ length: 84 }, (_, i) => i + 1) },
-    });
+    expect(post).toHaveBeenCalledWith(
+      "/api/v1/seasons/7/end",
+      endBody(
+        [
+          { userId: 2, reason: "Missed most sessions" },
+          { userId: 3, reason: null },
+        ],
+        { graduatesOnPass: false, userIds: Array.from({ length: 84 }, (_, i) => i + 1) },
+      ),
+    );
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(toast.success).toHaveBeenCalled();
     expect(mockDismissAll).not.toHaveBeenCalled();

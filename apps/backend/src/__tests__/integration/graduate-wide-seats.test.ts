@@ -5,7 +5,7 @@ import request from "supertest";
 
 import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
-import { reviewedOf } from "./fixtures";
+import { endBodyOf } from "./fixtures";
 import {
   app,
   as,
@@ -31,7 +31,7 @@ const endIt = async (seasonId: number) =>
   request(app)
     .post(`/api/v1/seasons/${seasonId}/end`)
     .set(as(ctx.superToken))
-    .send({ notPassed: [], reviewed: await reviewedOf(seasonId) });
+    .send(await endBodyOf(seasonId));
 const graduate = (id: number) =>
   request(app)
     .post(`/api/v1/students/${id}/graduate`)

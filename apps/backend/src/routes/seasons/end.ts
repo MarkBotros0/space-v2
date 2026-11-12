@@ -10,7 +10,6 @@ import { requireUser } from "../../middleware/require-auth";
 import { endSeasonRequestSchema } from "../../../../../packages/shared/src/index";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
-import { parseOr400 } from "../../lib/http/validate";
 
 /** What blocks the season from ending, and who it would end for. */
 export async function getSeasonEndCheck(req: Request, res: Response) {
@@ -34,9 +33,16 @@ export async function endSeason(req: Request, res: Response) {
   if (id === null) return;
   if (!isAdminOfSeason(user, id)) return forbidden(res);
 
-  const parsed = parseOr400(endSeasonRequestSchema, req.body, res, "Invalid end-season body.");
-  if (parsed === null) return;
+  const result = endSeasonRequestSchema.safeParse(req.body);
+  if (!result.success) {
+    // Weights that don't add up say so; anything else is a malformed body.
+    const sum = result.error.issues.find((i) => i.code === "custom" && i.path[0] === "weights");
+    return apiError(res, "bad_request", sum?.message ?? "Invalid end-season body.", 400);
+  }
+  const parsed = result.data;
   const reasons = new Map(parsed.notPassed.map((n) => [n.userId, n.reason?.trim() || null]));
+  const notes = new Map(parsed.passedNotes.map((n) => [n.userId, n.note?.trim() || null]));
+  const criteria = { weights: parsed.weights, passMark: parsed.passMark };
 
   const season = await findLiveSeason(id, { status: true, year: true });
   if (!season) return notFound(res, "Season");
@@ -45,7 +51,13 @@ export async function endSeason(req: Request, res: Response) {
   }
 
   const now = new Date();
-  const ended = await endSeasonNow(id, user.userId, parsed.reviewed, reasons, season.year, now);
+  const ended = await endSeasonNow(
+    id,
+    user.userId,
+    { reviewed: parsed.reviewed, reasons, notes, criteria },
+    season.year,
+    now,
+  );
   auditLog("season.end", user.userId, user.userId, { season: id });
   for (const graduate of ended.graduated) {
     auditLog("student.graduate", user.userId, graduate, { season: id });

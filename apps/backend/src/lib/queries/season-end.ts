@@ -1,7 +1,9 @@
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import type { SeasonEndCheck } from "../../../../../packages/shared/src/index";
+import type { PassingNumbers, SeasonEndCheck } from "../../../../../packages/shared/src/index";
 import { attendancePct } from "./attendance-pct";
+import { loadPassCriteria } from "../passing/criteria";
+import { loadPassingNumbers } from "../passing/numbers";
 import { MS_PER_MINUTE } from "../org-time";
 import { liveAssignment, liveUser } from "../db/live";
 import { ADMIN_SCORE_WHERE } from "../quizzes/admin-score";
@@ -24,6 +26,45 @@ async function withoutAdminScored<A extends { quizId: number; studentUserId: num
   return attempts.filter((a) => !keys.has(`${a.quizId}:${a.studentUserId}`));
 }
 
+/** The end check without the scoring: its flag, its blockers and its ACTIVE live students. */
+type SeasonEndRoster = Omit<SeasonEndCheck, "criteria" | "isDefault" | "available" | "students"> & {
+  students: Omit<SeasonEndCheck["students"][number], "attendancePct" | "numbers">[];
+};
+
+/**
+ * What End's review shows: the roster and blockers (`loadSeasonEndRoster`), the season's criteria
+ * (its own, else the default) and every student's three numbers (`loadPassingNumbers`, the roster's
+ * own: null ids), from which the screen computes each score as End will.
+ */
+export async function loadSeasonEndCheck(
+  seasonId: number,
+  now: Date,
+  client: Prisma.TransactionClient = db,
+): Promise<SeasonEndCheck> {
+  const [roster, { criteria, isDefault }, { available, numbers }] = await Promise.all([
+    loadSeasonEndRoster(seasonId, now, client),
+    loadPassCriteria(seasonId, client),
+    loadPassingNumbers(seasonId, null, client, now),
+  ]);
+  return {
+    ...roster,
+    criteria,
+    isDefault,
+    available,
+    students: roster.students.map((s) => {
+      const n = numbers.get(s.userId) ?? NOTHING_COUNTED;
+      return { ...s, attendancePct: attendancePct(n.attendance.attended, n.attendance.total), numbers: n };
+    }),
+  };
+}
+
+/** A student the numbers don't name (none can be: both read the season's ACTIVE live students). */
+const NOTHING_COUNTED: PassingNumbers = {
+  attendance: { attended: 0, total: 0 },
+  assignments: { submitted: 0, total: 0 },
+  quizzes: { scored: 0, max: 0 },
+};
+
 /**
  * What stops a season from ending, and the students it would end for.
  * Blockers: essays handed in and awaiting review (one per student per essay;
@@ -33,11 +74,11 @@ async function withoutAdminScored<A extends { quizId: number; studentUserId: num
  * sessions that have finished with an ACTIVE student unmarked. Soft-deleted
  * students and assignments never block.
  */
-export async function loadSeasonEndCheck(
+export async function loadSeasonEndRoster(
   seasonId: number,
   now: Date,
   client: Prisma.TransactionClient = db,
-): Promise<SeasonEndCheck> {
+): Promise<SeasonEndRoster> {
   // Only students still ACTIVE in this season hold the season open.
   const activeStudentInSeason = {
     ...liveUser,
@@ -91,15 +132,9 @@ export async function loadSeasonEndCheck(
   const activeIds = enrollments.map((e) => e.studentUserId);
   const marks = await client.attendance.findMany({
     where: { session: { seasonId }, studentUserId: { in: activeIds } },
-    select: { sessionId: true, studentUserId: true, status: true },
+    select: { sessionId: true, studentUserId: true },
   });
   const marked = new Set(marks.map((m) => `${m.sessionId}:${m.studentUserId}`));
-  const attendedByStudent = new Map<number, number>();
-  for (const m of marks) {
-    if (m.status === "PRESENT" || m.status === "LATE") {
-      attendedByStudent.set(m.studentUserId, (attendedByStudent.get(m.studentUserId) ?? 0) + 1);
-    }
-  }
 
   const attendance = sessions
     .filter((s) => s.startsAt.getTime() + s.durationMinutes * MS_PER_MINUTE <= now.getTime())
@@ -136,7 +171,6 @@ export async function loadSeasonEndCheck(
       name: e.studentUser.name,
       groupName: e.group?.name ?? null,
       graduationYear: e.studentUser.graduationYear,
-      attendancePct: attendancePct(attendedByStudent.get(e.studentUserId) ?? 0, sessions.length),
     })),
   };
 }

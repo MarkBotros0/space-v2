@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, apiError } from "../../lib/api-response";
+import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { auditLog } from "../../lib/audit";
 import { parseId } from "../../lib/parse-id";
 import { idParam } from "../../lib/http/params";
@@ -12,32 +12,37 @@ import { findLiveSeason } from "../../lib/queries/seasons";
 import { liveSeason } from "../../lib/db/live";
 import { correctSeasonResult } from "../../lib/seasons/results";
 import { isSuper } from "../../lib/rbac";
-import { requireUser, requireRole } from "../../middleware/require-auth";
+import { requireUser } from "../../middleware/require-auth";
+import { canCorrectSeasonResults } from "../../lib/permissions";
 import { updateSeasonResultRequestSchema } from "../../../../../packages/shared/src/index";
 import { isSeasonFinished } from "../../lib/seasons/status";
 
-/** Each finished student's pass result for a season. SUPER only. */
+/**
+ * Each finished student's pass result for a season, with the score End stored. A super, or anyone
+ * with a SeasonAdmin row for the season (`canCorrectSeasonResults`).
+ */
 export async function getSeasonResults(req: Request, res: Response) {
-  const user = requireRole(req, res, isSuper);
-  if (!user) return;
+  const user = requireUser(req);
   const id = idParam(res, req.params.id, "season");
   if (id === null) return;
-  const season = await findLiveSeason(id, { id: true });
+  if (!(await canCorrectSeasonResults(user, id))) return forbidden(res);
+  const season = await findLiveSeason(id, { id: true, code: true, title: true, year: true, graduatesOnPass: true });
   if (!season) return notFound(res, "Season");
-  return apiOk(res, { results: await loadSeasonResults(id) });
+  return apiOk(res, await loadSeasonResults(season));
 }
 
 /**
- * Correct one student's result after the season ended. SUPER only. Passed on a
- * graduating season graduates them then; Did not pass never takes alumni status
- * away. The flag is frozen once the season has finished, so it can be read first.
+ * Correct one student's result after the season ended: a super, or the season's (former) admin
+ * (`canCorrectSeasonResults`). The stored score stays; whether the result goes against it is
+ * worked out again. Passed on a graduating season graduates them then; Did not pass never takes
+ * alumni status away. The flag is frozen once the season has finished, so it can be read first.
  */
 export async function updateSeasonResult(req: Request, res: Response) {
-  const user = requireRole(req, res, isSuper);
-  if (!user) return;
+  const user = requireUser(req);
   const id = parseId(req.params.id);
   const studentUserId = parseId(req.params.studentUserId);
   if (id === null || studentUserId === null) return apiError(res, "bad_request", "Invalid id.", 400);
+  if (!(await canCorrectSeasonResults(user, id))) return forbidden(res);
   const body = parseOr400(updateSeasonResultRequestSchema, req.body, res, "Invalid result body.");
   if (body === null) return;
 
@@ -58,7 +63,12 @@ export async function updateSeasonResult(req: Request, res: Response) {
   const { result } = body;
   const reason = result === "NOT_PASSED" ? body.reason?.trim() || null : null;
   const now = new Date();
-  const graduated = await correctSeasonResult(id, studentUserId, { result, reason, at: now }, season);
+  const graduated = await correctSeasonResult(
+    id,
+    studentUserId,
+    { result, reason, at: now, byId: user.userId },
+    season,
+  );
   auditLog("season.result_correct", user.userId, studentUserId, { season: id });
   if (graduated) auditLog("student.graduate", user.userId, studentUserId, { season: id });
   return apiOk(res, { userId: studentUserId, result, reason, graduated });

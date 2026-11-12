@@ -98,6 +98,7 @@ const AUDIT_FKS = new Set([
   "Season.updatedById",
   "SeasonAdmin.assignedById",
   "SeasonEnrollment.overrideById",
+  "SeasonEnrollment.resultSetById",
   "SessionVideoQuestion.createdById",
   "Attendance.markedById",
   "Assignment.createdById",

@@ -226,6 +226,7 @@ model User {
   partWorkAsStudent    AssignmentPartWork[] @relation("PartWorkStudent")
   seasonEnrollments    SeasonEnrollment[] @relation("EnrollmentStudent")
   enrollmentOverrides  SeasonEnrollment[] @relation("EnrollmentOverrideBy")
+  enrollmentResultsSet SeasonEnrollment[] @relation("EnrollmentResultSetBy")
   graduationOverrides  User[]             @relation("GraduationOverrideBy")
   engagementNotesAbout EngagementNote[]   @relation("EngagementNoteStudent")
   followUpsByMe        MentorFollowUp[]   @relation("FollowUpMentor")
@@ -461,6 +462,14 @@ model SeasonEnrollment {
   result        EnrollmentResult?
   resultReason  String?
   resultSetAt   DateTime? @db.Timestamptz(3)
+  // Season passing: who set the result (End, or a later correction); null before weighted passing.
+  resultSetById Int?
+  resultSetBy   User?            @relation("EnrollmentResultSetBy", fields: [resultSetById], references: [id], onDelete: SetNull)
+  // What End stored: the weighted score (null with nothing to count, or before weighted passing),
+  // the three numbers it came from (PassingNumbers), and whether the result went against the score.
+  passScore          Decimal? @db.Decimal(4, 1)
+  passNumbers        Json?
+  resultAgainstScore Boolean?
   // A SUPER let this person in past a block; null when nobody did.
   overrideById  Int?
   overrideBy    User?            @relation("EnrollmentOverrideBy", fields: [overrideById], references: [id], onDelete: SetNull)

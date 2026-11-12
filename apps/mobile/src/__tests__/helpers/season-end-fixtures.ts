@@ -32,6 +32,11 @@ export const students = (n: number) =>
     groupName: "Group A",
     attendancePct: 90,
     graduationYear: null as number | null,
+    numbers: {
+      attendance: { attended: 0, total: 0 },
+      assignments: { submitted: 0, total: 0 },
+      quizzes: { scored: 0, max: 0 },
+    },
   }));
 export const check = (
   blockers: Partial<{ submissions: unknown[]; quizAttempts: unknown[]; attendance: unknown[] }>,
@@ -39,6 +44,21 @@ export const check = (
   graduatesOnPass = false,
 ) => ({
   graduatesOnPass,
+  criteria: { weights: { attendance: 40, assignments: 30, quizzes: 30 }, passMark: 60 },
+  isDefault: true,
+  available: { attendance: false, assignments: false, quizzes: false },
   blockers: { submissions: [], quizAttempts: [], attendance: [], ...blockers },
   students: students(n),
+});
+
+/** The End POST for these students: the default criteria, and no score for anyone (nothing to count). */
+export const endBody = (
+  notPassed: { userId: number; reason: string | null }[],
+  reviewed: { graduatesOnPass: boolean; userIds: number[] },
+) => ({
+  notPassed,
+  passedNotes: [],
+  weights: { attendance: 40, assignments: 30, quizzes: 30 },
+  passMark: 60,
+  reviewed: { ...reviewed, scores: reviewed.userIds.map((userId) => ({ userId, score: null })) },
 });

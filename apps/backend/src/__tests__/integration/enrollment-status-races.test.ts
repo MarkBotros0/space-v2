@@ -6,7 +6,7 @@ import { db } from "../../db/client";
 import { lockSeason, lockPeople } from "../../lib/roles";
 import { graduatePerson } from "../../lib/students/graduation";
 import { behind, holdTransaction, untilBlockedBehind, untilWaiting } from "./lock-holds";
-import { reviewedOf } from "./fixtures";
+import { endBodyOf, reviewedOf } from "./fixtures";
 import {
   app,
   as,
@@ -29,8 +29,11 @@ const drop = (seasonId: number, userId: number) =>
     .patch(`/api/v1/students/${userId}/enrollments/${seasonId}`)
     .set(as(ctx.superToken))
     .send({ status: "WITHDRAWN", dropReason: "Moved away" });
-const end = (seasonId: number, reviewed: { graduatesOnPass: boolean; userIds: number[] }) =>
-  request(app).post(`/api/v1/seasons/${seasonId}/end`).set(as(ctx.superToken)).send({ notPassed: [], reviewed });
+const end = async (seasonId: number, reviewed: Awaited<ReturnType<typeof reviewedOf>>) =>
+  request(app)
+    .post(`/api/v1/seasons/${seasonId}/end`)
+    .set(as(ctx.superToken))
+    .send(await endBodyOf(seasonId, [], reviewed));
 const yearOf = async (id: number) =>
   (await db.user.findUniqueOrThrow({ where: { id }, select: { graduationYear: true } })).graduationYear;
 

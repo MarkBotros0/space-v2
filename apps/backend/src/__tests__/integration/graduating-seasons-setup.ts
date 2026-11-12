@@ -3,7 +3,7 @@ import request from "supertest";
 import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 import { signAccessToken } from "../../lib/auth/tokens";
-import { createTestSeason, reviewedOf } from "./fixtures";
+import { createTestSeason, endBodyOf, type reviewedOf } from "./fixtures";
 import { app, as, ctx } from "./season-enrollments-setup";
 
 // Shared by the graduating-seasons*.test.ts suites.
@@ -37,12 +37,12 @@ export const end = async (
   notPassed: { userId: number; reason: string | null }[] = [],
   token = ctx.superToken,
   /** What the staff member was shown; by default the season as it is now. */
-  reviewed?: { graduatesOnPass: boolean; userIds: number[] },
+  reviewed?: Awaited<ReturnType<typeof reviewedOf>>,
 ) =>
   request(app)
     .post(`/api/v1/seasons/${seasonId}/end`)
     .set(as(token))
-    .send({ notPassed, reviewed: reviewed ?? (await reviewedOf(seasonId)) });
+    .send(await endBodyOf(seasonId, notPassed, reviewed));
 export const correct = (seasonId: number, userId: number, result: "PASSED" | "NOT_PASSED") =>
   request(app)
     .patch(`/api/v1/seasons/${seasonId}/results/${userId}`)

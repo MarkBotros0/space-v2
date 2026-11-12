@@ -132,6 +132,19 @@ export async function hasActiveEnrollment(user: SessionUser, seasonId: number): 
   );
 }
 
+/**
+ * Who may read and correct a season's results after End: a super, or anyone with a SeasonAdmin row
+ * for that season, whatever its status, the way `reportScopeFor` reads it (owner: "everything can be
+ * overridden by an admin or a super"). End takes the admin's grants with it; the row stays, so the
+ * season's former admin keeps this one screen. A mentor never holds the seat (`isAdminOfSeason`).
+ */
+export async function canCorrectSeasonResults(user: SessionUser, seasonId: number): Promise<boolean> {
+  if (isSuper(user)) return true;
+  if (isMentor(user)) return false;
+  const row = await db.seasonAdmin.findFirst({ where: { seasonId, userId: user.userId }, select: { seasonId: true } });
+  return row !== null;
+}
+
 /** Which seasons a calendar request may read (Plan 6 D-16.7). */
 export type CalendarScope = { kind: "active" } | { kind: "seasons"; seasonIds: number[] };
 

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import type { SeasonEndCheck } from "@space/shared";
+import { passingPcts, weightedScore, type SeasonEndCheck } from "@space/shared";
 
 import {
   RouteError,
@@ -88,8 +88,21 @@ export default function EndSeasonScreen() {
 
   const onConfirm = () => {
     if (!check.data) return;
+    // Until the review step shows the criteria (season passing, Task 8), End is sent the season's
+    // criteria as the check offers them, with each score computed as the server will recompute it.
+    const { criteria, graduatesOnPass, students } = check.data;
+    const scores = students.map((s) => ({
+      userId: s.userId,
+      score: weightedScore(passingPcts(s.numbers), criteria.weights).score,
+    }));
     end.mutate(
-      { notPassed, reviewed: { graduatesOnPass: check.data.graduatesOnPass, userIds: reviewedIds } },
+      {
+        notPassed,
+        passedNotes: [],
+        weights: criteria.weights,
+        passMark: criteria.passMark,
+        reviewed: { graduatesOnPass, userIds: reviewedIds, scores },
+      },
       {
         onSuccess: ({ graduated }) => {
           setConfirming(false);

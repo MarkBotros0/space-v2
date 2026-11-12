@@ -9,7 +9,7 @@ import { db } from "../../db/client";
 
 import { buildSeasonWorkbook } from "../../lib/exports/season-workbook";
 import { listSeasonRoster } from "../../lib/queries/groups";
-import { cleanupTestData, createTestSeason, createTestUser, reviewedOf, tokenFor } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, endBodyOf, tokenFor } from "./fixtures";
 import { createAssignmentWithParts, seedTextWork } from "./assignment-reads-setup";
 
 jest.setTimeout(180000);
@@ -120,10 +120,11 @@ beforeAll(async () => {
   });
 
   const adminT = await tokenFor(admin.id);
-  const ended = await post(`/seasons/${seasonId}/end`, adminT, {
-    notPassed: [{ userId: sara, reason: "Absent" }],
-    reviewed: await reviewedOf(seasonId),
-  });
+  const ended = await post(
+    `/seasons/${seasonId}/end`,
+    adminT,
+    await endBodyOf(seasonId, [{ userId: sara, reason: "Absent" }]),
+  );
   expect(ended.status).toBe(200);
   // Tokens from post-End scopes, the way a real refresh gets them.
   superT = await tokenFor(sup.id);

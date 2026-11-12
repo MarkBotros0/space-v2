@@ -129,6 +129,7 @@ erDiagram
   User ||--o{ SeasonEnrollment : "studentUser"
   Season ||--o{ SeasonEnrollment : "season"
   Group |o--o{ SeasonEnrollment : "group"
+  User |o--o{ SeasonEnrollment : "resultSetBy"
   User |o--o{ SeasonEnrollment : "overrideBy"
   Season {
     Int id PK
@@ -194,6 +195,10 @@ erDiagram
     EnrollmentResult result "nullable"
     String resultReason "nullable"
     DateTime resultSetAt "nullable"
+    Int resultSetById FK "nullable"
+    Decimal passScore "nullable"
+    Json passNumbers "nullable"
+    Boolean resultAgainstScore "nullable"
     Int overrideById FK "nullable"
     DateTime overrideAt "nullable"
     DateTime createdAt

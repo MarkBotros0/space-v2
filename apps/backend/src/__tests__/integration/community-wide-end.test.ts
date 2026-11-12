@@ -5,7 +5,7 @@ import { createApp } from "../../app";
 import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 
-import { bearer, cleanupTestData, createTestSeason, createTestUser, reviewedOf, tokenFor } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser, endBodyOf, tokenFor } from "./fixtures";
 
 jest.setTimeout(60000);
 const app = createApp();
@@ -60,10 +60,11 @@ describe("ending a community-wide season", () => {
 
   it("keeps every class, graduates nobody and sends alumni back to the alumni portal", async () => {
     const before = await db.user.findUniqueOrThrow({ where: { id: alumnus.id }, select: { sessionsValidFrom: true } });
-    const res = await post(`/seasons/${seasonId}/end`, superToken, {
-      notPassed: [{ userId: failed.id, reason: null }],
-      reviewed: await reviewedOf(seasonId),
-    });
+    const res = await post(
+      `/seasons/${seasonId}/end`,
+      superToken,
+      await endBodyOf(seasonId, [{ userId: failed.id, reason: null }]),
+    );
     expect(res.status).toBe(200);
     expect(res.body.data.graduated).toBe(0);
     const users = await db.user.findMany({

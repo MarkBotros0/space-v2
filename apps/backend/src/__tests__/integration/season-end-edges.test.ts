@@ -4,7 +4,7 @@ import request from "supertest";
 
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { cleanupTestData, createTestSeason, createTestUser, login, reviewedOf } from "./fixtures";
+import { cleanupTestData, createTestSeason, createTestUser, endBodyOf, login } from "./fixtures";
 
 jest.setTimeout(120000);
 
@@ -60,9 +60,7 @@ describe("a late joiner and the attendance blocker (M2)", () => {
     const res = await check(w.seasonId);
     expect(res.status).toBe(200);
     expect(res.body.data.blockers.attendance).toEqual([]);
-    expect(
-      (await post(`/seasons/${w.seasonId}/end`, { notPassed: [], reviewed: await reviewedOf(w.seasonId) })).status,
-    ).toBe(200);
+    expect((await post(`/seasons/${w.seasonId}/end`, await endBodyOf(w.seasonId))).status).toBe(200);
   });
 
   it("a session held after they joined still does", async () => {
@@ -73,7 +71,7 @@ describe("a late joiner and the attendance blocker (M2)", () => {
     expect(res.body.data.blockers.attendance).toEqual([expect.objectContaining({ sessionId: w.after, missing: 1 })]);
   });
 
-  it("counts everyone who was there and unmarked, and leaves the percentage alone", async () => {
+  it("counts everyone who was there and unmarked, and counts the percentage from their enrolment", async () => {
     const w = await world("c");
     await mark(w.after, w.late);
     const res = await check(w.seasonId);
@@ -82,8 +80,10 @@ describe("a late joiner and the attendance blocker (M2)", () => {
       expect.objectContaining({ sessionId: w.after, missing: 1 }),
     ]);
     const late = res.body.data.students.find((s: { userId: number }) => s.userId === w.late);
-    // One of two sessions: the formula still divides by every session.
-    expect(late.attendancePct).toBe(50);
+    // The one attendance formula (season passing): only sessions since they enrolled count, so the
+    // late joiner was at the one session they could have been at.
+    expect(late.attendancePct).toBe(100);
+    expect(late.numbers.attendance).toEqual({ attended: 1, total: 1 });
   });
 });
 
@@ -92,9 +92,7 @@ describe("the stale cut-off (M4)", () => {
     const season = await createTestSeason();
     const student = await createTestUser("edge-stale", "STUDENT");
     await db.seasonEnrollment.create({ data: { seasonId: season.id, studentUserId: student.id, status: "ACTIVE" } });
-    expect(
-      (await post(`/seasons/${season.id}/end`, { notPassed: [], reviewed: await reviewedOf(season.id) })).status,
-    ).toBe(200);
+    expect((await post(`/seasons/${season.id}/end`, await endBodyOf(season.id))).status).toBe(200);
     const row = await db.seasonEnrollment.findUniqueOrThrow({
       where: { studentUserId_seasonId: { studentUserId: student.id, seasonId: season.id } },
     });
@@ -107,9 +105,7 @@ describe("the End transaction (I5)", () => {
   it("runs with a 30 second timeout", async () => {
     const season = await createTestSeason();
     const spy = jest.spyOn(db, "$transaction");
-    expect(
-      (await post(`/seasons/${season.id}/end`, { notPassed: [], reviewed: await reviewedOf(season.id) })).status,
-    ).toBe(200);
+    expect((await post(`/seasons/${season.id}/end`, await endBodyOf(season.id))).status).toBe(200);
     expect(spy.mock.calls.some((c) => (c[1] as { timeout?: number } | undefined)?.timeout === 30_000)).toBe(true);
     spy.mockRestore();
   });
@@ -125,13 +121,13 @@ describe("the request's limits (M6)", () => {
 
   it("End refuses a student listed twice with 400, and changes nothing", async () => {
     const w = await world("twice");
-    const res = await post(`/seasons/${w.seasonId}/end`, {
-      notPassed: [
+    const res = await post(
+      `/seasons/${w.seasonId}/end`,
+      await endBodyOf(w.seasonId, [
         { userId: w.studentId, reason: "a" },
         { userId: w.studentId, reason: "b" },
-      ],
-      reviewed: await reviewedOf(w.seasonId),
-    });
+      ]),
+    );
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("bad_request");
     expect((await db.season.findUniqueOrThrow({ where: { id: w.seasonId } })).status).toBe("ACTIVE");
@@ -139,19 +135,17 @@ describe("the request's limits (M6)", () => {
 
   it("End refuses a reason over 1000 characters with 400", async () => {
     const w = await world("long");
-    const res = await post(`/seasons/${w.seasonId}/end`, {
-      notPassed: [{ userId: w.studentId, reason: "x".repeat(1001) }],
-      reviewed: await reviewedOf(w.seasonId),
-    });
+    const res = await post(
+      `/seasons/${w.seasonId}/end`,
+      await endBodyOf(w.seasonId, [{ userId: w.studentId, reason: "x".repeat(1001) }]),
+    );
     expect(res.status).toBe(400);
     expect((await db.season.findUniqueOrThrow({ where: { id: w.seasonId } })).status).toBe("ACTIVE");
   });
 
   it("a result correction refuses a reason over 1000 characters with 400", async () => {
     const w = await world("correct");
-    expect(
-      (await post(`/seasons/${w.seasonId}/end`, { notPassed: [], reviewed: await reviewedOf(w.seasonId) })).status,
-    ).toBe(200);
+    expect((await post(`/seasons/${w.seasonId}/end`, await endBodyOf(w.seasonId))).status).toBe(200);
     const res = await request(app)
       .patch(`/api/v1/seasons/${w.seasonId}/results/${w.studentId}`)
       .set("authorization", `Bearer ${superToken}`)

@@ -7,6 +7,8 @@ import type { Express } from "express";
 import { db } from "../../db/client";
 import { loadScopes } from "../../lib/auth/scopes";
 import { signAccessToken } from "../../lib/auth/tokens";
+import { loadSeasonEndCheck } from "../../lib/queries/season-end";
+import { passingPcts, weightedScore, type PassWeights } from "../../../../../packages/shared/src/index";
 
 /**
  * Every row these helpers create carries this prefix in a unique, queryable
@@ -206,14 +208,51 @@ export async function cleanupTestData(): Promise<void> {
   await db.user.deleteMany({ where: testUserFilter });
 }
 
-/** What End's review screen would send: the season's flag and its live ACTIVE students, as they are now. */
-export async function reviewedOf(seasonId: number): Promise<{ graduatesOnPass: boolean; userIds: number[] }> {
-  const season = await db.season.findUniqueOrThrow({ where: { id: seasonId }, select: { graduatesOnPass: true } });
-  const rows = await db.seasonEnrollment.findMany({
-    where: { seasonId, status: "ACTIVE", studentUser: { deletedAt: null } },
-    select: { studentUserId: true },
-  });
-  return { graduatesOnPass: season.graduatesOnPass, userIds: rows.map((r) => r.studentUserId) };
+type Weights = PassWeights;
+const NUMBER_KEYS = ["attendance", "assignments", "quizzes"] as const;
+
+/**
+ * Criteria End accepts for this season: what its check offers, unless that weights a number the
+ * season has nothing for; then everything on the first number it has (as an admin would fix it).
+ */
+export async function endCriteriaOf(seasonId: number): Promise<{ weights: Weights; passMark: number }> {
+  const check = await loadSeasonEndCheck(seasonId, new Date());
+  const { weights } = check.criteria;
+  const has = NUMBER_KEYS.filter((k) => check.available[k]);
+  const fits = has.length === 0 || NUMBER_KEYS.every((k) => weights[k] === 0 || check.available[k]);
+  const fitted = fits ? weights : { attendance: 0, assignments: 0, quizzes: 0, [has[0]!]: 100 };
+  return { weights: fitted, passMark: check.criteria.passMark };
+}
+
+type Reviewed = { graduatesOnPass: boolean; userIds: number[]; scores: { userId: number; score: number | null }[] };
+
+/**
+ * What End's review screen would send: the season's flag, its live ACTIVE students and their
+ * scores under `weights` (by default `endCriteriaOf`'s), as they are now.
+ */
+export async function reviewedOf(seasonId: number, weights?: Weights): Promise<Reviewed> {
+  const check = await loadSeasonEndCheck(seasonId, new Date());
+  const w = weights ?? (await endCriteriaOf(seasonId)).weights;
+  return {
+    graduatesOnPass: check.graduatesOnPass,
+    userIds: check.students.map((s) => s.userId),
+    scores: check.students.map((s) => ({ userId: s.userId, score: weightedScore(passingPcts(s.numbers), w).score })),
+  };
+}
+
+/** A whole End body: `notPassed`, the criteria `endCriteriaOf` picks and `reviewed` (by default `reviewedOf`). */
+export async function endBodyOf(
+  seasonId: number,
+  notPassed: { userId: number; reason: string | null }[] = [],
+  reviewed?: Reviewed,
+) {
+  const criteria = await endCriteriaOf(seasonId);
+  return {
+    notPassed,
+    passedNotes: [],
+    ...criteria,
+    reviewed: reviewed ?? (await reviewedOf(seasonId, criteria.weights)),
+  };
 }
 
 /** An access token for this user with their live scopes, minted directly (no login round trip). */

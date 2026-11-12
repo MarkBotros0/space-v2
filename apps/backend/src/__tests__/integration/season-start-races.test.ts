@@ -7,7 +7,7 @@ import request from "supertest";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { lockSeason, lockSeasonStart, type SeasonLockMode } from "../../lib/roles";
-import { createTestUser, login, reviewedOf } from "./fixtures";
+import { createTestUser, endBodyOf, login, reviewedOf } from "./fixtures";
 import { behind, holdTransaction, untilWaiting } from "./lock-holds";
 import {
   app,
@@ -196,13 +196,11 @@ describe("a Start or End while a seat write is open", () => {
   it("End waits for the write, then refuses: the new student was never reviewed", async () => {
     const live = await season("ACTIVE");
     const q = await person("Late Student");
-    const reviewed = await reviewedOf(live);
+    const body = await endBodyOf(live, [], await reviewedOf(live));
     const held = await hold(live, "share", (tx) =>
       tx.seasonEnrollment.create({ data: { seasonId: live, studentUserId: q.id, status: "ACTIVE" } }),
     );
-    const res = await behind(held, () =>
-      request(app).post(`/api/v1/seasons/${live}/end`).set(superCall()).send({ notPassed: [], reviewed }),
-    );
+    const res = await behind(held, () => request(app).post(`/api/v1/seasons/${live}/end`).set(superCall()).send(body));
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe("season_unfinished");
     const row = await db.seasonEnrollment.findFirstOrThrow({ where: { seasonId: live, studentUserId: q.id } });

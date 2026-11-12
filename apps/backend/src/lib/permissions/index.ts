@@ -8,6 +8,7 @@ export {
   attendanceScopeFor,
   calendarScopeFor,
   canAccessSeason,
+  canCorrectSeasonResults,
   canManageAssignment,
   canManageSessionVideo,
   canMarkAttendance,

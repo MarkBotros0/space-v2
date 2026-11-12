@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import { studentAssignmentListItemSchema } from "./assignment";
 import { attendanceStatusSchema, quizKindSchema, seasonStatusSchema } from "./enums";
+import {
+  passCriteriaSchema,
+  passingNumbersSchema,
+  passWeightsSchema,
+  seasonAvailabilitySchema,
+} from "./season-passing";
 
 // Season end, pass results and the per-season record. Timestamps are ISO strings
 // on the wire, like the rest of this package.
@@ -63,6 +69,11 @@ export type SeasonStartCheck = z.infer<typeof seasonStartCheckSchema>;
 export const seasonEndCheckSchema = z.object({
   /** Everyone who passes becomes an alumnus when the season ends. */
   graduatesOnPass: z.boolean(),
+  /** The season's pass criteria, or the default (`isDefault`) when it has none of its own. */
+  criteria: passCriteriaSchema,
+  isDefault: z.boolean(),
+  /** What the season has to count; a weight above 0 on a number it has nothing for is refused. */
+  available: seasonAvailabilitySchema,
   blockers: z.object({
     submissions: z.array(z.object({ publicId: z.string(), assignmentTitle: z.string(), studentName: z.string() })),
     quizAttempts: z.array(
@@ -87,9 +98,12 @@ export const seasonEndCheckSchema = z.object({
       userId: z.number(),
       name: z.string(),
       groupName: z.string().nullable(),
+      /** `numbers.attendance` as a whole percent; 0 with nothing to count. */
       attendancePct: z.number(),
       /** Their class (`classLabel`, e.g. JPCS-25); null for a non-alumnus. */
       graduationYear: z.number().int().nullable(),
+      /** The three numbers the score comes from (`weightedScore(passingPcts(numbers), weights)`). */
+      numbers: passingNumbersSchema,
     }),
   ),
 });
@@ -99,20 +113,35 @@ export type SeasonEndCheck = z.infer<typeof seasonEndCheckSchema>;
 export const SEASON_RESULT_REASON_MAX = 1000;
 const resultReasonSchema = z.string().max(SEASON_RESULT_REASON_MAX).nullable();
 
+const eachStudentOnce = <T extends { userId: number }>(rows: T[]) =>
+  new Set(rows.map((r) => r.userId)).size === rows.length;
+
 export const endSeasonRequestSchema = z
   .object({
     notPassed: z
       .array(z.object({ userId: z.number().int(), reason: resultReasonSchema }))
-      .refine((rows) => new Set(rows.map((r) => r.userId)).size === rows.length, {
-        message: "A student is listed twice.",
-      }),
+      .refine(eachStudentOnce, { message: "A student is listed twice." }),
+    /** An optional note on a student who passes (e.g. why they pass below the mark), kept as the result's reason. */
+    passedNotes: z
+      .array(z.object({ userId: z.number().int(), note: resultReasonSchema }))
+      .refine(eachStudentOnce, { message: "A student is listed twice." })
+      .default([]),
+    /** The criteria End uses and stores on the season. */
+    weights: passWeightsSchema,
+    passMark: z.number().int().min(0).max(100),
     /** What the staff member was shown. The server refuses to end on anything else. */
     reviewed: z.object({
       graduatesOnPass: z.boolean(),
       userIds: z.array(z.number().int()),
+      /** Each student's score as shown, under these weights; End recomputes them and refuses a difference. */
+      scores: z.array(z.object({ userId: z.number().int(), score: z.number().nullable() })),
     }),
   })
-  .strict();
+  .strict()
+  .refine((b) => b.weights.attendance + b.weights.assignments + b.weights.quizzes === 100, {
+    message: "The weights must add up to 100%.",
+    path: ["weights"],
+  });
 export type EndSeasonRequest = z.infer<typeof endSeasonRequestSchema>;
 
 export const endSeasonResponseSchema = z.object({
@@ -129,8 +158,32 @@ export const seasonResultRowSchema = z.object({
   attendancePct: z.number(),
   result: enrollmentResultSchema.nullable(),
   reason: z.string().nullable(),
+  // An app build talking to a backend from before season passing reads "none" for the five below.
+  /** The score End stored; null with nothing to count, or for a season ended before weighted passing. */
+  passScore: z.number().nullable().default(null),
+  /** The numbers End stored; null for a season ended before weighted passing. */
+  numbers: passingNumbersSchema.nullable().default(null),
+  /** The result goes against the stored score (passed below the mark, or did not pass at or above it). */
+  againstScore: z.boolean().default(false),
+  /** Who set the result (End or a later correction), and when; null when not recorded. */
+  setByName: z.string().nullable().default(null),
+  setAt: z.string().nullable().default(null),
 });
 export type SeasonResultRow = z.infer<typeof seasonResultRowSchema>;
+
+/** `GET /seasons/:id/results`: the season, the criteria End used (null before weighted passing), and each result. */
+export const seasonResultsResponseSchema = z.object({
+  season: z.object({
+    id: z.number(),
+    code: z.string(),
+    title: z.string(),
+    year: z.number().int(),
+    graduatesOnPass: z.boolean(),
+  }),
+  criteria: passCriteriaSchema.nullable(),
+  results: z.array(seasonResultRowSchema),
+});
+export type SeasonResultsResponse = z.infer<typeof seasonResultsResponseSchema>;
 
 export const updateSeasonResultRequestSchema = z
   .object({ result: enrollmentResultSchema, reason: resultReasonSchema })

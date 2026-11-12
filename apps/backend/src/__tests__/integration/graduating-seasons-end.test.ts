@@ -3,6 +3,7 @@ import request from "supertest";
 
 import { db } from "../../db/client";
 import { PASSWORD, createTestUser, reviewedOf } from "./fixtures";
+import { CRITERIA, bodyFrom, endCheck, postEnd, seedEndWorld } from "./season-end-passing-setup";
 import { THIS_YEAR, auditLines, end, enrol, nextSecond, seasonOf, yearOf } from "./graduating-seasons-setup";
 import {
   adminTokenOf,
@@ -223,5 +224,24 @@ describe("End only graduates live students", () => {
     expect(res.status).toBe(200);
     expect(res.body.data.graduated).toBe(0);
     expect(await yearOf(leader.id)).toBeNull();
+  });
+});
+
+describe("End of a graduating season by the weighted score", () => {
+  it("End on a graduating season graduates the passers whatever their score", async () => {
+    const w = await seedEndWorld({ graduatesOnPass: true });
+    const check = await endCheck(w.seasonId, w.tokens.admin);
+    // The high scorer is held back; the low scorer (40.0, below 60) passes on the admin's call.
+    const res = await postEnd(
+      w.seasonId,
+      w.tokens.admin,
+      bodyFrom(check, CRITERIA, { notPassed: [{ userId: w.users.high.id, reason: null }] }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.graduated).toBe(1);
+    expect(await yearOf(w.users.low.id)).not.toBeNull();
+    expect(await yearOf(w.users.high.id)).toBeNull();
+    expect(await rowOf(w.seasonId, w.users.low.id)).toMatchObject({ result: "PASSED", resultAgainstScore: true });
   });
 });

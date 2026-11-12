@@ -188,7 +188,18 @@ describe("GET /seasons/:id/end-check", () => {
     await db.seasonEnrollment.create({ data: { seasonId: empty, studentUserId: u.id, status: "ACTIVE" } });
     const res = await get(empty, superToken);
     expect(res.body.data.students).toEqual([
-      { userId: u.id, name: "Test nosessions", groupName: null, attendancePct: 0, graduationYear: null },
+      {
+        userId: u.id,
+        name: "Test nosessions",
+        groupName: null,
+        attendancePct: 0,
+        graduationYear: null,
+        numbers: {
+          attendance: { attended: 0, total: 0 },
+          assignments: { submitted: 0, total: 0 },
+          quizzes: { scored: 0, max: 0 },
+        },
+      },
     ]);
     expect(res.body.data.blockers).toEqual({ submissions: [], quizAttempts: [], attendance: [] });
   });

@@ -6,7 +6,7 @@ import { db } from "../../db/client";
 import { addQuizQuestion } from "../../lib/quizzes/questions";
 import { newPublicId } from "../../lib/public-id";
 import { studentQuizDetailSchema } from "../../../../../packages/shared/src/index";
-import { cleanupTestData, createTestUser, reviewedOf, tokenFor } from "./fixtures";
+import { cleanupTestData, createTestUser, endBodyOf, tokenFor } from "./fixtures";
 import { seedModuleWorld, type ModuleWorld } from "./module-world";
 import { createAssignmentWithParts, seedEssays, seedTextWork } from "./assignment-reads-setup";
 
@@ -205,10 +205,7 @@ beforeAll(async () => {
     },
   ]);
 
-  const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, {
-    notPassed: [],
-    reviewed: await reviewedOf(seasonId),
-  });
+  const ended = await call("post", `/seasons/${seasonId}/end`, w.tokens.admin, await endBodyOf(seasonId, []));
   expect(ended.status).toBe(200);
 
   for (const role of ["super", "admin", "leaderA", "mentor", "studentA", "studentB", "alumnus"] as const) {

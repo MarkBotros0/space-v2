@@ -17,7 +17,7 @@ import {
   seedEnrollmentFixtures,
   teardownEnrollmentFixtures,
 } from "./season-enrollments-setup";
-import { createTestUser, login, PASSWORD, reviewedOf, testEventTitle } from "./fixtures";
+import { createTestUser, endBodyOf, login, PASSWORD, testEventTitle } from "./fixtures";
 import { createAssignmentWithParts } from "./assignment-reads-setup";
 
 jest.setTimeout(120000);
@@ -309,7 +309,7 @@ describe("a token crossing the season's start and end", () => {
     const end = await request(app)
       .post(`/api/v1/seasons/${draft}/end`)
       .set(as(ctx.superToken))
-      .send({ notPassed: [], reviewed: await reviewedOf(draft) });
+      .send(await endBodyOf(draft));
     expect(end.status).toBe(200);
     const after = await refresh(refreshOf(during));
     expect(after.status).toBe(200);

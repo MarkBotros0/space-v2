@@ -13,7 +13,7 @@ import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
-import { check, detail } from "./helpers/season-end-fixtures";
+import { check, detail, endBody } from "./helpers/season-end-fixtures";
 import { makeSession } from "./helpers/session";
 import EndSeasonScreen from "../../app/(app)/seasons/[code]/end";
 import SeasonResultsScreen from "../../app/(app)/seasons/[code]/results";
@@ -177,10 +177,10 @@ describe("A stale review", () => {
     await screen.findByText(/This finishes/);
     confirmEnd();
     await waitFor(() =>
-      expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/end", {
-        notPassed: [],
-        reviewed: { graduatesOnPass: true, userIds: [1, 2] },
-      }),
+      expect(post).toHaveBeenCalledWith(
+        "/api/v1/seasons/7/end",
+        endBody([], { graduatesOnPass: true, userIds: [1, 2] }),
+      ),
     );
   });
 
@@ -210,10 +210,10 @@ describe("A stale review", () => {
     expect(await screen.findByText(/2 people will graduate\.$/)).toBeTruthy();
     confirmEnd();
     await waitFor(() =>
-      expect(post).toHaveBeenLastCalledWith("/api/v1/seasons/7/end", {
-        notPassed: [{ userId: 2, reason: "Absent" }],
-        reviewed: { graduatesOnPass: true, userIds: [1, 2, 3] },
-      }),
+      expect(post).toHaveBeenLastCalledWith(
+        "/api/v1/seasons/7/end",
+        endBody([{ userId: 2, reason: "Absent" }], { graduatesOnPass: true, userIds: [1, 2, 3] }),
+      ),
     );
   });
 
@@ -238,10 +238,10 @@ describe("A stale review", () => {
     expect(await screen.findByText(/1 person will graduate\.$/)).toBeTruthy();
     confirmEnd();
     await waitFor(() =>
-      expect(post).toHaveBeenLastCalledWith("/api/v1/seasons/7/end", {
-        notPassed: [],
-        reviewed: { graduatesOnPass: true, userIds: [1] },
-      }),
+      expect(post).toHaveBeenLastCalledWith(
+        "/api/v1/seasons/7/end",
+        endBody([], { graduatesOnPass: true, userIds: [1] }),
+      ),
     );
   });
 });

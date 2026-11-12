@@ -3,7 +3,7 @@
 import request from "supertest";
 
 import { db } from "../../db/client";
-import { reviewedOf } from "./fixtures";
+import { endBodyOf } from "./fixtures";
 import {
   app,
   as,
@@ -83,7 +83,7 @@ describe("a graduating season's End", () => {
     const res = await request(app)
       .post(`/api/v1/seasons/${seasonId}/end`)
       .set(as(ctx.superToken))
-      .send({ notPassed: [], reviewed: await reviewedOf(seasonId) });
+      .send(await endBodyOf(seasonId));
     expect(res.status).toBe(200);
     expect(res.body.data.graduated).toBe(1);
     expect(await rowOf(draft, x.id)).toBeNull();

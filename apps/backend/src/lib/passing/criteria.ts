@@ -38,12 +38,20 @@ function toCriteria(row: CriteriaRow | null): PassCriteria | null {
   };
 }
 
+/** The season's own criteria (saved, or stored by End); null when it has none. */
+export async function loadOwnPassCriteria(
+  seasonId: number,
+  client: Prisma.TransactionClient = db,
+): Promise<PassCriteria | null> {
+  return toCriteria(await client.season.findUnique({ where: { id: seasonId }, select: CRITERIA_SELECT }));
+}
+
 /** The season's own criteria, or the default (`isDefault`): the newest saved on any live season, else 40/30/30 and 60. */
 export async function loadPassCriteria(
   seasonId: number,
   client: Prisma.TransactionClient = db,
 ): Promise<{ criteria: PassCriteria; isDefault: boolean }> {
-  const own = toCriteria(await client.season.findUnique({ where: { id: seasonId }, select: CRITERIA_SELECT }));
+  const own = await loadOwnPassCriteria(seasonId, client);
   if (own) return { criteria: own, isDefault: false };
   const last = await client.season.findFirst({
     where: { ...liveSeason, passCriteriaSetAt: { not: null } },
@@ -68,6 +76,17 @@ export function checkWeightsAvailable(criteria: PassCriteria, available: SeasonA
   }
 }
 
+/** The Season columns that hold `criteria`, saved at `now`: the save's write and End's. */
+export function passCriteriaData(criteria: PassCriteria, now: Date) {
+  return {
+    passWeightAttendance: criteria.weights.attendance,
+    passWeightAssignments: criteria.weights.assignments,
+    passWeightQuizzes: criteria.weights.quizzes,
+    passMark: criteria.passMark,
+    passCriteriaSetAt: now,
+  } satisfies Prisma.SeasonUpdateInput;
+}
+
 /**
  * Save the season's criteria. The Season row is locked FOR NO KEY UPDATE, the lock its own write
  * takes anyway: holding it FOR SHARE first would let two saves at once deadlock upgrading it. It
@@ -82,16 +101,7 @@ export async function savePassCriteria(seasonId: number, criteria: PassCriteria,
       throw new ApiError("season_not_active", "Pass criteria can only be set on an active season.", 409);
     }
     checkWeightsAvailable(criteria, await loadSeasonAvailability(seasonId, tx));
-    await tx.season.update({
-      where: { id: seasonId },
-      data: {
-        passWeightAttendance: criteria.weights.attendance,
-        passWeightAssignments: criteria.weights.assignments,
-        passWeightQuizzes: criteria.weights.quizzes,
-        passMark: criteria.passMark,
-        passCriteriaSetAt: now,
-      },
-    });
+    await tx.season.update({ where: { id: seasonId }, data: passCriteriaData(criteria, now) });
     return criteria;
   });
 }
