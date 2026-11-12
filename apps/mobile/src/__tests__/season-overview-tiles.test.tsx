@@ -50,13 +50,13 @@ const END = "End season: Results and graduation";
 const RESULTS = "Results";
 
 const cases: Array<[Role, keyof typeof statuses, string[], string | null]> = [
-  ["SUPER", "draft", [S, A, Q], "This season is a draft"],
-  ["SUPER", "running", [S, A, Q, P, END], null],
-  ["SUPER", "overdue", [S, A, Q, P], "The end date has passed"],
+  ["SUPER", "draft", [Q, A, S], "This season is a draft"],
+  ["SUPER", "running", [Q, A, S, P, END], null],
+  ["SUPER", "overdue", [Q, A, S, P], "The end date has passed"],
   ["SUPER", "finished", [S, RESULTS], "This season has finished"],
-  ["ADMIN", "draft", [S, A, Q], null],
-  ["ADMIN", "running", [S, A, Q, P, END], null],
-  ["ADMIN", "overdue", [S, A, Q, P], "The end date has passed"],
+  ["ADMIN", "draft", [Q, A, S], null],
+  ["ADMIN", "running", [Q, A, S, P, END], null],
+  ["ADMIN", "overdue", [Q, A, S, P], "The end date has passed"],
   ["ADMIN", "finished", [S, RESULTS], null],
   ["LEADER", "draft", [S], null],
   ["LEADER", "running", [S, P], null],

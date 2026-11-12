@@ -30,7 +30,7 @@ beforeEach(() => {
 });
 
 describe("SeasonDetailScreen (/seasons/[code])", () => {
-  it("shows the season at a glance and its figures", async () => {
+  it("shows the season at a glance, with no separate figures card (owner, 2026-11-13)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     routeGets(detail());
     renderWithProviders(<SeasonDetailScreen />);
@@ -39,9 +39,10 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
     expect(screen.getByText("Code: s7")).toBeTruthy();
     expect(screen.getByText("Draft")).toBeTruthy();
     expect(screen.getByText("Jan 1, 2099 – Dec 31, 2099")).toBeTruthy();
-    expect(screen.getByLabelText("4 students")).toBeTruthy();
-    expect(screen.getByLabelText("1 group")).toBeTruthy();
-    expect(screen.getByLabelText("1 session")).toBeTruthy();
+    // The People card and the tiles carry the counts.
+    expect(screen.queryByLabelText("4 students")).toBeNull();
+    expect(screen.getByText("Students (4)")).toBeTruthy();
+    expect(screen.getByText("Groups (1)")).toBeTruthy();
     expect(screen.getByText("Spring.")).toBeTruthy();
     expect(screen.queryByText("Overview")).toBeNull();
   });
@@ -183,9 +184,7 @@ describe("SeasonDetailScreen (/seasons/[code])", () => {
       }),
     );
     renderWithProviders(<SeasonDetailScreen />);
-    expect(await screen.findByLabelText("3 students")).toBeTruthy();
-    expect(screen.getByLabelText("2 groups")).toBeTruthy();
-    expect(screen.getByText("Groups (2)")).toBeTruthy();
+    expect(await screen.findByText("Groups (2)")).toBeTruthy();
     expect(screen.getByText("No leader yet")).toBeTruthy();
     expect(screen.getByText("Leaders: Omar, Lina")).toBeTruthy();
     expect(screen.getByText("1 student")).toBeTruthy();

@@ -20,10 +20,10 @@ describe("seasonOverviewModel", () => {
 
   it("moves End season from a tile to the next step once the end date has passed", () => {
     const running = seasonOverviewModel(season(), { isSuper: false, today: "2026-06-01" });
-    expect(keys(running)).toEqual(["sessions", "assignments", "quizzes", "passing", "end"]);
+    expect(keys(running)).toEqual(["quizzes", "assignments", "sessions", "passing", "end"]);
     expect(running.nextStep).toBeNull();
     const overdue = seasonOverviewModel(season(), { isSuper: false, today: "2026-07-01" });
-    expect(keys(overdue)).toEqual(["sessions", "assignments", "quizzes", "passing"]);
+    expect(keys(overdue)).toEqual(["quizzes", "assignments", "sessions", "passing"]);
     expect(overdue.nextStep).toMatchObject({ key: "end", tone: "warn", actionLabel: "End season" });
   });
 
@@ -45,12 +45,13 @@ describe("seasonOverviewModel", () => {
       today: "2026-06-01",
     });
     expect(m).toMatchObject({ canAdminister: false, manage: true });
-    expect(keys(m)).toEqual(["sessions", "assignments", "quizzes"]);
+    expect(keys(m)).toEqual(["quizzes", "assignments", "sessions"]);
     expect(m.nextStep?.key).toBe("start");
   });
 
   it("says None yet on Sessions with no sessions", () => {
-    expect(seasonOverviewModel(season({ sessionCount: 0 }), { isSuper: false, today: "2026-06-01" }).tiles[0]).toEqual({
+    const { tiles } = seasonOverviewModel(season({ sessionCount: 0 }), { isSuper: false, today: "2026-06-01" });
+    expect(tiles.find((t) => t.key === "sessions")).toEqual({
       key: "sessions",
       label: "Sessions",
       hint: "None yet",

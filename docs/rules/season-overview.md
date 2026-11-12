@@ -3,15 +3,16 @@
 > Owner ruling, moved verbatim from the root `CLAUDE.md` (2026-11-10). Backend paths are under
 > `apps/backend/src/`, mobile paths under `apps/mobile/src/`, unless written in full.
 
-`/seasons/[code]` is one page: the summary and figures, the next step, then one **People** card
+`/seasons/[code]` is one page: the summary, the next step, then one **People** card
 (`screens/season/people-card.tsx`): Admins (Super only), then each group with its leaders and up to
 six of its students as pills, then "Not in a group". New group, Move students (the roster) and Manage
 admins (`/seasons/[code]/admins`) live inside it; there is no separate Groups or Admins section. The
-Manage tiles name what they open, never "Manage ...": Sessions (`/seasons/[code]/sessions`),
-Assignments and Quizzes (the staff lists with `?seasonId`), Passing (`/seasons/[code]/passing`: who is
+Manage tiles name what they open, never "Manage ...": Quizzes and Assignments (the staff lists with
+`?seasonId`), then Sessions (`/seasons/[code]/sessions`) (owner, 2026-11-13: Sessions swapped with Quizzes), Passing (`/seasons/[code]/passing`: who is
 on track, the pass criteria; admins, supers and the season's leaders, never a mentor), End season,
 Results (current admins and supers; a former admin uses the Reports link). Edit
-and Duplicate are icon buttons beside the name. **A finished season is read-only**: people, groups
+and Duplicate are icon buttons beside the name. There is no figures card (students, groups,
+sessions): the People card and the tiles already give those counts (owner, 2026-11-13). **A finished season is read-only**: people, groups
 and sessions are read, nothing is added, moved or marked; a note offers "Duplicate as a draft".
 Finished seasons still never reopen.
 

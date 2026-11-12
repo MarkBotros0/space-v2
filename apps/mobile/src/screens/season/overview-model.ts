@@ -62,19 +62,20 @@ export function seasonOverviewModel(
   const pastEnd = season.status === "ACTIVE" && today > season.endDate.slice(0, 10);
 
   // Each tile names what it opens (owner, 2026-11-07: not "Manage ..." on every card).
-  const tiles: OverviewTile[] = [
-    {
-      key: "sessions",
-      label: "Sessions",
-      hint: season.sessionCount === 0 ? "None yet" : countOf(season.sessionCount, "session"),
-    },
-  ];
-  if (manage) {
-    tiles.push(
-      { key: "assignments", label: "Assignments", hint: "Set work and review it" },
-      { key: "quizzes", label: "Quizzes", hint: "Write, give and grade" },
-    );
-  }
+  const sessions: OverviewTile = {
+    key: "sessions",
+    label: "Sessions",
+    hint: season.sessionCount === 0 ? "None yet" : countOf(season.sessionCount, "session"),
+  };
+  // Quizzes first and Sessions after Assignments (owner, 2026-11-13: "make the sessions card in the
+  // bottom and swap it with the quizzes").
+  const tiles: OverviewTile[] = manage
+    ? [
+        { key: "quizzes", label: "Quizzes", hint: "Write, give and grade" },
+        { key: "assignments", label: "Assignments", hint: "Set work and review it" },
+        sessions,
+      ]
+    : [sessions];
   // Season passing: admin, super and the season's leaders, while it runs (End takes over after).
   if (season.status === "ACTIVE" && (manage || leads)) {
     tiles.push({ key: "passing", label: "Passing", hint: "Who is on track" });

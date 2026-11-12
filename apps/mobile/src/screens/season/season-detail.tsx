@@ -2,15 +2,15 @@
  * A season's page as one overview (owner, 2026-11-07: no Overview / Groups /
  * Sessions tabs, and not a stack of rows). Top to bottom:
  * - the season at a glance: status, dates, where it is in its life, About;
- * - its figures in one card: students, groups, sessions;
  * - the next step the caller supplies (Start season on a draft, End season past
  *   its end date), when there is one;
- * - who is in it, as one People card: admins, groups, students (owner, 2026-11-07);
+ * - who is in it, as one People card: admins, groups, students (owner, 2026-11-07). No separate
+ *   figures card: the People card and the tiles already give the counts (owner, 2026-11-13);
  * - what can be done to it, as a grid of tiles (Sessions, Assignments,
  *   Quizzes, ...), then the caller's extra cards.
  */
 import type { SeasonDetail } from "@space/shared";
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { View } from "react-native";
 
 import { formatSeasonDay } from "../../lib/format";
@@ -50,35 +50,6 @@ function SeasonSummary({ season, today }: { season: SeasonDetail; today: string 
   );
 }
 
-function Figures({ season }: { season: SeasonDetail }) {
-  const figures = [
-    { label: season.studentCount === 1 ? "Student" : "Students", value: season.studentCount },
-    { label: season.groups.length === 1 ? "Group" : "Groups", value: season.groups.length },
-    { label: season.sessionCount === 1 ? "Session" : "Sessions", value: season.sessionCount },
-  ];
-  return (
-    <View testID="season-figures" className="flex-row items-stretch rounded-group bg-surface py-4">
-      {figures.map((f, i) => (
-        <Fragment key={f.label}>
-          {i > 0 ? <View className="w-px self-stretch bg-separator" /> : null}
-          <View
-            accessible
-            accessibilityLabel={`${f.value} ${f.label.toLowerCase()}`}
-            className="min-w-0 flex-1 items-center gap-0.5 px-1"
-          >
-            <Text variant="title" tabular numberOfLines={1} maxFontSizeMultiplier={1.3}>
-              {String(f.value)}
-            </Text>
-            <Text variant="caption" numberOfLines={1} maxFontSizeMultiplier={1.3} className="text-muted-foreground">
-              {f.label}
-            </Text>
-          </View>
-        </Fragment>
-      ))}
-    </View>
-  );
-}
-
 export function SeasonDetailView({
   season,
   today,
@@ -101,10 +72,7 @@ export function SeasonDetailView({
 }) {
   return (
     <View className="flex-col gap-6">
-      <View className="flex-col gap-3">
-        <SeasonSummary season={season} today={today} />
-        <Figures season={season} />
-      </View>
+      <SeasonSummary season={season} today={today} />
       {nextStep}
       {attention}
       <View className="flex-col gap-2">
