@@ -6,7 +6,7 @@
 import type { SeasonAdminItem, SeasonDetail, SeasonRosterRow } from "@space/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Award, CalendarDays, ClipboardList, FileQuestion, Flag, type LucideIcon } from "lucide-react-native";
+import { Award, CalendarDays, ClipboardList, FileQuestion, Flag, Target, type LucideIcon } from "lucide-react-native";
 
 import { EditSeason } from "./edit-season";
 import { NextStepCard } from "./next-step-card";
@@ -15,6 +15,7 @@ import { SeasonDetailView, type SeasonAction } from "./season-detail";
 import type { seasonSuggestion } from "../season-people/source";
 import { seasonOverviewModel, type OverviewNextStepKey, type OverviewTileKey } from "./overview-model";
 import { SeasonNeeds } from "./season-needs";
+import { useSessionStore } from "../../store/session";
 
 function peopleCardAdmins(isSuper: boolean, admins: UseQueryResult<SeasonAdminItem[]>): PeopleCardAdmins | undefined {
   if (!isSuper) return undefined;
@@ -44,7 +45,11 @@ export function SeasonOverview({
   onDuplicate: () => void;
 }) {
   const router = useRouter();
-  const model = seasonOverviewModel(s, { isSuper, today });
+  // A leader of one of this season's groups reads its passing outlook (their groups' students).
+  const leads = useSessionStore(
+    (st) => st.user?.role === "LEADER" && s.groups.some((g) => st.scopes?.groupLeaderIds.includes(g.id)),
+  );
+  const model = seasonOverviewModel(s, { isSuper, today, leads });
   const { finished, canAdminister, manage } = model;
   const params = { code: s.code };
   const seasonParam = { seasonId: String(s.id) };
@@ -58,6 +63,7 @@ export function SeasonOverview({
     sessions: { icon: CalendarDays, onPress: () => router.push({ pathname: "/seasons/[code]/sessions", params }) },
     assignments: { icon: ClipboardList, onPress: () => router.push({ pathname: "/assignments", params: seasonParam }) },
     quizzes: { icon: FileQuestion, onPress: () => router.push({ pathname: "/quizzes", params: seasonParam }) },
+    passing: { icon: Target, onPress: () => router.push({ pathname: "/seasons/[code]/passing", params }) },
     end: { icon: Flag, onPress: go.end },
     results: { icon: Award, onPress: () => router.push({ pathname: "/seasons/[code]/results", params }) },
   };

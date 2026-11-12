@@ -45,21 +45,22 @@ const statuses = {
 const S = "Sessions: 1\u00a0session";
 const A = "Assignments: Set work and review it";
 const Q = "Quizzes: Write, give and grade";
+const P = "Passing: Who is on track";
 const END = "End season: Results and graduation";
 const RESULTS = "Results";
 
 const cases: Array<[Role, keyof typeof statuses, string[], string | null]> = [
   ["SUPER", "draft", [S, A, Q], "This season is a draft"],
-  ["SUPER", "running", [S, A, Q, END], null],
-  ["SUPER", "overdue", [S, A, Q], "The end date has passed"],
+  ["SUPER", "running", [S, A, Q, P, END], null],
+  ["SUPER", "overdue", [S, A, Q, P], "The end date has passed"],
   ["SUPER", "finished", [S, RESULTS], "This season has finished"],
   ["ADMIN", "draft", [S, A, Q], null],
-  ["ADMIN", "running", [S, A, Q, END], null],
-  ["ADMIN", "overdue", [S, A, Q], "The end date has passed"],
+  ["ADMIN", "running", [S, A, Q, P, END], null],
+  ["ADMIN", "overdue", [S, A, Q, P], "The end date has passed"],
   ["ADMIN", "finished", [S], null],
   ["LEADER", "draft", [S], null],
-  ["LEADER", "running", [S], null],
-  ["LEADER", "overdue", [S], null],
+  ["LEADER", "running", [S, P], null],
+  ["LEADER", "overdue", [S, P], null],
   ["LEADER", "finished", [S], null],
 ];
 

@@ -20,10 +20,10 @@ describe("seasonOverviewModel", () => {
 
   it("moves End season from a tile to the next step once the end date has passed", () => {
     const running = seasonOverviewModel(season(), { isSuper: false, today: "2026-06-01" });
-    expect(keys(running)).toEqual(["sessions", "assignments", "quizzes", "end"]);
+    expect(keys(running)).toEqual(["sessions", "assignments", "quizzes", "passing", "end"]);
     expect(running.nextStep).toBeNull();
     const overdue = seasonOverviewModel(season(), { isSuper: false, today: "2026-07-01" });
-    expect(keys(overdue)).toEqual(["sessions", "assignments", "quizzes"]);
+    expect(keys(overdue)).toEqual(["sessions", "assignments", "quizzes", "passing"]);
     expect(overdue.nextStep).toMatchObject({ key: "end", tone: "warn", actionLabel: "End season" });
   });
 
@@ -53,5 +53,25 @@ describe("seasonOverviewModel", () => {
       label: "Sessions",
       hint: "None yet",
     });
+  });
+  it("the Passing tile shows for staff on an active season only", () => {
+    const passing = (m: ReturnType<typeof seasonOverviewModel>) => m.tiles.find((t) => t.key === "passing");
+    const day = { today: "2026-06-01" };
+    expect(passing(seasonOverviewModel(season(), { isSuper: false, ...day }))).toEqual({
+      key: "passing",
+      label: "Passing",
+      hint: "Who is on track",
+    });
+    expect(passing(seasonOverviewModel(season({ canAdminister: false }), { isSuper: true, ...day }))).toBeDefined();
+    // A leader of the season sees it; they don't manage, so it is their only tile beside Sessions.
+    const leader = seasonOverviewModel(season({ canAdminister: false }), { isSuper: false, leads: true, ...day });
+    expect(keys(leader)).toEqual(["sessions", "passing"]);
+    // Anyone else on the season, and every draft or finished season: no tile.
+    expect(passing(seasonOverviewModel(season({ canAdminister: false }), { isSuper: false, ...day }))).toBeUndefined();
+    for (const status of ["DRAFT", "COMPLETED"] as const) {
+      expect(passing(seasonOverviewModel(season({ status }), { isSuper: true, leads: true, ...day }))).toBeUndefined();
+    }
+    // It stays after the end date, while End season moves to the next step.
+    expect(keys(seasonOverviewModel(season(), { isSuper: false, today: "2026-07-01" }))).toContain("passing");
   });
 });

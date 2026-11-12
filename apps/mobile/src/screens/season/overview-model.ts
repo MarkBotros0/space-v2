@@ -7,7 +7,7 @@ import { isSeasonFinished, type SeasonStatus } from "@space/shared";
 
 import { countOf } from "../../lib/plural";
 
-export type OverviewTileKey = "sessions" | "assignments" | "quizzes" | "end" | "results";
+export type OverviewTileKey = "sessions" | "assignments" | "quizzes" | "passing" | "end" | "results";
 interface OverviewTile {
   key: OverviewTileKey;
   label: string;
@@ -45,7 +45,16 @@ interface OverviewSeason {
 
 export function seasonOverviewModel(
   season: OverviewSeason,
-  { isSuper, today }: { isSuper: boolean; today: string },
+  {
+    isSuper,
+    today,
+    leads = false,
+  }: {
+    isSuper: boolean;
+    today: string;
+    /** The caller leads a group in this season: they read the passing outlook for their groups. */
+    leads?: boolean;
+  },
 ): SeasonOverviewModel {
   const finished = isSeasonFinished(season.status);
   const canAdminister = season.canAdminister && !finished;
@@ -65,6 +74,10 @@ export function seasonOverviewModel(
       { key: "assignments", label: "Assignments", hint: "Set work and review it" },
       { key: "quizzes", label: "Quizzes", hint: "Write, give and grade" },
     );
+  }
+  // Season passing: admin, super and the season's leaders, while it runs (End takes over after).
+  if (season.status === "ACTIVE" && (manage || leads)) {
+    tiles.push({ key: "passing", label: "Passing", hint: "Who is on track" });
   }
   // Past its end date, End season is the next step instead of a tile.
   if (season.status === "ACTIVE" && manage && !pastEnd) {
