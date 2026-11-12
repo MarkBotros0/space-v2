@@ -18,7 +18,7 @@ import { round2, toScore } from "../quizzes/score";
  *   live assignments. Every assignment is for the whole season.
  * - Quizzes: Σ counting score over Σ maxScore of every PAPER quiz and every published ONLINE quiz.
  *   ONLINE counts `countingScore` (the admin's score, else the best GRADED attempt), PAPER its
- *   grade; nothing is 0.
+ *   grade; nothing is 0; each quiz at most its maxScore.
  */
 
 /** The quizzes that count: every PAPER quiz and every published ONLINE quiz. */
@@ -126,16 +126,21 @@ async function loadStudentRows(
   };
 }
 
-/** Σ the student's counting score: PAPER its grade, ONLINE `countingScore`; nothing is 0. */
+/**
+ * Σ the student's counting score: PAPER its grade, ONLINE `countingScore`; nothing is 0. Each quiz
+ * counts at most its maxScore (and never below 0): v1 left grades and attempt totals above a quiz's
+ * max, and End's CHECK holds `scored <= max`.
+ */
 function quizTotal(studentUserId: number, quizzes: CountedQuiz[], rows: StudentRows): number {
   let scored = 0;
   for (const q of quizzes) {
     const key = `${studentUserId}:${q.id}`;
     const grade = rows.gradeOf.get(key) ?? null;
-    scored +=
+    const raw =
       q.kind === "ONLINE"
         ? (countingScore(grade, rows.attemptsOf.get(key) ?? [])?.score ?? 0)
         : (toScore(grade?.score ?? null) ?? 0);
+    scored += Math.min(q.maxScore, Math.max(0, raw));
   }
   return round2(scored);
 }
