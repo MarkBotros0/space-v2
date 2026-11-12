@@ -72,6 +72,15 @@ describe("GET /quizzes/:id/live", () => {
     expect(JSON.stringify(done)).not.toMatch(/answers|isCorrect|options/);
   });
 
+  it("says whether the quiz is a published online one (a paper or draft quiz has no live view)", async () => {
+    const quizId = await newQuiz();
+    expect((await live(quizId)).body.data).toMatchObject({ kind: "ONLINE", published: true });
+    await db.quiz.update({ where: { id: quizId }, data: { publishedAt: null } });
+    expect((await live(quizId)).body.data).toMatchObject({ kind: "ONLINE", published: false });
+    await db.quiz.update({ where: { id: quizId }, data: { kind: "PAPER", publishedAt: new Date() } });
+    expect((await live(quizId)).body.data).toMatchObject({ kind: "PAPER", published: true });
+  });
+
   it("exits and lastExitAt reflect events", async () => {
     const quizId = await newQuiz();
     const { id } = await startOwn(quizId);

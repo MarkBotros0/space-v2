@@ -2,10 +2,12 @@
 export const quizLiveSchemas = {
   QuizLive: {
     type: "object",
-    required: ["quizId", "title", "timeLimitMinutes", "serverNow", "rows"],
+    required: ["quizId", "title", "kind", "published", "timeLimitMinutes", "serverNow", "rows"],
     properties: {
       quizId: { type: "integer" },
       title: { type: "string" },
+      kind: { type: "string", enum: ["ONLINE", "PAPER"], description: "Live view is for ONLINE quizzes." },
+      published: { type: "boolean", description: "Live view is for published quizzes." },
       timeLimitMinutes: { type: ["integer", "null"] },
       serverNow: { type: "string", format: "date-time", description: "The server's clock, for the countdown." },
       rows: {

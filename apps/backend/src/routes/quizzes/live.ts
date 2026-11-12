@@ -19,7 +19,7 @@ export async function getQuizLive(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { id: true, title: true, seasonId: true, timeLimitMinutes: true },
+    select: { id: true, title: true, kind: true, publishedAt: true, seasonId: true, timeLimitMinutes: true },
   });
   if (!quiz) return notFound(res, "Quiz");
   if (!(await canGradeQuiz(user, id))) return forbidden(res);

@@ -31,6 +31,8 @@ function live() {
   return {
     quizId: 41,
     title: "Week 1 quiz",
+    kind: "ONLINE",
+    published: true,
     timeLimitMinutes: 20,
     serverNow,
     rows: [
@@ -181,6 +183,23 @@ describe("live quiz screen", () => {
     renderStacked(<QuizLiveRoute />);
     await screen.findByText("Third student");
     expect(screen.queryByRole("button", { name: /^Third student/ })).toBeNull();
+  });
+
+  it.each([
+    ["a paper quiz", { kind: "PAPER" }],
+    ["a draft", { published: false }],
+  ])("on %s (a deep link) says live view is for published online quizzes, and stops reading", async (_l, over) => {
+    jest.useFakeTimers();
+    get.mockImplementation((url: string) =>
+      url === LIVE_URL ? Promise.resolve({ data: { data: { ...live(), ...over } } }) : Promise.reject(new Error(url)),
+    );
+    renderStacked(<QuizLiveRoute />);
+    expect(await screen.findByText("Live view is for published online quizzes.")).toBeTruthy();
+    expect(screen.queryByText("Second student")).toBeNull();
+    await act(async () => {
+      jest.advanceTimersByTime(QUIZ_LIVE_POLL_MS * 3);
+    });
+    expect(liveReads()).toBe(1);
   });
 
   it("is not for students", async () => {

@@ -22,7 +22,14 @@ export function sortLiveRows(rows: QuizLiveRow[]): QuizLiveRow[] {
 }
 
 export async function loadLive(
-  quiz: { id: number; title: string; seasonId: number; timeLimitMinutes: number | null },
+  quiz: {
+    id: number;
+    title: string;
+    kind: "ONLINE" | "PAPER";
+    publishedAt: Date | null;
+    seasonId: number;
+    timeLimitMinutes: number | null;
+  },
   studentIds: number[],
   now: Date,
 ): Promise<QuizLive> {
@@ -66,6 +73,8 @@ export async function loadLive(
   return {
     quizId: quiz.id,
     title: quiz.title,
+    kind: quiz.kind,
+    published: quiz.publishedAt !== null,
     timeLimitMinutes: quiz.timeLimitMinutes,
     serverNow: now.toISOString(),
     rows: sortLiveRows(rows),

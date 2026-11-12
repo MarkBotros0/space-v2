@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { quizKindSchema } from "../enums";
+
 // ---------------------------------------------------------------------------
 // The live screen (staff): every student in scope, where they are right now.
 // Carries no answer content.
@@ -32,6 +34,9 @@ export type QuizLiveRow = z.infer<typeof quizLiveRowSchema>;
 export const quizLiveSchema = z.object({
   quizId: z.number(),
   title: z.string(),
+  /** Live view is for a published online quiz; anything else (a deep link) shows a plain state. */
+  kind: quizKindSchema,
+  published: z.boolean(),
   timeLimitMinutes: z.number().nullable(),
   /** The server's clock, so the screen's countdown never trusts the phone's. */
   serverNow: z.string(),

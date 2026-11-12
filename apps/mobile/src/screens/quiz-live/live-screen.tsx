@@ -13,6 +13,7 @@ import { liveRowAction, liveRowView, liveSummary } from "./live-model";
 import { useScreenActive } from "./use-screen-active";
 
 const TICK_MS = 1000;
+const NOT_LIVE = "Live view is for published online quizzes.";
 
 /** The phone's time, once a second while `on`: the rows' "12:30 left" counts down between reads. */
 function useNow(on: boolean): number {
@@ -103,8 +104,12 @@ function LiveBody({ id, data, offsetMs, now }: { id: number; data: QuizLive; off
  */
 export function LiveScreen({ id }: { id: number }) {
   const active = useScreenActive();
-  const query = useQuizLive(id, active);
+  const [liveable, setLiveable] = useState(true);
+  const query = useQuizLive(id, active && liveable);
   const { data, dataUpdatedAt } = query;
+  // A paper or draft quiz (only a deep link gets here): a plain state, and no more reads.
+  const isLive = data === undefined || (data.kind === "ONLINE" && data.published);
+  useEffect(() => setLiveable(isLive), [isLive]);
   const ticking = active && (data?.rows.some((r) => r.deadlineAt !== null) ?? false);
   const now = useNow(ticking);
   const offsetMs = data ? clockOffsetMs(data.serverNow, dataUpdatedAt) : 0;
@@ -117,7 +122,17 @@ export function LiveScreen({ id }: { id: number }) {
 
   return (
     <Screen title="Live" subtitle={data?.title} refreshing={pulling} onRefresh={onRefresh}>
-      <QueryGate query={query}>{(live) => <LiveBody id={id} data={live} offsetMs={offsetMs} now={now} />}</QueryGate>
+      <QueryGate query={query}>
+        {(live) =>
+          isLive ? (
+            <LiveBody id={id} data={live} offsetMs={offsetMs} now={now} />
+          ) : (
+            <Text variant="subhead" className="rounded-group bg-surface p-5 text-muted-foreground">
+              {NOT_LIVE}
+            </Text>
+          )
+        }
+      </QueryGate>
     </Screen>
   );
 }
