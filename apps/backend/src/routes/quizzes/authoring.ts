@@ -81,14 +81,9 @@ export async function updateQuiz(req: Request, res: Response) {
   if (parsed === null) return;
   const body = parsed;
 
-  if (body.maxScore !== undefined) {
-    if (quiz.kind !== "PAPER") {
-      return apiError(res, "wrong_quiz_kind", "An online quiz derives its max score from its questions.", 409);
-    }
-    const grades = await db.quizGrade.count({ where: { quizId: id } });
-    if (grades > 0) {
-      return apiError(res, "quiz_has_grades", "This quiz already has grades.", 409);
-    }
+  // "No grades yet" for a paper max change is checked under the Quiz lock (updateQuizSettings).
+  if (body.maxScore !== undefined && quiz.kind !== "PAPER") {
+    return apiError(res, "wrong_quiz_kind", "An online quiz derives its max score from its questions.", 409);
   }
 
   if (body.sessionId !== undefined && body.sessionId !== null) {
@@ -107,7 +102,7 @@ export async function updateQuiz(req: Request, res: Response) {
     return apiError(res, "wrong_quiz_kind", "Only an online quiz has a start window or a time limit.", 409);
   }
 
-  // The freeze checks (shuffle, time limit) and the write share one Quiz row lock.
+  // The freeze checks (shuffle, time limit, a paper max once graded) and the write share one Quiz row lock.
   await updateQuizSettings(id, body);
 
   return apiOk(res, { updated: true });

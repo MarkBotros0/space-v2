@@ -11,7 +11,8 @@ const toDate = (iso: string | null): Date | null => (iso === null ? null : new D
 
 /**
  * Writes a quiz's settings. What freezes once a student has started (shuffle,
- * the time limit; spec "Editing timing after attempts exist") is checked under
+ * the time limit; spec "Editing timing after attempts exist") and a paper
+ * quiz's max once it has a grade are checked under
  * the Quiz row lock, which a first attempt takes FOR SHARE before it is
  * created (lib/quizzes/start-attempt.ts): no attempt can appear between the
  * check and the write. The window may change any time; its two ends are
@@ -35,6 +36,12 @@ export async function updateQuizSettings(quizId: number, body: QuizSettings): Pr
         "Students have started this quiz, so its settings can no longer change.",
         409,
       );
+    }
+
+    // A paper quiz's max is fixed once anything is graded. A grade insert's foreign key takes
+    // FOR KEY SHARE on this Quiz row, so it waits for the lock: none lands between check and write.
+    if (body.maxScore !== undefined && (await tx.quizGrade.count({ where: { quizId } })) > 0) {
+      throw new ApiError("quiz_has_grades", "This quiz already has grades.", 409);
     }
 
     const startsFrom = body.startsFrom === undefined ? stored.startsFrom : toDate(body.startsFrom);
