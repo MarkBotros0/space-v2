@@ -231,7 +231,35 @@ describe("grading screen — PAPER", () => {
     );
   });
 
-  it("refuses a non-whole score with a message and sends nothing", async () => {
+  it("sends a score with two decimals, a comma read as the point", async () => {
+    post.mockResolvedValue({ data: { data: gradeSheet } });
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
+    fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "12,75");
+    fireEvent.press(screen.getByText("Save"));
+
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/grades", {
+        entries: [{ studentUserId: 9, score: 12.75, notes: null }],
+      }),
+    );
+  });
+
+  it("refuses three decimals with a message and sends nothing", async () => {
+    renderStacked(<QuizGradeScreen />);
+    await screen.findByText("Test student");
+
+    openRow("Test student");
+    fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "7.555");
+    fireEvent.press(screen.getByText("Save"));
+
+    expect(await screen.findByText("Score for Test student must be a number with at most two decimals.")).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("refuses a score that is not a number with a message and sends nothing", async () => {
     renderStacked(<QuizGradeScreen />);
     await screen.findByText("Test student");
 
@@ -239,7 +267,7 @@ describe("grading screen — PAPER", () => {
     fireEvent.changeText(await screen.findByLabelText("Score for Test student"), "abc");
     fireEvent.press(screen.getByText("Save"));
 
-    expect(await screen.findByText("Score for Test student must be a whole number.")).toBeTruthy();
+    expect(await screen.findByText("Score for Test student must be a number with at most two decimals.")).toBeTruthy();
     expect(post).not.toHaveBeenCalled();
   });
 

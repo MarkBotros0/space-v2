@@ -75,13 +75,24 @@ export const publishQuizRequestSchema = z.object({ publish: z.boolean() });
  * separate endpoint would mean one extra round trip per cleared cell. The
  * upper bound against the quiz's own maxScore is a server check (R88/D7).
  */
+/** At most two decimals: a QuizGrade score is `Decimal(8,2)` (owner, 2026-11-12). */
+function hasTwoDecimalsAtMost(n: number): boolean {
+  return Math.abs(Math.round(n * 100) - n * 100) < 1e-6;
+}
+
+/** A QuizGrade score, paper or manual: 0 or more with at most two decimals. The quiz's maxScore is a server check. */
+const quizGradeScoreSchema = z.number().min(0).refine(hasTwoDecimalsAtMost, { message: "Use at most two decimals." });
+
+/** A grade's note, shown to the student. */
+const quizGradeNotesSchema = z.string().max(1000).nullable().default(null);
+
 export const saveQuizGradesRequestSchema = z.object({
   entries: z
     .array(
       z.object({
         studentUserId: z.number().int().positive(),
-        score: z.number().int().min(0).nullable(),
-        notes: z.string().max(1000).nullable().default(null),
+        score: quizGradeScoreSchema.nullable(),
+        notes: quizGradeNotesSchema,
       }),
     )
     .min(1)
@@ -89,6 +100,16 @@ export const saveQuizGradesRequestSchema = z.object({
 });
 
 export type QuizGradeEntry = z.output<typeof saveQuizGradesRequestSchema>["entries"][number];
+
+/**
+ * PUT /quizzes/:id/manual-scores/:studentUserId: the season admin's score for one student on an
+ * ONLINE quiz, which counts instead of any in-app attempt. Cleared with DELETE, so no null score.
+ */
+export const manualScoreWriteSchema = z.object({
+  score: quizGradeScoreSchema,
+  notes: quizGradeNotesSchema,
+});
+export type ManualScoreWrite = z.output<typeof manualScoreWriteSchema>;
 
 /**
  * Right or wrong for every leader-marked item of an attempt: one mark per FILL_BLANK

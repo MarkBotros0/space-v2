@@ -24,7 +24,7 @@ type ExportQuiz = NonNullable<Awaited<ReturnType<typeof loadSeasonExportData>>>[
 
 /** Student to score for one quiz column: the paper grade, or an ONLINE quiz's best graded attempt. */
 function scoresOf(q: ExportQuiz): Map<number, number | null> {
-  if (q.kind === "PAPER") return new Map(q.grades.map((g) => [g.studentUserId, g.score]));
+  if (q.kind === "PAPER") return new Map(q.grades.map((g) => [g.studentUserId, toScore(g.score)]));
   const attemptsOf = new Map<number, ExportQuiz["attempts"]>();
   for (const a of q.attempts) attemptsOf.set(a.studentUserId, [...(attemptsOf.get(a.studentUserId) ?? []), a]);
   const scores = new Map<number, number | null>();

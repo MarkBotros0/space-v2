@@ -159,3 +159,15 @@ export const quizGradingPageSchema = z.object({
   nextCursor: z.number().nullable(),
 });
 export type QuizGradingPage = z.infer<typeof quizGradingPageSchema>;
+
+/**
+ * The season admin's manual score for one student on an ONLINE quiz, as PUT
+ * /quizzes/:id/manual-scores/:studentUserId answers it. No question, answer or key.
+ */
+export const manualScoreSchema = z.object({
+  score: z.number(),
+  notes: z.string().nullable(),
+  gradedAt: z.string(),
+  gradedBy: z.object({ id: z.number(), name: z.string() }),
+});
+export type ManualScore = z.infer<typeof manualScoreSchema>;

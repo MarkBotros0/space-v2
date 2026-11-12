@@ -10,6 +10,14 @@ async function quizSeasonId(quizId: number): Promise<number | null> {
 }
 
 /**
+ * The season's admin, or a super: the people who release a quiz's answers (owner, 2026-11-07)
+ * and enter a student's manual score (plan 4). Leaders grade but never administer.
+ */
+export function canAdministerQuiz(user: SessionUser, seasonId: number): boolean {
+  return isSuper(user) || isAdminOfSeason(user, seasonId);
+}
+
+/**
  * The authoring gate: SUPER, or an admin of the quiz's own season.
  *
  * Same rule as v1's canManageQuiz (permissions.ts:135-146). What changes is that

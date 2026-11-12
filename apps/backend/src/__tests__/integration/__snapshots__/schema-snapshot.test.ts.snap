@@ -255,7 +255,7 @@ exports[`database schema has exactly these columns 1`] = `
   "QuizGrade.id integer NOT NULL DEFAULT nextval('"QuizGrade_id_seq"'::regclass)",
   "QuizGrade.notes text",
   "QuizGrade.quizId integer NOT NULL",
-  "QuizGrade.score integer",
+  "QuizGrade.score numeric",
   "QuizGrade.studentUserId integer NOT NULL",
   "QuizGrade.updatedAt timestamp with time zone NOT NULL",
   "QuizOption.createdAt timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP",

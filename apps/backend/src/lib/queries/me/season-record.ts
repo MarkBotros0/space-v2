@@ -109,7 +109,7 @@ export async function loadSeasonRecord(
         return { ...base, status: attempt.status, score: best ? toScore(best.totalScore) : null };
       }
       // A paper quiz has no attempt: it is graded or not taken.
-      const score = q.grades[0]?.score ?? null;
+      const score = toScore(q.grades[0]?.score ?? null);
       return score === null ? { ...base, status: "NOT_TAKEN", score: null } : { ...base, status: "GRADED", score };
     }),
     attendance: sessions.map((s) => ({

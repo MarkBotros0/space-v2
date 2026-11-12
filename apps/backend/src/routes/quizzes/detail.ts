@@ -2,12 +2,17 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiOk, forbidden } from "../../lib/api-response";
-import { canAccessSeason, canGradeQuiz, canManageQuiz, hasActiveEnrollment } from "../../lib/permissions";
+import {
+  canAccessSeason,
+  canAdministerQuiz,
+  canGradeQuiz,
+  canManageQuiz,
+  hasActiveEnrollment,
+} from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
 import { closeLatestIfExpired } from "../../lib/quizzes/close-attempt";
 import { AUTHORING_QUESTION_SELECT } from "../../lib/quizzes/questions";
 import { toAuthoringQuestion } from "../../lib/quizzes/question-rows";
-import { canReleaseQuizResults } from "./release";
 import { loadStudentQuizDetail } from "./student-detail";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
@@ -101,7 +106,7 @@ export async function getQuiz(req: Request, res: Response) {
   // audience that grades. canManage narrows further, to authoring.
   if (!(await canGradeQuiz(user, id))) return forbidden(res);
   const detail = await loadQuizAuthoringDetail(id, await canManageQuiz(user, id), (seasonId) =>
-    canReleaseQuizResults(user, seasonId),
+    canAdministerQuiz(user, seasonId),
   );
   if (!detail) return notFound(res, "Quiz");
   return apiOk(res, detail);

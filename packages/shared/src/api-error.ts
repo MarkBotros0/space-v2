@@ -99,6 +99,7 @@ export const API_ERROR_CODES = [
   "quiz_has_attempts",
   "quiz_has_graded_attempts",
   "quiz_has_grades",
+  "quiz_not_online",
   "quiz_not_open_yet",
   "quiz_not_published",
   "quiz_start_closed",

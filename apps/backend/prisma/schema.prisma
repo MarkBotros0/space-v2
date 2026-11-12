@@ -891,7 +891,7 @@ model QuizGrade {
   quiz          Quiz      @relation(fields: [quizId], references: [id], onDelete: Cascade)
   studentUserId Int
   studentUser   User      @relation("QuizGradeStudent", fields: [studentUserId], references: [id], onDelete: Restrict)
-  score         Int?
+  score         Decimal?  @db.Decimal(8, 2)
   notes         String?
   gradedById    Int?
   gradedBy      User?     @relation("QuizGradedBy", fields: [gradedById], references: [id], onDelete: SetNull)

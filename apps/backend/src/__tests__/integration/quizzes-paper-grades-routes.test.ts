@@ -143,6 +143,26 @@ describe("PAPER grades", () => {
     expect(await db.quizGrade.count({ where: { quizId } })).toBe(0);
   });
 
+  it("takes a score with two decimals, refuses three, and a same-score re-save stays silent", async () => {
+    const send = (score: number) =>
+      request(app)
+        .post(`/api/v1/quizzes/${quizId}/grades`)
+        .set("authorization", `Bearer ${leaderToken}`)
+        .send({ entries: [{ studentUserId: ownStudentId, score, notes: null }] });
+    const before = await quizGradedCount();
+
+    const saved = await send(12.75);
+    expect(saved.status).toBe(200);
+    const row = saved.body.data.rows.find((r: { studentUserId: number }) => r.studentUserId === ownStudentId);
+    expect(row.score).toBe(12.75);
+    expect((await quizGradedCount()) - before).toBe(1);
+
+    expect((await send(12.75)).status).toBe(200);
+    expect((await quizGradedCount()) - before).toBe(1);
+
+    expect((await send(12.755)).status).toBe(400);
+  });
+
   it("clears a grade when the score is null (diverging from R89)", async () => {
     await request(app)
       .post(`/api/v1/quizzes/${quizId}/grades`)

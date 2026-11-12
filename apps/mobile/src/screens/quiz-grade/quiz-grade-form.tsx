@@ -30,7 +30,7 @@ export function QuizGradeFields({
       <Text variant="subhead" className="text-muted-foreground">{`Out of ${maxScore}`}</Text>
       <Input
         accessibilityLabel={`Score for ${name}`}
-        keyboardType="number-pad"
+        keyboardType="decimal-pad"
         placeholder="-"
         value={score}
         onChangeText={onScore}

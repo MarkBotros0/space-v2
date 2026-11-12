@@ -2,16 +2,11 @@ import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
 import { apiError, apiOk, forbidden } from "../../lib/api-response";
-import { isAdminOfSeason, isSuper } from "../../lib/rbac";
+import { canAdministerQuiz } from "../../lib/permissions";
 import { requireUser } from "../../middleware/require-auth";
 import { notifyQuizAnswersReleased } from "../../lib/quizzes/notify";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
-
-/** The season's admin, or a super: the only people who release results (owner, 2026-11-07). */
-export function canReleaseQuizResults(user: Parameters<typeof isSuper>[0], seasonId: number): boolean {
-  return isSuper(user) || isAdminOfSeason(user, seasonId);
-}
 
 /**
  * POST /quizzes/:id/release — let students see the answers: the questions, their own
@@ -30,7 +25,7 @@ export async function releaseQuizResults(req: Request, res: Response) {
     select: { id: true, title: true, kind: true, seasonId: true, publishedAt: true },
   });
   if (!quiz) return notFound(res, "Quiz");
-  if (!canReleaseQuizResults(user, quiz.seasonId)) return forbidden(res);
+  if (!canAdministerQuiz(user, quiz.seasonId)) return forbidden(res);
   if (quiz.kind === "ONLINE" && quiz.publishedAt === null) {
     return apiError(res, "quiz_not_published", "Publish the quiz before releasing its answers.", 409);
   }

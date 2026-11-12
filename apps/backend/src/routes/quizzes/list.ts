@@ -59,7 +59,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
       title: g.quiz.title,
       kind: "PAPER" as const,
       maxScore: g.quiz.maxScore,
-      score: g.score,
+      score: toScore(g.score),
       notes: g.notes,
       gradedAt: g.gradedAt,
       sessionTitle: g.quiz.session?.title ?? null,

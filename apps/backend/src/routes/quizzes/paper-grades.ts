@@ -12,6 +12,7 @@ import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 import { parseOr400 } from "../../lib/http/validate";
 import { liveUser } from "../../lib/db/live";
+import { toScore } from "../../lib/quizzes/score";
 
 /** Build the sheet for a scope. Shared by the GET and by the POST's response. */
 async function buildGradeSheet(quizId: number, studentIds: number[]) {
@@ -68,7 +69,7 @@ async function buildGradeSheet(quizId: number, studentIds: number[]) {
         studentUserId: s.id,
         studentName: s.name,
         groupName: groupBy.get(s.id) ?? null,
-        score: g?.score ?? null,
+        score: toScore(g?.score ?? null),
         notes: g?.notes ?? null,
         gradedAt: g?.gradedAt ?? null,
         gradedByName: g?.gradedBy?.name ?? null,
@@ -162,7 +163,7 @@ export async function saveGrades(req: Request, res: Response) {
     where: { quizId: id, studentUserId: { in: parsed.entries.map((e) => e.studentUserId) } },
     select: { studentUserId: true, score: true },
   });
-  const previousScore = new Map(existing.map((g) => [g.studentUserId, g.score]));
+  const previousScore = new Map(existing.map((g) => [g.studentUserId, toScore(g.score)]));
 
   await saveQuizGrades(id, parsed.entries, user.userId);
 

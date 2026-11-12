@@ -443,7 +443,7 @@ erDiagram
     Int id PK
     Int quizId FK
     Int studentUserId FK
-    Int score "nullable"
+    Decimal score "nullable"
     String notes "nullable"
     Int gradedById FK "nullable"
     DateTime gradedAt "nullable"

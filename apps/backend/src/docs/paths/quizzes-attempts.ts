@@ -312,7 +312,12 @@ export const quizAttemptsPaths = {
                     required: ["studentUserId", "score"],
                     properties: {
                       studentUserId: { type: "integer", minimum: 1 },
-                      score: { type: ["integer", "null"], minimum: 0, description: "Null clears the grade." },
+                      score: {
+                        type: ["number", "null"],
+                        minimum: 0,
+                        multipleOf: 0.01,
+                        description: "At most two decimals. Null clears the grade.",
+                      },
                       notes: { type: ["string", "null"], maxLength: 1000 },
                     },
                   },

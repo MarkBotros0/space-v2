@@ -12,6 +12,7 @@ import { saveAttemptAnswers, startAttempt, submitAttempt } from "./attempts";
 import { getQuizLive } from "./live";
 import { postAttemptEvents } from "./attempt-events";
 import { releaseQuizResults } from "./release";
+import { deleteManualScore, putManualScore } from "./manual-score";
 
 /**
  * Domain 12 — text quizzes. The handlers live beside this file by concern
@@ -53,6 +54,9 @@ quizzesRouter.get("/:id/attempts", listAttempts);
 quizzesRouter.post("/:id/attempts/:attemptId/grade", gradeAttempt);
 quizzesRouter.post("/:id/attempts/reopen", reopenAttempt);
 quizzesRouter.post("/:id/attempts/end", endAttempt);
+// The season admin's score for one student on an ONLINE quiz; it counts instead of the app's.
+quizzesRouter.put("/:id/manual-scores/:studentUserId", putManualScore);
+quizzesRouter.delete("/:id/manual-scores/:studentUserId", deleteManualScore);
 
 // PAPER grade sheet.
 quizzesRouter.get("/:id/grades", getGradeSheet);

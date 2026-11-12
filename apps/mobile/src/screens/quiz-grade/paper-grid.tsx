@@ -51,7 +51,7 @@ export function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDet
     // clamped here: the server is the bound (D7).
     const score = d.score.trim() === "" ? null : parseMark(d.score);
     if (d.score.trim() !== "" && score === null) {
-      setError(`Score for ${row.studentName ?? "a student"} must be a whole number.`);
+      setError(`Score for ${row.studentName ?? "a student"} must be a number with at most two decimals.`);
       return;
     }
     const entry: GradeEntryInput = {
