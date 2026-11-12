@@ -220,7 +220,7 @@ export function formatBytes(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${Math.round(bytes / (1024 * 1024))} MB` : `${Math.round(bytes / 1024)} KB`;
 }
 
-/** A quiz score: one decimal at most, a whole number without ".0" (7.5, 8). */
+/** A quiz score: two decimals at most (a QuizGrade is `Decimal(8,2)`), no trailing zeros (7.25, 7.5, 8). */
 export function formatScore(n: number): string {
-  return String(Math.round(n * 10) / 10);
+  return String(Math.round(n * 100) / 100);
 }

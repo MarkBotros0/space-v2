@@ -88,6 +88,12 @@ export function useStartAttempt(id: number) {
       queryClient.setQueryData(queryKeys.quizzes.studentDetail(id), detail);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
+    onError: (err) => {
+      // The admin entered their score since this read (plan 4): re-read, and the runner shows it.
+      if (apiErrorCode(err) === "manual_score_entered") {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(id) });
+      }
+    },
   });
 }
 

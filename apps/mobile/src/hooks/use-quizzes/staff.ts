@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import {
+  manualScoreSchema,
   quizAuthoringDetailSchema,
   quizListPageSchema,
   quizLiveSchema,
@@ -10,8 +11,9 @@ import {
 } from "@space/shared";
 
 import { apiClient } from "../../lib/api-client";
+import { DASHBOARD_META } from "../../lib/dashboard-invalidation";
 import { queryKeys } from "../../lib/query-keys";
-import { apiGet } from "../../lib/api-request";
+import { apiGet, apiSend } from "../../lib/api-request";
 
 /** The API's largest staff-list page (quizListQuerySchema caps `limit` at 100). */
 const QUIZ_LIST_PAGE = 100;
@@ -91,4 +93,45 @@ export function useQuizLive(id: number | null, polling: boolean): UseQueryResult
     }
   }, [polling, id, refetch]);
   return query;
+}
+
+/**
+ * After the admin's score changes: the quiz's grading list, live screen and detail (all under
+ * `detail(id)`) and the season lists' graded counts.
+ */
+function invalidateAfterScore(queryClient: ReturnType<typeof useQueryClient>, id: number) {
+  void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.detail(id) });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+}
+
+/**
+ * The season admin's score for one student on an ONLINE quiz (plan 4): it counts instead of any
+ * attempt. Refused 409 `attempt_open` while the student has an attempt open.
+ */
+export function useSaveManualScore(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    // Spec 19 D24: this write moves a number on some role's Home.
+    meta: DASHBOARD_META,
+    mutationFn: (input: { studentUserId: number; score: number; notes: string | null }) =>
+      apiSend(
+        "put",
+        `/api/v1/quizzes/${id}/manual-scores/${input.studentUserId}`,
+        { score: input.score, notes: input.notes },
+        manualScoreSchema,
+      ),
+    onSuccess: () => invalidateAfterScore(queryClient, id),
+  });
+}
+
+/** Clears the admin's score (204): the student's best app attempt counts again. Nothing reopens. */
+export function useClearManualScore(id: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: DASHBOARD_META,
+    mutationFn: async (studentUserId: number) => {
+      await apiClient.delete(`/api/v1/quizzes/${id}/manual-scores/${studentUserId}`);
+    },
+    onSuccess: () => invalidateAfterScore(queryClient, id),
+  });
 }

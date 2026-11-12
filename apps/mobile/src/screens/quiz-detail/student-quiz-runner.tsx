@@ -139,6 +139,7 @@ export function StudentRunner({ id }: { id: number }) {
   if (data.stage === "in_progress" && !awaitingStart) {
     return <AttemptForm detail={data} id={id} offsetMs={offsetMs} onTimeUp={readAfterDeadline} />;
   }
-  if (finished) return <ResultView detail={data} />;
+  // The admin's score stands in for an attempt (plan 4): never a Start once it is in.
+  if (finished || data.adminScore !== null) return <ResultView detail={data} />;
   return <BeforeYouStart detail={data} id={id} offsetMs={offsetMs} reopened={awaitingStart} />;
 }

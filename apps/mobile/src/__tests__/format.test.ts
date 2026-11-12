@@ -172,8 +172,9 @@ describe("notificationTypeLabel", () => {
 });
 
 describe("formatScore", () => {
-  it("keeps one decimal at most and drops a trailing .0", () => {
-    expect(formatScore(7.25)).toBe("7.3");
+  it("keeps two decimals at most and drops trailing zeros", () => {
+    expect(formatScore(7.25)).toBe("7.25");
+    expect(formatScore(6.666)).toBe("6.67");
     expect(formatScore(7.5)).toBe("7.5");
     expect(formatScore(8)).toBe("8");
     expect(formatScore(0)).toBe("0");

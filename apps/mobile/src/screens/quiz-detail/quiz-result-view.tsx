@@ -15,14 +15,28 @@ iconWithClassName(TriangleAlert);
 const ENDED_BY_EXITS =
   "Your attempt has ended because you left the quiz. Your answers were submitted. Ask your leader if this was a mistake.";
 
+type Stage = StudentQuizDetail["stage"];
+
+/** The line under the chip; none for the admin's score alone, which has no answers to wait for. */
+function stageLine(stage: Stage, adminOnly: boolean): string | null {
+  if (adminOnly) return null;
+  if (stage === "submitted") return "Your score appears once it's marked.";
+  return stage === "graded" ? "Answers appear when your admin releases them." : "Your answers are marked below.";
+}
+
 /**
  * Where the student stands after handing in (owner, 2026-11-10): submitted shows only that; graded
  * shows the score; answers adds the review. Questions are drawn from the `answers` stage ONLY:
- * whatever the cache still holds from the attempt is never shown before then.
+ * whatever the cache still holds from the attempt is never shown before then. The admin's score
+ * (plan 4) shows at once with its note, labelled as theirs; with no attempt of their own there are
+ * no answers to wait for, so the release line is left out.
  */
 export function ResultView({ detail }: { detail: StudentQuizDetail }) {
-  const stage = detail.stage;
+  const admin = detail.adminScore;
+  const stage = admin ? (detail.stage === "answers" ? "answers" : "graded") : detail.stage;
   const submitted = stage === "submitted";
+  const score = admin ? admin.score : detail.totalScore;
+  const line = stageLine(stage, admin !== null && detail.attemptId === null);
   return (
     <Screen {...quizTitleProps(detail)}>
       <View className="flex-col gap-3">
@@ -41,22 +55,18 @@ export function ResultView({ detail }: { detail: StudentQuizDetail }) {
               </Text>
             </View>
           ) : null}
-          <Text variant="subhead" className="text-muted-foreground">
-            {submitted
-              ? "Your score appears once it's marked."
-              : stage === "graded"
-                ? "Answers appear when your admin releases them."
-                : "Your answers are marked below."}
-          </Text>
-          {detail.totalScore !== null && !submitted ? (
+          {admin ? <Text variant="headline">Score entered by your admin</Text> : null}
+          {line !== null ? (
+            <Text variant="subhead" className="text-muted-foreground">
+              {line}
+            </Text>
+          ) : null}
+          {score !== null && !submitted ? (
             <View className="flex-row">
-              <StatTile
-                value={formatScore(detail.totalScore)}
-                suffix={` / ${formatScore(detail.maxScore)}`}
-                label="Score"
-              />
+              <StatTile value={formatScore(score)} suffix={` / ${formatScore(detail.maxScore)}`} label="Score" />
             </View>
           ) : null}
+          {admin?.notes ? <Text variant="body">{admin.notes}</Text> : null}
         </View>
         {stage === "answers"
           ? detail.questions.map((q, index) => <QuestionReview key={q.id} q={q} index={index} />)

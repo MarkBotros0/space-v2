@@ -36,6 +36,7 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
           quizId={id}
           attempt={attempt}
           maxScore={first.maxScore}
+          canScore={detail.canReleaseResults}
           open={open}
           onClose={() => setOpen(false)}
         />
@@ -57,6 +58,7 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
                 key={a.attemptId}
                 title={a.studentName ?? "Student"}
                 titleLines={2}
+                {...(a.adminScore ? { detail: "Score entered by admin" } : {})}
                 subtitle={attemptSubtitle(a, first.maxScore)}
                 trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
                 chevron
@@ -68,7 +70,9 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
             ))}
           </GroupedList>
         )}
-        {waiting.length > 0 ? <WaitingList quizId={id} waiting={waiting} /> : null}
+        {waiting.length > 0 ? (
+          <WaitingList quizId={id} waiting={waiting} maxScore={first.maxScore} canScore={detail.canReleaseResults} />
+        ) : null}
         <LoadMoreButton
           query={{ hasNextPage, isFetchingNextPage, fetchNextPage }}
           loadingLabel="Loading…"

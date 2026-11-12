@@ -35,7 +35,7 @@ describe("attemptSubtitle", () => {
 
   it("a graded attempt that is the best shows its own score, unlabelled", () => {
     expect(attemptSubtitle(row({ status: "GRADED", totalScore: 6.67, bestScore: 6.67 }), 7)).toBe(
-      `Attempt 1 · 6.7/7 · ${date}`,
+      `Attempt 1 · 6.67/7 · ${date}`,
     );
   });
 
@@ -48,6 +48,13 @@ describe("attemptSubtitle", () => {
   it("a lower graded retake shows the best, not its own total", () => {
     expect(attemptSubtitle(row({ attemptNumber: 3, status: "GRADED", totalScore: 1, bestScore: 5 }), 7)).toBe(
       `Attempt 3 · Best 5/7 · ${date}`,
+    );
+  });
+
+  it("the admin's score is shown as is, never as a best", () => {
+    const adminScore = { score: 4, notes: null, gradedAt: submittedAt, gradedByName: "Test admin" };
+    expect(attemptSubtitle(row({ status: "GRADED", totalScore: 9, bestScore: 4, adminScore }), 7)).toBe(
+      `Attempt 1 · 4/7 · ${date}`,
     );
   });
 });

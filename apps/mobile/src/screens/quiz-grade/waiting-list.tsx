@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { View } from "react-native";
 import type { QuizGradingPage } from "@space/shared";
 
 import { haptic } from "../../design/motion";
@@ -8,7 +9,9 @@ import { PillButton } from "../../design/ui/pill-button";
 import { toast } from "../../design/ui/toaster";
 import { useEndAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
-import { formatDate, unbreakable } from "../../lib/format";
+import { formatDate, formatScore, unbreakable } from "../../lib/format";
+import { ManualScoreSheet } from "./manual-score-sheet";
+import { manualScoreTarget } from "./manual-score-model";
 
 type Waiting = QuizGradingPage["waiting"][number];
 
@@ -18,12 +21,31 @@ type Waiting = QuizGradingPage["waiting"][number];
  * No Reopen here, and no press on the row. A waiting student either never started (the server
  * answers 409 `no_attempt`) or has an attempt still IN_PROGRESS (409 `attempt_open`), which they can
  * simply resume. An open attempt has End instead (docs/rules/quiz-integrity.md "Timing"): it submits
- * what the student has saved, after a confirm.
+ * what the student has saved, after a confirm. The season's admin (`canScore`) can enter a score
+ * for any of them (plan 4); an open attempt is refused until it is ended.
  */
-export function WaitingList({ quizId, waiting }: { quizId: number; waiting: Waiting[] }) {
+export function WaitingList({
+  quizId,
+  waiting,
+  maxScore,
+  canScore,
+}: {
+  quizId: number;
+  waiting: Waiting[];
+  maxScore: number;
+  canScore: boolean;
+}) {
   const end = useEndAttempt(quizId);
   const [ending, setEnding] = useState<Waiting | null>(null);
+  // By id, so the sheet reads the row as the last refetch has it.
+  const [scoringId, setScoringId] = useState<number | null>(null);
+  const scoring = waiting.find((w) => w.studentUserId === scoringId);
+  const [scoreOpen, setScoreOpen] = useState(false);
   const name = (w: Waiting) => w.studentName ?? "Student";
+  const subtitle = (w: Waiting) => {
+    if (w.adminScore) return `${formatScore(w.adminScore.score)} / ${formatScore(maxScore)}`;
+    return w.startedAt === null ? "Not started" : `In progress since ${unbreakable(formatDate(w.startedAt))}`;
+  };
 
   const confirm = () => {
     if (!ending) return;
@@ -45,19 +67,32 @@ export function WaitingList({ quizId, waiting }: { quizId: number; waiting: Wait
             key={w.studentUserId}
             title={name(w)}
             titleLines={2}
-            subtitle={
-              w.startedAt === null ? "Not started" : `In progress since ${unbreakable(formatDate(w.startedAt))}`
-            }
+            {...(w.adminScore ? { detail: "Score entered by admin" } : {})}
+            subtitle={subtitle(w)}
             trailingPlacement="below"
             trailing={
-              w.startedAt === null ? undefined : (
-                <PillButton
-                  label="End attempt"
-                  accessibilityLabel={`End ${name(w)}'s attempt`}
-                  destructive
-                  disabled={end.isPending}
-                  onPress={() => setEnding(w)}
-                />
+              w.startedAt === null && !canScore ? undefined : (
+                <View className="flex-row flex-wrap gap-2">
+                  {w.startedAt === null ? null : (
+                    <PillButton
+                      label="End attempt"
+                      accessibilityLabel={`End ${name(w)}'s attempt`}
+                      destructive
+                      disabled={end.isPending}
+                      onPress={() => setEnding(w)}
+                    />
+                  )}
+                  {canScore ? (
+                    <PillButton
+                      label={w.adminScore ? "Edit score" : "Enter score"}
+                      accessibilityLabel={`${w.adminScore ? "Edit the score" : "Enter a score"} for ${name(w)}`}
+                      onPress={() => {
+                        setScoringId(w.studentUserId);
+                        setScoreOpen(true);
+                      }}
+                    />
+                  ) : null}
+                </View>
               )
             }
           />
@@ -75,6 +110,16 @@ export function WaitingList({ quizId, waiting }: { quizId: number; waiting: Wait
         pending={end.isPending}
         onConfirm={confirm}
       />
+      {scoring ? (
+        <ManualScoreSheet
+          key={scoring.studentUserId}
+          quizId={quizId}
+          target={manualScoreTarget(scoring, maxScore)}
+          maxScore={maxScore}
+          open={scoreOpen}
+          onClose={() => setScoreOpen(false)}
+        />
+      ) : null}
     </>
   );
 }

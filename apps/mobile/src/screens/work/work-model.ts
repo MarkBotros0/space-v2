@@ -114,7 +114,7 @@ export function quizRow(q: StudentQuizResult): WorkRow {
   const parts = [
     session,
     scored && q.gradedAt ? unbreakable(`Graded ${formatDate(q.gradedAt)}`) : null,
-    q.notes,
+    q.notes ?? q.adminScore?.notes ?? null,
   ].filter((part) => part !== null && part !== "");
   const chip = quizChip(q);
   return {
@@ -123,6 +123,8 @@ export function quizRow(q: StudentQuizResult): WorkRow {
     kind: "quiz",
     id: q.quizId,
     title: q.title,
+    // The admin's score (plan 4) says whose it is, on its own line.
+    ...(q.adminScore ? { detail: "Score entered by your admin" } : {}),
     ...(parts.length > 0 ? { subtitle: parts.join(" · ") } : {}),
     ...(chip ? { chip } : {}),
     ...(scored ? { score: `${formatScore(q.score!)} / ${formatScore(q.maxScore)}` } : {}),

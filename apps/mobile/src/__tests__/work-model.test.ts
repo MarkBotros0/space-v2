@@ -162,6 +162,21 @@ describe("assignmentRow", () => {
 });
 
 describe("quizRow", () => {
+  it("the admin's score: the score, whose it is on its own line, and the note", () => {
+    const row = quizRow(
+      quiz({
+        quizId: 6,
+        score: 7.5,
+        gradedAt: "2099-03-02T10:00:00.000Z",
+        adminScore: { score: 7.5, notes: "On paper." },
+      }),
+    );
+    expect(row.score).toBe("7.5 / 10");
+    expect(row.detail).toBe("Score entered by your admin");
+    expect(row.subtitle).toContain("On paper.");
+    expect(row.chip).toBeUndefined();
+  });
+
   it("never started: Take quiz, linking to the quiz", () => {
     const row = quizRow(quiz({ quizId: 5 }));
     expect(row).toMatchObject({
@@ -184,7 +199,7 @@ describe("quizRow", () => {
     });
   });
 
-  it("a score shows once graded, one decimal at most, even with a retake in progress", () => {
+  it("a score shows once graded, two decimals at most, even with a retake in progress", () => {
     const row = quizRow(quiz({ quizId: 6, score: 7.5, attemptStatus: "IN_PROGRESS" }));
     expect(row.score).toBe("7.5 / 10");
     expect(row.chip).toBeUndefined();
