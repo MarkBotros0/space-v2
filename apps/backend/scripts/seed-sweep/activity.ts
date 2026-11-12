@@ -1,4 +1,5 @@
 import { db } from "../../src/db/client";
+import { bestGraded } from "../../src/lib/quizzes/best-attempt";
 import { addQuizQuestion } from "../../src/lib/quizzes/questions";
 import type { SweepPeople } from "./people";
 import { seedQuizTypes } from "./quiz-types";
@@ -262,18 +263,25 @@ async function seedTimedQuizzes({ admin, classmate, season }: SweepPeople) {
  * note. The student is no one's open attempt (held.ts holds student4 and the classmate), so the score
  * can be entered. Appended last, so no id a flow names moves: it adds a row, never a quiz.
  */
-async function seedAdminScore({ admin, student }: SweepPeople) {
-  const quiz = await db.quiz.findFirstOrThrow({ where: { title: "Week 1 review" }, select: { id: true } });
-  const best = await db.quizAttempt.findFirstOrThrow({
-    where: { quizId: quiz.id, studentUserId: student.id, status: "GRADED" },
-    select: { totalScore: true },
+async function seedAdminScore({ admin, student, season }: SweepPeople) {
+  const quiz = await db.quiz.findFirstOrThrow({
+    where: { title: "Week 1 review", seasonId: season.id },
+    select: { id: true },
   });
+  const attempts = await db.quizAttempt.findMany({
+    where: { quizId: quiz.id, studentUserId: student.id },
+    select: { status: true, totalScore: true, attemptNumber: true },
+  });
+  const best = bestGraded(attempts);
+  if (!best) throw new Error("seedAdminScore: the student has no graded attempt at Week 1 review.");
   const app = Number(best.totalScore ?? 0);
+  // Below the app score, as the fixture claims; a drifted quiz must fail here, not seed a tie.
+  if (app < 1.5) throw new Error(`seedAdminScore: the app score ${app} leaves no room 1.5 below it.`);
   await db.quizGrade.create({
     data: {
       quizId: quiz.id,
       studentUserId: student.id,
-      score: Math.max(0, app - 1.5),
+      score: app - 1.5,
       notes: "Adjusted after the leaders reviewed the essay answers together.",
       gradedById: admin.id,
       gradedAt: fromToday(0, 11),
