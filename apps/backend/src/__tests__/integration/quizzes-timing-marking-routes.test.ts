@@ -190,7 +190,9 @@ describe("re-saving an attempt graded at close", () => {
     const t = await openWith(() => []);
     await closeAttempt(t.attemptId, "TIMED_OUT", null);
     const leader = await db.user.findFirstOrThrow({ where: { name: "Test leader" }, select: { id: true } });
-    expect(await gradeAttempt(t.quizId, t.attemptId, [], leader.id)).toEqual({ scoreChanged: false });
+    expect(
+      await gradeAttempt(t.quizId, t.attemptId, [], leader.id, { id: f.seasonId, mayWriteFinished: false }),
+    ).toEqual({ scoreChanged: false });
     const row = await db.quizAttempt.findUniqueOrThrow({
       where: { id: t.attemptId },
       select: { status: true, gradedById: true },

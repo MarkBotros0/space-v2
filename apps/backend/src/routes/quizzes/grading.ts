@@ -4,6 +4,7 @@ import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { parseId } from "../../lib/parse-id";
 import { canGradeQuiz } from "../../lib/permissions";
+import { isSuper } from "../../lib/rbac";
 import { visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
 import { gradeAttempt as gradeLeaderMarks } from "../../lib/quizzes/grading";
@@ -197,8 +198,11 @@ export async function gradeAttempt(req: Request, res: Response) {
   if (parsed === null) return;
 
   // Leaders mark right or wrong; the points follow from the admin's per-question
-  // points. Checked and recorded under the attempt row lock (lib/quizzes/grading.ts).
-  const { scoreChanged } = await gradeLeaderMarks(id, attemptId, parsed.marks, user.userId);
+  // points. Checked and recorded under the Season, then the attempt row lock (lib/quizzes/grading.ts).
+  const { scoreChanged } = await gradeLeaderMarks(id, attemptId, parsed.marks, user.userId, {
+    id: quiz.seasonId,
+    mayWriteFinished: isSuper(user),
+  });
 
   const page = await db.quizAttempt.findUnique({
     where: { id: attemptId },
@@ -287,7 +291,10 @@ export async function reopenAttempt(req: Request, res: Response) {
   // An expired attempt still marked IN_PROGRESS is closed first, so it can be reopened.
   await closeLatestIfExpired(id, parsed.studentUserId, SAVE_GRACE_MS);
   // A new attempt, refused once the admin has entered the score (lib/quizzes/reopen-attempt.ts).
-  const created = await reopenAttemptFor(id, parsed.studentUserId);
+  const created = await reopenAttemptFor(id, parsed.studentUserId, {
+    id: quiz.seasonId,
+    mayWriteFinished: isSuper(user),
+  });
 
   // v1 sent nothing at all, so a student was never told a retake existed. There
   // is no dedicated NotificationType, so

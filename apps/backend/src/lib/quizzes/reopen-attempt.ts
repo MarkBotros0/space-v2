@@ -1,5 +1,6 @@
 import { db } from "../../db/client";
 import { ApiError } from "../api-error";
+import { lockSeasonForStaffWrite } from "../seasons/staff-write-lock";
 import { newShuffleSeed } from "./shuffle";
 import { hasAdminScore } from "./admin-score";
 import { lockStudentInQuiz } from "./student-lock";
@@ -10,15 +11,18 @@ import { lockStudentInQuiz } from "./student-lock";
  * student opens it (lib/quizzes/start-attempt.ts).
  *
  * Refused once the admin has entered the student's score (plan 4), checked under the lock order
- * the admin's score save takes (lib/quizzes/student-lock.ts: Quiz, the student's User row, then
- * the attempts), so a save and a reopen never interleave. Also refused with no attempt to reopen,
+ * the admin's score save takes (the Season FOR SHARE, `lockSeasonForStaffWrite`, so End never
+ * interleaves; then lib/quizzes/student-lock.ts: Quiz, the student's User row, then the
+ * attempts), so a save and a reopen never interleave. Also refused with no attempt to reopen,
  * or one still open.
  */
 export async function reopenAttemptFor(
   quizId: number,
   studentUserId: number,
+  season: { id: number; mayWriteFinished: boolean },
 ): Promise<{ id: number; attemptNumber: number }> {
   return db.$transaction(async (tx) => {
+    await lockSeasonForStaffWrite(tx, season.id, season.mayWriteFinished);
     const quiz = await lockStudentInQuiz(tx, quizId, studentUserId);
     if (!quiz) throw new ApiError("not_found", "Quiz not found.", 404);
     if (await hasAdminScore(tx, quizId, studentUserId)) {

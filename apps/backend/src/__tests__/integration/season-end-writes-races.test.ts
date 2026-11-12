@@ -7,7 +7,8 @@ import { behind, holdTransaction } from "./lock-holds";
 import { app, bodyFrom, endCheck, postEnd, seedEndWorld, type EndWorld } from "./season-end-passing-setup";
 
 /*
- * A staff write that changes a score (an attendance save, a paper grade) takes the Season FOR SHARE
+ * A staff write that changes a score (an attendance save, a paper grade, a leader's grading or a
+ * reopened retake) takes the Season FOR SHARE
  * first, as a staff mark and the admin's score do. End takes it FOR NO KEY UPDATE, so the write
  * lands wholly before End (and End then sees the changed score) or waits for End and finds the
  * season finished. A super may still write a finished season, as today; anyone else, whose grants
@@ -67,6 +68,33 @@ const saveGrade = (quizId: number, token: string, studentUserId: number) =>
     .set(bearer(token))
     .send({ entries: [{ studentUserId, score: 100, notes: null }] });
 
+/** A published ONLINE quiz with one essay, and the low student's GRADED attempt at it (5 of 5). */
+async function withGradedAttempt(w: EndWorld) {
+  const quiz = await db.quiz.create({
+    data: { seasonId: w.seasonId, title: "Online", kind: "ONLINE", maxScore: 5, publishedAt: new Date() },
+  });
+  const question = await db.quizQuestion.create({
+    data: { quizId: quiz.id, order: 1, type: "ESSAY", prompt: "Why?", points: 5, options: [] },
+  });
+  const attempt = await db.quizAttempt.create({
+    data: {
+      quizId: quiz.id,
+      studentUserId: w.users.low.id,
+      attemptNumber: 1,
+      status: "GRADED",
+      autoScore: 0,
+      manualScore: 5,
+      totalScore: 5,
+      shuffleSeed: 1,
+      submittedAt: new Date(),
+    },
+  });
+  await db.quizAnswer.create({
+    data: { attemptId: attempt.id, questionId: question.id, text: "Because", isCorrect: true, pointsAwarded: 5 },
+  });
+  return { quizId: quiz.id, questionId: question.id, attemptId: attempt.id };
+}
+
 describe("staff writes against End", () => {
   it("an attendance save waits for End and, finding the season finished, writes nothing", async () => {
     const w = await seedEndWorld();
@@ -85,6 +113,32 @@ describe("staff writes against End", () => {
     expect(res.status).toBe(403);
     const grade = await db.quizGrade.findFirstOrThrow({ where: { quizId: w.quizId!, studentUserId: w.users.low.id } });
     expect(Number(grade.score)).toBe(30);
+  });
+
+  it("a leader's re-grade and a reopened retake wait for End and, finding the season finished, write nothing", async () => {
+    const w = await seedEndWorld();
+    const q = await withGradedAttempt(w);
+    const held = await holdEnd(w.seasonId);
+    const regrade = await behind(held, () =>
+      request(app)
+        .post(`/api/v1/quizzes/${q.quizId}/attempts/${q.attemptId}/grade`)
+        .set(bearer(w.tokens.leader))
+        .send({ marks: [{ questionId: q.questionId, blankId: null, correct: false }] }),
+    );
+    expect(regrade.status).toBe(403);
+    const attempt = await db.quizAttempt.findUniqueOrThrow({ where: { id: q.attemptId } });
+    expect(Number(attempt.totalScore)).toBe(5);
+
+    await db.season.update({ where: { id: w.seasonId }, data: { status: "ACTIVE" } });
+    const heldAgain = await holdEnd(w.seasonId);
+    const reopen = await behind(heldAgain, () =>
+      request(app)
+        .post(`/api/v1/quizzes/${q.quizId}/attempts/reopen`)
+        .set(bearer(w.tokens.leader))
+        .send({ studentUserId: w.users.low.id }),
+    );
+    expect(reopen.status).toBe(403);
+    expect(await db.quizAttempt.count({ where: { quizId: q.quizId } })).toBe(1);
   });
 
   it("End waits for an attendance re-save holding the season, then refuses the score it changed", async () => {

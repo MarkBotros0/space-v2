@@ -3,6 +3,7 @@ import type { MarkAttemptInput } from "@space/shared";
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api-error";
+import { lockSeasonForStaffWrite } from "../seasons/staff-write-lock";
 import { lockAttempt, STORED_ANSWER_SELECT } from "./mark-and-close";
 import {
   hasAnswerText,
@@ -117,7 +118,9 @@ async function recordLeaderMarks(tx: Prisma.TransactionClient, attemptId: number
 
 /**
  * A leader marks a closed attempt: checked, recorded and GRADED, all or none,
- * under the attempt row lock (C-c), so two first grades at once run one after
+ * under the Season FOR SHARE (`lockSeasonForStaffWrite`: a re-grade of a GRADED
+ * attempt lands wholly before End's recompute or waits and finds the season
+ * ended) and then the attempt row lock (C-c), so two first grades at once run one after
  * the other and only the first sees a change. autoScore is trusted as stored
  * and never recomputed (R73): recomputing it would need the questions as they
  * were when taken, which nothing records. `scoreChanged` is D8's rule for
@@ -128,8 +131,10 @@ export async function gradeAttempt(
   attemptId: number,
   marks: Mark[],
   gradedById: number,
+  season: { id: number; mayWriteFinished: boolean },
 ): Promise<{ scoreChanged: boolean }> {
   return db.$transaction(async (tx) => {
+    await lockSeasonForStaffWrite(tx, season.id, season.mayWriteFinished);
     const locked = await lockAttempt(tx, attemptId);
     if (!locked || locked.status === "IN_PROGRESS") {
       throw new ApiError("attempt_not_submitted", "This attempt has not been submitted.", 409);
