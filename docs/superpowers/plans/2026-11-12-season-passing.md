@@ -19,7 +19,7 @@
   - Attendance: PRESENT + LATE over the season's sessions with `startsAt <= now` and `startsAt >= enrolledAt` (the student page's formula, `attendancePctForEnrollments`). Empty denominator: null.
   - Assignments: submitted (`SUBMITTED_WHERE`) over the season's live assignments.
   - Quizzes: Σ counting score over Σ `maxScore` of every PAPER quiz and every published ONLINE quiz of the season (`OR: [{ kind: "PAPER" }, { publishedAt: { not: null } }]`). ONLINE uses `countingScore`, PAPER the `QuizGrade.score`; nothing is 0.
-- Score: Σ wᵢ·pctᵢ / Σ wᵢ over the numbers that are not null, from unrounded ratios, then `Math.round(x * 10) / 10`. The rounded score is compared with the pass mark (`>=`). No non-null number: score null.
+- Score: Σ wᵢ·pctᵢ / Σ wᵢ over the numbers that are not null, from unrounded ratios, then `round1` (`Math.round(x * 10 + 1e-9) / 10`, the shared helper). The rounded score is compared with the pass mark (`>=`). No non-null number: score null.
 - Weights are whole percentages 0..100 adding up to exactly 100; pass mark is a whole number 0..100. Defaults: the season with the newest `passCriteriaSetAt`, else 40 / 30 / 30 and 60. A weight above 0 on a number the season has nothing for is 400 `weight_on_empty`, "{Number} has nothing to count this season, so its weight must be 0."
 - Criteria: the season's admin or a super, ACTIVE seasons only (409 `season_not_active`). Leaders read them.
 - Staff mark: the season's admin, a super, or the student's leader in that season (`leadsStudentInSeason`); ACTIVE season only (409 `season_finished` "This season has ended; its work can't change.", 409 `season_draft` on a draft). Anyone who may mark may undo, whoever marked. No essay answers, nothing in the review queue, no notification.
