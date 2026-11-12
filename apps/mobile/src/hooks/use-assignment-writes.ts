@@ -95,7 +95,7 @@ export function useDeleteAssignment() {
 
 /**
  * What a staff mark moves: the assignment's progress, the season's assignment lists (their
- * counts), the students' pages and every passing figure. Also after a refusal, since a 409
+ * counts), the students' pages, every passing figure and engagement (its At risk counts staff marks). Also after a refusal, since a 409
  * (season_finished, work_changed) means the screen is showing an old answer.
  */
 function invalidateAfterMark(queryClient: QueryClient, assignmentId: number) {
@@ -103,6 +103,7 @@ function invalidateAfterMark(queryClient: QueryClient, assignmentId: number) {
   void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.lists() });
   void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
   void queryClient.invalidateQueries({ queryKey: queryKeys.passing.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.engagement.all });
 }
 
 /** Staff mark the assignment submitted for a student who did it outside the app (a second mark keeps the first). */
