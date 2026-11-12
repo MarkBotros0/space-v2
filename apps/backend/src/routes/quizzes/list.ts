@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
+import { ADMIN_SCORE_WHERE } from "../../lib/quizzes/admin-score";
 import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason } from "../../lib/permissions";
 import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
@@ -51,7 +52,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
         },
         // On an ONLINE quiz a QuizGrade row is the admin's score (plan 4).
         grades: {
-          where: { studentUserId, score: { not: null } },
+          where: { studentUserId, ...ADMIN_SCORE_WHERE },
           select: { score: true, notes: true, gradedAt: true },
         },
       },

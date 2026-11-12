@@ -1,4 +1,5 @@
 import { db } from "../../db/client";
+import { ADMIN_SCORE_WHERE } from "../quizzes/admin-score";
 import { bestScoreByStudent } from "../quizzes/best-attempt";
 import { toScore } from "../quizzes/score";
 
@@ -8,7 +9,7 @@ type StaffAdminScore = { score: number; notes: string | null; gradedAt: Date; gr
 /** Each listed student's admin score on one quiz (a QuizGrade row with a score); a student with none is absent. */
 async function adminScoresFor(quizId: number, studentUserIds: number[]): Promise<Map<number, StaffAdminScore>> {
   const rows = await db.quizGrade.findMany({
-    where: { quizId, studentUserId: { in: studentUserIds }, score: { not: null } },
+    where: { quizId, studentUserId: { in: studentUserIds }, ...ADMIN_SCORE_WHERE },
     select: {
       studentUserId: true,
       score: true,

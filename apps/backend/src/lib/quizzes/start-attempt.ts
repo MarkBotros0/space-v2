@@ -2,7 +2,8 @@ import { db } from "../../db/client";
 import { ApiError } from "../api-error";
 import { formatInOrgTime } from "../org-time";
 import { newShuffleSeed } from "./shuffle";
-import { hasAdminScore, lockStudentInQuiz } from "./student-lock";
+import { hasAdminScore } from "./admin-score";
+import { lockStudentInQuiz } from "./student-lock";
 import { canStartNow, deadlineFor } from "./timing";
 
 /** The student's copy when the admin has entered their score (plan 4): taking it is blocked. */

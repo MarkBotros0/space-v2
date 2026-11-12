@@ -23,8 +23,9 @@ const mockTx = {
       quizBlanks: [],
     })),
   },
-  // The Quiz lock and the admin-score freeze check (no score on these quizzes).
+  // The Quiz lock and the freeze re-check (no attempt or admin score on these quizzes).
   $queryRaw: jest.fn(async () => []),
+  quizAttempt: { count: jest.fn(async () => 0) },
   quizGrade: { count: jest.fn(async () => 0) },
   quiz: { update: jest.fn(async () => ({})) },
   quizOption: {

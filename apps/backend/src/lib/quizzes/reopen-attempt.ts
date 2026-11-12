@@ -1,7 +1,8 @@
 import { db } from "../../db/client";
 import { ApiError } from "../api-error";
 import { newShuffleSeed } from "./shuffle";
-import { hasAdminScore, lockStudentInQuiz } from "./student-lock";
+import { hasAdminScore } from "./admin-score";
+import { lockStudentInQuiz } from "./student-lock";
 
 /**
  * A retake: a NEW attempt after the student's latest (R81, the previous one and its answers stay

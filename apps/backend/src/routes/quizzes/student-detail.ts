@@ -1,6 +1,7 @@
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { db } from "../../db/client";
+import { ADMIN_SCORE_WHERE } from "../../lib/quizzes/admin-score";
 import type { Prisma } from "../../generated/prisma/client";
 import { bestGraded, countingScore } from "../../lib/quizzes/best-attempt";
 import { seededOrder } from "../../lib/quizzes/shuffle";
@@ -120,7 +121,7 @@ export async function loadStudentQuizDetail(
   if (!quiz || quiz.kind !== "ONLINE" || quiz.publishedAt === null) return null;
 
   const adminRow = await db.quizGrade.findFirst({
-    where: { quizId, studentUserId, score: { not: null } },
+    where: { quizId, studentUserId, ...ADMIN_SCORE_WHERE },
     select: { score: true, notes: true, gradedAt: true },
   });
   const attempts: AttemptRow[] = await db.quizAttempt.findMany({

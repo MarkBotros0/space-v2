@@ -11,11 +11,17 @@ interface QuizParticipation {
  *
  * Given: every published ONLINE quiz, and every PAPER quiz someone in the season
  * has been graded on (a paper quiz nobody is graded on yet has not been given).
- * Taken: an ONLINE attempt handed in (SUBMITTED or GRADED), or a PAPER grade.
+ * Taken: an ONLINE attempt handed in (SUBMITTED or GRADED) or the season admin's
+ * score on it (plan 4, a QuizGrade row with a score), or a PAPER grade.
  * Whether results are released does not matter: this counts who took a quiz,
  * not how they did, and it is staff-only. Not part of the score or the
  * at-risk rule.
  */
+/** The row form of ADMIN_SCORE_WHERE (lib/quizzes/admin-score.ts): a grade row with a score. */
+function isAdminScore(grade: { score: unknown } | undefined): boolean {
+  return grade !== undefined && grade.score !== null;
+}
+
 export async function quizParticipation(seasonId: number, studentUserId: number): Promise<QuizParticipation> {
   const quizzes = await db.quiz.findMany({
     where: {
@@ -32,12 +38,12 @@ export async function quizParticipation(seasonId: number, studentUserId: number)
         select: { id: true },
         take: 1,
       },
-      grades: { where: { studentUserId }, select: { id: true }, take: 1 },
+      grades: { where: { studentUserId }, select: { score: true }, take: 1 },
     },
   });
   const quizzesGiven = quizzes.length;
   const quizzesTaken = quizzes.filter((q) =>
-    q.kind === "ONLINE" ? q.attempts.length > 0 : q.grades.length > 0,
+    q.kind === "ONLINE" ? q.attempts.length > 0 || isAdminScore(q.grades[0]) : q.grades.length > 0,
   ).length;
   const quizPct = quizzesGiven === 0 ? 0 : Math.round((quizzesTaken / quizzesGiven) * 100);
   return { quizzesGiven, quizzesTaken, quizPct };

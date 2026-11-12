@@ -87,11 +87,10 @@ async function buildKit(o: {
       kind: "ONLINE",
       maxScore: 2,
       publishedAt: new Date(),
-      // An attempt in progress, so submit is refused by the lock and not by "no attempt".
-      attempts: { create: [{ studentUserId: o.student, attemptNumber: 1, status: "IN_PROGRESS" }] },
     },
     select: { id: true },
   });
+  // Questions first: a question write is refused once the quiz has an attempt.
   await addQuizQuestion(quiz.id, {
     type: "SINGLE_CHOICE",
     prompt: "Q?",
@@ -100,6 +99,10 @@ async function buildKit(o: {
       { label: "a", isCorrect: true },
       { label: "b", isCorrect: false },
     ],
+  });
+  // An attempt in progress, so submit is refused by the lock and not by "no attempt".
+  await db.quizAttempt.create({
+    data: { quizId: quiz.id, studentUserId: o.student, attemptNumber: 1, status: "IN_PROGRESS" },
   });
   const q = await db.sessionVideoQuestion.create({
     data: { sessionId: o.sessionId, atSeconds: 5, prompt: "VQ?", options: ["a", "b"], correctIndex: 0, points: 1 },

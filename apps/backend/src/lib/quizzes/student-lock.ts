@@ -35,8 +35,3 @@ export async function lockStudentInQuiz(
   await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${studentUserId} FOR NO KEY UPDATE`;
   return quiz;
 }
-
-/** Whether the season admin has entered this student's score (a QuizGrade row with a score). Read under the lock above. */
-export async function hasAdminScore(tx: Prisma.TransactionClient, quizId: number, studentUserId: number) {
-  return (await tx.quizGrade.count({ where: { quizId, studentUserId, score: { not: null } } })) > 0;
-}

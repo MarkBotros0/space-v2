@@ -5,6 +5,8 @@ const mockDb = {
   quiz: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   quizQuestion: { findMany: jest.fn() },
   quizAttempt: { count: jest.fn() },
+  // Unpublishing also checks for the admin's scores (plan 4).
+  quizGrade: { count: jest.fn() },
   seasonEnrollment: { findMany: jest.fn() },
 };
 jest.mock("../db/client", () => ({ db: mockDb }));
@@ -50,6 +52,7 @@ beforeEach(() => {
   mockDb.quiz.findUnique.mockResolvedValue({ id: 5, kind: "ONLINE" });
   mockDb.quizQuestion.findMany.mockResolvedValue([{ type: "ESSAY", quizOptions: [], quizBlanks: [] }]);
   mockDb.quizAttempt.count.mockResolvedValue(0);
+  mockDb.quizGrade.count.mockResolvedValue(0);
   mockDb.quiz.findUniqueOrThrow.mockResolvedValue({ publishedAt, seasonId: 7, title: "Week 3 check" });
   mockDb.quiz.update.mockResolvedValue({ publishedAt, seasonId: 7, title: "Week 3 check" });
   mockDb.seasonEnrollment.findMany.mockResolvedValue([{ studentUserId: 11 }, { studentUserId: 12 }]);

@@ -150,7 +150,7 @@ export const seasonPaths = {
       tags: ["Seasons"],
       summary: "What blocks a season from ending",
       description:
-        "Season-admin only (SUPER passes). Blockers: SUBMITTED submissions and quiz attempts awaiting a grade, and finished sessions (`startsAt + durationMinutes` before now) with ACTIVE students unmarked (`missing`, counting only students enrolled by the time the session started). Drafts, returned work, in-progress attempts, soft-deleted assignments and students never block. `students` lists the ACTIVE, non-deleted students with their group and attendance percent (PRESENT + LATE over every session, 0 with none). `graduatesOnPass` says whether passing makes them alumni. 409 `season_not_active` unless the season is ACTIVE.",
+        "Season-admin only (SUPER passes). Blockers: SUBMITTED submissions and quiz attempts awaiting a grade (not one whose student has the admin's score on that quiz, which counts instead), and finished sessions (`startsAt + durationMinutes` before now) with ACTIVE students unmarked (`missing`, counting only students enrolled by the time the session started). Drafts, returned work, in-progress attempts, soft-deleted assignments and students never block. `students` lists the ACTIVE, non-deleted students with their group and attendance percent (PRESENT + LATE over every session, 0 with none). `graduatesOnPass` says whether passing makes them alumni. 409 `season_not_active` unless the season is ACTIVE.",
       parameters: [idParam],
       responses: {
         200: ok(

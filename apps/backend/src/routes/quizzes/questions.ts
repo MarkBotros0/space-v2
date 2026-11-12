@@ -11,6 +11,7 @@ import {
   reorderQuestionsRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizPublished } from "../../lib/quizzes/notify";
+import { quizHasAdminScores } from "../../lib/quizzes/admin-score";
 import {
   addQuizQuestion,
   deleteQuizQuestion,
@@ -34,11 +35,6 @@ import { parseOr400 } from "../../lib/http/validate";
  */
 async function hasAttempts(quizId: number): Promise<boolean> {
   return (await db.quizAttempt.count({ where: { quizId } })) > 0;
-}
-
-/** The season admin's score freezes them the same way (plan 4): maxScore must not drop below it. */
-async function hasAdminScores(quizId: number): Promise<boolean> {
-  return (await db.quizGrade.count({ where: { quizId, score: { not: null } } })) > 0;
 }
 
 /**
@@ -73,7 +69,7 @@ async function loadAuthorableQuiz(
     apiError(res, "quiz_has_attempts", "Students have started this quiz, so its questions can no longer change.", 409);
     return null;
   }
-  if (!opts.allowWithAttempts && (await hasAdminScores(quizId))) {
+  if (!opts.allowWithAttempts && (await quizHasAdminScores(db, quizId))) {
     apiError(res, "quiz_has_attempts", SCORED_QUIZ_MESSAGE, 409);
     return null;
   }
@@ -245,6 +241,15 @@ export async function publishQuiz(req: Request, res: Response) {
         res,
         "quiz_has_graded_attempts",
         "Students have graded results for this quiz; unpublishing would hide them.",
+        409,
+      );
+    }
+    // The admin's score (plan 4) shows to the student at once, so it holds the quiz up the same way.
+    if (await quizHasAdminScores(db, id)) {
+      return apiError(
+        res,
+        "quiz_has_graded_attempts",
+        "Students have scores for this quiz; unpublishing would hide them.",
         409,
       );
     }

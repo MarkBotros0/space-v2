@@ -1,6 +1,7 @@
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api-error";
+import { quizHasAdminScores } from "./admin-score";
 import { questionRowsFor, toAuthoringQuestion, type QuizQuestionRequest } from "./question-rows";
 import { randomOrder, type Shuffle } from "./shuffle";
 
@@ -35,16 +36,22 @@ async function recomputeMaxScore(tx: Prisma.TransactionClient, quizId: number): 
 export const SCORED_QUIZ_MESSAGE = "A score has been entered for this quiz, so its questions can no longer change.";
 
 /**
- * Locks the Quiz row (FOR NO KEY UPDATE, which waits for the FOR SHARE an admin's score save
- * holds, lib/quizzes/student-lock.ts) and refuses once the admin has entered a score, so a
- * question write can't drop maxScore below a stored score. The route refuses first
- * (routes/quizzes/questions.ts); this closes the race with a save landing in between.
+ * Locks the Quiz row (FOR NO KEY UPDATE, which waits for the FOR SHARE a first start or an
+ * admin's score save holds, lib/quizzes/student-lock.ts) and refuses once a student has started
+ * or the admin has entered a score, so a question write can't change a quiz someone has taken or
+ * drop maxScore below a stored score. The route refuses first (routes/quizzes/questions.ts); this
+ * closes the race with a start or a save landing in between.
  */
-async function lockUnscoredQuiz(tx: Prisma.TransactionClient, quizId: number): Promise<void> {
+async function lockUntakenQuiz(tx: Prisma.TransactionClient, quizId: number): Promise<void> {
   await tx.$queryRaw`SELECT "id" FROM "Quiz" WHERE "id" = ${quizId} FOR NO KEY UPDATE`;
-  if ((await tx.quizGrade.count({ where: { quizId, score: { not: null } } })) > 0) {
-    throw new ApiError("quiz_has_attempts", SCORED_QUIZ_MESSAGE, 409);
+  if ((await tx.quizAttempt.count({ where: { quizId } })) > 0) {
+    throw new ApiError(
+      "quiz_has_attempts",
+      "Students have started this quiz, so its questions can no longer change.",
+      409,
+    );
   }
+  if (await quizHasAdminScores(tx, quizId)) throw new ApiError("quiz_has_attempts", SCORED_QUIZ_MESSAGE, 409);
 }
 
 /**
@@ -89,7 +96,7 @@ function questionColumns(data: QuizQuestionRequest) {
 /** Adds a question at the end and recomputes maxScore, in one transaction. */
 export async function addQuizQuestion(quizId: number, data: QuizQuestionRequest, shuffle: Shuffle = randomOrder) {
   return db.$transaction(async (tx) => {
-    await lockUnscoredQuiz(tx, quizId);
+    await lockUntakenQuiz(tx, quizId);
     // R20: order is the current count. It stays that way, but a real reorder
     // endpoint exists now, and delete renumbers, so `order` is a position.
     const count = await tx.quizQuestion.count({ where: { quizId } });
@@ -113,7 +120,7 @@ export async function updateQuizQuestion(
   shuffle: Shuffle = randomOrder,
 ) {
   return db.$transaction(async (tx) => {
-    await lockUnscoredQuiz(tx, quizId);
+    await lockUntakenQuiz(tx, quizId);
     // `order` is deliberately not writable here — reordering has its own
     // endpoint, so a question edit cannot silently move a question.
     await tx.quizQuestion.update({ where: { id: questionId }, data: questionColumns(data), select: { id: true } });
@@ -128,7 +135,7 @@ export async function updateQuizQuestion(
 /** Deletes a question, renumbers the rest and recomputes maxScore, in one transaction. */
 export async function deleteQuizQuestion(quizId: number, questionId: number): Promise<void> {
   await db.$transaction(async (tx) => {
-    await lockUnscoredQuiz(tx, quizId);
+    await lockUntakenQuiz(tx, quizId);
     await tx.quizQuestion.delete({ where: { id: questionId } });
     // R21: v1 left `order` sparse. Renumbering keeps it a position, which is
     // what the reorder endpoint and the runner's numbering both assume.

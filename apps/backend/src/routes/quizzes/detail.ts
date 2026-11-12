@@ -12,6 +12,7 @@ import {
 import { requireUser } from "../../middleware/require-auth";
 import { closeLatestIfExpired } from "../../lib/quizzes/close-attempt";
 import { AUTHORING_QUESTION_SELECT } from "../../lib/quizzes/questions";
+import { ADMIN_SCORE_WHERE } from "../../lib/quizzes/admin-score";
 import { toAuthoringQuestion } from "../../lib/quizzes/question-rows";
 import { loadStudentQuizDetail } from "./student-detail";
 import { idParam } from "../../lib/http/params";
@@ -33,6 +34,8 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
       season: { select: { code: true } },
       session: { select: { title: true } },
       _count: { select: { attempts: true, grades: true } },
+      // The admin's scores, by the write path's own definition (lib/quizzes/admin-score.ts).
+      grades: { where: ADMIN_SCORE_WHERE, select: { id: true }, take: 1 },
       shuffleQuestions: true,
       startsFrom: true,
       startsUntil: true,
@@ -56,8 +59,8 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
     gradeCount: quiz._count.grades,
     // Derived once, server-side (C4): the same condition the write path
     // enforces, so the screen never has to guess whether the builder is live.
-    // An admin's score freezes the questions too (plan 4); an ONLINE quiz's grades are only those.
-    canEditStructure: canManage && quiz.kind === "ONLINE" && quiz._count.attempts === 0 && quiz._count.grades === 0,
+    // An admin's score freezes the questions too (plan 4).
+    canEditStructure: canManage && quiz.kind === "ONLINE" && quiz._count.attempts === 0 && quiz.grades.length === 0,
     canManage,
     answersReleasedAt: quiz.resultsReleasedAt,
     canReleaseResults: canRelease(quiz.seasonId),
