@@ -277,7 +277,7 @@ export const quizAuthoringPaths = {
       tags: ["Quizzes"],
       summary: "Enter or edit the admin's score for one student on an online quiz",
       description:
-        "SUPER or admin of the quiz's season; a leader or another season's admin is refused (403). ONLINE quizzes only (409 `quiz_not_online`; a paper quiz has its grade sheet). The student must be one of the quiz's season participants (404 otherwise). Stored as the student's `QuizGrade` row, and it always counts instead of any in-app attempt, even a higher one. `score` is 0 to the quiz's `maxScore` with at most two decimals (400 `bad_request`, or 400 `score_exceeds_max` above the max). Refused while the student has an attempt open (409 `attempt_open`, \"End their attempt first.\"), checked with their attempts locked. A new or changed score or note sends one `QUIZ_GRADED` notification, \"Your score is in\" (best-effort); a re-save of the same score and notes changes nothing and sends nothing. The response has no question, answer or key.",
+        'SUPER or admin of the quiz\'s season; a leader or another season\'s admin is refused (403). ONLINE quizzes only (409 `quiz_not_online`; a paper quiz has its grade sheet), and published (409 `quiz_not_published`, "Publish the quiz before entering a score."). 404 for a quiz in a deleted season, and for a student who is not a live user among the quiz\'s season participants. Stored as the student\'s `QuizGrade` row, and it always counts instead of any in-app attempt, even a higher one. `score` is 0 to the quiz\'s `maxScore` with at most two decimals, rounded to exactly two (400 `bad_request`, or 400 `score_exceeds_max` above the max). Refused while the student has an attempt open (409 `attempt_open`, "End their attempt first."), checked with their attempts locked. A new or changed score sends one `QUIZ_GRADED` notification, "Your score is in" (best-effort), as a paper grade does; a notes-only edit is saved (restamping `gradedAt` and `gradedBy`) but sends nothing, and a re-save of the same score and notes changes nothing. The response has no question, answer or key.',
       parameters: [idParam, studentUserIdParam],
       requestBody: {
         required: true,
@@ -312,18 +312,18 @@ export const quizAuthoringPaths = {
           },
           "The stored manual score.",
         ),
-        400: conflict("`bad_request` or `score_exceeds_max`."),
+        400: errRef("BadRequest"),
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`quiz_not_online` or `attempt_open`."),
+        409: conflict("`quiz_not_online`, `quiz_not_published` or `attempt_open`."),
       },
     },
     delete: {
       tags: ["Quizzes"],
       summary: "Clear the admin's score for one student on an online quiz",
       description:
-        "The same gate, quiz kind and student checks as the PUT. Deletes the row, so the student's best graded attempt counts again; nothing reopens and nobody is notified. 204 also when there was no score.",
+        "The same gate, quiz kind, live season and student checks as the PUT; allowed on an unpublished quiz, so a score can be cleared after unpublishing. Deletes the row, so the student's best graded attempt counts again; nothing reopens and nobody is notified. 204 also when there was no score.",
       parameters: [idParam, studentUserIdParam],
       responses: {
         204: { description: "Cleared." },

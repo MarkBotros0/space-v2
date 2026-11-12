@@ -80,8 +80,16 @@ function hasTwoDecimalsAtMost(n: number): boolean {
   return Math.abs(Math.round(n * 100) - n * 100) < 1e-6;
 }
 
-/** A QuizGrade score, paper or manual: 0 or more with at most two decimals. The quiz's maxScore is a server check. */
-const quizGradeScoreSchema = z.number().min(0).refine(hasTwoDecimalsAtMost, { message: "Use at most two decimals." });
+/**
+ * A QuizGrade score, paper or manual: 0 or more with at most two decimals, rounded to exactly two
+ * (0.1 + 0.2 arrives as 0.30000000000000004 and is stored, compared and answered as 0.3). The
+ * quiz's maxScore is a server check.
+ */
+const quizGradeScoreSchema = z
+  .number()
+  .min(0)
+  .refine(hasTwoDecimalsAtMost, { message: "Use at most two decimals." })
+  .transform((n) => Math.round(n * 100) / 100);
 
 /** A grade's note, shown to the student. */
 const quizGradeNotesSchema = z.string().max(1000).nullable().default(null);

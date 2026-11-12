@@ -161,6 +161,14 @@ describe("PAPER grades", () => {
     expect((await quizGradedCount()) - before).toBe(1);
 
     expect((await send(12.755)).status).toBe(400);
+
+    // The student's own list reads the decimal back as a number.
+    const list = await request(app)
+      .get(`/api/v1/quizzes?seasonId=${seasonId}`)
+      .set("authorization", `Bearer ${studentToken}`);
+    expect(list.status).toBe(200);
+    const listed = list.body.data.items.find((r: { quizId: number }) => r.quizId === quizId);
+    expect(listed).toMatchObject({ kind: "PAPER", score: 12.75 });
   });
 
   it("clears a grade when the score is null (diverging from R89)", async () => {

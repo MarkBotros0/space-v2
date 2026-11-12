@@ -3,6 +3,7 @@ import {
   quizAnswerInputSchema,
   quizQuestionStudentSchema,
   reorderQuestionsRequestSchema,
+  manualScoreWriteSchema,
   saveQuizGradesRequestSchema,
 } from "../index";
 
@@ -130,6 +131,18 @@ describe("saveQuizGradesRequestSchema", () => {
         entries: [{ studentUserId: 9, score: -1, notes: null }],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("manualScoreWriteSchema", () => {
+  it("rounds a score to two decimals, so float noise stores and compares as the typed value", () => {
+    expect(manualScoreWriteSchema.parse({ score: 0.1 + 0.2, notes: null }).score).toBe(0.3);
+    expect(manualScoreWriteSchema.parse({ score: 7.55 }).score).toBe(7.55);
+    expect(manualScoreWriteSchema.safeParse({ score: 7.555, notes: null }).success).toBe(false);
+    expect(
+      saveQuizGradesRequestSchema.parse({ entries: [{ studentUserId: 9, score: 0.1 + 0.2, notes: null }] }).entries[0]
+        ?.score,
+    ).toBe(0.3);
   });
 });
 

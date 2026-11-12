@@ -192,6 +192,21 @@ describe("GET /me/seasons/:seasonId", () => {
     expect(quizzes.get(quizIds.graded)).toMatchObject({ status: "GRADED", score: 7 });
   });
 
+  it("reads a paper grade with decimals back as a number", async () => {
+    const enrolment = await db.seasonEnrollment.findFirstOrThrow({
+      where: { seasonId: seasons.completed.id },
+      select: { studentUserId: true },
+    });
+    const paper = await db.quiz.create({
+      data: { seasonId: seasons.completed.id, title: "Rec paper", kind: "PAPER", maxScore: 20 },
+      select: { id: true },
+    });
+    await db.quizGrade.create({ data: { quizId: paper.id, studentUserId: enrolment.studentUserId, score: 12.75 } });
+    const res = await get(`/me/seasons/${seasons.completed.id}`, tokens.student);
+    const row = res.body.data.record.quizzes.find((q: { id: number }) => q.id === paper.id);
+    expect(row).toMatchObject({ status: "GRADED", score: 12.75 });
+  });
+
   it("shows a dropped enrolment as DROPPED, a result-less one as COMPLETED", async () => {
     const a = await get(`/me/seasons/${seasons.dropped.id}`, tokens.student);
     expect(a.body.data.record.outcome).toBe("DROPPED");

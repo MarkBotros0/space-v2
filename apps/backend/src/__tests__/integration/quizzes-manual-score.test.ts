@@ -3,7 +3,7 @@ import request from "supertest";
 import { manualScoreSchema } from "../../../../../packages/shared/src/index";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { bearer, cleanupTestData, createTestUser } from "./fixtures";
+import { bearer, cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 import { buildPublishedQuizIn, quizGradedCountFor, seedQuizFixtures, type QuizFixtures } from "./quizzes-setup";
 
 jest.setTimeout(60000);
@@ -98,6 +98,12 @@ describe("the admin's manual score on an online quiz", () => {
     expect(ok.body.data.score).toBe(7.5);
     expect(Number((await gradeRow(quizId, f.ownStudentId))?.score)).toBe(7.5);
 
+    // 7.55 is 7.549999… in binary: still two decimals, stored as 7.55.
+    const awkward = await put(quizId, f.ownStudentId, f.adminToken, { score: 7.55, notes: null });
+    expect(awkward.status).toBe(200);
+    expect(awkward.body.data.score).toBe(7.55);
+    expect(Number((await gradeRow(quizId, f.ownStudentId))?.score)).toBe(7.55);
+
     for (const score of [7.555, -1, 14.5]) {
       const res = await put(quizId, f.ownStudentId, f.adminToken, { score, notes: null });
       expect(res.status).toBe(400);
@@ -164,5 +170,64 @@ describe("the admin's manual score on an online quiz", () => {
     for (const leak of ["Capital of France", "Paris", "Discuss the reading", "isCorrect", "prompt", "answers"]) {
       expect(raw).not.toContain(leak);
     }
+  });
+
+  it("a notes-only edit is saved but silent; a float-noise re-save is silent", async () => {
+    const quizId = await onlineQuiz();
+    expect((await put(quizId, f.ownStudentId, f.adminToken, { score: 0.3, notes: "First." })).status).toBe(200);
+    const start = await quizGradedCountFor(f.ownStudentId);
+    const first = await gradeRow(quizId, f.ownStudentId);
+
+    const edited = await put(quizId, f.ownStudentId, f.adminToken, { score: 0.3, notes: "Second." });
+    expect(edited.status).toBe(200);
+    expect(edited.body.data.notes).toBe("Second.");
+    const row = await gradeRow(quizId, f.ownStudentId);
+    expect(row?.notes).toBe("Second.");
+    expect(row!.gradedAt!.getTime()).toBeGreaterThanOrEqual(first!.gradedAt!.getTime());
+    expect((await quizGradedCountFor(f.ownStudentId)) - start).toBe(0);
+
+    const noisy = await put(quizId, f.ownStudentId, f.adminToken, { score: 0.1 + 0.2, notes: "Second." });
+    expect(noisy.status).toBe(200);
+    expect(noisy.body.data.score).toBe(0.3);
+    expect((await quizGradedCountFor(f.ownStudentId)) - start).toBe(0);
+  });
+
+  it("refused on an unpublished quiz; clearing still works there", async () => {
+    const quizId = await onlineQuiz();
+    expect((await put(quizId, f.ownStudentId, f.adminToken, { score: 5, notes: null })).status).toBe(200);
+    await db.quiz.update({ where: { id: quizId }, data: { publishedAt: null } });
+
+    const res = await put(quizId, f.ownStudentId, f.adminToken, { score: 6, notes: null });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toEqual({
+      code: "quiz_not_published",
+      message: "Publish the quiz before entering a score.",
+    });
+    expect(Number((await gradeRow(quizId, f.ownStudentId))?.score)).toBe(5);
+
+    expect((await del(quizId, f.ownStudentId, f.adminToken)).status).toBe(204);
+    expect(await gradeRow(quizId, f.ownStudentId)).toBeNull();
+  });
+
+  it("a deleted season or a deleted student → 404", async () => {
+    const gone = await createTestSeason();
+    const goneQuiz = await db.quiz.create({
+      data: { seasonId: gone.id, title: "Gone", kind: "ONLINE", maxScore: 10, publishedAt: new Date() },
+      select: { id: true },
+    });
+    const enrolled = await createTestUser("gone-student", "STUDENT");
+    await db.seasonEnrollment.create({ data: { seasonId: gone.id, studentUserId: enrolled.id, status: "ACTIVE" } });
+    await db.season.update({ where: { id: gone.id }, data: { deletedAt: new Date() } });
+    expect((await put(goneQuiz.id, enrolled.id, f.superToken, { score: 5, notes: null })).status).toBe(404);
+    expect((await del(goneQuiz.id, enrolled.id, f.superToken)).status).toBe(404);
+
+    const quizId = await onlineQuiz();
+    const deleted = await createTestUser("deleted-student", "STUDENT");
+    await db.seasonEnrollment.create({ data: { seasonId: f.seasonId, studentUserId: deleted.id, status: "ACTIVE" } });
+    await db.user.update({ where: { id: deleted.id }, data: { deletedAt: new Date() } });
+    const res = await put(quizId, deleted.id, f.adminToken, { score: 5, notes: null });
+    expect(res.status).toBe(404);
+    expect((await del(quizId, deleted.id, f.adminToken)).status).toBe(404);
+    expect(await gradeRow(quizId, deleted.id)).toBeNull();
   });
 });

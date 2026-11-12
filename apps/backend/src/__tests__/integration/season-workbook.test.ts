@@ -315,6 +315,25 @@ describe("ONLINE quiz columns", () => {
   });
 });
 
+describe("PAPER quiz columns", () => {
+  it("shows a paper grade with decimals as a number", async () => {
+    const quiz = await db.quiz.create({
+      data: { seasonId, title: "Paper decimal", kind: "PAPER", maxScore: 20 },
+      select: { id: true },
+    });
+    await db.quizGrade.create({ data: { quizId: quiz.id, studentUserId: aliceId, score: 12.75 } });
+    try {
+      const result = (await buildSeasonWorkbook(seasonId))!;
+      const rows = sheetRows(result.workbook, "Grades");
+      const column = rows[0]!.indexOf("Paper decimal (/20)");
+      expect(column).toBeGreaterThan(-1);
+      expect(rows.find((r) => r[0] === "Test wb-alice")![column]).toBe(12.75);
+    } finally {
+      await db.quiz.delete({ where: { id: quiz.id } });
+    }
+  });
+});
+
 describe("summariseSeasonWorkbook", () => {
   it("reports the sheet shape without building the workbook", async () => {
     const summary = (await summariseSeasonWorkbook(seasonId))!;
