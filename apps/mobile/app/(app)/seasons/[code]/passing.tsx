@@ -46,8 +46,10 @@ export default function SeasonPassingScreen() {
     <Screen
       title="Passing"
       subtitle={season.data?.title}
-      refreshing={outlook.isRefetching}
+      refreshing={outlook.isRefetching || season.isRefetching}
       onRefresh={() => {
+        // The season too: its status decides Remind and the criteria edit.
+        void season.refetch();
         if (seasonId !== null) void outlook.refetch();
       }}
     >

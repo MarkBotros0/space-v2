@@ -15,13 +15,13 @@ import {
 
 import type { ChipSpec } from "../../design/ui/status-chip";
 import { plural } from "../../lib/plural";
+import { WEIGHT_KEYS } from "./criteria-model";
 
 export const NUMBER_LABELS: Record<PassingNumberKey, string> = {
   attendance: "Attendance",
   assignments: "Assignments",
   quizzes: "Quizzes",
 };
-const KEYS: readonly PassingNumberKey[] = ["attendance", "assignments", "quizzes"];
 
 /** The counts at the top, each on its own line. */
 export function outlookHeader(o: PassingOutlook): { onTrack: string; below: string; noScore: string | null } {
@@ -36,7 +36,7 @@ export function outlookHeader(o: PassingOutlook): { onTrack: string; below: stri
 /** The criteria as the season holds them, one line each. */
 export function criteriaLines(o: PassingOutlook): string[] {
   const { weights, passMark } = o.criteria;
-  return [...KEYS.map((key) => `${NUMBER_LABELS[key]} ${weights[key]}%`), `Pass mark ${passMark}`];
+  return [...WEIGHT_KEYS.map((key) => `${NUMBER_LABELS[key]} ${weights[key]}%`), `Pass mark ${passMark}`];
 }
 
 /** What the criteria line can't say: they are only suggested, or a weight counts as 0 this season. */
@@ -55,7 +55,7 @@ export function criteriaNotes(o: PassingOutlook): string[] {
 function missingNumbers(row: PassingOutlookRow, o: PassingOutlook): string {
   const pcts = passingPcts(row.numbers);
   const { weights } = usableWeights(o.criteria.weights, o.available);
-  const names = KEYS.filter((key) => weights[key] > 0 && pcts[key] === null).map((key) =>
+  const names = WEIGHT_KEYS.filter((key) => weights[key] > 0 && pcts[key] === null).map((key) =>
     NUMBER_LABELS[key].toLowerCase(),
   );
   return names.join(" and ");

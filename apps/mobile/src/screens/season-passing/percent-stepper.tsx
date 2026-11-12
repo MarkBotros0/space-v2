@@ -1,7 +1,8 @@
 /**
  * One number of the pass criteria: a label, a field for the number with a Lower and a Raise button
  * either side (steps of 5, 44pt each), and its note or error under it. An "off" field shows its
- * fixed value read-only, with the buttons disabled and the note saying why.
+ * fixed value read-only, with the buttons disabled and the note saying why. Lower is disabled at 0
+ * and Raise at 100, where a press would change nothing.
  */
 import { Minus, Plus } from "lucide-react-native";
 import { View } from "react-native";
@@ -37,6 +38,8 @@ export function PercentStepper({
   off?: boolean;
 }) {
   const spokenName = name.charAt(0).toUpperCase() + name.slice(1);
+  const lowered = stepDraft(value, -STEP);
+  const raised = stepDraft(value, STEP);
   return (
     <View className="flex-col gap-1.5">
       <Label>{label}</Label>
@@ -45,8 +48,8 @@ export function PercentStepper({
           variant="secondary"
           size="icon"
           accessibilityLabel={`Lower ${name}`}
-          disabled={off}
-          onPress={() => onChange(stepDraft(value, -STEP))}
+          disabled={off || lowered === value}
+          onPress={() => onChange(lowered)}
         >
           <Minus size={18} className="text-foreground" />
         </Button>
@@ -72,8 +75,8 @@ export function PercentStepper({
           variant="secondary"
           size="icon"
           accessibilityLabel={`Raise ${name}`}
-          disabled={off}
-          onPress={() => onChange(stepDraft(value, STEP))}
+          disabled={off || raised === value}
+          onPress={() => onChange(raised)}
         >
           <Plus size={18} className="text-foreground" />
         </Button>
