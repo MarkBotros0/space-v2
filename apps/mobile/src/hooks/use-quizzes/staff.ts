@@ -124,7 +124,7 @@ export function useSaveManualScore(id: number) {
   });
 }
 
-/** Clears the admin's score (204): the student's best app attempt counts again. Nothing reopens. */
+/** Clears the admin's score (204): the student's app score counts again, if they have one. Nothing reopens. */
 export function useClearManualScore(id: number) {
   const queryClient = useQueryClient();
   return useMutation({

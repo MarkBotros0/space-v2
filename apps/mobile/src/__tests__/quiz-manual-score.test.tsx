@@ -236,6 +236,8 @@ describe("the admin's manual score", () => {
 
     fireEvent.press(screen.getByRole("button", { name: "Clear score" }));
     expect(await screen.findByText("Clear Test student's score?")).toBeTruthy();
+    // Not "their best app attempt": they may have none.
+    expect(screen.getByText("Their app score counts again, if they have one. Nothing is reopened.")).toBeTruthy();
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getAllByRole("button", { name: "Clear score" }).at(-1)!);
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/quizzes/41/manual-scores/9"));

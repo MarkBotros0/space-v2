@@ -172,7 +172,7 @@ export function useManualScoreSheet({ quizId, target, maxScore, open, onDone }: 
             if (!next && !clear.isPending) setConfirming(false);
           }}
           title={`Clear ${name}'s score?`}
-          description="Their best app attempt counts again. Nothing is reopened."
+          description="Their app score counts again, if they have one. Nothing is reopened."
           confirmLabel="Clear score"
           destructive
           pending={clear.isPending}
