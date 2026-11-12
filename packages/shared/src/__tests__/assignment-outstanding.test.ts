@@ -1,7 +1,7 @@
 import { isAssignmentOutstanding } from "../index";
 
 describe("isAssignmentOutstanding", () => {
-  const done = { submittedAt: "2026-11-01T10:00:00Z", partsLeft: 0, returned: false };
+  const done = { submittedAt: "2026-11-01T10:00:00Z", partsLeft: 0, returned: false, staffMarked: false };
 
   it("is false once handed in with nothing left or returned", () => {
     expect(isAssignmentOutstanding(done)).toBe(false);
@@ -11,5 +11,11 @@ describe("isAssignmentOutstanding", () => {
     expect(isAssignmentOutstanding({ ...done, submittedAt: null })).toBe(true);
     expect(isAssignmentOutstanding({ ...done, partsLeft: 1 })).toBe(true);
     expect(isAssignmentOutstanding({ ...done, returned: true })).toBe(true);
+  });
+
+  it("is false once staff marked it submitted, whatever the parts say", () => {
+    expect(isAssignmentOutstanding({ submittedAt: null, partsLeft: 2, returned: false, staffMarked: true })).toBe(
+      false,
+    );
   });
 });

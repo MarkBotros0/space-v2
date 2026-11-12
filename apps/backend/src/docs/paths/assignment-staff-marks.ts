@@ -41,7 +41,7 @@ export const assignmentStaffMarkPaths = {
     put: {
       tags: ["Assignments"],
       summary: "Mark an assignment submitted for a student",
-      description: `The season's admin, a SUPER, or the student's own leader in that season (403 otherwise: a leader of another group, a mentor, a student). For a student who did the work outside the app. It counts as submitted in every count (progress, the season list, engagement, reports, the workbook, reminders skip them, My work reads REVIEWED with \`staffMarked\`). The Submission is made if there is none. No essay is handed in, nothing enters the review queue, nobody is notified. Marking again keeps the first mark (who and when). A later Submit in the app stands beside the mark. ${REFUSALS}`,
+      description: `The season's admin, a SUPER, or the student's own leader in that season (403 otherwise: a leader of another group, a mentor, a student). For a student who did the work outside the app. It counts as submitted in every count (progress, the season list, engagement, reports, the workbook, reminders skip them, My work reads REVIEWED with \`staffMarked\`). The Submission is made if there is none. No essay is handed in, nothing enters the review queue, nobody is notified. Marking again keeps the first mark (who and when). A later Submit in the app stands beside the mark. Returning one of the student's essays takes the mark away (staff asked for the work again). ${REFUSALS}`,
       parameters: [idParam, studentUserIdParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/AssignmentStaffMark" }, "The mark as stored."),

@@ -1,9 +1,8 @@
 import { db } from "../../db/client";
 import { ApiError } from "../api-error";
 import { liveAssignment } from "../db/live";
-import { newPublicId } from "../public-id";
 import { notifyAssignmentSubmitted } from "../submission-notifications";
-import { lockAssignmentForWork, lockSubmissionForWork } from "./essay";
+import { lockAssignmentForWork, lockOwnSubmission } from "./essay";
 import { workStanding } from "./standing";
 
 interface SubmitResult {
@@ -40,15 +39,7 @@ export async function submitAssignment(
     });
     if (!assignment) throw new ApiError("not_found", "Assignment not found.", 404);
 
-    await tx.submission.createMany({
-      data: [{ assignmentId, studentUserId, publicId: newPublicId() }],
-      skipDuplicates: true,
-    });
-    const submission = await tx.submission.findUniqueOrThrow({
-      where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
-      select: { id: true, submittedAt: true },
-    });
-    await lockSubmissionForWork(tx, submission.id);
+    const submission = await lockOwnSubmission(tx, assignmentId, studentUserId);
     await tx.$queryRaw`SELECT "id" FROM "AssignmentPartWork" WHERE "submissionId" = ${submission.id} ORDER BY "id" FOR UPDATE`;
     // Read again now that it is locked: a concurrent Submit may have won.
     const current = await tx.submission.findUniqueOrThrow({

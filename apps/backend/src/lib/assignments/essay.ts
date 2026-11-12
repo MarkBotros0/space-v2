@@ -30,7 +30,29 @@ export function lockAssignmentForWork(tx: Tx, assignmentId: number) {
 }
 
 export function lockSubmissionForWork(tx: Tx, submissionId: number) {
-  return tx.$queryRaw`SELECT "id" FROM "Submission" WHERE "id" = ${submissionId} FOR UPDATE`;
+  return tx.$queryRaw<{ id: number }[]>`SELECT "id" FROM "Submission" WHERE "id" = ${submissionId} FOR UPDATE`;
+}
+
+/**
+ * The student's Submission on this assignment, made if missing (the caller holds the Assignment
+ * FOR SHARE) and locked FOR UPDATE. A row found and then deleted before the lock was granted (a
+ * staff mark's undo, which takes the Assignment FOR NO KEY UPDATE, so this is a guard, not a path)
+ * locks nothing: it is made again once, and otherwise the write is refused (409) rather than
+ * writing work against a row that is gone.
+ */
+export async function lockOwnSubmission(tx: Tx, assignmentId: number, studentUserId: number): Promise<{ id: number }> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await tx.submission.createMany({
+      data: [{ assignmentId, studentUserId, publicId: newPublicId() }],
+      skipDuplicates: true,
+    });
+    const submission = await tx.submission.findUnique({
+      where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
+      select: { id: true },
+    });
+    if (submission && (await lockSubmissionForWork(tx, submission.id)).length > 0) return submission;
+  }
+  throw new ApiError("work_changed", "Your work changed while it was saving. Try again.", 409);
 }
 
 /**
@@ -57,15 +79,7 @@ export async function lockEssayWork(tx: Tx, publicId: string): Promise<{ assignm
  * then the work, are locked FOR UPDATE (the caller holds the assignment's lock).
  */
 export async function ensurePartWork(tx: Tx, assignmentId: number, partId: number, studentUserId: number) {
-  await tx.submission.createMany({
-    data: [{ assignmentId, studentUserId, publicId: newPublicId() }],
-    skipDuplicates: true,
-  });
-  const submission = await tx.submission.findUniqueOrThrow({
-    where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
-    select: { id: true },
-  });
-  await lockSubmissionForWork(tx, submission.id);
+  const submission = await lockOwnSubmission(tx, assignmentId, studentUserId);
   await tx.assignmentPartWork.createMany({
     data: [{ publicId: newPublicId(), partId, submissionId: submission.id, studentUserId }],
     skipDuplicates: true,

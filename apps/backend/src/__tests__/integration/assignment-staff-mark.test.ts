@@ -3,7 +3,8 @@ import request from "supertest";
 import { assignmentStaffMarkSchema } from "../../../../../packages/shared/src/index";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
-import { createAssignmentWithParts, seedTextWork } from "./assignment-reads-setup";
+import { reviewEssay } from "../../lib/assignments/essay-review";
+import { createAssignmentWithParts, seedTextWork, setSubmitted } from "./assignment-reads-setup";
 import { bearer, cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 import {
   deleteMark,
@@ -169,5 +170,27 @@ describe("PUT/DELETE /assignments/:id/submitted-marks/:studentUserId", () => {
 
     expect((await deleteMark(app, a.id, w.ownerId, w.tokens.admin)).status).toBe(204);
     expect(await db.notification.count({ where: { userId: { in: watchers }, createdAt: { gte: before } } })).toBe(0);
+  });
+
+  it("returning an essay takes the mark away: it counts as not submitted until handed back", async () => {
+    const a = await essayAssignment("Sent back");
+    const essay = await seedTextWork(a.id, a.partIds[0]!, w.ownerId, "SUBMITTED");
+    await setSubmitted(a.id, w.ownerId, new Date());
+    expect((await putMark(app, a.id, w.ownerId, w.tokens.admin)).status).toBe(200);
+
+    await reviewEssay(essay.publicId, w.adminId, "return", "Please redo the second half.");
+    const row = await submissionRow(a.id, w.ownerId);
+    expect(row).toMatchObject({ submittedAt: null, staffMark: null });
+
+    const mine = await request(app).get(`/api/v1/seasons/${w.seasonId}/assignments`).set(bearer(w.tokens.owner));
+    const item = (mine.body.data.assignments as { id: number; status: string; staffMarked: boolean }[]).find(
+      (r) => r.id === a.id,
+    );
+    expect(item).toMatchObject({ status: "RETURNED", staffMarked: false });
+    const staff = await request(app).get(`/api/v1/seasons/${w.seasonId}/assignments`).set(bearer(w.tokens.admin));
+    const counted = (staff.body.data.assignments as { id: number; submissionCount: number }[]).find(
+      (r) => r.id === a.id,
+    );
+    expect(counted?.submissionCount).toBe(0);
   });
 });

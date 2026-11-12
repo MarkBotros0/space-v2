@@ -4,6 +4,11 @@
  * query counts only the first and silently disagrees with every other count. The writes that
  * really mean "tapped Submit" (the submit itself, the standing and reopen rules, essay review)
  * are the only files allowed to say it.
+ *
+ * What it can't catch: a count made in JS over rows already read (`s.submittedAt !== null`
+ * instead of `isSubmitted(s)`), a filter built in a variable or spread from elsewhere, raw SQL,
+ * and a Submission query whose call or relation key sits more than 600 characters before the
+ * filter (the look-back `modelAt` reads). Review those by hand.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";

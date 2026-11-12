@@ -124,13 +124,16 @@ export function submitBlockerLine(parts: AssignmentPart[], works: PartWork[]): s
 
 /**
  * Outstanding = the student still owes something: not handed in, parts left,
- * or a reviewer returned work. One definition for the dashboard count and the
- * server-side summary.
+ * or a reviewer returned work. Staff marking it submitted makes it complete,
+ * whatever the parts say (a return takes the mark away). One definition for the
+ * dashboard count, the server-side summary and the app.
  */
 export function isAssignmentOutstanding(a: {
   submittedAt: string | null;
   partsLeft: number;
   returned: boolean;
+  staffMarked: boolean;
 }): boolean {
+  if (a.staffMarked) return false;
   return a.submittedAt === null || a.partsLeft > 0 || a.returned;
 }

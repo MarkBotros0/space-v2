@@ -4,7 +4,7 @@ import type { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api-error";
 import { liveAssignment } from "../db/live";
 import { newPublicId } from "../public-id";
-import { lockAssignmentForWork, lockSubmissionForWork } from "../assignments/essay";
+import { lockAssignmentForWork, lockOwnSubmission } from "../assignments/essay";
 import { applyWatchReport } from "./part-watching";
 
 type Tx = Prisma.TransactionClient;
@@ -39,15 +39,7 @@ async function lockVideoWork(tx: Tx, partId: number, studentUserId: number) {
   });
   if (!part) throw partGone();
 
-  await tx.submission.createMany({
-    data: [{ assignmentId, studentUserId, publicId: newPublicId() }],
-    skipDuplicates: true,
-  });
-  const submission = await tx.submission.findUniqueOrThrow({
-    where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
-    select: { id: true },
-  });
-  await lockSubmissionForWork(tx, submission.id);
+  const submission = await lockOwnSubmission(tx, assignmentId, studentUserId);
   await tx.assignmentPartWork.createMany({
     data: [{ publicId: newPublicId(), partId, submissionId: submission.id, studentUserId }],
     skipDuplicates: true,

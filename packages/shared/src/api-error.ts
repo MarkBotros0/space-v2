@@ -131,6 +131,7 @@ export const API_ERROR_CODES = [
   "user_deleted",
   "user_inactive",
   "word_range",
+  "work_changed",
   "wrong_answer_type",
   "wrong_class",
   "wrong_quiz_kind",

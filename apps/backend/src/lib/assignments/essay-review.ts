@@ -11,8 +11,10 @@ import { workStanding } from "./standing";
  *   essay of the student's assignment reviewed (and the assignment submitted,
  *   every part done), the assignment is complete: `completedAt` is set.
  * - `return` (a note, which the route has required) sets it RETURNED and
- *   reopens the assignment: `submittedAt` and `completedAt` are cleared, so it
- *   is outstanding again. The student's other parts are not touched.
+ *   reopens the assignment: `submittedAt` and `completedAt` are cleared, and a
+ *   staff mark is taken away (staff asked for the work again), so it is
+ *   outstanding and not submitted until handed back. The student's other parts
+ *   are not touched.
  *
  * An essay is reviewed once it is handed in (SUBMITTED), and a reviewed one may
  * be re-judged. A returned essay is with the student until they hand it in
@@ -57,6 +59,7 @@ export async function reviewEssay(
         where: { id: work.submissionId },
         data: { submittedAt: null, completedAt: null },
       });
+      await tx.submissionStaffMark.deleteMany({ where: { submissionId: work.submissionId } });
     } else {
       const standing = await workStanding(tx, assignmentId, work.studentUserId);
       if (standing.everyPartDone && standing.essaysReviewed) {

@@ -41,13 +41,12 @@ export interface StudentAssignmentSummaryFigures {
   open: StudentAssignmentSummaryRow[];
 }
 
-// A staff mark makes the assignment complete, whatever the parts say.
 const outstanding = (r: StudentAssignmentStateRow) =>
-  !r.staffMarked &&
   isAssignmentOutstanding({
     submittedAt: r.submittedAt?.toISOString() ?? null,
     partsLeft: r.partsTotal - r.partsDone,
     returned: r.returned,
+    staffMarked: r.staffMarked,
   });
 
 /**
