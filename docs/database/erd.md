@@ -145,6 +145,11 @@ erDiagram
     SeasonStatus status
     Int absenceBudgetMinutes
     Int absenceWeightMinutes
+    Int passWeightAttendance "nullable"
+    Int passWeightAssignments "nullable"
+    Int passWeightQuizzes "nullable"
+    Int passMark "nullable"
+    DateTime passCriteriaSetAt "nullable"
     Int createdById FK "nullable"
     Int updatedById FK "nullable"
     DateTime deletedAt "nullable"
@@ -710,6 +715,7 @@ Rules Prisma cannot declare. They live in `prisma/migrations` and are noted on t
 | QuizQuestion | CHECK | `QuizQuestion_points_check` | `points >= 0` |
 | Season | CHECK | `Season_endDate_check` | `endDate >= startDate` |
 | Season | CHECK | `Season_absenceMinutes_check` | `absenceBudgetMinutes >= 0 AND absenceWeightMinutes > 0` |
+| Season | CHECK | `Season_passCriteria_check` | `the three weights and passMark all null or all set, each 0..100, the weights adding up to 100` |
 | Session | CHECK | `Session_durationMinutes_check` | `durationMinutes > 0` |
 | SessionVideoQuestion | CHECK | `SessionVideoQuestion_points_check` | `points >= 0` |
 | SessionVideoQuestion | CHECK | `SessionVideoQuestion_correctIndex_check` | `0 <= correctIndex < cardinality(options)` |

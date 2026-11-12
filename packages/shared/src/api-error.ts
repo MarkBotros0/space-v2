@@ -130,6 +130,7 @@ export const API_ERROR_CODES = [
   "use_start_season",
   "user_deleted",
   "user_inactive",
+  "weight_on_empty",
   "word_range",
   "work_changed",
   "wrong_answer_type",

@@ -38,6 +38,7 @@ import { followUpPaths } from "./paths/follow-ups";
 import { sessionPaths } from "./paths/sessions";
 import { assignmentsSubmissionsPaths } from "./paths/assignments-submissions";
 import { assignmentStaffMarkPaths, assignmentStaffMarkSchemas } from "./paths/assignment-staff-marks";
+import { seasonPassingPaths, seasonPassingSchemas } from "./paths/season-passing";
 import { quizAuthoringPaths } from "./paths/quizzes-authoring";
 import { quizAttemptsPaths } from "./paths/quizzes-attempts";
 import { announcementPaths } from "./paths/announcements";
@@ -157,6 +158,7 @@ export const openApiDocument = {
       ...submissionsMeSchemas,
       ...seasonAdminSchemas,
       ...assignmentStaffMarkSchemas,
+      ...seasonPassingSchemas,
       ...announcementSchemas,
     },
   },
@@ -167,6 +169,7 @@ export const openApiDocument = {
     ...seasonPaths,
     ...seasonStartPaths,
     ...seasonEndPaths,
+    ...seasonPassingPaths,
     ...seasonAdminPaths,
     ...peopleCandidatePaths,
     ...seasonEnrollmentPaths,

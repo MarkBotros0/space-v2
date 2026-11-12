@@ -342,6 +342,14 @@ model Season {
   absenceBudgetMinutes Int @default(180)
   absenceWeightMinutes Int @default(90)
 
+  // Pass criteria (season passing): whole-percentage weights adding up to 100 and a pass mark;
+  // all null until saved. The newest passCriteriaSetAt is every other season's default.
+  passWeightAttendance  Int?
+  passWeightAssignments Int?
+  passWeightQuizzes     Int?
+  passMark              Int?
+  passCriteriaSetAt     DateTime? @db.Timestamptz(3)
+
   createdById Int?
   createdBy   User?     @relation("SeasonCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   updatedById Int?
@@ -366,6 +374,7 @@ model Season {
   // SQL-only (prisma/migrations; not expressible in this file):
   // SQL-only CHECK Season_endDate_check: endDate >= startDate
   // SQL-only CHECK Season_absenceMinutes_check: absenceBudgetMinutes >= 0 AND absenceWeightMinutes > 0
+  // SQL-only CHECK Season_passCriteria_check: the three weights and passMark all null or all set, each 0..100, the weights adding up to 100
 }
 
 model SeasonAdmin {
