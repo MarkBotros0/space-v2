@@ -67,7 +67,7 @@ export async function seedActivity(people: SweepPeople) {
     prompt: "Note three questions chapter 2 raised for you.",
   });
   // A draft on the overdue one, so its essay screen shows saved text; the reading
-  // stays untouched ("Not started").
+  // is untouched apart from the staff mark `seedPassing` adds.
   await seedTextWork({
     assignmentId: reflection.id,
     partId: reflection.essayPartId,

@@ -101,7 +101,8 @@ the counts (and who graduates). Rules:
   of it and reads "Ended before weighted passing".
 - A staff write that changes a score (a mark, the admin's quiz score, a paper grade, an attendance
   save) takes the Season FOR SHARE first and End holds it FOR NO KEY UPDATE, so each lands wholly
-  before End's recompute or waits and finds the season finished.
+  before End's recompute or waits and finds the season finished (a super may still write a finished
+  season, as before).
 
 ## Results after End
 

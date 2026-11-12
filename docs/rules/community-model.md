@@ -60,13 +60,16 @@ and Build 2 (see `docs/rules/roles.md`) and Build 3 (see `docs/rules/community-w
   gone (refactor Wave 6, DB-001). Ending a season marks its people's sessions stale
   (`sessionsValidFrom`), so the change lands on their next refresh, not at the next login.
 - **Former staff are cut off.** Once a season ends, its admins and leaders lose it with their
-  scopes: no access to it and no History entry; only Super (and Mentors) read finished seasons.
+  scopes: no access to it and no History entry; only Super (and Mentors) read finished
+  seasons, and Mentors never open Results.
   Their role is derived from season rows (Build 2), so it ends with the season.
   One exception (owner, 2026-11-07): Reports' History. An ADMIN's report scope
   (`reportScopeFor`) is every season they hold or held a SeasonAdmin row in, so a serving admin
   can read the engagement report of a season they ran before; its at-risk rows don't open
   student pages they can no longer read. Reports open on the current season, else the last one
   (`defaultReportSeason`).
+  Second exception (owner, 2026-11-12): a finished season's Results (`canCorrectSeasonResults`) stay
+  open to its former admins and to a super, never to a mentor; they reach it from Reports.
 - **Students between seasons** (no `activeSeasonId`) get Today, Calendar, History and More, with
   Today telling finished, dropped and first-time apart; the finished season has a read-only page
   with its assignments, quizzes and attendance. Alumni keep their own nav.
