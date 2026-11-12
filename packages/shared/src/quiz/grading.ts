@@ -109,6 +109,22 @@ const gradingEndShape = {
   deadlineAt: z.string().nullable(),
 };
 
+/**
+ * The season admin's score for a student (plan 4), on the staff grading list: it counts instead
+ * of any attempt, so `bestScore` carries it too. Null when none. Not the attempt's `manualScore`,
+ * which is the leader-marked points of one attempt.
+ */
+const staffAdminScoreSchema = z
+  .object({
+    score: z.number(),
+    notes: z.string().nullable(),
+    gradedAt: z.string(),
+    gradedByName: z.string().nullable(),
+  })
+  .nullable()
+  // An app build talking to a backend from before plan 4 reads "none".
+  .default(null);
+
 export const quizGradingAttemptSchema = z.object({
   attemptId: z.number(),
   studentUserId: z.number(),
@@ -120,10 +136,11 @@ export const quizGradingAttemptSchema = z.object({
   /** This attempt's total: the latest attempt, the one being marked. */
   totalScore: z.number().nullable(),
   /**
-   * The student's best GRADED total across their attempts (spec "Honest
-   * accidents"), the score the list shows; null until one is graded.
+   * The score that counts, the one the list shows: the admin's score when there is one, else
+   * the best GRADED total across their attempts (spec "Honest accidents"); null until either.
    */
   bestScore: z.number().nullable(),
+  adminScore: staffAdminScoreSchema,
   submittedAt: z.string().nullable(),
   gradedByName: z.string().nullable(),
   ...gradingEndShape,
@@ -154,6 +171,8 @@ export const quizGradingPageSchema = z.object({
       /** null = never started; a date = an IN_PROGRESS attempt open since then. */
       startedAt: z.string().nullable(),
       ...gradingEndShape,
+      /** A student who never started can still have the admin's score. */
+      adminScore: staffAdminScoreSchema,
     }),
   ),
   nextCursor: z.number().nullable(),

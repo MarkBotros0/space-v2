@@ -8,7 +8,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Start or resume the caller's attempt",
       description:
-        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus who isn't studying in it, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `quiz_not_open_yet` before the start window opens and `quiz_start_closed` after it closes (a first start only; an attempt already begun, and a retake, are not blocked by the window); 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen). Returns `StudentQuizDetail` without the answer key: the questions in this attempt's own shuffle (fixed for the life of the attempt; a retake gets a new one), options and matching columns shuffled, true/false not.",
+        "STUDENT only (staff get 403), with an ACTIVE enrolment in the quiz's season — a withdrawn or completed student, or an alumnus who isn't studying in it, gets 403 (the same gate applies to save and submit). Idempotent create-or-resume: the first call creates attempt 1 (an upsert on the natural key, so concurrent calls cannot create two); later calls return the same attempt. The attempt is addressed by quiz, never by attempt id. 409 `quiz_not_published` if the quiz is PAPER or unpublished; 409 `quiz_not_open_yet` before the start window opens and `quiz_start_closed` after it closes (a first start only; an attempt already begun, and a retake, are not blocked by the window); 409 `attempt_closed` once the attempt is SUBMITTED or GRADED (a retake needs staff to reopen); 409 `manual_score_entered` (\"Your admin has entered your score for this quiz.\") once the season admin has entered the student's score, on a first start and on a reopened attempt alike, checked under the same locks the score save takes. Returns `StudentQuizDetail` without the answer key: the questions in this attempt's own shuffle (fixed for the life of the attempt; a retake gets a new one), options and matching columns shuffled, true/false not.",
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The open attempt."),
@@ -16,7 +16,9 @@ export const quizAttemptsPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`quiz_not_published`, `quiz_not_open_yet`, `quiz_start_closed` or `attempt_closed`."),
+        409: conflict(
+          "`quiz_not_published`, `quiz_not_open_yet`, `quiz_start_closed`, `attempt_closed` or `manual_score_entered`.",
+        ),
       },
     },
     patch: {
@@ -205,7 +207,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Grant a student a retake",
       description:
-        "**A leader power, not admin-only:** any staff with a scope in the season may reopen, for a student in their own student set (403 `student_not_in_scope`). Creates a new attempt (`attemptNumber` + 1, IN_PROGRESS); earlier attempts and answers are preserved. 409 `quiz_not_published` (PAPER or unpublished), `no_attempt` (never attempted), `attempt_open` (latest attempt is already IN_PROGRESS). The student is notified (reusing `QUIZ_GRADED` with retake copy, link `/student/quizzes`).",
+        '**A leader power, not admin-only:** any staff with a scope in the season may reopen, for a student in their own student set (403 `student_not_in_scope`). Creates a new attempt (`attemptNumber` + 1, IN_PROGRESS); earlier attempts and answers are preserved. 409 `quiz_not_published` (PAPER or unpublished), `no_attempt` (never attempted), `attempt_open` (latest attempt is already IN_PROGRESS), `manual_score_entered` ("The admin has entered this student\'s score. Clear it to allow a retake."). The student is notified (reusing `QUIZ_GRADED` with retake copy, link `/student/quizzes`).',
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -232,7 +234,7 @@ export const quizAttemptsPaths = {
         401: errRef("Unauthorized"),
         403: conflict("`forbidden` or `student_not_in_scope`."),
         404: errRef("NotFound"),
-        409: conflict("`quiz_not_published`, `no_attempt` or `attempt_open`."),
+        409: conflict("`quiz_not_published`, `no_attempt`, `attempt_open` or `manual_score_entered`."),
       },
     },
   },

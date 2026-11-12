@@ -17,6 +17,7 @@ const row = (over: Partial<QuizGradingAttempt>): QuizGradingAttempt => ({
   manualScore: null,
   totalScore: null,
   bestScore: null,
+  adminScore: null,
   submittedAt,
   gradedByName: null,
   endReason: null,

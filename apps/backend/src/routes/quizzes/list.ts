@@ -5,7 +5,7 @@ import { apiOk, forbidden } from "../../lib/api-response";
 import { canAccessSeason } from "../../lib/permissions";
 import { countGradedByQuiz, visibleStudentIdsForQuiz } from "../../lib/quiz-scope";
 import { requireUser } from "../../middleware/require-auth";
-import { bestGraded } from "../../lib/quizzes/best-attempt";
+import { bestGraded, countingScore } from "../../lib/quizzes/best-attempt";
 import { toScore } from "../../lib/quizzes/score";
 import { quizListQuerySchema } from "../../../../../packages/shared/src/index";
 import { parseOr400 } from "../../lib/http/validate";
@@ -49,6 +49,11 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
           orderBy: { attemptNumber: "desc" },
           select: { status: true, totalScore: true, gradedAt: true, attemptNumber: true },
         },
+        // On an ONLINE quiz a QuizGrade row is the admin's score (plan 4).
+        grades: {
+          where: { studentUserId, score: { not: null } },
+          select: { score: true, notes: true, gradedAt: true },
+        },
       },
     }),
   ]);
@@ -66,27 +71,29 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
       sessionDate: g.quiz.session?.startsAt ?? null,
       attemptStatus: null,
       answersReleased: true,
+      adminScore: null,
     })),
     ...onlineQuizzes.map((q) => {
       const latest = q.attempts[0];
-      const best = bestGraded(q.attempts);
-      const released = q.resultsReleasedAt !== null;
-      // The best graded score shows once graded, no release needed (spec "What students see").
-      // A later attempt in progress or awaiting marking does not hide it.
-      const scored = best !== null;
+      const admin = q.grades[0] ?? null;
+      // The score that counts: the admin's when there is one (plan 4), else the best graded
+      // attempt's. Either shows with no release (spec "What students see"); a later attempt in
+      // progress or awaiting marking does not hide it. Only a GRADED attempt has a score (R37).
+      const counting = countingScore(admin, q.attempts);
+      const byAdmin = counting?.source === "manual";
       return {
         quizId: q.id,
         title: q.title,
         kind: "ONLINE" as const,
         maxScore: q.maxScore,
-        // Only a GRADED attempt has a score to show (R37).
-        score: scored ? toScore(best?.totalScore ?? null) : null,
+        score: counting?.score ?? null,
         notes: null,
-        gradedAt: scored ? (best?.gradedAt ?? null) : null,
+        gradedAt: byAdmin ? (admin?.gradedAt ?? null) : (bestGraded(q.attempts)?.gradedAt ?? null),
         sessionTitle: q.session?.title ?? null,
         sessionDate: q.session?.startsAt ?? null,
         attemptStatus: latest?.status ?? null,
-        answersReleased: released,
+        answersReleased: q.resultsReleasedAt !== null,
+        adminScore: byAdmin && counting ? { score: counting.score, notes: admin?.notes ?? null } : null,
       };
     }),
   ];

@@ -73,7 +73,7 @@ export async function startAttempt(req: Request, res: Response) {
 
   const quiz = await db.quiz.findUnique({
     where: { id },
-    select: { seasonId: true, kind: true, publishedAt: true, timeLimitMinutes: true },
+    select: { seasonId: true, kind: true, publishedAt: true },
   });
   if (!quiz) return notFound(res, "Quiz");
   if (quiz.kind !== "ONLINE" || quiz.publishedAt === null) {
@@ -97,7 +97,8 @@ export async function startAttempt(req: Request, res: Response) {
 
   // The start window is checked here, on attempt 1 only; a reopened attempt
   // just starts its clock (spec "Timing": the window doesn't block a reopen).
-  if (latest) await startClockIfUnset(latest.id, quiz.timeLimitMinutes);
+  // Both refuse 409 manual_score_entered once the admin has entered the score (plan 4).
+  if (latest) await startClockIfUnset(id, user.userId, latest.id);
   else await createFirstAttempt(id, user.userId);
 
   const detail = await loadStudentQuizDetail(id, user.userId, false);

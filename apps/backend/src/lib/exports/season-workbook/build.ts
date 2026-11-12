@@ -3,7 +3,7 @@ import ExcelJS from "exceljs";
 import type { PartWork } from "../../../../../../packages/shared/src/index";
 import { formatDayInOrgTime } from "../../org-time";
 import { addKeySheet, columnWidths, freezeFirstRowAndColumns, styleHeader } from "../workbook-style";
-import { bestGraded } from "../../quizzes/best-attempt";
+import { countingScore } from "../../quizzes/best-attempt";
 import { toScore } from "../../quizzes/score";
 import { partWorksFor, standingOf } from "../../queries/assignments";
 import { loadSeasonExportData } from "./load";
@@ -22,14 +22,19 @@ function assignmentCell(submitted: boolean, works: PartWork[]): string {
 
 type ExportQuiz = NonNullable<Awaited<ReturnType<typeof loadSeasonExportData>>>["quizzes"][number];
 
-/** Student to score for one quiz column: the paper grade, or an ONLINE quiz's best graded attempt. */
+/**
+ * Student to score for one quiz column: the paper grade, or an ONLINE quiz's counting score (the
+ * admin's score when there is one, plan 4, else the best graded attempt).
+ */
 function scoresOf(q: ExportQuiz): Map<number, number | null> {
   if (q.kind === "PAPER") return new Map(q.grades.map((g) => [g.studentUserId, toScore(g.score)]));
   const attemptsOf = new Map<number, ExportQuiz["attempts"]>();
   for (const a of q.attempts) attemptsOf.set(a.studentUserId, [...(attemptsOf.get(a.studentUserId) ?? []), a]);
+  const adminOf = new Map(q.grades.map((g) => [g.studentUserId, g]));
   const scores = new Map<number, number | null>();
-  for (const [studentId, attempts] of attemptsOf) {
-    scores.set(studentId, toScore(bestGraded(attempts)?.totalScore ?? null));
+  for (const studentId of new Set([...attemptsOf.keys(), ...adminOf.keys()])) {
+    const counting = countingScore(adminOf.get(studentId) ?? null, attemptsOf.get(studentId) ?? []);
+    scores.set(studentId, counting?.score ?? null);
   }
   return scores;
 }

@@ -37,6 +37,7 @@ const quiz = (over: Partial<StudentQuizResult> & { quizId: number }): StudentQui
   sessionDate: null,
   attemptStatus: null,
   answersReleased: true,
+  adminScore: null,
   ...over,
 });
 

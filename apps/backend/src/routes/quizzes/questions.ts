@@ -15,6 +15,7 @@ import {
   addQuizQuestion,
   deleteQuizQuestion,
   reorderQuizQuestions,
+  SCORED_QUIZ_MESSAGE,
   updateQuizQuestion,
 } from "../../lib/quizzes/questions";
 import { idParam } from "../../lib/http/params";
@@ -33,6 +34,11 @@ import { parseOr400 } from "../../lib/http/validate";
  */
 async function hasAttempts(quizId: number): Promise<boolean> {
   return (await db.quizAttempt.count({ where: { quizId } })) > 0;
+}
+
+/** The season admin's score freezes them the same way (plan 4): maxScore must not drop below it. */
+async function hasAdminScores(quizId: number): Promise<boolean> {
+  return (await db.quizGrade.count({ where: { quizId, score: { not: null } } })) > 0;
 }
 
 /**
@@ -65,6 +71,10 @@ async function loadAuthorableQuiz(
   }
   if (!opts.allowWithAttempts && (await hasAttempts(quizId))) {
     apiError(res, "quiz_has_attempts", "Students have started this quiz, so its questions can no longer change.", 409);
+    return null;
+  }
+  if (!opts.allowWithAttempts && (await hasAdminScores(quizId))) {
+    apiError(res, "quiz_has_attempts", SCORED_QUIZ_MESSAGE, 409);
     return null;
   }
   return quiz;

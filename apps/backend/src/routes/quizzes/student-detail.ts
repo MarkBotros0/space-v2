@@ -2,8 +2,7 @@ import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { toScore } from "../../lib/quizzes/score";
-import { bestGraded } from "../../lib/quizzes/best-attempt";
+import { bestGraded, countingScore } from "../../lib/quizzes/best-attempt";
 import { seededOrder } from "../../lib/quizzes/shuffle";
 import { studentQuizStage } from "../../lib/quizzes/student-stage";
 import {
@@ -22,9 +21,11 @@ import {
  * - `in_progress`: every question with the student's own answers, in this
  *   attempt's shuffled order. Loaded with the KEYLESS selects.
  * - `submitted` / `graded`: no questions at all — no text, no options, no own
- *   answers — only the score once graded.
+ *   answers — only the score once graded. The admin's score (plan 4) is the score
+ *   whenever there is one, and reads as `graded` on its own.
  * - `answers` (released): the best graded attempt's questions with its answers,
  *   right/wrong per item and the correct answer. The only read that loads the key.
+ *   It needs an in-app graded attempt: the admin's score alone never reaches it.
  *
  * What protects the key, stated exactly: (1) the raw-JSON integration tests,
  * the guarantee; (2) no pre-release path selects `isCorrect`, `matchId` or
@@ -118,6 +119,10 @@ export async function loadStudentQuizDetail(
   // R32: a non-ONLINE or unpublished quiz simply does not exist for a student.
   if (!quiz || quiz.kind !== "ONLINE" || quiz.publishedAt === null) return null;
 
+  const adminRow = await db.quizGrade.findFirst({
+    where: { quizId, studentUserId, score: { not: null } },
+    select: { score: true, notes: true, gradedAt: true },
+  });
   const attempts: AttemptRow[] = await db.quizAttempt.findMany({
     where: { quizId, studentUserId },
     orderBy: { attemptNumber: "desc" },
@@ -136,7 +141,7 @@ export async function loadStudentQuizDetail(
   const latest = attempts[0] ?? null;
   const best = bestGraded(attempts);
   const answersReleased = quiz.resultsReleasedAt !== null;
-  const stage = studentQuizStage(latest, best !== null, answersReleased);
+  const stage = studentQuizStage(latest, best !== null, answersReleased, adminRow !== null);
 
   let questions: QuizQuestionStudent[] = [];
   if (stage === "in_progress" && latest) questions = await inProgressQuestions(quizId, latest, quiz.shuffleQuestions);
@@ -149,7 +154,8 @@ export async function loadStudentQuizDetail(
     seasonId: quiz.seasonId,
     maxScore: quiz.maxScore,
     sessionTitle: quiz.session?.title ?? null,
-    ...attemptFields(latest, best),
+    ...attemptFields(latest),
+    ...scoreFields(adminRow, attempts, best),
     stage,
     questionCount: quiz._count.questions,
     questions,
@@ -165,16 +171,30 @@ export async function loadStudentQuizDetail(
   };
 }
 
-/** The latest attempt's place, and the best graded attempt's score. */
-function attemptFields(latest: AttemptRow | null, best: AttemptRow | null) {
+/** The latest attempt's place. */
+function attemptFields(latest: AttemptRow | null) {
   return {
     attemptId: latest?.id ?? null,
     attemptNumber: latest?.attemptNumber ?? 0,
     status: latest?.status ?? null,
-    // autoScore/manualScore deliberately absent: v1 sent both and rendered
-    // neither. totalScore is the only score a student is shown — the best graded one.
-    totalScore: best ? toScore(best.totalScore) : null,
     submittedAt: latest?.submittedAt ?? null,
-    gradedAt: best?.gradedAt ?? null,
+  };
+}
+
+type AdminRow = { score: Prisma.Decimal | null; notes: string | null; gradedAt: Date | null };
+
+/**
+ * The score the student is shown and when it was given: the admin's score when there is one
+ * (plan 4, with its note), else the best graded attempt's. autoScore/manualScore are deliberately
+ * absent: v1 sent both and rendered neither. totalScore is the only score a student is shown.
+ */
+function scoreFields(adminRow: AdminRow | null, attempts: AttemptRow[], best: AttemptRow | null) {
+  const counting = countingScore(adminRow, attempts);
+  const adminScore =
+    adminRow && counting?.source === "manual" ? { score: counting.score, notes: adminRow.notes } : null;
+  return {
+    totalScore: counting?.score ?? null,
+    gradedAt: adminScore ? (adminRow?.gradedAt ?? null) : (best?.gradedAt ?? null),
+    adminScore,
   };
 }

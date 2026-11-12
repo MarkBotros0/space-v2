@@ -78,7 +78,7 @@ export async function loadSeasonExportData(seasonId: number) {
       maxScore: true,
       kind: true,
       grades: { select: { studentUserId: true, score: true } },
-      // ONLINE columns show the best graded attempt (spec "Honest accidents").
+      // ONLINE columns show the counting score: the admin's (a grade row, plan 4), else the best graded attempt.
       attempts: {
         where: { status: "GRADED" },
         select: { studentUserId: true, status: true, totalScore: true, attemptNumber: true },

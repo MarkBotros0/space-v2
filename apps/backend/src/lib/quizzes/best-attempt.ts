@@ -19,7 +19,28 @@ export function bestGraded<
   return best;
 }
 
-/** Each student's best GRADED total (as `bestGraded` picks it); a student with none graded is left out. */
+/**
+ * The score that counts for one student on an ONLINE quiz (plan 4): the season admin's score
+ * (a QuizGrade row) whenever one exists, even below an in-app attempt; otherwise the best GRADED
+ * attempt. A row with no score is no admin score. Every reader of a quiz score goes through this
+ * (or `bestScoreByStudent`), so no two can disagree.
+ */
+export function countingScore<
+  A extends { status: string; totalScore: Prisma.Decimal | number | null; attemptNumber: number },
+>(
+  manual: { score: Prisma.Decimal | number | null } | null,
+  attempts: A[],
+): { score: number; source: "manual" | "attempt" } | null {
+  const adminScore = manual ? toScore(manual.score) : null;
+  if (adminScore !== null) return { score: adminScore, source: "manual" };
+  const best = bestGraded(attempts);
+  return best ? { score: toScore(best.totalScore) ?? 0, source: "attempt" } : null;
+}
+
+/**
+ * Each student's counting score: their admin score from `adminScores` when they have one,
+ * otherwise their best GRADED total (as `bestGraded` picks it). A student with neither is left out.
+ */
 export function bestScoreByStudent<
   A extends {
     studentUserId: number;
@@ -27,7 +48,7 @@ export function bestScoreByStudent<
     totalScore: Prisma.Decimal | number | null;
     attemptNumber: number;
   },
->(attempts: A[]): Map<number, number> {
+>(attempts: A[], adminScores: ReadonlyMap<number, number> = new Map()): Map<number, number> {
   const byStudent = new Map<number, A[]>();
   for (const a of attempts) byStudent.set(a.studentUserId, [...(byStudent.get(a.studentUserId) ?? []), a]);
   const out = new Map<number, number>();
@@ -35,5 +56,6 @@ export function bestScoreByStudent<
     const best = bestGraded(own);
     if (best) out.set(studentUserId, toScore(best.totalScore) ?? 0);
   }
+  for (const [studentUserId, score] of adminScores) out.set(studentUserId, score);
   return out;
 }

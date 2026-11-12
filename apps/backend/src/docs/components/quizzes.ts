@@ -143,6 +143,7 @@ export const quizSchemas = {
       "questions",
       "readOnly",
       "answersReleased",
+      "adminScore",
     ],
     properties: {
       id: { type: "integer" },
@@ -163,8 +164,9 @@ export const quizSchemas = {
       totalScore: {
         type: ["number", "null"],
         description:
-          "The best GRADED attempt's score (decimal to 2 places), also while a retake is open; null until one is graded.",
+          "The score that counts (decimal to 2 places): the admin's score when there is one, else the best GRADED attempt's, also while a retake is open; null until either.",
       },
+      adminScore: { oneOf: [{ $ref: "#/components/schemas/QuizAdminScore" }, { type: "null" }] },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedAt: { type: ["string", "null"], format: "date-time" },
       questionCount: {
@@ -197,6 +199,7 @@ export const quizSchemas = {
       "manualScore",
       "totalScore",
       "bestScore",
+      "adminScore",
       "submittedAt",
       "gradedByName",
       "endReason",
@@ -217,8 +220,9 @@ export const quizSchemas = {
       bestScore: {
         type: ["number", "null"],
         description:
-          "The student's best GRADED total across their attempts (decimal to 2 places): the score a grading list shows. The row itself is the latest attempt, the one marked or reopened. Null until one is graded.",
+          "The score that counts (decimal to 2 places), the one a grading list shows: the admin's score when there is one, else the best GRADED total across their attempts. The row itself is the latest attempt, the one marked or reopened. Null until either.",
       },
+      adminScore: { oneOf: [{ $ref: "#/components/schemas/QuizAdminScoreStaff" }, { type: "null" }] },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedByName: { type: ["string", "null"], description: "Who graded it; null for an auto-graded attempt." },
       endReason: {
@@ -269,7 +273,15 @@ export const quizSchemas = {
           "Students on this page with no gradable attempt: never started (`startedAt` null) or latest attempt IN_PROGRESS (`startedAt` = when it was opened).",
         items: {
           type: "object",
-          required: ["studentUserId", "studentName", "startedAt", "endReason", "endedByName", "deadlineAt"],
+          required: [
+            "studentUserId",
+            "studentName",
+            "startedAt",
+            "endReason",
+            "endedByName",
+            "deadlineAt",
+            "adminScore",
+          ],
           properties: {
             studentUserId: { type: "integer" },
             studentName: { type: ["string", "null"] },
@@ -281,6 +293,7 @@ export const quizSchemas = {
             },
             endedByName: { type: ["string", "null"], description: "The staff member who ended it (ENDED_BY_STAFF)." },
             deadlineAt: { type: ["string", "null"], format: "date-time" },
+            adminScore: { oneOf: [{ $ref: "#/components/schemas/QuizAdminScoreStaff" }, { type: "null" }] },
           },
         },
       },
@@ -329,6 +342,7 @@ export const quizSchemas = {
       "sessionDate",
       "attemptStatus",
       "answersReleased",
+      "adminScore",
     ],
     properties: {
       quizId: { type: "integer" },
@@ -338,7 +352,7 @@ export const quizSchemas = {
       score: {
         type: ["number", "null"],
         description:
-          "ONLINE: the best graded attempt (decimal to 2 places), shown once graded and before any release. PAPER: the entered grade.",
+          "ONLINE: the score that counts (decimal to 2 places), the admin's score when there is one, else the best graded attempt, shown before any release. PAPER: the entered grade.",
       },
       notes: { type: ["string", "null"] },
       gradedAt: { type: ["string", "null"], format: "date-time" },
@@ -353,6 +367,26 @@ export const quizSchemas = {
         description:
           "False until the season admin or a super releases the answers. The score does not wait for it. A PAPER row appears once its grade is entered.",
       },
+      adminScore: { oneOf: [{ $ref: "#/components/schemas/QuizAdminScore" }, { type: "null" }] },
+    },
+  },
+  QuizAdminScore: {
+    type: "object",
+    description:
+      'The season admin\'s score for this student on an ONLINE quiz, with its note, shown at once ("Score entered by your admin"). It counts instead of any attempt, but never shows the questions on its own.',
+    required: ["score", "notes"],
+    properties: { score: { type: "number" }, notes: { type: ["string", "null"] } },
+  },
+  QuizAdminScoreStaff: {
+    type: "object",
+    description:
+      "The season admin's score for a student on an ONLINE quiz, which `bestScore` carries. Not `manualScore`.",
+    required: ["score", "notes", "gradedAt", "gradedByName"],
+    properties: {
+      score: { type: "number" },
+      notes: { type: ["string", "null"] },
+      gradedAt: { type: "string", format: "date-time" },
+      gradedByName: { type: ["string", "null"] },
     },
   },
 } as const;

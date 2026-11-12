@@ -63,6 +63,7 @@ export const API_ERROR_CODES = [
   "is_alumnus",
   "last_super",
   "leader_has_group",
+  "manual_score_entered",
   "mark_out_of_range",
   "marks_incomplete",
   "mcq_without_answer",

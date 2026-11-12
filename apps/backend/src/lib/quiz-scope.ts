@@ -45,9 +45,10 @@ export async function visibleStudentIdsForQuiz(user: SessionUser, seasonId: numb
  * dashboard's quiz roll-up uses it instead of a copy (spec 19 D10).
  *
  * PAPER: a QuizGrade row with a real score. ONLINE: a student with any attempt
- * that reached GRADED, counted once however many retakes they have. v1's dashboards never consulted QuizAttempt, so every ONLINE quiz
- * read as permanently pending (spec 12 R114). Two groupBys, whatever the
- * number of quizzes or students.
+ * that reached GRADED or with the admin's score (plan 4), counted once however
+ * many retakes they have. v1's dashboards never consulted QuizAttempt, so every
+ * ONLINE quiz read as permanently pending (spec 12 R114). Two queries, whatever
+ * the number of quizzes or students.
  */
 export async function countGradedByQuiz(
   quizzes: readonly { id: number; kind: QuizKind }[],
@@ -55,19 +56,24 @@ export async function countGradedByQuiz(
 ): Promise<Map<number, number>> {
   if (quizzes.length === 0 || studentIds.length === 0) return new Map();
   const quizIds = quizzes.map((q) => q.id);
-  const [paperGraded, onlineGraded] = await Promise.all([
-    db.quizGrade.groupBy({
-      by: ["quizId"],
+  const [scored, onlineGraded] = await Promise.all([
+    db.quizGrade.findMany({
       where: { quizId: { in: quizIds }, studentUserId: { in: [...studentIds] }, score: { not: null } },
-      _count: { _all: true },
+      select: { quizId: true, studentUserId: true },
     }),
     db.quizAttempt.groupBy({
       by: ["quizId", "studentUserId"],
       where: { quizId: { in: quizIds }, studentUserId: { in: [...studentIds] }, status: "GRADED" },
     }),
   ]);
-  const paperBy = new Map(paperGraded.map((g) => [g.quizId, g._count._all]));
-  const onlineBy = new Map<number, number>();
-  for (const g of onlineGraded) onlineBy.set(g.quizId, (onlineBy.get(g.quizId) ?? 0) + 1);
+  // A paper quiz counts its grade rows. An ONLINE quiz counts each student once whether they
+  // have a graded attempt, the admin's score (a grade row, plan 4), or both.
+  const paperBy = new Map<number, number>();
+  for (const g of scored) paperBy.set(g.quizId, (paperBy.get(g.quizId) ?? 0) + 1);
+  const onlineStudents = new Map<number, Set<number>>();
+  for (const g of [...onlineGraded, ...scored]) {
+    onlineStudents.set(g.quizId, (onlineStudents.get(g.quizId) ?? new Set()).add(g.studentUserId));
+  }
+  const onlineBy = new Map([...onlineStudents].map(([quizId, ids]) => [quizId, ids.size]));
   return new Map(quizzes.map((q) => [q.id, (q.kind === "PAPER" ? paperBy.get(q.id) : onlineBy.get(q.id)) ?? 0]));
 }

@@ -18,7 +18,6 @@ type TargetQuiz = {
   id: number;
   title: string;
   kind: string;
-  maxScore: number;
   seasonId: number;
   publishedAt: Date | null;
 };
@@ -66,7 +65,7 @@ async function resolveTarget(req: Request, res: Response): Promise<Target | null
 
   const quiz = await db.quiz.findFirst({
     where: { id, season: liveSeason },
-    select: { id: true, title: true, kind: true, maxScore: true, seasonId: true, publishedAt: true },
+    select: { id: true, title: true, kind: true, seasonId: true, publishedAt: true },
   });
   if ((await refuse(res, user, quiz, studentUserId)) || !quiz) return null;
   return { user, quiz, studentUserId };
@@ -88,10 +87,7 @@ export async function putManualScore(req: Request, res: Response) {
 
   const input = parseOr400(manualScoreWriteSchema, req.body, res, "Invalid manual score.");
   if (input === null) return;
-  if (input.score > quiz.maxScore) {
-    return apiError(res, "score_exceeds_max", `This quiz is out of ${quiz.maxScore}.`, 400);
-  }
-
+  // The bound (400 score_exceeds_max) is checked under the Quiz lock, in saveManualScore.
   const { scoreChanged, grade } = await saveManualScore(quiz.id, studentUserId, input, user.userId);
   // Best-effort, after the write committed: the paper grade's notification and copy.
   if (scoreChanged) await notifyQuizGraded([studentUserId], quiz.title);

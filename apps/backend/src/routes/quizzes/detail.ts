@@ -56,7 +56,8 @@ async function loadQuizAuthoringDetail(quizId: number, canManage: boolean, canRe
     gradeCount: quiz._count.grades,
     // Derived once, server-side (C4): the same condition the write path
     // enforces, so the screen never has to guess whether the builder is live.
-    canEditStructure: canManage && quiz.kind === "ONLINE" && quiz._count.attempts === 0,
+    // An admin's score freezes the questions too (plan 4); an ONLINE quiz's grades are only those.
+    canEditStructure: canManage && quiz.kind === "ONLINE" && quiz._count.attempts === 0 && quiz._count.grades === 0,
     canManage,
     answersReleasedAt: quiz.resultsReleasedAt,
     canReleaseResults: canRelease(quiz.seasonId),

@@ -84,6 +84,14 @@ export const quizAuthoringDetailSchema = z.object({
 export type QuizAuthoringDetail = z.infer<typeof quizAuthoringDetailSchema>;
 
 /**
+ * The season admin's score for this student on an ONLINE quiz (plan 4), as the student sees it,
+ * labelled "Score entered by your admin". When set it is the score that counts (`totalScore` /
+ * `score` carry it too), and it shows at once with its note, no release needed.
+ */
+// `.default(null)`: an app build talking to a backend from before plan 4 reads "none".
+const studentAdminScoreSchema = z.object({ score: z.number(), notes: z.string().nullable() }).nullable().default(null);
+
+/**
  * `autoScore` and `manualScore` are deliberately absent: v1 returned both to
  * the student and rendered neither (spec §5). `totalScore` is the only score a
  * student is ever shown.
@@ -100,8 +108,10 @@ export const studentQuizDetailSchema = z.object({
   status: quizAttemptStatusSchema.nullable(),
   /** Which screen the student is on: before, during, waiting for marking, score only, or answers shown. */
   stage: z.enum(["not_started", "in_progress", "submitted", "graded", "answers"]),
-  /** The student's best GRADED attempt; null until one is graded. */
+  /** The score that counts: the admin's score when there is one, else the best GRADED attempt; null until either. */
   totalScore: z.number().nullable(),
+  /** The admin's score and note; null when none. Never moves the student to `answers` on its own. */
+  adminScore: studentAdminScoreSchema,
   submittedAt: z.string().nullable(),
   gradedAt: z.string().nullable(),
   /**
@@ -149,6 +159,8 @@ const studentQuizResultSchema = z.object({
   attemptStatus: quizAttemptStatusSchema.nullable(),
   /** False until staff release the answers. */
   answersReleased: z.boolean(),
+  /** ONLINE only: the admin's score and note, which `score` then carries; null for PAPER and when none. */
+  adminScore: studentAdminScoreSchema,
 });
 export type StudentQuizResult = z.infer<typeof studentQuizResultSchema>;
 

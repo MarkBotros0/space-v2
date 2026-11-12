@@ -1,4 +1,5 @@
-import { bestGraded, bestScoreByStudent } from "../lib/quizzes/best-attempt";
+import { Prisma } from "../generated/prisma/client";
+import { bestGraded, bestScoreByStudent, countingScore } from "../lib/quizzes/best-attempt";
 
 const attempt = (attemptNumber: number, status: string, totalScore: number | null) => ({
   attemptNumber,
@@ -39,5 +40,44 @@ describe("bestScoreByStudent", () => {
     expect(best.get(1)).toBe(8);
     expect(best.has(2)).toBe(false);
     expect(best.get(3)).toBe(0);
+  });
+});
+
+describe("countingScore", () => {
+  it("is the admin's score whenever one exists, even below a graded attempt", () => {
+    expect(countingScore({ score: 4 }, [attempt(1, "GRADED", 9)])).toEqual({ score: 4, source: "manual" });
+    expect(countingScore({ score: new Prisma.Decimal("7.5") }, [])).toEqual({ score: 7.5, source: "manual" });
+    expect(countingScore({ score: 0 }, [attempt(1, "SUBMITTED", null)])).toEqual({ score: 0, source: "manual" });
+  });
+
+  it("is the best graded attempt without one", () => {
+    expect(countingScore(null, [attempt(1, "GRADED", 9), attempt(2, "GRADED", 6)])).toEqual({
+      score: 9,
+      source: "attempt",
+    });
+  });
+
+  it("treats a row with no score as no admin score", () => {
+    expect(countingScore({ score: null }, [attempt(1, "GRADED", 9)])).toEqual({ score: 9, source: "attempt" });
+  });
+
+  it("is null with neither", () => {
+    expect(countingScore(null, [attempt(1, "SUBMITTED", null), attempt(2, "IN_PROGRESS", null)])).toBeNull();
+    expect(countingScore(null, [])).toBeNull();
+  });
+});
+
+describe("bestScoreByStudent with admin scores", () => {
+  it("lets the admin's score win, and adds a student with only an admin score", () => {
+    const rows = [{ studentUserId: 1, ...attempt(1, "GRADED", 9) }];
+    const best = bestScoreByStudent(
+      rows,
+      new Map([
+        [1, 4],
+        [2, 6.5],
+      ]),
+    );
+    expect(best.get(1)).toBe(4);
+    expect(best.get(2)).toBe(6.5);
   });
 });

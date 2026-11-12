@@ -3,12 +3,16 @@ import type { ManualScore, ManualScoreWrite } from "@space/shared";
 import { db } from "../../db/client";
 import { ApiError } from "../api-error";
 import { toScore } from "./score";
+import { lockStudentInQuiz } from "./student-lock";
 
 /**
  * The season admin's score for one student on an ONLINE quiz (plan 4): a QuizGrade row, which
- * counts instead of any in-app attempt. Refused while the student has an attempt open, checked
- * with their attempts at this quiz locked FOR UPDATE in the same transaction, so a submit or an
- * end can't slip between the check and the write.
+ * counts instead of any in-app attempt. Lock order (lib/quizzes/student-lock.ts), the same one a
+ * start and a reopen take: the Quiz row FOR SHARE, so a question edit can't drop maxScore below
+ * this score (the bound is checked here, under it); the student's User row, so a start racing
+ * this save either commits its attempt first (and this save sees it) or waits and then sees
+ * this row and refuses; then their attempts at this quiz FOR UPDATE, so a submit or an end can't
+ * slip between the open-attempt check and the write.
  *
  * Returns the stored row and whether the SCORE is new or changed, the paper rule for "Your score
  * is in": a notes-only edit is written (and restamps gradedAt and gradedBy) but notifies nobody.
@@ -21,6 +25,11 @@ export async function saveManualScore(
   byId: number,
 ): Promise<{ scoreChanged: boolean; grade: ManualScore }> {
   return db.$transaction(async (tx) => {
+    const quiz = await lockStudentInQuiz(tx, quizId, studentUserId);
+    if (!quiz) throw new ApiError("not_found", "Quiz not found.", 404);
+    if (input.score > quiz.maxScore) {
+      throw new ApiError("score_exceeds_max", `This quiz is out of ${quiz.maxScore}.`, 400);
+    }
     const attempts = await tx.$queryRaw<{ status: string }[]>`
       SELECT "status"::text AS "status" FROM "QuizAttempt"
       WHERE "quizId" = ${quizId} AND "studentUserId" = ${studentUserId}

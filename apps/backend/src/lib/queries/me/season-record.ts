@@ -4,7 +4,7 @@ import type { SeasonRecord } from "../../../../../../packages/shared/src/season-
 import { listAssignmentStatesForStudent } from "../assignments";
 import { attendancePct } from "../attendance-pct";
 import { toScore } from "../../quizzes/score";
-import { bestGraded } from "../../quizzes/best-attempt";
+import { countingScore } from "../../quizzes/best-attempt";
 import { outcomeOf } from "./outcome";
 import { liveSeason } from "../../db/live";
 
@@ -102,11 +102,13 @@ export async function loadSeasonRecord(
     quizzes: quizzes.map((q): RecordQuiz => {
       const attempt = q.attempts[0]; // newest first
       const base = { id: q.id, title: q.title, kind: q.kind };
-      // The best graded attempt's score shows with no release (spec "What students see");
-      // a paper score shows once entered. Status is the latest attempt's.
-      const best = bestGraded(q.attempts);
-      if (attempt) {
-        return { ...base, status: attempt.status, score: best ? toScore(best.totalScore) : null };
+      // The score that counts shows with no release (spec "What students see"): on an ONLINE
+      // quiz the admin's score when there is one (plan 4, reading as GRADED), else the best graded
+      // attempt's; a paper score shows once entered. Otherwise status is the latest attempt's.
+      if (q.kind === "ONLINE") {
+        const counting = countingScore(q.grades[0] ?? null, q.attempts);
+        if (counting?.source === "manual") return { ...base, status: "GRADED", score: counting.score };
+        if (attempt) return { ...base, status: attempt.status, score: counting?.score ?? null };
       }
       // A paper quiz has no attempt: it is graded or not taken.
       const score = toScore(q.grades[0]?.score ?? null);

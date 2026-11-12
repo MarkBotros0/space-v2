@@ -18,7 +18,7 @@ import {
   reopenAttemptRequestSchema,
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizGraded, notifyQuizRetake } from "../../lib/quizzes/notify";
-import { newShuffleSeed } from "../../lib/quizzes/shuffle";
+import { reopenAttemptFor } from "../../lib/quizzes/reopen-attempt";
 import { closeExpiredForQuiz, closeLatestIfExpired } from "../../lib/quizzes/close-attempt";
 import { SAVE_GRACE_MS } from "../../lib/quizzes/timing";
 import { idParam } from "../../lib/http/params";
@@ -84,9 +84,10 @@ export async function listAttempts(req: Request, res: Response) {
   });
   const logs = await exitLogsFor(attempts.filter((a) => a.status !== "IN_PROGRESS").map((a) => a.id));
 
-  // Spec "Honest accidents": the score a grading list shows is the best GRADED
-  // attempt's. The row stays the latest attempt, which is what gets marked or reopened.
-  const bestScores = await bestScoresFor(id, pageIds);
+  // The score a grading list shows is the one that counts: the admin's score when there is one
+  // (plan 4), else the best GRADED attempt's (spec "Honest accidents"). The row stays the latest
+  // attempt, which is what gets marked or reopened.
+  const { best: bestScores, admin } = await bestScoresFor(id, pageIds);
 
   const scored = attempts.filter((a) => a.status !== "IN_PROGRESS");
   const inProgress = attempts.filter((a) => a.status === "IN_PROGRESS");
@@ -116,6 +117,7 @@ export async function listAttempts(req: Request, res: Response) {
       manualScore: toScore(att.manualScore),
       totalScore: toScore(att.totalScore),
       bestScore: bestScores.get(att.studentUserId) ?? null,
+      adminScore: admin.get(att.studentUserId) ?? null,
       submittedAt: att.submittedAt,
       gradedByName: att.gradedBy?.name ?? null,
       ...endInfo(att),
@@ -130,6 +132,7 @@ export async function listAttempts(req: Request, res: Response) {
         studentName: att.studentUser.name,
         startedAt: att.createdAt,
         ...endInfo(att),
+        adminScore: admin.get(att.studentUserId) ?? null,
       })),
       ...pageIds
         .filter((sid) => !startedIds.has(sid))
@@ -140,6 +143,7 @@ export async function listAttempts(req: Request, res: Response) {
           endReason: null,
           endedByName: null,
           deadlineAt: null,
+          adminScore: admin.get(sid) ?? null,
         })),
     ],
     nextCursor: remaining.length > limit ? (pageIds[pageIds.length - 1] ?? null) : null,
@@ -216,7 +220,7 @@ export async function gradeAttempt(req: Request, res: Response) {
     },
   });
   const log = await exitLogsFor([attemptId]);
-  const best = await bestScoresFor(id, [attempt.studentUserId]);
+  const { best, admin } = await bestScoresFor(id, [attempt.studentUserId]);
   return apiOk(res, {
     attemptId: page?.id,
     studentUserId: page?.studentUserId,
@@ -227,6 +231,7 @@ export async function gradeAttempt(req: Request, res: Response) {
     manualScore: toScore(page?.manualScore ?? null),
     totalScore: toScore(page?.totalScore ?? null),
     bestScore: best.get(attempt.studentUserId) ?? null,
+    adminScore: admin.get(attempt.studentUserId) ?? null,
     submittedAt: page?.submittedAt ?? null,
     gradedByName: page?.gradedBy?.name ?? null,
     endReason: page?.endReason ?? null,
@@ -275,28 +280,8 @@ export async function reopenAttempt(req: Request, res: Response) {
 
   // An expired attempt still marked IN_PROGRESS is closed first, so it can be reopened.
   await closeLatestIfExpired(id, parsed.studentUserId, SAVE_GRACE_MS);
-  const latest = await db.quizAttempt.findFirst({
-    where: { quizId: id, studentUserId: parsed.studentUserId },
-    orderBy: { attemptNumber: "desc" },
-    select: { attemptNumber: true, status: true },
-  });
-  if (!latest) return apiError(res, "no_attempt", "That student has no attempt to reopen.", 409);
-  if (latest.status === "IN_PROGRESS") {
-    return apiError(res, "attempt_open", "That student already has an attempt open.", 409);
-  }
-
-  const created = await db.quizAttempt.create({
-    data: {
-      quizId: id,
-      studentUserId: parsed.studentUserId,
-      // R81: a NEW attempt; the previous one and its answers stay intact.
-      attemptNumber: latest.attemptNumber + 1,
-      // A retake gets its own shuffle. deadlineAt stays null: its fresh time
-      // limit starts when the student opens it (lib/quizzes/start-attempt.ts).
-      shuffleSeed: newShuffleSeed(),
-    },
-    select: { id: true, attemptNumber: true },
-  });
+  // A new attempt, refused once the admin has entered the score (lib/quizzes/reopen-attempt.ts).
+  const created = await reopenAttemptFor(id, parsed.studentUserId);
 
   // v1 sent nothing at all, so a student was never told a retake existed. There
   // is no dedicated NotificationType, so
