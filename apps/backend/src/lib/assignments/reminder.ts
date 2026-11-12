@@ -14,6 +14,7 @@ import {
 import { seasonRosterMember } from "../queries/season-participants";
 import { reportError } from "../sentry";
 import { workStandings } from "./standing";
+import { SUBMITTED_WHERE } from "./submitted";
 
 /*
  * An assignment's reminder (spec, "Reminders"): `reminderDays` before the
@@ -220,7 +221,7 @@ async function remindStudents(a: {
       select: { studentUserId: true },
     }),
     db.submission.findMany({
-      where: { assignmentId: a.id, submittedAt: { not: null } },
+      where: { assignmentId: a.id, ...SUBMITTED_WHERE },
       select: { studentUserId: true },
     }),
   ]);

@@ -10,6 +10,7 @@ import { isAtRisk } from "../../../../../packages/shared/src/index";
 import { db } from "../../db/client";
 import { seasonParticipant } from "./season-participants";
 import { liveAssignment, liveUser } from "../db/live";
+import { SUBMITTED_WHERE } from "../assignments/submitted";
 
 interface EngagementCohortOptions {
   /** Restrict to these students (a leader's roster, or a single detail view). */
@@ -33,9 +34,10 @@ interface EngagementCohortOptions {
  * Formula, ported verbatim from jpc-space/src/lib/engagement.ts:
  *   score = round(attendancePct * 0.5 + submissionPct * 0.5)   (domain 9 R53)
  *   attendance counts PRESENT and LATE alike                   (domain 9 R54)
- *   an assignment counts as done once submitted: every part done
- *   and Submit tapped (`Submission.submittedAt`; a returned essay
- *   clears it until handed back in)
+ *   an assignment counts as done once submitted (SUBMITTED_WHERE):
+ *   every part done and Submit tapped (`Submission.submittedAt`; a
+ *   returned essay clears it until handed back in), or marked
+ *   submitted by staff
  *   assignment due dates are ignored                           (domain 9 R60)
  *
  * Two deliberate corrections, both Plan 12's:
@@ -126,7 +128,7 @@ async function loadCohort(seasonIds: number[], opts: EngagementCohortOptions) {
           where: {
             studentUserId: { in: ids },
             assignmentId: { in: assignments.map((a) => a.id) },
-            submittedAt: { not: null },
+            ...SUBMITTED_WHERE,
           },
           select: { studentUserId: true, assignmentId: true },
         });

@@ -11,6 +11,7 @@ import { updateAssignmentRequestSchema } from "../../../../packages/shared/src/i
 import { idParam } from "../lib/http/params";
 import { notFound } from "../lib/http/not-found";
 import { liveAssignment } from "../lib/db/live";
+import { deleteStaffMark, putStaffMark } from "./assignments/staff-mark";
 
 export const assignmentsRouter = Router();
 
@@ -66,15 +67,25 @@ assignmentsRouter.get("/:id/progress", async (req, res) => {
 
   const assignment = await db.assignment.findFirst({
     where: { id, ...liveAssignment },
-    select: { seasonId: true },
+    select: { seasonId: true, season: { select: { status: true } } },
   });
   if (!assignment) return notFound(res, "Assignment");
 
   const scope = await staffScopeForSeason(user, assignment.seasonId);
   if (scope === null) return forbidden(res);
 
-  return apiOk(res, await loadAssignmentProgress(id, scope.kind === "groups" ? scope.groupIds : undefined));
+  // Everyone this scope lists may be marked submitted by the caller (canMarkSubmitted), while the
+  // season is ACTIVE. Drives the UI, never the gate.
+  const canMark = assignment.season.status === "ACTIVE";
+  return apiOk(res, await loadAssignmentProgress(id, scope.kind === "groups" ? scope.groupIds : undefined, canMark));
 });
+
+/**
+ * Staff mark an assignment submitted for one student, and undo it (routes/assignments/staff-mark.ts):
+ * the season's admin, a super or the student's own leader, on an ACTIVE season.
+ */
+assignmentsRouter.put("/:id/submitted-marks/:studentUserId", putStaffMark);
+assignmentsRouter.delete("/:id/submitted-marks/:studentUserId", deleteStaffMark);
 
 /**
  * Full replace (spec 07 R67): the body is the whole assignment, its parts in

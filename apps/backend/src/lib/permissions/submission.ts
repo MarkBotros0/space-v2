@@ -94,6 +94,15 @@ export async function canReviewSubmission(user: SessionUser, submissionId: numbe
 }
 
 /**
+ * Who may mark an assignment submitted for this student, or take the mark away (whoever made it):
+ * the season's admin, a super, or the student's own leader in that season (ruling C9: the group
+ * is the enrolment's). The season being ACTIVE is checked under its lock, in the service.
+ */
+export async function canMarkSubmitted(user: SessionUser, seasonId: number, studentUserId: number): Promise<boolean> {
+  return isAdminOfSeason(user, seasonId) || leadsStudentInSeason(user, studentUserId, seasonId);
+}
+
+/**
  * Whose essays sit in this caller's review queue, as a filter over their
  * Submission (the queue and the dashboard apply it as `{ submission: scope }`).
  *

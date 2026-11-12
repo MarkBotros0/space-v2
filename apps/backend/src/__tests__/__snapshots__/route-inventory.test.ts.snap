@@ -131,6 +131,8 @@ exports[`route inventory registers exactly these routes, in this order 1`] = `
   "PUT /api/v1/assignments/:id/parts/:partId/essay",
   "GET /api/v1/assignments/:id",
   "GET /api/v1/assignments/:id/progress",
+  "PUT /api/v1/assignments/:id/submitted-marks/:studentUserId",
+  "DELETE /api/v1/assignments/:id/submitted-marks/:studentUserId",
   "PATCH /api/v1/assignments/:id",
   "POST /api/v1/assignments/:id/submit",
   "DELETE /api/v1/assignments/:id",

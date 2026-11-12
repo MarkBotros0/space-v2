@@ -19,6 +19,7 @@ export {
 export { canAccessGroup } from "./group";
 export { canAdministerQuiz, canGradeQuiz, canManageQuiz } from "./quiz";
 export {
+  canMarkSubmitted,
   canReviewSubmission,
   canViewSubmission,
   EDITABLE_STATUSES,

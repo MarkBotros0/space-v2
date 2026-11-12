@@ -30,6 +30,7 @@ const assignment = (id: number, status: string) => ({
   partsDone: status === "SUBMITTED" || status === "REVIEWED" ? 1 : 0,
   returned: status === "RETURNED",
   hasEssay: true,
+  staffMarked: false,
 });
 
 const record = {

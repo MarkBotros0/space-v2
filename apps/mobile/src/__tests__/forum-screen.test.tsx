@@ -285,7 +285,13 @@ describe("forum part screen", () => {
     get.mockImplementation((url: string) => {
       if (url.includes("/forum")) throw new Error(`forum feed must not be read: ${url}`);
       return Promise.resolve({
-        data: { data: { ...forumAssignment, readOnly: true, my: { submittedAt: null, parts: [forumWork(true)] } } },
+        data: {
+          data: {
+            ...forumAssignment,
+            readOnly: true,
+            my: { submittedAt: null, staffMarked: false, parts: [forumWork(true)] },
+          },
+        },
       });
     });
     renderWithProviders(<PartScreen />);

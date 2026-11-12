@@ -122,7 +122,7 @@ export const sessionsAssignmentsSchemas = {
       submissionCount: {
         type: "integer",
         description:
-          "Season participants who have tapped Submit (`submittedAt` set). The one definition of 'submitted'.",
+          "Season participants who have submitted: tapped Submit (`submittedAt` set) or marked submitted by staff. The one definition of 'submitted'.",
       },
       expectedCount: {
         type: "integer",
@@ -162,6 +162,7 @@ export const sessionsAssignmentsSchemas = {
         type: "boolean",
         description: "The assignment has an essay part, so a submitted one waits for review; without one it is done.",
       },
+      staffMarked: { type: "boolean", description: "Staff marked it submitted: done, and `status` REVIEWED." },
     },
   },
   AssignmentDetail: {
@@ -206,6 +207,7 @@ export const sessionsAssignmentsSchemas = {
         description: "Populated only for a STUDENT: when they submitted, and their work on each part in order.",
         properties: {
           submittedAt: { type: ["string", "null"], format: "date-time" },
+          staffMarked: { type: "boolean", description: "Staff marked it submitted: it counts as done." },
           parts: { type: "array", items: { $ref: "#/components/schemas/PartWork" } },
         },
       },
@@ -360,6 +362,10 @@ export const sessionsAssignmentsSchemas = {
   AssignmentProgress: {
     type: "object",
     properties: {
+      canMark: {
+        type: "boolean",
+        description: "The caller may mark these rows submitted: false on a draft or finished season.",
+      },
       rows: {
         type: "array",
         items: {
@@ -369,6 +375,7 @@ export const sessionsAssignmentsSchemas = {
             name: { type: ["string", "null"] },
             avatarPath: { type: ["string", "null"] },
             submittedAt: { type: ["string", "null"], format: "date-time" },
+            staffMark: { $ref: "#/components/schemas/StaffMarkSummary" },
             parts: { type: "array", items: { $ref: "#/components/schemas/PartWork" } },
           },
         },

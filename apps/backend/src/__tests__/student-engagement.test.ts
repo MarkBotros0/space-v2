@@ -28,6 +28,7 @@ jest.mock("../lib/auth/tokens", () => ({ verifyAccessToken: (t: string) => mockV
 import express from "express";
 import request from "supertest";
 
+import { SUBMITTED_WHERE } from "../lib/assignments/submitted";
 import { computeEngagementForSeason } from "../lib/queries/engagement";
 import { seasonParticipant } from "../lib/queries/season-participants";
 import { studentEngagementRouter } from "../routes/engagement";
@@ -92,8 +93,6 @@ it("counts an assignment done once submitted, out of every assignment of the sea
 
   const [row] = await computeEngagementForSeason(8);
 
-  expect(mockDb.submission.findMany.mock.calls[0][0].where).toEqual(
-    expect.objectContaining({ submittedAt: { not: null } }),
-  );
+  expect(mockDb.submission.findMany.mock.calls[0][0].where).toEqual(expect.objectContaining(SUBMITTED_WHERE));
   expect(row).toMatchObject({ submissionsExpected: 2, submissionsCompleted: 1, submissionPct: 50 });
 });

@@ -99,6 +99,7 @@ export async function loadSeasonRecord(
       partsDone: a.partsDone,
       returned: a.returned,
       hasEssay: a.hasEssay,
+      staffMarked: a.staffMarked,
     })),
     quizzes: quizzes.map((q): RecordQuiz => {
       const attempt = q.attempts[0]; // newest first

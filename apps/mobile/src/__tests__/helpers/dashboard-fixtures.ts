@@ -68,6 +68,7 @@ export const studentDashboard = {
         partsDone: 0,
         returned: false,
         hasEssay: true,
+        staffMarked: false,
       },
       {
         id: 42,
@@ -82,6 +83,7 @@ export const studentDashboard = {
         partsDone: 0,
         returned: false,
         hasEssay: true,
+        staffMarked: false,
       },
     ],
     open: [
@@ -98,6 +100,7 @@ export const studentDashboard = {
         partsDone: 0,
         returned: false,
         hasEssay: true,
+        staffMarked: false,
       },
       {
         id: 42,
@@ -112,6 +115,7 @@ export const studentDashboard = {
         partsDone: 0,
         returned: false,
         hasEssay: true,
+        staffMarked: false,
       },
       {
         id: 43,
@@ -126,6 +130,7 @@ export const studentDashboard = {
         partsDone: 0,
         returned: true,
         hasEssay: true,
+        staffMarked: false,
       },
     ],
   },

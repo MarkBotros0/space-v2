@@ -5,6 +5,7 @@ import { orgDayKey } from "../../org-time";
 import { seasonParticipant } from "../season-participants";
 import { isOverdue } from "./rules";
 import { liveAssignment, liveUser } from "../../db/live";
+import { isSubmitted, STAFF_MARK_SELECT, SUBMITTED_WHERE } from "../../assignments/submitted";
 import { loadWorkIndex, partWorksFor, PART_SELECT } from "./part-work";
 
 export interface AssignmentListRow {
@@ -22,7 +23,7 @@ export interface AssignmentListRow {
 /**
  * The season's assignments for staff. An assignment is for the whole season,
  * so every row's expected count is the season's participants (one count), and
- * its submission count those of them who have tapped Submit.
+ * its submission count those of them who have submitted (SUBMITTED_WHERE).
  */
 export async function listAssignmentsForSeason(seasonId: number): Promise<AssignmentListRow[]> {
   // One denominator with the progress roster: live users only.
@@ -38,7 +39,7 @@ export async function listAssignmentsForSeason(seasonId: number): Promise<Assign
         _count: {
           select: {
             parts: true,
-            submissions: { where: { submittedAt: { not: null }, studentUser: participant } },
+            submissions: { where: { ...SUBMITTED_WHERE, studentUser: participant } },
           },
         },
         season: { select: { code: true } },
@@ -73,10 +74,16 @@ function compareNullsLast(a: string | null, b: string | null): number {
  * each part. `restrictGroupIds` narrows it to a leader's own groups, the same
  * scoping the attendance roster has, because the rows name students. The
  * population comes from SeasonEnrollment, so a student who has done nothing
- * still appears. Students who haven't submitted come first, then by name.
- * A draft essay or forum post is the student's alone: it reads as not started.
+ * still appears. Students who haven't submitted (in the app, or marked by
+ * staff) come first, then by name. A draft essay or forum post is the
+ * student's alone: it reads as not started. `canMark` is the route's: the
+ * caller may mark these rows submitted.
  */
-export async function loadAssignmentProgress(id: number, restrictGroupIds?: number[]): Promise<AssignmentProgress> {
+export async function loadAssignmentProgress(
+  id: number,
+  restrictGroupIds: number[] | undefined,
+  canMark: boolean,
+): Promise<AssignmentProgress> {
   const assignment = await db.assignment.findFirst({
     where: { id, ...liveAssignment },
     select: { seasonId: true, parts: { orderBy: { position: "asc" }, select: PART_SELECT } },
@@ -96,28 +103,33 @@ export async function loadAssignmentProgress(id: number, restrictGroupIds?: numb
   const [submissions, index] = await Promise.all([
     db.submission.findMany({
       where: { assignmentId: id, studentUserId: { in: studentIds } },
-      select: { studentUserId: true, submittedAt: true },
+      select: { studentUserId: true, submittedAt: true, ...STAFF_MARK_SELECT },
     }),
     loadWorkIndex(
       assignment.parts.map((p) => p.id),
       studentIds,
     ),
   ]);
-  const submittedAt = new Map(submissions.map((s) => [s.studentUserId, s.submittedAt]));
+  const byStudent = new Map(submissions.map((s) => [s.studentUserId, s]));
 
   const rows = enrollments
-    .map((e) => ({
-      studentUserId: e.studentUserId,
-      name: e.studentUser.name,
-      avatarPath: e.studentUser.avatarPath,
-      submittedAt: submittedAt.get(e.studentUserId)?.toISOString() ?? null,
-      parts: partWorksFor(assignment.parts, e.studentUserId, index, { forStaff: true }),
-    }))
+    .map((e) => {
+      const sub = byStudent.get(e.studentUserId);
+      const mark = sub?.staffMark ?? null;
+      return {
+        studentUserId: e.studentUserId,
+        name: e.studentUser.name,
+        avatarPath: e.studentUser.avatarPath,
+        submittedAt: sub?.submittedAt?.toISOString() ?? null,
+        staffMark: mark && { markedAt: mark.markedAt.toISOString(), markedByName: mark.markedBy?.name ?? null },
+        parts: partWorksFor(assignment.parts, e.studentUserId, index, { forStaff: true }),
+        done: sub !== undefined && isSubmitted(sub),
+      };
+    })
     .sort(
       (a, b) =>
-        Number(a.submittedAt !== null) - Number(b.submittedAt !== null) ||
-        compareNullsLast(a.name, b.name) ||
-        a.studentUserId - b.studentUserId,
-    );
-  return { rows };
+        Number(a.done) - Number(b.done) || compareNullsLast(a.name, b.name) || a.studentUserId - b.studentUserId,
+    )
+    .map(({ done: _done, ...row }) => row);
+  return { canMark, rows };
 }

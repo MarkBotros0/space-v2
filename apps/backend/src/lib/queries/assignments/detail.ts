@@ -5,6 +5,7 @@ import { describeReminder } from "../../assignments/reminder";
 import { orgDayKey, orgWallTime } from "../../org-time";
 import { liveAssignment } from "../../db/live";
 import { isOverdue } from "./rules";
+import { STAFF_MARK_SELECT } from "../../assignments/submitted";
 import { loadWorkIndex, partWorksFor, PART_SELECT, toAssignmentPart, type PartRow } from "./part-work";
 
 /** Who is reading: the gate (route) has already decided they may. */
@@ -78,7 +79,7 @@ async function myWork(assignmentId: number, parts: PartRow[], studentUserId: num
   const [submission, index] = await Promise.all([
     db.submission.findUnique({
       where: { assignmentId_studentUserId: { assignmentId, studentUserId } },
-      select: { submittedAt: true },
+      select: { submittedAt: true, ...STAFF_MARK_SELECT },
     }),
     loadWorkIndex(
       parts.map((p) => p.id),
@@ -87,6 +88,7 @@ async function myWork(assignmentId: number, parts: PartRow[], studentUserId: num
   ]);
   return {
     submittedAt: submission?.submittedAt?.toISOString() ?? null,
+    staffMarked: (submission?.staffMark ?? null) !== null,
     parts: partWorksFor(parts, studentUserId, index, { forStaff: false }),
   };
 }

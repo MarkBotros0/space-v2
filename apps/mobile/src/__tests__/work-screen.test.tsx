@@ -27,6 +27,7 @@ const assignment = (id: number, over: Record<string, unknown> = {}) => ({
   partsDone: 0,
   returned: over.status === "RETURNED",
   hasEssay: true,
+  staffMarked: false,
   ...over,
 });
 const quiz = (quizId: number, over: Record<string, unknown> = {}) => ({

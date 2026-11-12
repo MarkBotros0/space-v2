@@ -23,6 +23,7 @@ const assignment = (over: Partial<DashboardDueItem> & { id: number }): Dashboard
   partsDone: 0,
   returned: false,
   hasEssay: true,
+  staffMarked: false,
   ...over,
 });
 

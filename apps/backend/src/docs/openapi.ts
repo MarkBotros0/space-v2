@@ -37,6 +37,7 @@ import { notesNotificationsPaths } from "./paths/notes-notifications";
 import { followUpPaths } from "./paths/follow-ups";
 import { sessionPaths } from "./paths/sessions";
 import { assignmentsSubmissionsPaths } from "./paths/assignments-submissions";
+import { assignmentStaffMarkPaths, assignmentStaffMarkSchemas } from "./paths/assignment-staff-marks";
 import { quizAuthoringPaths } from "./paths/quizzes-authoring";
 import { quizAttemptsPaths } from "./paths/quizzes-attempts";
 import { announcementPaths } from "./paths/announcements";
@@ -155,6 +156,7 @@ export const openApiDocument = {
       ...sessionsAssignmentsSchemas,
       ...submissionsMeSchemas,
       ...seasonAdminSchemas,
+      ...assignmentStaffMarkSchemas,
       ...announcementSchemas,
     },
   },
@@ -175,6 +177,7 @@ export const openApiDocument = {
     ...followUpPaths,
     ...sessionPaths,
     ...assignmentsSubmissionsPaths,
+    ...assignmentStaffMarkPaths,
     ...quizAuthoringPaths,
     ...quizAttemptsPaths,
     ...forumEventsPaths,

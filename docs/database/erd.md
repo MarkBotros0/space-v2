@@ -294,6 +294,8 @@ erDiagram
   Assignment ||--o{ AssignmentPart : "assignment"
   Assignment ||--o{ Submission : "assignment"
   User ||--o{ Submission : "studentUser"
+  Submission ||--o| SubmissionStaffMark : "submission"
+  User |o--o{ SubmissionStaffMark : "markedBy"
   AssignmentPart ||--o{ AssignmentPartWork : "part"
   Submission ||--o{ AssignmentPartWork : "submission"
   User ||--o{ AssignmentPartWork : "studentUser"
@@ -346,6 +348,13 @@ erDiagram
     Int studentUserId FK
     DateTime submittedAt "nullable"
     DateTime completedAt "nullable"
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  SubmissionStaffMark {
+    Int submissionId PK, FK
+    Int markedById FK "nullable"
+    DateTime markedAt
     DateTime createdAt
     DateTime updatedAt
   }

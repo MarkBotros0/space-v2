@@ -92,6 +92,7 @@ const row = (name: string | null, submittedAt: string | null, parts: PartWork[],
   name,
   avatarPath: null,
   submittedAt,
+  staffMark: null,
   parts,
 });
 

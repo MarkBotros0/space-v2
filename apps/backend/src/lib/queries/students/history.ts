@@ -4,6 +4,7 @@ import { db } from "../../../db/client";
 import type { SessionUser } from "../../auth/tokens";
 import { isAdminOfSeason, isMentor, isSuper } from "../../rbac";
 import { assignmentStatusOf, isLate, loadWorkIndex, PART_SELECT, partWorksFor, reviewedAtOf } from "../assignments";
+import { STAFF_MARK_SELECT, SUBMITTED_WHERE } from "../../assignments/submitted";
 import { liveAssignment } from "../../db/live";
 
 /**
@@ -164,13 +165,14 @@ export async function loadStudentSubmissions(
     where: {
       studentUserId,
       assignment: { seasonId: { in: seasonIds }, ...liveAssignment },
-      OR: [{ submittedAt: { not: null } }, { partWork: { some: { status: "RETURNED", part: { kind: "ESSAY" } } } }],
+      OR: [SUBMITTED_WHERE, { partWork: { some: { status: "RETURNED", part: { kind: "ESSAY" } } } }],
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: HISTORY_LIMIT,
     select: {
       publicId: true,
       submittedAt: true,
+      ...STAFF_MARK_SELECT,
       assignment: {
         select: {
           id: true,
@@ -189,7 +191,7 @@ export async function loadStudentSubmissions(
   );
   return rows.map((r) => {
     const works = partWorksFor(r.assignment.parts, studentUserId, index, { forStaff: true });
-    const status = assignmentStatusOf(r.submittedAt, works, true);
+    const status = assignmentStatusOf(r.submittedAt, works, true, r.staffMark !== null);
     return {
       publicId: r.publicId,
       assignmentId: r.assignment.id,

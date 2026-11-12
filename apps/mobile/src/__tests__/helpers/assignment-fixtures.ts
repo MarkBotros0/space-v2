@@ -81,7 +81,7 @@ export function assignmentDetail(
     reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
     reminderLine: null,
     parts: PARTS,
-    my: { submittedAt: null, parts: works },
+    my: { submittedAt: null, staffMarked: false, parts: works },
     canManage: false,
     readOnly: false,
     ...over,

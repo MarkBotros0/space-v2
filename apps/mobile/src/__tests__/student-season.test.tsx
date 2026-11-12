@@ -53,6 +53,7 @@ const handedIn = (id: number, title: string, submittedAt: string, status = "SUBM
   partsDone: 1,
   returned: false,
   hasEssay: true,
+  staffMarked: false,
 });
 const takenQuiz = (quizId: number, title: string, sessionDate: string) => ({
   quizId,

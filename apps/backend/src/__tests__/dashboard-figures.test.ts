@@ -48,6 +48,7 @@ const row = (over: Partial<StudentAssignmentStateRow>): StudentAssignmentStateRo
   partsDone: 0,
   returned: false,
   hasEssay: true,
+  staffMarked: false,
   ...over,
 });
 
@@ -78,6 +79,12 @@ describe("summarizeStudentAssignments (C5, D15, D16, R73)", () => {
     expect(s.outstandingCount).toBe(5);
     expect(s.overdueCount).toBe(2);
     expect(s.lateSubmittedCount).toBe(1);
+  });
+
+  it("a staff mark is complete, parts left or not", () => {
+    const s = summarizeStudentAssignments([row({ id: 8, status: "REVIEWED", partsDone: 1, staffMarked: true })], 3);
+    expect(s.outstandingCount).toBe(0);
+    expect(s.lateSubmittedCount).toBe(0);
   });
 
   it("every part done but Submit not tapped is still outstanding", () => {

@@ -71,12 +71,14 @@ const detail = {
 
 // Sara has done everything and submitted; Omar is part-way through the video.
 const progress = {
+  canMark: false,
   rows: [
     {
       studentUserId: 9,
       name: "Sara Student",
       avatarPath: null,
       submittedAt: "2099-03-30T10:00:00.000Z",
+      staffMark: null,
       parts: [
         {
           partId: 1,
@@ -98,6 +100,7 @@ const progress = {
       name: "Omar Student",
       avatarPath: null,
       submittedAt: null,
+      staffMark: null,
       parts: [
         {
           partId: 1,
@@ -177,6 +180,7 @@ describe("AssignmentDetailScreen (staff)", () => {
       name: "Lina Student",
       avatarPath: null,
       submittedAt: "2099-03-30T10:00:00.000Z",
+      staffMark: null,
       parts: [
         {
           partId: 2,
@@ -192,7 +196,7 @@ describe("AssignmentDetailScreen (staff)", () => {
         },
       ],
     };
-    serve({ canManage: false, parts: twoEssays as typeof parts }, () => ok({ rows: [lina] }));
+    serve({ canManage: false, parts: twoEssays as typeof parts }, () => ok({ canMark: false, rows: [lina] }));
     renderWithProviders(<AssignmentDetailScreen />);
 
     // The row says honestly what it opens.
@@ -310,7 +314,7 @@ describe("AssignmentDetailScreen (staff)", () => {
 
   it("says so in words when there are no students to show", async () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }));
-    serve({ canManage: false }, () => ok({ rows: [] }));
+    serve({ canManage: false }, () => ok({ canMark: false, rows: [] }));
     renderWithProviders(<AssignmentDetailScreen />);
 
     expect(await screen.findByText("No students to show yet.")).toBeTruthy();

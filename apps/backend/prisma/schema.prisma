@@ -217,6 +217,7 @@ model User {
   assignmentsCreated      Assignment[]     @relation("AssignmentCreatedBy")
   assignmentsUpdated      Assignment[]     @relation("AssignmentUpdatedBy")
   partWorkReviewed        AssignmentPartWork[] @relation("PartWorkReviewedBy")
+  submissionStaffMarks    SubmissionStaffMark[] @relation("SubmissionStaffMarkedBy")
   attendanceMarked        Attendance[]     @relation("AttendanceMarkedBy")
   engagementNotesAuthored EngagementNote[] @relation("EngagementNoteAuthor")
 
@@ -675,10 +676,23 @@ model Submission {
   createdAt     DateTime   @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime   @updatedAt @db.Timestamptz(3)
 
-  partWork AssignmentPartWork[]
+  partWork  AssignmentPartWork[]
+  staffMark SubmissionStaffMark?
 
   @@unique([assignmentId, studentUserId])
   @@index([studentUserId])
+}
+
+// Staff marked the assignment submitted for a student who did it outside the app. Submitted =
+// `submittedAt` set or this row (lib/assignments/submitted.ts). No essay answers, nothing to review.
+model SubmissionStaffMark {
+  submissionId Int        @id
+  submission   Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  markedById   Int?
+  markedBy     User?      @relation("SubmissionStaffMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
+  markedAt     DateTime   @default(now()) @db.Timestamptz(3)
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
 }
 
 // One student's work on one part: a video's progress, an essay and its review, or a forum post.

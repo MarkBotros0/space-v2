@@ -14,6 +14,7 @@ import { computeEngagementForSeasons } from "../engagement";
 import { attendanceTrendPoints, bySeason, completionRows, foldBands, setsBy } from "./folds";
 import { toReportRows, withEmails } from "./rows";
 import { liveAssignment } from "../../db/live";
+import { SUBMITTED_WHERE } from "../../assignments/submitted";
 
 export interface EngagementSummaryOptions {
   trendLimit: number;
@@ -135,7 +136,7 @@ export async function buildEngagementSummary(
     select: { id: true, seasonId: true, title: true },
   });
 
-  // Q5 — who has submitted each (every part done and Submit tapped). Two
+  // Q5 — who has submitted each (Submit tapped, or marked by staff). Two
   // columns; the studentUserId is what makes the numerator intersectable with
   // the expected set.
   const submissions =
@@ -144,7 +145,7 @@ export async function buildEngagementSummary(
       : await db.submission.findMany({
           where: {
             assignmentId: { in: assignments.map((a) => a.id) },
-            submittedAt: { not: null },
+            ...SUBMITTED_WHERE,
           },
           select: { assignmentId: true, studentUserId: true },
         });

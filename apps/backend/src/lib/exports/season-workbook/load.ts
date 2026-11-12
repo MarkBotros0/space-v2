@@ -1,5 +1,6 @@
 import { db } from "../../../db/client";
 import { liveAssignment } from "../../db/live";
+import { SUBMITTED_WHERE } from "../../assignments/submitted";
 import { loadWorkIndex, PART_SELECT } from "../../queries/assignments";
 import { computeEngagementForSeasons } from "../../queries/engagement";
 import { seasonParticipant } from "../../queries/season-participants";
@@ -95,7 +96,7 @@ export async function loadSeasonExportData(seasonId: number) {
       id: true,
       title: true,
       parts: { orderBy: { position: "asc" }, select: PART_SELECT },
-      submissions: { where: { submittedAt: { not: null } }, select: { studentUserId: true } },
+      submissions: { where: SUBMITTED_WHERE, select: { studentUserId: true } },
     },
   });
   const works = await loadWorkIndex(

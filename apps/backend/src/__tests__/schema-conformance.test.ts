@@ -105,6 +105,7 @@ const AUDIT_FKS = new Set([
   "Quiz.createdById",
   "Quiz.resultsReleasedById",
   "QuizGrade.gradedById",
+  "SubmissionStaffMark.markedById",
   "QuizAttempt.gradedById",
   "QuizAttempt.endedById",
   "JpcEvent.createdById",
@@ -178,9 +179,11 @@ describe("schema conformance", () => {
   it("keys a link table (only foreign keys and timestamps) by its pair, not a surrogate id", () => {
     const wrong = models.filter((m) => {
       const fkColumns = new Set(foreignKeys(m).flat());
+      // An audit FK (who did it) is not one side of a pair: SubmissionStaffMark is keyed by its Submission.
+      const pairColumns = [...fkColumns].filter((c) => !AUDIT_FKS.has(`${m.name}.${c}`));
       const scalars = scalarFields(m, modelNames);
       const linkShaped =
-        fkColumns.size >= 2 && scalars.every((f) => fkColumns.has(f.name) || f.type.startsWith("DateTime"));
+        pairColumns.length >= 2 && scalars.every((f) => fkColumns.has(f.name) || f.type.startsWith("DateTime"));
       return linkShaped && !compositeId(m);
     });
     expect(wrong.map((m) => m.name)).toEqual([]);

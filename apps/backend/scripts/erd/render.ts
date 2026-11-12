@@ -33,7 +33,15 @@ const DOMAINS: { title: string; models: string[] }[] = [
   },
   {
     title: "Assignments & submissions",
-    models: ["Assignment", "AssignmentPart", "Submission", "AssignmentPartWork", "SubmissionFile", "ForumComment"],
+    models: [
+      "Assignment",
+      "AssignmentPart",
+      "Submission",
+      "SubmissionStaffMark",
+      "AssignmentPartWork",
+      "SubmissionFile",
+      "ForumComment",
+    ],
   },
   {
     title: "Quizzes",

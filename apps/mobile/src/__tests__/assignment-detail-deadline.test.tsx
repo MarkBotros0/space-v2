@@ -61,7 +61,7 @@ describe("AssignmentDetailScreen: the deadline", () => {
   });
 
   it("past the date but submitted: no Overdue left to show", async () => {
-    serve({ isOverdue: true, my: { submittedAt: "2099-03-30T10:00:00.000Z", parts: works } });
+    serve({ isOverdue: true, my: { submittedAt: "2099-03-30T10:00:00.000Z", staffMarked: false, parts: works } });
     renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText(/^Submitted /)).toBeTruthy();
     expect(screen.queryByText("Overdue")).toBeNull();

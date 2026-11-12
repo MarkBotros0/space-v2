@@ -88,6 +88,7 @@ const studentRow = {
   partsDone: 1,
   returned: false,
   hasEssay: true,
+  staffMarked: false,
 };
 
 beforeEach(() => {
@@ -120,9 +121,9 @@ describe("read hooks", () => {
   });
 
   it("useAssignmentProgress reads the progress endpoint", async () => {
-    get.mockResolvedValue({ data: { data: { rows: [] } } });
+    get.mockResolvedValue({ data: { data: { canMark: false, rows: [] } } });
     const { result } = renderHook(() => useAssignmentProgress(41), { wrapper });
-    await waitFor(() => expect(result.current.data).toEqual({ rows: [] }));
+    await waitFor(() => expect(result.current.data).toEqual({ canMark: false, rows: [] }));
     expect(get).toHaveBeenCalledWith("/api/v1/assignments/41/progress");
   });
 });
@@ -175,7 +176,7 @@ describe("assignment writes (X10: every response is parsed)", () => {
 
   it("useDeleteAssignment parses { deleted: true } and drops the cached detail and progress", async () => {
     client.setQueryData(queryKeys.assignments.detail(41), detail);
-    client.setQueryData(queryKeys.assignments.progress(41), { rows: [] });
+    client.setQueryData(queryKeys.assignments.progress(41), { canMark: false, rows: [] });
     del.mockResolvedValue({ data: { data: { deleted: true } } });
     const { result } = renderHook(() => useDeleteAssignment(), { wrapper });
     await act(async () => {

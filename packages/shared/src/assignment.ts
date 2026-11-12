@@ -43,7 +43,7 @@ export const staffAssignmentListItemSchema = z.object({
   isOverdue: z.boolean(),
   /** How many parts the assignment has. */
   partsCount: z.number(),
-  /** Season participants who have tapped Submit (`Submission.submittedAt` set). */
+  /** Season participants who have submitted: tapped Submit, or marked submitted by staff. */
   submissionCount: z.number(),
   /** Every participant of the season: an assignment is for the whole season. */
   expectedCount: z.number(),
@@ -71,6 +71,8 @@ export const studentAssignmentListItemSchema = z.object({
   returned: z.boolean(),
   /** The assignment has an essay part: once submitted it waits for review; without one it is done. */
   hasEssay: z.boolean(),
+  /** Staff marked it submitted ("Marked submitted by your leader"): it counts as done. */
+  staffMarked: z.boolean(),
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 
@@ -102,7 +104,14 @@ export const assignmentDetailSchema = z.object({
   reminderLine: z.string().nullable(),
   parts: z.array(assignmentPartSchema),
   /** Present only for students; null for everyone else. */
-  my: z.object({ submittedAt: z.string().nullable(), parts: z.array(partWorkSchema) }).nullable(),
+  my: z
+    .object({
+      submittedAt: z.string().nullable(),
+      /** Staff marked it submitted: it counts as done, whatever the parts say. */
+      staffMarked: z.boolean(),
+      parts: z.array(partWorkSchema),
+    })
+    .nullable(),
   /** Whether this caller may edit or delete the assignment. Drives the UI, never the gate. */
   canManage: z.boolean(),
   /** True for a student whose enrolment is no longer ACTIVE: they can read this, not change it. */
@@ -118,19 +127,41 @@ export const assignmentSavedResponseSchema = assignmentDetailSchema.extend({
   reopened: z.number().int().nonnegative(),
 });
 
-/** The leader's view: every expected student with their work on each part. */
+/** Who marked an assignment submitted for a student, and when (shown "Marked submitted by {name}"). */
+const staffMarkSummarySchema = z.object({
+  markedAt: z.string(),
+  /** Null when the account that marked it is gone. */
+  markedByName: z.string().nullable(),
+});
+
+/**
+ * The leader's view: every expected student with their work on each part. A row is submitted
+ * when it has `submittedAt` (in the app) or `staffMark`; rows with neither come first.
+ */
 export const assignmentProgressSchema = z.object({
+  /** The caller may mark students submitted here: false on a draft or finished season. */
+  canMark: z.boolean(),
   rows: z.array(
     z.object({
       studentUserId: z.number(),
       name: z.string().nullable(),
       avatarPath: z.string().nullable(),
       submittedAt: z.string().nullable(),
+      staffMark: staffMarkSummarySchema.nullable(),
       parts: z.array(partWorkSchema),
     }),
   ),
 });
 export type AssignmentProgress = z.infer<typeof assignmentProgressSchema>;
+
+/** `PUT /assignments/:id/submitted-marks/:studentUserId`: the mark as stored (a second PUT keeps the first). */
+export const assignmentStaffMarkSchema = z.object({
+  studentUserId: z.number(),
+  markedAt: z.string(),
+  /** Null when the account that marked it is gone. */
+  markedBy: z.object({ id: z.number(), name: z.string().nullable() }).nullable(),
+});
+export type AssignmentStaffMark = z.infer<typeof assignmentStaffMarkSchema>;
 
 // ---------------------------------------------------------------------------
 // Request schemas

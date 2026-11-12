@@ -80,7 +80,9 @@ describe("AssignmentDetailScreen (student)", () => {
   });
 
   it("an assignment with no parts says so", async () => {
-    get.mockResolvedValue({ data: { data: detail({ parts: [], my: { submittedAt: null, parts: [] } }) } });
+    get.mockResolvedValue({
+      data: { data: detail({ parts: [], my: { submittedAt: null, staffMarked: false, parts: [] } }) },
+    });
     renderStacked(<AssignmentDetailScreen />);
     expect(await screen.findByText("This assignment has no parts yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Submit" })).toBeNull();

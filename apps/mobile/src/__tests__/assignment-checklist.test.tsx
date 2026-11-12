@@ -122,6 +122,7 @@ describe("the student's assignment: a checklist of parts", () => {
     const submitted = assignmentDetail([videoWork(1000), essayWork("SUBMITTED", 200), forumWork(true)], {
       my: {
         submittedAt: "2099-03-30T10:00:00.000Z",
+        staffMarked: false,
         parts: [videoWork(1000), essayWork("SUBMITTED", 200), forumWork(true)],
       },
     });
@@ -138,6 +139,7 @@ describe("the student's assignment: a checklist of parts", () => {
       assignmentDetail([videoWork(1000), essayWork("SUBMITTED", 200), forumWork(true)], {
         my: {
           submittedAt: "2099-03-30T10:00:00.000Z",
+          staffMarked: false,
           parts: [videoWork(1000), essayWork("SUBMITTED", 200), forumWork(true)],
         },
       }),

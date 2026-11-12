@@ -4,6 +4,7 @@ import { orgDayKey } from "../../org-time";
 import { seasonParticipant } from "../season-participants";
 import { isLate, isOverdue } from "./rules";
 import { liveAssignment } from "../../db/live";
+import { STAFF_MARK_SELECT } from "../../assignments/submitted";
 import { assignmentStatusOf, loadWorkIndex, partWorksFor, PART_SELECT, reviewedAtOf, standingOf } from "./part-work";
 
 export interface StudentAssignmentRow {
@@ -22,6 +23,8 @@ export interface StudentAssignmentRow {
   returned: boolean;
   /** An essay part exists, so a submitted assignment waits for review. */
   hasEssay: boolean;
+  /** Staff marked it submitted: it counts as done whatever the parts say. */
+  staffMarked: boolean;
 }
 
 /**
@@ -67,7 +70,7 @@ export async function listAssignmentStatesForStudent(
       title: true,
       dueAt: true,
       parts: { orderBy: { position: "asc" }, select: PART_SELECT },
-      submissions: { where: { studentUserId }, select: { submittedAt: true } },
+      submissions: { where: { studentUserId }, select: { submittedAt: true, ...STAFF_MARK_SELECT } },
     },
   });
   const index = await loadWorkIndex(
@@ -79,6 +82,7 @@ export async function listAssignmentStatesForStudent(
     const sub = a.submissions[0];
     const works = partWorksFor(a.parts, studentUserId, index, { forStaff: false });
     const submittedAt = sub?.submittedAt ?? null;
+    const staffMarked = (sub?.staffMark ?? null) !== null;
     return {
       id: a.id,
       title: a.title,
@@ -86,10 +90,11 @@ export async function listAssignmentStatesForStudent(
       dueOrgDay: a.dueAt ? orgDayKey(a.dueAt) : null,
       isOverdue: isOverdue(a.dueAt, now),
       isLate: isLate(submittedAt, a.dueAt),
-      status: assignmentStatusOf(submittedAt, works, sub !== undefined),
+      status: assignmentStatusOf(submittedAt, works, sub !== undefined, staffMarked),
       reviewedAt: reviewedAtOf(a.parts, studentUserId, index),
       submittedAt,
       ...standingOf(works),
+      staffMarked,
     };
   });
 }

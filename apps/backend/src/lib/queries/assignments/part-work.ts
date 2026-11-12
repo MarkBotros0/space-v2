@@ -212,12 +212,17 @@ export function standingOf(works: PartWork[]): AssignmentStanding {
  * lists and records still carry: PENDING (nothing yet), DRAFT (started, not
  * submitted), SUBMITTED, REVIEWED (submitted and every essay reviewed) or
  * RETURNED (an essay came back). An assignment with no essay stays SUBMITTED.
+ * Marked submitted by staff and never submitted in the app reads REVIEWED: it
+ * is complete and there is nothing to review. An app submission keeps the
+ * ladder above, mark or not.
  */
 export function assignmentStatusOf(
   submittedAt: Date | null,
   works: PartWork[],
   hasSubmission: boolean,
+  marked: boolean,
 ): SubmissionStatus | "PENDING" {
+  if (marked && submittedAt === null) return "REVIEWED";
   if (works.some((w) => w.status === "RETURNED")) return "RETURNED";
   if (submittedAt === null) return hasSubmission ? "DRAFT" : "PENDING";
   const essays = works.filter((w) => w.kind === "ESSAY");
