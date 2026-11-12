@@ -12,6 +12,7 @@ import {
 } from "../../../../../packages/shared/src/index";
 import { notifyQuizPublished } from "../../lib/quizzes/notify";
 import { quizHasAdminScores } from "../../lib/quizzes/admin-score";
+import { unpublishQuiz } from "../../lib/quizzes/unpublish";
 import {
   addQuizQuestion,
   deleteQuizQuestion,
@@ -235,31 +236,14 @@ export async function publishQuiz(req: Request, res: Response) {
     // reads filter on it, so a student who had submitted and been graded lost
     // the quiz from their list AND got a 404 on the detail route, with the
     // notification they had already received pointing at the empty list.
-    const graded = await db.quizAttempt.count({ where: { quizId: id, status: "GRADED" } });
-    if (graded > 0) {
-      return apiError(
-        res,
-        "quiz_has_graded_attempts",
-        "Students have graded results for this quiz; unpublishing would hide them.",
-        409,
-      );
-    }
-    // The admin's score (plan 4) shows to the student at once, so it holds the quiz up the same way.
-    if (await quizHasAdminScores(db, id)) {
-      return apiError(
-        res,
-        "quiz_has_graded_attempts",
-        "Students have scores for this quiz; unpublishing would hide them.",
-        409,
-      );
-    }
+    // Refused, under the Quiz lock, while a graded attempt or an admin score stands.
+    return apiOk(res, await unpublishQuiz(id));
   }
 
   // Draft → published is a conditional write, so only the request that
   // actually flips it notifies: a republish (which only moves the timestamp)
   // and the loser of two racing publishes stay silent.
   const firstPublish =
-    parsed.publish &&
     (await db.quiz.updateMany({ where: { id, publishedAt: null }, data: { publishedAt: new Date() } })).count === 1;
 
   const select = { publishedAt: true, seasonId: true, title: true } as const;
@@ -267,7 +251,7 @@ export async function publishQuiz(req: Request, res: Response) {
     ? await db.quiz.findUniqueOrThrow({ where: { id }, select })
     : await db.quiz.update({
         where: { id },
-        data: { publishedAt: parsed.publish ? new Date() : null },
+        data: { publishedAt: new Date() },
         select,
       });
 

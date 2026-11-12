@@ -3,6 +3,7 @@ import request from "supertest";
 import { manualScoreSchema } from "../../../../../packages/shared/src/index";
 import { createApp } from "../../app";
 import { db } from "../../db/client";
+import { clearManualScore, saveManualScore } from "../../lib/quizzes/manual-score";
 import { bearer, cleanupTestData, createTestSeason, createTestUser } from "./fixtures";
 import { buildPublishedQuizIn, quizGradedCountFor, seedQuizFixtures, type QuizFixtures } from "./quizzes-setup";
 
@@ -229,5 +230,44 @@ describe("the admin's manual score on an online quiz", () => {
     expect(res.status).toBe(404);
     expect((await del(quizId, deleted.id, f.adminToken)).status).toBe(404);
     expect(await gradeRow(quizId, deleted.id)).toBeNull();
+  });
+  it("the service re-reads publishedAt under its lock and refuses an unpublished quiz", async () => {
+    // The route's own read can be stale: an unpublish may land between it and the save.
+    const quizId = await onlineQuiz();
+    await db.quiz.update({ where: { id: quizId }, data: { publishedAt: null } });
+    const target = { quizId, seasonId: f.seasonId, studentUserId: f.ownStudentId };
+    await expect(saveManualScore(target, { score: 5, notes: null }, f.ownStudentId)).rejects.toMatchObject({
+      code: "quiz_not_published",
+    });
+    expect(await gradeRow(quizId, f.ownStudentId)).toBeNull();
+  });
+
+  it("a finished season's scores can't change: PUT and DELETE → 409 season_finished", async () => {
+    const finished = await createTestSeason({ status: "COMPLETED" });
+    const quiz = await db.quiz.create({
+      data: { seasonId: finished.id, title: "Done", kind: "ONLINE", maxScore: 10, publishedAt: new Date() },
+      select: { id: true },
+    });
+    const student = await createTestUser("finished-student", "STUDENT");
+    await db.seasonEnrollment.create({
+      data: { seasonId: finished.id, studentUserId: student.id, status: "COMPLETED" },
+    });
+    await db.quizGrade.create({ data: { quizId: quiz.id, studentUserId: student.id, score: 4 } });
+    const refusal = { code: "season_finished", message: "This season has ended; its scores can't change." };
+
+    // Only a super reaches a finished season (its admins' seats are DRAFT/ACTIVE only).
+    const saved = await put(quiz.id, student.id, f.superToken, { score: 7, notes: null });
+    expect(saved.status).toBe(409);
+    expect(saved.body.error).toEqual(refusal);
+    const cleared = await del(quiz.id, student.id, f.superToken);
+    expect(cleared.status).toBe(409);
+    expect(cleared.body.error).toEqual(refusal);
+    expect(Number((await gradeRow(quiz.id, student.id))?.score)).toBe(4);
+
+    // The services refuse under the Season lock too, so a clear can't slip in during End.
+    const target = { quizId: quiz.id, seasonId: finished.id, studentUserId: student.id };
+    await expect(saveManualScore(target, { score: 7, notes: null }, student.id)).rejects.toMatchObject(refusal);
+    await expect(clearManualScore(target)).rejects.toMatchObject(refusal);
+    expect(Number((await gradeRow(quiz.id, student.id))?.score)).toBe(4);
   });
 });

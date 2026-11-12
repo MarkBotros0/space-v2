@@ -2,6 +2,9 @@
 // ONLINE quiz, and that only the draft → published transition notifies.
 
 const mockDb = {
+  // An unpublish runs in a transaction under the Quiz lock (lib/quizzes/unpublish.ts).
+  $queryRaw: jest.fn(),
+  $transaction: jest.fn(),
   quiz: { findUnique: jest.fn(), findUniqueOrThrow: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
   quizQuestion: { findMany: jest.fn() },
   quizAttempt: { count: jest.fn() },
@@ -49,6 +52,8 @@ const publishedAt = new Date("2026-11-04T10:00:00Z");
 
 beforeEach(() => {
   jest.resetAllMocks();
+  mockDb.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => fn(mockDb));
+  mockDb.$queryRaw.mockResolvedValue([]);
   mockDb.quiz.findUnique.mockResolvedValue({ id: 5, kind: "ONLINE" });
   mockDb.quizQuestion.findMany.mockResolvedValue([{ type: "ESSAY", quizOptions: [], quizBlanks: [] }]);
   mockDb.quizAttempt.count.mockResolvedValue(0);

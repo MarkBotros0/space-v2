@@ -3,6 +3,7 @@ import type { Prisma } from "../../generated/prisma/client";
 type LockedQuiz = {
   kind: string;
   maxScore: number;
+  publishedAt: Date | null;
   startsFrom: Date | null;
   startsUntil: Date | null;
   timeLimitMinutes: number | null;
@@ -28,7 +29,7 @@ export async function lockStudentInQuiz(
   studentUserId: number,
 ): Promise<LockedQuiz | null> {
   const rows = await tx.$queryRaw<LockedQuiz[]>`
-    SELECT "kind"::text AS "kind", "maxScore", "startsFrom", "startsUntil", "timeLimitMinutes"
+    SELECT "kind"::text AS "kind", "maxScore", "publishedAt", "startsFrom", "startsUntil", "timeLimitMinutes"
     FROM "Quiz" WHERE "id" = ${quizId} FOR SHARE`;
   const quiz = rows[0];
   if (!quiz) return null;

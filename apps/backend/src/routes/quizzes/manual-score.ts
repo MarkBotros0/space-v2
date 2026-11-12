@@ -19,7 +19,6 @@ type TargetQuiz = {
   title: string;
   kind: string;
   seasonId: number;
-  publishedAt: Date | null;
 };
 type Target = { user: SessionUser; quiz: TargetQuiz; studentUserId: number };
 
@@ -65,7 +64,7 @@ async function resolveTarget(req: Request, res: Response): Promise<Target | null
 
   const quiz = await db.quiz.findFirst({
     where: { id, season: liveSeason },
-    select: { id: true, title: true, kind: true, seasonId: true, publishedAt: true },
+    select: { id: true, title: true, kind: true, seasonId: true },
   });
   if ((await refuse(res, user, quiz, studentUserId)) || !quiz) return null;
   return { user, quiz, studentUserId };
@@ -73,7 +72,8 @@ async function resolveTarget(req: Request, res: Response): Promise<Target | null
 
 /**
  * PUT /quizzes/:id/manual-scores/:studentUserId — the admin's score for one student on an ONLINE
- * quiz. It always counts, even below an in-app attempt. Refused on an unpublished quiz. "Your
+ * quiz. It always counts, even below an in-app attempt. Refused on a finished season and on an
+ * unpublished quiz. "Your
  * score is in" on a new or changed score; a notes-only edit or a same re-save is silent. The
  * response carries no question, answer or key.
  */
@@ -81,14 +81,13 @@ export async function putManualScore(req: Request, res: Response) {
   const target = await resolveTarget(req, res);
   if (target === null) return;
   const { user, quiz, studentUserId } = target;
-  if (quiz.publishedAt === null) {
-    return apiError(res, "quiz_not_published", "Publish the quiz before entering a score.", 409);
-  }
 
   const input = parseOr400(manualScoreWriteSchema, req.body, res, "Invalid manual score.");
   if (input === null) return;
-  // The bound (400 score_exceeds_max) is checked under the Quiz lock, in saveManualScore.
-  const { scoreChanged, grade } = await saveManualScore(quiz.id, studentUserId, input, user.userId);
+  // A finished season (409 season_finished), an unpublished quiz (409 quiz_not_published) and the
+  // bound (400 score_exceeds_max) are checked under the Season and Quiz locks, in saveManualScore.
+  const scoreTarget = { quizId: quiz.id, seasonId: quiz.seasonId, studentUserId };
+  const { scoreChanged, grade } = await saveManualScore(scoreTarget, input, user.userId);
   // Best-effort, after the write committed: the paper grade's notification and copy.
   if (scoreChanged) await notifyQuizGraded([studentUserId], quiz.title);
   return apiOk(res, grade);
@@ -96,11 +95,13 @@ export async function putManualScore(req: Request, res: Response) {
 
 /**
  * DELETE /quizzes/:id/manual-scores/:studentUserId — clears it, silently; 204 even when there was
- * none. Allowed on an unpublished quiz, so an admin can clear a score after unpublishing.
+ * none. Allowed on an unpublished quiz, so an admin can clear a score after unpublishing; refused
+ * on a finished season, whose scores never change.
  */
 export async function deleteManualScore(req: Request, res: Response) {
   const target = await resolveTarget(req, res);
   if (target === null) return;
-  await clearManualScore(target.quiz.id, target.studentUserId);
+  const { quiz, studentUserId } = target;
+  await clearManualScore({ quizId: quiz.id, seasonId: quiz.seasonId, studentUserId });
   return apiNoContent(res);
 }

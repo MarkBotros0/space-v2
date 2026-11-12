@@ -219,7 +219,7 @@ export const quizAuthoringPaths = {
       tags: ["Quizzes"],
       summary: "Publish or unpublish an ONLINE quiz",
       description:
-        "Season-admin only. Body `{ publish: boolean }`. A draft season's roster is not notified. Publishing requires at least one question (409 `no_questions`) and every question to have the answer key its type needs (409 `mcq_without_answer`; the code predates the six question types and is kept for compatibility); it is allowed while attempts exist. **Unpublishing is refused (409 `quiz_has_graded_attempts`) once any attempt is GRADED (D4)** — both student reads filter on `publishedAt`, so unpublishing would make graded students lose their own result. A PAPER quiz cannot be published (409 `wrong_quiz_kind`). The draft → published transition (only that; a republish of a live quiz is silent) sends one `QUIZ_PUBLISHED` notification, \"New quiz: <title>\" with link `/student/quizzes`, to every student with an ACTIVE enrolment in the quiz's season — the audience the student quiz list shows it to (best-effort). Returns the new `publishedAt` (null when unpublished).",
+        "Season-admin only. Body `{ publish: boolean }`. A draft season's roster is not notified. Publishing requires at least one question (409 `no_questions`) and every question to have the answer key its type needs (409 `mcq_without_answer`; the code predates the six question types and is kept for compatibility); it is allowed while attempts exist. **Unpublishing is refused (409 `quiz_has_graded_attempts`) once any attempt is GRADED (D4)** — both student reads filter on `publishedAt`, so unpublishing would make graded students lose their own result; likewise once any student has the season admin's score (plan 4), checked under the Quiz lock. A PAPER quiz cannot be published (409 `wrong_quiz_kind`). The draft → published transition (only that; a republish of a live quiz is silent) sends one `QUIZ_PUBLISHED` notification, \"New quiz: <title>\" with link `/student/quizzes`, to every student with an ACTIVE enrolment in the quiz's season — the audience the student quiz list shows it to (best-effort). Returns the new `publishedAt` (null when unpublished).",
       parameters: [idParam],
       requestBody: {
         required: true,
@@ -277,7 +277,7 @@ export const quizAuthoringPaths = {
       tags: ["Quizzes"],
       summary: "Enter or edit the admin's score for one student on an online quiz",
       description:
-        'SUPER or admin of the quiz\'s season; a leader or another season\'s admin is refused (403). ONLINE quizzes only (409 `quiz_not_online`; a paper quiz has its grade sheet), and published (409 `quiz_not_published`, "Publish the quiz before entering a score."). 404 for a quiz in a deleted season, and for a student who is not a live user among the quiz\'s season participants. Stored as the student\'s `QuizGrade` row, and it always counts instead of any in-app attempt, even a higher one. `score` is 0 to the quiz\'s `maxScore` with at most two decimals, rounded to exactly two (400 `bad_request`, or 400 `score_exceeds_max` above the max). Refused while the student has an attempt open (409 `attempt_open`, "End their attempt first."), checked with their attempts locked. A new or changed score sends one `QUIZ_GRADED` notification, "Your score is in" (best-effort), as a paper grade does; a notes-only edit is saved (restamping `gradedAt` and `gradedBy`) but sends nothing, and a re-save of the same score and notes changes nothing. The response has no question, answer or key.',
+        "SUPER or admin of the quiz's season; a leader or another season's admin is refused (403). ONLINE quizzes only (409 `quiz_not_online`; a paper quiz has its grade sheet), and published (409 `quiz_not_published`, \"Publish the quiz before entering a score.\", read under the Quiz lock). A finished season's scores never change (409 `season_finished`, \"This season has ended; its scores can't change.\", read under the Season lock, so a save can't land during season End). 404 for a quiz in a deleted season, and for a student who is not a live user among the quiz's season participants. Stored as the student's `QuizGrade` row, and it always counts instead of any in-app attempt, even a higher one. `score` is 0 to the quiz's `maxScore` with at most two decimals, rounded to exactly two (400 `bad_request`, or 400 `score_exceeds_max` above the max). Refused while the student has an attempt open (409 `attempt_open`, \"End their attempt first.\"), checked with their attempts locked. A new or changed score sends one `QUIZ_GRADED` notification, \"Your score is in\" (best-effort), as a paper grade does; a notes-only edit is saved (restamping `gradedAt` and `gradedBy`) but sends nothing, and a re-save of the same score and notes changes nothing. The response has no question, answer or key.",
       parameters: [idParam, studentUserIdParam],
       requestBody: {
         required: true,
@@ -316,14 +316,14 @@ export const quizAuthoringPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`quiz_not_online`, `quiz_not_published` or `attempt_open`."),
+        409: conflict("`quiz_not_online`, `quiz_not_published`, `season_finished` or `attempt_open`."),
       },
     },
     delete: {
       tags: ["Quizzes"],
       summary: "Clear the admin's score for one student on an online quiz",
       description:
-        "The same gate, quiz kind, live season and student checks as the PUT; allowed on an unpublished quiz, so a score can be cleared after unpublishing. Deletes the row, so the student's best graded attempt counts again; nothing reopens and nobody is notified. 204 also when there was no score.",
+        "The same gate, quiz kind, live season and student checks as the PUT; allowed on an unpublished quiz, so a score can be cleared after unpublishing. Refused on a finished season (409 `season_finished`), under the same Season, Quiz and student locks as the PUT. Deletes the row, so the student's best graded attempt counts again; nothing reopens and nobody is notified. 204 also when there was no score.",
       parameters: [idParam, studentUserIdParam],
       responses: {
         204: { description: "Cleared." },
@@ -331,7 +331,7 @@ export const quizAuthoringPaths = {
         401: errRef("Unauthorized"),
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
-        409: conflict("`quiz_not_online`."),
+        409: conflict("`quiz_not_online` or `season_finished`."),
       },
     },
   },

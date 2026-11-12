@@ -5,8 +5,15 @@ import { db } from "../../db/client";
 import { quizParticipation } from "../../lib/queries/quiz-participation";
 import { loadSeasonEndCheck } from "../../lib/queries/season-end";
 import { addQuizQuestion } from "../../lib/quizzes/questions";
+import { unpublishQuiz } from "../../lib/quizzes/unpublish";
 import { bearer, cleanupTestData } from "./fixtures";
-import { buildPublishedQuizIn, seedQuizFixtures, setLatestAttempt, type QuizFixtures } from "./quizzes-setup";
+import {
+  buildPublishedQuizIn,
+  quizGradedCountFor,
+  seedQuizFixtures,
+  setLatestAttempt,
+  type QuizFixtures,
+} from "./quizzes-setup";
 
 jest.setTimeout(60000);
 
@@ -110,5 +117,32 @@ describe("the admin's score outside the score readers", () => {
     expect(res.body.data).toMatchObject({ status: "GRADED", bestScore: 4, adminScore: { score: 4, notes: null } });
     expect(res.body.data.adminScore.gradedByName).toBe("Test admin");
     expect(typeof res.body.data.adminScore.gradedAt).toBe("string");
+  });
+  it("unpublishing re-checks for admin scores under the Quiz lock", async () => {
+    // The service's own check, for a save landing after the route's read.
+    const { quizId } = await onlineQuiz();
+    await putScore(quizId, f.ownStudentId, 6);
+    await expect(unpublishQuiz(quizId)).rejects.toMatchObject({ code: "quiz_has_graded_attempts" });
+    expect((await db.quiz.findUniqueOrThrow({ where: { id: quizId } })).publishedAt).not.toBeNull();
+
+    const { quizId: bare } = await onlineQuiz();
+    expect((await unpublishQuiz(bare)).publishedAt).toBeNull();
+  });
+
+  it('a leader marking an admin-scored student\'s attempt sends no "Your score is in"', async () => {
+    const { quizId, essayId } = await onlineQuiz();
+    const attemptId = await submittedAttempt(quizId, f.ownStudentId);
+    await db.quizAnswer.create({ data: { attemptId, questionId: essayId, text: "My essay." } });
+    await putScore(quizId, f.ownStudentId, 4);
+    const before = await quizGradedCountFor(f.ownStudentId);
+
+    const res = await request(app)
+      .post(`/api/v1/quizzes/${quizId}/attempts/${attemptId}/grade`)
+      .set(bearer(f.leaderToken))
+      .send({ marks: [{ questionId: essayId, blankId: null, correct: true }] });
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe("GRADED");
+    // The counted score is still the admin's, so nothing the student sees changed.
+    expect((await quizGradedCountFor(f.ownStudentId)) - before).toBe(0);
   });
 });

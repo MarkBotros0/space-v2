@@ -200,13 +200,6 @@ export async function gradeAttempt(req: Request, res: Response) {
   // points. Checked and recorded under the attempt row lock (lib/quizzes/grading.ts).
   const { scoreChanged } = await gradeLeaderMarks(id, attemptId, parsed.marks, user.userId);
 
-  // The score shows once graded, released answers or not (spec "What students
-  // see"), so the student hears now. D8's single rule for both grading paths:
-  // notify on a first grade and on any score change, silent on a no-op re-save.
-  if (scoreChanged) {
-    await notifyQuizGraded([attempt.studentUserId], quiz.title);
-  }
-
   const page = await db.quizAttempt.findUnique({
     where: { id: attemptId },
     select: {
@@ -225,6 +218,14 @@ export async function gradeAttempt(req: Request, res: Response) {
   });
   const log = await exitLogsFor([attemptId]);
   const { best, admin, app } = await bestScoresFor(id, [attempt.studentUserId]);
+  // The score shows once graded, released answers or not (spec "What students
+  // see"), so the student hears now. D8's single rule for both grading paths:
+  // notify on a first grade and on any score change, silent on a no-op re-save.
+  // Silent too under the admin's score (plan 4): it still counts, so the
+  // student's score didn't change.
+  if (scoreChanged && !admin.has(attempt.studentUserId)) {
+    await notifyQuizGraded([attempt.studentUserId], quiz.title);
+  }
   return apiOk(res, {
     attemptId: page?.id,
     studentUserId: page?.studentUserId,
