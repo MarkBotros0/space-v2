@@ -145,12 +145,13 @@ const SWEEP_DEADLINE_MS = 6 * HOUR;
  * Timed quizzes, quiz 8 to 10 (quiz-types.ts makes 3 to 7): a start window open now, 20 minutes each
  * (docs/rules/quiz-integrity.md "Timing"). Quiz 8 is not started by the student, so the start card
  * names the limit, and the classmate is part-way through it, so staff grading offers End attempt.
- * Quiz 9 has the student's attempt running, so the countdown shows.
+ * Quiz 9 has the classmate's attempt running, so the countdown shows when the classmate signs in
+ * (s06b-held.yaml): one account holds one open attempt, so the main student holds none.
  * Integrity (docs/rules/quiz-integrity.md): the classmate's open attempt on quiz 8 has two exits, so
  * the live screen lists it first with "2 exits"; quiz 10 is the classmate's attempt ended by a third
  * exit, with a full exit log (exits, a relaunch and a blocked screenshot) for the attempt sheet.
  */
-async function seedTimedQuizzes({ admin, student, classmate, season }: SweepPeople) {
+async function seedTimedQuizzes({ admin, classmate, season }: SweepPeople) {
   const now = Date.now();
   const timed = {
     seasonId: season.id,
@@ -203,7 +204,7 @@ async function seedTimedQuizzes({ admin, student, classmate, season }: SweepPeop
   const running = await db.quiz.create({ data: { ...timed, title: "Timed practice" } });
   await addQuizQuestion(running.id, question("Who leads the opening night?", "The season admin", "A student"));
   await addQuizQuestion(running.id, question("Where are notes kept?", "In the app", "On paper"));
-  await open(running.id, student.id);
+  await open(running.id, classmate.id);
 
   // Quiz 10: the classmate's attempt was ended by the third exit (submitted as it stood), with the log staff read.
   const ended = await db.quiz.create({ data: { ...timed, title: "Timed review" } });

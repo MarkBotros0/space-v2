@@ -23,6 +23,7 @@ import { databaseHost } from "./lib/db-host";
 import { seedAnnouncementScenario } from "./seed-sweep/announcements";
 import { seedActivity } from "./seed-sweep/activity";
 import { seedCommunityScenario } from "./seed-sweep/community";
+import { seedHeldStudent } from "./seed-sweep/held";
 import { seedAlumniScenario, seedMentorScenario, seedSuperScenario } from "./seed-sweep/more-roles";
 import { seedPeople } from "./seed-sweep/people";
 import { seedAdminScenario, seedLeaderScenario, seedStudentScenario } from "./seed-sweep/scenarios";
@@ -56,11 +57,25 @@ async function main(): Promise<void> {
   await seedAlumniScenario(people);
   const community = await seedCommunityScenario(people);
   await seedAnnouncementScenario(people);
+  // After everything, so the user, group and attempt ids the flows name don't move.
+  const held = await seedHeldStudent(people);
 
-  const { student, alumni, leader, admin, superUser, mentor } = people;
+  const { student, classmate, alumni, leader, admin, superUser, mentor } = people;
   // `dropped` is scenarios.ts's student3; the others are the community-model states.
   const dropped = await db.user.findFirstOrThrow({ where: { email: "student3@sweep.jpc.test" } });
-  const roles = { student, alumni, leader, admin, super: superUser, mentor, ...community, dropped };
+  // student2 (the classmate, held on quiz 9) and student4 (held on quiz 3) are s06b-held.yaml's.
+  const roles = {
+    student,
+    student2: classmate,
+    student4: held,
+    alumni,
+    leader,
+    admin,
+    super: superUser,
+    mentor,
+    ...community,
+    dropped,
+  };
   const users = Object.fromEntries(Object.entries(roles).map(([role, u]) => [role, { email: u.email, name: u.name }]));
   const out = process.argv[2];
   if (out) writeFileSync(out, JSON.stringify(users, null, 2));

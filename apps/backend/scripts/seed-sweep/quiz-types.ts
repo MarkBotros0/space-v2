@@ -14,8 +14,9 @@ import { fromToday } from "./shared";
  * (addQuizQuestion, saveAnswers, submitAnswers, gradeAttempt), so the rows are exactly what
  * the app writes. Each quiz holds one state the sweep flows look at without writing:
  *
- *   "مراجعة الأسبوع الثالث"  student IN_PROGRESS (an answer of every type, some unfinished);
- *                            classmate SUBMITTED, blanks and essay waiting for the leader
+ *   "مراجعة الأسبوع الثالث"  classmate SUBMITTED, blanks and essay waiting for the leader; the held
+ *                            student IN_PROGRESS (an answer of every type, some unfinished), seeded
+ *                            last by held.ts (`seedHeldQuizAttempt`)
  *   "Week 1 review"          student GRADED, answers held (score only)
  *   "مراجعة الافتتاح"         student GRADED, answers released (the review)
  *   "Week 3 reading"         student SUBMITTED, waiting for marks
@@ -183,8 +184,13 @@ async function createQuiz(
     },
   });
   for (const q of questions) await addQuizQuestion(quiz.id, q);
-  const stored = await db.quizQuestion.findMany({
-    where: { quizId: quiz.id },
+  return { id: quiz.id, questions: await storedQuestions(quiz.id) };
+}
+
+/** A quiz's questions in their authored order, with the option and blank ids a pick resolves to. */
+function storedQuestions(quizId: number): Promise<StoredQuestion[]> {
+  return db.quizQuestion.findMany({
+    where: { quizId },
     orderBy: { order: "asc" },
     select: {
       id: true,
@@ -193,7 +199,6 @@ async function createQuiz(
       quizBlanks: { select: { id: true, position: true } },
     },
   });
-  return { id: quiz.id, questions: stored };
 }
 
 /** Starts an attempt and saves the picks; a fixed shuffle seed keeps each run's option order the same. */
@@ -238,12 +243,20 @@ async function submitAndMark(quizId: number, attemptId: number, markedById: numb
   await db.quizAttempt.update({ where: { id: attemptId }, data: { gradedAt: fromToday(0, 9) } });
 }
 
+const OPEN_TITLE = "مراجعة الأسبوع الثالث";
+
+/** The held student's unfinished every-type attempt on quiz 3 (docs/rules/quiz-integrity.md "Relaunch"). */
+export async function seedHeldQuizAttempt(studentUserId: number): Promise<void> {
+  const quiz = await db.quiz.findFirstOrThrow({ where: { title: OPEN_TITLE }, select: { id: true } });
+  await attempt({ id: quiz.id, questions: await storedQuestions(quiz.id) }, studentUserId, UNFINISHED);
+}
+
 /** The question-type quizzes and the attempt states the sweep flows look at. */
 export async function seedQuizTypes(people: SweepPeople): Promise<void> {
   const { admin, leader, student, classmate } = people;
 
-  const open = await createQuiz(people, "مراجعة الأسبوع الثالث", QUESTIONS);
-  await attempt(open, student.id, UNFINISHED);
+  // Its open attempt belongs to the held student (held.ts): one account holds one open attempt.
+  const open = await createQuiz(people, OPEN_TITLE, QUESTIONS);
   await submitAndMark(open.id, await attempt(open, classmate.id, MOSTLY_RIGHT), null);
 
   const held = await createQuiz(people, "Week 1 review", QUESTIONS);
