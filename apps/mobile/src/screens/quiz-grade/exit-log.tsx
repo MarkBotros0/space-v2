@@ -7,7 +7,7 @@ import { endReasonLine, exitLogLines } from "./exit-log-model";
 /** The attempt's exit log for staff (spec "Marking"): how it ended, then each time the student left. */
 export function ExitLog({ attempt }: { attempt: QuizGradingAttempt }) {
   const ended = endReasonLine(attempt.endReason, attempt.endedByName);
-  const lines = exitLogLines(attempt.events, attempt.endReason);
+  const lines = exitLogLines(attempt.events, attempt.endReason, attempt.deadlineAt);
   return (
     <View className="flex-col gap-1.5">
       <Text variant="headline">Exit log</Text>

@@ -82,18 +82,19 @@ export function AttemptForm({
   const submit = useSubmitAttempt(id);
   const online = useIsOnline();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Time ran out: nothing more can change, and the server submits what is saved.
+  const time = useTimeUp({ flush, hasUnsentOffline, readAfterDeadline: onTimeUp });
+  isTimeUpRef.current = time.isTimeUp;
   // Mounted only while the attempt is showing; a finished season's attempt can't be taken.
   const lock = useQuizLock({
     quizId: id,
     attemptId: detail.attemptId,
     active: !detail.readOnly,
+    timeUp: time.timeUp,
     offsetMs,
     // The exit warning shows on return; a Submit dialog left open would sit over it.
     onLeave: () => setConfirmOpen(false),
   });
-  // Time ran out: nothing more can change, and the server submits what is saved.
-  const time = useTimeUp({ flush, hasUnsentOffline, readAfterDeadline: onTimeUp });
-  isTimeUpRef.current = time.isTimeUp;
   // A save got through, so the network is up: send any exit still waiting with it.
   const { flushExits } = lock;
   useEffect(() => {

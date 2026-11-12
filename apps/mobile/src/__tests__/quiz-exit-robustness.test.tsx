@@ -34,6 +34,7 @@ import {
   post,
   report,
   sentEvents,
+  SERVER_NOW,
   setUpExitHarness,
   tearDownExitHarness,
   tick,
@@ -157,5 +158,53 @@ describe("quiz exits, robustness", () => {
     await appState("active");
     expect(await screen.findByText(TITLE)).toBeTruthy();
     expect(screen.queryByText("Submit quiz?")).toBeNull();
+  });
+  it("a late ended report closes the warning even when the re-read can't get through", async () => {
+    const slow = pending();
+    post.mockReturnValue(slow.promise);
+    await openQuiz({ attemptId: 926 });
+    await appState("background");
+    await appState("active");
+    await tick(2600);
+    expect(screen.getByText(TITLE)).toBeTruthy();
+
+    get.mockRejectedValue(blip());
+    await act(async () => slow.resolve(report(3, true, "SUBMITTED")));
+    await tick();
+    expect(screen.queryByText(TITLE)).toBeNull();
+  });
+
+  it("repeated active after a background launch makes the relaunch decision once", async () => {
+    mockStore.set("quiz-open.927", "1");
+    post.mockResolvedValue(report(1));
+    setCurrentAppState("background");
+    await openQuiz({ attemptId: 927 });
+
+    setCurrentAppState("active");
+    await appState("active");
+    await appState("active");
+    await appState("active");
+    await tick();
+    expect(sentEvents()).toEqual([expect.objectContaining({ kind: "RELAUNCH" })]);
+  });
+
+  it("once time is up, leaving the app is not watched", async () => {
+    post.mockResolvedValue(report(1));
+    const deadlineAt = new Date(Date.parse(SERVER_NOW) + 5_000).toISOString();
+    await openQuiz({ attemptId: 928, timeLimitMinutes: 20, deadlineAt });
+    // Every re-read after zero: still open on the server, its deadline behind it (not closed yet).
+    const later = new Date(Date.parse(SERVER_NOW) + 60_000).toISOString();
+    get.mockResolvedValue({
+      data: { data: detail({ attemptId: 928, timeLimitMinutes: 20, deadlineAt, serverNow: later }) },
+    });
+    await tick(6_000);
+    await tick(5_000);
+    expect(screen.getByText("Check again")).toBeTruthy();
+
+    await appState("background");
+    await appState("active");
+    await tick(3_000);
+    expect(eventPosts()).toHaveLength(0);
+    expect(screen.queryByText(TITLE)).toBeNull();
   });
 });

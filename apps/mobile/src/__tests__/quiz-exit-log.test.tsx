@@ -40,6 +40,23 @@ describe("exit log model", () => {
     ]);
   });
 
+  it("an offline batch past the third exit: the third ended it, the later ones are only logged", () => {
+    const LEFT_4 = "2099-03-02T10:26:00.000Z";
+    const exit = (leftAt: string) => ({ kind: "EXIT" as const, leftAt, returnedAt: leftAt });
+    expect(exitLogLines([exit(LEFT_1), exit(LEFT_2), exit(LEFT_3), exit(LEFT_4)], "ENDED_BY_EXITS")).toEqual([
+      `Left ${at(LEFT_1)} · away 0:00`,
+      `Left ${at(LEFT_2)} · away 0:00`,
+      `Left ${at(LEFT_3)} · ended the attempt`,
+      `Left ${at(LEFT_4)} · away 0:00`,
+    ]);
+  });
+
+  it("an exit that left at or after the deadline is not counted towards the third", () => {
+    const exit = (leftAt: string) => ({ kind: "EXIT" as const, leftAt, returnedAt: null });
+    const lines = exitLogLines([exit(LEFT_1), exit(LEFT_2), exit(LEFT_3)], "ENDED_BY_EXITS", LEFT_3);
+    expect(lines[2]).toBe(`Left ${at(LEFT_3)} · didn't come back`);
+  });
+
   it("an exit never reported back, on an attempt still running or ended otherwise", () => {
     expect(exitLogLines([events[3]], null)).toEqual([`Left ${at(LEFT_3)} · didn't come back`]);
   });

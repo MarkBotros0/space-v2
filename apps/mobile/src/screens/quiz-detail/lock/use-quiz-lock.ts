@@ -19,7 +19,12 @@ const WARNING_WAIT_MS = 2500;
 
 type DrainResult = "empty" | "open" | "closed" | "failed" | "slow";
 
-const after = (ms: number) => new Promise<"slow">((resolve) => setTimeout(() => resolve("slow"), ms));
+/** "slow" after `ms`, unless cancelled first (the report won the race). */
+function after(ms: number): { slow: Promise<"slow">; cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const slow = new Promise<"slow">((resolve) => (timer = setTimeout(() => resolve("slow"), ms)));
+  return { slow, cancel: () => clearTimeout(timer) };
+}
 
 /**
  * On mount: claim this attempt, and count a leave the last run never came back from (`onExit`).
@@ -67,19 +72,23 @@ function useRelaunchCheck(
  * reconnect, on each return to the foreground and after each answer save (`flushExits`). The
  * server counts it. The warning shows on return (offline too, and after WARNING_WAIT_MS if the
  * report is slow) unless the server says the attempt has ended, when the quiz is re-read and the
- * runner shows the result. `onLeave` runs as the student leaves (the form closes its dialogs).
- * Times are sent on the server's clock.
+ * runner shows the result; an "ended" that comes after the warning closes it. `onLeave` runs as
+ * the student leaves (the form closes its dialogs). Once time is up (`timeUp`) leaving is no longer
+ * watched: the attempt is closing, and the server would not count it. Times are sent on the server's clock.
  */
 export function useQuizLock({
   quizId,
   attemptId,
   active,
+  timeUp = false,
   offsetMs,
   onLeave,
 }: {
   quizId: number;
   attemptId: number | null;
   active: boolean;
+  /** The countdown reached zero and the attempt is closing: leaves stop being watched. */
+  timeUp?: boolean;
   /** The server's clock minus the phone's (countdown.ts). */
   offsetMs: number;
   onLeave?: () => void;
@@ -112,7 +121,14 @@ export function useQuizLock({
 
   /** Queue an exit, report it, then warn, unless the report ended the attempt in time. */
   const recordExit = async (event: QuizAttemptEventInput) => {
-    if ((await Promise.race([report(event), after(WARNING_WAIT_MS)])) !== "closed") setWarningOpen(true);
+    const reported = report(event);
+    const wait = after(WARNING_WAIT_MS);
+    const first = await Promise.race([reported, wait.slow]);
+    wait.cancel();
+    if (first === "closed") return;
+    setWarningOpen(true);
+    // The report was slow and has now said the attempt ended: the screen is moving on, not back to the quiz.
+    if (first === "slow" && (await reported) === "closed") setWarningOpen(false);
   };
 
   useCaptureLock(on, () => void report(exitEvent("SCREENSHOT", now(), null)));
@@ -120,7 +136,7 @@ export function useQuizLock({
   useKeepAwakeWhile(on);
   useBackBlock(on);
 
-  useExitWatch(on, {
+  useExitWatch(on && !timeUp, {
     onLeft: (at) => {
       const iso = serverIso(offset.current, at);
       leftAt.current = iso;
