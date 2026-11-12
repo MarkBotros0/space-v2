@@ -122,7 +122,9 @@ beforeAll(async () => {
   await db.quizAttempt.create({
     data: { quizId: q4.id, studentUserId: s.id, status: "SUBMITTED", autoScore: 5, submittedAt: new Date() },
   });
-  await db.quizGrade.create({ data: { quizId: q3.id, studentUserId: s.id, score: 7, notes: SECRET_NOTE } });
+  // On an ONLINE quiz a QuizGrade row is the season admin's score (plan 4), and its note is meant
+  // for the student, so the secret stays on the essay feedback only.
+  await db.quizGrade.create({ data: { quizId: q3.id, studentUserId: s.id, score: 7, notes: null } });
   await db.quiz.create({ data: { seasonId: sid, title: "Q draft", kind: "ONLINE", maxScore: 10 } }); // unpublished: hidden
   quizIds = { notTaken: q1.id, progress: q2.id, graded: q3.id, submitted: q4.id };
 
@@ -189,7 +191,12 @@ describe("GET /me/seasons/:seasonId", () => {
     expect(quizzes.get(quizIds.notTaken)).toMatchObject({ status: "NOT_TAKEN", score: null });
     expect(quizzes.get(quizIds.progress)).toMatchObject({ status: "IN_PROGRESS", score: null });
     expect(quizzes.get(quizIds.submitted)).toMatchObject({ status: "SUBMITTED", score: null });
-    expect(quizzes.get(quizIds.graded)).toMatchObject({ status: "GRADED", score: 7 });
+    expect(quizzes.get(quizIds.graded)).toMatchObject({
+      status: "GRADED",
+      score: 7,
+      adminScore: { score: 7, notes: null },
+    });
+    expect(quizzes.get(quizIds.submitted)).toMatchObject({ adminScore: null });
   });
 
   it("reads a paper grade with decimals back as a number", async () => {

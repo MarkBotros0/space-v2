@@ -37,12 +37,13 @@ async function adminScoresFor(quizId: number, studentUserIds: number[]): Promise
  * Each listed student's counting score on one quiz, for the staff grading list and the grade
  * response: the admin's score when there is one (plan 4), else the best GRADED total (spec
  * "Honest accidents"). A student with neither is absent from `best`; `admin` holds the admin
- * scores themselves.
+ * scores themselves, and `app` each student's best GRADED total whatever the admin entered (what
+ * the admin's score sheet calls "Graded in the app").
  */
 export async function bestScoresFor(
   quizId: number,
   studentUserIds: number[],
-): Promise<{ best: Map<number, number>; admin: Map<number, StaffAdminScore> }> {
+): Promise<{ best: Map<number, number>; admin: Map<number, StaffAdminScore>; app: Map<number, number> }> {
   const [graded, admin] = await Promise.all([
     db.quizAttempt.findMany({
       where: { quizId, studentUserId: { in: studentUserIds }, status: "GRADED" },
@@ -51,5 +52,5 @@ export async function bestScoresFor(
     adminScoresFor(quizId, studentUserIds),
   ]);
   const adminTotals = new Map([...admin].map(([id, a]) => [id, a.score]));
-  return { best: bestScoreByStudent(graded, adminTotals), admin };
+  return { best: bestScoreByStudent(graded, adminTotals), admin, app: bestScoreByStudent(graded) };
 }

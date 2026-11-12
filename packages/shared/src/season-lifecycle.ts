@@ -163,6 +163,12 @@ export const seasonRecordSchema = z
         kind: quizKindSchema,
         status: z.enum(["NOT_TAKEN", "IN_PROGRESS", "SUBMITTED", "GRADED"]),
         score: z.number().nullable(),
+        /**
+         * ONLINE only: the season admin's score and note (plan 4), which `score` then carries;
+         * labelled "Score entered by your admin". Null for PAPER and when none.
+         */
+        // An app build talking to a backend from before this field reads "none".
+        adminScore: z.object({ score: z.number(), notes: z.string().nullable() }).nullable().default(null),
       }),
     ),
     attendance: z.array(

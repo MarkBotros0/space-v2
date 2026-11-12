@@ -125,6 +125,13 @@ const staffAdminScoreSchema = z
   // An app build talking to a backend from before plan 4 reads "none".
   .default(null);
 
+/**
+ * The student's best GRADED attempt total, whatever the admin entered (plan 4): what the admin's
+ * score sheet calls "Graded in the app". Null with no graded attempt.
+ */
+// An app build talking to a backend from before this field reads "none".
+const appScoreSchema = z.number().nullable().default(null);
+
 export const quizGradingAttemptSchema = z.object({
   attemptId: z.number(),
   studentUserId: z.number(),
@@ -141,6 +148,7 @@ export const quizGradingAttemptSchema = z.object({
    */
   bestScore: z.number().nullable(),
   adminScore: staffAdminScoreSchema,
+  appScore: appScoreSchema,
   submittedAt: z.string().nullable(),
   gradedByName: z.string().nullable(),
   ...gradingEndShape,
@@ -173,6 +181,7 @@ export const quizGradingPageSchema = z.object({
       ...gradingEndShape,
       /** A student who never started can still have the admin's score. */
       adminScore: staffAdminScoreSchema,
+      appScore: appScoreSchema,
     }),
   ),
   nextCursor: z.number().nullable(),

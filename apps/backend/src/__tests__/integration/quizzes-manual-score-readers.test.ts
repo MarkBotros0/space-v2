@@ -78,15 +78,18 @@ function gradesCell(workbook: Workbook, title: string, studentName: string): unk
 }
 
 /** The season record reads a finished enrolment only: finish it for the read, then put it back. */
-async function recordScore(quizId: number): Promise<number | null> {
+async function loadRecord() {
   const where = { seasonId: f.seasonId, studentUserId: f.ownStudentId };
   await db.seasonEnrollment.updateMany({ where, data: { status: "COMPLETED" } });
   try {
-    const record = await loadSeasonRecord({ userId: f.ownStudentId } as SessionUser, f.seasonId);
-    return record?.quizzes.find((q) => q.id === quizId)?.score ?? null;
+    return await loadSeasonRecord({ userId: f.ownStudentId } as SessionUser, f.seasonId);
   } finally {
     await db.seasonEnrollment.updateMany({ where, data: { status: "ACTIVE" } });
   }
+}
+
+async function recordScore(quizId: number): Promise<number | null> {
+  return (await loadRecord())?.quizzes.find((q) => q.id === quizId)?.score ?? null;
 }
 
 async function keyTextOf(quizId: number): Promise<string[]> {
@@ -269,6 +272,59 @@ describe("the admin's score is the score that counts", () => {
     await gradedAttempt(quizId, f.ownStudentId, 9);
     await putScore(quizId, f.ownStudentId, { score: 3, notes: null });
     expect(await counted()).toBe(1);
+  });
+});
+
+describe("what the app has, beside the admin's score", () => {
+  const ofStudent = (rows: { studentUserId: number }[], id: number) => rows.find((r) => r.studentUserId === id);
+
+  it("grading rows carry the app score whatever the admin entered", async () => {
+    const { quizId } = await onlineQuiz();
+    await gradedAttempt(quizId, f.ownStudentId, 8);
+    // A retake handed in and not marked yet: the app still has the 8.
+    await db.quizAttempt.create({ data: { quizId, studentUserId: f.ownStudentId, attemptNumber: 2, shuffleSeed: 1 } });
+    await setLatestAttempt(quizId, f.ownStudentId, { status: "SUBMITTED" });
+    await putScore(quizId, f.ownStudentId, { score: 4, notes: null });
+    await putScore(quizId, f.otherGroupStudentId, { score: 6, notes: null });
+
+    const res = await request(app).get(`/api/v1/quizzes/${quizId}/attempts`).set(bearer(f.adminToken));
+    expect(res.status).toBe(200);
+    expect(ofStudent(res.body.data.items, f.ownStudentId)).toMatchObject({
+      bestScore: 4,
+      appScore: 8,
+      totalScore: null,
+    });
+    // Never taken: the admin's score only, nothing in the app.
+    expect(ofStudent(res.body.data.waiting, f.otherGroupStudentId)).toMatchObject({ appScore: null });
+    expect(res.text).toContain('"appScore":8');
+    expect(res.text).toContain('"appScore":null');
+
+    await clearScore(quizId, f.ownStudentId);
+    const after = await grading(quizId);
+    expect(ofStudent(after.items, f.ownStudentId)).toMatchObject({ bestScore: 8, appScore: 8, adminScore: null });
+  });
+
+  it("the season record carries the admin's score and note", async () => {
+    const { quizId } = await onlineQuiz();
+    const plain = await onlineQuiz();
+    await gradedAttempt(quizId, f.ownStudentId, 9);
+    await gradedAttempt(plain.quizId, f.ownStudentId, 6);
+    await putScore(quizId, f.ownStudentId, { score: 7.5, notes: "Taken on paper." });
+
+    const record = await loadRecord();
+    const row = (id: number) => record?.quizzes.find((q) => q.id === id);
+    expect(row(quizId)).toMatchObject({
+      status: "GRADED",
+      score: 7.5,
+      adminScore: { score: 7.5, notes: "Taken on paper." },
+    });
+    expect(row(plain.quizId)).toMatchObject({ status: "GRADED", score: 6, adminScore: null });
+    // The record is the student's own read: no question or option text in it.
+    const raw = JSON.stringify(record);
+    for (const text of await keyTextOf(quizId)) expect(raw).not.toContain(text);
+
+    await clearScore(quizId, f.ownStudentId);
+    expect((await loadRecord())?.quizzes.find((q) => q.id === quizId)).toMatchObject({ score: 9, adminScore: null });
   });
 });
 

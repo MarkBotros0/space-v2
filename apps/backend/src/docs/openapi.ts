@@ -18,6 +18,7 @@ import { quizAnswerSchemas } from "./components/quiz-answers";
 import { quizQuestionSchemas } from "./components/quiz-questions";
 import { quizSchemas } from "./components/quizzes";
 import { quizLiveSchemas } from "./components/quizzes-live";
+import { quizAdminScoreSchemas } from "./components/quiz-admin-scores";
 import { peopleSchemas } from "./components/people";
 import { sessionsAssignmentsSchemas } from "./components/sessions-assignments";
 import { submissionsMeSchemas } from "./components/submissions-me";
@@ -147,6 +148,7 @@ export const openApiDocument = {
       ...enumsNotificationsNotesSchemas,
       ...quizSchemas,
       ...quizLiveSchemas,
+      ...quizAdminScoreSchemas,
       ...quizQuestionSchemas,
       ...quizAnswerSchemas,
       ...peopleSchemas,

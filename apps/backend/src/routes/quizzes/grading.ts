@@ -87,7 +87,7 @@ export async function listAttempts(req: Request, res: Response) {
   // The score a grading list shows is the one that counts: the admin's score when there is one
   // (plan 4), else the best GRADED attempt's (spec "Honest accidents"). The row stays the latest
   // attempt, which is what gets marked or reopened.
-  const { best: bestScores, admin } = await bestScoresFor(id, pageIds);
+  const { best: bestScores, admin, app } = await bestScoresFor(id, pageIds);
 
   const scored = attempts.filter((a) => a.status !== "IN_PROGRESS");
   const inProgress = attempts.filter((a) => a.status === "IN_PROGRESS");
@@ -118,6 +118,7 @@ export async function listAttempts(req: Request, res: Response) {
       totalScore: toScore(att.totalScore),
       bestScore: bestScores.get(att.studentUserId) ?? null,
       adminScore: admin.get(att.studentUserId) ?? null,
+      appScore: app.get(att.studentUserId) ?? null,
       submittedAt: att.submittedAt,
       gradedByName: att.gradedBy?.name ?? null,
       ...endInfo(att),
@@ -133,6 +134,8 @@ export async function listAttempts(req: Request, res: Response) {
         startedAt: att.createdAt,
         ...endInfo(att),
         adminScore: admin.get(att.studentUserId) ?? null,
+        // An open retake: an earlier attempt may still be graded.
+        appScore: app.get(att.studentUserId) ?? null,
       })),
       ...pageIds
         .filter((sid) => !startedIds.has(sid))
@@ -144,6 +147,7 @@ export async function listAttempts(req: Request, res: Response) {
           endedByName: null,
           deadlineAt: null,
           adminScore: admin.get(sid) ?? null,
+          appScore: null,
         })),
     ],
     nextCursor: remaining.length > limit ? (pageIds[pageIds.length - 1] ?? null) : null,
@@ -220,7 +224,7 @@ export async function gradeAttempt(req: Request, res: Response) {
     },
   });
   const log = await exitLogsFor([attemptId]);
-  const { best, admin } = await bestScoresFor(id, [attempt.studentUserId]);
+  const { best, admin, app } = await bestScoresFor(id, [attempt.studentUserId]);
   return apiOk(res, {
     attemptId: page?.id,
     studentUserId: page?.studentUserId,
@@ -232,6 +236,7 @@ export async function gradeAttempt(req: Request, res: Response) {
     totalScore: toScore(page?.totalScore ?? null),
     bestScore: best.get(attempt.studentUserId) ?? null,
     adminScore: admin.get(attempt.studentUserId) ?? null,
+    appScore: app.get(attempt.studentUserId) ?? null,
     submittedAt: page?.submittedAt ?? null,
     gradedByName: page?.gradedBy?.name ?? null,
     endReason: page?.endReason ?? null,

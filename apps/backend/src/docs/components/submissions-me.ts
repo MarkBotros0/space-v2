@@ -174,7 +174,16 @@ export const submissionsMeSchemas = {
             title: { type: "string" },
             kind: { type: "string", enum: ["PAPER", "ONLINE"] },
             status: { type: "string", enum: ["NOT_TAKEN", "IN_PROGRESS", "SUBMITTED", "GRADED"] },
-            score: { type: ["integer", "null"], description: "Null until graded." },
+            score: {
+              type: ["number", "null"],
+              description:
+                "The score that counts, decimal to 2 places: the admin's score when there is one. Null until graded.",
+            },
+            adminScore: {
+              oneOf: [{ $ref: "#/components/schemas/QuizAdminScore" }, { type: "null" }],
+              description:
+                "ONLINE only: the season admin's score and note, labelled as theirs. Null for PAPER and when none.",
+            },
           },
         },
       },

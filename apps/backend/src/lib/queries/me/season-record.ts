@@ -11,7 +11,8 @@ import { liveSeason } from "../../db/live";
 /*
  * One past season, read-only, for the student it belongs to. Built from the
  * same sources the current-season screens read, so the two cannot disagree.
- * Never selects result/drop reasons, feedback or notes (spec 02 R34).
+ * Never selects result/drop reasons, feedback or notes (spec 02 R34), except the season admin's
+ * note on their quiz score, which the student is meant to see (plan 4).
  */
 
 type RecordQuiz = SeasonRecord["quizzes"][number];
@@ -54,7 +55,7 @@ export async function loadSeasonRecord(
           orderBy: { attemptNumber: "desc" },
           select: { status: true, totalScore: true, attemptNumber: true },
         },
-        grades: { where: { studentUserId: user.userId }, select: { score: true } },
+        grades: { where: { studentUserId: user.userId }, select: { score: true, notes: true } },
       },
     }),
     db.session.findMany({
@@ -101,13 +102,17 @@ export async function loadSeasonRecord(
     })),
     quizzes: quizzes.map((q): RecordQuiz => {
       const attempt = q.attempts[0]; // newest first
-      const base = { id: q.id, title: q.title, kind: q.kind };
+      const base = { id: q.id, title: q.title, kind: q.kind, adminScore: null };
       // The score that counts shows with no release (spec "What students see"): on an ONLINE
       // quiz the admin's score when there is one (plan 4, reading as GRADED), else the best graded
       // attempt's; a paper score shows once entered. Otherwise status is the latest attempt's.
       if (q.kind === "ONLINE") {
         const counting = countingScore(q.grades[0] ?? null, q.attempts);
-        if (counting?.source === "manual") return { ...base, status: "GRADED", score: counting.score };
+        if (counting?.source === "manual") {
+          // Labelled "Score entered by your admin", with the note the student sees (plan 4).
+          const adminScore = { score: counting.score, notes: q.grades[0]?.notes ?? null };
+          return { ...base, status: "GRADED", score: counting.score, adminScore };
+        }
         if (attempt) return { ...base, status: attempt.status, score: counting?.score ?? null };
       }
       // A paper quiz has no attempt: it is graded or not taken.

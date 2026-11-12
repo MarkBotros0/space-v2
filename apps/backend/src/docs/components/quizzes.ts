@@ -200,6 +200,7 @@ export const quizSchemas = {
       "totalScore",
       "bestScore",
       "adminScore",
+      "appScore",
       "submittedAt",
       "gradedByName",
       "endReason",
@@ -223,6 +224,7 @@ export const quizSchemas = {
           "The score that counts (decimal to 2 places), the one a grading list shows: the admin's score when there is one, else the best GRADED total across their attempts. The row itself is the latest attempt, the one marked or reopened. Null until either.",
       },
       adminScore: { oneOf: [{ $ref: "#/components/schemas/QuizAdminScoreStaff" }, { type: "null" }] },
+      appScore: { $ref: "#/components/schemas/QuizAppScore" },
       submittedAt: { type: ["string", "null"], format: "date-time" },
       gradedByName: { type: ["string", "null"], description: "Who graded it; null for an auto-graded attempt." },
       endReason: {
@@ -281,6 +283,7 @@ export const quizSchemas = {
             "endedByName",
             "deadlineAt",
             "adminScore",
+            "appScore",
           ],
           properties: {
             studentUserId: { type: "integer" },
@@ -294,6 +297,7 @@ export const quizSchemas = {
             endedByName: { type: ["string", "null"], description: "The staff member who ended it (ENDED_BY_STAFF)." },
             deadlineAt: { type: ["string", "null"], format: "date-time" },
             adminScore: { oneOf: [{ $ref: "#/components/schemas/QuizAdminScoreStaff" }, { type: "null" }] },
+            appScore: { $ref: "#/components/schemas/QuizAppScore" },
           },
         },
       },
@@ -368,25 +372,6 @@ export const quizSchemas = {
           "False until the season admin or a super releases the answers. The score does not wait for it. A PAPER row appears once its grade is entered.",
       },
       adminScore: { oneOf: [{ $ref: "#/components/schemas/QuizAdminScore" }, { type: "null" }] },
-    },
-  },
-  QuizAdminScore: {
-    type: "object",
-    description:
-      'The season admin\'s score for this student on an ONLINE quiz, with its note, shown at once ("Score entered by your admin"). It counts instead of any attempt, but never shows the questions on its own.',
-    required: ["score", "notes"],
-    properties: { score: { type: "number" }, notes: { type: ["string", "null"] } },
-  },
-  QuizAdminScoreStaff: {
-    type: "object",
-    description:
-      "The season admin's score for a student on an ONLINE quiz, which `bestScore` carries. Not `manualScore`.",
-    required: ["score", "notes", "gradedAt", "gradedByName"],
-    properties: {
-      score: { type: "number" },
-      notes: { type: ["string", "null"] },
-      gradedAt: { type: "string", format: "date-time" },
-      gradedByName: { type: ["string", "null"] },
     },
   },
 } as const;
