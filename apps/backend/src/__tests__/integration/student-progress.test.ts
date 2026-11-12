@@ -112,10 +112,17 @@ describe("GET /students/:id/progress", () => {
     expect(none.status).toBe(403);
     // Another season's admin never sees the student at all.
     expect((await progress(w.users.middle.id, w.tokens.otherAdmin)).status).toBe(403);
-    // A mentor reads every student, and can't mark.
-    const mentor = await progress(w.users.middle.id, w.tokens.mentor);
-    expect(mentor.status).toBe(200);
-    expect(mentor.body.data.canMark).toBe(false);
+    // A mentor sees nothing season-shaped (docs/rules/mentor.md), with or without a season.
+    expect((await progress(w.users.middle.id, w.tokens.mentor)).status).toBe(403);
+    expect((await progress(w.users.middle.id, w.tokens.mentor, `?seasonId=${w.seasonId}`)).status).toBe(403);
+  });
+
+  it("a withdrawn enrolment has no season to score, as on the engagement card", async () => {
+    for (const query of [`?seasonId=${w.seasonId}`, ""]) {
+      const res = await progress(w.users.withdrawn.id, w.tokens.super, query);
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe("no_season");
+    }
   });
 
   it("a finished season reads, with nothing to mark", async () => {

@@ -86,6 +86,19 @@ describe("GET /students progress", () => {
     expect(rows[0]?.progress).toEqual({ attendancePct: null, assignmentsPct: 50, quizPct: 60 });
   });
 
+  it("a mentor's rows carry no progress, and nothing is loaded for it", async () => {
+    const q = `seasonId=${w.seasonId}&q=space-v2-test`;
+    const res = await list(w.tokens.mentor, `${q}&limit=25`);
+    expect(res.status).toBe(200);
+    const rows: Row[] = res.body.data.students;
+    expect(rows).toHaveLength(24);
+    expect(rows.every((r) => r.progress === null)).toBe(true);
+    // The admin's page loads the season's numbers on top of the same list queries; the mentor's doesn't.
+    const mentor = await countQueries(() => list(w.tokens.mentor, `${q}&limit=20`));
+    const admin = await countQueries(() => list(w.tokens.admin, `${q}&limit=20`));
+    expect(mentor).toBeLessThan(admin);
+  });
+
   it("a row with no current season has no progress", async () => {
     const loner = await createTestUser("pass-loner", "STUDENT");
     const rows: Row[] = (await list(w.tokens.super, "q=pass-loner")).body.data.students;

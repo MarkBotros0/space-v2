@@ -14,7 +14,7 @@ import {
   loadStudentSubmissions,
   type StudentDetailView,
 } from "../../lib/queries/students";
-import { isSuper } from "../../lib/rbac";
+import { isMentor, isSuper } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
 import { studentListQuerySchema } from "../../../../../packages/shared/src/index";
 import { idParam } from "../../lib/http/params";
@@ -108,11 +108,13 @@ export async function getStudentSubmissions(req: Request, res: Response) {
 /**
  * A student's season progress, for staff (season passing): the three numbers, their assignments and
  * their quizzes. The season is picked and gated as the engagement card's (`pickScoredEnrollment`,
- * `?seasonId`); a student gets 403, their own record included. No season to score: 404 `no_season`.
+ * `?seasonId`); a student gets 403, their own record included, and so does a mentor, who sees nothing
+ * season-shaped (docs/rules/mentor.md). No season to score, or a withdrawn enrolment: 404 `no_season`.
  */
 export async function getStudentProgress(req: Request, res: Response) {
   const target = await resolveHistoryTarget(req, res);
   if (!target) return;
+  if (isMentor(target.user)) return forbidden(res);
   const requested = parseId(typeof req.query.seasonId === "string" ? req.query.seasonId : undefined);
   const picked = await pickScoredEnrollment(target.user, target.id, requested);
   if (picked === "forbidden") return forbidden(res);

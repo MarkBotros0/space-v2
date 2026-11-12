@@ -41,7 +41,7 @@ export const studentSchemas = {
       },
       progress: {
         description:
-          "The three passing numbers in the row's current season as whole percentages (null where there is nothing to count), when the caller may score the student there (as the engagement card). Null otherwise, and on the alumni and dropped lists. Loaded per page.",
+          "The three passing numbers as whole percentages (null where there is nothing to count) in each row's own current season (the season `activeSeasonTitle` names), not the list's `seasonId` filter. Set when the caller may score the student there: a SUPER, the season's admin, or the student's leader in it. Null for a MENTOR, for a row with no current season, and on the alumni and dropped lists. Loaded per page.",
         oneOf: [
           {
             type: "object",

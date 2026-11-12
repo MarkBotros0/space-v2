@@ -191,7 +191,7 @@ export const seasonPassingPaths = {
       tags: ["Students"],
       summary: "A student's season progress (staff)",
       description:
-        "The three passing numbers with the assignments and quizzes behind them. The season is the one `seasonId` names, else the student's newest ACTIVE enrolment the caller may score (as `GET /students/{id}/engagement`): a SUPER or MENTOR any, the season's admin theirs, a leader their own groups' students. A student gets 403, their own record included. Ids, titles and scores only: no answers and no question text.",
+        "The three passing numbers with the assignments and quizzes behind them. The season is the one `seasonId` names, else the student's newest ACTIVE enrolment the caller may score (as `GET /students/{id}/engagement`): a SUPER any, the season's admin theirs, a leader their own groups' students. A student gets 403, their own record included, and so does a MENTOR (a mentor sees nothing season-shaped). A WITHDRAWN enrolment, named or not, is 404 `no_season`. Ids, titles and scores only: no answers and no question text.",
       parameters: [
         idParam,
         { name: "seasonId", in: "query", required: false, schema: { type: "integer", minimum: 1 } },

@@ -2,11 +2,13 @@ import { passingPcts, type StudentListItem } from "../../../../../../packages/sh
 import type { SessionUser } from "../../auth/tokens";
 import { loadPassingNumbers } from "../../passing/numbers";
 import { scopeCovers, scoreScopeForSeason } from "../../permissions";
+import { isMentor } from "../../rbac";
 
 /*
  * The students list's three numbers (spec "Progress for staff"): each row's attendance, assignments
  * and quiz percentages in its current season, when the caller may score the student there (the
- * engagement card's rule). Loaded per page, not per row: one scope check and one
+ * engagement card's rule), never for a MENTOR, who sees nothing season-shaped (docs/rules/mentor.md).
+ * Loaded per page, not per row: one scope check and one
  * `loadPassingNumbers` per season on the page, so a page of 20 costs what a page of 2 does.
  */
 
@@ -20,6 +22,7 @@ export async function withProgress(
   user: SessionUser,
   current: Current[],
 ): Promise<StudentListItem[]> {
+  if (isMentor(user)) return items.map((item) => ({ ...item, progress: null }));
   const bySeason = new Map<number, { id: number; groupId: number | null }[]>();
   items.forEach((item, i) => {
     const c = current[i];

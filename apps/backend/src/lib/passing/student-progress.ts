@@ -4,6 +4,7 @@ import { STAFF_MARK_SELECT } from "../assignments/submitted";
 import type { SessionUser } from "../auth/tokens";
 import { liveAssignment } from "../db/live";
 import { canMarkSubmitted } from "../permissions";
+import { seasonParticipant } from "../queries/season-participants";
 import { countingScore } from "../quizzes/best-attempt";
 import { toScore } from "../quizzes/score";
 import { COUNTED_QUIZ, loadPassingNumbers } from "./numbers";
@@ -17,12 +18,18 @@ import { COUNTED_QUIZ, loadPassingNumbers } from "./numbers";
 
 type Season = { id: number; title: string; status: string };
 
-/** The progress of a student the caller passed `pickScoredEnrollment` for, in that season. */
+/** The progress of a student the caller passed `pickScoredEnrollment` for, in that season; null off its roster. */
 export async function loadStudentProgress(
   user: SessionUser,
   season: Season,
   studentUserId: number,
 ): Promise<StudentProgress | null> {
+  // On the season's roster, as the engagement card asks (a WITHDRAWN enrolment has nothing to score).
+  const enrolment = await db.seasonEnrollment.findFirst({
+    where: { seasonId: season.id, studentUserId, ...seasonParticipant },
+    select: { id: true },
+  });
+  if (!enrolment) return null;
   const seasonActive = season.status === "ACTIVE";
   const [{ available, numbers }, assignments, quizzes, mayMark] = await Promise.all([
     loadPassingNumbers(season.id, [studentUserId]),
