@@ -112,7 +112,8 @@ starting and the staff live screen. Exits are counted on the server, never on th
   of that attempt and stored as one `RELAUNCH`. A leave the phone never came back from is that same
   one exit, not two.
 - **The limit is three.** The first and second exit show the warning. The third ends the attempt
-  `ENDED_BY_EXITS`: it is marked like a submit, with what is saved. The warning never says how many
+  `ENDED_BY_EXITS`: it is marked like a submit, with what is saved. The third exit ends it; later ones
+  in the same (offline) batch are logged. The warning never says how many
   exits are left: "You left the quiz. Leaving the quiz isn't allowed and has been recorded. Leaving
   again may end your attempt."
 - **The warning shows within 2.5 seconds of the return, offline too.** If the server's answer comes
@@ -126,6 +127,9 @@ starting and the staff live screen. Exits are counted on the server, never on th
 - **A reopened timed attempt not yet started has no exits.** It shows no questions, so leaving it
   counts for nothing (the server ignores the report).
 - **A report after the attempt closed is ignored**, with no error.
+- **Time up stops the count.** Once the countdown reaches zero the app no longer watches for leaving,
+  and an exit that left at or after the deadline (in the seconds before the server closes the attempt)
+  is logged, not counted: it can't end the attempt `ENDED_BY_EXITS`.
 
 ### Before you start
 
@@ -148,12 +152,15 @@ starting and the staff live screen. Exits are counted on the server, never on th
   one awaiting its start too), the app shows that quiz and nothing else. Staff are never held.
 - **Any other route goes back to the quiz:** a tab, a deep link, a notification tap, a check-in link.
   The held quiz has no back link, no swipe back, and Android back is ignored.
-- **The lock is kept on the phone** and read again from the server (`/me/open-quiz-attempt`) so a
-  launch with no signal still opens into the quiz.
+- **The lock is kept on the phone** and read again from the server (`/me/open-quiz-attempt`), so an
+  online launch opens into the quiz before the server answers. An offline cold start goes to sign-in
+  (Known limits).
 - **It lifts on:** submit; time up (the close); staff End; `ENDED_BY_EXITS`; sign-out, forced or not;
-  a quiz or season that is gone or closed to the student (404 or 403 on the quiz's own read). A
-  transient error (offline, a failed read) keeps it. A student who is no longer a student (role
-  change) is not held: the lock is for the `STUDENT` role only.
+  a quiz or season that is gone or closed to the student (404 or 403 on the quiz's own read, or a
+  save, submit or exit report refused that way, which re-reads it). The quiz then shows "This quiz is
+  no longer available." with the normal back. A transient error (offline, a failed read) keeps it. A
+  student who is no longer a student (role change) is not held: the lock is for the `STUDENT` role
+  only.
 - **An open attempt in a finished season holds nothing**: the quiz shows "You didn't finish this
   quiz."
 
@@ -168,6 +175,8 @@ starting and the staff live screen. Exits are counted on the server, never on th
   limit" when untimed) and the exits so far.
 - **It reads every 4 seconds only while the screen is in front and the app is open**, and on pull to
   refresh. It never carries an answer.
+- **It is for published online quizzes.** A deep link to a paper or draft quiz's live screen says
+  "Live view is for published online quizzes." and reads no further.
 - **A row opens a sheet.** **End attempt** (open attempts, after a confirm: "Their saved answers are
   submitted.") ends it `ENDED_BY_STAFF` with the staff member's name. **Reopen retake** (finished
   attempts) makes a fresh attempt, as in Honest accidents. A student who has not started has no sheet.
@@ -175,10 +184,11 @@ starting and the staff live screen. Exits are counted on the server, never on th
 ### Exit log
 
 - **The attempt sheet in grading shows it**, staff only: how the attempt ended ("Submitted", "Timed
-  out", "Ended, left the quiz", "Ended by {name}"), then one line per event, oldest first: "Left
-  6:02 PM, away 0:42", "Closed the app 6:10 PM", "Took a screenshot 6:15 PM". An exit never reported
-  back says "didn't come back"; the exit that ended the attempt says "ended the attempt". Times are
-  the phone's, moved onto the server's clock. With no events: "Never left the quiz".
+  out", "Ended, left the quiz", "Ended by {name}"), then one line per event, oldest first: "Left 6:02
+  PM, away 0:42", "Closed the app 6:10 PM", "Took a screenshot 6:15 PM". An exit never reported back
+  says "didn't come back"; the exit that ended the attempt (the third counted, oldest first) says
+  "ended the attempt". Times are the phone's, moved onto the server's clock. With no events: "Never
+  left the quiz".
 
 ### Known limits
 
@@ -191,4 +201,9 @@ starting and the staff live screen. Exits are counted on the server, never on th
   tell the two apart on iOS (`inactive` alone is never an exit).
 - **An Android floating window** (picture-in-picture or a bubble) that does not resize ours is not
   counted: it cannot be told apart from the notification shade, which must not count.
-- **At most 3 exits are counted**, and a screenshot is logged but never counted.
+- **The third exit ends the attempt; later ones in the same batch are logged**, and a screenshot is
+  logged but never counted. The live screen's count is every exit stored.
+- **The exit report doesn't check that the quiz is published or online**, like the save and submit
+  routes (`loadTakeableQuiz`): an unpublished quiz's attempt can still be ended by exits.
+- **The stored lock isn't kept per user.** Sign-out clears it; a wrong id lets go on its first read
+  (404, or not in progress).

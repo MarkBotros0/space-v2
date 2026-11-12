@@ -55,7 +55,7 @@ one EXIT or RELAUNCH row in the staff exit log (attempt sheet) or on the live sc
 | 24 | Fresh install or update with an attempt open: how long Home shows before the quiz | |
 | 25 | Push tap during an attempt: back to the quiz, one quiz screen, one exit | |
 | 26 | `spacev2://checkin/<token>` warm and cold during an attempt: lands in the quiz | |
-| 27 | Staff unpublish or End while the student is on the form: the screen moves on, the lock lifts without a relaunch | |
+| 27 | Staff End while the student is on the form: at their next save, submit or leave the screen moves on to the result and the lock lifts without a relaunch (an idle student isn't moved on until then). Unpublish: saves still land and the student finishes normally; a re-read (leave and return, or relaunch) shows "This quiz is no longer available." with a back | |
 | 28 | Role switch or forced sign-out mid-attempt: lock released; sign back in: held again | |
 
 ## Staff screens

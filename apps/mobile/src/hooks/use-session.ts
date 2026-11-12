@@ -35,7 +35,8 @@ export async function bootSession(): Promise<void> {
     return;
   }
 
-  // Before the session settles, so app/index.tsx can open an offline launch into a held quiz.
+  // Before the session settles, so app/index.tsx opens an online launch into a held quiz before the
+  // open-attempt read answers. An offline cold start goes to sign-in below, and `clear()` drops it.
   await restoreQuizLock();
   try {
     const res = await apiClient.get("/api/v1/me");

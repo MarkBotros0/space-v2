@@ -11,14 +11,15 @@ interface QuizLockState {
   /**
    * The quiz the student is held on (spec "Relaunch"): the server's open attempt, or the runner's
    * own read of one. Set while the attempt is IN_PROGRESS (a reopened one awaiting its start too),
-   * so unlike `openAttemptQuizId` it doesn't follow the form mounting. Kept in secure storage so a
-   * launch with no signal still opens into the quiz.
+   * so unlike `openAttemptQuizId` it doesn't follow the form mounting. Kept in secure storage so an
+   * online launch opens into the quiz before the server answers, and a failed open-attempt read keeps
+   * it; an offline cold start goes to sign-in, which clears it (docs/rules/quiz-integrity.md "Known limits").
    */
   lockedQuizId: number | null;
   setLockedQuiz: (quizId: number | null) => void;
 }
 
-/** Storage that fails (a locked keychain) only loses the offline fallback; the server read still holds. */
+/** Storage that fails (a locked keychain) only loses the launch head start; the server read still holds. */
 function persist(quizId: number | null): void {
   const write = () =>
     quizId === null ? SecureStore.deleteItemAsync(LOCKED_KEY) : SecureStore.setItemAsync(LOCKED_KEY, String(quizId));
