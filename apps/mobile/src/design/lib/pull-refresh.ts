@@ -17,6 +17,14 @@ export const PULL_MIN_MS = 600;
  * another tab), so back on the screen the spinner hangs. So a blur drops the
  * pull, and each focus hands out a new `key`: the screen remounts its
  * RefreshControl, which starts from the current `refreshing` value.
+ *
+ * Only a pull shows the spinner (owner, 2026-11-13: a gap at the top after switching tabs that a
+ * scroll clears). A background refetch (`refreshing` true with no pull: a tab's data going stale,
+ * an invalidation after a save) used to set the control refreshing too; iOS then begins refreshing
+ * programmatically, which pushes the content down by the spinner's height with the spinner out of
+ * sight, and a refetch that ends while the tab is off the window never gives that space back. So
+ * `refreshing` from the screen only holds a pull's spinner until the reload is in; on its own it
+ * shows nothing, and the data still updates in place.
  */
 export function usePullRefresh(refreshing: boolean, onRefresh: (() => void) | undefined) {
   const [pulled, setPulled] = useState(false);
@@ -49,7 +57,7 @@ export function usePullRefresh(refreshing: boolean, onRefresh: (() => void) | un
   }, [pulled, refreshing]);
 
   return {
-    refreshing: pulled || refreshing,
+    refreshing: pulled,
     onRefresh: onRefresh ? handle : undefined,
     key: `pull-${focusKey}`,
   };

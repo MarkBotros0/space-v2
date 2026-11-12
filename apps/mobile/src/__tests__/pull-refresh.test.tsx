@@ -34,8 +34,11 @@ it("keeps spinning while the screen is still loading, then stops", () => {
   expect(result.current.refreshing).toBe(false);
 });
 
-it("passes a background refetch through, and offers no pull without onRefresh", () => {
-  expect(renderHook(() => usePullRefresh(true, () => {})).result.current.refreshing).toBe(true);
+it("shows no spinner for a background refetch, and offers no pull without onRefresh", () => {
+  // A refetch nobody pulled for (a stale tab, an invalidation) must not set the control refreshing:
+  // iOS pushes the content down for a spinner out of sight and, ended off the window, never gives
+  // the space back (owner, 2026-11-13: the gap at the top after switching tabs).
+  expect(renderHook(() => usePullRefresh(true, () => {})).result.current.refreshing).toBe(false);
   expect(renderHook(() => usePullRefresh(false, undefined)).result.current.onRefresh).toBeUndefined();
 });
 
