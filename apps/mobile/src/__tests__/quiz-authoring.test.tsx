@@ -255,8 +255,16 @@ describe("QuizEditScreen (the builder)", () => {
     );
   });
 
-  it("reorders by sending the full permutation", async () => {
-    get.mockResolvedValue({ data: { data: authoring() } });
+  it("offers no reordering on a shuffled quiz: students see their own order", async () => {
+    get.mockResolvedValue({ data: { data: authoring({ shuffleQuestions: true }) } });
+    renderWithProviders(<QuizEditScreen />);
+    expect(await screen.findByLabelText("Edit question 2")).toBeTruthy();
+    expect(screen.queryByLabelText("Move question 2 up")).toBeNull();
+    expect(screen.queryByLabelText("Move question 1 down")).toBeNull();
+  });
+
+  it("reorders by sending the full permutation when the questions keep their order", async () => {
+    get.mockResolvedValue({ data: { data: authoring({ shuffleQuestions: false }) } });
     put.mockResolvedValue({
       data: {
         data: {

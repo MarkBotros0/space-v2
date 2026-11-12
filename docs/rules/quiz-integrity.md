@@ -42,6 +42,8 @@ record, exports, dashboards, graduation checks and the grading screens, uses the
   retake gets a new shuffle.
 - Answers are stored by the identity of the option, item or blank, never by its position.
 - Staff screens (preview, grading) show the author's order.
+- The builder offers Move up / Move down only when "Shuffle questions" is off (owner, 2026-11-13): a
+  shuffled quiz has no order for students to see.
 
 ## Marking
 

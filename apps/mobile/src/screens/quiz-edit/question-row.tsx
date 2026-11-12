@@ -115,25 +115,30 @@ export function QuestionRow({
       </View>
       {editable ? (
         <View className="shrink-0 flex-row flex-wrap justify-end">
-          {/* V2-ONLY: reorder (v1 had none; PATCH /quizzes/:id/order, spec 12). */}
-          <Button
-            variant="plain"
-            size="sm"
-            accessibilityLabel={`Move question ${n} up`}
-            disabled={index === 0 || reorder.isPending}
-            onPress={() => move(-1)}
-          >
-            <ChevronUp size={16} className="text-foreground" />
-          </Button>
-          <Button
-            variant="plain"
-            size="sm"
-            accessibilityLabel={`Move question ${n} down`}
-            disabled={index === ids.length - 1 || reorder.isPending}
-            onPress={() => move(1)}
-          >
-            <ChevronDown size={16} className="text-foreground" />
-          </Button>
+          {/* V2-ONLY: reorder (v1 had none; PATCH /quizzes/:id/order, spec 12). Only when the
+              questions keep their order: a shuffled quiz has none to set (owner, 2026-11-13). */}
+          {quiz.shuffleQuestions ? null : (
+            <>
+              <Button
+                variant="plain"
+                size="sm"
+                accessibilityLabel={`Move question ${n} up`}
+                disabled={index === 0 || reorder.isPending}
+                onPress={() => move(-1)}
+              >
+                <ChevronUp size={16} className="text-foreground" />
+              </Button>
+              <Button
+                variant="plain"
+                size="sm"
+                accessibilityLabel={`Move question ${n} down`}
+                disabled={index === ids.length - 1 || reorder.isPending}
+                onPress={() => move(1)}
+              >
+                <ChevronDown size={16} className="text-foreground" />
+              </Button>
+            </>
+          )}
           <Button variant="plain" size="sm" accessibilityLabel={`Edit question ${n}`} onPress={() => setEditing(true)}>
             <Pencil size={16} className="text-foreground" />
           </Button>
