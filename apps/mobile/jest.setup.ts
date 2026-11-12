@@ -1,5 +1,6 @@
 import "react-native-gesture-handler/jestSetup";
 import { configure } from "@testing-library/react-native";
+import { timeoutManager } from "@tanstack/react-query";
 
 // findBy*/waitFor default to 1s. Under a full parallel run the CPU-bound render
 // of a data screen can take longer (same cause as testTimeout in jest.config.js),
@@ -93,3 +94,19 @@ console.warn = (...args: unknown[]) => {
   if (typeof args[0] === "string" && args[0].startsWith(EXPO_GO_PUSH_WARNING)) return;
   forwardWarn(...args);
 };
+
+// React Query's timers (a query's or mutation's 5-minute gcTime, refetchInterval) must never keep
+// Jest's process alive after the run: under turbo the mobile suite runs in one process, which then
+// waited out every test's default gcTime. Unref'd, they still fire while the run goes on. The globals
+// are looked up on each call, so jest.useFakeTimers() still drives them.
+const unref = <T>(timer: T): T => {
+  (timer as { unref?: () => void }).unref?.();
+  return timer;
+};
+type TimerId = ReturnType<typeof setTimeout>;
+timeoutManager.setTimeoutProvider<TimerId>({
+  setTimeout: (callback, delay) => unref(setTimeout(callback, delay)),
+  clearTimeout: (id) => clearTimeout(id),
+  setInterval: (callback, delay) => unref(setInterval(callback, delay)),
+  clearInterval: (id) => clearInterval(id),
+});

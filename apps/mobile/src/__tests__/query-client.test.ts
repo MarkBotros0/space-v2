@@ -21,20 +21,25 @@ describe("createQueryClient", () => {
 });
 
 describe("dashboard invalidation (spec 19 §7, D24)", () => {
+  // Each test's client is cleared after it: a query's or mutation's gc timer (5 min by default)
+  // would otherwise keep Jest's process alive after the run.
+  let client: ReturnType<typeof createQueryClient>;
+  afterEach(() => client.clear());
+
   it("invalidates every dashboard query after a mutation tagged DASHBOARD_META, and only then", async () => {
-    const client = createQueryClient();
+    client = createQueryClient();
     const key = queryKeys.dashboard.me(7);
     client.setQueryData(key, { stub: true });
 
     await client
       .getMutationCache()
-      .build(client, { mutationFn: async () => "ok" })
+      .build(client, { mutationFn: async () => "ok", gcTime: 0 })
       .execute(undefined);
     expect(client.getQueryState(key)?.isInvalidated).toBe(false);
 
     await client
       .getMutationCache()
-      .build(client, { mutationFn: async () => "ok", meta: DASHBOARD_META })
+      .build(client, { mutationFn: async () => "ok", meta: DASHBOARD_META, gcTime: 0 })
       .execute(undefined);
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   });
@@ -63,5 +68,6 @@ describe("clearCacheOnUserChange", () => {
     useSessionStore.getState().clear();
     expect(client.getQueryData(key)).toBeUndefined();
     stop();
+    client.clear();
   });
 });
