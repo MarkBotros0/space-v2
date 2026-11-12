@@ -4,6 +4,7 @@ import {
   buildEndRequest,
   clearAll,
   confirmCopy,
+  criteriaChanged,
   fittedCriteria,
   initialSelection,
   reviewRowView,
@@ -128,11 +129,31 @@ describe("fittedCriteria", () => {
   });
 });
 
+describe("criteriaChanged", () => {
+  const partial = check([], { available: { attendance: true, assignments: true, quizzes: false } });
+
+  it("is false before the admin saves, and when they save what the review started from", () => {
+    expect(criteriaChanged(null, partial)).toBe(false);
+    expect(criteriaChanged(fittedCriteria(partial), partial)).toBe(false);
+  });
+
+  it("is true once a weight or the mark differs", () => {
+    expect(criteriaChanged({ ...fittedCriteria(partial), passMark: 55 }, partial)).toBe(true);
+    const moved = { weights: { attendance: 60, assignments: 40, quizzes: 0 }, passMark: 60 };
+    expect(criteriaChanged(moved, partial)).toBe(true);
+  });
+});
+
 describe("buildEndRequest", () => {
   it("carries the weights, the mark, the scores shown, who doesn't pass and the notes", () => {
     const c = check([onTrack, below, rescaled]);
     const sel = { 1: "PASSED", 2: "PASSED", 3: "NOT_PASSED" } as const;
-    expect(buildEndRequest(c, CRITERIA, sel, { 2: "  Caught up late  ", 3: "", 9: "gone" })).toEqual({
+    const notes = {
+      2: { result: "PASSED", text: "  Caught up late  " },
+      3: { result: "NOT_PASSED", text: "" },
+      9: { result: "NOT_PASSED", text: "gone" },
+    } as const;
+    expect(buildEndRequest(c, CRITERIA, sel, notes)).toEqual({
       notPassed: [{ userId: 3, reason: null }],
       passedNotes: [{ userId: 2, note: "Caught up late" }],
       weights: CRITERIA.weights,
@@ -151,9 +172,38 @@ describe("buildEndRequest", () => {
 
   it("sends a reason for a student who doesn't pass", () => {
     const c = check([below]);
-    expect(buildEndRequest(c, CRITERIA, { 2: "NOT_PASSED" }, { 2: "Missed most sessions" }).notPassed).toEqual([
+    const notes = { 2: { result: "NOT_PASSED", text: "Missed most sessions" } } as const;
+    expect(buildEndRequest(c, CRITERIA, { 2: "NOT_PASSED" }, notes).notPassed).toEqual([
       { userId: 2, reason: "Missed most sessions" },
     ]);
+  });
+
+  const reason = { 2: { result: "NOT_PASSED", text: "Missed most sessions" } } as const;
+
+  it("a reason written under Did not pass is not sent after a criteria change flips the row to Passed", () => {
+    const c = check([below]);
+    // Nour is hand-set Did not pass with a reason, then reset by a lower mark: 33.5 now reaches 30.
+    const lower: PassCriteria = { ...CRITERIA, passMark: 30 };
+    const sel = selectionFor(scoreRows(c.students, lower), {});
+    expect(sel[2]).toBe("PASSED");
+    const body = buildEndRequest(c, lower, sel, reason);
+    expect(body.notPassed).toEqual([]);
+    expect(body.passedNotes).toEqual([]);
+  });
+
+  it("a reason written under Did not pass is not sent after Select all on track flips the row", () => {
+    const c = check([onTrack]);
+    const rows = scoreRows(c.students, CRITERIA);
+    const sel = selectAllOnTrack({ 1: "NOT_PASSED" }, rows);
+    const body = buildEndRequest(c, CRITERIA, sel, { 1: { result: "NOT_PASSED", text: "Absent" } });
+    expect(body.passedNotes).toEqual([]);
+  });
+
+  it("a pass note isn't sent as a reason after Clear", () => {
+    const c = check([below]);
+    const sel = clearAll(scoreRows(c.students, CRITERIA));
+    const body = buildEndRequest(c, CRITERIA, sel, { 2: { result: "PASSED", text: "Caught up late" } });
+    expect(body.notPassed).toEqual([{ userId: 2, reason: null }]);
   });
 });
 

@@ -9,12 +9,14 @@ import type { PassCriteria, SeasonEndCheck } from "@space/shared";
 
 import {
   buildEndRequest,
+  criteriaChanged,
   clearAll,
   fittedCriteria,
   refit,
   scoreRows,
   selectAllOnTrack,
   selectionFor,
+  type EndNote,
   type EndResult,
   type Selection,
 } from "./end-review-model";
@@ -22,7 +24,7 @@ import {
 export function useEndReview(check: SeasonEndCheck | undefined) {
   const [chosen, setChosen] = useState<PassCriteria | null>(null);
   const [hand, setHand] = useState<Selection>({});
-  const [notes, setNotes] = useState<Record<number, string>>({});
+  const [notes, setNotes] = useState<Record<number, EndNote>>({});
 
   const criteria = check ? (chosen ? refit(chosen, check) : fittedCriteria(check)) : null;
   const rows = check && criteria ? scoreRows(check.students, criteria) : [];
@@ -32,10 +34,14 @@ export function useEndReview(check: SeasonEndCheck | undefined) {
   return {
     criteria,
     /** The admin changed the criteria here. */
-    changed: chosen !== null,
+    changed: check ? criteriaChanged(chosen, check) : false,
     rows,
     selection,
-    notes,
+    /** The note written for this result, else blank: a reason never reopens as a pass note. */
+    noteFor: (userId: number, result: EndResult) => {
+      const note = notes[userId];
+      return note && note.result === result ? note.text : "";
+    },
     pass: rows.length - notPass,
     notPass,
     setCriteria: setChosen,
@@ -44,7 +50,7 @@ export function useEndReview(check: SeasonEndCheck | undefined) {
       if (draft.result !== selection[userId] || userId in hand) {
         setHand((h) => ({ ...h, [userId]: draft.result }));
       }
-      setNotes((n) => ({ ...n, [userId]: draft.reason }));
+      setNotes((n) => ({ ...n, [userId]: { result: draft.result, text: draft.reason } }));
     },
     selectAllOnTrack: () => {
       const next = selectAllOnTrack(selection, rows);

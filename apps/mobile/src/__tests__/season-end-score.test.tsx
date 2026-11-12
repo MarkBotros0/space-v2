@@ -157,6 +157,14 @@ describe("End review by the score", () => {
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Mina");
     expect(screen.getByText("Quizzes 0%")).toBeTruthy();
+    // Saving the sheet unchanged changes nothing: the note about the moved weight stays.
+    fireEvent.press(screen.getByRole("button", { name: "Change criteria" }));
+    const sheet = within(await screen.findByTestId("sheet"));
+    fireEvent.press(sheet.getByRole("button", { name: "Use these criteria" }));
+    expect(screen.queryByText(/Changed for this End/)).toBeNull();
+    expect(
+      screen.getByText("Quizzes has nothing to count this season, so its weight moved to the others."),
+    ).toBeTruthy();
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     await screen.findByText("End GBV 2026?");
     confirmEnd();

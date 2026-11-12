@@ -95,7 +95,7 @@ export function ReportSeasonHeader({
             </Text>
           )}
         </View>
-        <View className="shrink-0 flex-col items-end gap-2">
+        <View className="shrink-0 flex-col items-end gap-3">
           {hasChoice ? (
             <PillButton label="History" accessibilityLabel="Choose another season" onPress={() => setOpen(true)} />
           ) : null}

@@ -26,6 +26,8 @@ import { NUMBER_LABELS } from "../season-passing/outlook-model";
 type Student = SeasonEndCheck["students"][number];
 export type EndResult = "PASSED" | "NOT_PASSED";
 export type Selection = Record<number, EndResult>;
+/** A note and the result it was written for: a reason for Did not pass, a note for a pass. */
+export type EndNote = { result: EndResult; text: string };
 export type ScoredRow = { userId: number; score: number | null; rescaled: boolean; onTrack: boolean | null };
 
 /** Each student's score under `c`, and whether it reaches the mark (null: no score). */
@@ -95,6 +97,14 @@ export function refit(c: PassCriteria, check: SeasonEndCheck): PassCriteria {
   return fittedCriteria({ ...check, criteria: c });
 }
 
+/** Whether the admin's criteria differ from the ones the review started from. */
+export function criteriaChanged(chosen: PassCriteria | null, check: SeasonEndCheck): boolean {
+  if (chosen === null) return false;
+  const start = fittedCriteria(check);
+  const now = refit(chosen, check);
+  return now.passMark !== start.passMark || WEIGHT_KEYS.some((key) => now.weights[key] !== start.weights[key]);
+}
+
 /** Numbers the season's own criteria weight but the season has nothing for. */
 export function ignoredNumbers(check: SeasonEndCheck): PassingNumberKey[] {
   return usableWeights(check.criteria.weights, check.available).ignored;
@@ -105,13 +115,15 @@ export function buildEndRequest(
   check: SeasonEndCheck,
   c: PassCriteria,
   sel: Selection,
-  notes: Record<number, string>,
+  notes: Record<number, EndNote>,
 ): EndSeasonRequest {
   const rows = scoreRows(check.students, c);
   const notPassed: EndSeasonRequest["notPassed"] = [];
   const passedNotes: EndSeasonRequest["passedNotes"] = [];
   for (const r of rows) {
-    const text = blankToNull(notes[r.userId] ?? "");
+    const note = notes[r.userId];
+    // A note goes only with the result it was written for: a flipped row drops it.
+    const text = note && note.result === sel[r.userId] ? blankToNull(note.text) : null;
     if (sel[r.userId] === "NOT_PASSED") notPassed.push({ userId: r.userId, reason: text });
     else if (text !== null) passedNotes.push({ userId: r.userId, note: text });
   }

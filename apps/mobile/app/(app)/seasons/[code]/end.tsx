@@ -184,7 +184,7 @@ export default function EndSeasonScreen() {
         student={editing}
         initial={{
           result: editing ? (review.selection[editing.userId] ?? "PASSED") : "PASSED",
-          reason: editing ? (review.notes[editing.userId] ?? "") : "",
+          reason: editing ? review.noteFor(editing.userId, review.selection[editing.userId] ?? "PASSED") : "",
         }}
         onTrack={editingRow?.onTrack ?? null}
         saveLabel="Done"
