@@ -59,7 +59,10 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "buildNumber": "14"
+      "buildNumber": "14",
+      "infoPlist": {
+        "UIViewControllerBasedStatusBarAppearance": false
+      }
     },
     "android": {
       "package": "com.jpc.space",

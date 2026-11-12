@@ -75,7 +75,10 @@ function RootLayout() {
 // Sentry.wrap only when Sentry is on; otherwise the layout itself.
 export default wrapRoot(RootLayout);
 
-/** Status-bar icons follow the app theme (dark icons on v1's light background). */
+/**
+ * Status-bar icons follow the app theme, not the phone (dark icons on the light theme). Works on iOS
+ * only because app.json turns off UIViewControllerBasedStatusBarAppearance.
+ */
 function ThemedStatusBar() {
   const { colorScheme } = useColorScheme();
   return <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />;
