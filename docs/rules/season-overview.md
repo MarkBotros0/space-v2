@@ -8,7 +8,9 @@
 six of its students as pills, then "Not in a group". New group, Move students (the roster) and Manage
 admins (`/seasons/[code]/admins`) live inside it; there is no separate Groups or Admins section. The
 Manage tiles name what they open, never "Manage ...": Sessions (`/seasons/[code]/sessions`),
-Assignments and Quizzes (the staff lists with `?seasonId`), End season, Results. Edit
+Assignments and Quizzes (the staff lists with `?seasonId`), Passing (`/seasons/[code]/passing`: who is
+on track, the pass criteria; admins, supers and the season's leaders, never a mentor), End season,
+Results (current admins and supers; a former admin uses the Reports link). Edit
 and Duplicate are icon buttons beside the name. **A finished season is read-only**: people, groups
 and sessions are read, nothing is added, moved or marked; a note offers "Duplicate as a draft".
 Finished seasons still never reopen.

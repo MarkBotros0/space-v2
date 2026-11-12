@@ -48,6 +48,10 @@
   essays are drafts until then. A **returned** essay is handed in again from its own screen ("Hand
   in again"), which puts only that essay back in the queue and makes the assignment submitted again;
   no second Submit.
+- **Marked submitted by staff (owner 2026-11-12):** the season's admin, a super or the student's leader
+  can mark an assignment submitted for work done outside the app (`docs/rules/season-passing.md`). It
+  counts as submitted everywhere, adds nothing to the review queue, sends no reminder and is hidden
+  with the assignment if it is deleted. Returning an essay removes the mark.
 - **Assignment complete:** submitted and every essay reviewed. An assignment with no essay is complete
   when submitted.
 - **Owner, 2026-11-10: a returned essay handed in again after the due date counts as late.**

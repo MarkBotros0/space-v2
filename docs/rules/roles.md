@@ -11,7 +11,11 @@
 - **`lib/roles` guards every seat write**: `activeRolesFor` reads a person's one active role,
   `lockPeople` / `lockSeason` take the row locks, and the refusal helpers (`seatRefusal`,
   `seatStudents`, `newPersonRefusal`, ...) answer 409 with the reason in words. Lock order is **Season, then
-  People, then rows**, always; a new seat-writing path takes them in that order inside its
+  People, then rows**, always; a staff mark or undo of "submitted" locks the student's User row FOR SHARE (not `lockPeople`'s
+  FOR UPDATE: that deadlocks against the student's own write, whose foreign-key check takes FOR KEY
+  SHARE; FOR SHARE still conflicts with a seat write's FOR UPDATE). The pass criteria save takes the
+  Season FOR NO KEY UPDATE; paper grades and attendance saves take it FOR SHARE
+  (`lockSeasonForStaffWrite`) so they wait for End. A new seat-writing path takes them in that order inside its
   transaction. That covers every enrolment-status write: a drop refuses a finished season
   (`season_finished`) and a draft (`season_draft`; Remove is the way off a draft), and updates only
   `where status ACTIVE`. End locks People before it writes a row and graduates only those whose row

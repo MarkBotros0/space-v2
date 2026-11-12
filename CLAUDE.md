@@ -27,6 +27,7 @@ This file holds what applies everywhere. The rest loads or is read only when nee
 | `docs/rules/announcements.md` | who posts and reads, unread, notifications, polls |
 | `docs/rules/quiz-results.md` | the score shows once graded, the answers are held until the admin releases them; best attempt counts |
 | `docs/rules/quiz-integrity.md` | the six question types, points and marking, shuffling, leaders' marking (timing and exits come with their plans) |
+| `docs/rules/season-passing.md` | the three numbers, the score and rounding, criteria and defaults, outlook, End and the stored snapshot, results after End, staff mark as submitted |
 | `docs/rules/assignments.md` | parts (video, essay, forum; one forum), watched at 90%, Submit only when every part is done, essay review one by one, whole season only, reminders on the backend's own schedule |
 | `docs/rules/student-work.md` | the student's My work tab, season page and Home |
 | `docs/rules/season-overview.md` | the season page, People card, putting people into a season |

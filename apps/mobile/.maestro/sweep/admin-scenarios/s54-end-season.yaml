@@ -1,4 +1,4 @@
-# UI sweep s54 — End season as a season admin: overdue callout, blockers, review list, result sheet with the keyboard. Read-only: nothing is saved, the flow only
+# UI sweep s54 — End season as a season admin: overdue callout, blockers, the pass criteria and the scored review list, the criteria sheet and the result sheet with the keyboard. Read-only: nothing is saved, the flow only
 # opens, scrolls, types and looks.
 appId: com.jpc.space
 ---
@@ -45,7 +45,7 @@ appId: com.jpc.space
 - takeScreenshot: s54-04-end-blockers-bottom
 - openLink: spacev2://seasons/spring-${output.year}/end
 - extendedWaitUntil:
-    visible: 'Everyone passes unless.*'
+    visible: 'Pass criteria'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -57,6 +57,27 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s54-06-end-review-bottom
+# Criteria first (the card at the top of the review), then each student with their score. Change
+# criteria opens the same sheet as the Passing screen; a weight field takes the number keyboard.
+# Save criteria is never tapped.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Change criteria'
+- extendedWaitUntil:
+    visible: 'Attendance weight'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s54-06a-criteria-sheet
+- tapOn: 'Attendance weight'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s54-06b-criteria-sheet-kbd
+- hideKeyboard
+- tapOn: 'Close'
+- waitForAnimationToEnd:
+    timeout: 5000
 # The confirm dialog and End season itself are never opened: they write. A review row's label
 # is "Sami Spring, Spring Group · N% attendance, Passed", hence the wildcard.
 - runFlow:

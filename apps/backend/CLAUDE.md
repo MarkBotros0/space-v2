@@ -22,6 +22,7 @@ Cross-cutting pieces:
 |---|---|
 | Token claims (`role`, `activeSeasonId`, `seasonAdminIds`, `groupLeaderIds`) | `lib/auth/scopes.ts`; tokens in `lib/auth/tokens.ts` |
 | Seat writes, lock order, refusals | `lib/roles/` |
+| Season passing: the three numbers, criteria, outlook, a student's progress | `lib/passing/` (`docs/rules/season-passing.md`); End's recompute `lib/seasons/end-scores.ts`; staff mark `lib/assignments/staff-mark.ts`, the one "submitted" definition `lib/assignments/submitted.ts`; score-changing staff writes lock via `lib/seasons/staff-write-lock.ts` |
 | Soft-delete filters | `lib/db/live.ts` |
 | Errors and responses | `lib/api-error.ts`, `lib/api-response.ts`, `lib/http/` (`idParam`, `notFound`, `parseOr400`), `lib/pagination.ts` |
 | Notifications, push, email | `lib/notifications.ts`, `lib/*-notifications.ts`, `lib/push.ts`, `lib/email.ts`, `lib/email-templates.ts` |

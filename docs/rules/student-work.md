@@ -14,6 +14,9 @@ assignment handed in and the last quiz taken, with See all to My work. Student H
 with the season card, then the next session, then To do; while check-in is open and they
 haven't checked in, the session leads. There is no attendance streak anywhere.
 
+An assignment staff marked submitted (owner 2026-11-12, `docs/rules/season-passing.md`) reads Done in My
+work with the line "Marked submitted by your leader"; it has no Submit and is never Overdue.
+
 **Multi-part assignments (spec 2026-11-10, `docs/rules/assignments.md`).** On My work and Home an
 assignment row "shows its parts count ("2 of 3 done") instead of a single status", and "Returned —
 needs changes" groups an assignment with any returned essay. Builder's wording, for the owner to

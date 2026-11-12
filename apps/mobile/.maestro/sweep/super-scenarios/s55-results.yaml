@@ -21,6 +21,13 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s55-02-results
+# The sweep's finished season was seeded straight into the database, so it has no stored score:
+# each row says so (a season ended with weighted passing shows "Score 72.5" and, against it, "Passed
+# below the mark" instead).
+- extendedWaitUntil:
+    visible: 'Ended before weighted passing'
+    timeout: 40000
+- takeScreenshot: s55-02a-results-score-labels
 - runFlow:
     file: ../_tap.yaml
     env:

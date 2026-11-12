@@ -1,4 +1,6 @@
 import { db } from "../../src/db/client";
+import { markSubmitted } from "../../src/lib/assignments/staff-mark";
+import { passCriteriaData } from "../../src/lib/passing/criteria";
 import { bestGraded } from "../../src/lib/quizzes/best-attempt";
 import { addQuizQuestion } from "../../src/lib/quizzes/questions";
 import type { SweepPeople } from "./people";
@@ -131,6 +133,7 @@ export async function seedActivity(people: SweepPeople) {
   await seedQuizTypes(people);
   await seedTimedQuizzes(people);
   await seedAdminScore(people);
+  await seedPassing(people, reading.id);
 
   return { reflection, reading, parts, onlineQuiz };
 }
@@ -287,6 +290,24 @@ async function seedAdminScore({ admin, student, season }: SweepPeople) {
       gradedAt: fromToday(0, 11),
     },
   });
+}
+
+/**
+ * Season passing (docs/rules/season-passing.md): criteria saved on the sweep season (40/30/30, mark 60),
+ * so the outlook, the Season progress card and End's criteria step read saved criteria, not the
+ * suggested ones; and one staff mark, the leader marking the student's "Read chapter 2" submitted
+ * (the student's "Marked submitted by your leader" and Undo on the staff mark sheet). The student is
+ * below the mark by construction: 100% attendance is 40 points, one of the season's assignments is
+ * a quarter of 30, and the quiz marks they hold are a small share of every quiz's total, so the
+ * outlook leads with "below the mark". Appended last, through the backend's own writers, so no id a
+ * flow names moves.
+ */
+async function seedPassing({ leader, student, season }: SweepPeople, readingId: number) {
+  await db.season.update({
+    where: { id: season.id },
+    data: passCriteriaData({ weights: { attendance: 40, assignments: 30, quizzes: 30 }, passMark: 60 }, new Date()),
+  });
+  await markSubmitted({ assignmentId: readingId, seasonId: season.id, studentUserId: student.id }, leader.id);
 }
 
 export type SweepActivity = Awaited<ReturnType<typeof seedActivity>>;

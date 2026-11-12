@@ -27,10 +27,13 @@ and Build 2 (see `docs/rules/roles.md`) and Build 3 (see `docs/rules/community-w
   /seasons/:id/end`; that season's admin, or Super) is refused with `season_unfinished` while any
   blocker stands: a SUBMITTED submission or quiz attempt not graded, a finished session with an
   ACTIVE student unmarked (only students enrolled by the time it started). `GET /seasons/:id/end-check` lists them with the students; the app shows
-  blockers, else the review list where everyone **passes unless marked** (the POST carries only
-  `notPassed`, with an optional staff-only reason). One transaction completes every ACTIVE
+  blockers, else the review list where each student is **pre-selected Passed when their weighted
+  score reaches the pass mark** (`docs/rules/season-passing.md`; the admin decides, the score only
+  pre-selects). The POST carries `notPassed` (optional staff-only reason), `passedNotes`, the criteria
+  and `reviewed`, which now also holds each score shown: the server recomputes and refuses
+  (`season_unfinished`) when one differs. One transaction completes every ACTIVE
   enrolment with its `result`, WITHDRAWN ones are untouched, and the season's people's sessions go
-  stale. Only Super reads and corrects results (`/seasons/:id/results`). `GET /seasons/overdue`
+  stale. A super or anyone with a SeasonAdmin row for the season reads and corrects results (`/seasons/:id/results`; owner 2026-11-12 "everything can be overridden by an admin or a super"); a current mentor never does. `GET /seasons/overdue`
   feeds the Today callout for ACTIVE seasons past their end date. **Finished seasons are locked and
   never reopen**; their students still read their own work, read-only (responses carry `readOnly`).
   A status change on an existing season is only DRAFT -> ACTIVE or COMPLETED <-> ARCHIVED; nothing

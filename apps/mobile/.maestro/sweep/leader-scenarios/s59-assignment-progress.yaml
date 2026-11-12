@@ -1,7 +1,9 @@
 # UI sweep s59 — an assignment's progress per part, one essay's review and the essay queue, as a
 # leader. Read-only: Mark reviewed and Return are never tapped. The seed
 # (apps/backend/scripts/seed-sweep/three-part.ts) has one student part-way and Salma finished,
-# her essay waiting review.
+# her essay waiting review. Assignment 2 ("Read chapter 2") is where the leader marked Samir submitted
+# for work done outside the app (activity.ts seedPassing): his row opens Undo, Salma's opens Mark as submitted.
+# Neither button is tapped.
 appId: com.jpc.space
 ---
 - runFlow:
@@ -65,3 +67,37 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s59-07-forum
+# The staff mark: Samir was marked submitted by the leader, Salma has nothing. A row's label starts with the name.
+- openLink: spacev2://assignment/2
+- extendedWaitUntil:
+    visible: '\d+ of \d+ students? finished'
+    timeout: 40000
+- scroll
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s59-08-marked-row
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Samir Student.*'
+- extendedWaitUntil:
+    visible: 'Undo, not submitted'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s59-09-undo-sheet
+- tapOn: 'Cancel'
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Salma Student.*'
+- extendedWaitUntil:
+    visible: 'Mark as submitted'
+    timeout: 40000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s59-10-mark-sheet
+- tapOn: 'Cancel'
