@@ -43,6 +43,8 @@ export function useSaveQuizGrades(id: number) {
     onSuccess: (sheet) => {
       queryClient.setQueryData(queryKeys.quizzes.grades(id), sheet);
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+      // Season passing (the outlook, a student's progress) counts quiz scores.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.passing.all });
     },
   });
 }
@@ -103,6 +105,8 @@ export function useMarkAttempt(id: number) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.attempts(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+      // Season passing (the outlook, a student's progress) counts quiz scores.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.passing.all });
     },
   });
 }
@@ -126,6 +130,8 @@ export function useReopenAttempt(id: number) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.live(id) });
       // A reopened attempt is no longer graded, so the lists' "2/2 graded" moves.
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+      // Season passing (the outlook, a student's progress) counts quiz scores.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.passing.all });
     },
   });
 }

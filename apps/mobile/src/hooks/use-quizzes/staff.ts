@@ -102,6 +102,8 @@ export function useQuizLive(id: number | null, polling: boolean): UseQueryResult
 function invalidateAfterScore(queryClient: ReturnType<typeof useQueryClient>, id: number) {
   void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.detail(id) });
   void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
+  // Season passing (the outlook, a student's progress) counts the admin's score.
+  void queryClient.invalidateQueries({ queryKey: queryKeys.passing.all });
 }
 
 /**

@@ -41,6 +41,8 @@ export function useSaveAttendance(sessionId: number | null) {
       // engagement score counts them.
       void queryClient.invalidateQueries({ queryKey: queryKeys.students.details() });
       void queryClient.invalidateQueries({ queryKey: queryKeys.engagement.all });
+      // Season passing (the outlook, a student's progress) counts attendance.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.passing.all });
     },
   });
 }

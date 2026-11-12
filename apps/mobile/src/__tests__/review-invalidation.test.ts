@@ -14,6 +14,7 @@ describe("reviewInvalidations", () => {
         queryKeys.engagement.student(9),
         queryKeys.assignments.detail(41),
         queryKeys.assignments.progress(41),
+        queryKeys.passing.all,
       ]),
     );
   });

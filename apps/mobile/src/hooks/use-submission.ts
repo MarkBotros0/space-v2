@@ -139,7 +139,7 @@ export function useReviewEssay(publicId: string) {
 
 /**
  * Every cache a verdict makes stale: the essay and the queues, the student's
- * submissions tab and engagement score, and the assignment's detail, progress
+ * submissions tab, engagement score and season passing, and the assignment's detail, progress
  * and the lists (a return takes the assignment out of the submitted count).
  * Without the detail in cache the student and assignment are unknown, so
  * their subtrees are invalidated whole.
@@ -154,6 +154,8 @@ export function reviewInvalidations(
     queryKeys.assignments.lists(),
     // Both the staff read and the student's own "self" arm sit under student(id).
     detail ? queryKeys.engagement.student(detail.studentUserId) : queryKeys.engagement.all,
+    // A return takes the assignment out of season passing's submitted count.
+    queryKeys.passing.all,
   ];
   if (!detail) {
     return [

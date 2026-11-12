@@ -158,7 +158,7 @@ export const queryKeys = {
     progresses: () => [...queryKeys.assignments.all, "progress"] as const,
     progress: (id: number | null) => [...queryKeys.assignments.progresses(), id] as const,
   },
-  /** Season passing (attendance, assignments, quizzes and the weighted score): a staff mark moves all of it. */
+  /** Season passing (attendance, assignments, quizzes, the weighted score): a write that moves one clears `all`. */
   passing: {
     all: ["passing"] as const,
     // Nullable per this file's header convention, no -1 sentinel.
