@@ -158,6 +158,13 @@ export const queryKeys = {
     progresses: () => [...queryKeys.assignments.all, "progress"] as const,
     progress: (id: number | null) => [...queryKeys.assignments.progresses(), id] as const,
   },
+  /** Season passing (attendance, assignments, quizzes and the weighted score): a staff mark moves all of it. */
+  passing: {
+    all: ["passing"] as const,
+    // Nullable per this file's header convention, no -1 sentinel.
+    outlook: (seasonId: number | null) => [...queryKeys.passing.all, "outlook", { seasonId }] as const,
+    student: (studentId: number | null) => [...queryKeys.passing.all, "student", { studentId }] as const,
+  },
   submissions: {
     all: ["submissions"] as const,
     details: () => [...queryKeys.submissions.all, "detail"] as const,

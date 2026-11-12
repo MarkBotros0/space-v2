@@ -82,8 +82,12 @@ export function partChips(parts: AssignmentPart[], works: PartWork[]): ChipSpec[
   });
 }
 
-/** Finished: submitted, with no part left (a returned essay counts as left). */
+/**
+ * Finished: submitted, with no part left (a returned essay counts as left), or marked submitted by
+ * staff, which counts whatever the parts say (a returned essay takes the mark away).
+ */
 export function isFinished(parts: AssignmentPart[], row: ProgressRow): boolean {
+  if (row.staffMark !== null) return true;
   return row.submittedAt !== null && partsLeft(parts, row.parts) === 0;
 }
 
@@ -103,8 +107,21 @@ export function orderProgress(
   };
 }
 
-/** The row's standing in one fact: "2 parts left", "Every part done, not submitted yet", "Submitted Mar 30, …". */
+/** "Marked submitted by Grace", or just "Marked submitted" once the account that marked it is gone. */
+export function markedLine(markedByName: string | null): string {
+  return markedByName === null ? "Marked submitted" : `Marked submitted by ${markedByName}`;
+}
+
+/**
+ * The row's standing in one fact: "2 parts left", "Every part done, not submitted yet", "Submitted Mar 30, …",
+ * or "Marked submitted by Grace". A student's own submission in the app stands beside a mark.
+ */
 export function progressLine(parts: AssignmentPart[], row: ProgressRow): string {
+  if (row.staffMark !== null) {
+    return row.submittedAt === null
+      ? markedLine(row.staffMark.markedByName)
+      : `Submitted ${formatShortDateTime(row.submittedAt)}`;
+  }
   const left = partsLeft(parts, row.parts);
   if (left > 0) return `${plural(left, "part")} left`;
   if (row.submittedAt === null) return "Every part done, not submitted yet";

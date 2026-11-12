@@ -3,6 +3,8 @@
  * instructions, then the checklist of parts and Submit in the pinned bar.
  * Submit unlocks only when every part is done, videos included, and the
  * caption above it names what is left. Each part opens on its own screen.
+ * Marked submitted by staff, it reads "Marked submitted by your leader" with
+ * Done, and nothing is owed: no Submit, no Overdue.
  */
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -62,9 +64,25 @@ function submitBlocker(detail: AssignmentDetail, works: PartWork[]): string | nu
   return submitBlockerLine(detail.parts, works);
 }
 
+/** Staff marked it submitted and the student hasn't submitted it in the app (their own submission reads as usual). */
+const markedOnly = (detail: AssignmentDetail) => detail.my?.staffMarked === true && detail.my.submittedAt === null;
+
+/** "Done" and who counted it, when staff marked it submitted. */
+function MarkedLine({ detail }: { detail: AssignmentDetail }) {
+  if (!markedOnly(detail)) return null;
+  return (
+    <View className="flex-row flex-wrap items-center gap-2">
+      <StatusChip tone="ok" label="Done" />
+      <Text variant="subhead" className="min-w-0 shrink">
+        Marked submitted by your leader
+      </Text>
+    </View>
+  );
+}
+
 /** The due date in words, with "Overdue" beside it while there is still something to hand in. */
 function DueLine({ detail }: { detail: AssignmentDetail }) {
-  const owed = !detail.readOnly && detail.my?.submittedAt == null;
+  const owed = !detail.readOnly && detail.my?.submittedAt == null && !markedOnly(detail);
   return (
     <View className="flex-row flex-wrap items-center gap-2">
       {detail.isOverdue && owed ? <StatusChip tone="bad" label="Overdue" /> : null}
@@ -109,7 +127,7 @@ function StudentAssignment({ detail, refresh }: { detail: AssignmentDetail; refr
   const ready = canSubmit(detail.parts, works);
   const blocker = submitBlocker(detail, works);
   const copy = submitCopy(detail.parts.filter((p) => p.kind === "ESSAY").length);
-  const offerSubmit = !detail.readOnly && submittedAt === null && detail.parts.length > 0;
+  const offerSubmit = !detail.readOnly && submittedAt === null && !markedOnly(detail) && detail.parts.length > 0;
 
   const footer = offerSubmit ? (
     <SaveBar
@@ -135,6 +153,7 @@ function StudentAssignment({ detail, refresh }: { detail: AssignmentDetail; refr
         {submittedAt !== null ? (
           <Text variant="subhead">{`Submitted ${keepTogether(formatDate(submittedAt))}`}</Text>
         ) : null}
+        <MarkedLine detail={detail} />
         {detail.readOnly ? (
           <Text variant="subhead" className="rounded-group bg-surface p-4 text-muted-foreground">
             {READ_ONLY}

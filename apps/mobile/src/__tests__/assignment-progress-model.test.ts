@@ -118,6 +118,30 @@ describe("orderProgress and progressLine", () => {
   });
 });
 
+describe("a staff mark", () => {
+  const parts = [video(1), essay(2)];
+  const mark = (markedByName: string | null) => ({ markedAt: "2099-03-30T10:00:00.000Z", markedByName });
+  const marked = (markedByName: string | null, submittedAt: string | null = null): ProgressRow => ({
+    ...row("Amal", submittedAt, []),
+    staffMark: mark(markedByName),
+  });
+
+  it("counts as submitted and finished, whatever the parts say", () => {
+    const { unfinished, finished } = orderProgress(parts, [marked("Grace"), row("Badr", null, [], 2)]);
+    expect(finished.map((r) => r.studentUserId)).toEqual([1]);
+    expect(unfinished.map((r) => r.studentUserId)).toEqual([2]);
+  });
+
+  it('reads "Marked submitted", with who marked it when their account is still there', () => {
+    expect(progressLine(parts, marked("Grace Leader"))).toBe("Marked submitted by Grace Leader");
+    expect(progressLine(parts, marked(null))).toBe("Marked submitted");
+  });
+
+  it("an app submission stands beside the mark", () => {
+    expect(progressLine(parts, marked("Grace", "2099-03-30T10:00:00.000Z"))).toMatch(/^Submitted Mar 30/);
+  });
+});
+
 describe("handedInEssays", () => {
   const parts = [essay(1), essay(2), essay(3)];
   it("lists every essay handed in, in the admin's order, named as its chip", () => {

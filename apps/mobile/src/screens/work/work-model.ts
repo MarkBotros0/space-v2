@@ -69,6 +69,12 @@ function partsNote(a: StudentAssignmentListItem): string | null {
   return `${a.partsDone} of ${a.partsTotal} done`;
 }
 
+/** What the student reads when staff marked the assignment submitted for them. */
+const STAFF_MARKED = "Marked submitted by your leader";
+
+/** Marked by staff and not submitted in the app: a submission of their own stands and reads as usual. */
+const markedOnly = (a: StudentAssignmentListItem) => a.staffMarked && a.submittedAt === null;
+
 export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string): WorkRow {
   const row = {
     key: `assignment-${a.id}`,
@@ -81,6 +87,11 @@ export function assignmentRow(a: StudentAssignmentListItem, todayOrgDay: string)
   if (a.returned || a.status === "RETURNED") {
     const chip = statusChip("submission", "RETURNED");
     return { ...row, chip, ...assignmentLines("Returned — needs changes", a.dueOrgDay, chip, todayOrgDay) };
+  }
+  // Staff marked it submitted: done, whatever the parts say (a return takes the mark away).
+  if (markedOnly(a)) {
+    const chip: ChipSpec = { tone: "ok", label: "Done" };
+    return { ...row, chip, ...assignmentLines(STAFF_MARKED, a.dueOrgDay, chip, todayOrgDay) };
   }
   switch (a.status) {
     case "SUBMITTED":
@@ -201,6 +212,8 @@ function submittedAssignmentRow(a: StudentAssignmentListItem): WorkRow {
     title: a.title,
     href: { pathname: "/assignment/[id]" as const, params: { id: String(a.id) } },
   };
+  // Marked submitted by staff: done, with nothing waiting for review.
+  if (markedOnly(a)) return { ...base, subtitle: STAFF_MARKED, chip: { tone: "ok", label: "Done" } };
   // Videos and a forum post are never reviewed: with no essay, a submitted assignment is done.
   if (!a.hasEssay) {
     return {

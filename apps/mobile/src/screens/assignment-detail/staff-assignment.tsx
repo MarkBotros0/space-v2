@@ -172,7 +172,7 @@ function StaffAssignment({ detail, refresh }: { detail: AssignmentDetail; refres
         {showsProgress ? (
           <View>
             <ListSectionHeader>Progress</ListSectionHeader>
-            <AssignmentProgressList query={progress} parts={detail.parts} />
+            <AssignmentProgressList query={progress} parts={detail.parts} assignmentId={detail.id} />
           </View>
         ) : null}
       </View>

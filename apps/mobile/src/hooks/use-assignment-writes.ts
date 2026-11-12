@@ -1,12 +1,14 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import {
   assignmentDeletedResponseSchema,
   assignmentDetailSchema,
   assignmentSavedResponseSchema,
+  assignmentStaffMarkSchema,
   type AssignmentDetail,
   type AssignmentWriteRequest,
 } from "@space/shared";
 
+import { apiClient } from "../lib/api-client";
 import { needsConfirmation } from "../lib/api-error";
 import { DASHBOARD_META } from "../lib/dashboard-invalidation";
 import { queryKeys } from "../lib/query-keys";
@@ -88,5 +90,45 @@ export function useDeleteAssignment() {
       queryClient.removeQueries({ queryKey: queryKeys.assignments.progress(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.lists() });
     },
+  });
+}
+
+/**
+ * What a staff mark moves: the assignment's progress, the season's assignment lists (their
+ * counts), the students' pages and every passing figure. Also after a refusal, since a 409
+ * (season_finished, work_changed) means the screen is showing an old answer.
+ */
+function invalidateAfterMark(queryClient: QueryClient, assignmentId: number) {
+  void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.progress(assignmentId) });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.assignments.lists() });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.students.all });
+  void queryClient.invalidateQueries({ queryKey: queryKeys.passing.all });
+}
+
+/** Staff mark the assignment submitted for a student who did it outside the app (a second mark keeps the first). */
+export function useMarkSubmitted(assignmentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: DASHBOARD_META,
+    mutationFn: ({ studentUserId }: { studentUserId: number }) =>
+      apiSend(
+        "put",
+        `/api/v1/assignments/${assignmentId}/submitted-marks/${studentUserId}`,
+        undefined,
+        assignmentStaffMarkSchema,
+      ),
+    onSettled: () => invalidateAfterMark(queryClient, assignmentId),
+  });
+}
+
+/** Takes a staff mark away, whoever made it; 204, so there is no body to parse. */
+export function useUndoMarkSubmitted(assignmentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    meta: DASHBOARD_META,
+    mutationFn: async ({ studentUserId }: { studentUserId: number }) => {
+      await apiClient.delete(`/api/v1/assignments/${assignmentId}/submitted-marks/${studentUserId}`);
+    },
+    onSettled: () => invalidateAfterMark(queryClient, assignmentId),
   });
 }
