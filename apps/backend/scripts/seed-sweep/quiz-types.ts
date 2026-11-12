@@ -238,7 +238,9 @@ async function submitAndMark(quizId: number, attemptId: number, markedById: numb
           correct: !wrongBlanks.includes(typed.find((t) => t.blankId === b.id)?.text ?? ""),
         })),
   );
-  await gradeAttempt(quizId, attemptId, marks, markedById);
+  // The seed writes as a super would: the quiz's season, finished or not.
+  const { seasonId } = await db.quiz.findUniqueOrThrow({ where: { id: quizId }, select: { seasonId: true } });
+  await gradeAttempt(quizId, attemptId, marks, markedById, { id: seasonId, mayWriteFinished: true });
   // A fixed time of day, so the sweep's shots don't change from run to run.
   await db.quizAttempt.update({ where: { id: attemptId }, data: { gradedAt: fromToday(0, 9) } });
 }
