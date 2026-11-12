@@ -8,26 +8,20 @@ everything marked *(my call)* is the builder's choice and can be changed.
 Staff judge whether a student passed a season on three things: attendance, assignments and
 quizzes. Today they see attendance and assignments, quiz results are scattered, and at End
 someone ticks the students who didn't pass by hand. The owner wants one clear progress picture
-per student and a pass decision that comes from the numbers, set per season.
+per student, a score that helps staff select who passes and spot who needs to improve, and the
+final say left with the admin or super.
 
 ## Goals
 
 1. **Progress is clear to staff (owner).** Admins, leaders and supers see, for each student in a
    season, three numbers: attendance %, assignments submitted / total, and quiz %.
 2. **Quiz % (owner):** "the total score that the user got against the whole total quizzes grades".
-3. **Passing by weighted score (owner).** When a season ends, the admin picks a weight for each
-   of the three numbers (percentages adding up to 100) and a pass mark. Each student's one score
-   is the weighted sum; a student at or above the pass mark passes.
+3. **A weighted score (owner).** A weight for each of the three numbers (percentages adding up
+   to 100) and a pass mark; each student's one score is the weighted sum.
 4. **The score is never edited (owner):** "an admin should not be able to just change the score".
    Wrong inputs are fixed at the source: attendance (staff re-save a session), quiz scores (the
    admin's manual score, paper grades), assignments (new: mark as submitted, below).
-4b. **The result can be overridden (owner, 2026-11-12):** "Everything can be overridden by an admin
-   or a super user." The season's admin or a super can set a student's result to Passed or Did not
-   pass against their score, in the End preview and after End. *(My calls:)* an override needs a
-   short reason (10 to 1000 characters), records who and when, keeps the computed score untouched,
-   and shows on the row as "Passed by {name}: {reason}" next to the score. Overriding to Passed on
-   a graduating season graduates the student (as today's correction does); overriding to Did not
-   pass never removes alumni status (as today). Leaders can't override.
+4b. **The admin decides; the score helps (owner).** See "The score is a helper".
 5. **Staff mark an assignment as submitted (owner):** the season's admin, a super **and the
    student's leader** can mark an assignment as submitted for a student who did it outside the app.
 6. **Super user friendly** for admin and super (owner), in the app's own design kit.
@@ -82,26 +76,58 @@ One backend function computes all three for a set of students in a season; every
   *(my call, so a leader scans a group without opening every student)*.
 - Leaders see their own groups' students; admins and supers see the season.
 
-## Ending the season with weighted passing
+## The score is a helper (owner, 2026-11-12)
 
-The End flow keeps its blockers step. The review step becomes **Pass criteria**:
+"The new scoring criteria is only a helper for the admin or the super to bulk select students that
+will pass, and to also notice which students that need enhancing their assignments or enhancing
+their quizzes to take it as a reattempt in order to enhance their own score to pass the season."
 
-1. Three weight fields (Attendance, Assignments, Quizzes) as whole percentages, with a live
-   "Total 100%" line that must read exactly 100 before Continue is enabled; and a pass mark
-   (0–100). Defaults: the last values used in this season's community, else 40 / 30 / 30 and 60
-   *(my call)*.
-2. A live preview: "18 pass · 4 don't", then every student with their score and their three
-   numbers, those who don't pass first. Each row has "Override result" (reason required); an
-   overridden row is labelled, and the counts include it.
+So the score never decides on its own. It does two jobs: it pre-selects who passes at End, and it
+shows, during the season, who is below the mark and which number is pulling them down.
+
+### Pass criteria on the season
+
+- The season's admin or a super sets three weights (whole percentages, a live "Total 100%" that must
+  read exactly 100) and a pass mark (0-100), **at any time while the season is ACTIVE**, from the
+  season page *(my call: set early so the outlook works all season)*. Editable until End.
+  Defaults: the last values used in any season, else 40 / 30 / 30 and 60.
+
+### Passing outlook (during the season)
+
+- A screen from the season page: "14 on track · 6 below the mark", then every student with their
+  score, those below the mark first. Each student below the mark shows how far they are ("8 points
+  short") and their weakest number ("Quizzes 45%").
+- From a student's row: their missing assignments, and their quizzes with the lowest scores, with
+  the actions that already exist: staff **Reopen retake** on a quiz, **Mark as submitted** on an
+  assignment, and sending the student a reminder through existing announcements *(my call: no new
+  messaging)*.
+- Admin and super see the whole season; leaders see their own groups' students, read-only on the
+  criteria *(my call: leaders are the ones who push students to improve)*.
+
+### Ending the season
+
+The End flow keeps its blockers step. The review step:
+
+1. The criteria (pre-filled from the season, adjustable here).
+2. Every student with their score and three numbers, **pre-selected Passed when their score reaches
+   the pass mark**, with "Select all on track" / "Clear" bulk actions and a per-row Passed / Did not
+   pass toggle. The admin decides; the score only pre-selects. A row chosen against its score is
+   labelled "Passed below the mark" / "Did not pass above the mark" *(my call: no reason required,
+   an optional note)*.
 3. Confirm sheet: "End {season}? 18 students pass, 4 don't." On a graduating season: "18
    students graduate as JPCS-YY."
 
 - Who: the season's admin or a super (as End today).
-- Saved on the season: the three weights and the pass mark, plus each enrolment's score and its
-  three numbers at End, so the result can always be explained later *(my call)*.
-- The server recomputes everything on End and refuses if anything changed since the preview
-  (the existing `reviewed` check, extended to the criteria and the computed results).
-- The score: Σ(number × weight) / 100, rounded to one decimal; pass when score ≥ pass mark.
+- Saved: the weights and pass mark, each enrolment's score and three numbers at End, its result
+  and whether it was chosen against the score, with who and when.
+- The server recomputes the scores on End and refuses if they changed since the preview (the
+  existing `reviewed` check, extended).
+
+### After End
+
+The season's admin or a super can change a student's result afterwards **(owner: "Everything can be
+overridden by an admin or a super user")**; today only a super can. Passed on a graduating season
+graduates them; Did not pass never removes alumni status (as today). The stored score is unchanged.
 
 ## Constraints
 
@@ -130,12 +156,11 @@ The End flow keeps its blockers step. The review step becomes **Pass criteria**:
   through one shared definition. A marked assignment also counts as complete; it puts nothing in the
   review queue, and reminders skip it. Leaders mark for students in their groups while the season
   is ACTIVE; any staff member who may mark may undo, including a mark another made.
-- **End request.** `notPassed` is replaced by `{ weights, passMark }` plus the `reviewed` check
-  (now over the criteria and the computed results). The app is TestFlight-only, so no older client
-  needs the old shape.
+- **End request.** Keeps `notPassed` (the admin's final selection) and adds `{ weights, passMark }`;
+  the `reviewed` check now also covers the criteria and the computed scores. The app is TestFlight-only, so no older
+  client needs the old shape.
 - **Seasons ended before this.** No weights or stored scores: their results show as they are, with
-  "Ended before weighted passing". Defaults for the next End are the last values used in any
-  season, else 40 / 30 / 30 and 60.
+  "Ended before weighted passing".
 - **Students list** loads the three numbers per page with the list, not per row.
 
 ## Left to the builder
