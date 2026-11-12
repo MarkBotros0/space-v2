@@ -73,5 +73,12 @@ export function toListItem(u: ListRow): StudentListItem {
     activeSeasonTitle: u.seasonEnrollments[0]?.season.title ?? null,
     currentGroupName: u.groupStudentMemberships[0]?.group.name ?? null,
     droppedEnrollment: null,
+    progress: null,
   };
+}
+
+/** The row's current season and its group there, for `withProgress`; null without one. */
+export function currentEnrolmentOf(u: ListRow): { seasonId: number; groupId: number | null } | null {
+  const e = u.seasonEnrollments[0];
+  return e ? { seasonId: e.season.id, groupId: e.groupId } : null;
 }

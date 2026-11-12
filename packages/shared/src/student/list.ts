@@ -47,6 +47,19 @@ const studentListItemSchema = z.object({
    * three times, and screens must key rows on `enrollmentId`, not `id`.
    */
   droppedEnrollment: droppedEnrollmentSummarySchema.nullable(),
+  /**
+   * The three passing numbers in the row's current season, as whole percentages (null where there
+   * is nothing to count), when the caller may score the student there. Null otherwise, and on the
+   * alumni and dropped lists. Optional for older fixtures; the backend always sends it.
+   */
+  progress: z
+    .object({
+      attendancePct: z.number().int().nullable(),
+      assignmentsPct: z.number().int().nullable(),
+      quizPct: z.number().int().nullable(),
+    })
+    .nullable()
+    .optional(),
 });
 export type StudentListItem = z.infer<typeof studentListItemSchema>;
 

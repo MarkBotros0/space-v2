@@ -22,7 +22,7 @@ import { round2, toScore } from "../quizzes/score";
  */
 
 /** The quizzes that count: every PAPER quiz and every published ONLINE quiz. */
-const COUNTED_QUIZ = { OR: [{ kind: "PAPER" as const }, { publishedAt: { not: null } }] };
+export const COUNTED_QUIZ = { OR: [{ kind: "PAPER" as const }, { publishedAt: { not: null } }] };
 
 type Client = Prisma.TransactionClient;
 

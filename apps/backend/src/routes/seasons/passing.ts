@@ -4,6 +4,8 @@ import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import { idParam } from "../../lib/http/params";
 import { notFound } from "../../lib/http/not-found";
 import { savePassCriteria } from "../../lib/passing/criteria";
+import { loadPassingOutlook } from "../../lib/passing/outlook";
+import { staffScopeForSeason } from "../../lib/permissions";
 import { findLiveSeason } from "../../lib/queries/seasons";
 import { isAdminOfSeason } from "../../lib/rbac";
 import { requireUser } from "../../middleware/require-auth";
@@ -26,4 +28,19 @@ export async function putPassCriteria(req: Request, res: Response) {
   }
   if (!(await findLiveSeason(id, { id: true }))) return notFound(res, "Season");
   return apiOk(res, { criteria: await savePassCriteria(id, parsed.data, new Date()) });
+}
+
+/**
+ * The season's passing outlook: the season's admin or a super see every student, a leader their own
+ * groups' (`staffScopeForSeason`); a mentor, a student or another season's admin gets 403.
+ */
+export async function getPassingOutlook(req: Request, res: Response) {
+  const user = requireUser(req);
+  const id = idParam(res, req.params.id, "season");
+  if (id === null) return;
+  const scope = await staffScopeForSeason(user, id);
+  if (scope === null) return forbidden(res);
+  const season = await findLiveSeason(id, { id: true, status: true });
+  if (!season) return notFound(res, "Season");
+  return apiOk(res, await loadPassingOutlook(user, season, scope));
 }

@@ -116,3 +116,81 @@ export function weakestNumber(p: PassingPcts, w: PassWeights): PassingNumberKey 
   }
   return weakest;
 }
+
+/**
+ * The weights the score is computed with: a weight on a number the season has nothing for counts as
+ * 0 (the criteria may be a default inherited from another season), and `ignored` names those
+ * numbers so the screen can say so rather than re-scale every student silently.
+ */
+export function usableWeights(
+  w: PassWeights,
+  available: SeasonAvailability,
+): { weights: PassWeights; ignored: PassingNumberKey[] } {
+  const ignored = KEYS.filter((key) => w[key] > 0 && !available[key]);
+  const weights = { ...w };
+  for (const key of ignored) weights[key] = 0;
+  return { weights, ignored };
+}
+
+const passingNumberKeySchema = z.enum(["attendance", "assignments", "quizzes"]);
+
+/** One student on the passing outlook (`GET /seasons/:id/passing`). */
+const passingOutlookRowSchema = z.object({
+  userId: z.number().int(),
+  name: z.string(),
+  groupName: z.string().nullable(),
+  numbers: passingNumbersSchema,
+  score: z.number().nullable(),
+  /** A weighted number had nothing to count for this student, so the rest were re-scaled. */
+  rescaled: z.boolean(),
+  /** How far below the mark, one decimal; null at or above it, or with no score. */
+  pointsShort: z.number().nullable(),
+  weakest: passingNumberKeySchema.nullable(),
+});
+export type PassingOutlookRow = z.infer<typeof passingOutlookRowSchema>;
+
+/** The season's passing outlook: below the mark first (most short first), then no score, then on track. */
+export const passingOutlookSchema = z.object({
+  criteria: passCriteriaSchema,
+  isDefault: z.boolean(),
+  available: seasonAvailabilitySchema,
+  /** Numbers the criteria weight but the season has nothing for: counted as weight 0. */
+  weightsIgnored: z.array(passingNumberKeySchema),
+  canEditCriteria: z.boolean(),
+  onTrack: z.number().int(),
+  below: z.number().int(),
+  rows: z.array(passingOutlookRowSchema),
+});
+export type PassingOutlook = z.infer<typeof passingOutlookSchema>;
+
+/** A student's progress in one season, for staff (`GET /students/:id/progress`). */
+export const studentProgressSchema = z.object({
+  seasonId: z.number().int(),
+  seasonTitle: z.string(),
+  seasonActive: z.boolean(),
+  /** The caller may mark this student's assignments as submitted (and undo). */
+  canMark: z.boolean(),
+  available: seasonAvailabilitySchema,
+  numbers: passingNumbersSchema,
+  /** Not submitted first. */
+  assignments: z.array(
+    z.object({
+      id: z.number().int(),
+      title: z.string(),
+      dueAt: z.string().nullable(),
+      submitted: z.enum(["app", "staff"]).nullable(),
+      staffMark: z.object({ markedAt: z.string(), markedByName: z.string().nullable() }).nullable(),
+    }),
+  ),
+  /** Lowest score / maxScore first; no score counts as 0. */
+  quizzes: z.array(
+    z.object({
+      id: z.number().int(),
+      title: z.string(),
+      kind: z.enum(["PAPER", "ONLINE"]),
+      score: z.number().nullable(),
+      maxScore: z.number(),
+    }),
+  ),
+});
+export type StudentProgress = z.infer<typeof studentProgressSchema>;

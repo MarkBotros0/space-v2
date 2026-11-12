@@ -12,6 +12,7 @@ import {
   type PassingNumberKey,
   type PassingPcts,
   type PassWeights,
+  usableWeights,
 } from "../index";
 
 const w404030: PassWeights = { attendance: 40, assignments: 30, quizzes: 30 };
@@ -104,6 +105,31 @@ describe("season passing score", () => {
     const pcts: PassingPcts = passingPcts(numbers);
     const order: PassingNumberKey[] = ["attendance", "assignments", "quizzes"];
     expect(order.map((k) => pcts[k])).toEqual([(2 / 3) * 100, 50, (19.5 / 35) * 100]);
+  });
+
+  it("a ratio just under a .x5 boundary in floating point still rounds half up", () => {
+    // 51 / 80 is 63.75% (63.74999… in floating point): plain Math.round would show 63.7.
+    const onlyQuizzes = { attendance: 0, assignments: 0, quizzes: 100 };
+    const quizzes = (scored: number) =>
+      passingPcts({
+        attendance: { attended: 0, total: 0 },
+        assignments: { submitted: 0, total: 0 },
+        quizzes: { scored, max: 80 },
+      });
+    expect(weightedScore(quizzes(51), onlyQuizzes).score).toBe(63.8);
+    expect(weightedScore(quizzes(23), onlyQuizzes).score).toBe(28.8);
+  });
+
+  it("a weight on a number the season has nothing for counts as 0", () => {
+    const available = { attendance: true, assignments: true, quizzes: false };
+    expect(usableWeights(w404030, available)).toEqual({
+      weights: { attendance: 40, assignments: 30, quizzes: 0 },
+      ignored: ["quizzes"],
+    });
+    const all = { attendance: true, assignments: true, quizzes: true };
+    expect(usableWeights(w404030, all)).toEqual({ weights: w404030, ignored: [] });
+    // A zero weight on an empty number is nothing to ignore.
+    expect(usableWeights({ attendance: 60, assignments: 40, quizzes: 0 }, available).ignored).toEqual([]);
   });
 
   it("defaults are 40 / 30 / 30 and 60", () => {

@@ -5,7 +5,7 @@ import { createEnrollment, restoreEnrollment, updateEnrollment } from "./enrollm
 import { resendStudentInvite } from "./invite";
 import { deleteStudent, graduateStudent } from "./lifecycle";
 import { createStudent, updateStudent } from "./profile";
-import { getStudent, getStudentAttendance, getStudentList, getStudentSubmissions } from "./reads";
+import { getStudent, getStudentAttendance, getStudentList, getStudentProgress, getStudentSubmissions } from "./reads";
 
 /**
  * Students: the role-scoped list and detail, the two history sub-resources,
@@ -20,6 +20,7 @@ studentsRouter.get("/", getStudentList);
 studentsRouter.get("/:id", getStudent);
 studentsRouter.get("/:id/attendance", getStudentAttendance);
 studentsRouter.get("/:id/submissions", getStudentSubmissions);
+studentsRouter.get("/:id/progress", getStudentProgress);
 studentsRouter.post("/", createStudent);
 studentsRouter.patch("/:id", updateStudent);
 studentsRouter.post("/:id/enrollments", createEnrollment);

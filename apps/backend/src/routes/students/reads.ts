@@ -1,9 +1,12 @@
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
-import { apiOk, forbidden } from "../../lib/api-response";
+import { apiError, apiOk, forbidden } from "../../lib/api-response";
 import type { SessionUser } from "../../lib/auth/tokens";
-import { canViewStudent } from "../../lib/permissions";
+import { canViewStudent, pickScoredEnrollment } from "../../lib/permissions";
+import { loadStudentProgress } from "../../lib/passing/student-progress";
+import { findLiveSeason } from "../../lib/queries/seasons";
+import { parseId } from "../../lib/parse-id";
 import {
   listStudents,
   loadStudentAttendanceHistory,
@@ -100,4 +103,22 @@ export async function getStudentSubmissions(req: Request, res: Response) {
   const target = await resolveHistoryTarget(req, res);
   if (!target) return;
   return apiOk(res, { submissions: await loadStudentSubmissions(target.user, target.id) });
+}
+
+/**
+ * A student's season progress, for staff (season passing): the three numbers, their assignments and
+ * their quizzes. The season is picked and gated as the engagement card's (`pickScoredEnrollment`,
+ * `?seasonId`); a student gets 403, their own record included. No season to score: 404 `no_season`.
+ */
+export async function getStudentProgress(req: Request, res: Response) {
+  const target = await resolveHistoryTarget(req, res);
+  if (!target) return;
+  const requested = parseId(typeof req.query.seasonId === "string" ? req.query.seasonId : undefined);
+  const picked = await pickScoredEnrollment(target.user, target.id, requested);
+  if (picked === "forbidden") return forbidden(res);
+  const season =
+    picked === "no_season" ? null : await findLiveSeason(picked.seasonId, { id: true, title: true, status: true });
+  const progress = season ? await loadStudentProgress(target.user, season, target.id) : null;
+  if (!progress) return apiError(res, "no_season", "This student has no season to score.", 404);
+  return apiOk(res, progress);
 }

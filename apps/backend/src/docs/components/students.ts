@@ -39,6 +39,22 @@ export const studentSchemas = {
         type: ["string", "null"],
         description: "Advisory: the most recent GroupStudent membership, any season (C9).",
       },
+      progress: {
+        description:
+          "The three passing numbers in the row's current season as whole percentages (null where there is nothing to count), when the caller may score the student there (as the engagement card). Null otherwise, and on the alumni and dropped lists. Loaded per page.",
+        oneOf: [
+          {
+            type: "object",
+            required: ["attendancePct", "assignmentsPct", "quizPct"],
+            properties: {
+              attendancePct: { type: ["integer", "null"] },
+              assignmentsPct: { type: ["integer", "null"] },
+              quizPct: { type: ["integer", "null"] },
+            },
+          },
+          { type: "null" },
+        ],
+      },
       droppedEnrollment: {
         description:
           "Non-null only on `status=dropped` rows, which are enrollment-keyed — key rows on `enrollmentId`, not the user id.",

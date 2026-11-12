@@ -16,8 +16,11 @@ import {
   currentFactsSelect,
   listSelect,
   toListItem,
+  currentEnrolmentOf,
+  type ListRow,
   type StudentListResult,
 } from "./list-row";
+import { withProgress } from "./list-progress";
 import { listDroppedEnrollments } from "./dropped";
 
 export type { StudentListResult } from "./list-row";
@@ -38,6 +41,13 @@ function columnOrderBy(query: StudentListQuery): Prisma.UserOrderByWithRelationI
 }
 
 type RelatedSort = "university" | "season" | "group";
+
+/** A page's rows as list items: the season line, and the passing numbers except on the alumni list. */
+async function toItems(page: ListRow[], user: SessionUser, query: StudentListQuery) {
+  const items = await withLastSeason(page.map(toListItem), user);
+  if (query.status === "alumni") return items;
+  return withProgress(items, user, page.map(currentEnrolmentOf));
+}
 
 function sortKeySelect(user: SessionUser) {
   return {
@@ -78,7 +88,7 @@ async function listByRelatedSort(
     return row ? [row] : [];
   });
   return {
-    students: await withLastSeason(page.map(toListItem), user),
+    students: await toItems(page, user, query),
     nextCursor: start + query.limit < keyed.length ? (page[page.length - 1]?.id ?? null) : null,
     total: keyed.length,
   };
@@ -173,7 +183,7 @@ export async function listStudents(user: SessionUser, query: StudentListQuery): 
 
   const page = rows.slice(0, query.limit);
   return {
-    students: await withLastSeason(page.map(toListItem), user),
+    students: await toItems(page, user, query),
     nextCursor: rows.length > query.limit ? (page[page.length - 1]?.id ?? null) : null,
     total,
   };

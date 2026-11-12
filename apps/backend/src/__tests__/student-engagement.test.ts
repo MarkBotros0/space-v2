@@ -16,10 +16,12 @@ jest.mock("../db/client", () => ({ db: mockDb }));
 jest.mock("../lib/auth/session-validity", () => ({ isAccessTokenInvalidated: async () => false }));
 
 const mockStaffScope = jest.fn();
+jest.mock("../lib/permissions/season", () => ({ staffScopeForSeason: (...a: unknown[]) => mockStaffScope(...a) }));
+// The real season picker (lib/permissions/score.ts), over the mocked scope above.
 jest.mock("../lib/permissions", () => ({
   canAccessSeason: jest.fn(),
   canViewStudent: jest.fn().mockResolvedValue(true),
-  staffScopeForSeason: (...a: unknown[]) => mockStaffScope(...a),
+  pickScoredEnrollment: (...a: unknown[]) => jest.requireActual("../lib/permissions/score").pickScoredEnrollment(...a),
 }));
 
 const mockVerify = jest.fn();

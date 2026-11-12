@@ -17,6 +17,7 @@ export {
   type CalendarScope,
 } from "./season";
 export { canAccessGroup } from "./group";
+export { pickScoredEnrollment, scopeCovers, scoreScopeForSeason, type ScoredEnrollment } from "./score";
 export { canAdministerQuiz, canGradeQuiz, canManageQuiz } from "./quiz";
 export {
   canMarkSubmitted,
