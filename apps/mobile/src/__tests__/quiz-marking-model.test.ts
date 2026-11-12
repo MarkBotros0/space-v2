@@ -61,6 +61,7 @@ function attempt(answers: Answer[]): QuizGradingAttempt {
     totalScore: null,
     bestScore: null,
     adminScore: null,
+    appScore: null,
     submittedAt: "2099-03-02T10:00:00.000Z",
     gradedByName: null,
     endReason: null,

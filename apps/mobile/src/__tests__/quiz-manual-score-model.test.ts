@@ -13,6 +13,7 @@ const item = (over: Partial<QuizGradingAttempt>): QuizGradingAttempt => ({
   totalScore: null,
   bestScore: null,
   adminScore: null,
+  appScore: null,
   submittedAt: "2099-03-02T10:00:00.000Z",
   gradedByName: null,
   endReason: null,
@@ -31,28 +32,32 @@ const waiting = (startedAt: string | null): QuizGradingPage["waiting"][number] =
   endedByName: null,
   deadlineAt: null,
   adminScore: null,
+  appScore: null,
 });
 
 const admin = { score: 4, notes: null, gradedAt: "2099-03-03T10:00:00.000Z", gradedByName: "Test admin" };
 
 describe("manualScoreAppStatus", () => {
   it("a graded attempt says its app score", () => {
-    expect(manualScoreAppStatus(item({ status: "GRADED", totalScore: 7, bestScore: 7 }), 10)).toBe(
+    expect(manualScoreAppStatus(item({ status: "GRADED", totalScore: 7, bestScore: 7, appScore: 7 }), 10)).toBe(
       "Graded in the app: 7 / 10",
     );
   });
 
   it("a retake waiting for marking still says the earlier graded score", () => {
-    expect(manualScoreAppStatus(item({ attemptNumber: 2, bestScore: 6.5 }), 10)).toBe("Graded in the app: 6.5 / 10");
+    expect(manualScoreAppStatus(item({ attemptNumber: 2, bestScore: 6.5, appScore: 6.5 }), 10)).toBe(
+      "Graded in the app: 6.5 / 10",
+    );
   });
 
-  it("with an admin score, the app score is the attempt's own, not the admin's", () => {
-    const row = item({ status: "GRADED", totalScore: 9, bestScore: 4, adminScore: admin });
-    expect(manualScoreAppStatus(row, 10)).toBe("Graded in the app: 9 / 10");
+  it("with an admin score, the app score is the app's best graded attempt, never the admin's", () => {
+    // An earlier attempt graded 9, the latest handed in: bestScore is the admin's 4.
+    const retake = item({ attemptNumber: 2, bestScore: 4, appScore: 9, adminScore: admin });
+    expect(manualScoreAppStatus(retake, 10)).toBe("Graded in the app: 9 / 10");
     expect(manualScoreAppStatus(item({ bestScore: 4, adminScore: admin }), 10)).toBe("Waiting for marking");
   });
 
-  it("a submitted attempt is waiting for marking", () => {
+  it("a submitted attempt with nothing graded is waiting for marking", () => {
     expect(manualScoreAppStatus(item({}), 10)).toBe("Waiting for marking");
   });
 

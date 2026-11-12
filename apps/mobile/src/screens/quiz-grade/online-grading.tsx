@@ -9,7 +9,7 @@ import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { StatusChip, statusChip } from "../../design/ui/status-chip";
 import { flattenGradingPages, useQuizAttempts } from "../../hooks/use-quizzes";
 import { AttemptSheet } from "./attempt-sheet";
-import { attemptSubtitle } from "./attempt-subtitle";
+import { adminScoreLabel, attemptSubtitle } from "./attempt-subtitle";
 import { ReleaseResultsCard } from "./release-results";
 import { WaitingList } from "./waiting-list";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
@@ -58,7 +58,7 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
                 key={a.attemptId}
                 title={a.studentName ?? "Student"}
                 titleLines={2}
-                {...(a.adminScore ? { detail: "Score entered by admin" } : {})}
+                {...(a.adminScore ? { detail: adminScoreLabel(a.adminScore.score, first.maxScore) } : {})}
                 subtitle={attemptSubtitle(a, first.maxScore)}
                 trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
                 chevron

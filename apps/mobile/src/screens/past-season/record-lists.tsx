@@ -54,6 +54,14 @@ const QUIZ_CHIP = {
   GRADED: { tone: "ok", label: "Graded" },
 } as const;
 
+type RecordQuiz = SeasonRecord["quizzes"][number];
+
+function quizSubtitle(q: RecordQuiz): string | undefined {
+  if (q.score === null) return undefined;
+  const score = `Score: ${formatScore(q.score)}`;
+  return q.adminScore?.notes ? `${score}\n${q.adminScore.notes}` : score;
+}
+
 export function QuizzesList({ record }: { record: SeasonRecord }) {
   const router = useRouter();
   if (record.quizzes.length === 0) {
@@ -66,7 +74,10 @@ export function QuizzesList({ record }: { record: SeasonRecord }) {
           key={`${q.kind}-${q.id}`}
           title={q.title}
           titleLines={2}
-          subtitle={q.score !== null ? `Score: ${formatScore(q.score)}` : undefined}
+          // The admin's score says whose it is, and its note follows on its own line (as in Work).
+          {...(q.adminScore ? { detail: "Score entered by your admin" } : {})}
+          subtitle={quizSubtitle(q)}
+          subtitleLines={null}
           trailing={<StatusChip {...QUIZ_CHIP[q.status]} />}
           // A paper quiz has no screen of its own, as in Work.
           chevron={q.kind === "ONLINE"}

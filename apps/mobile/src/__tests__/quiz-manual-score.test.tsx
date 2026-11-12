@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
@@ -67,6 +67,7 @@ const gradedAttempt = {
   totalScore: 7,
   bestScore: 7,
   adminScore: null,
+  appScore: 7,
   submittedAt: "2099-03-02T10:00:00.000Z",
   gradedByName: null,
   ...NOT_ENDED,
@@ -183,6 +184,13 @@ describe("the admin's manual score", () => {
       "Enter a score from 0 to 10.",
     );
     expect(put).not.toHaveBeenCalled();
+
+    // A reopened sheet starts clean.
+    fireEvent.press(screen.getByTestId("sheet-backdrop"));
+    fireEvent.press(screen.getByLabelText("Enter a score for Second student"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Score for Second student").props.accessibilityHint).toBeUndefined(),
+    );
   });
 
   it('attempt_open shows "End their attempt first." with a link to the live screen', async () => {
@@ -199,12 +207,25 @@ describe("the admin's manual score", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]/live", params: { id: "41" } });
   });
 
+  it("any other refusal shows the server's message in the save bar", async () => {
+    serve(true, [], [{ ...waitingRow(10, "Second student", null), adminScore: null }]);
+    put.mockRejectedValue(conflict("quiz_not_published", "Publish the quiz first."));
+    renderStacked(<QuizGradeScreen />);
+    fireEvent.press(await screen.findByLabelText("Enter a score for Second student"));
+    fireEvent.changeText(await screen.findByLabelText("Score for Second student"), "6");
+    fireEvent.press(screen.getByText("Save score"));
+
+    const bar = await screen.findByTestId("sheet-save-bar");
+    expect(await within(bar).findByText("Publish the quiz first.")).toBeTruthy();
+    expect(screen.queryByText("End their attempt first.")).toBeNull();
+  });
+
   it("clear asks to confirm, then deletes", async () => {
     const scored = { ...gradedAttempt, bestScore: 4, adminScore };
     serve(true, [scored]);
     del.mockResolvedValue({ status: 204, data: "" });
     renderStacked(<QuizGradeScreen />);
-    expect(await screen.findByText("Score entered by admin")).toBeTruthy();
+    expect(await screen.findByText("Score entered by admin: 4/10")).toBeTruthy();
     openRow("Test student");
     // The server refuses a retake once the admin's score is in, so the sheet doesn't offer one.
     expect(await screen.findByRole("button", { name: "Edit score" })).toBeTruthy();
@@ -262,6 +283,21 @@ describe("the student's view of the admin's score", () => {
     expect(screen.queryByText("I'm ready")).toBeNull();
     // No attempt to review: the release line would promise answers that never come.
     expect(screen.queryByText("Answers appear when your admin releases them.")).toBeNull();
+  });
+
+  it("an admin score over an attempt not graded yet promises no answers", async () => {
+    const over = { attemptId: 900, attemptNumber: 1, status: "SUBMITTED", submittedAt: "2099-03-02T10:00:00.000Z" };
+    get.mockResolvedValue({ data: { data: studentDetail(over) } });
+    renderWithProviders(<QuizDetailScreen />);
+    expect(await screen.findByText("Score entered by your admin")).toBeTruthy();
+    expect(screen.queryByText("Answers appear when your admin releases them.")).toBeNull();
+  });
+
+  it("an admin score over a graded attempt still says the answers come with the release", async () => {
+    const over = { attemptId: 900, attemptNumber: 1, status: "GRADED", submittedAt: "2099-03-02T10:00:00.000Z" };
+    get.mockResolvedValue({ data: { data: studentDetail(over) } });
+    renderWithProviders(<QuizDetailScreen />);
+    expect(await screen.findByText("Answers appear when your admin releases them.")).toBeTruthy();
   });
 
   it("an admin score shows the result even on a not-started read", async () => {

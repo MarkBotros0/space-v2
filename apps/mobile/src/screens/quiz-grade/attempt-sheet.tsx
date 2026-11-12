@@ -2,6 +2,7 @@ import type { QuizGradingAttempt } from "@space/shared";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
+import { adminScoreLabel } from "./attempt-subtitle";
 import { ExitLog } from "./exit-log";
 import { manualScoreTarget } from "./manual-score-model";
 import { useManualScoreSheet } from "./manual-score-sheet";
@@ -171,9 +172,7 @@ function AdminScoreLine({
   const admin = attempt.adminScore;
   return (
     <>
-      {admin ? (
-        <Text variant="subhead">{`Score entered by admin: ${formatScore(admin.score)} / ${formatScore(maxScore)}`}</Text>
-      ) : null}
+      {admin ? <Text variant="subhead">{adminScoreLabel(admin.score, maxScore)}</Text> : null}
       {canScore ? (
         <Button variant="secondary" size="sm" className="self-start" onPress={onScore}>
           {admin ? "Edit score" : "Enter score"}

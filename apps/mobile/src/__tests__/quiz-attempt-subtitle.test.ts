@@ -1,7 +1,7 @@
 import type { QuizGradingAttempt } from "@space/shared";
 
 import { formatDate, unbreakable } from "../lib/format";
-import { attemptSubtitle } from "../screens/quiz-grade/attempt-subtitle";
+import { adminScoreLabel, attemptSubtitle } from "../screens/quiz-grade/attempt-subtitle";
 
 // Spec "Honest accidents": a grading row is the latest attempt, but its score
 // is the best graded one (final review M2).
@@ -18,6 +18,7 @@ const row = (over: Partial<QuizGradingAttempt>): QuizGradingAttempt => ({
   totalScore: null,
   bestScore: null,
   adminScore: null,
+  appScore: null,
   submittedAt,
   gradedByName: null,
   endReason: null,
@@ -51,10 +52,15 @@ describe("attemptSubtitle", () => {
     );
   });
 
-  it("the admin's score is shown as is, never as a best", () => {
+  it("with the admin's score, the attempt part is the app's own score; the label carries the admin's", () => {
     const adminScore = { score: 4, notes: null, gradedAt: submittedAt, gradedByName: "Test admin" };
-    expect(attemptSubtitle(row({ status: "GRADED", totalScore: 9, bestScore: 4, adminScore }), 7)).toBe(
-      `Attempt 1 · 4/7 · ${date}`,
+    expect(attemptSubtitle(row({ status: "GRADED", totalScore: 6, bestScore: 4, appScore: 6, adminScore }), 7)).toBe(
+      `Attempt 1 · 6/7 · ${date}`,
     );
+    expect(attemptSubtitle(row({ attemptNumber: 2, bestScore: 4, appScore: 6, adminScore }), 7)).toBe(
+      `Attempt 2 · Best 6/7 · Awaiting grading · ${date}`,
+    );
+    expect(attemptSubtitle(row({ bestScore: 4, adminScore }), 7)).toBe(`Attempt 1 · Awaiting grading · ${date}`);
+    expect(adminScoreLabel(4, 7)).toBe("Score entered by admin: 4/7");
   });
 });

@@ -17,7 +17,7 @@ const ENDED_BY_EXITS =
 
 type Stage = StudentQuizDetail["stage"];
 
-/** The line under the chip; none for the admin's score alone, which has no answers to wait for. */
+/** The line under the chip; none for the admin's score without a graded attempt, which has no answers to wait for. */
 function stageLine(stage: Stage, adminOnly: boolean): string | null {
   if (adminOnly) return null;
   if (stage === "submitted") return "Your score appears once it's marked.";
@@ -28,15 +28,16 @@ function stageLine(stage: Stage, adminOnly: boolean): string | null {
  * Where the student stands after handing in (owner, 2026-11-10): submitted shows only that; graded
  * shows the score; answers adds the review. Questions are drawn from the `answers` stage ONLY:
  * whatever the cache still holds from the attempt is never shown before then. The admin's score
- * (plan 4) shows at once with its note, labelled as theirs; with no attempt of their own there are
- * no answers to wait for, so the release line is left out.
+ * (plan 4) shows at once with its note, labelled as theirs; without a graded attempt of their own
+ * there are no answers to wait for, so the release line is left out.
  */
 export function ResultView({ detail }: { detail: StudentQuizDetail }) {
   const admin = detail.adminScore;
   const stage = admin ? (detail.stage === "answers" ? "answers" : "graded") : detail.stage;
   const submitted = stage === "submitted";
   const score = admin ? admin.score : detail.totalScore;
-  const line = stageLine(stage, admin !== null && detail.attemptId === null);
+  // The admin's score with no graded attempt behind it: no answers to wait for.
+  const line = stageLine(stage, admin !== null && detail.status !== "GRADED");
   return (
     <Screen {...quizTitleProps(detail)}>
       <View className="flex-col gap-3">

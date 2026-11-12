@@ -60,6 +60,7 @@ export function useManualScoreSheet({ quizId, target, maxScore, open, onDone }: 
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setFieldError(undefined);
     setAttemptOpen(false);
   }, [open]);
   const name = target.name;

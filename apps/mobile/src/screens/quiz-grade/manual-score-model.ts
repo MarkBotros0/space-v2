@@ -20,22 +20,13 @@ export type ManualScoreTarget = {
 
 const isAttempt = (row: ManualScoreRow): row is QuizGradingAttempt => "attemptId" in row;
 
-/**
- * The app's own best graded score. `bestScore` is the score that counts, so once the admin has
- * entered one it is theirs; the latest attempt's own total is then the app's.
- */
-function appScore(a: QuizGradingAttempt): number | null {
-  if (a.adminScore === null) return a.bestScore ?? (a.status === "GRADED" ? a.totalScore : null);
-  return a.status === "GRADED" ? a.totalScore : null;
-}
-
 /** Where the student stands in the app, shown above the score field (spec "Staff UI"). */
 export function manualScoreAppStatus(row: ManualScoreRow, maxScore: number): string {
-  if (!isAttempt(row)) return row.startedAt === null ? "Didn't take it" : "In progress";
-  if (row.status === "IN_PROGRESS") return "In progress";
-  const score = appScore(row);
-  if (score !== null) return `Graded in the app: ${formatScore(score)} / ${formatScore(maxScore)}`;
-  return "Waiting for marking";
+  const open = isAttempt(row) ? row.status === "IN_PROGRESS" : row.startedAt !== null;
+  if (open) return "In progress";
+  // `appScore` is the best GRADED attempt whatever the admin entered; `bestScore` would be theirs.
+  if (row.appScore !== null) return `Graded in the app: ${formatScore(row.appScore)} / ${formatScore(maxScore)}`;
+  return isAttempt(row) ? "Waiting for marking" : "Didn't take it";
 }
 
 export function manualScoreTarget(row: ManualScoreRow, maxScore: number): ManualScoreTarget {
