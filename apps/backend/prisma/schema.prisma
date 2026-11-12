@@ -480,6 +480,9 @@ model SeasonEnrollment {
   @@unique([studentUserId, seasonId])
   @@index([seasonId, status])
   @@index([groupId, status])
+  // SQL-only CHECK SeasonEnrollment_passScore_check: passScore BETWEEN 0 AND 100
+  // SQL-only CHECK SeasonEnrollment_passNumbers_check: passNumbers null, or each of its three parts between 0 and its whole (attended <= total, submitted <= total, scored <= max)
+  // SQL-only CHECK SeasonEnrollment_resultAgainstScore_check: resultAgainstScore IS NOT TRUE OR passScore IS NOT NULL
 }
 
 // ---------------------------------------------------------------------------

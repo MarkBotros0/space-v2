@@ -56,7 +56,8 @@ describe("results after End", () => {
     // A leader of the season, and a stranger admin, are refused.
     const stranger = await createTestUser("results-stranger", "ADMIN");
     await db.seasonAdmin.create({ data: { seasonId: (await createTestSeason()).id, userId: stranger.id } });
-    for (const t of [w.tokens.leader, await tokenFor(w.users.leader.id), await tokenFor(stranger.id)]) {
+    // Fresh tokens: End stamped the season staff's earlier sessions stale (401, not the 403 under test).
+    for (const t of [await tokenFor(w.users.leader.id), await tokenFor(stranger.id)]) {
       expect((await results(w.seasonId, t)).status).toBe(403);
       expect((await correct(w.seasonId, w.users.high.id, t, "NOT_PASSED")).status).toBe(403);
     }

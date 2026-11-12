@@ -169,4 +169,26 @@ describe("End by the weighted score", () => {
       resultAgainstScore: false,
     });
   });
+
+  it("the database refuses a score off 0..100, a part above its whole, and against no score", async () => {
+    const w = await seedEndWorld({ quiz: false });
+    const where = { studentUserId_seasonId: { studentUserId: w.users.high.id, seasonId: w.seasonId } };
+    const numbers = {
+      attendance: { attended: 0, total: 0 },
+      assignments: { submitted: 2, total: 2 },
+      quizzes: { scored: 0, max: 0 },
+    };
+    await expect(db.seasonEnrollment.update({ where, data: { passScore: 100.1 } })).rejects.toThrow();
+    await expect(
+      db.seasonEnrollment.update({
+        where,
+        data: { passNumbers: { ...numbers, assignments: { submitted: 3, total: 2 } } },
+      }),
+    ).rejects.toThrow();
+    await expect(db.seasonEnrollment.update({ where, data: { resultAgainstScore: true } })).rejects.toThrow();
+    await db.seasonEnrollment.update({
+      where,
+      data: { passScore: 100, passNumbers: numbers, resultAgainstScore: true },
+    });
+  });
 });

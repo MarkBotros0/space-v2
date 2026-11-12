@@ -721,6 +721,9 @@ Rules Prisma cannot declare. They live in `prisma/migrations` and are noted on t
 | Season | CHECK | `Season_endDate_check` | `endDate >= startDate` |
 | Season | CHECK | `Season_absenceMinutes_check` | `absenceBudgetMinutes >= 0 AND absenceWeightMinutes > 0` |
 | Season | CHECK | `Season_passCriteria_check` | `the three weights and passMark all null or all set, each 0..100, the weights adding up to 100` |
+| SeasonEnrollment | CHECK | `SeasonEnrollment_passScore_check` | `passScore BETWEEN 0 AND 100` |
+| SeasonEnrollment | CHECK | `SeasonEnrollment_passNumbers_check` | `passNumbers null, or each of its three parts between 0 and its whole (attended <= total, submitted <= total, scored <= max)` |
+| SeasonEnrollment | CHECK | `SeasonEnrollment_resultAgainstScore_check` | `resultAgainstScore IS NOT TRUE OR passScore IS NOT NULL` |
 | Session | CHECK | `Session_durationMinutes_check` | `durationMinutes > 0` |
 | SessionVideoQuestion | CHECK | `SessionVideoQuestion_points_check` | `points >= 0` |
 | SessionVideoQuestion | CHECK | `SessionVideoQuestion_correctIndex_check` | `0 <= correctIndex < cardinality(options)` |

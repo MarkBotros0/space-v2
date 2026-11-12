@@ -1,3 +1,4 @@
+import { isSuper } from "../../lib/rbac";
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
@@ -85,7 +86,10 @@ export async function saveAttendance(req: Request, res: Response) {
   });
   const previousStatus = new Map(before.map((a) => [a.studentUserId, a.status]));
 
-  await saveAttendanceEntries(sessionId, parsed.entries, user.userId);
+  await saveAttendanceEntries(sessionId, parsed.entries, user.userId, {
+    id: seasonId,
+    mayWriteFinished: isSuper(user),
+  });
 
   // The attendance rows are committed. A notification failure after that point
   // must not tell the leader their marking failed (spec D6).

@@ -1,3 +1,4 @@
+import { isSuper } from "../../lib/rbac";
 import type { Request, Response } from "express";
 
 import { db } from "../../db/client";
@@ -165,7 +166,7 @@ export async function saveGrades(req: Request, res: Response) {
   });
   const previousScore = new Map(existing.map((g) => [g.studentUserId, toScore(g.score)]));
 
-  await saveQuizGrades(id, parsed.entries, user.userId);
+  await saveQuizGrades(id, parsed.entries, user.userId, { id: quiz.seasonId, mayWriteFinished: isSuper(user) });
 
   // D8's single rule, shared with the essay path: a first grade or a changed
   // score notifies; a no-op re-save is silent. v1's two paths disagreed.
