@@ -31,6 +31,14 @@ const isGone = (err: unknown) => {
   return status === 404 || status === 403;
 };
 
+const GONE = "This quiz is no longer available.";
+
+/** The newest read's failure, or null when the newest read succeeded (React Query keeps old data after a failed re-read). */
+function latestFailure(query: ReturnType<typeof useStudentQuizDetail>): unknown {
+  const { error, dataUpdatedAt, errorUpdatedAt } = query;
+  return error !== null && errorUpdatedAt >= dataUpdatedAt ? error : null;
+}
+
 /** Open (hold), closed or gone (let go), or null when the latest read failed for another reason (no change). */
 function holdsOpen(data: StudentQuizDetail | undefined, failure: unknown): boolean | null {
   if (failure !== null) return isGone(failure) ? false : null;
@@ -48,8 +56,7 @@ function holdsOpen(data: StudentQuizDetail | undefined, failure: unknown): boole
  */
 function useHoldWhileOpen(id: number, query: ReturnType<typeof useStudentQuizDetail>) {
   const lockedQuizId = useQuizLockStore((s) => s.lockedQuizId);
-  const { data, error, dataUpdatedAt, errorUpdatedAt } = query;
-  const open = holdsOpen(data, error !== null && errorUpdatedAt >= dataUpdatedAt ? error : null);
+  const open = holdsOpen(query.data, latestFailure(query));
   useEffect(() => {
     if (open === null) return;
     const { setLockedQuiz } = useQuizLockStore.getState();
@@ -71,6 +78,19 @@ export function StudentRunner({ id }: { id: number }) {
   }, [finishedAttemptId]);
 
   const held = useHoldWhileOpen(id, query);
+
+  // Gone for the student (unpublished, season deleted, place lost): nothing of the attempt stays on
+  // screen, so the lock's hooks unmount with the form and the normal back takes them away.
+  const failure = latestFailure(query);
+  if (failure !== null && isGone(failure)) {
+    return (
+      <Screen title={data?.title ?? "Quiz"}>
+        <Text variant="subhead" className="rounded-group bg-surface p-5 text-muted-foreground">
+          {GONE}
+        </Text>
+      </Screen>
+    );
+  }
 
   // Only a first read that failed is an error page. A re-read that fails keeps the data it had, so an
   // open attempt's form (and its time-up state) stays on screen rather than being swapped away.

@@ -69,6 +69,11 @@ export function useOpenQuizAttempt(enabled: boolean): UseQueryResult<OpenQuizAtt
     if (lockedQuizId !== null && lockedQuizId !== quizId) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(lockedQuizId) });
     }
+    // Newly open (a reopened retake): a cached read of that quiz may still say graded, and the
+    // runner would let go of the lock it was just given. Re-read it.
+    if (quizId !== null && quizId !== lockedQuizId) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(quizId) });
+    }
     setLockedQuiz(quizId);
   }, [enabled, quizId, answeredAt, queryClient]);
   return query;
@@ -89,16 +94,17 @@ export function useStartAttempt(id: number) {
 export type AnswerInput = QuizAnswerInput;
 
 /**
- * A save or submit refused because the attempt is no longer the one the form shows: closed elsewhere
- * (staff End, or the server's clock ran out before the phone's), or a reopened timed attempt not
- * started yet. No retry can change that.
+ * A save, submit or exit report refused because the attempt is no longer the one the form shows:
+ * closed elsewhere (staff End, or the server's clock ran out before the phone's), a reopened timed
+ * attempt not started yet, or the quiz itself gone for the student (`forbidden` or `not_found`:
+ * unpublished, season deleted, place lost). No retry can change that.
  */
 export function isAttemptGone(err: unknown): boolean {
   const code = apiErrorCode(err);
-  return code === "attempt_closed" || code === "attempt_not_started";
+  return code === "attempt_closed" || code === "attempt_not_started" || code === "forbidden" || code === "not_found";
 }
 
-/** Re-read the quiz so the runner shows where the attempt really is: the result, or the start card. */
+/** Re-read the quiz so the runner shows where the attempt really is: the result, the start card, or gone. */
 function refreshOnGone(queryClient: ReturnType<typeof useQueryClient>, id: number, err: unknown) {
   if (!isAttemptGone(err)) return;
   void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(id) });
@@ -183,7 +189,8 @@ export function useSubmitAttempt(id: number) {
 /**
  * Report what the phone saw while the attempt was open (exits, relaunches, screenshots). The server
  * counts the exits; when this report ended the attempt, or it was already shut, the quiz is re-read
- * so the runner moves to the result. Offline it fails at once: the events wait in the exit queue.
+ * so the runner moves to the result; a refusal that says the quiz is gone re-reads it too. Offline it
+ * fails at once: the events wait in the exit queue.
  */
 export function usePostAttemptEvents(id: number) {
   const queryClient = useQueryClient();
@@ -196,5 +203,6 @@ export function usePostAttemptEvents(id: number) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.studentDetail(id) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
     },
+    onError: (err) => refreshOnGone(queryClient, id, err),
   });
 }

@@ -147,7 +147,7 @@ describe("launch", () => {
     expect(secure.get("quiz-route-lock")).toBe("41");
   });
 
-  it("offline at launch, the last known open attempt still holds", async () => {
+  it("an open-attempt read that fails keeps the stored lock (an online launch before the server answers)", async () => {
     secure.set("quiz-route-lock", "41");
     await restoreQuizLock();
     serve(new Error("Network Error"));
@@ -242,6 +242,10 @@ describe("fix round 1", () => {
 
     await waitFor(() => expect(reads).toBeGreaterThan(1));
     await waitFor(() => expect(useQuizLockStore.getState().lockedQuizId).toBeNull());
+    // The dead form gives way to a plain screen with the normal back.
+    expect(await screen.findByText("This quiz is no longer available.")).toBeTruthy();
+    expect(screen.queryByText("Capital of France?")).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Back" })).toHaveLength(1);
     await act(() => router.push("/notifications"));
     expect(await screen.findByText("screen:/notifications")).toBeTruthy();
     expect(result.getPathname()).toBe("/notifications");
@@ -268,6 +272,32 @@ describe("fix round 1", () => {
       expect(result.getPathname()).toBe("/quiz/41");
     },
   );
+
+  it.each([
+    ["a 500", () => Object.assign(new AxiosError("boom", "ERR_BAD_RESPONSE"), { response: { status: 500, data: {} } })],
+    ["offline", () => new AxiosError("Network Error", "ERR_NETWORK")],
+  ])("%s on the quiz's own read keeps the lock", async (_label, failure) => {
+    useQuizLockStore.setState({ lockedQuizId: 41 });
+    get.mockImplementation(async (url: string) => {
+      if (url === "/api/v1/me/open-quiz-attempt") return { data: { data: { quizId: 41 } } };
+      throw failure();
+    });
+    const result = await renderRouter(context(), { initialUrl: "/quiz/41" });
+    expect(await screen.findByText("Try again")).toBeTruthy();
+    expect(useQuizLockStore.getState().lockedQuizId).toBe(41);
+    expect(screen.queryByText("This quiz is no longer available.")).toBeNull();
+    await act(() => router.push("/notifications"));
+    await waitFor(() => expect(result.getPathname()).toBe("/quiz/41"));
+  });
+
+  it("staff are not redirected from a check-in link", async () => {
+    useSessionStore.getState().setSession(makeUser("LEADER"), makeScopes());
+    useQuizLockStore.setState({ lockedQuizId: 41 });
+    serve({ quizId: 41 });
+    const result = await renderRouter(context(), { initialUrl: "/checkin/ABC123" });
+    await waitFor(() => expect(result.getPathname()).toBe("/checkin/ABC123"));
+    expect(screen.queryByText("Capital of France?")).toBeNull();
+  });
 
   it("the held quiz's loading screen has no back bar", async () => {
     useQuizLockStore.setState({ lockedQuizId: 41 });
