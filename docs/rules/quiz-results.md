@@ -8,8 +8,9 @@ Students may take a quiz at different times, so the score and the answers are re
 A student's online quiz is in one of these stages. `lib/quizzes/student-stage.ts` decides the
 stage for the quiz detail read (`routes/quizzes/student-detail.ts`, which also serves the start and
 submit responses). The results list (`routes/quizzes/list.ts`) and the season record
-(`lib/queries/me/season-record.ts`) show no questions at all, only the attempt status and the best
-graded score, which they take from `lib/quizzes/best-attempt.ts` directly:
+(`lib/queries/me/season-record.ts`) show no questions at all, only the attempt status and the
+counting score (below), which they take from `countingScore` in `lib/quizzes/best-attempt.ts`
+directly:
 
 1. **Submitted, until marked.** The student sees "Submitted" and nothing else: no question text, no
    options, none of their own answers. The result screen never lists the questions, so a student
@@ -21,6 +22,10 @@ graded score, which they take from `lib/quizzes/best-attempt.ts` directly:
    (`POST /quizzes/:id/release`, one way, per quiz; `Quiz.resultsReleasedAt/ById`) the student can
    review every question with their answers marked right or wrong per item (each option, tick,
    pair and blank) and the correct answer shown. **Leaders cannot release answers.**
+
+An admin score (see "Manual score (admin)" below) reads as **Graded**, with no attempt or only a
+SUBMITTED one behind it. It never reaches **Answers released** by itself: that still needs the
+release and a GRADED attempt to review.
 
 **The counting score.** Wherever a student's quiz score is used (their own score, the season
 record, exports and the workbook, dashboards, grading lists) it is the admin's score if one exists
@@ -40,7 +45,8 @@ students who have a graded attempt. Paper quizzes send nothing on release. A re-
 nothing stays silent.
 
 A new student read that shows questions must take its stage from `lib/quizzes/student-stage.ts`;
-one that shows only a score takes it from `bestGraded`. Staff see
+one that shows only a score takes it from `countingScore` (or `bestScoreByStudent` with the admin
+scores, for many students), never from `bestGraded` alone, which ignores the admin's score. Staff see
 `answersReleasedAt` and `canReleaseResults`; the release card
 (`screens/quiz-grade/release-results.tsx`) sits on the grading screen and the quiz page. Quizzes
 graded before this existed were backfilled as released.
@@ -73,13 +79,20 @@ number (a leader's essay marks) is a different thing and is unchanged.
 - **Unpublished quiz.** `PUT` is refused, 409 `quiz_not_published`, as releasing is: students cannot
   see a draft. `DELETE` is allowed, so an admin who unpublished after entering can still clear.
   Unpublishing is refused while any admin score exists, 409 `quiz_has_graded_attempts`: the score
-  shows to the student at once, the same harm as hiding graded attempts.
+  shows to the student at once, the same harm as hiding graded attempts. Both are read under the
+  Quiz lock (`lib/quizzes/unpublish.ts` takes it FOR UPDATE, the save FOR SHARE), so a save and an
+  unpublish cannot both go through.
+- **Finished season.** Finished seasons never reopen, so their scores never change: `PUT` and `DELETE`
+  are refused, 409 `season_finished`, "This season has ended; its scores can't change." Both lock the
+  Season FOR SHARE first (then the Quiz and the student, as above), so neither can land while End
+  runs, which takes the Season FOR NO KEY UPDATE.
 - **The student sees it at once, with the note.** "Score entered by your admin", the score and the
   note the admin typed (the sheet says so under the Note field). No release is needed for the score,
   and there are no answers to wait for when no graded attempt is behind it. The past-season record
   carries it too (`adminScore` on the record rows).
 - **Notifications.** "Your score is in" on a new or changed score, as for a paper grade. A notes-only
-  edit or a re-save of the same score and note is silent. Clearing is silent and sends the student back
+  edit or a re-save of the same score and note is silent, and so is a leader marking an attempt of a
+  student who has an admin score: the admin's score still counts, so theirs didn't change. Clearing is silent and sends the student back
   to their best graded attempt; nothing is reopened.
 - **Questions are frozen** once any admin score exists (`quiz_has_attempts`, "A score has been entered
   for this quiz, so its questions can no longer change."), so the maximum cannot drop under a score.
@@ -89,5 +102,6 @@ number (a leader's essay marks) is a different thing and is unchanged.
   participation figures use the counting score, not only graded attempts.
 - **Mobile.** `screens/quiz-grade/manual-score-sheet.tsx` (Enter or Edit score, Clear score asks
   first, the confirm sits inside the sheet) and `manual-score-model.ts` (what the app has for the
-  student, the typed score). Reached from the attempt sheet and the waiting list for admins only; rows
-  read "Score entered by admin: x/y".
+  student, the typed score). Reached from the attempt sheet and the waiting list for admins only.
+  Attempt rows and the attempt sheet read "Score entered by admin: x/y"; a waiting row reads "Score
+  entered by admin" with "x / y" under it.
