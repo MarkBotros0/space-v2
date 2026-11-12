@@ -16,7 +16,7 @@ import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
-import { check, detail, endBody, subs } from "./helpers/season-end-fixtures";
+import { check, detail, endBody, resultsBody, subs } from "./helpers/season-end-fixtures";
 import { makeSession } from "./helpers/session";
 import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
 import EndSeasonScreen from "../../app/(app)/seasons/[code]/end";
@@ -70,9 +70,9 @@ describe("Manage items", () => {
     expect(screen.queryByText("End season")).toBeNull();
   });
 
-  it("does not show Results to an admin", async () => {
+  it("does not show Results to an admin the server says doesn't administer it", async () => {
     useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }));
-    await open(detail({ status: "COMPLETED" }));
+    await open(detail({ status: "COMPLETED", canAdminister: false }));
     await screen.findByRole("button", { name: "Sessions" });
     expect(screen.queryByText("Results")).toBeNull();
   });
@@ -114,8 +114,8 @@ describe("End season screen", () => {
     expect(screen.getAllByText("Passed")).toHaveLength(84);
 
     fireEvent.press(screen.getByText("Student 2"));
-    expect(screen.getByText("Staff only. The student won't see this.")).toBeTruthy();
     fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
+    expect(screen.getByText("Staff only. The student won't see this.")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Reason"), "Missed most sessions");
     fireEvent.press(screen.getByText("Done"));
     expect(screen.getAllByText("Did not pass")).toHaveLength(1);
@@ -127,7 +127,7 @@ describe("End season screen", () => {
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     expect(
       await screen.findByText(
-        "This finishes GBV 2026, and 2 students did not pass. Their leaders and admins lose access. This ends the season for 84 people.",
+        "82 students pass, 2 don't. Their leaders and admins lose access. This ends the season for 84 people.",
       ),
     ).toBeTruthy();
     confirmEnd();
@@ -159,7 +159,7 @@ describe("End season screen", () => {
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     expect(
       await screen.findByText(
-        "This finishes GBV 2026. Their leaders and admins lose access. This ends the season for 1 person.",
+        "1 student passes, 0 don't. Their leaders and admins lose access. This ends the season for 1 person.",
       ),
     ).toBeTruthy();
     confirmEnd();
@@ -177,7 +177,7 @@ describe("End season screen", () => {
     await screen.findByText("Student 1");
     const before = get.mock.calls.filter(([u]) => u === "/api/v1/seasons/7/end-check").length;
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
+    await screen.findByText("End GBV 2026?");
     confirmEnd();
     await waitFor(() =>
       expect(get.mock.calls.filter(([u]) => u === "/api/v1/seasons/7/end-check").length).toBeGreaterThan(before),
@@ -195,7 +195,7 @@ describe("End season screen", () => {
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
+    await screen.findByText("End GBV 2026?");
     confirmEnd();
     expect(await screen.findByText("Someone else already ended this season.")).toBeTruthy();
   });
@@ -214,7 +214,7 @@ describe("End season screen, losing the race to another admin", () => {
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
+    await screen.findByText("End GBV 2026?");
     confirmEnd();
     expect(await screen.findByText("Someone else already ended this season.")).toBeTruthy();
     expect(toast.error).not.toHaveBeenCalled();
@@ -226,6 +226,9 @@ describe("Result sheet", () => {
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 1) });
     renderStacked(<EndSeasonScreen />);
     fireEvent.press(await screen.findByText("Student 1"));
+    // Passing an unscored student takes no text; a Did not pass takes a reason.
+    expect(screen.queryByLabelText("Reason")).toBeNull();
+    fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
     expect(screen.getByLabelText("Reason").props.maxLength).toBe(1000);
   });
 });
@@ -234,20 +237,18 @@ describe("Results screen", () => {
   it("lists results and saves a correction", async () => {
     serve({
       [BY_CODE]: detail({ status: "COMPLETED" }),
-      "/api/v1/seasons/7/results": {
-        results: [
-          {
-            userId: 1,
-            name: "Mina",
-            isAlumnus: false,
-            groupName: "Group A",
-            attendancePct: 90,
-            result: "PASSED",
-            reason: null,
-          },
-          { userId: 2, name: "Nour", isAlumnus: false, groupName: null, attendancePct: 40, result: null, reason: null },
-        ],
-      },
+      "/api/v1/seasons/7/results": resultsBody([
+        {
+          userId: 1,
+          name: "Mina",
+          isAlumnus: false,
+          groupName: "Group A",
+          attendancePct: 90,
+          result: "PASSED",
+          reason: null,
+        },
+        { userId: 2, name: "Nour", isAlumnus: false, groupName: null, attendancePct: 40, result: null, reason: null },
+      ]),
     });
     patch.mockResolvedValue({ data: { data: { ok: true } } });
     renderStacked(<SeasonResultsScreen />);

@@ -12,7 +12,7 @@ jest.mock("expo-router", () => ({
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
-import { check, detail } from "./helpers/season-end-fixtures";
+import { check, detail, resultsBody } from "./helpers/season-end-fixtures";
 import { makeSession } from "./helpers/session";
 import EndSeasonScreen from "../../app/(app)/seasons/[code]/end";
 import SeasonResultsScreen from "../../app/(app)/seasons/[code]/results";
@@ -42,25 +42,23 @@ describe("End of a community-wide season", () => {
     expect(screen.queryByText(/Passing makes them/)).toBeNull();
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
     expect(await screen.findByText(/This ends the season for 2 people\.$/)).toBeTruthy();
-    expect(screen.queryByText(/will graduate/)).toBeNull();
+    expect(screen.queryByText(/graduates? as/)).toBeNull();
   });
 
   it("the result sheet shows no graduation note", async () => {
     serve({
       [BY_CODE]: detail({ status: "COMPLETED", isCommunityWide: true, graduatesOnPass: false }),
-      "/api/v1/seasons/7/results": {
-        results: [
-          {
-            userId: 1,
-            name: "Old Hand",
-            isAlumnus: true,
-            groupName: null,
-            attendancePct: 80,
-            result: "PASSED",
-            reason: null,
-          },
-        ],
-      },
+      "/api/v1/seasons/7/results": resultsBody([
+        {
+          userId: 1,
+          name: "Old Hand",
+          isAlumnus: true,
+          groupName: null,
+          attendancePct: 80,
+          result: "PASSED",
+          reason: null,
+        },
+      ]),
     });
     renderStacked(<SeasonResultsScreen />);
     fireEvent.press(await screen.findByText("Old Hand"));

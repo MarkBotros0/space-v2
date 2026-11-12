@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { passingPcts, weightedScore, type SeasonEndCheck } from "@space/shared";
+import { View } from "react-native";
+import type { SeasonEndCheck } from "@space/shared";
 
 import {
   RouteError,
@@ -15,22 +16,24 @@ import { useEndSeason, useSeasonEndCheck } from "../../../../src/hooks/use-seaso
 import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { BlockersList } from "../../../../src/screens/season-end/blockers-list";
-import { ResultSheet, type ResultDraft } from "../../../../src/screens/season-end/result-sheet";
+import { CriteriaStep } from "../../../../src/screens/season-end/criteria-step";
+import { confirmCopy, ignoredNumbers } from "../../../../src/screens/season-end/end-review-model";
+import { ResultSheet } from "../../../../src/screens/season-end/result-sheet";
 import { ReviewList } from "../../../../src/screens/season-end/review-list";
+import { useEndReview } from "../../../../src/screens/season-end/use-end-review";
+import { CriteriaSheet } from "../../../../src/screens/season-passing/criteria-sheet";
 import { useIsSuper } from "../../../../src/store/session";
-import { blankToNull } from "../../../../src/lib/form-values";
 import { plural } from "../../../../src/lib/plural";
 
 type Student = SeasonEndCheck["students"][number];
 
-const PASSED: ResultDraft = { result: "PASSED", reason: "" };
-
 /**
- * End a season (staff): finish what blocks it, review every student's result
- * (everyone passes unless marked), confirm. The POST carries the students marked
- * not passed and what was reviewed: a season changed since then is refused and
- * the check reloads, keeping what was staged. The end invalidates the ending staff member's token on the
- * server, so a season admin loses this season at once: they go to Today, a
+ * End a season (staff): finish what blocks it, then the review: the pass criteria (the season's,
+ * changeable for this End), every student with their score, pre-selected Passed when it reaches the
+ * mark, and a confirm saying how many pass. The POST carries the criteria, the scores shown, who
+ * doesn't pass and the notes: a season changed since (a roster, a flag, a score) is refused and the
+ * check reloads, keeping the admin's choices (`useEndReview`). The end invalidates the ending staff
+ * member's token on the server, so a season admin loses this season at once: they go to Today, a
  * super admin stays and sees it finished.
  */
 /**
@@ -75,69 +78,39 @@ export default function EndSeasonScreen() {
   const seasonId = season.data?.id ?? null;
   const check = useSeasonEndCheck(seasonId);
   const end = useEndSeason(seasonId);
-  const [staged, setStaged] = useState<Record<number, ResultDraft>>({});
+  const review = useEndReview(check.data);
   const [editing, setEditing] = useState<Student | null>(null);
+  const [criteriaOpen, setCriteriaOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [alreadyEnded, setAlreadyEnded] = useState(false);
 
-  // Only who's on the review now: someone dropped since can't be sent, or the retry is refused.
-  const reviewedIds = check.data?.students.map((s) => s.userId) ?? [];
-  const notPassed = Object.entries(staged)
-    .filter(([id, d]) => d.result === "NOT_PASSED" && reviewedIds.includes(Number(id)))
-    .map(([id, d]) => ({ userId: Number(id), reason: blankToNull(d.reason) }));
-
   const onConfirm = () => {
-    if (!check.data) return;
-    // Until the review step shows the criteria (season passing, Task 8), End is sent the season's
-    // criteria as the check offers them, with each score computed as the server will recompute it.
-    const { criteria, graduatesOnPass, students } = check.data;
-    const scores = students.map((s) => ({
-      userId: s.userId,
-      score: weightedScore(passingPcts(s.numbers), criteria.weights).score,
-    }));
-    end.mutate(
-      {
-        notPassed,
-        passedNotes: [],
-        weights: criteria.weights,
-        passMark: criteria.passMark,
-        reviewed: { graduatesOnPass, userIds: reviewedIds, scores },
+    const body = review.request();
+    if (!body) return;
+    end.mutate(body, {
+      onSuccess: ({ graduated }) => {
+        setConfirming(false);
+        const ended = `${season.data?.title ?? "The season"} has ended.`;
+        toast.success(graduated > 0 ? `${ended} ${plural(graduated, "person", "people")} graduated.` : ended);
+        if (isSuper) router.back();
+        else router.dismissAll();
       },
-      {
-        onSuccess: ({ graduated }) => {
-          setConfirming(false);
-          const ended = `${season.data?.title ?? "The season"} has ended.`;
-          toast.success(graduated > 0 ? `${ended} ${plural(graduated, "person", "people")} graduated.` : ended);
-          if (isSuper) router.back();
-          else router.dismissAll();
-        },
-        onError: (err) => {
-          setConfirming(false);
-          const errCode = apiErrorCode(err);
-          // A loser arriving after the winner's commit has lost this season from
-          // its token by the retry, so it is refused rather than told "not active".
-          if (errCode === "season_not_active" || errCode === "forbidden") {
-            setAlreadyEnded(true);
-          } else if (errCode === "season_unfinished") {
-            toast.error(apiErrorMessage(err, "Something changed. Check the list again."));
-            void check.refetch();
-          } else {
-            toast.error(apiErrorMessage(err, "Couldn't end the season."));
-          }
-        },
+      onError: (err) => {
+        setConfirming(false);
+        const errCode = apiErrorCode(err);
+        // A loser arriving after the winner's commit has lost this season from
+        // its token by the retry, so it is refused rather than told "not active".
+        if (errCode === "season_not_active" || errCode === "forbidden") {
+          setAlreadyEnded(true);
+        } else if (errCode === "season_unfinished") {
+          // The roster, the flag or a score changed: reload, keeping the admin's choices.
+          toast.error(apiErrorMessage(err, "Something changed. Check the list again."));
+          void check.refetch();
+        } else {
+          toast.error(apiErrorMessage(err, "Couldn't end the season."));
+        }
       },
-    );
-  };
-
-  const keyFor = (s: Student) => s.userId;
-  const stage = (s: Student, draft: ResultDraft) => {
-    setStaged((cur) => {
-      const next = { ...cur };
-      if (draft.result === "PASSED") delete next[keyFor(s)];
-      else next[keyFor(s)] = draft;
-      return next;
     });
-    setEditing(null);
   };
 
   const gate = endGate({
@@ -147,23 +120,39 @@ export default function EndSeasonScreen() {
     check,
     onDone: () => (isSuper ? router.back() : router.dismissAll()),
   });
-  const blockers = check.data?.blockers;
+  const data = check.data;
+  const blockers = data?.blockers;
   const blocked =
     !!blockers && blockers.submissions.length + blockers.quizAttempts.length + blockers.attendance.length > 0;
+  const anything = !!data && (data.available.attendance || data.available.assignments || data.available.quizzes);
 
   let body: ReactNode = gate;
   let footer: ReactNode = undefined;
   if (gate === null && blockers && blocked) {
     body = <BlockersList blockers={blockers} />;
-  } else if (gate === null && check.data) {
+  } else if (gate === null && data && review.criteria) {
     body = (
-      <ReviewList
-        students={check.data.students}
-        staged={staged}
-        graduating={check.data.graduatesOnPass}
-        year={season.data?.year ?? null}
-        onOpen={setEditing}
-      />
+      <View className="flex-col gap-5">
+        <CriteriaStep
+          criteria={review.criteria}
+          isDefault={data.isDefault}
+          changed={review.changed}
+          ignored={ignoredNumbers(data)}
+          anything={anything}
+          onChange={() => setCriteriaOpen(true)}
+        />
+        <ReviewList
+          students={data.students}
+          rows={review.rows}
+          selection={review.selection}
+          criteria={review.criteria}
+          graduating={data.graduatesOnPass}
+          year={season.data?.year ?? null}
+          onOpen={setEditing}
+          onSelectOnTrack={review.selectAllOnTrack}
+          onClear={review.clear}
+        />
+      </View>
     );
     footer = (
       <SaveBar
@@ -173,39 +162,57 @@ export default function EndSeasonScreen() {
         disabled={end.isSuccess}
         onPress={() => setConfirming(true)}
         hint={
-          notPassed.length > 0
-            ? `${plural(notPassed.length, "student", "students")} will not pass.`
-            : "Everyone will pass."
+          review.notPass > 0 ? `${plural(review.notPass, "student", "students")} will not pass.` : "Everyone will pass."
         }
       />
     );
   }
 
-  const total = check.data?.students.length ?? 0;
-  const title = season.data?.title ?? "this season";
-  const graduating = check.data?.graduatesOnPass ? total - notPassed.length : 0;
-  const description =
-    `This finishes ${title}` +
-    (notPassed.length > 0 ? `, and ${plural(notPassed.length, "student", "students")} did not pass` : "") +
-    ". Their leaders and admins lose access." +
-    ` This ends the season for ${plural(total, "person", "people")}.` +
-    (graduating > 0 ? ` ${plural(graduating, "person", "people")} will graduate.` : "");
+  const copy = confirmCopy({
+    title: season.data?.title ?? "this season",
+    pass: review.pass,
+    notPass: review.notPass,
+    graduating: !!data?.graduatesOnPass,
+    year: season.data?.year ?? null,
+  });
+  const editingRow = editing ? review.rows.find((r) => r.userId === editing.userId) : undefined;
 
   return (
     <Screen title="End season" subtitle={season.data?.title} footer={footer}>
       {body}
       <ResultSheet
         student={editing}
-        initial={editing ? (staged[editing.userId] ?? PASSED) : PASSED}
+        initial={{
+          result: editing ? (review.selection[editing.userId] ?? "PASSED") : "PASSED",
+          reason: editing ? (review.notes[editing.userId] ?? "") : "",
+        }}
+        onTrack={editingRow?.onTrack ?? null}
         saveLabel="Done"
         onClose={() => setEditing(null)}
-        onSave={(draft) => editing && stage(editing, draft)}
+        onSave={(draft) => {
+          if (editing) review.choose(editing.userId, draft);
+          setEditing(null);
+        }}
       />
+      {data && review.criteria ? (
+        <CriteriaSheet
+          open={criteriaOpen}
+          initial={review.criteria}
+          available={data.available}
+          readOnly={false}
+          saveLabel="Use these criteria"
+          onSave={(c) => {
+            review.setCriteria(c);
+            setCriteriaOpen(false);
+          }}
+          onClose={() => setCriteriaOpen(false)}
+        />
+      ) : null}
       <ConfirmDialog
         open={confirming}
         onOpenChange={setConfirming}
-        title="End this season?"
-        description={description}
+        title={copy.title}
+        description={copy.description}
         confirmLabel="End season"
         destructive
         pending={end.isPending}

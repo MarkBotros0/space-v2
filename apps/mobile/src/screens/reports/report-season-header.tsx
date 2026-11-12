@@ -4,6 +4,8 @@
  * the rest, current first, then past seasons newest first. SUPER and MENTOR
  * also get All seasons there.
  */
+import { isSeasonFinished } from "@space/shared";
+import { useRouter } from "expo-router";
 import { Check } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
@@ -51,13 +53,20 @@ export function ReportSeasonHeader({
   selected,
   onSelect,
   allowAll,
+  showResults = false,
 }: {
   seasons: ReportSeason[];
   /** null: All seasons. */
   selected: number | null;
   onSelect: (id: number | null) => void;
   allowAll: boolean;
+  /**
+   * A finished season's Results: a super, or an admin, whose History lists only seasons they held
+   * and who can't open those seasons' pages after End. Opened by id for that reason.
+   */
+  showResults?: boolean;
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const season = seasons.find((s) => s.id === selected);
   const current = seasons.filter(isCurrentSeason);
@@ -86,9 +95,23 @@ export function ReportSeasonHeader({
             </Text>
           )}
         </View>
-        {hasChoice ? (
-          <PillButton label="History" accessibilityLabel="Choose another season" onPress={() => setOpen(true)} />
-        ) : null}
+        <View className="shrink-0 flex-col items-end gap-2">
+          {hasChoice ? (
+            <PillButton label="History" accessibilityLabel="Choose another season" onPress={() => setOpen(true)} />
+          ) : null}
+          {showResults && season && isSeasonFinished(season.status) ? (
+            <PillButton
+              label="Results"
+              accessibilityLabel={`Results for ${season.title}`}
+              onPress={() =>
+                router.push({
+                  pathname: "/seasons/[code]/results",
+                  params: { code: season.code, id: String(season.id) },
+                })
+              }
+            />
+          ) : null}
+        </View>
       </View>
       {/* Beside the card, not in it: the card stays put while a picked season loads. */}
       <Sheet open={open} onClose={() => setOpen(false)} title="Seasons">

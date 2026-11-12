@@ -66,6 +66,8 @@ function StaffReports() {
           <SeasonReport
             scope={scope}
             allowAll={isSuper}
+            // Only SUPER and ADMIN get here, and an admin's History is the seasons they held.
+            showResults
             // A finished season in an admin's History: its student pages aren't theirs any more.
             canOpenStudent={(row) => isSuper || (seasonAdminIds ?? []).includes(row.seasonId)}
           />

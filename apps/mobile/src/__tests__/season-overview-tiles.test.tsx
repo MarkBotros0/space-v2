@@ -57,7 +57,7 @@ const cases: Array<[Role, keyof typeof statuses, string[], string | null]> = [
   ["ADMIN", "draft", [S, A, Q], null],
   ["ADMIN", "running", [S, A, Q, P, END], null],
   ["ADMIN", "overdue", [S, A, Q, P], "The end date has passed"],
-  ["ADMIN", "finished", [S], null],
+  ["ADMIN", "finished", [S, RESULTS], null],
   ["LEADER", "draft", [S], null],
   ["LEADER", "running", [S, P], null],
   ["LEADER", "overdue", [S, P], null],

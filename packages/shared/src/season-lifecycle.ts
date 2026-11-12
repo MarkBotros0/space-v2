@@ -150,7 +150,7 @@ export const endSeasonResponseSchema = z.object({
   graduated: z.number().int().nonnegative(),
 });
 
-export const seasonResultRowSchema = z.object({
+const seasonResultRowSchema = z.object({
   userId: z.number(),
   name: z.string(),
   isAlumnus: z.boolean(),

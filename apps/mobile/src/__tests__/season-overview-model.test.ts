@@ -27,11 +27,13 @@ describe("seasonOverviewModel", () => {
     expect(overdue.nextStep).toMatchObject({ key: "end", tone: "warn", actionLabel: "End season" });
   });
 
-  it("locks a finished season, and gives only a Super its Results and Duplicate", () => {
+  it("locks a finished season, gives its admin and a Super its Results, and only a Super Duplicate", () => {
     const finished = season({ status: "COMPLETED" });
     const admin = seasonOverviewModel(finished, { isSuper: false, today: "2026-07-01" });
     expect(admin).toMatchObject({ finished: true, canAdminister: false, manage: false, nextStep: null });
-    expect(keys(admin)).toEqual(["sessions"]);
+    expect(keys(admin)).toEqual(["sessions", "results"]);
+    const other = seasonOverviewModel({ ...finished, canAdminister: false }, { isSuper: false, today: "2026-07-01" });
+    expect(keys(other)).toEqual(["sessions"]);
     const sup = seasonOverviewModel(finished, { isSuper: true, today: "2026-07-01" });
     expect(keys(sup)).toEqual(["sessions", "results"]);
     expect(sup.nextStep?.key).toBe("duplicate");

@@ -16,9 +16,12 @@ export function SeasonReport({
   scope,
   allowAll,
   canOpenStudent,
+  showResults,
 }: {
   scope: ReturnType<typeof useReportsScope>;
   allowAll: boolean;
+  /** Offer a finished season's Results in the header. */
+  showResults?: boolean;
   canOpenStudent?: (row: EngagementReportRow) => boolean;
 }) {
   const { seasonId, setSeasonId, ready, permitted, summary, atRiskRows, moreFailed, showMore } = scope;
@@ -40,7 +43,13 @@ export function SeasonReport({
   const data = summary.data;
   return (
     <View className="flex-col gap-4">
-      <ReportSeasonHeader seasons={permitted} selected={seasonId} onSelect={setSeasonId} allowAll={allowAll} />
+      <ReportSeasonHeader
+        seasons={permitted}
+        selected={seasonId}
+        onSelect={setSeasonId}
+        allowAll={allowAll}
+        showResults={showResults}
+      />
       {!ready || summary.isPending ? (
         <RouteSkeleton />
       ) : summary.isError && !data ? (

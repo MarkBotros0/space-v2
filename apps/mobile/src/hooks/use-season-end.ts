@@ -3,22 +3,19 @@ import {
   endSeasonResponseSchema,
   overdueSeasonsResponseSchema,
   seasonEndCheckSchema,
-  seasonResultRowSchema,
+  seasonResultsResponseSchema,
   type EndSeasonRequest,
   type OverdueSeasonsResponse,
   type SeasonEndCheck,
-  type SeasonResultRow,
+  type SeasonResultsResponse,
   type UpdateSeasonResultRequest,
 } from "@space/shared";
-import { z } from "zod";
 
 import { apiClient } from "../lib/api-client";
 import { LIVE_CHECK } from "../lib/query-client";
 import { isSeasonCheckKey, queryKeys } from "../lib/query-keys";
 import { loadedId } from "../lib/loaded-id";
 import { apiGet, apiSend } from "../lib/api-request";
-
-const resultsSchema = z.array(seasonResultRowSchema);
 
 /** GET /seasons/:id/end-check: what blocks the end, and the students it would end for. */
 export function useSeasonEndCheck(id: number | null): UseQueryResult<SeasonEndCheck> {
@@ -58,14 +55,14 @@ export function useEndSeason(id: number | null) {
   });
 }
 
-/** GET /seasons/:id/results (SUPER). */
-export function useSeasonResults(id: number | null): UseQueryResult<SeasonResultRow[]> {
+/**
+ * GET /seasons/:id/results: the season, the criteria End used and each result. A super or the
+ * season's (former) admin; anyone else is answered 403, which the screen says in words.
+ */
+export function useSeasonResults(id: number | null): UseQueryResult<SeasonResultsResponse> {
   return useQuery({
     queryKey: queryKeys.seasons.results(id),
-    queryFn: async () => {
-      const res = await apiClient.get(`/api/v1/seasons/${id}/results`);
-      return resultsSchema.parse(res.data.data.results);
-    },
+    queryFn: () => apiGet(`/api/v1/seasons/${id}/results`, seasonResultsResponseSchema),
     enabled: id !== null,
   });
 }

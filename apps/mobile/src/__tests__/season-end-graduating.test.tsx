@@ -13,7 +13,7 @@ import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
-import { check, detail, endBody } from "./helpers/season-end-fixtures";
+import { check, detail, endBody, resultsBody } from "./helpers/season-end-fixtures";
 import { makeSession } from "./helpers/session";
 import EndSeasonScreen from "../../app/(app)/seasons/[code]/end";
 import SeasonResultsScreen from "../../app/(app)/seasons/[code]/results";
@@ -40,7 +40,7 @@ describe("End of a graduating season", () => {
   const ended = (graduated: number) =>
     post.mockResolvedValue({ data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated } } });
 
-  it("warns on the review, counts the graduates in the confirm and says so after", async () => {
+  it("the confirm says how many pass and graduate", async () => {
     serve({ [BY_CODE]: detail(), "/api/v1/seasons/7/end-check": check({}, 13, true) });
     ended(12);
     renderStacked(<EndSeasonScreen />);
@@ -51,7 +51,11 @@ describe("End of a graduating season", () => {
     fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
     fireEvent.press(screen.getByText("Done"));
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    expect(await screen.findByText(/12 people will graduate\.$/)).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "12 students pass, 1 doesn't. 12 students graduate as JPCS-26. Their leaders and admins lose access. This ends the season for 13 people.",
+      ),
+    ).toBeTruthy();
 
     confirmEnd();
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("GBV 2026 has ended. 12 people graduated."));
@@ -63,7 +67,7 @@ describe("End of a graduating season", () => {
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    expect(await screen.findByText(/1 person will graduate\.$/)).toBeTruthy();
+    expect(await screen.findByText(/1 student graduates as JPCS-26\./)).toBeTruthy();
     confirmEnd();
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("GBV 2026 has ended. 1 person graduated."));
   });
@@ -76,8 +80,8 @@ describe("End of a graduating season", () => {
     fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));
     fireEvent.press(screen.getByText("Done"));
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
-    expect(screen.queryByText(/will graduate/)).toBeNull();
+    await screen.findByText("End GBV 2026?");
+    expect(screen.queryByText(/graduates? as/)).toBeNull();
     confirmEnd();
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("GBV 2026 has ended."));
   });
@@ -88,8 +92,8 @@ describe("End of a graduating season", () => {
     await screen.findByText("Student 1");
     expect(screen.queryByText("Passing makes them JPCS-26")).toBeNull();
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
-    expect(screen.queryByText(/will graduate/)).toBeNull();
+    await screen.findByText("End GBV 2026?");
+    expect(screen.queryByText(/graduates? as/)).toBeNull();
   });
 });
 
@@ -97,8 +101,8 @@ describe("Correcting a result on a graduating season", () => {
   const open = async (graduatesOnPass: boolean) => {
     serve({
       [BY_CODE]: detail({ status: "COMPLETED", graduatesOnPass }),
-      "/api/v1/seasons/7/results": {
-        results: [
+      "/api/v1/seasons/7/results": resultsBody(
+        [
           {
             userId: 1,
             name: "Mina",
@@ -118,7 +122,8 @@ describe("Correcting a result on a graduating season", () => {
             reason: null,
           },
         ],
-      },
+        { season: { id: 7, code: "gbv-2026", title: "GBV 2026", year: 2026, graduatesOnPass } },
+      ),
     });
     renderStacked(<SeasonResultsScreen />);
     await screen.findByText("Mina");
@@ -174,7 +179,7 @@ describe("A stale review", () => {
     renderStacked(<EndSeasonScreen />);
     await screen.findByText("Student 1");
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
+    await screen.findByText("End GBV 2026?");
     confirmEnd();
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
@@ -195,7 +200,7 @@ describe("A stale review", () => {
     // A super ticks Graduating season and a student joins while the review is open.
     serve({ [BY_CODE]: detail(), [END_CHECK]: check({}, 3, true) });
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
+    await screen.findByText("End GBV 2026?");
     confirmEnd();
 
     expect(await screen.findByText("Passing makes them JPCS-26")).toBeTruthy();
@@ -207,7 +212,7 @@ describe("A stale review", () => {
       data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 2 } },
     });
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    expect(await screen.findByText(/2 people will graduate\.$/)).toBeTruthy();
+    expect(await screen.findByText(/2 students graduate as JPCS-26\./)).toBeTruthy();
     confirmEnd();
     await waitFor(() =>
       expect(post).toHaveBeenLastCalledWith(
@@ -226,7 +231,7 @@ describe("A stale review", () => {
 
     serve({ [BY_CODE]: detail(), [END_CHECK]: check({}, 1, true) });
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    await screen.findByText(/This finishes/);
+    await screen.findByText("End GBV 2026?");
     confirmEnd();
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     await waitFor(() => expect(screen.queryByText("Student 2")).toBeNull(), { timeout: 5000 });
@@ -235,7 +240,7 @@ describe("A stale review", () => {
       data: { data: { season: { id: 7, code: "gbv-2026", status: "COMPLETED" }, graduated: 1 } },
     });
     fireEvent.press(screen.getByRole("button", { name: "End season" }));
-    expect(await screen.findByText(/1 person will graduate\.$/)).toBeTruthy();
+    expect(await screen.findByText(/1 student graduates as JPCS-26\./)).toBeTruthy();
     confirmEnd();
     await waitFor(() =>
       expect(post).toHaveBeenLastCalledWith(

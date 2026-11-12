@@ -83,7 +83,9 @@ export function seasonOverviewModel(
   if (season.status === "ACTIVE" && manage && !pastEnd) {
     tiles.push({ key: "end", label: "End season", hint: "Results and graduation" });
   }
-  if (isSuper && finished) tiles.push({ key: "results", label: "Results" });
+  // Results after End: a super, or the season's admin (season passing; the server also lets a
+  // former admin in, who reaches them from Reports' History since End closes this page to them).
+  if ((isSuper || season.canAdminister) && finished) tiles.push({ key: "results", label: "Results" });
 
   return {
     finished,
