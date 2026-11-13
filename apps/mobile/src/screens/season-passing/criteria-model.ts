@@ -31,9 +31,10 @@ export function fieldOff(key: PassingNumberKey, available: SeasonAvailability): 
   return anything && !available[key];
 }
 
-/** The three weights added up as typed; a blank or unreadable field counts as 0. */
-export function draftTotal(d: CriteriaDraft): number {
-  return WEIGHT_KEYS.reduce((sum, key) => sum + (wholePercent(d[key]) ?? 0), 0);
+/** The three weights as typed; a blank or unreadable field counts as 0. */
+export function draftWeights(d: CriteriaDraft): Record<PassingNumberKey, number> {
+  const read = (key: PassingNumberKey) => wholePercent(d[key]) ?? 0;
+  return { attendance: read("attendance"), assignments: read("assignments"), quizzes: read("quizzes") };
 }
 
 export function parseCriteria(
@@ -99,4 +100,15 @@ export function draftFrom(c: PassCriteria, available: SeasonAvailability): Crite
 export function stepDraft(raw: string, by: number): string {
   const n = wholePercent(raw) ?? 0;
   return String(Math.min(100, Math.max(0, n + by)));
+}
+
+/** "Split equally": the weights of the numbers that are on, shared out to add up to 100 (34 / 33 / 33). */
+export function splitEqually(available: SeasonAvailability): Pick<CriteriaDraft, PassingNumberKey> {
+  const on = WEIGHT_KEYS.filter((key) => !fieldOff(key, available));
+  const shares = toHundred(on.map(() => 1));
+  const split = { attendance: "0", assignments: "0", quizzes: "0" };
+  on.forEach((key, i) => {
+    split[key] = String(shares[i] ?? 0);
+  });
+  return split;
 }

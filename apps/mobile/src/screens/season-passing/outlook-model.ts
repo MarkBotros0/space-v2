@@ -14,6 +14,7 @@ import {
 } from "@space/shared";
 
 import type { ChipSpec } from "../../design/ui/status-chip";
+import { joinMeta } from "../../lib/join-meta";
 import { plural } from "../../lib/plural";
 import { WEIGHT_KEYS } from "./criteria-model";
 
@@ -23,20 +24,10 @@ export const NUMBER_LABELS: Record<PassingNumberKey, string> = {
   quizzes: "Quizzes",
 };
 
-/** The counts at the top, each on its own line. */
-export function outlookHeader(o: PassingOutlook): { onTrack: string; below: string; noScore: string | null } {
+/** The counts at the top: two tiles and, when some have no score, a line under them. */
+export function outlookHeader(o: PassingOutlook): { onTrack: number; below: number; noScore: string | null } {
   const noScore = o.rows.filter((r) => r.score === null).length;
-  return {
-    onTrack: `${o.onTrack} on track`,
-    below: `${o.below} below the mark`,
-    noScore: noScore > 0 ? `${noScore} not scored yet` : null,
-  };
-}
-
-/** The criteria as the season holds them, one line each. */
-export function criteriaLines(o: PassingOutlook): string[] {
-  const { weights, passMark } = o.criteria;
-  return [...WEIGHT_KEYS.map((key) => `${NUMBER_LABELS[key]} ${weights[key]}%`), `Pass mark ${passMark}`];
+  return { onTrack: o.onTrack, below: o.below, noScore: noScore > 0 ? `${noScore} not scored yet` : null };
 }
 
 /** What the criteria line can't say: they are only suggested, or a weight counts as 0 this season. */
@@ -61,31 +52,66 @@ function missingNumbers(row: PassingOutlookRow, o: PassingOutlook): string {
   return names.join(" and ");
 }
 
-type OutlookRowView = { userId: number; name: string; chip: ChipSpec; lines: string[] };
+export type OutlookStanding = "below" | "onTrack" | "none";
 
-/** A student's row: a status in words, then one fact per line. */
+type OutlookRowView = {
+  userId: number;
+  name: string;
+  standing: OutlookStanding;
+  /** The score in the badge, one decimal as it is compared with the mark; "–" with none. */
+  badge: string;
+  chip: ChipSpec;
+  lines: string[];
+};
+
+/** A student's row: their score for the badge, a status in words and one line of facts, then their group. */
 export function outlookRowView(row: PassingOutlookRow, o: PassingOutlook): OutlookRowView {
-  const lines: string[] = [];
-  let chip: ChipSpec;
+  const facts: (string | null)[] = [];
+  let standing: OutlookStanding;
   if (row.score === null) {
-    chip = { tone: "neutral", label: "No score yet" };
-    lines.push("Nothing to count for them yet");
+    standing = "none";
+    facts.push("Nothing to count for them yet");
   } else if (row.pointsShort !== null) {
-    chip = { tone: "bad", label: "Below the mark" };
-    lines.push(`${plural(row.pointsShort, "point")} short`);
-    if (row.weakest) {
-      const pct = passingPcts(row.numbers)[row.weakest];
-      if (pct !== null) lines.push(`${NUMBER_LABELS[row.weakest]} ${Math.round(pct)}%`);
-    }
-    lines.push(`Score ${row.score.toFixed(1)}`);
+    standing = "below";
+    facts.push(`${plural(row.pointsShort, "point")} short`);
+    const pct = row.weakest ? passingPcts(row.numbers)[row.weakest] : null;
+    if (row.weakest && pct !== null) facts.push(`${NUMBER_LABELS[row.weakest]} ${Math.round(pct)}%`);
   } else {
-    chip = { tone: "ok", label: "On track" };
-    lines.push(`Score ${row.score.toFixed(1)}`);
+    standing = "onTrack";
+    const above = Math.round((row.score - o.criteria.passMark) * 10) / 10;
+    facts.push(above > 0 ? `${plural(above, "point")} above the mark` : "Right at the mark");
   }
+  const lines = [joinMeta(facts)];
   if (row.rescaled) {
     const missing = missingNumbers(row, o);
     if (missing) lines.push(`Scored without ${missing}`);
   }
   if (row.groupName) lines.push(row.groupName);
-  return { userId: row.userId, name: row.name, chip, lines };
+  return {
+    userId: row.userId,
+    name: row.name,
+    standing,
+    badge: row.score === null ? "–" : row.score.toFixed(1),
+    chip: STANDING_CHIPS[standing],
+    lines,
+  };
+}
+
+const STANDING_CHIPS: Record<OutlookStanding, ChipSpec> = {
+  below: { tone: "bad", label: "Below the mark" },
+  onTrack: { tone: "ok", label: "On track" },
+  none: { tone: "neutral", label: "No score yet" },
+};
+
+/** The list in three sections, each with its count in brackets; an empty section is left out. */
+export function outlookSections(
+  o: PassingOutlook,
+): { standing: OutlookStanding; header: string; rows: OutlookRowView[] }[] {
+  const views = o.rows.map((row) => outlookRowView(row, o));
+  return (["below", "onTrack", "none"] as const)
+    .map((standing) => {
+      const rows = views.filter((v) => v.standing === standing);
+      return { standing, header: `${STANDING_CHIPS[standing].label} (${rows.length})`, rows };
+    })
+    .filter((section) => section.rows.length > 0);
 }

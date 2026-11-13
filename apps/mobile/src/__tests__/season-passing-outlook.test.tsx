@@ -9,7 +9,6 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
-import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
@@ -17,6 +16,7 @@ import { detail } from "./helpers/season-end-fixtures";
 import { makeSession } from "./helpers/session";
 import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
 import SeasonPassingScreen from "../../app/(app)/seasons/[code]/passing";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
@@ -80,8 +80,10 @@ describe("Passing outlook", () => {
   it("rows below the mark come first with points short and the weakest number", async () => {
     serve(outlook());
     renderStacked(<SeasonPassingScreen />);
-    expect(await screen.findByText("1 on track")).toBeTruthy();
-    expect(screen.getByText("2 below the mark")).toBeTruthy();
+    expect(await screen.findByLabelText("1 on track")).toBeTruthy();
+    expect(screen.getByLabelText("2 below the mark")).toBeTruthy();
+    expect(screen.getByText("BELOW THE MARK (2)")).toBeTruthy();
+    expect(screen.getByText("ON TRACK (1)")).toBeTruthy();
     const rows = screen.getAllByRole("button").filter((b) => /Short|Below|Ontrack/.test(b.props.accessibilityLabel));
     expect(rows.map((r) => r.props.accessibilityLabel.split(",")[0])).toEqual([
       "Sara Short",
@@ -89,14 +91,15 @@ describe("Passing outlook", () => {
       "Ann Ontrack",
     ]);
     const sara = screen.getByRole("button", { name: /^Sara Short/ });
+    expect(sara.props.accessibilityLabel).toContain("Score 52.0");
     expect(sara.props.accessibilityLabel).toContain("8 points short");
     expect(sara.props.accessibilityLabel).toContain("Quizzes 45%");
     expect(sara.props.accessibilityLabel).toContain("Below the mark");
     expect(screen.getByRole("button", { name: /^Ann Ontrack/ }).props.accessibilityLabel).toContain("On track");
     fireEvent.press(sara);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
-    fireEvent.press(screen.getByRole("button", { name: "Send a reminder" }));
-    expect(mockPush).toHaveBeenCalledWith("/announcements/new");
+    // No "Send a reminder" (owner, 2026-11-13).
+    expect(screen.queryByRole("button", { name: "Send a reminder" })).toBeNull();
   });
 
   it("a re-scaled row says so", async () => {
@@ -121,10 +124,8 @@ describe("Passing outlook", () => {
     serve(outlook({ canEditCriteria: false }));
     renderStacked(<SeasonPassingScreen />);
     expect(await screen.findByText("Attendance 40%")).toBeTruthy();
-    expect(screen.getByText("Pass mark 60")).toBeTruthy();
+    expect(screen.getByLabelText("Pass mark 60")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Edit criteria" })).toBeNull();
-    // Leaders never post announcements (docs/rules/announcements.md).
-    expect(screen.queryByRole("button", { name: "Send a reminder" })).toBeNull();
   });
 
   it("the total reads 100% only when the weights add up", async () => {
@@ -147,6 +148,26 @@ describe("Passing outlook", () => {
     expect(sheet.getByText("Total 90%")).toBeTruthy();
     fireEvent.press(sheet.getByRole("button", { name: "Save criteria" }));
     expect(put).not.toHaveBeenCalled();
+  });
+
+  it("Split equally shares the weights out and the total reads 100%", async () => {
+    serve(outlook());
+    renderStacked(<SeasonPassingScreen />);
+    const sheet = await openSheet();
+    fireEvent.changeText(sheet.getByLabelText("Attendance weight"), "5");
+    fireEvent.press(sheet.getByRole("button", { name: "Split equally" }));
+    expect(sheet.getByLabelText("Attendance weight").props.value).toBe("34");
+    expect(sheet.getByLabelText("Assignments weight").props.value).toBe("33");
+    expect(sheet.getByLabelText("Quizzes weight").props.value).toBe("33");
+    expect(sheet.getByText("Total 100%")).toBeTruthy();
+  });
+
+  it("a common pass mark is one tap", async () => {
+    serve(outlook());
+    renderStacked(<SeasonPassingScreen />);
+    const sheet = await openSheet();
+    fireEvent.press(sheet.getByRole("button", { name: "Pass mark 70" }));
+    expect(sheet.getByLabelText("Pass mark").props.value).toBe("70");
   });
 
   it("an unavailable number's field is off and fixed at 0", async () => {
@@ -185,7 +206,7 @@ describe("Passing outlook", () => {
       }),
     );
     await waitFor(() => expect(outlookGets()).toBe(2));
-    expect(toast.success).toHaveBeenCalledWith("Pass criteria saved.");
+    await expectQuietSuccess();
     // The sheet is closing: it stops taking touches while it animates out.
     await waitFor(() => {
       const backdrop = screen.queryByTestId("sheet-backdrop");

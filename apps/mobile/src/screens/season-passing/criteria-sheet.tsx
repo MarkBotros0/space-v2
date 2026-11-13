@@ -1,26 +1,33 @@
 /**
  * The season's pass criteria in a sheet (season passing, spec 2026-11-12 "Pass criteria on the
  * season"): three weights with a live "Total 100%" that says plainly when it is off, and the pass
- * mark. A number the season has nothing for is off and fixed at 0. Read-only, it lists the
+ * mark. Owner, 2026-11-13 ("much easier … an option to split equally"): one line per weight, a
+ * Split equally button, the mix as a live bar, and common pass marks one tap away. A number the season has nothing for is off and fixed at 0. Read-only, it lists the
  * criteria with a Close button (a leader). The passing outlook and the End flow's criteria step
  * both open it; the caller saves and passes back `saving` and `error`.
  */
 import type { PassCriteria, SeasonAvailability } from "@space/shared";
+import { Equal } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
-import { Sheet, SheetSaveBar, StatusChip, Text } from "../../design/ui";
+import { iconWithClassName } from "../../design/lib/icon";
+import { Button, ChoiceChip, Sheet, SheetSaveBar, StatusChip, Text } from "../../design/ui";
 import {
   TOTAL_ERROR,
   WEIGHT_KEYS,
   draftFrom,
-  draftTotal,
+  draftWeights,
   fieldOff,
   parseCriteria,
+  splitEqually,
   type CriteriaDraft,
 } from "./criteria-model";
 import { NUMBER_LABELS } from "./outlook-model";
 import { PercentStepper } from "./percent-stepper";
+import { WeightBar } from "./weight-bar";
+
+iconWithClassName(Equal);
 
 type Props = {
   open: boolean;
@@ -65,10 +72,8 @@ function TotalLine({ total }: { total: number }) {
 
 function ReadOnlyCriteria({ criteria }: { criteria: PassCriteria }) {
   return (
-    <View className="flex-col gap-2 pb-4">
-      {WEIGHT_KEYS.map((key) => (
-        <Text key={key} variant="body">{`${NUMBER_LABELS[key]} ${criteria.weights[key]}%`}</Text>
-      ))}
+    <View className="flex-col gap-4 pb-4">
+      <WeightBar weights={criteria.weights} />
       <Text variant="body">{`Pass mark ${criteria.passMark}`}</Text>
     </View>
   );
@@ -100,6 +105,11 @@ export function CriteriaSheet({
     setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
+  const split = () => {
+    setDraft((d) => ({ ...d, ...splitEqually(available) }));
+    setErrors((e) => ({ ...e, attendance: undefined, assignments: undefined, quizzes: undefined, total: undefined }));
+  };
+
   const save = () => {
     const parsed = parseCriteria(draft, available);
     if (!parsed.ok) {
@@ -123,6 +133,7 @@ export function CriteriaSheet({
     );
   }
 
+  const weights = draftWeights({ ...draft, ...offZeros(available) });
   return (
     <Sheet
       open={open}
@@ -130,40 +141,67 @@ export function CriteriaSheet({
       title="Pass criteria"
       footer={<SheetSaveBar label={saveLabel} onPress={save} loading={saving} error={error} />}
     >
-      <View className="flex-col gap-4 pb-4">
+      <View className="flex-col gap-5 pb-4">
         <Text variant="subhead" className="text-muted-foreground">
           A student&apos;s score mixes their three numbers by these weights. A score at or above the pass mark is on
           track.
         </Text>
-        {WEIGHT_KEYS.map((key) => {
-          const off = fieldOff(key, available);
-          return (
-            <PercentStepper
-              key={key}
-              label={NUMBER_LABELS[key]}
-              name={`${NUMBER_LABELS[key].toLowerCase()} weight`}
-              value={off ? "0" : draft[key]}
-              onChange={set(key)}
-              suffix="%"
-              off={off}
-              note={off ? OFF_NOTE : undefined}
-              error={errors[key]}
-            />
-          );
-        })}
-        <TotalLine total={draftTotal({ ...draft, ...offZeros(available) })} />
-        <PercentStepper
-          label="Pass mark"
-          name="pass mark"
-          value={draft.passMark}
-          onChange={set("passMark")}
-          note="Out of 100. A student passes the mark when their score reaches it."
-          error={errors.passMark}
-        />
+        <View className="flex-col gap-3 rounded-group bg-surface-raised p-4">
+          <View className="flex-row items-center gap-2">
+            <Text variant="headline" accessibilityRole="header" className="min-w-0 flex-1">
+              Weights
+            </Text>
+            <Button variant="secondary" size="sm" onPress={() => split()}>
+              <Equal size={16} className="text-foreground" />
+              Split equally
+            </Button>
+          </View>
+          {WEIGHT_KEYS.map((key) => {
+            const off = fieldOff(key, available);
+            return (
+              <PercentStepper
+                key={key}
+                label={NUMBER_LABELS[key]}
+                name={`${NUMBER_LABELS[key].toLowerCase()} weight`}
+                value={off ? "0" : draft[key]}
+                onChange={set(key)}
+                suffix="%"
+                off={off}
+                note={off ? OFF_NOTE : undefined}
+                error={errors[key]}
+              />
+            );
+          })}
+          <WeightBar weights={weights} />
+          <TotalLine total={weights.attendance + weights.assignments + weights.quizzes} />
+        </View>
+        <View className="flex-col gap-3">
+          <PercentStepper
+            label="Pass mark"
+            name="pass mark"
+            value={draft.passMark}
+            onChange={set("passMark")}
+            note="Out of 100."
+            error={errors.passMark}
+          />
+          <View className="flex-row flex-wrap gap-2" accessibilityLabel="Common pass marks">
+            {COMMON_MARKS.map((mark) => (
+              <ChoiceChip
+                key={mark}
+                label={String(mark)}
+                accessibilityLabel={`Pass mark ${mark}`}
+                selected={draft.passMark === String(mark)}
+                onPress={() => set("passMark")(String(mark))}
+              />
+            ))}
+          </View>
+        </View>
       </View>
     </Sheet>
   );
 }
+
+const COMMON_MARKS = [50, 60, 70, 75, 80];
 
 /** The off fields as "0", for the total. */
 function offZeros(available: SeasonAvailability): Partial<CriteriaDraft> {

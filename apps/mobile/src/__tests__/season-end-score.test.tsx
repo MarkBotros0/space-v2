@@ -116,7 +116,8 @@ describe("End review by the score", () => {
     expect(row("Sara")).not.toContain("Scored without");
     expect(row("Nour")).toMatch(/Passed below the mark, Passed$/);
     expect(row("Mina")).toMatch(/Score 60\.0, on track.*Passed$/s);
-    expect(screen.getByText("Quizzes 100%")).toBeTruthy();
+    // The criteria step shows the new mix (the closing sheet may still show its own copy).
+    expect(screen.getAllByText("Quizzes 100%").length).toBeGreaterThan(0);
   });
 
   it("the POST carries weights, passMark and the scores shown", async () => {

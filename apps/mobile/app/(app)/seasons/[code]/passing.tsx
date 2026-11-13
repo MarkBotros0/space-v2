@@ -6,9 +6,7 @@ import { EmptyState } from "../../../../src/design/ui";
 import { usePassingOutlook } from "../../../../src/hooks/use-season-passing";
 import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorStatus } from "../../../../src/lib/api-error";
-import { isAdminOfSeasonForUi } from "../../../../src/lib/season-admin";
 import { OutlookScreen } from "../../../../src/screens/season-passing/outlook-screen";
-import { useSessionStore } from "../../../../src/store/session";
 
 /**
  * /seasons/[code]/passing: who is on track to pass the season and who is below the mark, and the
@@ -19,8 +17,6 @@ export default function SeasonPassingScreen() {
   const { code, season } = useSeasonRoute();
   const seasonId = season.data?.id ?? null;
   const outlook = usePassingOutlook(seasonId);
-  const mayPost = useSessionStore((s) => seasonId !== null && isAdminOfSeasonForUi(s.user, s.scopes, seasonId));
-  const canRemind = mayPost && season.data?.status === "ACTIVE";
 
   let body: ReactNode;
   if (code === null) body = <SeasonLinkNotFound />;
@@ -34,11 +30,7 @@ export default function SeasonPassingScreen() {
   else
     body = (
       <QueryGate query={season}>
-        {(s) => (
-          <QueryGate query={outlook}>
-            {(o) => <OutlookScreen seasonId={s.id} outlook={o} canRemind={canRemind} />}
-          </QueryGate>
-        )}
+        {(s) => <QueryGate query={outlook}>{(o) => <OutlookScreen seasonId={s.id} outlook={o} />}</QueryGate>}
       </QueryGate>
     );
 

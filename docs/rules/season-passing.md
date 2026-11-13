@@ -58,11 +58,15 @@ shows 60.0 and passes a mark of 60).
 
 ## Outlook (during the season)
 
-`/seasons/[code]/passing` (the Passing tile): "N on track, N below the mark", then every student with
-their score, those below the mark first, each with how far short and the weakest number. From a row:
-missing assignments and lowest quizzes, with **Mark as submitted**, **Reopen retake** (only on a taken
-online quiz; else "Open grading") and **Send a reminder** (a new announcement; admin and super only,
-leaders do not post). Admin and super see the whole season; a leader sees their own groups' students,
+`/seasons/[code]/passing` (the Passing tile; redesigned by the owner, 2026-11-13): two tiles, On track
+and Below the mark, then the criteria card (the weights as one bar with a legend, the pass mark, Edit),
+then the students in sections "Below the mark (n)", "On track (n)" and "No score yet (n)". Each row leads
+with the score and says how far short and the weakest number, or how far above the mark. The criteria
+sheet has one line per weight, **Split equally** (34 / 33 / 33 over the numbers that count), a live mix
+bar and common pass marks (50, 60, 70, 75, 80) one tap away. From a row:
+missing assignments and lowest quizzes, with **Mark as submitted** and **Allow a retake** (only on a
+taken online quiz; else "Open grading"). There is no "Send a reminder" (owner, 2026-11-13: it opened a
+blank announcement and confused). Admin and super see the whole season; a leader sees their own groups' students,
 read-only on the criteria. **A mentor sees none of it (mentor.md "sees nothing season-shaped"):** the
 students list carries `progress: null` and `GET /students/:id/progress` answers 403.
 

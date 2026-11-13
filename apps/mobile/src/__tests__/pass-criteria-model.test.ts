@@ -1,7 +1,14 @@
 import type { PassingOutlook, PassingOutlookRow } from "@space/shared";
 
-import { draftFrom, draftTotal, fieldOff, parseCriteria, stepDraft } from "../screens/season-passing/criteria-model";
-import { criteriaLines, criteriaNotes, outlookHeader, outlookRowView } from "../screens/season-passing/outlook-model";
+import {
+  draftFrom,
+  draftWeights,
+  fieldOff,
+  parseCriteria,
+  splitEqually,
+  stepDraft,
+} from "../screens/season-passing/criteria-model";
+import { criteriaNotes, outlookHeader, outlookRowView, outlookSections } from "../screens/season-passing/outlook-model";
 
 const all = { attendance: true, assignments: true, quizzes: true };
 const noQuizzes = { attendance: true, assignments: true, quizzes: false };
@@ -14,10 +21,17 @@ const draft = (attendance: string, assignments: string, quizzes: string, passMar
 });
 
 describe("criteria model", () => {
-  it("adds the weights, reading a blank or a stray character as 0", () => {
-    expect(draftTotal(draft("40", "30", "30"))).toBe(100);
-    expect(draftTotal(draft("30", "30", "30"))).toBe(90);
-    expect(draftTotal(draft("", "30", "x"))).toBe(30);
+  it("reads the weights, a blank or a stray character as 0", () => {
+    expect(draftWeights(draft("40", "30", "30"))).toEqual({ attendance: 40, assignments: 30, quizzes: 30 });
+    expect(draftWeights(draft("", "30", "x"))).toEqual({ attendance: 0, assignments: 30, quizzes: 0 });
+    expect(draftWeights(draft("101", "30", "-5"))).toEqual({ attendance: 0, assignments: 30, quizzes: 0 });
+  });
+
+  it("splits equally over the numbers that are on, adding up to 100", () => {
+    expect(splitEqually(all)).toEqual({ attendance: "34", assignments: "33", quizzes: "33" });
+    expect(splitEqually(noQuizzes)).toEqual({ attendance: "50", assignments: "50", quizzes: "0" });
+    // Nothing to count at all: every field is on.
+    expect(splitEqually(none)).toEqual({ attendance: "34", assignments: "33", quizzes: "33" });
   });
 
   it("parses whole percentages that add up to 100", () => {
@@ -104,14 +118,20 @@ const outlook = (over: Partial<PassingOutlook> = {}): PassingOutlook => ({
 });
 
 describe("outlook model", () => {
-  it("counts on their own lines, with plurals", () => {
-    expect(outlookHeader(outlook())).toEqual({ onTrack: "14 on track", below: "1 below the mark", noScore: null });
+  it("counts the tiles and those not scored yet", () => {
+    expect(outlookHeader(outlook())).toEqual({ onTrack: 14, below: 1, noScore: null });
     const o = outlook({ onTrack: 0, below: 2, rows: [row(), row({ userId: 2 }), row({ userId: 3, score: null })] });
-    expect(outlookHeader(o)).toEqual({ onTrack: "0 on track", below: "2 below the mark", noScore: "1 not scored yet" });
+    expect(outlookHeader(o)).toEqual({ onTrack: 0, below: 2, noScore: "1 not scored yet" });
   });
 
-  it("names the criteria in words", () => {
-    expect(criteriaLines(outlook())).toEqual(["Attendance 40%", "Assignments 30%", "Quizzes 30%", "Pass mark 60"]);
+  it("splits the list into sections with their counts, leaving out an empty one", () => {
+    const o = outlook({
+      rows: [row(), row({ userId: 2, score: 70, pointsShort: null }), row({ userId: 3 })],
+    });
+    expect(outlookSections(o).map((s) => [s.header, s.rows.map((r) => r.userId)])).toEqual([
+      ["Below the mark (2)", [1, 3]],
+      ["On track (1)", [2]],
+    ]);
   });
 
   it("says when the criteria are a default or a weight counts as 0", () => {
@@ -126,19 +146,24 @@ describe("outlook model", () => {
     expect(outlookRowView(row(), outlook())).toEqual({
       userId: 1,
       name: "Sara",
+      standing: "below",
+      badge: "52.0",
       chip: { tone: "bad", label: "Below the mark" },
-      lines: ["8 points short", "Quizzes 45%", "Score 52.0", "Group A"],
+      lines: ["8 points short · Quizzes 45%", "Group A"],
     });
-    expect(outlookRowView(row({ pointsShort: 0.5, score: 59.5 }), outlook()).lines[0]).toBe("0.5 points short");
-    expect(outlookRowView(row({ pointsShort: 1, score: 59 }), outlook()).lines[0]).toBe("1 point short");
+    expect(outlookRowView(row({ pointsShort: 0.5, score: 59.5 }), outlook()).lines[0]).toMatch(/^0.5 points short/);
+    expect(outlookRowView(row({ pointsShort: 1, score: 59 }), outlook()).lines[0]).toMatch(/^1 point short /);
   });
 
-  it("a row on track shows its score; a row with no score says so", () => {
-    expect(outlookRowView(row({ score: 60, pointsShort: null, groupName: null }), outlook())).toMatchObject({
+  it("a row on track says how far above the mark; a row with no score says so", () => {
+    expect(outlookRowView(row({ score: 72.5, pointsShort: null, groupName: null }), outlook())).toMatchObject({
+      badge: "72.5",
       chip: { tone: "ok", label: "On track" },
-      lines: ["Score 60.0"],
+      lines: ["12.5 points above the mark"],
     });
+    expect(outlookRowView(row({ score: 60, pointsShort: null }), outlook()).lines[0]).toBe("Right at the mark");
     expect(outlookRowView(row({ score: null, pointsShort: null, weakest: null }), outlook())).toMatchObject({
+      badge: "–",
       chip: { tone: "neutral", label: "No score yet" },
       lines: ["Nothing to count for them yet", "Group A"],
     });
@@ -153,6 +178,6 @@ describe("outlook model", () => {
       weakest: "assignments",
       groupName: null,
     });
-    expect(outlookRowView(late, outlook()).lines).toEqual(["Score 80.0", "Scored without attendance"]);
+    expect(outlookRowView(late, outlook()).lines).toEqual(["20 points above the mark", "Scored without attendance"]);
   });
 });
