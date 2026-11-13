@@ -99,7 +99,7 @@ beforeEach(() => {
 });
 
 describe("LeaderToday", () => {
-  it("on the day: the session to run, who is missing, five named and See all", async () => {
+  it("on the day: the session to run with its counts, and no Not checked in list (owner 2026-11-14)", async () => {
     serveDash(dash({ nextSession: dayOf, leaderSession: checkIn(7) }));
     renderWithProviders(<LeaderToday />);
 
@@ -111,10 +111,10 @@ describe("LeaderToday", () => {
     // On its day the card carries an action, so it is the brand hero; the title opens the session.
     expect(screen.getByTestId("hero-card").props.className).toContain("bg-hero");
     expect(screen.queryByText("Open session")).toBeNull();
-    expect(screen.getByText("Missing 1")).toBeTruthy();
-    expect(screen.getByText("Missing 5")).toBeTruthy();
-    expect(screen.queryByText("Missing 6")).toBeNull();
-    expect(screen.getByText("See all 7")).toBeTruthy();
+    // Mark attendance names them; Home only counts.
+    expect(screen.queryByText("NOT CHECKED IN")).toBeNull();
+    expect(screen.queryByText("Missing 1")).toBeNull();
+    expect(screen.queryByText("See all 7")).toBeNull();
     expect(screen.getAllByTestId("home-actions")).toHaveLength(1);
 
     fireEvent.press(screen.getByText("Mark attendance"));
@@ -122,20 +122,12 @@ describe("LeaderToday", () => {
       pathname: "/session/[id]/attendance",
       params: { id: "11" },
     });
-    fireEvent.press(screen.getByText("See all 7"));
-    expect(mockPush).toHaveBeenLastCalledWith({
-      pathname: "/session/[id]/attendance",
-      params: { id: "11" },
-    });
-    fireEvent.press(screen.getByText("Missing 1"));
-    expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/student/[id]", params: { id: "100" } });
   });
 
-  it("two missing: names both and no See all", async () => {
+  it("two missing: the card counts them", async () => {
     serveDash(dash({ nextSession: dayOf, leaderSession: checkIn(2) }));
     renderWithProviders(<LeaderToday />);
     expect(await screen.findByText(/2 not checked in/)).toBeTruthy();
-    expect(screen.queryByText("See all 2")).toBeNull();
   });
 
   it("while in progress with a stream: Join stream", async () => {
@@ -177,21 +169,22 @@ describe("LeaderToday", () => {
     expect(screen.queryByText(/not checked in/)).toBeNull();
   });
 
-  it("waiting for you: tiles open the same season's queue and the quizzes", async () => {
+  it("waiting for you: assignments and quizzes side by side, opening the same season's queue and the quizzes", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByLabelText("Essays to review: 1")).toBeTruthy();
+    expect(await screen.findByLabelText("Assignments to review: 1")).toBeTruthy();
     expect(screen.getByLabelText("Quizzes to grade: 2")).toBeTruthy();
+    expect(screen.getByTestId("waiting-split").props.className).toContain("flex-row");
     // Named in the list below instead of a tile of their own.
     expect(screen.queryByLabelText(/^Students at risk:/)).toBeNull();
-    fireEvent.press(screen.getByLabelText("Essays to review: 1"));
+    fireEvent.press(screen.getByLabelText("Assignments to review: 1"));
     // The figures are this season's, so the queue opens on the same season.
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
     fireEvent.press(screen.getByLabelText("Quizzes to grade: 2"));
     expect(mockPush).toHaveBeenLastCalledWith("/quizzes");
   });
 
-  it("nothing waiting is one All caught up row, and no quizzes means no quizzes tile", async () => {
+  it("nothing waiting keeps both tiles, each at zero and all clear", async () => {
     const base = staffDashboard("groups");
     serveDash(
       dash({
@@ -203,9 +196,9 @@ describe("LeaderToday", () => {
       }),
     );
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByLabelText("All caught up")).toBeTruthy();
-    expect(screen.queryByLabelText(/^Essays to review/)).toBeNull();
-    expect(screen.queryByLabelText(/^Quizzes to grade/)).toBeNull();
+    expect(await screen.findByLabelText("Assignments to review: none, all clear")).toBeTruthy();
+    expect(screen.getByLabelText("Quizzes to grade: none, all clear")).toBeTruthy();
+    expect(screen.queryByLabelText("All caught up")).toBeNull();
   });
 
   it("at risk: names with a reason line, See all to groups, and the season card stays", async () => {
@@ -254,7 +247,7 @@ describe("LeaderToday", () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [5] }, { name: "" }));
     serveDash(dash({ nextSession: null }));
     renderWithProviders(<LeaderToday />);
-    expect(await screen.findByLabelText("Essays to review: 1")).toBeTruthy();
+    expect(await screen.findByLabelText("Assignments to review: 1")).toBeTruthy();
     expect(screen.getAllByText("Home").length).toBeGreaterThan(0);
     expect(screen.queryByText(/^Hi,/)).toBeNull();
   });

@@ -8,7 +8,7 @@ import { UpcomingEventsCard } from "../home/upcoming-events-card";
 import { Screen } from "../../design/layout/screen";
 import { queryStateView, RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { EmptyState } from "../../design/ui/empty-state";
-import { CountGrid, type CountTileProps } from "../home/count-tile";
+import { CountTile } from "../home/count-tile";
 import { PeoplePreview } from "../home/people-preview";
 import { SeasonPulse, staffPulseFigures } from "../home/season-pulse";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
@@ -31,27 +31,6 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
   // a different number.
   const toSubmissions = () => router.push({ pathname: "/submissions", params: { seasonId: String(data.season.id) } });
   const toGroup = () => router.push("/groups");
-  const hasQuizzes = quizzes.total > 0 || quizzes.drafts > 0;
-  const tiles: CountTileProps[] = [
-    {
-      label: "Essays to review",
-      value: submissions.pendingReview,
-      icon: FileText,
-      tone: "info",
-      onPress: toSubmissions,
-    },
-    ...(hasQuizzes
-      ? [
-          {
-            label: "Quizzes to grade",
-            value: quizzes.pending,
-            icon: ClipboardCheck,
-            tone: "info" as const,
-            onPress: () => router.push("/quizzes"),
-          },
-        ]
-      : []),
-  ];
   // The students at risk are named in the list right below, so they get no tile of their own.
 
   return (
@@ -69,7 +48,23 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
       <LeaderSessionSection session={data.nextSession} checkIn={data.leaderSession} />
       <View className="gap-2">
         <ListSectionHeader className="pb-0">Waiting for you</ListSectionHeader>
-        <CountGrid tiles={tiles} />
+        {/* Always the two side by side, a zero included (owner 2026-11-14: "a split"). */}
+        <View testID="waiting-split" className="flex-row gap-3">
+          <CountTile
+            label="Assignments to review"
+            value={submissions.pendingReview}
+            icon={FileText}
+            tone="info"
+            onPress={toSubmissions}
+          />
+          <CountTile
+            label="Quizzes to grade"
+            value={quizzes.pending}
+            icon={ClipboardCheck}
+            tone="info"
+            onPress={() => router.push("/quizzes")}
+          />
+        </View>
       </View>
       <PeoplePreview
         header="Students at risk"
@@ -88,9 +83,9 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
 
 /**
  * The leader's Home (owner, 2026-11-07: "very stacked… clear and vivid, not
- * boring"): the session to run and, on its day, who is missing; the group's
- * season at a glance; what is waiting as coloured tiles; the students at risk
- * by name; events.
+ * boring"): the group's season at a glance; the session to run (who is missing
+ * is on Mark attendance, owner 2026-11-14); assignments and quizzes waiting, as
+ * two tiles side by side; the students at risk by name; events.
  */
 export function LeaderToday() {
   const name = useSessionStore((s) => s.user?.name ?? null);

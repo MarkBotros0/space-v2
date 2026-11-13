@@ -23,6 +23,10 @@
   "Open session" button), and buttons show only for what can be done now (check in, Mark attendance,
   Join stream). It is the brand hero only while the session runs or carries an action; otherwise a
   plain card, so it never outweighs the season ring. The light `hero` token is a soft navy tint.
+- **The leader's Home** (owner, 2026-11-14): no "Not checked in" list under the session card; the
+  card counts present and not checked in, and Mark attendance names them. "Waiting for you" is
+  always two tiles side by side, "Assignments to review" and "Quizzes to grade", a zero included
+  (green with a check), not the CountGrid that hides zeros.
 - **Check-in for students opens an hour before the session** (`isCheckInOpenForStudent`,
   `lib/check-in.ts`). An admin may open it earlier; until the hour, a student reads `checkInOpen`
   false and a scan answers 409 `not_open`. Staff see the real state.

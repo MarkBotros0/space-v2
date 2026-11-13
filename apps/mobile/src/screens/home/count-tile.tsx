@@ -36,7 +36,7 @@ export type CountTileProps = {
   label: string;
   value: number;
   icon: LucideIcon;
-  /** The colour while there is something waiting; zero is always green. */
+  /** The colour while there is something waiting; zero is always green, with a check for the icon. */
   tone: CountTone;
   onPress?: () => void;
 };
@@ -66,7 +66,7 @@ export function CountTile({ label, value, icon, tone, onPress }: CountTileProps)
             <Icon size={20} className={t.icon} />
           </View>
           <Text variant="subhead" numberOfLines={2} className="font-semibold text-foreground">
-            {clear ? `${label} · All clear` : label}
+            {label}
           </Text>
         </View>
       </Animated.View>
