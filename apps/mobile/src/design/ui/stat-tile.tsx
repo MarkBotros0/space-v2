@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 import Animated from "react-native-reanimated";
 
 import { usePressDim } from "../motion";

@@ -1,5 +1,6 @@
 /** season-calendar's Week and Month views: one Monday-first 7-column grid of title chips. */
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../ui/pressable";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import {

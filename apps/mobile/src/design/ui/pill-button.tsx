@@ -6,7 +6,8 @@
  * makes the touch target 44pt. Dims while pressed; classes stay off the
  * Animated.View. Sits where it is put: add `self-start` in a column.
  */
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 import Animated from "react-native-reanimated";
 
 import { usePressDim } from "../motion";

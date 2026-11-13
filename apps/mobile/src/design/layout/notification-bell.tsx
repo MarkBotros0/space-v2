@@ -6,7 +6,8 @@
  * (4.8:1).
  */
 import { Bell } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../ui/pressable";
 
 import { iconWithClassName } from "../lib/icon";
 import { Text } from "../ui/text";

@@ -1,5 +1,6 @@
 import { Check, Plus, Trash2 } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../../design/ui/pressable";
 import type { QuizQuestionInput } from "@space/shared";
 
 import { cn } from "../../../design/lib/cn";

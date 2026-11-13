@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import type { QuizKind } from "@space/shared";
 
 import { FormField, Input, Switch, Text } from "../../design/ui";

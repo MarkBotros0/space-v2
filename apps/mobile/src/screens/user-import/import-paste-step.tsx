@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 
 import { FormErrorBox } from "../../design/forms/form-parts";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";

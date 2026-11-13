@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../src/design/ui/pressable";
 import type { QuizSummary } from "@space/shared";
 
 import { NAV_ICONS } from "../../src/design/icons/nav-icon";

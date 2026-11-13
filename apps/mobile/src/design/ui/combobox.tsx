@@ -6,7 +6,8 @@
  */
 import { Check, ChevronDown, X } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { TextInput, View } from "react-native";
+import { Pressable } from "./pressable";
 
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";

@@ -8,7 +8,8 @@
  */
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { ChevronRight } from "lucide-react-native";
 import type { UseQueryResult } from "@tanstack/react-query";

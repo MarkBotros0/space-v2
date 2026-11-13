@@ -5,7 +5,8 @@
  * when there is no room below, and closes on an outside press.
  */
 import { type ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Modal, Pressable, useWindowDimensions, View, type ViewInstance } from "react-native";
+import { Modal, useWindowDimensions, View, type ViewInstance } from "react-native";
+import { Pressable } from "../ui/pressable";
 
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 

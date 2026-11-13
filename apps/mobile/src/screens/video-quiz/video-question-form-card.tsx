@@ -8,7 +8,8 @@
 import { formatTimestamp, parseTimestamp } from "@space/shared";
 import { Check, Trash2 } from "lucide-react-native";
 import { useRef, useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 
 import { FormErrorBox } from "../../design/forms/form-parts";
 import { cn } from "../../design/lib/cn";

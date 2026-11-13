@@ -11,7 +11,8 @@
  */
 import type { AttendanceRosterRow, AttendanceStatus } from "@space/shared";
 import { Check, Clock, X, type LucideIcon } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 
 import { haptic } from "../../design/motion";
 import { cn } from "../../design/lib/cn";

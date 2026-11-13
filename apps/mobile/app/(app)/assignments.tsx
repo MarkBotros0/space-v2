@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useRouter } from "expo-router";
-import { Pressable } from "react-native";
+import { Pressable } from "../../src/design/ui/pressable";
 import type { StaffAssignmentListItem } from "@space/shared";
 
 import { NAV_ICONS } from "../../src/design/icons/nav-icon";

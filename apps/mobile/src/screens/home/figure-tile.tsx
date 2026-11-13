@@ -4,7 +4,8 @@
  * unlike a CountTile, nothing here is waiting on anyone.
  */
 import type { LucideIcon } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import Animated from "react-native-reanimated";
 
 import { iconWithClassName } from "../../design/lib/icon";

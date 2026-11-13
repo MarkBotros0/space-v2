@@ -6,7 +6,8 @@
  *    "Session type": `flex-1 rounded-lg border px-3 py-2 text-sm font-semibold`,
  *    selected `border-brand-teal-500 bg-brand-teal-50 text-brand-teal-800`.
  */
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../ui/pressable";
 
 import { cn } from "../lib/cn";
 import { Text } from "../ui/text";

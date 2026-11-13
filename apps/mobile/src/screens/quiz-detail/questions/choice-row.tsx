@@ -1,5 +1,6 @@
 import { Check } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../../design/ui/pressable";
 
 import { cn } from "../../../design/lib/cn";
 import { iconWithClassName } from "../../../design/lib/icon";

@@ -8,7 +8,8 @@
  * Native differences: custom Pressable (RN Switch cannot take v1's look);
  * thumb position not animated; focus ring dropped.
  */
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 
 import { cn } from "../lib/cn";
 import { shadowStyle } from "../lib/shadow";

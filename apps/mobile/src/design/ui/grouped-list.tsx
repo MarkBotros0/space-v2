@@ -11,7 +11,8 @@
  * so "Overdue" is never colour alone to a screen reader (final review I3).
  */
 import { Children, Fragment, isValidElement, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 import Animated from "react-native-reanimated";
 import { ChevronRight } from "lucide-react-native";
 

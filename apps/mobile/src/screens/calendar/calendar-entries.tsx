@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import { useRouter } from "expo-router";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 

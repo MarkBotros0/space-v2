@@ -8,7 +8,8 @@
  */
 import { Check, ChevronDown } from "lucide-react-native";
 import { createContext, type ReactNode, useContext, useState } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
+import { Pressable } from "./pressable";
 
 import { AnchoredPopover, useAnchor } from "../lib/anchored-popover";
 import { iconWithClassName } from "../lib/icon";

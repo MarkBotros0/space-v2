@@ -14,7 +14,8 @@ import type { DevSwitchUser, UserRole } from "@space/shared";
 import { useRouter } from "expo-router";
 import { UserCog } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { AccessibilityInfo, ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, ScrollView, View } from "react-native";
+import { Pressable } from "../ui/pressable";
 
 import { useDevSwitch, useDevUsers } from "../../hooks/use-dev-switch";
 import { useSessionStore } from "../../store/session";

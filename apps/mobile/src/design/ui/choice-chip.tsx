@@ -1,5 +1,5 @@
 /** A selectable pill for short option sets (rounded-full, 44pt tall). Selected fills with primary. */
-import { Pressable } from "react-native";
+import { Pressable } from "./pressable";
 
 import { cn } from "../lib/cn";
 import { Text } from "./text";

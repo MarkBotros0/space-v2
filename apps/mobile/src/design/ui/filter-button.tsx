@@ -6,7 +6,8 @@
  * off the Animated.View.
  */
 import { SlidersHorizontal } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 import Animated from "react-native-reanimated";
 
 import { cn } from "../lib/cn";

@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import Animated from "react-native-reanimated";
 import type { AuthoredNote } from "@space/shared";
 

@@ -3,7 +3,7 @@
  * 2026-11-07: no dropdown; the theme, Sign out and Delete account live on
  * More for every role).
  */
-import { Pressable } from "react-native";
+import { Pressable } from "../ui/pressable";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 

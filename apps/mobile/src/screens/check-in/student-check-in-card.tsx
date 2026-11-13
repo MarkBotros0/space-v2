@@ -1,7 +1,8 @@
 import { useFocusEffect } from "expo-router";
 import { QrCode } from "lucide-react-native";
 import { useCallback, useRef, useState, type ReactNode } from "react";
-import { AccessibilityInfo, Pressable, View } from "react-native";
+import { AccessibilityInfo, View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import { parseCheckInCode, type SessionDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";

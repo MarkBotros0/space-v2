@@ -8,7 +8,8 @@
 import { type Href, useRouter } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable, type LayoutChangeEvent, StyleSheet, View } from "react-native";
+import { type LayoutChangeEvent, StyleSheet, View } from "react-native";
+import { Pressable } from "../ui/pressable";
 import Animated, { type SharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 
 import { iconWithClassName } from "../lib/icon";

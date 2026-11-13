@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../../design/ui/pressable";
 import type { StudentOption } from "@space/shared";
 
 import { cn } from "../../../design/lib/cn";

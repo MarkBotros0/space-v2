@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 
 import { cn } from "../lib/cn";
 import { FieldError } from "./field";

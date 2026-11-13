@@ -6,7 +6,8 @@
  * classes v1's surrounding element gives them.
  */
 import { Fragment, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 
 import { joinMeta } from "../../lib/join-meta";
 import { cn } from "../lib/cn";

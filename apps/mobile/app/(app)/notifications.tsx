@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { BellOff, Settings } from "lucide-react-native";
-import { FlatList, Pressable, View } from "react-native";
+import { FlatList, View } from "react-native";
+import { Pressable } from "../../src/design/ui/pressable";
 import type { NotificationItem } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../src/design/layout/route-states";

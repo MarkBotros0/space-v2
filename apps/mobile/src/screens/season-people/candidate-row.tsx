@@ -1,5 +1,6 @@
 import { memo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import type { PeopleCandidate } from "@space/shared";
 
 import { Button } from "../../design/ui/button";

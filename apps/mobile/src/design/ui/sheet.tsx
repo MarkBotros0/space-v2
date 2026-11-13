@@ -20,7 +20,8 @@
  * parent) and its surface `shrink`s inside it so the ScrollView still scrolls.
  */
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { Modal as RNModal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal as RNModal, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable } from "./pressable";
 import { GestureDetector, GestureHandlerRootView, usePanGesture } from "react-native-gesture-handler";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";

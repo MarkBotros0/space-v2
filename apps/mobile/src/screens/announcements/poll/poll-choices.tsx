@@ -1,4 +1,5 @@
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../../design/ui/pressable";
 import type { AnnouncementPoll } from "@space/shared";
 
 import { cn } from "../../../design/lib/cn";

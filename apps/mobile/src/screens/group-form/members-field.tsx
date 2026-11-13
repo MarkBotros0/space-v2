@@ -1,7 +1,8 @@
 import type { SeasonRosterRow } from "@space/shared";
 import { ChevronDown } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { Badge } from "../../design/ui/badge";

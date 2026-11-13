@@ -4,7 +4,8 @@
  */
 import { Eye, EyeOff } from "lucide-react-native";
 import { forwardRef, useState } from "react";
-import { Pressable, type TextInputInstance, View } from "react-native";
+import { type TextInputInstance, View } from "react-native";
+import { Pressable } from "./pressable";
 
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";

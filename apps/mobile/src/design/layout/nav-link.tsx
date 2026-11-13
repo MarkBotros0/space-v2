@@ -1,5 +1,6 @@
 import type { NavIconName } from "@space/shared";
-import { Pressable, type LayoutChangeEvent } from "react-native";
+import { type LayoutChangeEvent } from "react-native";
+import { Pressable } from "../ui/pressable";
 
 import { NavIcon } from "../icons/nav-icon";
 import { cn } from "../lib/cn";

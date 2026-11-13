@@ -10,7 +10,8 @@
 import type { PassingNumberKey } from "@space/shared";
 import { ChevronRight } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import Animated from "react-native-reanimated";
 
 import { InlineError } from "../../design/layout/route-states";

@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import Animated from "react-native-reanimated";
 import { ChevronRight, Megaphone } from "lucide-react-native";
 import type { AnnouncementListItem } from "@space/shared";

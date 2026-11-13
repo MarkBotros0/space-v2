@@ -9,7 +9,8 @@
 import type { SeasonDetail, SeasonRosterRow } from "@space/shared";
 import { ChevronRight, FolderOpen, ShieldCheck, Users } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import Animated from "react-native-reanimated";
 
 import { initialsOf } from "../../lib/initials";

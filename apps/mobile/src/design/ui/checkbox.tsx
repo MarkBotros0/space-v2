@@ -3,7 +3,7 @@
  * "Flag for admin follow-up"); this draws the same 16px box.
  */
 import { Check } from "lucide-react-native";
-import { Pressable } from "react-native";
+import { Pressable } from "./pressable";
 
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";

@@ -8,6 +8,7 @@ import { ScreenErrorBoundary } from "../../../src/design/layout/error-boundary";
 import { PillTabBar } from "../../../src/design/layout/floating-tab-bar";
 import { TabBarPresenceContext } from "../../../src/design/layout/shell-context";
 import { swipeTabs } from "../../../src/design/layout/tab-bar-scroll";
+import { swipeEnded, swipeStarted } from "../../../src/design/lib/swipe-guard";
 import { useResetTabBarOnFocus } from "../../../src/design/layout/use-reset-tab-bar-on-focus";
 import { DIRECTORY_ROUTE_HREFS, TAB_ROUTE_NAMES, routeNameForHref } from "../../../src/lib/route-names";
 import { historyThenHomeTabsRouter } from "../../../src/lib/tabs-back-router";
@@ -76,6 +77,9 @@ const tabSwipe = Gesture.Pan()
   .activeOffsetX([-24, 24])
   .failOffsetY([-14, 14])
   .hitSlop({ left: -24, right: -24 })
+  // While it runs, a row under the finger must not open (swipe-guard.ts).
+  .onStart(() => swipeStarted())
+  .onFinalize(() => swipeEnded())
   .onEnd((e) => {
     const step = swipeStep(e.translationX, e.velocityX);
     if (step !== null) swipeTabs(step);

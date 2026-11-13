@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
 import { WEEKDAYS, bucketByDay, isSameMonth, visibleKeys, type CalendarView } from "../../lib/calendar-grid";

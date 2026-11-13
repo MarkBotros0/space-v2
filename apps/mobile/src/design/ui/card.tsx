@@ -9,7 +9,8 @@
  * Plans 02–05 move the call sites to GroupedList / HeroCard and delete this.
  */
 import type { ReactNode } from "react";
-import { Pressable, View, type ViewProps } from "react-native";
+import { View, type ViewProps } from "react-native";
+import { Pressable } from "./pressable";
 import Animated from "react-native-reanimated";
 
 import { usePressDim } from "../motion";

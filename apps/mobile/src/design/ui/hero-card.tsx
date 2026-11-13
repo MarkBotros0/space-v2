@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";

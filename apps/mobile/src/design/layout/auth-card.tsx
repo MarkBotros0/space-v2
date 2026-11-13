@@ -14,7 +14,8 @@
  */
 import { cloneElement, type ReactElement, type ReactNode, useContext } from "react";
 import { ChevronRight, Ticket } from "lucide-react-native";
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
+import { Pressable } from "../ui/pressable";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { cn } from "../lib/cn";

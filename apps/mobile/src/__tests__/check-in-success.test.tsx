@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
+import { Pressable } from "../design/ui/pressable";
 import { fireEvent, screen } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import type { MyAttendanceSession } from "@space/shared";

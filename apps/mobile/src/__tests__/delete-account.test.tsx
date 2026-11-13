@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
-import { Pressable, Text } from "react-native";
+import { Text } from "react-native";
+import { Pressable } from "../design/ui/pressable";
 
 jest.mock("../lib/api-client", () => ({ apiClient: { delete: jest.fn() } }));
 jest.mock("../lib/token-storage", () => ({ clearSession: jest.fn() }));

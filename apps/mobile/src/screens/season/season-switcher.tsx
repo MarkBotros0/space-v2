@@ -1,4 +1,5 @@
-import { Pressable, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import type { SeasonListItem } from "@space/shared";
 
 import { cn } from "../../design/lib/cn";

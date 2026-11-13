@@ -10,7 +10,8 @@
  */
 import { X } from "lucide-react-native";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { Animated, KeyboardAvoidingView, Modal as RNModal, Platform, Pressable, StyleSheet, View } from "react-native";
+import { Animated, KeyboardAvoidingView, Modal as RNModal, Platform, StyleSheet, View } from "react-native";
+import { Pressable } from "./pressable";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
 import { DURATION, useReducedMotion } from "../motion";

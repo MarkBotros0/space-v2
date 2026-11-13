@@ -8,7 +8,14 @@ module.exports = [
       "no-restricted-imports": [
         "error",
         {
-          paths: [{ name: "axios", message: "Only the API plumbing in src/lib imports axios." }],
+          paths: [
+            { name: "axios", message: "Only the API plumbing in src/lib imports axios." },
+            {
+              name: "react-native",
+              importNames: ["Pressable"],
+              message: "Use Pressable from src/design/ui/pressable: it drops a press that ends a tab swipe.",
+            },
+          ],
           patterns: [
             {
               group: ["**/lib/api-client", "**/lib/api-request"],
@@ -34,7 +41,14 @@ module.exports = [
       "no-restricted-imports": [
         "error",
         {
-          paths: [{ name: "axios", message: "Only the API plumbing in src/lib imports axios." }],
+          paths: [
+            { name: "axios", message: "Only the API plumbing in src/lib imports axios." },
+            {
+              name: "react-native",
+              importNames: ["Pressable"],
+              message: "Use Pressable from src/design/ui/pressable: it drops a press that ends a tab swipe.",
+            },
+          ],
           patterns: [
             {
               group: ["**/lib/api-client", "**/lib/api-request"],

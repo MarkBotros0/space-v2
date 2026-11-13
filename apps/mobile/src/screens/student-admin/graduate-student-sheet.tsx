@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 import { classLabel, graduateStudentRequestSchema } from "@space/shared";
 
 import { useGraduateStudent } from "../../hooks/use-students";

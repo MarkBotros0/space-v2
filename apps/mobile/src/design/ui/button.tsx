@@ -18,7 +18,8 @@
  */
 import { cva } from "class-variance-authority";
 import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, type PressableProps, View } from "react-native";
+import { ActivityIndicator, type PressableProps, View } from "react-native";
+import { Pressable } from "./pressable";
 import Animated from "react-native-reanimated";
 
 import { usePressDim } from "../motion";

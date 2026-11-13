@@ -2,7 +2,8 @@
  * A labelled switch the whole row of which toggles it: a 44pt target for the
  * 24pt switch, read as one switch with the label as its name.
  */
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 
 import { Switch } from "../../design/ui/switch";
 import { Text } from "../../design/ui/text";

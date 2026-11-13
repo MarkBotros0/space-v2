@@ -8,7 +8,8 @@
  */
 import type { SessionListItem } from "@space/shared";
 import { Calendar as CalendarIcon, MapPin } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "../../design/ui/pressable";
 
 import { formatWallTime, formatWeekdayDayYear, formatMinutes } from "../../lib/format";
 import { iconWithClassName } from "../../design/lib/icon";

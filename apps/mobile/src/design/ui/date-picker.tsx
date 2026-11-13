@@ -25,7 +25,8 @@ import {
 } from "date-fns";
 import { Calendar as CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { Pressable } from "./pressable";
 
 import { AnchoredPopover, useAnchor } from "../lib/anchored-popover";
 import { iconWithClassName } from "../lib/icon";
