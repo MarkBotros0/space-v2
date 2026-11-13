@@ -18,7 +18,7 @@ import { EssayPartSheet } from "./part-sheets/essay-part-sheet";
 import { ForumPartSheet } from "./part-sheets/forum-part-sheet";
 import { PART_KIND_NAMES, type EssayDraft, type ForumDraft, type VideoDraft } from "./part-sheets/part-fields";
 import { VideoPartSheet } from "./part-sheets/video-part-sheet";
-import type { PartsDraftControls } from "./use-parts-draft";
+import { partStanding, removedCount, type PartsDraftControls } from "./use-parts-draft";
 
 /** Which sheet is up: a kind, and the part it edits (null: a new one). */
 type Editing = { kind: AssignmentPartKind; key: string | null } | null;
@@ -29,6 +29,12 @@ function removeMessage(saved: boolean): string {
   return saved
     ? "When you save, students' work on this part is removed with it."
     : "It hasn't been saved yet, so no student has work on it.";
+}
+
+/** The banner over changed parts: what Save will do, so nothing is lost by leaving. */
+export function unsavedLine(removed: number): string {
+  const gone = removed === 0 ? "" : ` ${removed === 1 ? "1 part is" : `${removed} parts are`} removed.`;
+  return `Changes to the parts aren't saved yet.${gone} Tap Save changes to keep them.`;
 }
 
 export function PartsTab({
@@ -61,8 +67,21 @@ export function PartsTab({
   const removing = draft.parts.find((p) => p.key === draft.removing) ?? null;
   const sheetOpen = (kind: AssignmentPartKind) => editing?.kind === kind;
 
+  // Only an assignment already saved has changes "not saved yet"; a new one is all unsaved.
+  const tracked = assignmentId !== null;
+  const standings = draft.parts.map((p, i) => (tracked ? partStanding(p, i, draft.saved) : null));
+  const removed = tracked ? removedCount(draft.parts, draft.saved) : 0;
+  const unsaved = standings.some((st) => st !== null) || removed > 0;
+
   return (
     <View className="flex-col gap-4">
+      {unsaved ? (
+        <View accessibilityRole="alert" className="rounded-group border border-warn bg-warn-soft p-3">
+          <Text variant="subhead" className="text-foreground">
+            {unsavedLine(removed)}
+          </Text>
+        </View>
+      ) : null}
       {draft.parts.length === 0 ? (
         <EmptyState title="No parts yet" description="Add a video, an essay question or a forum post." />
       ) : (
@@ -73,6 +92,7 @@ export function PartsTab({
             index={index}
             count={draft.parts.length}
             error={partErrors[part.key]}
+            standing={standings[index] ?? null}
             onEdit={() => open(part.kind, part.key)}
             onMove={(by) => draft.move(part.key, by)}
             onRemove={() => draft.askRemove(part.key)}

@@ -7,13 +7,16 @@ import { ChevronDown, ChevronUp, MessagesSquare, PenLine, PlayCircle, type Lucid
 import { View } from "react-native";
 import { formatTimestamp, parseYouTubeId, type AssignmentPartKind } from "@space/shared";
 
+import { cn } from "../../design/lib/cn";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button } from "../../design/ui/button";
 import { PillButton } from "../../design/ui/pill-button";
+import { StatusChip, type ChipSpec } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
 import type { PartDraft } from "../../lib/assignment-form-values";
 import { plural } from "../../lib/plural";
 import { PART_KIND_NAMES } from "./part-sheets/part-fields";
+import type { PartStanding } from "./use-parts-draft";
 import { VideoPreview } from "./video-preview";
 
 iconWithClassName(ChevronDown, ChevronUp, MessagesSquare, PenLine, PlayCircle);
@@ -54,11 +57,19 @@ function partFacts(part: PartDraft): string[] {
   }
 }
 
+/** A part changed since the last save says so in words; the card's edge says it too, never alone. */
+const STANDING_CHIPS: Record<Exclude<PartStanding, null>, ChipSpec> = {
+  new: { tone: "info", label: "New, not saved yet" },
+  edited: { tone: "warn", label: "Edited, not saved yet" },
+  moved: { tone: "neutral", label: "Moved, not saved yet" },
+};
+
 export function PartCard({
   part,
   index,
   count,
   error,
+  standing = null,
   onEdit,
   onMove,
   onRemove,
@@ -67,6 +78,8 @@ export function PartCard({
   index: number;
   count: number;
   error?: string;
+  /** How it differs from the saved assignment; null when it is as saved. */
+  standing?: PartStanding;
   onEdit: () => void;
   onMove: (by: -1 | 1) => void;
   onRemove: () => void;
@@ -77,7 +90,10 @@ export function PartCard({
   return (
     <View
       testID={`part-card-${part.key}`}
-      className="flex-col gap-3 rounded-group bg-surface p-4 dark:border dark:border-separator"
+      className={cn(
+        "flex-col gap-3 rounded-group bg-surface p-4 dark:border dark:border-separator",
+        standing === "edited" || standing === "new" ? "border border-warn dark:border-warn" : null,
+      )}
     >
       <View className="flex-row items-center gap-2" accessibilityRole="header">
         <Icon size={20} className="text-muted-foreground" />
@@ -85,6 +101,11 @@ export function PartCard({
           {`${index + 1}. ${name}`}
         </Text>
       </View>
+      {standing !== null ? (
+        <View className="self-start">
+          <StatusChip {...STANDING_CHIPS[standing]} />
+        </View>
+      ) : null}
       <Text variant="body" className="text-foreground">
         {part.kind === "VIDEO" ? part.title : part.prompt}
       </Text>

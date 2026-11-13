@@ -185,8 +185,8 @@ export function AssignmentProgressList({
       <ProgressSummary finished={finished.length} total={rows.length} canMark={canMark} />
       <SegmentedControl
         options={[
-          { value: "unfinished", label: `Not finished ${unfinished.length}` },
-          { value: "finished", label: `Finished ${finished.length}` },
+          { value: "unfinished", label: `Not finished (${unfinished.length})` },
+          { value: "finished", label: `Finished (${finished.length})` },
         ]}
         value={shownTab}
         onChange={(v) => setTab(v as ProgressTab)}

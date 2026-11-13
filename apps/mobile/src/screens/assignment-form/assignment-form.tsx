@@ -104,7 +104,7 @@ export function AssignmentForm({
             { value: "details", label: "Details" },
             {
               value: "parts",
-              label: `Parts ${draft.parts.length}`,
+              label: `Parts (${draft.parts.length})`,
               accessibilityLabel: `Parts, ${plural(draft.parts.length, "part")}`,
             },
           ]}

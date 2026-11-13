@@ -3,7 +3,9 @@ import {
   EMPTY_PARTS_DRAFT,
   canAddForum,
   newPartKey,
+  partStanding,
   partsDraftReducer,
+  removedCount,
   type PartsDraft,
 } from "../screens/assignment-form/use-parts-draft";
 
@@ -87,5 +89,38 @@ describe("partsDraftReducer", () => {
 
   it("gives every new part its own key", () => {
     expect(newPartKey()).not.toBe(newPartKey());
+  });
+});
+
+describe("unsaved parts", () => {
+  const saved = [video, essay];
+
+  it("a part as saved has no standing", () => {
+    expect(partStanding(video, 0, saved)).toBeNull();
+  });
+
+  it("the same settings written in another order are still as saved", () => {
+    const { key, ...rest } = video;
+    const reordered = { ...Object.fromEntries(Object.entries(rest).reverse()), key } as PartDraft;
+    expect(partStanding(reordered, 0, saved)).toBeNull();
+  });
+
+  it("a part not in the saved list is new", () => {
+    expect(partStanding(forum, 2, saved)).toBe("new");
+  });
+
+  it("a changed setting is edited, even when it also moved", () => {
+    expect(partStanding({ ...video, title: "Talk 2" }, 0, saved)).toBe("edited");
+    expect(partStanding({ ...video, blockSkipping: true }, 1, saved)).toBe("edited");
+  });
+
+  it("the same part in another place is moved", () => {
+    expect(partStanding(essay, 0, saved)).toBe("moved");
+  });
+
+  it("counts the saved parts the draft removes", () => {
+    expect(removedCount([essay], saved)).toBe(1);
+    expect(removedCount([forum], saved)).toBe(2);
+    expect(removedCount(saved, saved)).toBe(0);
   });
 });

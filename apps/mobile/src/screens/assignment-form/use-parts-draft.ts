@@ -3,7 +3,7 @@
  * remove to be confirmed. The reducer is pure and tested on its own; a part's
  * position is its index, and its `key` stays with it through moves.
  */
-import { useReducer } from "react";
+import { useReducer, useState } from "react";
 import type { AssignmentPartInput } from "@space/shared";
 
 import type { PartDraft } from "../../lib/assignment-form-values";
@@ -68,11 +68,41 @@ export function partsDraftReducer(state: PartsDraft, action: PartsDraftAction): 
   }
 }
 
+/** A part's change since the last save, or null when it is as saved. */
+export type PartStanding = "new" | "edited" | "moved" | null;
+
+/** Same settings, whatever order the fields were written in. */
+function sameSettings(a: PartDraft, b: PartDraft): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  return [...keys].every(
+    (k) => JSON.stringify(a[k as keyof PartDraft] ?? null) === JSON.stringify(b[k as keyof PartDraft] ?? null),
+  );
+}
+
+/**
+ * How a part differs from the saved assignment (owner, 2026-11-13: "show somehow that one of the parts
+ * is edited and needs to be saved"): new, edited, moved, or as saved.
+ */
+export function partStanding(part: PartDraft, index: number, saved: readonly PartDraft[]): PartStanding {
+  const before = saved.findIndex((p) => p.key === part.key);
+  if (before < 0) return "new";
+  if (!sameSettings(saved[before]!, part)) return "edited";
+  return before === index ? null : "moved";
+}
+
+/** How many saved parts this draft removes. */
+export function removedCount(parts: readonly PartDraft[], saved: readonly PartDraft[]): number {
+  return saved.filter((s) => !parts.some((p) => p.key === s.key)).length;
+}
+
 /** The reducer with its actions named, for the form. */
 export function usePartsDraft(initial: PartDraft[]) {
   const [state, dispatch] = useReducer(partsDraftReducer, { parts: initial, removing: null });
+  // What was saved when the form opened: the yardstick for "not saved yet".
+  const [saved] = useState(initial);
   return {
     ...state,
+    saved,
     forumAllowed: canAddForum(state.parts),
     add: (part: AssignmentPartInput) => dispatch({ type: "add", part: { ...part, key: newPartKey() } }),
     edit: (key: string, part: AssignmentPartInput) => dispatch({ type: "edit", key, part }),

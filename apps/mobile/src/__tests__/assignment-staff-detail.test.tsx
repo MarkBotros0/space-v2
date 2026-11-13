@@ -148,7 +148,7 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(screen.getByText("3 parts left")).toBeTruthy();
 
     // Sara: the video's score, the essay waiting, the forum posted.
-    fireEvent.press(screen.getByText("Finished 1"));
+    fireEvent.press(screen.getByText("Finished (1)"));
     expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText("Video: 3 of 4 correct")).toBeTruthy();
     expect(screen.getByText("Essay: waiting review")).toBeTruthy();
@@ -161,13 +161,13 @@ describe("AssignmentDetailScreen (staff)", () => {
     renderWithProviders(<AssignmentDetailScreen />);
 
     // The row speaks its name, its line and every part's mark, as a button.
-    fireEvent.press(await screen.findByText("Finished 1"));
+    fireEvent.press(await screen.findByText("Finished (1)"));
     const sara = await screen.findByRole("button", { name: /^Sara Student/ });
     expect(sara.props.accessibilityLabel).toContain("Essay: waiting review");
     fireEvent.press(sara);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "essay9aaaa" } });
 
-    fireEvent.press(screen.getByText("Not finished 1"));
+    fireEvent.press(screen.getByText("Not finished (1)"));
     expect(screen.queryByRole("button", { name: /^Omar Student/ })).toBeNull();
     // Still read as one row, with its marks.
     expect(screen.getByLabelText(/^Omar Student, 3 parts left, Video 6\/18 min/)).toBeTruthy();
