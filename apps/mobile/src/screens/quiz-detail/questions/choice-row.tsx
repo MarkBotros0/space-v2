@@ -4,7 +4,8 @@ import { Pressable, View } from "react-native";
 import { cn } from "../../../design/lib/cn";
 import { iconWithClassName } from "../../../design/lib/icon";
 import { haptic } from "../../../design/motion";
-import { Checkbox, ContentText } from "../../../design/ui";
+import { Checkbox } from "../../../design/ui";
+import { OptionLabel } from "../true-false-glyph";
 
 iconWithClassName(Check);
 
@@ -20,6 +21,7 @@ export function ChoiceRow({
   checked,
   direction = "ltr",
   disabled = false,
+  trueFalse = false,
   onPress,
 }: {
   role: "radio" | "checkbox";
@@ -29,6 +31,8 @@ export function ChoiceRow({
   /** The question prompt's direction; ltr for app chrome (the editor's True / False). */
   direction?: "rtl" | "ltr";
   disabled?: boolean;
+  /** A true/false option: drawn as a tick or a cross, not the word. */
+  trueFalse?: boolean;
   onPress: () => void;
 }) {
   const rtl = direction === "rtl";
@@ -63,13 +67,14 @@ export function ChoiceRow({
           </View>
         )}
       </View>
-      <ContentText
-        variant="subhead"
-        className={cn("min-w-0 flex-1 font-medium", checked ? "text-accent-foreground" : "text-foreground")}
-        style={{ textAlign: rtl ? "right" : "left" }}
-      >
-        {label}
-      </ContentText>
+      <View className="min-w-0 flex-1" style={{ alignItems: rtl ? "flex-end" : "flex-start" }}>
+        <OptionLabel
+          label={label}
+          trueFalse={trueFalse}
+          className={cn("font-medium", checked ? "text-accent-foreground" : "text-foreground")}
+          style={{ textAlign: rtl ? "right" : "left" }}
+        />
+      </View>
     </Pressable>
   );
 }

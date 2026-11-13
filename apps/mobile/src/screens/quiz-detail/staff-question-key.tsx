@@ -13,6 +13,7 @@ import { Badge, ContentText, Text } from "../../design/ui";
 import { plural } from "../../lib/plural";
 import { readablePrompt } from "./blank-segments";
 import { questionTypeLabel } from "./questions";
+import { OptionLabel } from "./true-false-glyph";
 
 iconWithClassName(Check);
 
@@ -39,12 +40,18 @@ function KeyRow({ correct, label, children }: { correct: boolean; label: string;
   );
 }
 
-function Options({ options }: { options: { key: string; label: string; isCorrect: boolean }[] }) {
+function Options({
+  options,
+  trueFalse = false,
+}: {
+  options: { key: string; label: string; isCorrect: boolean }[];
+  trueFalse?: boolean;
+}) {
   return (
     <View className="flex-col gap-2">
       {options.map((o) => (
         <KeyRow key={o.key} correct={o.isCorrect} label={o.label}>
-          <ContentText variant="subhead">{o.label}</ContentText>
+          <OptionLabel label={o.label} trueFalse={trueFalse} />
         </KeyRow>
       ))}
     </View>
@@ -91,6 +98,7 @@ function Body({ q }: { q: QuizQuestionAuthoring }) {
     case "TRUE_FALSE":
       return (
         <Options
+          trueFalse
           options={[
             { key: "true", label: "True", isCorrect: q.correct },
             { key: "false", label: "False", isCorrect: !q.correct },
@@ -104,7 +112,7 @@ function Body({ q }: { q: QuizQuestionAuthoring }) {
     case "ESSAY":
       return (
         <Text variant="caption" className="text-muted-foreground">
-          Free text, marked right or wrong by a leader.
+          Free text; the person marking gives it points.
         </Text>
       );
   }

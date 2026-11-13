@@ -127,8 +127,8 @@ export async function saveAnswers(
 /**
  * Submits an attempt: read, validate, mark and write inside ONE transaction
  * that holds the attempt row lock (REG-111 / R120), so the answers marked are
- * exactly the answers committed with the status change. Both refusals
- * (attempt_closed, attempt_incomplete) are thrown before any write. Marking is
+ * exactly the answers committed with the status change. Its refusal
+ * (attempt_closed) is thrown before any write; unanswered questions are not one. Marking is
  * `markAndClose`, the path every close shares.
  */
 export async function submitAnswers(quizId: number, attemptId: number): Promise<{ graded: boolean }> {
@@ -137,6 +137,6 @@ export async function submitAnswers(quizId: number, attemptId: number): Promise<
     // As in saveAnswers: a deadline (+ grace) crossed after the route's lazy close is refused
     // here, before any mark is written; the next read closes it TIMED_OUT with what was saved.
     if (row?.status !== "IN_PROGRESS" || isExpired(row.deadlineAt, new Date(), SAVE_GRACE_MS)) throw attemptClosed();
-    return markAndClose(tx, quizId, attemptId, { requireComplete: true, endReason: "SUBMITTED", endedById: null });
+    return markAndClose(tx, quizId, attemptId, { endReason: "SUBMITTED", endedById: null });
   });
 }

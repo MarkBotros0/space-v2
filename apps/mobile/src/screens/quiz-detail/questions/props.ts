@@ -13,7 +13,8 @@ export type QuestionProps<T extends QuizQuestionStudent["type"]> = {
 
 /**
  * Answer inputs never autocorrect, spell-check, autofill or offer the paste menu: what the student
- * types is what is marked. (A hardware-keyboard paste cannot be blocked from React Native.)
+ * types is what is marked. (A hardware-keyboard paste cannot be blocked from React Native.) Apple's
+ * Writing Tools have no prop: `modules/writing-tools-off` turns them off natively, in every input.
  */
 export const ANSWER_INPUT = {
   autoCorrect: false,

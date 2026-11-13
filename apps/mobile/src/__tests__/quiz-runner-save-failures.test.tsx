@@ -192,15 +192,17 @@ describe("quiz runner saves", () => {
       expect(post).not.toHaveBeenCalled();
     });
 
-    it("a disabled Submit says how far along the student is, to a screen reader too", async () => {
+    it("Submit stays open with questions unanswered, and the confirm warns how many (owner, 2026-11-13)", async () => {
       get.mockResolvedValue({ data: { data: inProgress() } });
       renderWithProviders(<QuizDetailScreen />);
-      const submit = () => screen.getByRole("button", { name: "Submit quiz" }).props;
+      const submit = () => screen.getByRole("button", { name: "Submit quiz" });
       await screen.findByLabelText("Answer 2");
-      expect(submit().accessibilityState?.disabled).toBe(true);
-      expect(submit().accessibilityHint).toBe("0 of 2 answered");
+      expect(submit().props.accessibilityState?.disabled).toBe(false);
       fireEvent.press(screen.getByLabelText("Answer 1 option 2: Paris"));
-      expect(submit().accessibilityHint).toBe("1 of 2 answered");
+      fireEvent.press(submit());
+      expect(await screen.findByText("1 question not answered")).toBeTruthy();
+      expect(screen.getByText("It counts as 0. You can't change your answers after submitting.")).toBeTruthy();
+      expect(screen.getByText("Submit anyway")).toBeTruthy();
     });
 
     it("Retry save sends what failed, and clears the error", async () => {

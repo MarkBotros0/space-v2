@@ -9,6 +9,7 @@ import { formatScore } from "../../../lib/format";
 import { plural } from "../../../lib/plural";
 import { splitBlanks } from "../blank-segments";
 import { questionTypeLabel } from "../questions";
+import { OptionLabel } from "../true-false-glyph";
 import { QCARD } from "../quiz-header";
 import { blankRows, matchRows, reviewRows, verdictOf, type Verdict } from "./review-model";
 
@@ -61,7 +62,7 @@ function Choices({ q }: { q: Extract<QuizQuestionStudent, { options: unknown }> 
         const tone = row.mine ? row.correct : missedKey && !multi ? true : null;
         return (
           <Row key={row.id} right={tone}>
-            <ContentText variant="subhead">{row.label}</ContentText>
+            <OptionLabel label={row.label} trueFalse={q.type === "TRUE_FALSE"} />
             {row.mine ? (
               <Mark right={row.correct} word={row.correct ? "Your answer, right" : "Your answer, wrong"} />
             ) : null}

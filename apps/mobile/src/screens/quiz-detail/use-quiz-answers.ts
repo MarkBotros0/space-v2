@@ -4,7 +4,7 @@ import { AppState } from "react-native";
 import type { QuizQuestionStudent, StudentQuizDetail } from "@space/shared";
 
 import { isAttemptGone, useSaveAnswers, type AnswerInput } from "../../hooks/use-quizzes";
-import { isAnswered, toAnswerInput, type DraftAnswer } from "./answer-model";
+import { toAnswerInput, type DraftAnswer } from "./answer-model";
 
 /**
  * How long after the last edit the pending answers are flushed.
@@ -131,11 +131,6 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number, onGone
     queueSave(q.id);
   };
 
-  const isComplete = detail.questions.every((q) => {
-    const a = answers[q.id];
-    return a !== undefined && isAnswered(q, a);
-  });
-
   /**
    * Offline with answers still to go, `flush` would wait for the connection,
    * because autosave is paused rather than failed. A submit awaiting it would hang,
@@ -152,7 +147,6 @@ export function useQuizAnswers(detail: StudentQuizDetail, quizId: number, onGone
     isGone: () => goneRef.current,
     hasUnsentOffline,
     saveState,
-    isComplete,
     // A paused autosave isn't a save under way: Submit stays pressable, and says why it can't go.
     savePending: save.isPending && !save.isPaused,
   };

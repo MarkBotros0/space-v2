@@ -30,7 +30,7 @@ export async function closeLockedInTx(
   endReason: CloseReason,
   endedById: number | null,
 ): Promise<ClosedAttempt> {
-  const { graded } = await markAndClose(tx, row.quizId, attemptId, { requireComplete: false, endReason, endedById });
+  const { graded } = await markAndClose(tx, row.quizId, attemptId, { endReason, endedById });
   return { graded, quizId: row.quizId, studentUserId: row.studentUserId };
 }
 

@@ -1,10 +1,8 @@
 import type { Prisma } from "../../generated/prisma/client";
 import type { QuizAttemptEndReason } from "../../generated/prisma/enums";
-import { ApiError } from "../api-error";
 import {
   autoMark,
   hasAnswerText,
-  isAnswered,
   isLeaderMarked,
   MARKABLE_QUESTION_SELECT,
   toMarkable,
@@ -98,9 +96,10 @@ async function markEmptyLeaderItems(
 }
 
 /**
- * The one marking path for an attempt leaving IN_PROGRESS: a student's submit
- * (`requireComplete`, R59) and every close (time-out, staff End, third exit),
- * which marks what is saved. Runs inside the caller's transaction, which holds
+ * The one marking path for an attempt leaving IN_PROGRESS: a student's submit and every close
+ * (time-out, staff End, third exit), which all mark what is saved. A submit may leave questions
+ * unanswered (owner, 2026-11-13: the app warns, the student decides); they count 0, and an empty
+ * blank or essay is wrong without waiting for a leader, as on a time-out. Runs inside the caller's transaction, which holds
  * `lockAttempt`. The auto types are marked here, unanswered = 0; the attempt is
  * GRADED at once unless a leader has something the student wrote to mark.
  */
@@ -108,17 +107,13 @@ export async function markAndClose(
   tx: Prisma.TransactionClient,
   quizId: number,
   attemptId: number,
-  opts: { requireComplete: boolean; endReason: QuizAttemptEndReason; endedById: number | null },
+  opts: { endReason: QuizAttemptEndReason; endedById: number | null },
 ): Promise<{ graded: boolean }> {
   // Sequential: one transaction is one connection, and pg warns on queries queued on it in parallel.
   const rows = await tx.quizQuestion.findMany({ where: { quizId }, select: MARKABLE_QUESTION_SELECT });
   const answers = await tx.quizAnswer.findMany({ where: { attemptId }, select: STORED_ANSWER_SELECT });
   const questions = rows.map(toMarkable);
   const answerBy = new Map<number, StoredAnswer>(answers.map((a) => [a.questionId, a]));
-
-  if (opts.requireComplete && questions.some((q) => !isAnswered(q, answerBy.get(q.id)))) {
-    throw new ApiError("attempt_incomplete", "Answer every question before submitting.", 409);
-  }
 
   const marked = questions
     .filter((q) => !isLeaderMarked(q.type))

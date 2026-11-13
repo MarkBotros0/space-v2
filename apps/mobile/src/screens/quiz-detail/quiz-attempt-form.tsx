@@ -9,6 +9,7 @@ import { useSubmitAttempt } from "../../hooks/use-quizzes";
 import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
 import { useIsOnline } from "../../lib/online";
 import { reportOutcome } from "../../lib/outcome";
+import { plural } from "../../lib/plural";
 import { isAnswered, type DraftAnswer } from "./answer-model";
 import { ExitWarning } from "./lock/exit-warning";
 import { useQuizLock } from "./lock/use-quiz-lock";
@@ -72,7 +73,7 @@ export function AttemptForm({
 }) {
   // Read by the save's refusal handler, which outlives the render: time-up has its own message.
   const isTimeUpRef = useRef<() => boolean>(() => false);
-  const { answers, setAnswer, flush, isGone, hasUnsentOffline, saveState, isComplete, savePending } = useQuizAnswers(
+  const { answers, setAnswer, flush, isGone, hasUnsentOffline, saveState, savePending } = useQuizAnswers(
     detail,
     id,
     (err) => {
@@ -110,9 +111,6 @@ export function AttemptForm({
 
   const onSubmit = async () => {
     if (submitting.current || timeUp) return;
-    // The server checks completeness too (409 attempt_incomplete); the disabled
-    // button is the courtesy, this is the rule.
-    if (!isComplete) return;
     submitting.current = true;
     if (hasUnsentOffline()) {
       submitting.current = false;
@@ -153,6 +151,7 @@ export function AttemptForm({
   }).length;
   const saveLabel = saveLabelFor(saveState, online);
   const progress = `${answered} of ${detail.questions.length} answered`;
+  const unanswered = detail.questions.length - answered;
   const hint = time.unconfirmed ? UNCONFIRMED : timeUp ? CLOSING : [progress, saveLabel].filter(Boolean).join(" · ");
 
   return (
@@ -169,8 +168,9 @@ export function AttemptForm({
         <SaveBar
           label="Submit quiz"
           hint={hint}
-          disabled={timeUp || !isComplete || savePending || submit.isPending}
-          disabledReason={timeUp ? "Time's up." : isComplete ? undefined : progress}
+          // Unanswered questions don't block Submit (owner, 2026-11-13): the confirm warns instead.
+          disabled={timeUp || savePending || submit.isPending}
+          disabledReason={timeUp ? "Time's up." : undefined}
           loading={submit.isPending}
           onPress={() => setConfirmOpen(true)}
           secondary={
@@ -197,9 +197,13 @@ export function AttemptForm({
         <ConfirmDialog
           open={confirmOpen}
           onOpenChange={setConfirmOpen}
-          title="Submit quiz?"
-          description="You can't change your answers after submitting."
-          confirmLabel="Submit"
+          title={unanswered > 0 ? `${plural(unanswered, "question")} not answered` : "Submit quiz?"}
+          description={
+            unanswered > 0
+              ? `${unanswered === 1 ? "It counts" : "They count"} as 0. You can't change your answers after submitting.`
+              : "You can't change your answers after submitting."
+          }
+          confirmLabel={unanswered > 0 ? "Submit anyway" : "Submit"}
           pending={submit.isPending}
           onConfirm={() => {
             setConfirmOpen(false);

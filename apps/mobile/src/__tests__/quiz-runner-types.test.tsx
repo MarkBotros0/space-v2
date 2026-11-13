@@ -296,7 +296,7 @@ describe("quiz runner, every question type", () => {
     expect(box.props.autoCorrect).toBe(false);
   });
 
-  it("options of an Arabic question put their radio on the right, the label beside it", async () => {
+  it("a true/false question shows a tick and a cross, never the words, radio on the right in Arabic", async () => {
     await open({
       ...base,
       id: 700,
@@ -308,8 +308,11 @@ describe("quiz runner, every question type", () => {
     for (const radio of screen.getAllByRole("radio")) {
       expect(style(radio)).toEqual(expect.objectContaining({ flexDirection: "row-reverse" }));
     }
-    // An English label in an Arabic question still sits against its radio.
-    expect(style(screen.getByText("True"))).toEqual(expect.objectContaining({ textAlign: "right" }));
+    // Owner, 2026-11-13: no English "True" / "False" in an Arabic quiz; a reader still hears the word.
+    expect(screen.queryByText("True")).toBeNull();
+    expect(screen.queryByText("False")).toBeNull();
+    expect(screen.getByLabelText("True")).toBeTruthy();
+    expect(screen.getByLabelText("False")).toBeTruthy();
   });
 
   it("options of an English question keep their radio on the left, even with an Arabic label", async () => {

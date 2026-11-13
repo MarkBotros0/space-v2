@@ -293,7 +293,7 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     expect(res.body.error.code).toBe("question_not_in_quiz");
   });
 
-  it("refuses a submit with any question unanswered (R59)", async () => {
+  it("submits with a question unanswered: it earns 0, and an empty essay is wrong at once (owner, 2026-11-13)", async () => {
     await request(app).put(`/api/v1/quizzes/${onlineQuizId}/attempt`).set("authorization", `Bearer ${studentToken}`);
     await request(app)
       .patch(`/api/v1/quizzes/${onlineQuizId}/attempt`)
@@ -305,7 +305,18 @@ describe("GET /api/v1/quizzes/:id and the attempt lifecycle", () => {
     const res = await request(app)
       .post(`/api/v1/quizzes/${onlineQuizId}/attempt/submit`)
       .set("authorization", `Bearer ${studentToken}`);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("attempt_incomplete");
+    expect(res.status).toBe(200);
+    const attempt = await db.quizAttempt.findFirstOrThrow({
+      where: { quizId: onlineQuizId },
+      orderBy: { id: "desc" },
+      select: { id: true, status: true },
+    });
+    // Nothing written for a leader to mark: graded at once.
+    expect(attempt.status).toBe("GRADED");
+    const unanswered = await db.quizAnswer.findMany({
+      where: { attemptId: attempt.id, NOT: { questionId: mcqId } },
+      select: { isCorrect: true, pointsAwarded: true },
+    });
+    for (const a of unanswered) expect(Number(a.pointsAwarded ?? 0)).toBe(0);
   });
 });

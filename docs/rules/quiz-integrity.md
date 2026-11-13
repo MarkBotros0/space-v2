@@ -13,7 +13,7 @@ points as a whole number from 1 to 100; leaders never type points.
 |---|---|---|---|
 | Single choice | picks one option | server | all or nothing |
 | Multiple choice ("Choose N") | ticks up to N options; N is the number of correct options; the app shows "Choose N" and allows no more | server | each correct tick earns 1/N of the points; a wrong tick earns nothing and nothing is taken off |
-| True / false | picks True or False | server | all or nothing |
+| True / false | picks a tick (true) or a cross (false); the words never show, so an Arabic quiz reads right (owner, 2026-11-13) | server | all or nothing |
 | Matching | pairs every left item with one right item (2 to 6 pairs) | server | each correct pair earns 1/pairs of the points |
 | Fill in the blank | types a word or phrase into each gap of a sentence (one or more gaps) | leader, right or wrong per blank | each right blank earns 1/blanks of the points |
 | Essay | free text | leader, points from 0 to the question's points (owner, 2026-11-13) | the points the leader gives |
@@ -22,9 +22,19 @@ points as a whole number from 1 to 100; leaders never type points.
   each. The expected answer is shown to the leader while marking, never to the student before the
   answers are released.
 - A matching author enters pairs; the two columns are shuffled separately for each student.
-- Submitting is refused until every question is answered. Answered means: a pick; at least one tick
+- **Unanswered questions don't block Submit (owner, 2026-11-13):** the confirm says how many are not
+  answered ("2 questions not answered. They count as 0.") with "Submit anyway". An unanswered question
+  earns 0; an empty blank or essay is wrong at once and never waits for a leader. Answered means: a pick; at least one tick
   on multiple choice; every left item paired on matching; every blank non-empty; an essay that is not blank.
 - A quiz with attempts is structurally frozen: no question can be added, edited, deleted or reordered.
+- **Publishing does not freeze it (owner, 2026-11-13):** the season's admin and a super edit a published
+  quiz's questions until a student starts it, and see its questions with the key after that. Their tap
+  on a published online quiz opens the quiz's page (questions, Edit quiz, Grade, Live); a draft opens the
+  builder; leaders and paper quizzes open grading (`screens/quiz-detail/staff-quiz-href.ts`).
+- **The Work tab keeps drafts apart (owner, 2026-11-13):** the admin's and super's Quizzes list shows
+  Drafts (unpublished online quizzes, "Students can't see these yet") above Published (published and
+  paper quizzes, with how many are graded), each newest created first, each row saying online or paper,
+  its session and the day it was added (`screens/staff-work/quiz-sections.ts`).
 
 ## Scores
 
@@ -105,6 +115,9 @@ Added by the integrity plan (spec: "Integrity", "Live screen"). What the phone b
 attempt, what counts as leaving the quiz, the three-exit limit, the relaunch lock, the screen before
 starting and the staff live screen. Exits are counted on the server, never on the phone.
 
+- **Apple's Writing Tools are off in every text box of the app** (owner, 2026-11-13: they "can help
+  the student cheat"). React Native has no prop for it, so a local Expo module sets it natively
+  (`apps/mobile/modules/writing-tools-off`, iOS 18 and later).
 - **Blocked while an attempt is open:** screenshots and screen recording (the OS blanks them), copying
   question text, pasting into answer boxes, autocorrect and suggestions in answer boxes, the screen
   locking by itself, and the app's own banners and sounds (shown after the attempt ends).

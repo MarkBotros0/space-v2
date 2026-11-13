@@ -11,7 +11,8 @@ export function SingleChoice({
   answer,
   onChange,
   disabled,
-}: QuestionProps<"SINGLE_CHOICE" | "TRUE_FALSE">) {
+  trueFalse = false,
+}: QuestionProps<"SINGLE_CHOICE" | "TRUE_FALSE"> & { trueFalse?: boolean }) {
   const direction = textDirection(question.prompt);
   return (
     <View accessibilityRole="radiogroup" className="flex-col gap-2">
@@ -24,6 +25,7 @@ export function SingleChoice({
           accessibilityLabel={`Answer ${index + 1} option ${optionIndex + 1}: ${option.label}`}
           checked={answer.optionId === option.id}
           disabled={disabled}
+          trueFalse={trueFalse}
           onPress={() => onChange({ optionId: option.id })}
         />
       ))}

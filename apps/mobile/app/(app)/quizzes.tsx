@@ -16,6 +16,7 @@ import { LeaderQuizzes } from "../../src/screens/quiz-detail/leader-quizzes";
 import { WorkScreen } from "../../src/screens/work/work-screen";
 import { useSeasonParamOrCurrent } from "../../src/hooks/use-season-param";
 import { useRole } from "../../src/store/session";
+import { staffQuizHref } from "../../src/screens/quiz-detail/staff-quiz-href";
 
 /**
  * Three v1 pages collapse into this one: /student/quizzes, /leader/quizzes and
@@ -103,13 +104,7 @@ function StaffQuizzes() {
               key={row.id}
               row={row}
               badge={draft ? <Badge variant="warning">Draft</Badge> : undefined}
-              onPress={() =>
-                router.push(
-                  canAuthor && draft
-                    ? { pathname: "/quiz/[id]/edit", params: { id: String(row.id) } }
-                    : { pathname: "/quiz/[id]/grade", params: { id: String(row.id) } },
-                )
-              }
+              onPress={() => router.push(staffQuizHref(row, canAuthor))}
             />
           );
         })}

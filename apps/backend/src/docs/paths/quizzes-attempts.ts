@@ -68,7 +68,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "Submit the open attempt",
       description:
-        'STUDENT only, with an ACTIVE enrolment in the quiz\'s season (403 otherwise). Every question must be answered (409 `attempt_incomplete`): a choice needs a pick (at least one tick on multiple choice), matching needs every left item paired, each blank non-empty, an essay non-blank. Single-choice, multiple-choice, true/false and matching questions are scored by the server inside ONE transaction that holds a row lock on the attempt (REG-111), so a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. Multiple choice earns 1/N of the points per correct tick and a wrong tick costs nothing; matching earns 1/pairs per correct pair. An attempt with a FILL_BLANK or ESSAY question becomes `SUBMITTED` with `autoScore` set until a leader marks it, and nobody is notified. Otherwise it becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification, "Your score is in", is created best-effort. Scores are decimals to 2 places. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail` at the resulting `stage`: a handed-in attempt shows no questions and no answers, and a graded one shows its score only, until the answers are released',
+        'STUDENT only, with an ACTIVE enrolment in the quiz\'s season (403 otherwise). Questions may be left unanswered (the app warns first): an unanswered question earns 0, and an empty blank or essay is wrong at once and is not left for a leader to mark. Single-choice, multiple-choice, true/false and matching questions are scored by the server inside ONE transaction that holds a row lock on the attempt (REG-111), so a concurrent answer save or second submit waits and then gets 409 `attempt_closed`. Multiple choice earns 1/N of the points per correct tick and a wrong tick costs nothing; matching earns 1/pairs per correct pair. An attempt with a FILL_BLANK or ESSAY question becomes `SUBMITTED` with `autoScore` set until a leader marks it, and nobody is notified. Otherwise it becomes `GRADED` immediately, `gradedById` stays null, and one `QUIZ_GRADED` notification, "Your score is in", is created best-effort. Scores are decimals to 2 places. 409 `attempt_closed` on a second submit. Returns `StudentQuizDetail` at the resulting `stage`: a handed-in attempt shows no questions and no answers, and a graded one shows its score only, until the answers are released',
       parameters: [idParam],
       responses: {
         200: ok({ $ref: "#/components/schemas/StudentQuizDetail" }, "The submitted attempt."),
@@ -77,7 +77,7 @@ export const quizAttemptsPaths = {
         403: errRef("Forbidden"),
         404: errRef("NotFound"),
         409: conflict(
-          "`no_attempt`, `attempt_not_started`, `attempt_closed` or `attempt_incomplete` (a timed-out attempt is closed with what was saved and skips the completeness rule).",
+          "`no_attempt`, `attempt_not_started` or `attempt_closed` (a timed-out attempt is closed with what was saved).",
         ),
       },
     },
@@ -162,7 +162,7 @@ export const quizAttemptsPaths = {
       tags: ["Quizzes"],
       summary: "The grading list for an ONLINE quiz",
       description:
-        "Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it). **The student set is derived on the server** from the caller's scope (a leader sees only their own groups' ACTIVE enrolments) and is never accepted from the client. Pages over that set by student id (`cursor` = last student id of the previous page). `items` holds each student's latest attempt when it is SUBMITTED or GRADED, with the answer key (grader audience) and, for fill-in-the-blank, each blank beside its expected answer. `waiting` lists students with no gradable attempt — never started, or latest attempt still IN_PROGRESS (including one just reopened) — so nobody vanishes from the screen.",
+        "Staff with a scope in the quiz's season (SUPER, season admin, leader of a group in it). **The student set is derived on the server** from the caller's scope (a leader sees only their own groups' ACTIVE enrolments) and is never accepted from the client. Pages over that set in name order, case and accents aside, nameless students last (`cursor` = last student id of the previous page); `items` and `waiting` keep that order. `items` holds each student's latest attempt when it is SUBMITTED or GRADED, with the answer key (grader audience) and, for fill-in-the-blank, each blank beside its expected answer. `waiting` lists students with no gradable attempt — never started, or latest attempt still IN_PROGRESS (including one just reopened) — so nobody vanishes from the screen.",
       parameters: [
         idParam,
         { name: "cursor", in: "query", schema: { type: "integer", minimum: 1 } },

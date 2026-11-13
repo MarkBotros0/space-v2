@@ -192,7 +192,7 @@ describe("submitting an attempt", () => {
     expect(toScore(attempt.totalScore)).toBe((toScore(attempt.autoScore) ?? 0) + (toScore(attempt.manualScore) ?? 0));
   });
 
-  it("refuses submit while a matching question has an unpaired left item", async () => {
+  it("submits a matching question with an unpaired left item, and the pair left out earns nothing", async () => {
     const built = await buildPublishedQuizIn(seasonId, sessionId, { withEssay: false, withTypes: ["MATCHING"] });
     const matchingId = built.questionIds[1] as number;
     const key = await keyOf(matchingId);
@@ -203,9 +203,17 @@ describe("submitting an attempt", () => {
       { type: "MATCHING", questionId: matchingId, pairs: [{ leftId: first?.id, rightId: first?.matchId }] },
     ]);
 
+    // Owner, 2026-11-13: the app warns about unanswered questions, but the student may submit.
     const res = await submit(built.quizId);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("attempt_incomplete");
+    expect(res.status).toBe(200);
+    const attempt = await latestAttempt(built.quizId);
+    expect(attempt.submittedAt).not.toBeNull();
+    const matching = await db.quizAnswer.findFirstOrThrow({
+      where: { attemptId: attempt.id, questionId: matchingId },
+      select: { pointsAwarded: true, isCorrect: true },
+    });
+    expect(matching.isCorrect).toBe(false);
+    expect(toScore(matching.pointsAwarded)).toBeLessThan(1000);
   });
 
   it("refuses more ticks than Choose N, and a type that is not the question's, writing nothing", async () => {

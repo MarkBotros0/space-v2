@@ -14,6 +14,7 @@ export function TrueFalseEditor({ correct, onChange }: { correct: boolean; onCha
           role="radio"
           label={value ? "True" : "False"}
           accessibilityLabel={value ? "True" : "False"}
+          trueFalse
           checked={correct === value}
           onPress={() => onChange(value)}
         />
