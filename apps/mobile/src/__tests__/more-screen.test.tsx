@@ -99,7 +99,7 @@ describe("MoreScreen", () => {
     // Their own tabs are not repeated.
     for (const label of ["Community", "Notes", "Follow-ups"]) expect(screen.queryByText(label)).toBeNull();
     fireEvent.press(screen.getByText("Sign out"));
-    await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Sign out?")).toBeTruthy();
   });
 
   it("navigates to the item's route on press", () => {
@@ -111,12 +111,27 @@ describe("MoreScreen", () => {
     expect(mockPush).toHaveBeenCalledWith("/history");
   });
 
-  it("signs out through useLogout", async () => {
+  it("asks before signing out, then signs out through useLogout (owner 2026-11-13)", async () => {
     useSessionStore.setState(makeSession("STUDENT"));
 
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByText("Sign out"));
 
+    expect(await screen.findByText("Sign out?")).toBeTruthy();
+    expect(mockLogout).not.toHaveBeenCalled();
+    const buttons = screen.getAllByRole("button", { name: "Sign out" });
+    fireEvent.press(buttons[buttons.length - 1]!);
     await waitFor(() => expect(mockLogout).toHaveBeenCalledTimes(1));
+  });
+
+  it("Cancel on the sign-out question keeps you signed in", async () => {
+    useSessionStore.setState(makeSession("STUDENT"));
+
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByText("Sign out"));
+    fireEvent.press(await screen.findByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => expect(screen.queryByText("Sign out?")).toBeNull());
+    expect(mockLogout).not.toHaveBeenCalled();
   });
 });

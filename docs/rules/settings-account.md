@@ -26,5 +26,8 @@
   to set one. No "Sign out everywhere".
 - Sign out and Delete account (DELETE /me, a soft delete) live on More, for every role
   (the mentor has a More tab too).
+- Both ask first (owner 2026-11-13): "Sign out?" with Sign out and Cancel; "Delete your
+  account?" lists what happens one fact per line, with a solid red Delete account and a plain
+  Cancel. The boot-retry screen's Sign out stays direct, as the way out when the app can't start.
 - A student's graduation year is the university's (`StudentProfile.universityGraduationYear`,
   may be in the future — not `User.graduationYear`, which marks a JPCS alumnus).

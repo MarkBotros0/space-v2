@@ -53,6 +53,9 @@ describe("Delete account", () => {
     fireEvent.press(screen.getByText("Delete account"));
     expect(del).not.toHaveBeenCalled();
     expect(await screen.findByText("Delete your account?")).toBeTruthy();
+    // One fact per line, not a paragraph.
+    expect(screen.getByText("You're signed out on every device.")).toBeTruthy();
+    expect(screen.getByText("To come back, ask the JPC team.")).toBeTruthy();
     const buttons = screen.getAllByRole("button", { name: "Delete account" });
     fireEvent.press(buttons[buttons.length - 1]!);
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/login"));

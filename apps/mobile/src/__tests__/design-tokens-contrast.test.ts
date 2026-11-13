@@ -43,6 +43,8 @@ describe.each(Object.entries(themes))("%s theme contrast", (_name, t) => {
     ["ok", "ok-soft"],
     ["warn", "warn-soft"],
     ["bad", "bad-soft"],
+    // The solid danger button: its label on the bad fill.
+    ["surface", "bad"],
     ["info", "info-soft"],
     ["neutral-strong", "neutral-soft"],
     // Info-tone text on a card (the alumni welcome eyebrow).

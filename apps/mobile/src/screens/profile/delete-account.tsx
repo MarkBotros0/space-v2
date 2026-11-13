@@ -1,12 +1,24 @@
 import { useRouter } from "expo-router";
+import { Trash2 } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
 
+import { iconWithClassName } from "../../design/lib/icon";
 import { toast } from "../../design/ui";
 import { ConfirmDialog } from "../../design/ui/confirm-dialog";
 import { useDeleteAccount } from "../../hooks/use-account";
 import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
 import { clearSession } from "../../lib/token-storage";
 import { useSessionStore } from "../../store/session";
+
+iconWithClassName(Trash2);
+
+/** What deleting does, one fact per line (owner 2026-11-13: the old paragraph read oddly). */
+const DELETE_POINTS = [
+  "You're signed out on every device.",
+  "You can't sign in again with this account.",
+  "Your past submissions and attendance stay on record for your leaders.",
+  "To come back, ask the JPC team.",
+];
 
 /**
  * "Delete account" behind a confirmation (owner, 2026-11-06: it lives on More,
@@ -50,9 +62,11 @@ export function useDeleteAccountFlow(): { request: () => void; dialog: ReactNode
         open={open}
         onOpenChange={setOpen}
         title="Delete your account?"
-        description="You'll be signed out on every device and won't be able to sign in again. Your past submissions and attendance stay on record for your leaders. To come back, ask the JPC team."
+        description="This can't be undone from the app."
+        icon={<Trash2 size={28} className="text-bad" />}
+        points={DELETE_POINTS}
         confirmLabel="Delete account"
-        destructive
+        destructive="solid"
         pending={deleteAccount.isPending}
         onConfirm={confirm}
       />

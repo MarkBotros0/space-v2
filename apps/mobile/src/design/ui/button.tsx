@@ -1,5 +1,6 @@
 /**
- * Redesign Button: variants primary | secondary | destructive | plain | onHero,
+ * Redesign Button: variants primary | secondary | destructive (soft red) | danger
+ * (solid red, for the one irreversible step of a confirm) | plain | onHero,
  * sizes md (min-height 46) | sm (min-height 44) | icon (a 44pt square), radius
  * 14, dims while pressed. No underlines anywhere (owner 2026-11-07); a light
  * link-like action is a PillButton.
@@ -26,7 +27,7 @@ import { cn } from "../lib/cn";
 import { withTextRuns } from "../lib/text-runs";
 import { Text } from "./text";
 
-type Variant = "primary" | "secondary" | "destructive" | "plain" | "onHero";
+type Variant = "primary" | "secondary" | "destructive" | "danger" | "plain" | "onHero";
 type Size = "md" | "sm" | "icon";
 
 const base = cva("shrink-0 flex-row items-center justify-center gap-2 rounded-control border border-transparent px-4", {
@@ -35,6 +36,7 @@ const base = cva("shrink-0 flex-row items-center justify-center gap-2 rounded-co
       primary: "bg-primary",
       secondary: "border-control-border bg-surface",
       destructive: "bg-bad-soft",
+      danger: "bg-bad",
       plain: "bg-transparent",
       onHero: "bg-on-hero",
     },
@@ -49,6 +51,7 @@ const baseText = cva("", {
       primary: "text-primary-foreground",
       secondary: "text-foreground",
       destructive: "text-bad",
+      danger: "text-surface",
       plain: "text-foreground",
       onHero: "text-on-hero-foreground",
     },
@@ -122,9 +125,11 @@ function Button({
       ? colors["primary-foreground"]
       : resolved === "destructive"
         ? colors["bad"]
-        : resolved === "onHero"
-          ? colors["on-hero-foreground"]
-          : colors["foreground"];
+        : resolved === "danger"
+          ? colors["surface"]
+          : resolved === "onHero"
+            ? colors["on-hero-foreground"]
+            : colors["foreground"];
   return (
     <Pressable
       accessibilityRole="button"
