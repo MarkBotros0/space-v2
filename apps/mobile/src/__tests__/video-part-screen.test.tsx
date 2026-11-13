@@ -10,38 +10,46 @@ jest.mock("../design/ui/toaster", () => ({
 }));
 
 // The leave guard: the screen registers it through usePreventRemove; the test plays the navigator.
-const mockDispatch = jest.fn();
+// A held navigation goes on only through `repeat` (re-dispatching the action is held again).
+const mockRepeat = jest.fn();
 const mockBack = jest.fn();
-const mockGuard: { prevent: boolean; onLeave: ((e: { data: { action: unknown } }) => void) | null } = {
+type GuardEvent = { data: { action: unknown }; repeat: () => void };
+const mockGuard: { prevent: boolean; onLeave: ((e: GuardEvent) => void) | null } = {
   prevent: false,
   onLeave: null,
 };
+const leave = () => act(() => mockGuard.onLeave?.({ data: { action: { type: "GO_BACK" } }, repeat: mockRepeat }));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ id: "41", partId: "1" }),
   useRouter: () => ({ push: jest.fn(), back: mockBack }),
-  useNavigation: () => ({ dispatch: mockDispatch }),
-  usePreventRemove: (prevent: boolean, onLeave: (e: { data: { action: unknown } }) => void) => {
+  usePreventRemove: (prevent: boolean, onLeave: (e: GuardEvent) => void) => {
     mockGuard.prevent = prevent;
     mockGuard.onLeave = onLeave;
   },
 }));
 
-// A player that is ready on mount, reads the playhead from `mockClock` and records seeks.
+// A player that is ready on mount, reads the playhead from `mockClock`, records seeks and hands
+// out its state callback: YouTube's own controls play and pause it.
 const mockSeekTo = jest.fn();
 const mockClock = { now: 0 };
+const mockPlayer: { change: ((state: string) => void) | null } = { change: null };
+const playerState = (state: string) => act(() => mockPlayer.change?.(state));
 jest.mock("react-native-youtube-iframe", () => {
   const { forwardRef, useEffect, useImperativeHandle } = require("react");
-  const Player = forwardRef(({ onReady }: { onReady?: () => void }, ref: unknown) => {
-    useImperativeHandle(ref, () => ({
-      getCurrentTime: () => Promise.resolve(mockClock.now),
-      getDuration: () => Promise.resolve(1080),
-      seekTo: mockSeekTo,
-    }));
-    useEffect(() => {
-      onReady?.();
-    }, [onReady]);
-    return null;
-  });
+  const Player = forwardRef(
+    ({ onReady, onChangeState }: { onReady?: () => void; onChangeState?: (s: string) => void }, ref: unknown) => {
+      mockPlayer.change = onChangeState ?? null;
+      useImperativeHandle(ref, () => ({
+        getCurrentTime: () => Promise.resolve(mockClock.now),
+        getDuration: () => Promise.resolve(1080),
+        seekTo: mockSeekTo,
+      }));
+      useEffect(() => {
+        onReady?.();
+      }, [onReady]);
+      return null;
+    },
+  );
   Player.displayName = "ReadyPlayer";
   return { __esModule: true, default: Player };
 });
@@ -134,9 +142,11 @@ describe("video part screen", () => {
   it("shows the video's title and how much of it counts, in words", async () => {
     serve(partVideo());
     renderStacked(<PartScreen />);
-    expect(await screen.findByText("Watched 5 of 18 min", {}, { timeout: 5000 })).toBeTruthy();
+    expect(await screen.findByText("Watched 5 min of 18 min", {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.getByText("Luke 15 talk")).toBeTruthy();
     expect(screen.getByText("It counts once you've watched at least 90% of it.")).toBeTruthy();
+    // YouTube's own controls play it; the app has no Play button of its own.
+    expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
   });
 
   it("with blockSkipping a forward seek past furthest snaps back", async () => {
@@ -152,6 +162,20 @@ describe("video part screen", () => {
     // Rewinding is always allowed.
     tapTrack(0.05);
     expect(mockSeekTo).toHaveBeenLastCalledWith(54, true);
+  });
+
+  it("skipping blocked after the student skipped ahead: resumes and stops at what was watched", async () => {
+    // Reached the end by skipping while it was allowed; 100 s actually watched.
+    serve(
+      partVideo({ blockSkipping: true, furthestSeconds: 1080, watchedSeconds: 100, watchedIntervals: [[0, 100]] }),
+      100,
+      true,
+    );
+    renderStacked(<PartScreen />);
+    await screen.findByText(/^Watched/, {}, { timeout: 5000 });
+    await waitFor(() => expect(mockSeekTo).toHaveBeenCalledWith(100, true)); // the resume
+    tapTrack(1);
+    expect(mockSeekTo).toHaveBeenLastCalledWith(100, true);
   });
 
   it("with skipping allowed, a forward seek goes where it was asked", async () => {
@@ -171,18 +195,19 @@ describe("video part screen", () => {
     await screen.findByText(/^Watched/, {}, { timeout: 5000 });
     expect(mockGuard.prevent).toBe(true);
 
-    const action = { type: "GO_BACK" };
-    act(() => mockGuard.onLeave?.({ data: { action } }));
+    leave();
     expect(await screen.findByText("Not finished yet")).toBeTruthy();
-    expect(screen.getByText("5 of 18 min watched. You can't submit until you've watched it.")).toBeTruthy();
+    expect(screen.getByText("5 min of 18 min watched. You can't submit until you've watched it.")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Keep watching"));
     await waitFor(() => expect(screen.queryByText("Not finished yet")).toBeNull());
-    expect(mockDispatch).not.toHaveBeenCalled();
+    expect(mockRepeat).not.toHaveBeenCalled();
 
-    act(() => mockGuard.onLeave?.({ data: { action } }));
+    // Leave goes on with the held navigation (owner, 2026-11-13: it used to reopen the notice).
+    leave();
     fireEvent.press(await screen.findByText("Leave"));
-    expect(mockDispatch).toHaveBeenCalledWith(action);
+    expect(mockRepeat).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(screen.queryByText("Not finished yet")).toBeNull());
   });
 
   it("a watched video leaves without a notice", async () => {
@@ -225,7 +250,7 @@ describe("video part screen: what played, and when it is reported", () => {
     );
     const view = renderStacked(<PartScreen />);
     await screen.findByText(/^Watched/);
-    fireEvent.press(screen.getByRole("button", { name: "Play" }));
+    playerState("playing");
     return view;
   }
   const fresh = () => partVideo({ furthestSeconds: 0, watchedSeconds: 0, watchedIntervals: [] });
@@ -233,7 +258,7 @@ describe("video part screen: what played, and when it is reported", () => {
   it("reports the stretch that played when paused", async () => {
     await playFrom(fresh());
     for (const t of [10, 11, 12]) await pollAt(t);
-    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    playerState("paused");
     await act(() => jest.advanceTimersByTimeAsync(0));
     expect(progress()).toEqual([{ intervals: [[10, 12]], position: 12 }]);
   });
@@ -245,7 +270,6 @@ describe("video part screen: what played, and when it is reported", () => {
     expect(progress()).toHaveLength(1);
     expect(progress()[0]).toMatchObject({ position: 9 });
     expect(progress()[0]?.intervals).toEqual([[0, expect.any(Number)]]);
-    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
   });
 
   it("a forward tap of 2 s or less is a seek, not watching", async () => {
@@ -255,7 +279,7 @@ describe("video part screen: what played, and when it is reported", () => {
     tapTrack(13 / 1080); // to 13 s
     await pollAt(13);
     await pollAt(14);
-    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    playerState("paused");
     await act(() => jest.advanceTimersByTimeAsync(0));
     expect(progress()).toEqual([
       {
@@ -266,6 +290,24 @@ describe("video part screen: what played, and when it is reported", () => {
         position: 14,
       },
     ]);
+  });
+
+  it("counts what plays at 2x", async () => {
+    await playFrom(fresh());
+    // 0.8 s of video every 400 ms poll.
+    for (let i = 0; i <= 10; i++) await pollAt(i * 0.8);
+    playerState("paused");
+    await act(() => jest.advanceTimersByTimeAsync(0));
+    expect(progress()).toEqual([{ intervals: [[0, 8]], position: 8 }]);
+  });
+
+  it("with skipping blocked, a skip on YouTube's own bar goes back to the furthest point", async () => {
+    await playFrom(partVideo({ blockSkipping: true, furthestSeconds: 0, watchedSeconds: 0, watchedIntervals: [] }));
+    await pollAt(0.4);
+    await pollAt(0.8);
+    mockSeekTo.mockClear();
+    await pollAt(600);
+    expect(mockSeekTo).toHaveBeenLastCalledWith(0.8, true);
   });
 
   it("going to the background pauses and reports", async () => {
@@ -284,7 +326,10 @@ describe("video part screen: what played, and when it is reported", () => {
         for (const fn of listeners) fn("background");
       });
       expect(progress()).toEqual([{ intervals: [[20, 21]], position: 21 }]);
-      expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+      // Paused: a later playhead counts nothing.
+      await pollAt(22);
+      await pollAt(23);
+      expect(progress()).toHaveLength(1);
     } finally {
       AppState.addEventListener = original;
     }
@@ -304,7 +349,7 @@ describe("video part screen: what played, and when it is reported", () => {
     expect(mockGuard.prevent).toBe(false);
     await pollAt(1);
     await pollAt(2);
-    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    playerState("paused");
     await act(() => jest.advanceTimersByTimeAsync(0));
     expect(put).not.toHaveBeenCalled();
   });
@@ -329,9 +374,8 @@ describe("video part screen: what played, and when it is reported", () => {
     expect(mockBack).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Who ran to meet him?")).toBeNull();
     // The navigator asks the guard; it lets this one through at once.
-    const action = { type: "GO_BACK" };
-    act(() => mockGuard.onLeave?.({ data: { action } }));
-    expect(mockDispatch).toHaveBeenCalledWith(action);
+    leave();
+    expect(mockRepeat).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("Not finished yet")).toBeNull();
   });
 });

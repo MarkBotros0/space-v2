@@ -132,8 +132,8 @@ describe("watching a video part", () => {
     const res = await report(longPartId, [[1060, 1080]], 1080);
     expect(res.status).toBe(200);
     const progress = videoPartProgressResponseSchema.parse(res.body.data);
-    // A first report counts at most 15 s; the end is reached, not watched.
-    expect(progress).toMatchObject({ watchedSeconds: 15, durationSeconds: 1080, furthestSeconds: 1080 });
+    // 20 s near the end count (a first report may count 25 s); the end is reached, not watched.
+    expect(progress).toMatchObject({ watchedSeconds: 20, durationSeconds: 1080, furthestSeconds: 1080 });
     expect(progress.completedAt).toBeNull();
 
     const read = await request(app)
@@ -141,8 +141,8 @@ describe("watching a video part", () => {
       .set(auth(studentToken));
     expect(read.status).toBe(200);
     const video = studentVideoPartSchema.parse(read.body.data);
-    expect(video).toMatchObject({ watchedSeconds: 15, furthestSeconds: 1080, completedAt: null, blockSkipping: false });
-    expect(video.watchedIntervals).toEqual([[1060, 1075]]);
+    expect(video).toMatchObject({ watchedSeconds: 20, furthestSeconds: 1080, completedAt: null, blockSkipping: false });
+    expect(video.watchedIntervals).toEqual([[1060, 1080]]);
   });
 
   it("overlapping and repeated reports count once", async () => {
@@ -162,16 +162,16 @@ describe("watching a video part", () => {
   });
 
   it("a report faster than real time is clamped", async () => {
-    // The first report counts at most 15 s, whatever it claims.
-    expect((await report(longPartId, [[0, 300]], 300)).body.data.watchedSeconds).toBe(15);
+    // The first report counts at most 25 s, whatever it claims.
+    expect((await report(longPartId, [[0, 300]], 300)).body.data.watchedSeconds).toBe(25);
     await lastReportAgo(longPartId, 10);
-    // 10 s later it claims another 300 s: only the 10 s that passed and 2 s of slack count.
-    expect((await report(longPartId, [[300, 600]], 600)).body.data.watchedSeconds).toBe(27);
+    // 10 s later it claims another 300 s: only 10 s at 2x (YouTube's top speed) and 2 s of slack count.
+    expect((await report(longPartId, [[300, 600]], 600)).body.data.watchedSeconds).toBe(47);
   });
 
   it("a short clip can't be watched in one request", async () => {
     const res = await report(shortPartId, [[0, 55]], 55);
-    expect(res.body.data).toMatchObject({ watchedSeconds: 15, completedAt: null });
+    expect(res.body.data).toMatchObject({ watchedSeconds: 25, completedAt: null });
   });
 
   it("two reports at once merge, and still count no more than the clock allows", async () => {
@@ -184,9 +184,9 @@ describe("watching a video part", () => {
     // Merged: sorted, not overlapping, and the total is what is stored.
     for (let i = 1; i < intervals.length; i += 1) expect(intervals[i]![0]).toBeGreaterThan(intervals[i - 1]![1]);
     expect(intervals.reduce((sum, [a, b]) => sum + b - a, 0)).toBe(work.watchedSeconds);
-    // The first report's 15 s plus the second's 2 s of slack at most.
+    // The first report's 25 s plus the second's 2 s of slack at most.
     expect(work.watchedSeconds).toBeGreaterThanOrEqual(10);
-    expect(work.watchedSeconds).toBeLessThanOrEqual(17);
+    expect(work.watchedSeconds).toBeLessThanOrEqual(27);
   });
 
   it("done needs 90% and every question answered", async () => {

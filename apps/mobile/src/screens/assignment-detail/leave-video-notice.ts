@@ -8,14 +8,25 @@ import { keepTogether } from "../../lib/format";
 /** A skipped stretch longer than this is worth mentioning; a few seconds is the player's own jitter. */
 const SKIP_SLACK_SECONDS = 5;
 
+/** Watched time in words to the second ("37 sec", "6 min 5 sec", "1 h 4 min"), so the count moves as it plays. */
+function watchedWords(seconds: number): string {
+  const total = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return m > 0 ? `${h} h ${m} min` : `${h} h`;
+  if (m > 0) return s > 0 ? `${m} min ${s} sec` : `${m} min`;
+  return `${s} sec`;
+}
+
 /**
- * "6 of 18 min" as one unbreakable run, so it never wraps apart at 1.3. Minutes
- * are counted as the checklist's row counts them (`partStatusLine`): watched
- * rounded down, the length rounded to a whole minute, at least one.
+ * "6 min 5 sec of 18 min" as one unbreakable run, so it never wraps apart at 1.3. The watched part
+ * counts seconds (owner, 2026-11-13: whole minutes read as a counter stuck at 0 on a long video);
+ * the length is rounded to a whole minute, at least one.
  */
 export function watchedRun(watchedSeconds: number, durationSeconds: number): string {
   const total = Math.max(1, Math.round(durationSeconds / 60));
-  return keepTogether(`${Math.floor(watchedSeconds / 60)} of ${total} min`);
+  return keepTogether(`${watchedWords(watchedSeconds)} of ${total} min`);
 }
 
 interface VideoWatching {

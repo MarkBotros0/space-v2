@@ -19,8 +19,13 @@ interface PartRules {
   blockSkipping: boolean;
 }
 
+/**
+ * The fastest a student can play: YouTube's top speed. Watching at 2x counts in full (owner,
+ * 2026-11-13: "it should monitor even when the video is x2"), so the clock allows twice its time.
+ */
+const MAX_RATE = 2;
 /** A first report counts at most this much, however much it claims: the app reports at most every 10 s while playing. */
-const FIRST_REPORT_MAX = 15;
+const FIRST_REPORT_MAX = 25;
 /** Slack on top of the wall-clock time since the last report. */
 const CLOCK_SLACK = 2;
 /** With skipping blocked, a range may start this far past the furthest point. */
@@ -40,6 +45,11 @@ function uncovered([from, to]: Interval, have: Interval[]): Interval[] {
   return out;
 }
 
+/** Where the last watched stretch ends; 0 with nothing watched. */
+function watchedEnd(have: Interval[]): number {
+  return have.length === 0 ? 0 : have[have.length - 1]![1];
+}
+
 /** Whole seconds inside the video. */
 function clampRange([from, to]: Interval, duration: number): Interval | null {
   const end = duration > 0 ? Math.min(Math.ceil(to), duration) : Math.ceil(to);
@@ -47,19 +57,20 @@ function clampRange([from, to]: Interval, duration: number): Interval | null {
   return start < end ? [start, end] : null;
 }
 
-/** How many new seconds this report may add: wall-clock time since the last one, plus slack. */
+/** How many new seconds this report may add: wall-clock time since the last one at the top speed, plus slack. */
 function allowanceFor(state: WatchState, now: Date): number {
   if (state.lastReportAt === null) return FIRST_REPORT_MAX;
   const elapsed = (now.getTime() - state.lastReportAt.getTime()) / 1000;
-  return Math.max(0, Math.floor(elapsed + CLOCK_SLACK));
+  return Math.max(0, Math.floor(elapsed * MAX_RATE + CLOCK_SLACK));
 }
 
 /**
  * Merges one progress report into a student's watching of a video part.
  *
  * Only time that could have played counts: the new watched time is clamped to
- * the wall-clock time since the last report plus 2 s (a first report, to the
- * span it reports, at most 15 s), taking the earliest unwatched seconds first.
+ * twice the wall-clock time since the last report (2x is YouTube's top speed)
+ * plus 2 s (a first report, to the span it reports, at most 25 s), taking the
+ * earliest unwatched seconds first.
  * A stretch watched again counts once. With `blockSkipping`, a range starting
  * more than 5 s past the furthest point reached is dropped, and the reported
  * position never moves the furthest point; without it, the position does (the
@@ -77,7 +88,9 @@ export function applyWatchReport(state: WatchState, report: WatchReport, part: P
     .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
 
   let have = mergeIntervals(state.intervals, []);
-  let furthest = state.furthestSeconds;
+  // With skipping blocked, the furthest point is what was watched: a point reached by skipping while
+  // skipping was allowed (the admin blocked it later) is no head start (owner, 2026-11-13).
+  let furthest = part.blockSkipping ? Math.min(state.furthestSeconds, watchedEnd(have)) : state.furthestSeconds;
   let credited = 0;
   for (const range of ranges) {
     if (budget <= 0) break;
@@ -100,8 +113,10 @@ export function applyWatchReport(state: WatchState, report: WatchReport, part: P
     furthest = Math.max(furthest, position);
   }
 
-  const elapsed = state.lastReportAt === null ? credited : (now.getTime() - state.lastReportAt.getTime()) / 1000;
-  const borrowed = Math.max(0, credited - elapsed);
+  const playable =
+    state.lastReportAt === null ? credited : ((now.getTime() - state.lastReportAt.getTime()) / 1000) * MAX_RATE;
+  // Seconds of video beyond what the clock allows, paid back in clock time at the top speed.
+  const borrowed = Math.max(0, credited - playable) / MAX_RATE;
   return {
     intervals: have,
     watchedSeconds: watchedSeconds(have),

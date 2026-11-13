@@ -1,5 +1,5 @@
 /** A video part on its own screen: the in-app player, how much of it counts, and the leave notice. */
-import { usePreventRemove, useNavigation, useRouter } from "expo-router";
+import { usePreventRemove, useRouter } from "expo-router";
 import { ExternalLink } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Linking, View } from "react-native";
@@ -31,8 +31,6 @@ iconWithClassName(ExternalLink);
 
 type VideoPart = Extract<AssignmentPart, { kind: "VIDEO" }>;
 type PartVideo = NonNullable<ReturnType<typeof usePartVideo>["data"]>;
-/** The navigation the leave guard held back: dispatched again on Leave. */
-type LeaveAction = Parameters<NonNullable<Parameters<typeof usePreventRemove>[1]>>[0]["data"]["action"];
 
 /** The link out when the app can't play it. Watching on YouTube is never counted, and the student is told so. */
 function VideoFallback({ youtubeUrl }: { youtubeUrl: string }) {
@@ -84,15 +82,25 @@ function LeaveNotice({
   );
 }
 
+/**
+ * With skipping blocked, the video resumes from, and may be moved up to, the end of what was watched,
+ * never a furthest point reached by skipping before the admin blocked it (owner, 2026-11-13: "I still
+ * can navigate through the video").
+ */
+function blockedSource(video: PartVideo): PartVideo {
+  if (!video.blockSkipping) return video;
+  const end = video.watchedIntervals.reduce((max, [, to]) => Math.max(max, to), 0);
+  return { ...video, furthestSeconds: Math.min(video.furthestSeconds, end) };
+}
+
 function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: VideoPart; video: PartVideo }) {
   const router = useRouter();
-  const navigation = useNavigation();
   const record = !detail.readOnly;
   const answer = useSubmitPartVideoAnswer(detail.id, part.id);
   // The watching hook needs `playing` from the playback, and the playback reports to it.
   const watchingRef = useRef<ReturnType<typeof usePartWatching> | null>(null);
   const playback = useVideoPlayback({
-    source: video,
+    source: blockedSource(video),
     answer,
     onPoll: (t, playing) => watchingRef.current?.onPoll(t, playing),
     onStop: () => watchingRef.current?.onStop(),
@@ -127,19 +135,22 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
     furthestSeconds: Math.max(video.furthestSeconds, playback.current),
     blockSkipping: video.blockSkipping,
   });
-  const [leaving, setLeaving] = useState<LeaveAction | null>(null);
+  // The held navigation's `repeat`, kept while the notice asks. Re-dispatching the action itself is
+  // held again by this router's guard (owner, 2026-11-13: "I can't get out of this screen").
+  const [leaving, setLeaving] = useState<(() => void) | null>(null);
   // The question sheet's own "Leave the video" is an explicit exit: it closes the sheet and
   // goes, with no second modal over the first (iOS won't present one there).
   const leaveFromSheet = useRef(false);
   // Nothing to watch in the app (no video, a failed player, an unreachable question): nothing to warn about.
   const playable = video.videoId !== null && !playback.failed && !playback.deadlocked;
-  usePreventRemove(record && playable && notice !== null, ({ data }) => {
+  usePreventRemove(record && playable && notice !== null, ({ repeat }) => {
     if (leaveFromSheet.current) {
-      navigation.dispatch(data.action);
+      repeat();
       return;
     }
     setPlaying(false);
-    setLeaving(data.action);
+    // A function in state is called by its setter, so it goes in wrapped.
+    setLeaving(() => repeat);
   });
 
   const questions = video.questions.length;
@@ -194,9 +205,9 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
         open={leaving !== null}
         onKeepWatching={() => setLeaving(null)}
         onLeave={() => {
-          const action = leaving;
+          const go = leaving;
           setLeaving(null);
-          if (action !== null) navigation.dispatch(action);
+          go?.();
         }}
       />
     </View>

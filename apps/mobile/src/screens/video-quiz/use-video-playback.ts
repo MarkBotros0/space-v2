@@ -20,6 +20,11 @@ import type { AnswerFeedback } from "./video-question-modal";
 const POLL_MS = 400;
 const TOLERANCE_SECONDS = 0.75;
 const LOAD_TIMEOUT_MS = 15_000;
+/**
+ * A playhead this far past the ceiling between two polls is a skip on YouTube's own bar, not play:
+ * 400 ms at 2x is 0.8 s, so 3 s leaves room for a slow bridge.
+ */
+const SKIP_SECONDS = 3;
 
 /** What the barrier and the resume need: the session quiz and the part video both carry it. */
 interface PlaybackSource {
@@ -116,6 +121,15 @@ export function useVideoPlayback({
       void clock()
         .then((t) => {
           if (cancelled || openRef.current !== null || deadlockedRef.current) return;
+          // YouTube's own controls can skip ahead; with a ceiling (skipping blocked) the playhead goes back.
+          const ceiling = hooks.current.seekCeiling?.();
+          if (ceiling !== undefined && t > Math.max(ceiling, currentRef.current) + SKIP_SECONDS) {
+            playerRef.current?.seekTo(ceiling, true);
+            currentRef.current = ceiling;
+            setCurrent(ceiling);
+            hooks.current.onSeeked?.();
+            return;
+          }
           if (t > furthestRef.current) furthestRef.current = t;
           currentRef.current = t;
           setCurrent(t);

@@ -10,12 +10,18 @@ const watching = (over: Partial<Parameters<typeof leaveVideoNotice>[0]> = {}) =>
 });
 
 describe("watchedRun", () => {
-  it("is one unbreakable run: '6 of 18 min'", () => {
-    expect(watchedRun(360, 1080)).toBe(`6${NBSP}of${NBSP}18${NBSP}min`);
+  it("is one unbreakable run: '6 min of 18 min'", () => {
+    expect(watchedRun(360, 1080)).toBe(`6${NBSP}min${NBSP}of${NBSP}18${NBSP}min`);
+  });
+
+  it("counts seconds, so it moves from the first seconds of a long video", () => {
+    expect(watchedRun(37, 3509)).toBe(`37${NBSP}sec${NBSP}of${NBSP}58${NBSP}min`);
+    expect(watchedRun(125.6, 3509)).toBe(`2${NBSP}min${NBSP}5${NBSP}sec${NBSP}of${NBSP}58${NBSP}min`);
+    expect(watchedRun(3840, 7200)).toBe(`1${NBSP}h${NBSP}4${NBSP}min${NBSP}of${NBSP}120${NBSP}min`);
   });
 
   it("rounds a short video up to a minute and never says 0 of 0", () => {
-    expect(watchedRun(10, 20)).toBe(`0${NBSP}of${NBSP}1${NBSP}min`);
+    expect(watchedRun(10, 20)).toBe(`10${NBSP}sec${NBSP}of${NBSP}1${NBSP}min`);
   });
 });
 

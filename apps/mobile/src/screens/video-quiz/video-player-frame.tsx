@@ -1,22 +1,22 @@
-import { Pause, Play } from "lucide-react-native";
+import { useState } from "react";
 import { View } from "react-native";
 import YoutubePlayer from "react-native-youtube-iframe";
 import type { StudentVideoQuestion } from "@space/shared";
 
-import { iconWithClassName } from "../../design/lib/icon";
 import { InlineError } from "../../design/layout/route-states";
+import { videoHeight } from "../../design/lib/video-size";
 import { Button } from "../../design/ui";
 import type { VideoPlayback } from "./use-video-playback";
 import { VideoProgressTrack } from "./video-progress-track";
 
-iconWithClassName(Pause, Play);
-
 const DEADLOCK = "A question on this video is set past the end of the recording. Ask your leader to fix it.";
 
 /**
- * The in-app YouTube player both video screens show: the frame (no YouTube
- * controls, click to play, never autoplay), the progress track and the
- * Play/Pause control, or the deadlock notice when a question can't be reached.
+ * The in-app YouTube player both video screens show: the frame with YouTube's
+ * own controls (play, captions, speed; owner, 2026-11-13: the app's own Play
+ * button didn't start the video), never autoplaying, and the progress track
+ * with the questions on it; or the deadlock notice when a question can't be
+ * reached. Whether it is playing comes from the player's own state changes.
  */
 export function VideoPlayerFrame({
   videoId,
@@ -30,11 +30,12 @@ export function VideoPlayerFrame({
   questions: StudentVideoQuestion[];
   playback: VideoPlayback;
   onRetry?: () => void;
-  /** An explicit exit beside Play, when the screen has one (the session's "Leave the quiz"). */
+  /** An explicit exit under the track, when the screen has one (the session's "Leave the quiz"). */
   onLeave?: () => void;
   leaveLabel?: string;
 }) {
   const p = playback;
+  const [width, setWidth] = useState(0);
   if (p.deadlocked) {
     return (
       <InlineError
@@ -45,14 +46,17 @@ export function VideoPlayerFrame({
     );
   }
   return (
-    <View className="overflow-hidden rounded-group border border-border bg-black">
+    <View
+      className="overflow-hidden rounded-group border border-border bg-black"
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+    >
       <YoutubePlayer
         ref={p.playerRef}
-        height={211}
+        height={videoHeight(width)}
         videoId={videoId}
         play={p.playing}
         initialPlayerParams={{
-          controls: false,
+          controls: true,
           modestbranding: true,
           rel: false,
           preventFullScreen: true,
@@ -69,25 +73,13 @@ export function VideoPlayerFrame({
           barrier={p.barrier}
           onSeek={p.onSeek}
         />
-        {/* v1 plays and pauses by tapping the YouTube frame; the native
-            player has no controls, so the app keeps explicit ones. */}
-        <View className="mt-1 flex-row items-center justify-between">
-          <Button
-            variant="plain"
-            size="sm"
-            textClassName="text-white"
-            accessibilityLabel={p.playing ? "Pause" : "Play"}
-            onPress={() => p.setPlaying((on) => !on)}
-          >
-            {p.playing ? <Pause size={16} className="text-white" /> : <Play size={16} className="text-white" />}
-            {p.playing ? "Pause" : "Play"}
-          </Button>
-          {onLeave && leaveLabel ? (
+        {onLeave && leaveLabel ? (
+          <View className="mt-1 flex-row justify-end">
             <Button variant="plain" size="sm" textClassName="text-white/70" onPress={onLeave}>
               {leaveLabel}
             </Button>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
       </View>
     </View>
   );

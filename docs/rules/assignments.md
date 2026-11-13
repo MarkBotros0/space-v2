@@ -30,14 +30,19 @@
 - **Watched (builder's call, owner agreed the idea):** the server keeps, per student and video part,
   the seconds that actually played, merged as intervals so re-watching a stretch counts once, and the
   furthest point reached. **Watched = watched seconds ≥ 90% of the video's length.** The server
-  ignores a report that claims more new watched time than wall-clock time since the last one. A
+  ignores a report that claims more new watched time than twice the wall-clock time since the last
+  one: watching at 2x, YouTube's top speed, counts in full (owner, 2026-11-13).
+  The player shows YouTube's own controls (play, captions, speed); the app has no Play button of its
+  own, and with skipping blocked a skip on YouTube's bar goes back to the furthest point. The live
+  count is to the second ("2 min 5 sec of 58 min"). Leave on "Not finished yet" leaves. A
   video is done when it is watched **and** every timed question on it is answered.
 - **Essay (owner):** a question with a **minimum and maximum word count**; the student sees a live
   count. Optional file uploads, as before. **Each essay is reviewed on its own by the leader, who can
   return just that one essay (owner).** An essay needs typed words to be done; files are extras
   (builder's call).
 - **Forum:** what FORUM assignments did before: minimum words, "post before reading others", allow
-  comments, with its own prompt. **No leader review (owner).**
+  comments, with its own prompt. **No leader review (owner).** A new forum starts with "post before
+  reading others" off (owner, 2026-11-13).
 
 ## Submitting
 
@@ -67,6 +72,14 @@
   finished"): one row per student, a mark per part, not-finished students first. Video question
   scores show there ("3 of 4 correct"); they are not a quiz, so `docs/rules/quiz-results.md`'s hold
   does not apply (builder's call).
+- **The staff page (owner, 2026-11-13: "messy"):** one overview card (due date, reminder, Edit and
+  Delete); parts named by their own words, right to left when Arabic, with "Part N · kind" under
+  them; progress as "N of M students finished" with a bar, then Not finished and Finished as two tabs.
+  A student who hasn't started any part shows "N parts left · not started" and no chips; chips appear
+  once one part has moved. Reminder lines carry no dash: "No reminder: the next session was too close",
+  "Tue 11 Nov, around 9:00 AM, to students who haven't finished".
+- **Arabic in instructions:** the editor and the shown instructions set each paragraph's direction
+  from its first letter, and the editor's toolbar is one row that scrolls sideways when narrow.
 
 ## Editing after students started (builder's call)
 
@@ -93,9 +106,9 @@ reopened, and one it finishes (every part done, every essay reviewed) is complet
   `docs/rules/settings-account.md`), opening the assignment.
 - **"The next session"** is the first session of the season starting after the assignment is
   published (`createdAt`), never the first after now (ruling I3). With none, no reminder is sent and
-  the Details line says "No session after it was published — no reminder". When the reminder's time
+  the Details line says "No reminder: no session after it was published". When the reminder's time
   before that session had already passed at save time, none is sent either, even once a later session
-  exists: "The next session was too close — no reminder".
+  exists: "No reminder: the next session was too close".
 - **The schedule runs inside the backend, request-driven (owner, 2026-11-10: "I want the schedule to
   be inside the backend", "I don't want to use the Vercel scheduler").** On any API request, about
   once a minute per server instance, one sweep at a time, the backend takes a database lease and, after
