@@ -73,20 +73,13 @@ export function useQuizAttempts(
   });
 }
 
-/**
- * Every loaded page as one list. `waiting` is re-ordered so in-progress
- * students stay ahead of never-started ones across page boundaries, as they
- * are within a single page.
- */
+/** Every loaded page as one list, in the server's order. */
 export function flattenGradingPages(pages: QuizGradingPage[]): {
   items: QuizGradingPage["items"];
   waiting: QuizGradingPage["waiting"];
 } {
-  const waiting = pages.flatMap((p) => p.waiting);
-  return {
-    items: pages.flatMap((p) => p.items),
-    waiting: [...waiting.filter((w) => w.startedAt !== null), ...waiting.filter((w) => w.startedAt === null)],
-  };
+  // Both lists keep the server's name order (owner, 2026-11-13: "sort the students alphabetically").
+  return { items: pages.flatMap((p) => p.items), waiting: pages.flatMap((p) => p.waiting) };
 }
 
 /** The leader's right/wrong marks for one attempt (fill-in-the-blank blanks and essays). */

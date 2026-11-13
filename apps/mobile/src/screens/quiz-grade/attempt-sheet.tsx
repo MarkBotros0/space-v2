@@ -2,12 +2,12 @@ import type { QuizGradingAttempt } from "@space/shared";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 
-import { adminScoreLabel } from "./attempt-subtitle";
+import { AttemptSummary } from "./attempt-summary";
 import { ExitLog } from "./exit-log";
 import { manualScoreTarget } from "./manual-score-model";
 import { useManualScoreSheet } from "./manual-score-sheet";
 import { initialMarks, markedCount, marksComplete, setMark, setPoints, toMarkInput } from "./marking-model";
-import { QuizAttemptAnswers, ReopenButton } from "./quiz-answer-marker";
+import { QuizAttemptAnswers } from "./quiz-answer-marker";
 import { haptic } from "../../design/motion";
 import { Button } from "../../design/ui/button";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
@@ -15,16 +15,17 @@ import { Text } from "../../design/ui/text";
 import { toast } from "../../design/ui/toaster";
 import { useMarkAttempt, useReopenAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
-import { formatScore } from "../../lib/format";
 
 /**
- * One online attempt in a bottom sheet: the answers with the key (shown to the grader, R103),
- * Right / Wrong per blank, points per essay, and Reopen retake. Keyed by attempt by the caller, so the
+ * One online attempt in a bottom sheet (owner, 2026-11-13 redesign): at the top where it stands,
+ * its score and its actions (Allow a retake, the admin's Enter score manually); then the exit log; then each
+ * question as its own section with the key (shown to the grader, R103), Right / Wrong per blank and
+ * points per essay. Keyed by attempt by the caller, so the
  * marks survive a dismiss and reopen of the same attempt. Save waits until every item is
  * marked: the server refuses a partial set (marks_incomplete). The season's admin (`canScore`) can
  * enter or edit the student's own score (plan 4), shown in place of the answers: one modal at a
  * time, since opening a second as the first closes drops it on iOS. A student with the admin's
- * score has no Reopen retake: the server refuses one until the score is cleared.
+ * score has no retake: the server refuses one until the score is cleared.
  */
 export function AttemptSheet({
   quizId,
@@ -70,7 +71,6 @@ export function AttemptSheet({
   }, [open]);
   const canMark = marks.length > 0;
   const complete = marksComplete(marks);
-  const graded = attempt.status === "GRADED";
 
   const save = () => {
     if (!complete) return;
@@ -93,7 +93,7 @@ export function AttemptSheet({
     reopen.mutate(attempt.studentUserId, {
       onSuccess: () => {
         haptic("light");
-        toast.success("Retake reopened.");
+        toast.success("Retake allowed.");
         onClose();
       },
       onError: (err) => setError(apiErrorMessage(err, "Couldn't reopen the attempt.")),
@@ -131,10 +131,14 @@ export function AttemptSheet({
       }
     >
       <View className="flex-col gap-4 pb-4">
-        <Text variant="caption" className="text-muted-foreground">
-          {`Attempt ${attempt.attemptNumber} · ${graded ? `Graded · ${formatScore(attempt.totalScore ?? 0)}/${maxScore}` : "Awaiting grading"}`}
-        </Text>
-        <AdminScoreLine attempt={attempt} maxScore={maxScore} canScore={canScore} onScore={() => setScoring(true)} />
+        <AttemptSummary
+          attempt={attempt}
+          maxScore={maxScore}
+          canScore={canScore}
+          onScore={() => setScoring(true)}
+          onRetake={onReopen}
+          retaking={reopen.isPending}
+        />
         <ExitLog attempt={attempt} />
         <QuizAttemptAnswers
           attempt={attempt}
@@ -147,35 +151,7 @@ export function AttemptSheet({
             {error}
           </Text>
         ) : null}
-        {attempt.status !== "IN_PROGRESS" && attempt.adminScore === null ? (
-          <ReopenButton onPress={onReopen} disabled={reopen.isPending} />
-        ) : null}
       </View>
     </Sheet>
-  );
-}
-
-/** The admin's score, when there is one, and for the season's admin the way to enter or edit it. */
-function AdminScoreLine({
-  attempt,
-  maxScore,
-  canScore,
-  onScore,
-}: {
-  attempt: QuizGradingAttempt;
-  maxScore: number;
-  canScore: boolean;
-  onScore: () => void;
-}) {
-  const admin = attempt.adminScore;
-  return (
-    <>
-      {admin ? <Text variant="subhead">{adminScoreLabel(admin.score, maxScore)}</Text> : null}
-      {canScore ? (
-        <Button variant="secondary" size="sm" className="self-start" onPress={onScore}>
-          {admin ? "Edit score" : "Enter score"}
-        </Button>
-      ) : null}
-    </>
   );
 }

@@ -131,7 +131,7 @@ describe("the admin's manual score", () => {
     renderStacked(<QuizGradeScreen />);
     await screen.findByText("Test student");
     openRow("Test student");
-    fireEvent.press(await screen.findByRole("button", { name: "Enter score" }));
+    fireEvent.press(await screen.findByRole("button", { name: "Enter score manually" }));
 
     expect(await screen.findByText("Graded in the app: 7 / 10")).toBeTruthy();
     expect(screen.getByText("This score replaces the app's score for this student.")).toBeTruthy();
@@ -149,15 +149,27 @@ describe("the admin's manual score", () => {
     await screen.findByText("Second student");
     expect(screen.queryByLabelText(/Enter a score for/)).toBeNull();
     openRow("Test student");
-    expect(await screen.findByText("Reopen retake")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Enter score" })).toBeNull();
+    expect(await screen.findByText("Allow a retake")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Enter score manually" })).toBeNull();
+  });
+
+  it("says where marking is, and what a manual score is for (owner, 2026-11-13)", async () => {
+    serve(true, [], [{ ...waitingRow(10, "Second student", null), adminScore: null }]);
+    renderStacked(<QuizGradeScreen />);
+    expect(await screen.findByText("Enter score manually")).toBeTruthy();
+    expect(screen.getByText("NOT SUBMITTED")).toBeTruthy();
+    expect(
+      screen.getByText("Enter a score manually only for a student who took the quiz outside the app."),
+    ).toBeTruthy();
+    expect(screen.getByText("Nobody has submitted yet")).toBeTruthy();
+    expect(screen.getByText("When students submit, they show here. Tap one to mark their answers.")).toBeTruthy();
   });
 
   it("saving posts and closes", async () => {
     serve(true, [], [{ ...waitingRow(10, "Second student", null), adminScore: null }]);
     put.mockResolvedValue({ data: { data: saved } });
     renderStacked(<QuizGradeScreen />);
-    fireEvent.press(await screen.findByLabelText("Enter a score for Second student"));
+    fireEvent.press(await screen.findByLabelText("Enter a score manually for Second student"));
     expect(await screen.findByText("Didn't take it")).toBeTruthy();
 
     fireEvent.changeText(screen.getByLabelText("Score for Second student"), "7,5");
@@ -177,7 +189,7 @@ describe("the admin's manual score", () => {
   it("a score out of range is refused on the phone", async () => {
     serve(true, [], [{ ...waitingRow(10, "Second student", null), adminScore: null }]);
     renderStacked(<QuizGradeScreen />);
-    fireEvent.press(await screen.findByLabelText("Enter a score for Second student"));
+    fireEvent.press(await screen.findByLabelText("Enter a score manually for Second student"));
     fireEvent.changeText(await screen.findByLabelText("Score for Second student"), "12");
     fireEvent.press(screen.getByText("Save score"));
     expect(screen.getByLabelText("Score for Second student").props.accessibilityHint).toBe(
@@ -187,7 +199,7 @@ describe("the admin's manual score", () => {
 
     // A reopened sheet starts clean.
     fireEvent.press(screen.getByTestId("sheet-backdrop"));
-    fireEvent.press(screen.getByLabelText("Enter a score for Second student"));
+    fireEvent.press(screen.getByLabelText("Enter a score manually for Second student"));
     await waitFor(() =>
       expect(screen.getByLabelText("Score for Second student").props.accessibilityHint).toBeUndefined(),
     );
@@ -197,7 +209,7 @@ describe("the admin's manual score", () => {
     serve(true, [], [{ ...waitingRow(10, "Second student", "2099-03-02T09:00:00.000Z"), adminScore: null }]);
     put.mockRejectedValue(conflict("attempt_open", "End their attempt first."));
     renderStacked(<QuizGradeScreen />);
-    fireEvent.press(await screen.findByLabelText("Enter a score for Second student"));
+    fireEvent.press(await screen.findByLabelText("Enter a score manually for Second student"));
     expect(await screen.findByText("In progress")).toBeTruthy();
     fireEvent.changeText(screen.getByLabelText("Score for Second student"), "6");
     fireEvent.press(screen.getByText("Save score"));
@@ -211,7 +223,7 @@ describe("the admin's manual score", () => {
     serve(true, [], [{ ...waitingRow(10, "Second student", null), adminScore: null }]);
     put.mockRejectedValue(conflict("quiz_not_published", "Publish the quiz first."));
     renderStacked(<QuizGradeScreen />);
-    fireEvent.press(await screen.findByLabelText("Enter a score for Second student"));
+    fireEvent.press(await screen.findByLabelText("Enter a score manually for Second student"));
     fireEvent.changeText(await screen.findByLabelText("Score for Second student"), "6");
     fireEvent.press(screen.getByText("Save score"));
 
@@ -228,9 +240,9 @@ describe("the admin's manual score", () => {
     expect(await screen.findByText("Score entered by admin: 4/10")).toBeTruthy();
     openRow("Test student");
     // The server refuses a retake once the admin's score is in, so the sheet doesn't offer one.
-    expect(await screen.findByRole("button", { name: "Edit score" })).toBeTruthy();
-    expect(screen.queryByText("Reopen retake")).toBeNull();
-    fireEvent.press(screen.getByRole("button", { name: "Edit score" }));
+    expect(await screen.findByRole("button", { name: "Edit manual score" })).toBeTruthy();
+    expect(screen.queryByText("Allow a retake")).toBeNull();
+    fireEvent.press(screen.getByRole("button", { name: "Edit manual score" }));
     expect(await screen.findByDisplayValue("4")).toBeTruthy();
     expect(screen.getByDisplayValue("Took it on paper.")).toBeTruthy();
 

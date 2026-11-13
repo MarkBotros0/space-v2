@@ -2,7 +2,7 @@
  * What each number on the Season progress card opens to (spec 2026-11-12 "Progress for staff"):
  * the sessions summed up, the assignments with missing ones first, the quizzes lowest score first.
  * The actions are the ones that already exist: Mark as submitted (and Undo) on an assignment,
- * Reopen retake on a quiz. Every standing is a word as well as a tone.
+ * Allow a retake on a quiz. Every standing is a word as well as a tone.
  */
 import type { StudentProgress } from "@space/shared";
 import { View } from "react-native";

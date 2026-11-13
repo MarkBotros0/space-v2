@@ -96,7 +96,7 @@ export function quizLine(q: ProgressQuiz): string {
  * The quiz's way to a better score, both on its grading screen: a taken online quiz is reopened as
  * a retake; a paper quiz or an untaken one is graded there. Nothing once the season has ended.
  */
-export function quizAction(q: ProgressQuiz, seasonActive: boolean): "Reopen retake" | "Open grading" | null {
+export function quizAction(q: ProgressQuiz, seasonActive: boolean): "Allow a retake" | "Open grading" | null {
   if (!seasonActive) return null;
-  return q.kind === "ONLINE" && q.score !== null ? "Reopen retake" : "Open grading";
+  return q.kind === "ONLINE" && q.score !== null ? "Allow a retake" : "Open grading";
 }

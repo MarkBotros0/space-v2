@@ -3,39 +3,32 @@
  * author's order. Choice and matching questions are marked by the server and show read-only;
  * each fill-in-the-blank gap shows the student's text beside the expected answer with Right / Wrong,
  * and each essay its text with the points to give (`EssayPoints`, owner 2026-11-13); one left empty
- * shows as wrong, with nothing to mark. The sheet owns the marks and the save; this draws them. "Reopen retake" shows on SUBMITTED attempts too, for every grader
- * (spec 12 D5).
+ * shows as wrong, with nothing to mark. The sheet owns the marks and the save; this draws them.
+ *
+ * Each question is its own section (owner, 2026-11-13 redesign): "Q2", its type and its points, or
+ * "To mark" while something in it waits for the grader. Only the options that say something carry a
+ * box (picked, or the correct one missed); the rest are a plain line, so the eye lands on the mark.
  */
 import type { QuizGradingAttempt } from "@space/shared";
-import { RotateCcw } from "lucide-react-native";
 import { View } from "react-native";
 
 import { ToggleButtons } from "../../design/forms/form-parts";
 import { cn } from "../../design/lib/cn";
-import { iconWithClassName } from "../../design/lib/icon";
-import { Button, ContentText, Text } from "../../design/ui";
+import { ContentText, StatusChip, Text } from "../../design/ui";
 import { formatScore } from "../../lib/format";
+import { plural } from "../../lib/plural";
 import { splitBlanks } from "../quiz-detail/blank-segments";
+import { questionTypeLabel } from "../quiz-detail/questions";
+import { OptionLabel } from "../quiz-detail/true-false-glyph";
 import { Mark } from "../quiz-detail/review/question-review";
 import { EssayPoints } from "./essay-points";
 import { isLeftEmpty, type ItemMark } from "./marking-model";
-
-iconWithClassName(RotateCcw);
 
 type Answer = QuizGradingAttempt["answers"][number];
 type Of<T extends Answer["type"]> = Extract<Answer, { type: T }>;
 type OnMark = (questionId: number, blankId: number, correct: boolean) => void;
 type OnPoints = (questionId: number, points: number) => void;
 type Marking = { marks: ItemMark[]; onMark: OnMark; onPoints: OnPoints };
-
-export function ReopenButton({ onPress, disabled }: { onPress: () => void; disabled: boolean }) {
-  return (
-    <Button size="sm" variant="secondary" className="self-start" onPress={onPress} disabled={disabled}>
-      <RotateCcw size={16} className="text-foreground" />
-      Reopen retake
-    </Button>
-  );
-}
 
 /** Right / Wrong for one item. Never colour alone: the words carry the mark. */
 function RightWrong({ value, onChange }: { value: boolean | null; onChange: (correct: boolean) => void }) {
@@ -63,19 +56,22 @@ function Choices({ a }: { a: Of<"SINGLE_CHOICE" | "TRUE_FALSE" | "MULTI_CHOICE">
   const picked = new Set(a.type === "MULTI_CHOICE" ? a.selectedOptionIds : [a.selectedOptionId]);
   return (
     <View className="flex-col gap-2">
-      {a.options.map((o) => (
-        <View
-          key={o.id}
-          className="flex-col gap-1 rounded-control border border-control-border bg-surface-raised px-3 py-2"
-        >
-          <ContentText variant="subhead">{o.label}</ContentText>
-          {picked.has(o.id) ? (
-            <Mark right={o.isCorrect} word={o.isCorrect ? "Picked, right" : "Picked, wrong"} />
-          ) : o.isCorrect ? (
-            <Mark right word="Correct answer, not picked" />
-          ) : null}
-        </View>
-      ))}
+      {a.options.map((o) =>
+        picked.has(o.id) || o.isCorrect ? (
+          <View key={o.id} className="flex-col gap-1 rounded-control border border-control-border bg-surface px-3 py-2">
+            <OptionLabel label={o.label} trueFalse={a.type === "TRUE_FALSE"} />
+            {picked.has(o.id) ? (
+              <Mark right={o.isCorrect} word={o.isCorrect ? "Picked, right" : "Picked, wrong"} />
+            ) : (
+              <Mark right word="Correct answer, not picked" />
+            )}
+          </View>
+        ) : (
+          <View key={o.id} className="px-3">
+            <OptionLabel label={o.label} trueFalse={a.type === "TRUE_FALSE"} className="text-muted-foreground" />
+          </View>
+        ),
+      )}
     </View>
   );
 }
@@ -90,7 +86,7 @@ function Matches({ a }: { a: Of<"MATCHING"> }) {
         return (
           <View
             key={p.leftId}
-            className="flex-col gap-1 rounded-control border border-control-border bg-surface-raised px-3 py-2"
+            className="flex-col gap-1 rounded-control border border-control-border bg-surface px-3 py-2"
           >
             <ContentText variant="subhead" className="font-medium">
               {p.left}
@@ -112,7 +108,7 @@ function Blanks({ a, marks, onMark }: { a: Of<"FILL_BLANK"> } & Marking) {
       {sorted.map((b, i) => (
         <View
           key={b.blankId}
-          className="flex-col gap-2 rounded-control border border-control-border bg-surface-raised px-3 py-2"
+          className="flex-col gap-2 rounded-control border border-control-border bg-surface px-3 py-2"
         >
           <Text variant="caption" className="font-bold text-muted-foreground">{`Blank ${i + 1}`}</Text>
           <ContentText variant="subhead">{`Student's answer: ${b.text || "none"}`}</ContentText>
@@ -134,10 +130,7 @@ function Blanks({ a, marks, onMark }: { a: Of<"FILL_BLANK"> } & Marking) {
 function Essay({ a, marks, onPoints }: { a: Of<"ESSAY"> } & Marking) {
   return (
     <View className="flex-col gap-2">
-      <ContentText
-        variant="subhead"
-        className="rounded-control border border-control-border bg-surface-raised px-3 py-2"
-      >
+      <ContentText variant="subhead" className="rounded-control border border-control-border bg-surface px-3 py-2">
         {a.text || "No answer"}
       </ContentText>
       {isLeftEmpty(a.text) ? (
@@ -174,21 +167,48 @@ function promptOf(a: Answer): string {
     .join("");
 }
 
+/** Whether something in this question still waits for the grader's mark. */
+function waitsForMark(a: Answer, marks: ItemMark[]): boolean {
+  return marks.some(
+    (m) => m.questionId === a.questionId && (m.blankId === null ? m.points === null : m.correct === null),
+  );
+}
+
+/** "Q2 · Fill in the blank" and, on the right, its points or "To mark". */
+function QuestionHeader({ a, index, toMark }: { a: Answer; index: number; toMark: boolean }) {
+  return (
+    <View className="flex-row flex-wrap items-center gap-2">
+      <Text variant="caption" className="font-bold text-muted-foreground">{`Q${index + 1}`}</Text>
+      <StatusChip tone="neutral" label={questionTypeLabel(a)} />
+      <View className="min-w-0 flex-1" />
+      {toMark ? (
+        <StatusChip tone="warn" label="To mark" />
+      ) : (
+        <Text variant="caption" tabular className="shrink-0 font-semibold text-muted-foreground">
+          {a.pointsAwarded === null
+            ? plural(a.points, "pt")
+            : `${formatScore(a.pointsAwarded)} / ${plural(a.points, "pt")}`}
+        </Text>
+      )}
+    </View>
+  );
+}
+
 export function QuizAttemptAnswers({ attempt, ...marking }: { attempt: QuizGradingAttempt } & Marking) {
   return (
     <View className="flex-col gap-3">
       {attempt.answers.map((a, i) => (
-        <View key={a.questionId} className={cn("flex-col gap-2", i > 0 && "border-t border-separator pt-3")}>
-          <View className="flex-row items-start gap-2">
-            <ContentText variant="subhead" className="min-w-0 flex-1 font-semibold">
-              {promptOf(a)}
-            </ContentText>
-            {a.pointsAwarded === null ? null : (
-              <Text variant="caption" tabular className="shrink-0 text-muted-foreground">
-                {`${formatScore(a.pointsAwarded)}/${formatScore(a.points)}`}
-              </Text>
-            )}
-          </View>
+        <View
+          key={a.questionId}
+          className={cn(
+            "flex-col gap-3 rounded-group bg-background p-4",
+            waitsForMark(a, marking.marks) && "border border-warn",
+          )}
+        >
+          <QuestionHeader a={a} index={i} toMark={waitsForMark(a, marking.marks)} />
+          <ContentText variant="subhead" className="font-semibold">
+            {promptOf(a)}
+          </ContentText>
           <Body a={a} {...marking} />
         </View>
       ))}

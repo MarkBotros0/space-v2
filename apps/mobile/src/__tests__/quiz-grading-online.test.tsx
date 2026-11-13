@@ -155,7 +155,9 @@ describe("grading screen — ONLINE", () => {
     // R103: the grader sees what was right.
     expect(screen.getByText("Paris")).toBeTruthy();
     expect(screen.getByText("Picked, right")).toBeTruthy();
-    expect(screen.getByText("2/2")).toBeTruthy();
+    expect(screen.getByText("2 / 2 pts")).toBeTruthy();
+    expect(screen.getByText("Waiting for marking")).toBeTruthy();
+    expect(screen.getByText("To mark")).toBeTruthy();
     expect(screen.getByText("0 of 1 marked")).toBeTruthy();
 
     expect(screen.getByText("Points, out of 5")).toBeTruthy();
@@ -220,7 +222,7 @@ describe("grading screen — ONLINE", () => {
     await screen.findByText("Because of the river.");
     expect(essayScore(3).props.accessibilityState).toMatchObject({ checked: true });
     expect(screen.getByText("Save marks")).toBeTruthy();
-    expect(screen.getByText("Reopen retake")).toBeTruthy();
+    expect(screen.getByText("Allow a retake")).toBeTruthy();
   });
 
   it("release card says Release answers, and only to whoever may release", async () => {
@@ -236,12 +238,12 @@ describe("grading screen — ONLINE", () => {
 
   it("shows students who have not finished rather than dropping them (R102, D5)", async () => {
     renderStacked(<QuizGradeScreen />);
-    expect(await screen.findByText("WAITING")).toBeTruthy();
+    expect(await screen.findByText("NOT SUBMITTED")).toBeTruthy();
     expect(screen.getByText("Second student")).toBeTruthy();
     expect(screen.getByText("Not started")).toBeTruthy();
     // Waiting rows are not pressable: nothing to open, and no Reopen to offer.
     fireEvent.press(screen.getAllByText("Second student")[0]!);
-    expect(screen.queryByText("Reopen retake")).toBeNull();
+    expect(screen.queryByText("Allow a retake")).toBeNull();
     expect(screen.queryByTestId("sheet")).toBeNull();
     // A leader sees the answers are held, but has no button.
     expect(screen.getByText("Held")).toBeTruthy();
@@ -266,7 +268,7 @@ describe("grading screen — ONLINE", () => {
     );
     renderStacked(<QuizGradeScreen />);
     expect(await screen.findByText("In progress since Mar 2, 2099")).toBeTruthy();
-    expect(screen.queryByText("Reopen retake")).toBeNull();
+    expect(screen.queryByText("Allow a retake")).toBeNull();
   });
 
   it("pages through the class with Load more instead of stopping at 20", async () => {
@@ -294,11 +296,11 @@ describe("grading screen — ONLINE", () => {
 
     expect(await screen.findByText("Page two student")).toBeTruthy();
     expect(screen.getByText("Test student")).toBeTruthy();
-    // Waiting rows from both pages, the in-progress one ahead of never-started.
+    // Not-submitted rows from both pages, in the server's (name) order: page one's, then page two's.
     const order = screen.UNSAFE_root.findAll(
       (n: { props: { children?: unknown } }) => typeof n.props.children === "string",
     ).map((n: { props: { children?: unknown } }) => n.props.children as string);
-    expect(order.indexOf("Late student")).toBeLessThan(order.indexOf("Second student"));
+    expect(order.indexOf("Second student")).toBeLessThan(order.indexOf("Late student"));
     await waitFor(() => expect(screen.queryByText("Load more")).toBeNull());
   });
 
@@ -318,9 +320,12 @@ describe("grading screen — ONLINE", () => {
     expect(await screen.findByText("Attempt 1 · 6.67/7 · Mar 2, 2099")).toBeTruthy();
     expect(screen.getByText("Graded")).toBeTruthy();
     openRow("Test student");
-    expect(await screen.findByText("Attempt 1 · Graded · 6.67/7")).toBeTruthy();
+    expect(await screen.findByText("6.67 / 7")).toBeTruthy();
     expect(screen.getByRole("radio", { name: "5 points of 5", checked: true })).toBeTruthy();
-    fireEvent.press(screen.getByText("Reopen retake"));
+    fireEvent.press(screen.getByText("Allow a retake"));
+    expect(screen.getByText(/Give Test student a fresh attempt\?/)).toBeTruthy();
+    expect(post).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText("Allow a retake"));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/reopen", {
         studentUserId: 9,
@@ -335,7 +340,7 @@ describe("grading screen — ONLINE", () => {
     openRow("Test student");
     expect(await screen.findByText("Picked, wrong")).toBeTruthy();
     expect(screen.getByText("Correct answer, not picked")).toBeTruthy();
-    expect(screen.getByText("0/2")).toBeTruthy();
+    expect(screen.getByText("0 / 2 pts")).toBeTruthy();
   });
 
   describe("attempt sheet drafts", () => {

@@ -13,6 +13,7 @@ import { endInfo, exitLogsFor, GRADING_END_SELECT } from "../../lib/quizzes/exit
 import { isLeaderMarked } from "../../lib/quizzes/marking";
 import { toScore } from "../../lib/quizzes/score";
 import { bestScoresFor } from "../../lib/queries/quiz-best-scores";
+import { studentPageByName } from "../../lib/quizzes/grading-order";
 import {
   markAttemptRequestSchema,
   quizAttemptsQuerySchema,
@@ -46,12 +47,13 @@ export async function listAttempts(req: Request, res: Response) {
   // staff read closes the quiz's expired ones first (spec "Timing").
   await closeExpiredForQuiz(id);
 
-  // Derived, never accepted (R105). visibleStudentIdsForQuiz returns them
-  // sorted, so paging over the ids is stable and needs no second sort.
+  // Derived, never accepted (R105). Paged in name order (owner, 2026-11-13); both lists keep it.
   const studentIds = await visibleStudentIdsForQuiz(user, quiz.seasonId);
   if (studentIds === null) return forbidden(res);
-  const remaining = cursor === undefined ? studentIds : studentIds.filter((sid) => sid > cursor);
-  const pageIds = remaining.slice(0, limit);
+  const { pageIds, nameById, hasMore } = await studentPageByName(studentIds, cursor, limit);
+  const place = new Map(pageIds.map((sid, i) => [sid, i]));
+  const byPlace = (a: { studentUserId: number }, b: { studentUserId: number }) =>
+    (place.get(a.studentUserId) ?? 0) - (place.get(b.studentUserId) ?? 0);
 
   // Staff-only (canGradeQuiz above): the key is loaded on purpose (R103).
   const questions = await db.quizQuestion.findMany({
@@ -90,15 +92,9 @@ export async function listAttempts(req: Request, res: Response) {
   // attempt, which is what gets marked or reopened.
   const { best: bestScores, admin, app } = await bestScoresFor(id, pageIds);
 
-  const scored = attempts.filter((a) => a.status !== "IN_PROGRESS");
+  const scored = attempts.filter((a) => a.status !== "IN_PROGRESS").sort(byPlace);
   const inProgress = attempts.filter((a) => a.status === "IN_PROGRESS");
   const startedIds = new Set(attempts.map((a) => a.studentUserId));
-
-  const names = await db.user.findMany({
-    where: { id: { in: pageIds } },
-    select: { id: true, name: true },
-  });
-  const nameById = new Map(names.map((u) => [u.id, u.name]));
 
   return apiOk(res, {
     id: quiz.id,
@@ -150,8 +146,8 @@ export async function listAttempts(req: Request, res: Response) {
           adminScore: admin.get(sid) ?? null,
           appScore: null,
         })),
-    ],
-    nextCursor: remaining.length > limit ? (pageIds[pageIds.length - 1] ?? null) : null,
+    ].sort(byPlace),
+    nextCursor: hasMore ? (pageIds[pageIds.length - 1] ?? null) : null,
   });
 }
 

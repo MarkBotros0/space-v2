@@ -5,6 +5,7 @@ import type { QuizAuthoringDetail } from "@space/shared";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { EmptyState } from "../../design/ui";
+import { Text } from "../../design/ui/text";
 import { GroupedList, ListRow } from "../../design/ui/grouped-list";
 import { StatusChip, statusChip } from "../../design/ui/status-chip";
 import { flattenGradingPages, useQuizAttempts } from "../../hooks/use-quizzes";
@@ -44,31 +45,38 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
     body = (
       <View className="flex-col gap-4">
         <ReleaseResultsCard quiz={detail} />
+        {/* "Submitted" with how to mark, always in view (owner, 2026-11-13: the screen didn't show
+            that marking was there, only Enter score). Students come in name order from the server. */}
         {items.length === 0 ? (
           hasNextPage ? null : (
             <EmptyState
-              title="No submissions yet"
-              description="Student attempts will appear here once they submit this quiz."
+              title="Nobody has submitted yet"
+              description="When students submit, they show here. Tap one to mark their answers."
             />
           )
         ) : (
-          <GroupedList>
-            {items.map((a) => (
-              <ListRow
-                key={a.attemptId}
-                title={a.studentName ?? "Student"}
-                titleLines={2}
-                {...(a.adminScore ? { detail: adminScoreLabel(a.adminScore.score, first.maxScore) } : {})}
-                subtitle={attemptSubtitle(a, first.maxScore)}
-                trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
-                chevron
-                onPress={() => {
-                  setShown(a.attemptId);
-                  setOpen(true);
-                }}
-              />
-            ))}
-          </GroupedList>
+          <View className="flex-col gap-1.5">
+            <GroupedList header="Submitted">
+              {items.map((a) => (
+                <ListRow
+                  key={a.attemptId}
+                  title={a.studentName ?? "Student"}
+                  titleLines={2}
+                  {...(a.adminScore ? { detail: adminScoreLabel(a.adminScore.score, first.maxScore) } : {})}
+                  subtitle={attemptSubtitle(a, first.maxScore)}
+                  trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
+                  chevron
+                  onPress={() => {
+                    setShown(a.attemptId);
+                    setOpen(true);
+                  }}
+                />
+              ))}
+            </GroupedList>
+            <Text variant="caption" className="px-4 text-muted-foreground">
+              Tap a student to mark their answers.
+            </Text>
+          </View>
         )}
         {waiting.length > 0 ? (
           <WaitingList quizId={id} waiting={waiting} maxScore={first.maxScore} canScore={detail.canReleaseResults} />

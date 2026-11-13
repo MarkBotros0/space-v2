@@ -2,7 +2,7 @@
  * One number of a student's Season progress, opened from the card: the sessions summed up, the
  * assignments, or the quizzes. Marking an assignment as submitted (or undoing a mark) swaps this
  * same sheet to the confirm, with the words and the action of the assignment page's StaffMarkSheet:
- * never a second modal over this one, which iOS can drop. Reopen retake closes the sheet and
+ * never a second modal over this one, which iOS can drop. Allow a retake closes the sheet and
  * opens the quiz's grading screen.
  */
 import type { PassingNumberKey, StudentProgress } from "@space/shared";

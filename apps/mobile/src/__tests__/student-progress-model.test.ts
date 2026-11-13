@@ -146,8 +146,8 @@ describe("quizzes in the sheet", () => {
     expect(quizLine(quiz({ score: null }))).toBe("No score yet, counts as 0");
   });
 
-  it("offers Reopen retake on a taken online quiz, the grading screen otherwise, nothing once ended", () => {
-    expect(quizAction(quiz(), true)).toBe("Reopen retake");
+  it("offers Allow a retake on a taken online quiz, the grading screen otherwise, nothing once ended", () => {
+    expect(quizAction(quiz(), true)).toBe("Allow a retake");
     expect(quizAction(quiz({ score: null }), true)).toBe("Open grading");
     expect(quizAction(quiz({ kind: "PAPER" }), true)).toBe("Open grading");
     expect(quizAction(quiz(), false)).toBeNull();

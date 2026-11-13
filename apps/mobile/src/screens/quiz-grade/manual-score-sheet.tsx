@@ -183,7 +183,7 @@ export function useManualScoreSheet({ quizId, target, maxScore, open, onDone }: 
   );
 
   return {
-    title: target.adminScore ? `Edit ${name}'s score` : `Enter ${name}'s score`,
+    title: target.adminScore ? `Edit ${name}'s manual score` : `Enter ${name}'s score manually`,
     footer: (
       <SheetSaveBar
         label="Save score"

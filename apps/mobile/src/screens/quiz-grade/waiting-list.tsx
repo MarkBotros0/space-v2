@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
+
+import { Text } from "../../design/ui/text";
 import type { QuizGradingPage } from "@space/shared";
 
 import { haptic } from "../../design/motion";
@@ -16,7 +18,10 @@ import { manualScoreTarget } from "./manual-score-model";
 type Waiting = QuizGradingPage["waiting"][number];
 
 /**
- * V2-ONLY (spec 12 D5/R102): students who haven't finished.
+ * V2-ONLY (spec 12 D5/R102): students who haven't finished, under "Not submitted" (owner,
+ * 2026-11-13: "Waiting" didn't say what they were waiting for). "Enter score manually" says what it
+ * is, and a note under the list says it is for a quiz taken outside the app: marking is on the
+ * Submitted list.
  *
  * No Reopen here, and no press on the row. A waiting student either never started (the server
  * answers 409 `no_attempt`) or has an attempt still IN_PROGRESS (409 `attempt_open`), which they can
@@ -61,43 +66,50 @@ export function WaitingList({
 
   return (
     <>
-      <GroupedList header="Waiting">
-        {waiting.map((w) => (
-          <ListRow
-            key={w.studentUserId}
-            title={name(w)}
-            titleLines={2}
-            {...(w.adminScore ? { detail: "Score entered by admin" } : {})}
-            subtitle={subtitle(w)}
-            trailingPlacement="below"
-            trailing={
-              w.startedAt === null && !canScore ? undefined : (
-                <View className="flex-row flex-wrap gap-2">
-                  {w.startedAt === null ? null : (
-                    <PillButton
-                      label="End attempt"
-                      accessibilityLabel={`End ${name(w)}'s attempt`}
-                      destructive
-                      disabled={end.isPending}
-                      onPress={() => setEnding(w)}
-                    />
-                  )}
-                  {canScore ? (
-                    <PillButton
-                      label={w.adminScore ? "Edit score" : "Enter score"}
-                      accessibilityLabel={`${w.adminScore ? "Edit the score" : "Enter a score"} for ${name(w)}`}
-                      onPress={() => {
-                        setScoringId(w.studentUserId);
-                        setScoreOpen(true);
-                      }}
-                    />
-                  ) : null}
-                </View>
-              )
-            }
-          />
-        ))}
-      </GroupedList>
+      <View className="flex-col gap-1.5">
+        <GroupedList header="Not submitted">
+          {waiting.map((w) => (
+            <ListRow
+              key={w.studentUserId}
+              title={name(w)}
+              titleLines={2}
+              {...(w.adminScore ? { detail: "Score entered by admin" } : {})}
+              subtitle={subtitle(w)}
+              trailingPlacement="below"
+              trailing={
+                w.startedAt === null && !canScore ? undefined : (
+                  <View className="flex-row flex-wrap gap-2">
+                    {w.startedAt === null ? null : (
+                      <PillButton
+                        label="End attempt"
+                        accessibilityLabel={`End ${name(w)}'s attempt`}
+                        destructive
+                        disabled={end.isPending}
+                        onPress={() => setEnding(w)}
+                      />
+                    )}
+                    {canScore ? (
+                      <PillButton
+                        label={w.adminScore ? "Edit manual score" : "Enter score manually"}
+                        accessibilityLabel={`${w.adminScore ? "Edit the manual score" : "Enter a score manually"} for ${name(w)}`}
+                        onPress={() => {
+                          setScoringId(w.studentUserId);
+                          setScoreOpen(true);
+                        }}
+                      />
+                    ) : null}
+                  </View>
+                )
+              }
+            />
+          ))}
+        </GroupedList>
+        {canScore ? (
+          <Text variant="caption" className="px-4 text-muted-foreground">
+            Enter a score manually only for a student who took the quiz outside the app.
+          </Text>
+        ) : null}
+      </View>
       <ConfirmDialog
         open={ending !== null}
         onOpenChange={(open) => {

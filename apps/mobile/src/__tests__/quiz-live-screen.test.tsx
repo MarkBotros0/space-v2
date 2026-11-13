@@ -173,7 +173,7 @@ describe("live quiz screen", () => {
     renderStacked(<QuizLiveRoute />);
 
     fireEvent.press(await screen.findByLabelText(/^Fourth student/));
-    fireEvent.press(await screen.findByRole("button", { name: "Reopen retake" }));
+    fireEvent.press(await screen.findByRole("button", { name: "Allow a retake" }));
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/reopen", { studentUserId: 12 }));
     await waitFor(() => expect(liveReads()).toBe(2));

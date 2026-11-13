@@ -7,12 +7,12 @@ import { Button, ConfirmDialog, Sheet, StatusChip, Text } from "../../design/ui"
 import { toast } from "../../design/ui/toaster";
 import { useEndAttempt, useReopenAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
-import { ReopenButton } from "../quiz-grade/quiz-answer-marker";
+import { RetakeButton } from "../quiz-grade/attempt-summary";
 import { liveRowAction, type LiveRowView } from "./live-model";
 
 /**
- * One student's actions on the live screen: End an open attempt, after a confirm, or Reopen a
- * finished one as a retake, as the grading sheet does. The confirm sits inside the sheet (as the
+ * One student's actions on the live screen: End an open attempt, after a confirm, or allow a
+ * retake on a finished one, as the grading sheet does. The confirm sits inside the sheet (as the
  * staff picker's does): closing one modal while opening another drops the second on iOS. The
  * sheet closes once End has gone through. A student who never started has no sheet.
  */
@@ -38,7 +38,7 @@ export function LiveRowSheet({
     reopen.mutate(row.studentUserId, {
       onSuccess: () => {
         haptic("light");
-        toast.success("Retake reopened.");
+        toast.success("Retake allowed.");
         onClose();
       },
       onError: (err) => toast.error(apiErrorMessage(err, "Couldn't reopen the attempt.")),
@@ -77,7 +77,7 @@ export function LiveRowSheet({
             End attempt
           </Button>
         ) : null}
-        {action === "reopen" ? <ReopenButton onPress={onReopen} disabled={reopen.isPending} /> : null}
+        {action === "reopen" ? <RetakeButton onPress={onReopen} disabled={reopen.isPending} /> : null}
       </View>
       {asking ? (
         <ConfirmDialog
