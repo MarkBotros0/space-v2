@@ -13,6 +13,7 @@ import { Input } from "../../../design/ui/input";
 import { Sheet, SheetSaveBar } from "../../../design/ui/sheet";
 import { Text } from "../../../design/ui/text";
 import { useYoutubeTitle } from "../../../hooks/use-youtube-meta";
+import type { QuestionVideo } from "../../video-quiz/video-question-form-card";
 import { VideoQuestionsEditor } from "../../video-quiz/video-questions-editor";
 import { SwitchRow } from "../switch-row";
 import { VideoPreview } from "../video-preview";
@@ -20,9 +21,25 @@ import type { PartSheetProps, VideoDraft } from "./part-fields";
 
 const NOT_A_LINK = "That isn't a YouTube link";
 
-function TimedQuestions({ assignmentId, partId }: { assignmentId: number | null; partId: number | undefined }) {
+function TimedQuestions({
+  assignmentId,
+  partId,
+  video,
+  onFormOpenChange,
+}: {
+  assignmentId: number | null;
+  partId: number | undefined;
+  video: QuestionVideo | undefined;
+  onFormOpenChange: (open: boolean) => void;
+}) {
   if (assignmentId !== null && partId !== undefined) {
-    return <VideoQuestionsEditor owner={{ kind: "part", assignmentId, partId }} />;
+    return (
+      <VideoQuestionsEditor
+        owner={{ kind: "part", assignmentId, partId }}
+        video={video}
+        onFormOpenChange={onFormOpenChange}
+      />
+    );
   }
   return (
     <View className="flex-col gap-1">
@@ -50,6 +67,8 @@ export function VideoPartSheet({
   const [blockSkipping, setBlockSkipping] = useState(false);
   const [duration, setDuration] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // While a question is open its own player shows the video; this one steps aside (one player at a time).
+  const [asking, setAsking] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -59,6 +78,7 @@ export function VideoPartSheet({
     setBlockSkipping(initial?.blockSkipping ?? false);
     setDuration(initial?.durationSeconds ?? null);
     setErrors({});
+    setAsking(false);
   }, [open, initial]);
 
   const videoId = parseYouTubeId(link);
@@ -115,7 +135,7 @@ export function VideoPartSheet({
             keyboardType="url"
           />
         </FormField>
-        {videoId !== null ? (
+        {videoId !== null && !asking ? (
           <View className="flex-col gap-1">
             {/* A new video on a ready player never fires onReady again (react-native-youtube-iframe 2.4.1): remount it per video. */}
             <VideoPreview key={videoId} videoId={videoId} onDuration={setDuration} />
@@ -140,7 +160,17 @@ export function VideoPartSheet({
           checked={blockSkipping}
           onChange={setBlockSkipping}
         />
-        <TimedQuestions assignmentId={assignmentId} partId={initial?.id} />
+        <TimedQuestions
+          assignmentId={assignmentId}
+          partId={initial?.id}
+          // The saved link: questions hang off the saved part, so they sit on its video.
+          video={
+            initial !== null && parseYouTubeId(initial.youtubeUrl) !== null
+              ? { videoId: parseYouTubeId(initial.youtubeUrl)!, durationSeconds: initial.durationSeconds ?? null }
+              : undefined
+          }
+          onFormOpenChange={setAsking}
+        />
       </View>
     </Sheet>
   );

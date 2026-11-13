@@ -109,7 +109,6 @@ export function VideoQuizPlayer({ sessionId, quiz, onRetry, readCurrentTime }: V
     <View className="flex-col gap-3">
       <VideoPlayerFrame
         videoId={quiz.videoId}
-        questions={quiz.questions}
         playback={playback}
         onRetry={onRetry}
         onLeave={handleLeave}

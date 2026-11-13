@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, type TextInputProps } from "react-native";
+import { View } from "react-native";
 import { formatTimestamp, type VideoQuestionAdmin } from "@space/shared";
 
 import {
@@ -8,16 +8,12 @@ import {
   useVideoQuizResults,
   type VideoOwner,
 } from "../../hooks/use-video-quiz";
-import { FormErrorBox } from "../../design/forms/form-parts";
 import { InlineError } from "../../design/layout/route-states";
 import { Button } from "../../design/ui/button";
 import { Card } from "../../design/ui/card";
-import { FormField } from "../../design/ui/form-field";
-import { Input } from "../../design/ui/input";
 import { Skeleton } from "../../design/ui/skeleton";
 import { Text } from "../../design/ui/text";
 import { apiErrorMessage } from "../../lib/api-error";
-import { ChoiceChips } from "../../design/ui/choice-chips";
 import {
   EMPTY_VIDEO_QUESTION_FORM,
   formFromQuestion,
@@ -25,21 +21,7 @@ import {
   videoQuestionBody,
   type VideoQuestionFormState,
 } from "../../lib/video-question-form";
-
-const MAX_OPTIONS = 6;
-
-/** A labelled text field; the label doubles as the input's accessibility label. */
-function LabelledInput({
-  label,
-  error,
-  ...props
-}: Omit<TextInputProps, "accessibilityLabel"> & { label: string; error?: string }) {
-  return (
-    <FormField label={label} error={error}>
-      <Input accessibilityLabel={label} {...props} />
-    </FormField>
-  );
-}
+import { VideoQuestionFormCard, type QuestionVideo } from "./video-question-form-card";
 
 /**
  * Results for a session's video quiz: a table nobody had in v1. Rendered for
@@ -83,24 +65,40 @@ export function VideoQuizResultsTable({ sessionId }: { sessionId: number }) {
  * assignment. Each question saves on its own. A session's editor also shows
  * its results; a part's results are on the assignment's progress.
  */
-export function VideoQuestionsEditor({ owner }: { owner: VideoOwner }) {
+export function VideoQuestionsEditor({
+  owner,
+  video,
+  onFormOpenChange,
+}: {
+  owner: VideoOwner;
+  /** The video, when known: the form picks the moment on it. */
+  video?: QuestionVideo;
+  /** The form opened or closed: the part sheet hides its own player meanwhile (one player at a time). */
+  onFormOpenChange?: (open: boolean) => void;
+}) {
   const questions = useVideoQuestions(owner, true);
   const { create, update, remove } = useVideoQuestionWrites(owner);
 
-  const [form, setForm] = useState<VideoQuestionFormState | null>(null);
+  const [form, setFormState] = useState<VideoQuestionFormState | null>(null);
+  const setForm = (next: VideoQuestionFormState | null): void => {
+    setFormState(next);
+    onFormOpenChange?.(next !== null);
+  };
+  const close = (): void => setForm(null);
   const [timestampError, setTimestampError] = useState<string | undefined>(undefined);
   const [formError, setFormError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [armedDelete, setArmedDelete] = useState<number | null>(null);
 
   const patch = (changes: Partial<VideoQuestionFormState>): void =>
-    setForm((f) => (f === null ? f : { ...f, ...changes }));
+    setFormState((f) => (f === null ? f : { ...f, ...changes }));
 
   const openAdd = (): void => {
     setStatus(null);
     setFormError(null);
     setTimestampError(undefined);
-    setForm(EMPTY_VIDEO_QUESTION_FORM);
+    // A new question starts at 0:00 when the time is picked on the video.
+    setForm(video ? { ...EMPTY_VIDEO_QUESTION_FORM, timestamp: formatTimestamp(0) } : EMPTY_VIDEO_QUESTION_FORM);
   };
 
   const openEdit = (q: VideoQuestionAdmin): void => {
@@ -175,28 +173,30 @@ export function VideoQuestionsEditor({ owner }: { owner: VideoOwner }) {
           {questions.data.length === 0 ? (
             <Text className="text-muted-foreground">No questions yet.</Text>
           ) : (
-            questions.data.map((q) => (
-              <Card key={q.id} className="flex-col gap-1 p-4">
-                <Text className="text-sm font-medium">{formatTimestamp(q.atSeconds)}</Text>
-                <Text>{q.prompt}</Text>
-                <Text className="text-xs text-muted-foreground">
-                  {`Correct answer: ${q.options[q.correctIndex] ?? ""}`}
-                </Text>
-                <Text className="text-xs text-muted-foreground">{`${q.responseCount} answers recorded`}</Text>
-                <View className="flex-row flex-wrap gap-2">
-                  <Button variant="secondary" onPress={() => openEdit(q)}>
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    disabled={remove.isPending && remove.variables === q.id}
-                    onPress={() => onDelete(q)}
-                  >
-                    {armedDelete === q.id ? `Delete ${q.responseCount} answers?` : "Delete"}
-                  </Button>
-                </View>
-              </Card>
-            ))
+            [...questions.data]
+              .sort((a, b) => a.atSeconds - b.atSeconds)
+              .map((q) => (
+                <Card key={q.id} className="flex-col gap-1 p-4">
+                  <Text className="text-sm font-medium">{formatTimestamp(q.atSeconds)}</Text>
+                  <Text>{q.prompt}</Text>
+                  <Text className="text-xs text-muted-foreground">
+                    {`Correct answer: ${q.options[q.correctIndex] ?? ""}`}
+                  </Text>
+                  <Text className="text-xs text-muted-foreground">{`${q.responseCount} answers recorded`}</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    <Button variant="secondary" onPress={() => openEdit(q)}>
+                      Edit
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      disabled={remove.isPending && remove.variables === q.id}
+                      onPress={() => onDelete(q)}
+                    >
+                      {armedDelete === q.id ? `Delete ${q.responseCount} answers?` : "Delete"}
+                    </Button>
+                  </View>
+                </Card>
+              ))
           )}
           {status ? <Text className="text-sm font-medium">{status}</Text> : null}
 
@@ -205,55 +205,16 @@ export function VideoQuestionsEditor({ owner }: { owner: VideoOwner }) {
               Add question
             </Button>
           ) : (
-            <Card className="flex-col gap-2 p-4">
-              <LabelledInput
-                label="Timestamp"
-                value={form.timestamp}
-                onChangeText={(v) => patch({ timestamp: v })}
-                error={timestampError}
-                placeholder="2:30"
-                autoCapitalize="none"
-              />
-              <LabelledInput label="Question" value={form.prompt} onChangeText={(v) => patch({ prompt: v })} />
-              {form.options.map((option, index) => (
-                <LabelledInput
-                  key={index}
-                  label={`Option ${index + 1}`}
-                  value={option}
-                  onChangeText={(v) => patch({ options: form.options.map((o, i) => (i === index ? v : o)) })}
-                />
-              ))}
-              {form.options.length < MAX_OPTIONS ? (
-                <Button
-                  variant="secondary"
-                  className="self-start"
-                  onPress={() => patch({ options: [...form.options, ""] })}
-                >
-                  Add option
-                </Button>
-              ) : null}
-              <ChoiceChips
-                label="Correct answer"
-                options={form.options.map((_, i) => ({ value: i, label: `Answer ${i + 1}` }))}
-                value={form.correctIndex}
-                onChange={(v) => patch({ correctIndex: v })}
-              />
-              <LabelledInput
-                label="Points"
-                value={form.points}
-                onChangeText={(v) => patch({ points: v })}
-                keyboardType="number-pad"
-              />
-              <FormErrorBox message={formError} />
-              <View className="flex-col gap-2">
-                <Button size="md" disabled={create.isPending || update.isPending} onPress={onSave}>
-                  {create.isPending || update.isPending ? "Saving…" : "Save question"}
-                </Button>
-                <Button size="md" variant="secondary" onPress={() => setForm(null)}>
-                  Cancel
-                </Button>
-              </View>
-            </Card>
+            <VideoQuestionFormCard
+              form={form}
+              video={video}
+              timestampError={timestampError}
+              formError={formError}
+              saving={create.isPending || update.isPending}
+              onPatch={patch}
+              onSave={onSave}
+              onCancel={() => close()}
+            />
           )}
         </>
       )}

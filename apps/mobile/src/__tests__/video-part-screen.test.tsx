@@ -109,13 +109,6 @@ async function pollAt(t: number) {
   await act(() => jest.advanceTimersByTimeAsync(400));
 }
 
-/** Lays the track out 300 wide and taps it `fraction` of the way along. */
-function tapTrack(fraction: number) {
-  const track = screen.getByLabelText("Video progress");
-  fireEvent(track, "layout", { nativeEvent: { layout: { width: 300 } } });
-  fireEvent.press(track, { nativeEvent: { locationX: 300 * fraction } });
-}
-
 beforeEach(() => {
   jest.clearAllMocks();
   mockClock.now = 0;
@@ -157,11 +150,14 @@ describe("video part screen", () => {
     await waitFor(() => expect(mockSeekTo).toHaveBeenCalledWith(120, true)); // the resume
     mockSeekTo.mockClear();
 
-    tapTrack(1);
-    expect(mockSeekTo).toHaveBeenLastCalledWith(120, true);
-    // Rewinding is always allowed.
-    tapTrack(0.05);
-    expect(mockSeekTo).toHaveBeenLastCalledWith(54, true);
+    // A skip on YouTube's bar to the end snaps back to the furthest point on the next poll.
+    mockClock.now = 1000;
+    await waitFor(() => expect(mockSeekTo).toHaveBeenLastCalledWith(120, true));
+    // Rewinding is always allowed: no snap.
+    mockSeekTo.mockClear();
+    mockClock.now = 54;
+    await new Promise((r) => setTimeout(r, 900));
+    expect(mockSeekTo).not.toHaveBeenCalled();
   });
 
   it("skipping blocked after the student skipped ahead: resumes and stops at what was watched", async () => {
@@ -174,18 +170,21 @@ describe("video part screen", () => {
     renderStacked(<PartScreen />);
     await screen.findByText(/^Watched/, {}, { timeout: 5000 });
     await waitFor(() => expect(mockSeekTo).toHaveBeenCalledWith(100, true)); // the resume
-    tapTrack(1);
-    expect(mockSeekTo).toHaveBeenLastCalledWith(100, true);
+    mockSeekTo.mockClear();
+    mockClock.now = 1000;
+    await waitFor(() => expect(mockSeekTo).toHaveBeenLastCalledWith(100, true));
   });
 
-  it("with skipping allowed, a forward seek goes where it was asked", async () => {
+  it("with skipping allowed, a skip on YouTube's bar stays where it was asked", async () => {
     serve(partVideo({ furthestSeconds: 120, watchedSeconds: 120 }), 120);
     renderStacked(<PartScreen />);
     // The player waits for the part video's own read.
     await screen.findByText(/^Watched/, {}, { timeout: 5000 });
     await waitFor(() => expect(mockSeekTo).toHaveBeenCalled());
-    tapTrack(0.5);
-    expect(mockSeekTo).toHaveBeenLastCalledWith(540, true);
+    mockSeekTo.mockClear();
+    mockClock.now = 540;
+    await new Promise((r) => setTimeout(r, 900));
+    expect(mockSeekTo).not.toHaveBeenCalled();
   });
 
   it("leaving a part-watched video shows Not finished yet with Keep watching and Leave", async () => {
@@ -272,22 +271,21 @@ describe("video part screen: what played, and when it is reported", () => {
     expect(progress()[0]?.intervals).toEqual([[0, expect.any(Number)]]);
   });
 
-  it("a forward tap of 2 s or less is a seek, not watching", async () => {
+  it("a skip on YouTube's bar is not watching", async () => {
     await playFrom(fresh());
     await pollAt(10);
     await pollAt(11);
-    tapTrack(13 / 1080); // to 13 s
-    await pollAt(13);
-    await pollAt(14);
+    await pollAt(30); // a 19 s jump between two polls 400 ms apart
+    await pollAt(31);
     playerState("paused");
     await act(() => jest.advanceTimersByTimeAsync(0));
     expect(progress()).toEqual([
       {
         intervals: [
           [10, 11],
-          [13, 14],
+          [30, 31],
         ],
-        position: 14,
+        position: 31,
       },
     ]);
   });

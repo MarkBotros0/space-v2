@@ -33,8 +33,8 @@
   ignores a report that claims more new watched time than twice the wall-clock time since the last
   one: watching at 2x, YouTube's top speed, counts in full (owner, 2026-11-13).
   The player shows YouTube's own controls (play, captions, speed, full screen; a timed question that
-  comes up in full screen pauses the video and shows on leaving it); the app has no Play button of its
-  own, and with skipping blocked a skip on YouTube's bar goes back to the furthest point. The live
+  comes up in full screen pauses the video and shows on leaving it); the app has no controls of its
+  own (no Play button, no seek bar: owner, 2026-11-13), and with skipping blocked a skip on YouTube's bar goes back to the furthest point. The live
   count is to the second ("2 min 5 sec of 58 min"). Leave on "Not finished yet" leaves. A
   video is done when it is watched **and** every timed question on it is answered.
 - **Essay (owner):** a question with a **minimum and maximum word count**; the student sees a live

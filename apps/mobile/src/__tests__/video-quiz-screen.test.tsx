@@ -283,11 +283,11 @@ describe("admin video question editor", () => {
     expect(screen.getByText("Correct answer: beta")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Add question"));
-    fireEvent.changeText(screen.getByLabelText("Timestamp"), "2:00");
+    fireEvent.changeText(screen.getByLabelText("When it shows"), "2:00");
     fireEvent.changeText(screen.getByLabelText("Question"), "New prompt");
     fireEvent.changeText(screen.getByLabelText("Option 1"), "one");
     fireEvent.changeText(screen.getByLabelText("Option 2"), "two");
-    fireEvent.press(screen.getByText("Save question"));
+    fireEvent.press(screen.getByText("Add question"));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith("/api/v1/sessions/12/video-questions", {
@@ -310,13 +310,13 @@ describe("admin video question editor", () => {
     renderWithProviders(<SessionDetailScreen />);
     fireEvent.press(await screen.findByText("Add question"));
     // ":30" is 30 seconds in v1 because Number("") is 0 — a typo that parsed.
-    fireEvent.changeText(screen.getByLabelText("Timestamp"), ":30");
+    fireEvent.changeText(screen.getByLabelText("When it shows"), ":30");
     fireEvent.changeText(screen.getByLabelText("Question"), "New prompt");
     fireEvent.changeText(screen.getByLabelText("Option 1"), "one");
     fireEvent.changeText(screen.getByLabelText("Option 2"), "two");
-    fireEvent.press(screen.getByText("Save question"));
+    fireEvent.press(screen.getByText("Add question"));
 
     await waitFor(() => expect(post).not.toHaveBeenCalled());
-    expect(screen.getByLabelText("Timestamp").props.accessibilityHint).toContain("m:ss");
+    expect(screen.getByLabelText("When it shows").props.accessibilityHint).toContain("m:ss");
   });
 });

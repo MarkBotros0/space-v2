@@ -159,7 +159,7 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
       {video.videoId === null || playback.failed ? (
         <VideoFallback youtubeUrl={part.youtubeUrl} />
       ) : (
-        <VideoPlayerFrame videoId={video.videoId} questions={video.questions} playback={playback} />
+        <VideoPlayerFrame videoId={video.videoId} playback={playback} />
       )}
       <View className="gap-1">
         <Text variant="subhead" accessibilityLiveRegion="polite">

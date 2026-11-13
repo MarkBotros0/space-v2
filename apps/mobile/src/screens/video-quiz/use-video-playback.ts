@@ -1,7 +1,7 @@
 /**
  * The core both video players share (a session's video and an assignment's
  * video part): the playhead poll, the question barrier, resuming where the
- * student got to, clamped seeking and the question sheet's state. What each
+ * student got to, snapping back a skip and the question sheet's state. What each
  * player does with the playhead (save the furthest point, count the watched
  * ranges) stays in the player, through `onPoll` and `onStop`.
  */
@@ -48,7 +48,7 @@ interface PlaybackOptions {
   onPoll?: (seconds: number, playing: boolean) => void;
   /** Playback stopped: paused, ended, or held at a question. */
   onStop?: () => void;
-  /** The student moved the playhead with the track: the stretch since the last poll didn't play. */
+  /** A skip was snapped back: the stretch since the last poll didn't play. */
   onSeeked?: () => void;
   /** The furthest a forward seek may land besides the barrier (the furthest point, with skipping blocked). */
   seekCeiling?: () => number;
@@ -209,19 +209,6 @@ export function useVideoPlayback({
     setPlaying(true);
   };
 
-  const onSeek = (fraction: number): void => {
-    if (duration === null || duration <= 0) return;
-    const requested = fraction * duration;
-    // Forward seeks are clamped to the barrier (and the player's own ceiling);
-    // backwards seeking is free, as in v1.
-    const ceiling = hooks.current.seekCeiling?.() ?? Number.POSITIVE_INFINITY;
-    const target = Math.min(requested, barrier, Math.max(ceiling, currentRef.current));
-    playerRef.current?.seekTo(target, true);
-    currentRef.current = target;
-    setCurrent(target);
-    hooks.current.onSeeked?.();
-  };
-
   /** Closes the question sheet without answering, for an explicit exit from it. */
   const closeQuestion = (): void => {
     setOpen(null);
@@ -248,7 +235,6 @@ export function useVideoPlayback({
     onChangeState,
     onAnswer,
     onContinue,
-    onSeek,
     closeQuestion,
   };
 }
