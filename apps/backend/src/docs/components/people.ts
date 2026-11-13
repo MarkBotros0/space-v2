@@ -64,6 +64,8 @@ export const peopleSchemas = {
       startDate: { type: "string", format: "date-time" },
       endDate: { type: "string", format: "date-time" },
       sessionCount: { type: "integer" },
+      assignmentCount: { type: "integer", description: "The season's assignments, leaving out deleted ones." },
+      quizCount: { type: "integer", description: "The season's quizzes, drafts included." },
       studentCount: { type: "integer", description: "Enrolments in the season, leaving out withdrawn students." },
       absenceBudgetMinutes: { type: "integer" },
       absenceWeightMinutes: { type: "integer" },

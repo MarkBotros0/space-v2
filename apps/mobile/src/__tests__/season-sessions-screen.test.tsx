@@ -26,6 +26,8 @@ const detail = (canAdminister: boolean, status = "ACTIVE") => ({
   endDate: "2099-12-31T00:00:00.000Z",
   description: null,
   sessionCount: 1,
+  assignmentCount: 0,
+  quizCount: 0,
   studentCount: 0,
   absenceBudgetMinutes: 240,
   absenceWeightMinutes: 90,

@@ -5,6 +5,8 @@ const season = (over: Partial<Parameters<typeof seasonOverviewModel>[0]> = {}) =
   endDate: "2026-06-30T00:00:00.000Z",
   canAdminister: true,
   sessionCount: 3,
+  assignmentCount: 0,
+  quizCount: 0,
   ...over,
 });
 const keys = (m: ReturnType<typeof seasonOverviewModel>) => m.tiles.map((t) => t.key);
@@ -47,6 +49,21 @@ describe("seasonOverviewModel", () => {
     expect(m).toMatchObject({ canAdminister: false, manage: true });
     expect(keys(m)).toEqual(["quizzes", "assignments", "sessions"]);
     expect(m.nextStep?.key).toBe("start");
+  });
+
+  it("counts quizzes, assignments and sessions alike, None yet for none", () => {
+    const hints = (over: object) =>
+      seasonOverviewModel(season(over), { isSuper: false, today: "2026-06-01" }).tiles.map((t) => t.hint);
+    expect(hints({ quizCount: 4, assignmentCount: 1, sessionCount: 12 }).slice(0, 3)).toEqual([
+      "4\u00a0quizzes",
+      "1\u00a0assignment",
+      "12\u00a0sessions",
+    ]);
+    expect(hints({ quizCount: 0, assignmentCount: 0, sessionCount: 0 }).slice(0, 3)).toEqual([
+      "None yet",
+      "None yet",
+      "None yet",
+    ]);
   });
 
   it("says None yet on Sessions with no sessions", () => {

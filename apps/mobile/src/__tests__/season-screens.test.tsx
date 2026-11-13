@@ -175,6 +175,8 @@ describe("SeasonScreen (staff, My Season)", () => {
               ...seasonRow(7, 2026, "ACTIVE", "Spring 2026"),
               description: long,
               sessionCount: 2,
+              assignmentCount: 0,
+              quizCount: 0,
               studentCount: 4,
               absenceBudgetMinutes: 240,
               absenceWeightMinutes: 90,

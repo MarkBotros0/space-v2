@@ -157,7 +157,7 @@ describe("SeasonProgressCard", () => {
     expect(screen.queryByText("Mark as submitted")).toBeNull();
   });
 
-  it("tapping Quizzes lists the lowest first with Reopen retake", async () => {
+  it("tapping Quizzes lists the lowest first with Allow a retake", async () => {
     serve(progress);
     renderCard();
     fireEvent.press(await screen.findByLabelText("Quizzes 72%, average of 5 quizzes"));
@@ -165,7 +165,7 @@ describe("SeasonProgressCard", () => {
     expect(within(rows[0]!).getByText("Quiz two")).toBeTruthy();
     expect(within(rows[0]!).getByText("2 of 10 marks, 20%")).toBeTruthy();
     expect(within(rows[1]!).getByText("Open grading")).toBeTruthy();
-    fireEvent.press(within(rows[0]!).getByText("Reopen retake"));
+    fireEvent.press(within(rows[0]!).getByText("Allow a retake"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/quiz/[id]/grade", params: { id: "91" } });
   });
 

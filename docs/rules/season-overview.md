@@ -12,7 +12,9 @@ Manage tiles name what they open, never "Manage ...": Quizzes and Assignments (t
 on track, the pass criteria; admins, supers and the season's leaders, never a mentor), End season,
 Results (current admins and supers; a former admin uses the Reports link). Edit
 and Duplicate are icon buttons beside the name. There is no figures card (students, groups,
-sessions): the People card and the tiles already give those counts (owner, 2026-11-13). **A finished season is read-only**: people, groups
+sessions): the People card and the tiles already give those counts (owner, 2026-11-13). Quizzes, Assignments and Sessions
+each show how many the season has ("4 quizzes"), or "None yet" (owner, 2026-11-13); quizzes count drafts,
+assignments leave out deleted ones. **A finished season is read-only**: people, groups
 and sessions are read, nothing is added, moved or marked; a note offers "Duplicate as a draft".
 Finished seasons still never reopen.
 

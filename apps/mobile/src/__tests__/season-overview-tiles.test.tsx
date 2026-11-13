@@ -43,8 +43,8 @@ const statuses = {
 
 // countOf joins with a non-breaking space.
 const S = "Sessions: 1\u00a0session";
-const A = "Assignments: Set work and review it";
-const Q = "Quizzes: Write, give and grade";
+const A = "Assignments: None yet";
+const Q = "Quizzes: None yet";
 const P = "Passing: Who is on track";
 const END = "End season: Results and graduation";
 const RESULTS = "Results";

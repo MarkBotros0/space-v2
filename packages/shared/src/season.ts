@@ -39,6 +39,9 @@ export const seasonDetailSchema = seasonListItemSchema.extend({
   graduatesOnPass: z.boolean().optional(),
   description: z.string().nullable(),
   sessionCount: z.number(),
+  /** Live assignments and every quiz, drafts too: the season page's tiles (owner, 2026-11-13). */
+  assignmentCount: z.number(),
+  quizCount: z.number(),
   studentCount: z.number(),
   /** Needed by the SUPER edit form: its PATCH is a full body whose budget fields default (D-16.3). */
   absenceBudgetMinutes: z.number().int(),

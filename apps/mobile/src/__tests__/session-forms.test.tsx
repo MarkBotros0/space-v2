@@ -92,6 +92,8 @@ describe("NewSessionScreen (/session/new?seasonId=)", () => {
           endDate: "2099-12-31T00:00:00.000Z",
           description: null,
           sessionCount: 0,
+          assignmentCount: 0,
+          quizCount: 0,
           studentCount: 0,
           absenceBudgetMinutes: 0,
           absenceWeightMinutes: 0,

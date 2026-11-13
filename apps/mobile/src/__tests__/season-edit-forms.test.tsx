@@ -42,6 +42,8 @@ const season: SeasonDetail = {
   endDate: "2026-12-31T00:00:00.000Z",
   description: "A season",
   sessionCount: 3,
+  assignmentCount: 0,
+  quizCount: 0,
   studentCount: 10,
   absenceBudgetMinutes: 240,
   absenceWeightMinutes: 60,

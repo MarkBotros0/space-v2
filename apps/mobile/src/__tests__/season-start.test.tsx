@@ -35,6 +35,8 @@ const detail = (over: Record<string, unknown> = {}) => ({
   endDate: "2027-06-30T00:00:00.000Z",
   description: null,
   sessionCount: 0,
+  assignmentCount: 0,
+  quizCount: 0,
   studentCount: 4,
   absenceBudgetMinutes: 180,
   absenceWeightMinutes: 90,

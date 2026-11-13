@@ -41,6 +41,8 @@ interface OverviewSeason {
   endDate: string;
   canAdminister: boolean;
   sessionCount: number;
+  assignmentCount: number;
+  quizCount: number;
 }
 
 export function seasonOverviewModel(
@@ -61,18 +63,17 @@ export function seasonOverviewModel(
   const manage = (season.canAdminister || isSuper) && !finished;
   const pastEnd = season.status === "ACTIVE" && today > season.endDate.slice(0, 10);
 
-  // Each tile names what it opens (owner, 2026-11-07: not "Manage ..." on every card).
-  const sessions: OverviewTile = {
-    key: "sessions",
-    label: "Sessions",
-    hint: season.sessionCount === 0 ? "None yet" : countOf(season.sessionCount, "session"),
-  };
+  // Each tile names what it opens (owner, 2026-11-07: not "Manage ..." on every card) and how many
+  // it holds, "None yet" for none (owner, 2026-11-13: all three alike).
+  const counted = (n: number, noun: string, plural?: string) =>
+    n === 0 ? "None yet" : n === 1 ? countOf(1, noun) : `${n}\u00a0${plural ?? `${noun}s`}`;
+  const sessions: OverviewTile = { key: "sessions", label: "Sessions", hint: counted(season.sessionCount, "session") };
   // Quizzes first and Sessions after Assignments (owner, 2026-11-13: "make the sessions card in the
   // bottom and swap it with the quizzes").
   const tiles: OverviewTile[] = manage
     ? [
-        { key: "quizzes", label: "Quizzes", hint: "Write, give and grade" },
-        { key: "assignments", label: "Assignments", hint: "Set work and review it" },
+        { key: "quizzes", label: "Quizzes", hint: counted(season.quizCount, "quiz", "quizzes") },
+        { key: "assignments", label: "Assignments", hint: counted(season.assignmentCount, "assignment") },
         sessions,
       ]
     : [sessions];

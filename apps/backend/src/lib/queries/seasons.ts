@@ -2,7 +2,7 @@ import type { SeasonStatus } from "@space/shared";
 
 import { db } from "../../db/client";
 import type { Prisma } from "../../generated/prisma/client";
-import { liveSeason } from "../db/live";
+import { liveAssignment, liveSeason } from "../db/live";
 import type { SessionUser } from "../auth/tokens";
 import { isAdminOfSeason } from "../rbac";
 
@@ -23,6 +23,9 @@ interface SeasonDetailRow {
   absenceBudgetMinutes: number;
   absenceWeightMinutes: number;
   sessionCount: number;
+  /** Live assignments and every quiz (drafts too), for the season page's tiles (owner, 2026-11-13). */
+  assignmentCount: number;
+  quizCount: number;
   studentCount: number;
   canAdminister: boolean;
   groups: { id: number; name: string; studentCount: number; leaderNames: string[] }[];
@@ -51,7 +54,14 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
       endDate: true,
       absenceBudgetMinutes: true,
       absenceWeightMinutes: true,
-      _count: { select: { sessions: true, enrollments: { where: { status: { not: "WITHDRAWN" } } } } },
+      _count: {
+        select: {
+          sessions: true,
+          assignments: { where: liveAssignment },
+          quizzes: true,
+          enrollments: { where: { status: { not: "WITHDRAWN" } } },
+        },
+      },
       groups: {
         // Students may only see their own group.
         where: user.role === "STUDENT" ? { students: { some: { studentUserId: user.userId } } } : {},
@@ -94,6 +104,8 @@ export async function loadSeasonDetail(user: SessionUser, id: number): Promise<S
     absenceBudgetMinutes: season.absenceBudgetMinutes,
     absenceWeightMinutes: season.absenceWeightMinutes,
     sessionCount: season._count.sessions,
+    assignmentCount: season._count.assignments,
+    quizCount: season._count.quizzes,
     studentCount: season._count.enrollments,
     canAdminister: isAdminOfSeason(user, season.id),
     groups: season.groups.map((g) => ({

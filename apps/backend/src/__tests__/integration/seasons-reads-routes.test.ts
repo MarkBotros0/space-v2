@@ -67,6 +67,26 @@ describe("GET /api/v1/seasons", () => {
 });
 
 describe("GET /api/v1/seasons/:id", () => {
+  it("counts the season's live assignments and every quiz, drafts too", async () => {
+    await db.assignment.createMany({
+      data: [
+        { seasonId, title: "Live" },
+        { seasonId, title: "Deleted", deletedAt: new Date() },
+      ],
+    });
+    await db.quiz.createMany({
+      data: [
+        { seasonId, title: "Published", kind: "ONLINE", maxScore: 0, publishedAt: new Date() },
+        { seasonId, title: "Draft", kind: "ONLINE", maxScore: 0 },
+        { seasonId, title: "Paper", kind: "PAPER", maxScore: 10 },
+      ],
+    });
+    const res = await request(app).get(`/api/v1/seasons/${seasonId}`).set("authorization", `Bearer ${superToken}`);
+    expect(res.body.data).toMatchObject({ assignmentCount: 1, quizCount: 3 });
+    await db.quiz.deleteMany({ where: { seasonId } });
+    await db.assignment.deleteMany({ where: { seasonId } });
+  });
+
   it("returns 400 for a non-numeric id", async () => {
     const res = await request(app).get("/api/v1/seasons/abc").set("authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(400);

@@ -43,6 +43,8 @@ const detail = (status: "DRAFT" | "ACTIVE") => ({
   endDate: "2026-12-31T00:00:00.000Z",
   description: null,
   sessionCount: 0,
+  assignmentCount: 0,
+  quizCount: 0,
   studentCount: 0,
   absenceBudgetMinutes: 240,
   absenceWeightMinutes: 90,
