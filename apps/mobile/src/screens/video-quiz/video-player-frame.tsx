@@ -13,7 +13,7 @@ const DEADLOCK = "A question on this video is set past the end of the recording.
 
 /**
  * The in-app YouTube player both video screens show: the frame with YouTube's
- * own controls (play, captions, speed; owner, 2026-11-13: the app's own Play
+ * own controls (play, captions, speed, full screen; owner, 2026-11-13: the app's own Play
  * button didn't start the video), never autoplaying, and the progress track
  * with the questions on it; or the deadlock notice when a question can't be
  * reached. Whether it is playing comes from the player's own state changes.
@@ -59,7 +59,9 @@ export function VideoPlayerFrame({
           controls: true,
           modestbranding: true,
           rel: false,
-          preventFullScreen: true,
+          // Full screen is allowed (owner, 2026-11-13). A question that comes up there pauses the
+          // video; it shows once the student leaves full screen.
+          preventFullScreen: false,
         }}
         onReady={p.onReady}
         onError={() => p.setFailed(true)}
