@@ -29,9 +29,9 @@ const progress = (numbers: Partial<StudentProgress["numbers"]> = {}): StudentPro
 describe("progressLines", () => {
   it("gives each number its percent and exact figure", () => {
     expect(progressLines(progress())).toEqual([
-      { key: "attendance", label: "Attendance", pct: 85, figure: "17 of 20 sessions" },
-      { key: "assignments", label: "Assignments", pct: 78, figure: "7 / 9" },
-      { key: "quizzes", label: "Quizzes", pct: 72, figure: "average of 5 quizzes" },
+      { key: "attendance", label: "Attendance", pct: 85, figure: "17 of 20 sessions", short: "17 of 20" },
+      { key: "assignments", label: "Assignments", pct: 78, figure: "7 / 9", short: "7 of 9" },
+      { key: "quizzes", label: "Quizzes", pct: 72, figure: "average of 5 quizzes", short: "5 quizzes" },
     ]);
   });
 
@@ -42,6 +42,7 @@ describe("progressLines", () => {
       label: "Quizzes",
       pct: 75,
       figure: "average of 3 quizzes",
+      short: "3 quizzes",
     });
     expect(progressLines(progress({ quizzes: { scored: 0.725, max: 1 } }))[2]?.figure).toBe("average of 1 quiz");
   });
@@ -68,7 +69,7 @@ describe("progressLines", () => {
     const [attendance, assignments] = progressLines(progress());
     expect(progressSpoken(attendance!)).toBe("Attendance 85%, 17 of 20 sessions");
     expect(progressSpoken(assignments!)).toBe("Assignments 78%, 7 of 9 submitted");
-    expect(progressSpoken({ key: "quizzes", label: "Quizzes", pct: null, figure: "None this season" })).toBe(
+    expect(progressSpoken({ key: "quizzes", label: "Quizzes", pct: null, figure: "None this season", short: "None yet" })).toBe(
       "Quizzes, None this season",
     );
   });

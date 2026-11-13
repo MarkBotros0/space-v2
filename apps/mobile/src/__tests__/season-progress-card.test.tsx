@@ -86,16 +86,17 @@ describe("SeasonProgressCard", () => {
     renderCard();
     expect(await screen.findByText("Season progress")).toBeTruthy();
     expect(screen.getByText("Spring 2099")).toBeTruthy();
-    expect(screen.getByText("17 of 20 sessions")).toBeTruthy();
-    expect(screen.getByText("7 / 9")).toBeTruthy();
-    expect(screen.getByText("average of 5 quizzes")).toBeTruthy();
+    // Three rings side by side, each with a short figure under it (owner 2026-11-14).
+    expect(screen.getByText("17 of 20")).toBeTruthy();
+    expect(screen.getByText("7 of 9")).toBeTruthy();
+    expect(screen.getByText("5 quizzes")).toBeTruthy();
     expect(screen.getByText("85%")).toBeTruthy();
     expect(screen.getByText("78%")).toBeTruthy();
     expect(screen.getByText("72%")).toBeTruthy();
     expect(screen.getByLabelText("Attendance 85%, 17 of 20 sessions")).toBeTruthy();
     expect(screen.getByLabelText("Assignments 78%, 7 of 9 submitted")).toBeTruthy();
     expect(screen.getByLabelText("Quizzes 72%, average of 5 quizzes")).toBeTruthy();
-    expect(screen.getAllByRole("progressbar")).toHaveLength(3);
+    expect(screen.getAllByRole("image")).toHaveLength(3);
     // No composite score on this card (owner, 2026-11-07).
     expect(screen.queryByText(/Score/)).toBeNull();
     expect(screen.queryByText("At risk")).toBeNull();
@@ -107,13 +108,13 @@ describe("SeasonProgressCard", () => {
     expect(await screen.findByText("At risk")).toBeTruthy();
   });
 
-  it('a number with nothing to count reads "None this season"', async () => {
+  it('a number with nothing to count reads "None yet" with a dash, never 0%', async () => {
     serve({ ...progress, numbers: { ...progress.numbers, quizzes: { scored: 0, max: 0 } } });
     renderCard();
-    expect(await screen.findByText("None this season")).toBeTruthy();
+    expect(await screen.findByText("None yet")).toBeTruthy();
     expect(screen.getByLabelText("Quizzes, None this season")).toBeTruthy();
-    // An empty bar would read as 0%: a number with nothing to count has none.
-    expect(screen.getAllByRole("progressbar")).toHaveLength(2);
+    expect(screen.getByText("–")).toBeTruthy();
+    expect(screen.queryByText("0%")).toBeNull();
   });
 
   it("tapping Assignments lists missing ones first with Mark as submitted", async () => {
@@ -192,7 +193,7 @@ describe("SeasonProgressCard", () => {
     expect(await screen.findByText("Couldn't load season progress.")).toBeTruthy();
     serve(progress);
     fireEvent.press(screen.getByText("Try again"));
-    expect(await screen.findByText("17 of 20 sessions")).toBeTruthy();
+    expect(await screen.findByText("17 of 20")).toBeTruthy();
   });
 
   it("shows nothing and asks nothing for a mentor", async () => {

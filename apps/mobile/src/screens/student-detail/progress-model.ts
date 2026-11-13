@@ -13,7 +13,8 @@ import { markedLine } from "../assignment-detail/progress-model";
 
 export const NONE_THIS_SEASON = "None this season";
 
-export type ProgressLine = { key: PassingNumberKey; label: string; pct: number | null; figure: string };
+/** `short` is the ring's caption ("3 of 5"); `figure` the full words, spoken and in the sheet. */
+export type ProgressLine = { key: PassingNumberKey; label: string; pct: number | null; figure: string; short: string };
 
 const roundPct = (x: number | null) => (x === null ? null : Math.round(x));
 
@@ -28,18 +29,21 @@ export function progressLines(p: StudentProgress): ProgressLine[] {
       pct: roundPct(pcts.attendance),
       figure:
         attendance.total > 0 ? `${attendance.attended} of ${plural(attendance.total, "session")}` : NONE_THIS_SEASON,
+      short: attendance.total > 0 ? `${attendance.attended} of ${attendance.total}` : "None yet",
     },
     {
       key: "assignments",
       label: "Assignments",
       pct: roundPct(pcts.assignments),
       figure: assignments.total > 0 ? `${assignments.submitted} / ${assignments.total}` : NONE_THIS_SEASON,
+      short: assignments.total > 0 ? `${assignments.submitted} of ${assignments.total}` : "None yet",
     },
     {
       key: "quizzes",
       label: "Quizzes",
       pct: roundPct(pcts.quizzes),
       figure: quizzes.max > 0 ? `average of ${plural(quizzes.max, "quiz", "quizzes")}` : NONE_THIS_SEASON,
+      short: quizzes.max > 0 ? plural(quizzes.max, "quiz", "quizzes") : "None yet",
     },
   ];
 }

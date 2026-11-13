@@ -1,32 +1,38 @@
 /**
  * Season progress on a student's page, for staff (spec 2026-11-12 "Progress for staff"): one card,
- * the three numbers each as a labelled bar with its percent and the exact figure under it, and
- * each opens its list (sessions, assignments, quizzes). Replaces the engagement "THIS SEASON"
+ * the three numbers as three rings side by side (owner 2026-11-14: "rings, more concise"), each
+ * with its percent inside and its name and short figure under it, and each opens its list
+ * (sessions, assignments, quizzes). Replaces the engagement "THIS SEASON"
  * card and, like it, shows no composite score (owner, 2026-11-07) and keeps "At risk" from the
  * engagement contract (C4, the single definition). A number with nothing to count says
- * "None this season" and has no bar, so it never reads as 0%. A 404 no_season shows nothing, as
+ * "None yet", an empty ring with a dash, so it never reads as 0%. A 404 no_season shows nothing, as
  * before; a mentor or the student themself gets no card (mentor.md: nothing season-shaped).
  */
 import type { PassingNumberKey } from "@space/shared";
-import { ChevronRight } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import { Pressable } from "../../design/ui/pressable";
 import Animated from "react-native-reanimated";
 
 import { InlineError } from "../../design/layout/route-states";
-import { iconWithClassName } from "../../design/lib/icon";
 import { usePressDim } from "../../design/motion";
-import { Progress, Skeleton, StatusChip, Text } from "../../design/ui";
+import { Skeleton, StatusChip, Text } from "../../design/ui";
+import { ProgressRing, RingValue } from "../../design/ui/progress-ring";
 import { isNoSeasonError, useStudentEngagement } from "../../hooks/use-engagement";
 import { useStudentProgress } from "../../hooks/use-season-passing";
 import { useRole } from "../../store/session";
 import { ProgressDetailSheet } from "./progress-detail-sheet";
 import { type ProgressLine, progressLines, progressSpoken } from "./progress-model";
 
-iconWithClassName(ChevronRight);
+/** The ring's colour: teal on track, amber in the middle, red when low; never the only signal. */
+function ringStroke(pct: number): string {
+  if (pct >= 75) return "stroke-primary";
+  if (pct >= 50) return "stroke-warn";
+  return "stroke-bad";
+}
 
-function LineButton({ line, onPress }: { line: ProgressLine; onPress: () => void }) {
+/** One number as a ring with its percent inside, the name and a short figure under it. */
+function RingButton({ line, onPress }: { line: ProgressLine; onPress: () => void }) {
   const press = usePressDim();
   return (
     <Pressable
@@ -36,23 +42,23 @@ function LineButton({ line, onPress }: { line: ProgressLine; onPress: () => void
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
+      className="min-w-0 flex-1"
     >
       <Animated.View style={press.animatedStyle}>
-        <View className="min-h-[44px] flex-col gap-1.5 py-2">
-          <View className="flex-row items-center gap-2">
-            <Text variant="body" className="min-w-0 flex-1 font-medium">
-              {line.label}
-            </Text>
-            {line.pct !== null ? (
-              <Text variant="headline" tabular className="shrink-0">
-                {`${line.pct}%`}
-              </Text>
-            ) : null}
-            <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
-          </View>
-          {line.pct !== null ? <Progress value={line.pct} label={line.label} /> : null}
-          <Text variant="caption" className="text-muted-foreground">
-            {line.figure}
+        <View className="items-center gap-1.5 py-1">
+          <ProgressRing
+            value={line.pct ?? 0}
+            size={84}
+            strokeWidth={8}
+            indicatorClassName={line.pct === null ? undefined : ringStroke(line.pct)}
+          >
+            <RingValue className="text-lg leading-6">{line.pct === null ? "–" : `${line.pct}%`}</RingValue>
+          </ProgressRing>
+          <Text variant="subhead" numberOfLines={1} className="font-semibold" maxFontSizeMultiplier={1.3}>
+            {line.label}
+          </Text>
+          <Text variant="caption" numberOfLines={1} className="text-muted-foreground" maxFontSizeMultiplier={1.3}>
+            {line.short}
           </Text>
         </View>
       </Animated.View>
@@ -64,9 +70,11 @@ function LoadingCard() {
   return (
     <View testID="season-progress-loading" className="flex-col gap-3 rounded-group bg-surface p-4">
       <Skeleton className="w-1/2" height={20} />
-      <Skeleton height={44} />
-      <Skeleton height={44} />
-      <Skeleton height={44} />
+      <View className="flex-row justify-around">
+        <Skeleton width={84} height={84} radius={42} />
+        <Skeleton width={84} height={84} radius={42} />
+        <Skeleton width={84} height={84} radius={42} />
+      </View>
     </View>
   );
 }
@@ -100,11 +108,9 @@ export function SeasonProgressCard({ studentId, studentName }: { studentId: numb
           {p.seasonActive ? null : <StatusChip tone="neutral" label="Ended" />}
         </View>
       </View>
-      <View className="flex-col">
-        {lines.map((line, i) => (
-          <View key={line.key} className={i > 0 ? "border-t border-separator" : undefined}>
-            <LineButton line={line} onPress={() => setOpen(line.key)} />
-          </View>
+      <View className="flex-row gap-2 pt-2">
+        {lines.map((line) => (
+          <RingButton key={line.key} line={line} onPress={() => setOpen(line.key)} />
         ))}
       </View>
       <ProgressDetailSheet
