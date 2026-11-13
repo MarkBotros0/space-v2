@@ -11,6 +11,7 @@ import { ConfirmDialog } from "../../design/ui/confirm-dialog";
 import { toast } from "../../design/ui/toaster";
 import { useRestoreEnrollment } from "../../hooks/use-students";
 import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
+import { haptic } from "../../design/motion";
 
 export function BringBackDialogs({
   studentId,
@@ -35,7 +36,7 @@ export function BringBackDialogs({
       { studentId, seasonId: enrollment.seasonId, override },
       {
         onSuccess: () => {
-          toast.success(`${studentName} is back in ${enrollment.seasonTitle}.`);
+          haptic("success");
           onClose();
         },
         onError: (err) => {

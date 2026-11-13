@@ -12,7 +12,6 @@ import { haptic } from "../../design/motion";
 import { Button } from "../../design/ui/button";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Text } from "../../design/ui/text";
-import { toast } from "../../design/ui/toaster";
 import { useMarkAttempt, useReopenAttempt } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
 
@@ -79,8 +78,7 @@ export function AttemptSheet({
       { attemptId: attempt.attemptId, ...toMarkInput(marks) },
       {
         onSuccess: () => {
-          haptic("light");
-          toast.success("Marks saved.");
+          haptic("success");
           onClose();
         },
         onError: (err) => setError(apiErrorMessage(err, "Couldn't save the marks.")),
@@ -92,8 +90,7 @@ export function AttemptSheet({
     setError(null);
     reopen.mutate(attempt.studentUserId, {
       onSuccess: () => {
-        haptic("light");
-        toast.success("Retake allowed.");
+        haptic("success");
         onClose();
       },
       onError: (err) => setError(apiErrorMessage(err, "Couldn't reopen the attempt.")),

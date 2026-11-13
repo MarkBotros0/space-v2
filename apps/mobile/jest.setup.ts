@@ -110,3 +110,13 @@ timeoutManager.setTimeoutProvider<TimerId>({
   setInterval: (callback, delay) => unref(setInterval(callback, delay)),
   clearInterval: (id) => clearInterval(id),
 });
+
+// Haptics as spies, so a test can tell a quiet success (owner, 2026-11-13: no success toast where the
+// screen shows the change) from nothing happening. A suite that mocks it itself keeps its own.
+jest.mock("expo-haptics", () => ({
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  impactAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  NotificationFeedbackType: { Success: "success", Warning: "warning", Error: "error" },
+  ImpactFeedbackStyle: { Light: "light", Medium: "medium", Heavy: "heavy" },
+}));

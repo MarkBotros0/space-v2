@@ -17,6 +17,7 @@ import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
 import EditProfileScreen from "../../app/(app)/edit-profile";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
@@ -63,7 +64,7 @@ it("saves only the academic part through PATCH /me/profile, the year as a number
     }),
   );
   expect(patch).toHaveBeenCalledTimes(1);
-  await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Profile saved."));
+  await expectQuietSuccess();
   expect(mockBack).toHaveBeenCalledTimes(1);
 });
 

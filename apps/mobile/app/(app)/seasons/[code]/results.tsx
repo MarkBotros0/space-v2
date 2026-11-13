@@ -5,7 +5,7 @@ import type { SeasonResultRow } from "@space/shared";
 
 import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
-import { EmptyState, GroupedList, ListRow, StatusChip, toast } from "../../../../src/design/ui";
+import { EmptyState, GroupedList, ListRow, StatusChip } from "../../../../src/design/ui";
 import { useSeasonResults, useUpdateSeasonResult } from "../../../../src/hooks/use-season-end";
 import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorCode, apiErrorMessage, apiErrorStatus } from "../../../../src/lib/api-error";
@@ -13,6 +13,7 @@ import { parsePositiveInt } from "../../../../src/lib/params";
 import { ResultSheet } from "../../../../src/screens/season-end/result-sheet";
 import { resultRowView } from "../../../../src/screens/season-end/results-model";
 import { blankToNull } from "../../../../src/lib/form-values";
+import { haptic } from "../../../../src/design/motion";
 
 /**
  * Every student's result in a finished season, and corrections: a super, or the season's (former)
@@ -39,7 +40,7 @@ export default function SeasonResultsScreen() {
       { userId: editing.userId, result: draft.result, reason: blankToNull(draft.reason) },
       {
         onSuccess: () => {
-          toast.success(`Saved the result for ${editing.name}.`);
+          haptic("success");
           setEditing(null);
         },
         onError: (err) => {

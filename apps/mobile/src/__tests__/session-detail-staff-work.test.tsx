@@ -14,12 +14,12 @@ jest.mock("expo-router", () => ({
 
 import type { SessionDetail } from "@space/shared";
 
-import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SessionDetailScreen from "../../app/(app)/session/[id]/index";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -154,7 +154,7 @@ it("lets a leader override one student's attendance, keeping stored notes (v1 mo
     expect(backdrop === null || backdrop.parent?.props.pointerEvents === "none").toBe(true);
   });
   // Like every other leader write: a confirmation, not just a closed sheet (M3).
-  expect(toast.success).toHaveBeenCalledWith("Attendance updated.");
+  await expectQuietSuccess();
 });
 
 it("shows a leader the video quiz results, and nothing for a video with no questions (spec 13 D10)", async () => {

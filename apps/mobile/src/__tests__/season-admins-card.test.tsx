@@ -15,12 +15,12 @@ jest.mock("expo-router", () => ({
 import { QueryClient } from "@tanstack/react-query";
 
 import { apiClient } from "../lib/api-client";
-import { toast } from "../design/ui/toaster";
 import { queryKeys } from "../lib/query-keys";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SeasonDetailScreen from "../../app/(app)/seasons/[code]/admins";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -193,7 +193,7 @@ describe("Admins screen (SUPER), opened from the People card", () => {
     fireEvent.press(screen.getByText("Add"));
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rana Admin can now administer TEST 2099."));
+    await expectQuietSuccess();
     expect(await screen.findByText("rana@jpc.test")).toBeTruthy();
     for (const queryKey of [queryKeys.seasons.all, queryKeys.users.all, queryKeys.dashboard.all]) {
       expect(invalidate).toHaveBeenCalledWith({ queryKey });
@@ -235,7 +235,7 @@ describe("Admins screen (SUPER), opened from the People card", () => {
 
     fireEvent.press(screen.getByText("Remove"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7/admins/21"));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Pat Admin was removed as an admin."));
+    await expectQuietSuccess();
     expect(await screen.findByText("No admins yet.")).toBeTruthy();
   });
 

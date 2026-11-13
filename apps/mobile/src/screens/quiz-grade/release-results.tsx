@@ -57,7 +57,6 @@ export function ReleaseResultsCard({ quiz }: { quiz: Props }) {
           release.mutate(undefined, {
             onSuccess: () => {
               haptic("success");
-              toast.success("Answers released.");
               setConfirming(false);
             },
             onError: (err) => {

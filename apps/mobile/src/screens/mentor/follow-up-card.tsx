@@ -43,7 +43,7 @@ function OpenFollowUp({ followUp }: { followUp: FollowUp }) {
           done.mutate(
             { id: followUp.id },
             {
-              onSuccess: () => toast.success("Marked done."),
+              onSuccess: () => haptic("success"),
               onError: (err) => toast.error(apiErrorMessage(err, "Couldn't mark it done. Try again.")),
             },
           )

@@ -11,6 +11,7 @@ import { isDue, useFollowUps, useMarkFollowUpDone } from "../../../src/hooks/use
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { formatDate } from "../../../src/lib/format";
 import { useSessionStore } from "../../../src/store/session";
+import { haptic } from "../../../src/design/motion";
 
 /**
  * The mentor's follow-ups (owner, 2026-11-07): Due (7 days have passed), then
@@ -29,7 +30,7 @@ export default function FollowUpsScreen() {
     done.mutate(
       { id: f.id },
       {
-        onSuccess: () => toast.success(`Done with ${f.studentName}.`),
+        onSuccess: () => haptic("success"),
         onError: (err) => toast.error(apiErrorMessage(err, "Couldn't mark it done. Try again.")),
       },
     );

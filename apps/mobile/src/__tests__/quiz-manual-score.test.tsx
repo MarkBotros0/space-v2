@@ -10,13 +10,13 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
-import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked, renderWithProviders } from "./helpers/render";
 import { NOT_ENDED, waitingRow } from "./quiz-grading-fixtures";
 import QuizGradeScreen from "../../app/(app)/quiz/[id]/grade";
 import QuizDetailScreen from "../../app/(app)/quiz/[id]/index";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
@@ -179,7 +179,7 @@ describe("the admin's manual score", () => {
     await waitFor(() =>
       expect(put).toHaveBeenCalledWith("/api/v1/quizzes/41/manual-scores/10", { score: 7.5, notes: "On paper." }),
     );
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Score saved."));
+    await expectQuietSuccess();
     // Closing: the sheet stops taking touches at once and slides away.
     let root = screen.getByTestId("sheet-backdrop").parent;
     while (root && root.props.pointerEvents === undefined) root = root.parent;
@@ -253,7 +253,7 @@ describe("the admin's manual score", () => {
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getAllByRole("button", { name: "Clear score" }).at(-1)!);
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/quizzes/41/manual-scores/9"));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Score cleared."));
+    await expectQuietSuccess();
   });
 });
 

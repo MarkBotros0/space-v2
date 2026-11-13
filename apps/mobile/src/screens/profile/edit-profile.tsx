@@ -13,6 +13,7 @@ import { useSessionStore } from "../../store/session";
 import { useAcademicForm } from "./academic-form";
 import { usePersonalForm } from "./personal-form";
 import { useProfileKind } from "./profile-kind";
+import { haptic } from "../../design/motion";
 
 /**
  * Edit profile, opened from Profile's Edit: the personal details for every role,
@@ -51,7 +52,7 @@ function useFinish() {
   const router = useRouter();
   return {
     done: () => {
-      toast.success("Profile saved.");
+      haptic("success");
       router.back();
     },
     failed: (err: unknown) => toast.error(apiErrorMessage(err, "Couldn't save. Try again.")),

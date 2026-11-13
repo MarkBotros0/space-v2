@@ -22,6 +22,7 @@ import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import AttendanceScreen from "../../app/(app)/session/[id]/attendance";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -115,14 +116,13 @@ it("shows the save in flight on the bar", async () => {
   expect(await screen.findByTestId("button-spinner")).toBeTruthy();
 });
 
-it("on success buzzes, toasts and goes back", async () => {
+it("on success buzzes and goes back, with no toast", async () => {
   post.mockResolvedValue({ data: { data: { saved: 1 } } });
   renderStacked(<AttendanceScreen />);
   fireEvent.press(await screen.findByLabelText("Mark Test student PRESENT"));
   fireEvent.press(screen.getByText("Save attendance"));
   await waitFor(() => expect(mockBack).toHaveBeenCalledTimes(1));
-  expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
-  expect(toast.success).toHaveBeenCalledWith("Attendance saved.");
+  await expectQuietSuccess();
 });
 
 it("on a failed save shows the message, stays, and does not buzz", async () => {

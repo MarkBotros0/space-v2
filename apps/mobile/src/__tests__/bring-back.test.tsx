@@ -16,6 +16,7 @@ import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
 import StudentDetailScreen from "../../app/(app)/student/[id]/index";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -115,7 +116,7 @@ describe("Bring back", () => {
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/students/21/enrollments/7/restore", {}));
     await waitFor(() => expect(get.mock.calls.length).toBeGreaterThan(reads));
-    expect(toast.success).toHaveBeenCalled();
+    await expectQuietSuccess();
   });
 
   it("offers Add anyway with the server's reason on not_eligible, and re-posts with the override", async () => {

@@ -14,6 +14,7 @@ import { apiErrorCode, apiErrorMessage } from "../../../../src/lib/api-error";
 import { IssueList } from "../../../../src/screens/season-start/issue-list";
 import { useIsSuper } from "../../../../src/store/session";
 import { plural } from "../../../../src/lib/plural";
+import { haptic } from "../../../../src/design/motion";
 
 /**
  * Start a draft season (SUPER): clear what blocks it, then start. The check is
@@ -61,7 +62,7 @@ export default function StartSeasonScreen() {
     start.mutate(undefined, {
       onSuccess: (res) => {
         setConfirming(false);
-        toast.success(`${season.data?.title ?? "The season"} has started.`);
+        haptic("success");
         router.replace({ pathname: "/seasons/[code]", params: { code: res.season.code } });
       },
       onError: (err) => {

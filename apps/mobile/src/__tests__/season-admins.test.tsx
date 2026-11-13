@@ -24,6 +24,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SeasonDetailScreen from "../../app/(app)/seasons/[code]/admins";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -120,7 +121,7 @@ describe("Admins screen", () => {
     expect(post).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Add"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 22 }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Rana Admin can now administer TEST 2099."));
+    await expectQuietSuccess();
   });
 
   it("an already_in_role refusal shows the server's message in the sheet", async () => {
@@ -156,7 +157,7 @@ describe("Admins screen", () => {
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Remove"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7/admins/21"));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Pat Admin was removed as an admin."));
+    await expectQuietSuccess();
   });
 
   it("a failed load offers Try again, which asks again", async () => {

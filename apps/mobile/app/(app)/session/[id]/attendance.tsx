@@ -9,7 +9,6 @@ import { Screen } from "../../../../src/design/layout/screen";
 import { haptic } from "../../../../src/design/motion";
 import { AttendanceRosterForm } from "../../../../src/screens/session-detail/attendance-form";
 import { EmptyState } from "../../../../src/design/ui";
-import { toast } from "../../../../src/design/ui/toaster";
 import { useAttendanceRoster, useSaveAttendance } from "../../../../src/hooks/use-attendance";
 import { useSessionDetail } from "../../../../src/hooks/use-session-detail";
 import { apiErrorMessage } from "../../../../src/lib/api-error";
@@ -56,8 +55,7 @@ export default function AttendanceScreen() {
     }
     save.mutate(entries, {
       onSuccess: () => {
-        haptic("light");
-        toast.success("Attendance saved.");
+        haptic("success");
         router.back();
       },
     });

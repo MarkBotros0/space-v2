@@ -4,6 +4,7 @@ import { ConfirmDialog } from "../../design/ui/confirm-dialog";
 import { toast } from "../../design/ui/toaster";
 import { useRemoveSeasonPerson } from "../../hooks/use-season-people";
 import { apiErrorMessage } from "../../lib/api-error";
+import { haptic } from "../../design/motion";
 
 /**
  * Remove, on a student's row in a draft: the roster's own action and words. A
@@ -43,7 +44,7 @@ export function RemoveFromDraftDialog({
           { userId: studentId },
           {
             onSuccess: () => {
-              toast.success(`${studentName} was removed from ${enrollment.seasonTitle}.`);
+              haptic("success");
               onClose();
             },
             onError: (err) => {

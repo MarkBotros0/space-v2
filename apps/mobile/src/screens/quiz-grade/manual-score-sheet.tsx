@@ -12,7 +12,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { View } from "react-native";
 
 import { haptic } from "../../design/motion";
-import { Button, ConfirmDialog, FormField, Input, Sheet, SheetSaveBar, Text, Textarea, toast } from "../../design/ui";
+import { Button, ConfirmDialog, FormField, Input, Sheet, SheetSaveBar, Text, Textarea } from "../../design/ui";
 import { useClearManualScore, useSaveManualScore } from "../../hooks/use-quizzes";
 import { apiErrorCode, apiErrorMessage } from "../../lib/api-error";
 import { formatDate, formatScore, unbreakable } from "../../lib/format";
@@ -79,8 +79,7 @@ export function useManualScoreSheet({ quizId, target, maxScore, open, onDone }: 
       { studentUserId: target.studentUserId, score: parsed.score, notes: note === "" ? null : note },
       {
         onSuccess: () => {
-          haptic("light");
-          toast.success("Score saved.");
+          haptic("success");
           onDone();
         },
         onError: (err) => {
@@ -94,8 +93,7 @@ export function useManualScoreSheet({ quizId, target, maxScore, open, onDone }: 
   const onClear = () => {
     clear.mutate(target.studentUserId, {
       onSuccess: () => {
-        haptic("light");
-        toast.success("Score cleared.");
+        haptic("success");
         setConfirming(false);
         onDone();
       },

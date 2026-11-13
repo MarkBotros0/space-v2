@@ -5,7 +5,7 @@ import type { QuizAuthoringDetail, QuizGradeSheet } from "@space/shared";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { Screen } from "../../design/layout/screen";
 import { haptic } from "../../design/motion";
-import { Text, toast } from "../../design/ui";
+import { Text } from "../../design/ui";
 import { LocalStudentList } from "../students-list/local-student-list";
 import { StatusChip } from "../../design/ui/status-chip";
 import { useQuizGradeSheet, useSaveQuizGrades, type GradeEntryInput } from "../../hooks/use-quizzes";
@@ -65,8 +65,7 @@ export function PaperGrid({ id, detail }: { id: number; detail: QuizAuthoringDet
           const { [row.studentUserId]: _done, ...rest } = prev;
           return rest;
         });
-        haptic("light");
-        toast.success("Saved.");
+        haptic("success");
         setOpen(false);
       },
       onError: (err) => setError(apiErrorMessage(err, "Couldn't save the grades.")),

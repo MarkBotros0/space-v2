@@ -23,6 +23,7 @@ import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
 import SeasonEditScreen from "../../app/(app)/seasons/[code]/edit";
 import NewSeasonScreen from "../../app/(app)/seasons/new";
 import SeasonRosterScreen from "../../app/(app)/seasons/[code]/roster/index";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -250,7 +251,7 @@ describe("removing someone from a draft's roster", () => {
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getByText("Remove"));
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/7/enrollments/21"));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Sara was removed from LEAD 2026."));
+    await expectQuietSuccess();
   });
 
   it("says the server's reason when they already have work", async () => {

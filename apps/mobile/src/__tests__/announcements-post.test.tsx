@@ -18,6 +18,7 @@ import { renderWithProviders } from "./helpers/render";
 import { detailItem, ok, pollItem } from "./helpers/announcements";
 
 import AnnouncementScreen from "../../app/(app)/announcements/[id]/index";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -99,7 +100,7 @@ describe("AnnouncementScreen", () => {
     fireEvent.press(confirm[confirm.length - 1]!);
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/announcements/7"));
     await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/announcements"));
-    expect(toast.success).toHaveBeenCalledWith("Announcement deleted");
+    await expectQuietSuccess();
   });
 
   it("shows the error and stays when the delete fails", async () => {

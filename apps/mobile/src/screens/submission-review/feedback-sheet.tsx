@@ -5,7 +5,6 @@ import { haptic } from "../../design/motion";
 import { FormField } from "../../design/ui/form-field";
 import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Textarea } from "../../design/ui/textarea";
-import { toast } from "../../design/ui/toaster";
 import { useReviewEssay } from "../../hooks/use-submission";
 import { apiErrorMessage } from "../../lib/api-error";
 
@@ -72,8 +71,7 @@ export function FeedbackSheet({
       { action: verdict, feedback: text.trim() === "" ? null : text },
       {
         onSuccess: () => {
-          haptic("light");
-          toast.success(returning ? "Returned to the student." : "Marked reviewed.");
+          haptic("success");
           onClose();
           if (returning) onReturned();
         },

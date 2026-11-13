@@ -16,6 +16,7 @@ import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 
 import StudentDetailScreen from "../../app/(app)/student/[id]/index";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
@@ -165,7 +166,7 @@ describe("admin student detail", () => {
     expect(del).not.toHaveBeenCalled();
     fireEvent.press(screen.getAllByText("Remove").at(-1)!);
     await waitFor(() => expect(del).toHaveBeenCalledWith("/api/v1/seasons/8/enrollments/21"));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Sara Student was removed from Season 8."));
+    await expectQuietSuccess();
   });
 
   it("says the server's reason when Remove is refused", async () => {

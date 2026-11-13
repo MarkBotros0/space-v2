@@ -10,12 +10,12 @@ jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }));
 
-import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import { NOT_ENDED, waitingRow } from "./quiz-grading-fixtures";
 import QuizGradeScreen from "../../app/(app)/quiz/[id]/grade";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -389,7 +389,7 @@ describe("grading screen — ONLINE", () => {
       serve(withAnswers([choiceAnswer, { ...essayAnswer, pointsAwarded: 0, correct: false }]));
       fireEvent.press(screen.getByText("Save marks"));
       await waitFor(() => expect(post).toHaveBeenCalled());
-      await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marks saved."));
+      await expectQuietSuccess();
 
       openRow("Test student");
       expect(await screen.findByRole("radio", { name: "0 points of 5", checked: true })).toBeTruthy();

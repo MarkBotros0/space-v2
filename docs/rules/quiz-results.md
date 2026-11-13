@@ -22,6 +22,7 @@ directly:
    (`POST /quizzes/:id/release`, one way, per quiz; `Quiz.resultsReleasedAt/ById`) the student can
    review every question with their answers marked right or wrong per item (each option, tick,
    pair and blank) and the correct answer shown. **Leaders cannot release answers.**
+   Release answers sits on the quiz page and on grading, not on Edit quiz (owner, 2026-11-13).
 
 An admin score (see "Manual score (admin)" below) reads as **Graded**, with no attempt or only a
 SUBMITTED one behind it. It never reaches **Answers released** by itself: that still needs the

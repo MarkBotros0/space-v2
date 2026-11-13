@@ -13,6 +13,7 @@ jest.mock("../design/motion", () => ({
   haptic: jest.fn(),
 }));
 
+import { haptic } from "../design/motion";
 import { toast } from "../design/ui/toaster";
 import { NoteSheet } from "../screens/student-detail/note-sheet";
 import { apiClient } from "../lib/api-client";
@@ -74,7 +75,8 @@ describe("NoteSheet", () => {
     expect(await screen.findByText("state closed")).toBeTruthy();
     fireEvent.press(screen.getByText("reopen"));
     expect(screen.getByLabelText("Note").props.value).toBe("");
-    expect(toast.success).toHaveBeenCalledWith("Note added.");
+    expect(haptic).toHaveBeenCalledWith("success");
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("keeps the text when dismissed and reopened", async () => {

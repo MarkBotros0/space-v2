@@ -320,6 +320,8 @@ describe("QuizEditScreen (the builder)", () => {
     expect(screen.queryByLabelText("Move question 2 up")).toBeNull();
     // Publishing state can still change; D4's guard is the server's.
     expect(screen.getByText("Unpublish")).toBeTruthy();
+    // Releasing the answers is on the quiz page and grading, not here (owner, 2026-11-13).
+    expect(screen.queryByText("Release answers")).toBeNull();
   });
 
   it("renames a PAPER quiz and shows no question builder", async () => {

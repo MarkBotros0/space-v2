@@ -6,7 +6,6 @@ import type { AnnouncementDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, Text } from "../../design/ui";
-import { toast } from "../../design/ui/toaster";
 import { useDeleteAnnouncement, useMarkAnnouncementRead } from "../../hooks/use-announcements";
 import { apiErrorMessage } from "../../lib/api-error";
 import { AudienceChip } from "./audience-chip";
@@ -14,6 +13,7 @@ import { DeletePostSheet } from "./delete-post-sheet";
 import { LinkifiedText } from "./linkified-text";
 import { announcementMeta } from "./meta";
 import { PollCard } from "./poll/poll-card";
+import { haptic } from "../../design/motion";
 
 iconWithClassName(Pencil, Trash2);
 
@@ -80,7 +80,7 @@ export function PostView({ post }: { post: AnnouncementDetail }) {
           remove.mutate(id, {
             onSuccess: () => {
               setConfirming(false);
-              toast.success("Announcement deleted");
+              haptic("success");
               router.dismissTo("/announcements");
             },
             onError: (err) => {

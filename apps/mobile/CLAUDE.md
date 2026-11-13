@@ -139,7 +139,10 @@ and `tailwind-theme.js`): semantic tokens, status tones, `pill*`, `surface-raise
 - **Components** (`src/design/ui/*`): Button (primary | secondary | destructive | plain),
   StatusChip / `statusChip` / `dueChip`, GroupedList / ListRow, HeroCard, StatTile,
   SegmentedControl, SearchField, EmptyState (`tone`), Sheet / SheetSaveBar, Toast
-  (`toaster.tsx`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
+  (`toaster.tsx`; **no success toast where the screen shows the change** (owner, 2026-11-13): the
+  chip, row or closed sheet is the confirmation, with `haptic("success")`. A toast is for errors, for
+  a result nobody can see (an invite emailed, a reminder scheduled, students reopened) and for a
+  student's own save or submit through `reportOutcome`); `src/design/layout/*`: Screen, LargeTitle, PillTabBar, SaveBar,
   `tab-bar-scroll`. The pill is one solid `bg-pill` on iOS and Android (R38; owner 2026-11-08 tried a
   frosted iOS pill and kept the solid one). Pressing the open
   tab scrolls its screen to the top, or reloads it when already there (`emitTabReselect`).

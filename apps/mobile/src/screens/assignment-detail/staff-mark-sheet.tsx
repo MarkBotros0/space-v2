@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 
 import { haptic } from "../../design/motion";
-import { Sheet, SheetSaveBar, Text, toast } from "../../design/ui";
+import { Sheet, SheetSaveBar, Text } from "../../design/ui";
 import { useMarkSubmitted, useUndoMarkSubmitted } from "../../hooks/use-assignment-writes";
 import { apiErrorMessage } from "../../lib/api-error";
 import { markedLine } from "./progress-model";
@@ -59,22 +59,15 @@ export function useStaffMarkAction(assignmentId: number, userId: number | null, 
   const run = (studentUserId: number, marked: boolean) => {
     if (pending) return;
     setError(null);
-    const done = (message: string) => {
-      haptic("light");
-      toast.success(message);
+    const done = () => {
+      haptic("success");
       onClose();
     };
     const failed = (fallback: string) => (err: unknown) => setError(apiErrorMessage(err, fallback));
     if (marked) {
-      undo.mutate(
-        { studentUserId },
-        { onSuccess: () => done("Mark undone."), onError: failed("Couldn't undo the mark.") },
-      );
+      undo.mutate({ studentUserId }, { onSuccess: () => done(), onError: failed("Couldn't undo the mark.") });
     } else {
-      markIt.mutate(
-        { studentUserId },
-        { onSuccess: () => done("Marked as submitted."), onError: failed("Couldn't mark it as submitted.") },
-      );
+      markIt.mutate({ studentUserId }, { onSuccess: () => done(), onError: failed("Couldn't mark it as submitted.") });
     }
   };
   return { run, pending, error };

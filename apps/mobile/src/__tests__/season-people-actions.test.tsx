@@ -26,6 +26,7 @@ import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SeasonPeopleScreen from "../../app/(app)/seasons/[code]/people";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -220,7 +221,7 @@ describe("adding", () => {
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/enrollments", { userIds: expect.arrayContaining([1, 2]) });
     expect(post.mock.calls[0]![1]).not.toHaveProperty("overrideUserIds");
-    expect(toast.success).toHaveBeenCalledWith("Added 2 people");
+    await expectQuietSuccess();
   });
 
   it("on a 409 toasts the message, refetches, drops who is no longer selectable and keeps the rest", async () => {

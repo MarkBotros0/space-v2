@@ -23,7 +23,6 @@ jest.mock("../design/ui/toaster", () => ({
   Toaster: () => null,
 }));
 
-import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
@@ -31,6 +30,7 @@ import { makeSession } from "./helpers/session";
 import GroupDetailScreen from "../../app/(app)/group/[id]/index";
 import GroupsScreen from "../../app/(app)/(tabs)/groups";
 import SeasonRosterScreen from "../../app/(app)/seasons/[code]/roster/index";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
@@ -226,7 +226,7 @@ describe("/seasons/[code]/roster (G7)", () => {
         ],
       }),
     );
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Assigned 1, unassigned 1."));
+    await expectQuietSuccess();
   });
 
   it("offers Import groups to a season admin, pushing the importer route", async () => {

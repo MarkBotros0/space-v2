@@ -11,11 +11,10 @@ import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
 import { haptic } from "../../design/motion";
-import { Button, EmptyState, ListSectionHeader, PillButton, StatusChip, Text, toast } from "../../design/ui";
+import { Button, EmptyState, ListSectionHeader, PillButton, StatusChip, Text } from "../../design/ui";
 import { useAddQuestion, usePublishQuiz } from "../../hooks/use-quiz-authoring";
 import { useQuizAuthoringDetail } from "../../hooks/use-quizzes";
 import { apiErrorMessage } from "../../lib/api-error";
-import { ReleaseResultsCard } from "../quiz-grade/release-results";
 import { QuestionRow } from "./question-row";
 import { QuizDetailsSheet } from "./quiz-details-sheet";
 import { plural } from "../../lib/plural";
@@ -24,7 +23,8 @@ iconWithClassName(Plus);
 
 /**
  * The quiz at a glance: its name with Edit, what it is, and where it stands.
- * A published quiz is unpublished from here; publishing is the page's footer.
+ * A published quiz is unpublished from here; publishing is the page's footer. Releasing the answers
+ * is not here (owner, 2026-11-13): it lives on the quiz page and on grading.
  */
 function QuizSummary({
   quiz,
@@ -108,8 +108,7 @@ function QuizForm({
     setError(null);
     publish.mutate(next, {
       onSuccess: () => {
-        if (next) haptic("success");
-        toast.success(next ? "Quiz published. Students can take it now." : "Quiz unpublished.");
+        haptic("success");
       },
       onError: (err) => setError(apiErrorMessage(err, "Couldn't change the publish state.")),
     });
@@ -205,8 +204,6 @@ function QuizForm({
             ) : null}
           </View>
         )}
-
-        {published && !isPaper ? <ReleaseResultsCard quiz={data} /> : null}
       </View>
       <QuizDetailsSheet
         key={`${data.title}-${data.maxScore}-${data.shuffleQuestions}`}

@@ -27,6 +27,7 @@ import { initialSourceId, passersToTick, stragglerPhrase } from "./source";
 import { SourcePicker } from "./source-picker";
 import { usePeopleSelection } from "./use-people-selection";
 import { people as peopleCount } from "../../lib/plural";
+import { haptic } from "../../design/motion";
 
 const keyOf = (item: PeopleItem) => item.key;
 
@@ -109,8 +110,8 @@ export function PeopleList({
     const overrideUserIds = userIds.filter((id) => overridden.has(id));
     pick.notice(null);
     add.mutate(overrideUserIds.length > 0 ? { userIds, overrideUserIds } : { userIds }, {
-      onSuccess: (added) => {
-        toast.success(`Added ${peopleCount(added)}`);
+      onSuccess: () => {
+        haptic("success");
         router.back();
       },
       onError: (err) => {

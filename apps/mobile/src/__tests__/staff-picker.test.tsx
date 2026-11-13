@@ -14,12 +14,12 @@ jest.mock("expo-router", () => ({
 }));
 
 import { apiClient } from "../lib/api-client";
-import { toast } from "../design/ui/toaster";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SeasonAdminsScreen from "../../app/(app)/seasons/[code]/admins";
 import EditGroupScreen from "../../app/(app)/group/[id]/edit";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -142,7 +142,7 @@ describe("adding a season admin (super)", () => {
     fireEvent.press(await screen.findByText("Karim"));
     fireEvent.press(screen.getByText("Add"));
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/seasons/7/admins", { userId: 6 }));
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Karim can now administer GBV 2026."));
+    await expectQuietSuccess();
   });
 
   it("keeps the sheet open and says the server's reason in words", async () => {

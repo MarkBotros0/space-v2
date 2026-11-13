@@ -18,7 +18,6 @@ import { Sheet, SheetSaveBar } from "../../design/ui/sheet";
 import { Switch } from "../../design/ui/switch";
 import { Text } from "../../design/ui/text";
 import { Textarea } from "../../design/ui/textarea";
-import { toast } from "../../design/ui/toaster";
 
 const VISIBILITY_OPTIONS: { value: NoteVisibility; label: string; accessibilityLabel?: string }[] = [
   { value: "LEADERS", label: "Leaders" },
@@ -62,8 +61,7 @@ export function NoteSheet({
           setBody("");
           setVisibility(defaultVisibility);
           setFollowUp(false);
-          haptic("light");
-          toast.success("Note added.");
+          haptic("success");
           onClose();
         },
         onError: (err) =>

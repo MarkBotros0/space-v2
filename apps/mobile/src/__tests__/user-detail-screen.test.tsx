@@ -18,6 +18,7 @@ import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 
 import UserDetailScreen from "../../app/(app)/user/[id]";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const patch = apiClient.patch as jest.Mock;
@@ -93,7 +94,7 @@ describe("UserDetailScreen", () => {
     );
     // v1 user-form.tsx:117: a save lands back on the users list, with a word.
     await waitFor(() => expect(mockDismissTo).toHaveBeenCalledWith("/community"));
-    expect(toast.success).toHaveBeenCalledWith("Changes saved.");
+    await expectQuietSuccess();
   });
 
   it("offers Super, Mentor and Student, never Admin or Leader", async () => {

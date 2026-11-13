@@ -15,6 +15,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import QuizGradeScreen from "../../app/(app)/quiz/[id]/grade";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -141,7 +142,7 @@ describe("grading screen — PAPER", () => {
       }),
     );
     expect(post).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Saved."));
+    await expectQuietSuccess();
   });
 
   it("Save on a row nobody typed in closes without a request, graded or not (M1)", async () => {

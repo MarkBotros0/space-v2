@@ -56,8 +56,7 @@ export function WaitingList({
     if (!ending) return;
     end.mutate(ending.studentUserId, {
       onSuccess: () => {
-        haptic("light");
-        toast.success("Attempt ended.");
+        haptic("success");
       },
       onError: (err) => toast.error(apiErrorMessage(err, "Couldn't end the attempt.")),
       onSettled: () => setEnding(null),

@@ -13,13 +13,13 @@ jest.mock("expo-router", () => ({
   useFocusEffect: (effect: () => void | (() => void)) => require("react").useEffect(effect, [effect]),
 }));
 
-import { toast } from "../design/ui/toaster";
 import { QUIZ_LIVE_POLL_MS } from "../hooks/use-quizzes";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import QuizDetailScreen from "../../app/(app)/quiz/[id]/index";
 import QuizLiveRoute from "../../app/(app)/quiz/[id]/live";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -162,7 +162,7 @@ describe("live quiz screen", () => {
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/end", { studentUserId: 10 }));
     await waitFor(() => expect(liveReads()).toBe(2));
-    expect(toast.success).toHaveBeenCalledWith("Attempt ended.");
+    await expectQuietSuccess();
     // The confirm sits inside the sheet and closes once End has gone through (the sheet with it,
     // after its exit animation, which the test renderer never finishes).
     await waitFor(() => expect(screen.queryByText("End Second student's attempt?")).toBeNull());

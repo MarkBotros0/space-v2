@@ -18,13 +18,12 @@ jest.mock("expo-haptics", () => ({
 }));
 jest.mock("../design/ui/toaster", () => ({ toast: { success: jest.fn(), error: jest.fn() }, Toaster: () => null }));
 
-import * as Haptics from "expo-haptics";
-import { toast } from "../design/ui/toaster";
 import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import { makeSession } from "./helpers/session";
 import SubmissionReviewScreen from "../../app/(app)/submission/[publicId]";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -103,8 +102,7 @@ it("marks the essay reviewed with optional feedback and stays on the screen", as
       feedback: "Good work.",
     }),
   );
-  await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Marked reviewed."));
-  expect(Haptics.impactAsync).toHaveBeenCalledWith("light");
+  await expectQuietSuccess();
   expect(mockBack).not.toHaveBeenCalled();
 });
 
@@ -148,7 +146,7 @@ it("Return needs a note", async () => {
       feedback: "Another pass, please.",
     }),
   );
-  await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Returned to the student."));
+  await expectQuietSuccess();
   // Returned work is the student's now: nothing is left to do here.
   await waitFor(() => expect(mockBack).toHaveBeenCalled());
 });

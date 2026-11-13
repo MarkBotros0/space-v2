@@ -37,8 +37,7 @@ export function LiveRowSheet({
   const onReopen = () => {
     reopen.mutate(row.studentUserId, {
       onSuccess: () => {
-        haptic("light");
-        toast.success("Retake allowed.");
+        haptic("success");
         onClose();
       },
       onError: (err) => toast.error(apiErrorMessage(err, "Couldn't reopen the attempt.")),
@@ -48,8 +47,7 @@ export function LiveRowSheet({
   const confirmEnd = () => {
     end.mutate(row.studentUserId, {
       onSuccess: () => {
-        haptic("light");
-        toast.success("Attempt ended.");
+        haptic("success");
         setAsking(false);
         onClose();
       },

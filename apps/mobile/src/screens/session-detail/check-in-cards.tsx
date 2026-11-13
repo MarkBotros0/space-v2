@@ -19,7 +19,6 @@ import {
   Text as TextV1,
 } from "../../design/ui";
 import { StatusChip } from "../../design/ui/status-chip";
-import { toast } from "../../design/ui/toaster";
 import { useAttendanceRoster, useSaveAttendance } from "../../hooks/use-attendance";
 import { LIVE_ROSTER_REFRESH_MS, useCheckInState, useRegenerateCheckIn } from "../../hooks/use-check-in";
 import { useCloseCheckIn, useOpenCheckIn, useSessionDetail } from "../../hooks/use-session-detail";
@@ -81,8 +80,7 @@ function CheckInRoster({ detail }: { detail: SessionDetail }) {
           ],
           {
             onSuccess: () => {
-              haptic("light");
-              toast.success("Attendance updated.");
+              haptic("success");
               save.reset();
               done();
             },

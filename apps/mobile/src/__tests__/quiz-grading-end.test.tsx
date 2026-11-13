@@ -14,6 +14,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderStacked } from "./helpers/render";
 import QuizGradeScreen from "../../app/(app)/quiz/[id]/grade";
+import { expectQuietSuccess } from "./helpers/quiet-success";
 
 const get = apiClient.get as jest.Mock;
 const post = apiClient.post as jest.Mock;
@@ -116,7 +117,7 @@ describe("grading screen: staff End", () => {
 
     await waitFor(() => expect(post).toHaveBeenCalledWith("/api/v1/quizzes/41/attempts/end", { studentUserId: 10 }));
     await waitFor(() => expect(attemptsServed).toBe(2));
-    expect(toast.success).toHaveBeenCalledWith("Attempt ended.");
+    await expectQuietSuccess();
   });
 
   it("shows the server's refusal and still refreshes", async () => {

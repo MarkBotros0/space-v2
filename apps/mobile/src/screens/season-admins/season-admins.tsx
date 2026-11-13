@@ -8,6 +8,7 @@ import { useGroupDetails, useSeasonGroups } from "../../hooks/use-groups";
 import { useAddSeasonAdmin, useRemoveSeasonAdmin, useSeasonAdmins } from "../../hooks/use-season-admins";
 import { apiErrorMessage } from "../../lib/api-error";
 import { StaffPickerSheet, type StaffPick } from "../season-people/staff-picker-sheet";
+import { haptic } from "../../design/motion";
 
 iconWithClassName(Trash2, UserPlus);
 
@@ -115,7 +116,7 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         })}
         onPick={async (person) => {
           await add.mutateAsync({ userId: person.id });
-          toast.success(`${person.name} can now administer ${seasonTitle}.`);
+          haptic("success");
         }}
       />
       <ConfirmDialog
@@ -130,13 +131,13 @@ export function SeasonAdmins({ seasonId, seasonTitle }: { seasonId: number; seas
         pending={remove.isPending}
         onConfirm={() => {
           if (confirm === null) return;
-          const { userId, name } = confirm;
+          const { userId } = confirm;
           remove.mutate(
             { userId },
             {
               onSuccess: () => {
                 setConfirm(null);
-                toast.success(`${name} was removed as an admin.`);
+                haptic("success");
               },
               onError: (err) => {
                 setConfirm(null);

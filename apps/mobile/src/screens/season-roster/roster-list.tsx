@@ -23,9 +23,11 @@ import { useSaveGroupAssignments, useSeasonRoster } from "../../hooks/use-group-
 import { useSeasonGroups } from "../../hooks/use-groups";
 import { useRemoveSeasonPerson } from "../../hooks/use-season-people";
 import { apiErrorMessage } from "../../lib/api-error";
+import { plural } from "../../lib/plural";
 import { initialsOf } from "../../lib/initials";
 import { joinMeta } from "../../lib/join-meta";
 import { AssignSheet, ROSTER_UNASSIGNED_LABEL } from "./assign-sheet";
+import { haptic } from "../../design/motion";
 
 /**
  * The season's roster (v1 roster-grid.tsx; spec 05 §9; G7): a row per ACTIVE
@@ -116,10 +118,9 @@ export function RosterList({
         onSuccess: (result) => {
           setDraft({});
           const skipped = result.skippedStudentIds.length;
-          toast.success(
-            `Assigned ${result.assigned}, unassigned ${result.unassigned}.` +
-              (skipped > 0 ? ` ${skipped} skipped — no longer active in this season.` : ""),
-          );
+          haptic("success");
+          // The list shows what was saved; only a skipped student needs saying (owner, 2026-11-13).
+          if (skipped > 0) toast(`${plural(skipped, "student")} skipped: no longer active in this season.`);
         },
         onError: (err) => toast.error(apiErrorMessage(err, "Couldn't save the roster.")),
       },
@@ -186,7 +187,6 @@ export function RosterList({
         pending={removePerson.isPending}
         onConfirm={() => {
           if (removing === null) return;
-          const who = removing.name ?? removing.email;
           removePerson.mutate(
             { userId: removing.userId },
             {
@@ -196,7 +196,7 @@ export function RosterList({
                   const { [removing.userId]: _gone, ...rest } = d;
                   return rest;
                 });
-                toast.success(`${who} was removed from ${seasonTitle}.`);
+                haptic("success");
               },
               onError: (err) => {
                 setRemoving(null);

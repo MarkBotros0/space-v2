@@ -13,6 +13,7 @@ import { formatDate } from "../../../src/lib/format";
 import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
 import { parsePositiveInt } from "../../../src/lib/params";
 import { useSessionStore } from "../../../src/store/session";
+import { haptic } from "../../../src/design/motion";
 
 /**
  * v1 super/users/[id]/edit (B5-4): "Edit {name}", the email under it, the
@@ -101,7 +102,7 @@ function UserEdit({ data, selfId }: { data: UserDetail; selfId: number }) {
             {
               // v1 user-form.tsx:117 goes back to the users list on save.
               onSuccess: () => {
-                toast.success("Changes saved.");
+                haptic("success");
                 // Back to the list this was opened from (or the list in this
                 // detail's place, if it was opened elsewhere): never a second list.
                 router.dismissTo("/community");
