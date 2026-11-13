@@ -82,7 +82,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     });
     renderWithProviders(<DashboardScreen />);
 
-    expect(await screen.findByText("SEASONS")).toBeTruthy();
+    expect(await screen.findByText("ACTIVE SEASONS")).toBeTruthy();
     expect(
       await screen.findByText(/^3 of 4 sessions held · 33% attendance · 3 students · Community-wide$/),
     ).toBeTruthy();
@@ -109,7 +109,7 @@ describe("Super Home (owner, 2026-11-07: an overview, not a work queue)", () => 
     };
     walk(screen.toJSON());
     expect(texts.indexOf("COMMUNITY")).toBeGreaterThanOrEqual(0);
-    expect(texts.indexOf("COMMUNITY")).toBeLessThan(texts.indexOf("SEASONS"));
+    expect(texts.indexOf("COMMUNITY")).toBeLessThan(texts.indexOf("ACTIVE SEASONS"));
   });
 
   it("lists drafts under Coming up with their start and enrolled count", async () => {

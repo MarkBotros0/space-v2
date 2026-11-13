@@ -108,7 +108,7 @@ describe("Super Home card placement", () => {
     expect(await screen.findByText("Camp dates")).toBeTruthy();
     expect(await screen.findByText("Season 7")).toBeTruthy();
     const text = flatten(screen.toJSON());
-    expect(text.indexOf("SEASONS")).toBeGreaterThanOrEqual(0);
-    expect(text.indexOf("SEASONS")).toBeLessThan(text.indexOf("Camp dates"));
+    expect(text.indexOf("ACTIVE SEASONS")).toBeGreaterThanOrEqual(0);
+    expect(text.indexOf("ACTIVE SEASONS")).toBeLessThan(text.indexOf("Camp dates"));
   });
 });

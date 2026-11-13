@@ -101,7 +101,7 @@ export function SuperSeasons({
   return (
     <View className="gap-4">
       {running.length > 0 ? (
-        <GroupedList header="Seasons">
+        <GroupedList header="Active seasons">
           {running.map((s) => (
             <RunningSeason key={s.id} season={s} />
           ))}
