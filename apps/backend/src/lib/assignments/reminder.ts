@@ -188,13 +188,13 @@ export function reminderLine(
   if (!a.enabled) return null;
   const when = (at: Date) => `${formatShortDayInOrgTime(at)}, around ${formatClockInOrgTime(at)}`;
   if (a.remindedAt !== null) return `Sent ${when(remindAt ?? a.remindedAt)}`;
-  if (remindAt !== null) return `${when(remindAt)} — students who haven't finished`;
+  if (remindAt !== null) return `${when(remindAt)}, to students who haven't finished`;
   if (a.anchor === "NEXT_SESSION") {
     return a.hasAnchor
-      ? "The next session was too close — no reminder"
-      : "No session after it was published — no reminder";
+      ? "No reminder: the next session was too close"
+      : "No reminder: no session after it was published";
   }
-  return a.hasAnchor ? "Too close to the due date — no reminder" : "No due date yet — no reminder";
+  return a.hasAnchor ? "No reminder: too close to the due date" : "No reminder: no due date yet";
 }
 
 /** The reminder's body: "2 parts left before Thursday", the weekday being the anchor's (`days` after it goes out). */

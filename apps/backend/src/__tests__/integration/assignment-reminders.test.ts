@@ -83,7 +83,7 @@ describe("remindAt follows the next session", () => {
     expect(created.status).toBe(201);
     const id = created.body.data.id as number;
     expect((await stored(id)).remindAt?.toISOString()).toBe("2099-02-10T07:00:00.000Z");
-    expect(created.body.data.reminderLine).toBe("Tue 10 Feb, around 9:00 AM — students who haven't finished");
+    expect(created.body.data.reminderLine).toBe("Tue 10 Feb, around 9:00 AM, to students who haven't finished");
 
     const moved = await request(app)
       .patch(`/api/v1/sessions/${sessionId}`)
@@ -103,7 +103,7 @@ describe("remindAt follows the next session", () => {
     }
     expect((await stored(id)).remindAt).toBeNull();
     const detail = await request(app).get(`/api/v1/assignments/${id}`).set(auth());
-    expect(detail.body.data.reminderLine).toBe("No session after it was published — no reminder");
+    expect(detail.body.data.reminderLine).toBe("No reminder: no session after it was published");
   });
 });
 

@@ -161,6 +161,7 @@ describe("staff mark an assignment as submitted", () => {
       returned: false,
       hasEssay: true,
       staffMarked: true,
+      createdAt: "2099-01-01T00:00:00.000Z",
     };
     const [row] = submittedSections([marked], []).assignments;
     expect(row).toMatchObject({ subtitle: "Marked submitted by your leader", chip: { tone: "ok", label: "Done" } });

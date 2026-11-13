@@ -83,6 +83,19 @@ export function partChips(parts: AssignmentPart[], works: PartWork[]): ChipSpec[
 }
 
 /**
+ * The chips a row shows: none while every part is untouched (all neutral), so a class of students who
+ * haven't started reads as one quiet line, not three grey chips each (owner, 2026-11-13: "messy").
+ */
+export function shownChips(chips: ChipSpec[]): ChipSpec[] {
+  return chips.every((c) => c.tone === "neutral") ? [] : chips;
+}
+
+/** The share finished, 0..100, for the summary bar. */
+export function finishedPercent(finished: number, total: number): number {
+  return total === 0 ? 0 : Math.round((finished / total) * 100);
+}
+
+/**
  * Finished: submitted, with no part left (a returned essay counts as left), or marked submitted by
  * staff, which counts whatever the parts say (a returned essay takes the mark away).
  */

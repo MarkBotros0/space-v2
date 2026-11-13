@@ -72,21 +72,21 @@ describe("reminderLine", () => {
 
   it("says when it goes out, around the time", () => {
     expect(reminderLine(on, new Date("2025-11-11T07:00:00.000Z"))).toBe(
-      "Tue 11 Nov, around 9:00 AM — students who haven't finished",
+      "Tue 11 Nov, around 9:00 AM, to students who haven't finished",
     );
     expect(reminderLine(on, new Date("2025-11-11T13:30:00.000Z"))).toBe(
-      "Tue 11 Nov, around 3:30 PM — students who haven't finished",
+      "Tue 11 Nov, around 3:30 PM, to students who haven't finished",
     );
   });
 
   it("says there is no session after it was published, and null when off", () => {
-    expect(reminderLine({ ...on, hasAnchor: false }, null)).toBe("No session after it was published — no reminder");
+    expect(reminderLine({ ...on, hasAnchor: false }, null)).toBe("No reminder: no session after it was published");
     expect(reminderLine({ ...on, enabled: false }, new Date())).toBeNull();
   });
 
   it("says when the anchor is too close, and when it was sent", () => {
-    expect(reminderLine(on, null)).toBe("The next session was too close — no reminder");
-    expect(reminderLine({ ...on, anchor: "DUE_DATE" }, null)).toBe("Too close to the due date — no reminder");
+    expect(reminderLine(on, null)).toBe("No reminder: the next session was too close");
+    expect(reminderLine({ ...on, anchor: "DUE_DATE" }, null)).toBe("No reminder: too close to the due date");
     const sent = { ...on, remindedAt: new Date("2025-11-11T07:04:00.000Z") };
     expect(reminderLine(sent, new Date("2025-11-11T07:00:00.000Z"))).toBe("Sent Tue 11 Nov, around 9:00 AM");
   });

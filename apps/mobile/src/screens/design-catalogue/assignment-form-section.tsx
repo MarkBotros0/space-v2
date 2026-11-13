@@ -46,11 +46,11 @@ const PARTS: PartDraft[] = [
 
 /** Every line the server or the preview can show. */
 const LINES = [
-  "Tue 11 Nov, around 9:00 AM — students who haven't finished",
-  "2 days before the next session, around 9:00\u00A0AM — students who haven't finished",
-  "No session after it was published — no reminder",
-  "No due date yet — no reminder",
-  "The next session was too close — no reminder",
+  "Tue 11 Nov, around 9:00 AM, to students who haven't finished",
+  "2 days before the next session, around 9:00\u00A0AM, to students who haven't finished",
+  "No reminder: no session after it was published",
+  "No reminder: no due date yet",
+  "No reminder: the next session was too close",
   "Sent Tue 11 Nov, around 9:00 AM",
   "No reminder goes out for this assignment.",
 ];

@@ -62,7 +62,7 @@ const detail = {
   dueOrgTime: "23:59",
   isOverdue: false,
   reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION" as const, time: "09:00" },
-  reminderLine: "Tue 30 Mar, around 9:00 AM — students who haven't finished",
+  reminderLine: "Tue 30 Mar, around 9:00 AM, to students who haven't finished",
   parts,
   my: null,
   canManage: true,
@@ -136,12 +136,9 @@ describe("AssignmentDetailScreen (staff)", () => {
     serve({ canManage: false });
     renderWithProviders(<AssignmentDetailScreen />);
 
+    // Not finished opens first: Omar there, Sara (finished) on the other tab.
     expect(await screen.findByText("Omar Student")).toBeTruthy();
-    // Unfinished first: Omar's row comes before Sara's although the server sent Sara first.
-    const names = screen.getAllByText(/^(Sara|Omar) Student$/).map((n) => n.props.children);
-    expect(names).toEqual(["Omar Student", "Sara Student"]);
-    expect(screen.getByText("NOT FINISHED")).toBeTruthy();
-    expect(screen.getByText("FINISHED")).toBeTruthy();
+    expect(screen.queryByText("Sara Student")).toBeNull();
     expect(screen.getByText("1 of 2 students finished")).toBeTruthy();
 
     // Omar: how far into the video, in words, and the parts he still owes.
@@ -151,6 +148,8 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(screen.getByText("3 parts left")).toBeTruthy();
 
     // Sara: the video's score, the essay waiting, the forum posted.
+    fireEvent.press(screen.getByText("Finished 1"));
+    expect(await screen.findByText("Sara Student")).toBeTruthy();
     expect(screen.getByText("Video: 3 of 4 correct")).toBeTruthy();
     expect(screen.getByText("Essay: waiting review")).toBeTruthy();
     expect(screen.getByText("Forum: posted")).toBeTruthy();
@@ -162,11 +161,13 @@ describe("AssignmentDetailScreen (staff)", () => {
     renderWithProviders(<AssignmentDetailScreen />);
 
     // The row speaks its name, its line and every part's mark, as a button.
+    fireEvent.press(await screen.findByText("Finished 1"));
     const sara = await screen.findByRole("button", { name: /^Sara Student/ });
     expect(sara.props.accessibilityLabel).toContain("Essay: waiting review");
     fireEvent.press(sara);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "essay9aaaa" } });
 
+    fireEvent.press(screen.getByText("Not finished 1"));
     expect(screen.queryByRole("button", { name: /^Omar Student/ })).toBeNull();
     // Still read as one row, with its marks.
     expect(screen.getByLabelText(/^Omar Student, 3 parts left, Video 6\/18 min/)).toBeTruthy();
@@ -224,10 +225,10 @@ describe("AssignmentDetailScreen (staff)", () => {
     expect(screen.queryByText(/<p>/)).toBeNull();
     expect(screen.getByText(/the thing/)).toBeTruthy();
     const list = within(screen.getByTestId("assignment-parts"));
-    expect(list.getByText("Video: Welcome talk")).toBeTruthy();
-    expect(list.getByText("Essay: Who are you in the story?")).toBeTruthy();
-    expect(list.getByText("Forum: Share one thing you noticed")).toBeTruthy();
-    expect(screen.getByText("Tue 30 Mar, around 9:00 AM — students who haven't finished")).toBeTruthy();
+    expect(list.getByText("Welcome talk")).toBeTruthy();
+    expect(list.getByText("Who are you in the story?")).toBeTruthy();
+    expect(list.getByText("Share one thing you noticed")).toBeTruthy();
+    expect(screen.getByText("Tue 30 Mar, around 9:00 AM, to students who haven't finished")).toBeTruthy();
     expect(await screen.findByText("Omar Student")).toBeTruthy();
     // No student editor on the staff side.
     expect(screen.queryByText("Submit")).toBeNull();
@@ -238,13 +239,15 @@ describe("AssignmentDetailScreen (staff)", () => {
     serve();
     renderWithProviders(<AssignmentDetailScreen />);
 
-    fireEvent.press(await screen.findByRole("button", { name: /^Forum: Share one thing you noticed/ }));
+    fireEvent.press(
+      await screen.findByRole("button", { name: /^Share one thing you noticed, Part 3 · Forum · Read the discussion/ }),
+    );
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/assignment/[id]/part/[partId]",
       params: { id: "55", partId: "3" },
     });
-    expect(screen.queryByRole("button", { name: /^Video: Welcome talk/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Essay: Who are you/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Welcome talk/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Who are you/ })).toBeNull();
   });
 
   it("edits, and deletes only on a second, confirming press", async () => {

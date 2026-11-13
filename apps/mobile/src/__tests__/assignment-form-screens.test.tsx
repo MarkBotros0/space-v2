@@ -36,7 +36,7 @@ const season = {
   startDate: "2099-01-01T00:00:00.000Z",
   endDate: "2099-12-31T00:00:00.000Z",
 };
-const SAVED_LINE = "Mon 30 Mar, around 9:00 AM — students who haven't finished";
+const SAVED_LINE = "Mon 30 Mar, around 9:00 AM, to students who haven't finished";
 const detail: AssignmentDetail = {
   id: 55,
   seasonId: 7,
@@ -133,13 +133,13 @@ describe("NewAssignmentScreen", () => {
     renderWithProviders(<NewAssignmentScreen />);
     const line = () => screen.getByTestId("reminder-line").props.children;
     await screen.findByLabelText("Title");
-    expect(line()).toBe("2 days before the next session, around 9:00\u00A0AM — students who haven't finished");
+    expect(line()).toBe("2 days before the next session, around 9:00\u00A0AM, to students who haven't finished");
 
     fireEvent.press(screen.getByLabelText("How long before"));
     fireEvent.press(screen.getByRole("menuitem", { name: "5 days" }));
     fireEvent.press(screen.getByLabelText("Reminder hour"));
     fireEvent.press(screen.getByRole("menuitem", { name: "18" }));
-    expect(line()).toBe("5 days before the next session, around 6:00\u00A0PM — students who haven't finished");
+    expect(line()).toBe("5 days before the next session, around 6:00\u00A0PM, to students who haven't finished");
 
     // A due date ten days from today lets the line give the day itself.
     const due = new Date();
@@ -151,7 +151,7 @@ describe("NewAssignmentScreen", () => {
     fireEvent.press(screen.getByRole("menuitem", { name: "The due date" }));
     const send = new Date(due);
     send.setDate(send.getDate() - 5);
-    expect(line()).toBe(`${format(send, "EEE d MMM")}, around 6:00\u00A0PM — students who haven't finished`);
+    expect(line()).toBe(`${format(send, "EEE d MMM")}, around 6:00\u00A0PM, to students who haven't finished`);
 
     fireEvent.press(screen.getByLabelText("Remind students"));
     expect(line()).toBe("No reminder goes out for this assignment.");

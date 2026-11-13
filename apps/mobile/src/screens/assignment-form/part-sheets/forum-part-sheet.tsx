@@ -19,7 +19,7 @@ const DEFAULT_MIN_WORDS = "50";
 export function ForumPartSheet({ open, onClose, initial, onSave }: PartSheetProps<ForumDraft>) {
   const [prompt, setPrompt] = useState("");
   const [minWords, setMinWords] = useState(DEFAULT_MIN_WORDS);
-  const [postToRead, setPostToRead] = useState(true);
+  const [postToRead, setPostToRead] = useState(false);
   const [allowComments, setAllowComments] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -27,7 +27,8 @@ export function ForumPartSheet({ open, onClose, initial, onSave }: PartSheetProp
     if (!open) return;
     setPrompt(initial?.prompt ?? "");
     setMinWords(initial === null ? DEFAULT_MIN_WORDS : numberText(initial.minWords));
-    setPostToRead(initial?.postToRead ?? true);
+    // Off for a new forum (owner, 2026-11-13).
+    setPostToRead(initial?.postToRead ?? false);
     setAllowComments(initial?.allowComments ?? false);
     setErrors({});
   }, [open, initial]);

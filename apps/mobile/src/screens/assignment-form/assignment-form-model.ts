@@ -51,15 +51,15 @@ export function reminderPreview(v: ReminderInputs, saved: SavedReminder | null, 
   const at = `around ${formatWallTime(reminder.time)}`;
   if (reminder.anchor === "NEXT_SESSION") {
     const session = saved === null ? "the next session" : "the first session after it was published";
-    return `${plural(reminder.days, "day")} before ${session}, ${at} — ${FOR_WHOM}`;
+    return `${plural(reminder.days, "day")} before ${session}, ${at}, to ${FOR_WHOM}`;
   }
   if (v.dueDay === null) return null;
   const due = parse(v.dueDay, "yyyy-MM-dd", now);
   if (!isValid(due)) return null;
   const sendDay = addDays(due, -reminder.days);
   const sendAt = parse(reminder.time, "HH:mm", sendDay);
-  if (!isValid(sendAt) || sendAt <= now) return "Too close to the due date — no reminder";
-  return `${format(sendDay, "EEE d MMM")}, ${at} — ${FOR_WHOM}`;
+  if (!isValid(sendAt) || sendAt <= now) return "No reminder: too close to the due date";
+  return `${format(sendDay, "EEE d MMM")}, ${at}, to ${FOR_WHOM}`;
 }
 
 type Tab = "details" | "parts";

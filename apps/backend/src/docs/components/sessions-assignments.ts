@@ -163,6 +163,11 @@ export const sessionsAssignmentsSchemas = {
         description: "The assignment has an essay part, so a submitted one waits for review; without one it is done.",
       },
       staffMarked: { type: "boolean", description: "Staff marked it submitted: done, and `status` REVIEWED." },
+      createdAt: {
+        type: "string",
+        format: "date-time",
+        description: "When it was created; Home's To do is newest first.",
+      },
     },
   },
   AssignmentDetail: {
@@ -199,7 +204,7 @@ export const sessionsAssignmentsSchemas = {
       reminderLine: {
         type: ["string", "null"],
         description:
-          'When the reminder goes out, on the organisation\'s clock: "Tue 11 Nov, around 9:00 AM — students who haven\'t finished"; "No session after it was published — no reminder"; "The next session was too close — no reminder"; "Sent Tue 11 Nov, around 9:00 AM" once it has gone. Null when it is off.',
+          'When the reminder goes out, on the organisation\'s clock: "Tue 11 Nov, around 9:00 AM, to students who haven\'t finished"; "No reminder: no session after it was published"; "No reminder: the next session was too close"; "Sent Tue 11 Nov, around 9:00 AM" once it has gone. Null when it is off.',
       },
       parts: { type: "array", items: { $ref: "#/components/schemas/AssignmentPart" } },
       my: {

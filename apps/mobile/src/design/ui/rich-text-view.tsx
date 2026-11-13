@@ -8,6 +8,8 @@
  * what renders is Tailwind's reset — text-sm, no paragraph or list margins,
  * no list markers, headings at body size and weight, links in text colour.
  * That is reproduced here. Native differences: none intended.
+ * Each line takes its direction from its own first letter (`textDirection`), so
+ * Arabic instructions read right to left in the Arabic face (owner, 2026-11-13).
  */
 import { type ChildNode, type Element, isTag, isText } from "domhandler";
 import { parseDocument } from "htmlparser2";
@@ -15,6 +17,7 @@ import { Fragment, type ReactNode } from "react";
 import { Linking, Text as RNText, View } from "react-native";
 
 import { cn } from "../lib/cn";
+import { directionStyle } from "../lib/text-direction";
 import { Text } from "./text";
 
 const ALLOWED = new Set([
@@ -94,6 +97,18 @@ function inline(nodes: ChildNode[], key: string): ReactNode[] {
   });
 }
 
+/** The text a reader sees in these nodes, for its direction. */
+function plainText(nodes: ChildNode[]): string {
+  return nodes
+    .map((n) => (isText(n) ? n.data : isTag(n) && !DROPPED.has(n.name) ? plainText(n.children) : ""))
+    .join("");
+}
+
+/** Right to left, right aligned and in the Arabic face when the line starts in Arabic. */
+function lineStyle(nodes: ChildNode[]) {
+  return directionStyle(plainText(nodes));
+}
+
 /** Splits a node list into block-level lines, as the browser lays them out. */
 function blocks(nodes: ChildNode[], key: string): ReactNode[] {
   const out: ReactNode[] = [];
@@ -101,7 +116,7 @@ function blocks(nodes: ChildNode[], key: string): ReactNode[] {
   const flush = () => {
     if (run.some((n) => !isText(n) || n.data.trim() !== "")) {
       out.push(
-        <Text key={`${key}.r${out.length}`} className="text-sm text-foreground">
+        <Text key={`${key}.r${out.length}`} className="text-sm text-foreground" style={lineStyle(run)}>
           {inline(run, `${key}.r${out.length}`)}
         </Text>,
       );
@@ -122,7 +137,11 @@ function blocks(nodes: ChildNode[], key: string): ReactNode[] {
     if (isTag(node) && BLOCK.has(node.name)) {
       flush();
       out.push(
-        <Text key={`${key}.${i}`} className={cn("text-sm text-foreground", node.name === "pre" && "font-mono")}>
+        <Text
+          key={`${key}.${i}`}
+          className={cn("text-sm text-foreground", node.name === "pre" && "font-mono")}
+          style={lineStyle(node.children)}
+        >
           {inline(node.children, `${key}.${i}`)}
         </Text>,
       );

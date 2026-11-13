@@ -9,21 +9,21 @@ const now = new Date(2099, 3, 1, 8, 0);
 describe("reminderPreview", () => {
   it("says the rule for the next session, which only the server can date", () => {
     expect(reminderPreview({ reminder: on, dueDay: null, dueTime: "23:59" }, null, now)).toBe(
-      "2 days before the next session, around 9:00\u00A0AM — students who haven't finished",
+      "2 days before the next session, around 9:00\u00A0AM, to students who haven't finished",
     );
     expect(reminderPreview({ reminder: { ...on, days: 1 }, dueDay: null, dueTime: "23:59" }, null, now)).toBe(
-      "1 day before the next session, around 9:00\u00A0AM — students who haven't finished",
+      "1 day before the next session, around 9:00\u00A0AM, to students who haven't finished",
     );
   });
 
   it("dates a due-date reminder from the form's due day", () => {
     const reminder: Reminder = { ...on, anchor: "DUE_DATE", days: 3, time: "18:30" };
     expect(reminderPreview({ reminder, dueDay: "2099-04-10", dueTime: "23:59" }, null, now)).toBe(
-      "Tue 7 Apr, around 6:30\u00A0PM — students who haven't finished",
+      "Tue 7 Apr, around 6:30\u00A0PM, to students who haven't finished",
     );
     // Already gone by now.
     expect(reminderPreview({ reminder, dueDay: "2099-04-03", dueTime: "23:59" }, null, now)).toBe(
-      "Too close to the due date — no reminder",
+      "No reminder: too close to the due date",
     );
     // No due date: the anchor field says "Set a due date first" instead.
     expect(reminderPreview({ reminder, dueDay: null, dueTime: "23:59" }, null, now)).toBeNull();
@@ -40,12 +40,12 @@ describe("reminderPreview", () => {
       reminder: on,
       dueDay: null,
       dueTime: "23:59",
-      line: "Thu 9 Apr, around 9:00 AM — students who haven't finished",
+      line: "Thu 9 Apr, around 9:00 AM, to students who haven't finished",
     };
     expect(reminderPreview({ reminder: on, dueDay: null, dueTime: "23:59" }, saved, now)).toBe(saved.line);
     // Ruling (I3): a saved assignment's next session is the first after it was published, maybe past now.
     expect(reminderPreview({ reminder: { ...on, days: 4 }, dueDay: null, dueTime: "23:59" }, saved, now)).toBe(
-      "4 days before the first session after it was published, around 9:00\u00A0AM — students who haven't finished",
+      "4 days before the first session after it was published, around 9:00\u00A0AM, to students who haven't finished",
     );
   });
 });

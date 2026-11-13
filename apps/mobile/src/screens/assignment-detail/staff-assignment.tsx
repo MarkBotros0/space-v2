@@ -4,9 +4,12 @@
  * progress for the roles the server answers. The forum part opens on its own
  * screen to read the discussion; video and essay parts are followed in the
  * progress below.
+ * Redesigned 2026-11-13 (owner: "messy"): one overview card with the due date,
+ * the reminder and the actions; parts named by their own words (right to left
+ * when Arabic) with "Part N · kind" under them; progress in its own block.
  */
 import type { UseQueryResult } from "@tanstack/react-query";
-import { MessagesSquare, PenLine, PlayCircle, type LucideIcon } from "lucide-react-native";
+import { Bell, CalendarClock, MessagesSquare, PenLine, PlayCircle, type LucideIcon } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
@@ -24,11 +27,12 @@ import { usePullRefresh } from "../../hooks/use-pull-refresh";
 import { apiErrorMessage } from "../../lib/api-error";
 import { partKindLabel } from "../../lib/assignment-labels";
 import { formatOrgDue } from "../../lib/format";
+import { joinMeta } from "../../lib/join-meta";
 import { storedTextToHtml } from "../../lib/stored-text";
 import { useRole } from "../../store/session";
 import { AssignmentProgressList } from "./assignment-progress";
 
-iconWithClassName(MessagesSquare, PenLine, PlayCircle);
+iconWithClassName(Bell, CalendarClock, MessagesSquare, PenLine, PlayCircle);
 
 const KIND_ICONS: Record<AssignmentPartKind, LucideIcon> = {
   VIDEO: PlayCircle,
@@ -100,19 +104,25 @@ function PartsList({ detail }: { detail: AssignmentDetail }) {
     );
   }
   const ordered = [...detail.parts].sort((a, b) => a.position - b.position);
+  // Positions may have gaps after a removal; number the parts as they are shown.
+  const numbered = ordered.map((part, i) => ({ ...part, position: i + 1 }));
   return (
     <View testID="assignment-parts">
       <GroupedList header="Parts">
-        {ordered.map((part) => {
+        {numbered.map((part) => {
           const Icon = KIND_ICONS[part.kind];
           // Only the forum has something to read here; the others are followed in the progress.
           const opensForum = part.kind === "FORUM";
           return (
             <ListRow
               key={part.id}
-              title={`${partKindLabel(part.kind)}: ${partName(part)}`}
-              titleLines={2}
-              subtitle={opensForum ? "Read the discussion" : undefined}
+              title={partName(part)}
+              titleLines={3}
+              subtitle={joinMeta([
+                `Part ${part.position}`,
+                partKindLabel(part.kind),
+                opensForum ? "Read the discussion" : null,
+              ])}
               leading={
                 <Icon size={22} className="text-primary" accessibilityElementsHidden importantForAccessibility="no" />
               }
@@ -134,6 +144,41 @@ function PartsList({ detail }: { detail: AssignmentDetail }) {
   );
 }
 
+/** A fact with its icon: the due date, the reminder. */
+function Fact({ icon: Icon, children }: { icon: LucideIcon; children: string }) {
+  return (
+    <View className="flex-row items-start gap-3">
+      <Icon
+        size={20}
+        className="mt-0.5 text-muted-foreground"
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+      <Text variant="subhead" className="min-w-0 flex-1">
+        {children}
+      </Text>
+    </View>
+  );
+}
+
+/** When it is due, whether students get a reminder, and Edit / Delete for whoever may manage it. */
+function Overview({ detail }: { detail: AssignmentDetail }) {
+  // The server's org-clock day and time (C2/X13), never dueAt in the device's zone.
+  const due = detail.dueOrgDay === null ? "No due date" : `Due ${formatOrgDue(detail.dueOrgDay, detail.dueOrgTime)}`;
+  return (
+    <View className="flex-col gap-3 rounded-group bg-surface p-4">
+      {detail.isOverdue ? (
+        <View className="self-start">
+          <StatusChip tone="bad" label="Overdue" />
+        </View>
+      ) : null}
+      <Fact icon={CalendarClock}>{due}</Fact>
+      {detail.canManage && detail.reminderLine !== null ? <Fact icon={Bell}>{detail.reminderLine}</Fact> : null}
+      {detail.canManage ? <ManageActions detail={detail} /> : null}
+    </View>
+  );
+}
+
 function StaffAssignment({ detail, refresh }: { detail: AssignmentDetail; refresh: () => Promise<unknown> }) {
   const role = useRole();
   const showsProgress = role !== null && PROGRESS_ROLES.has(role);
@@ -143,14 +188,7 @@ function StaffAssignment({ detail, refresh }: { detail: AssignmentDetail; refres
   return (
     <Screen title={detail.title} subtitle={detail.seasonTitle} onRefresh={pull.onRefresh} refreshing={pull.refreshing}>
       <View className="gap-5">
-        <View className="flex-row flex-wrap items-center gap-2">
-          {detail.isOverdue ? <StatusChip tone="bad" label="Overdue" /> : null}
-          <Text variant="subhead" className="min-w-0 shrink text-muted-foreground">
-            {/* The server's org-clock day and time (C2/X13), never dueAt in the device's zone. */}
-            {detail.dueOrgDay === null ? "No due date" : `Due ${formatOrgDue(detail.dueOrgDay, detail.dueOrgTime)}`}
-          </Text>
-        </View>
-        {detail.canManage ? <ManageActions detail={detail} /> : null}
+        <Overview detail={detail} />
         {detail.description ? (
           <View>
             <ListSectionHeader>Instructions</ListSectionHeader>
@@ -161,14 +199,6 @@ function StaffAssignment({ detail, refresh }: { detail: AssignmentDetail; refres
           </View>
         ) : null}
         <PartsList detail={detail} />
-        {detail.canManage && detail.reminderLine !== null ? (
-          <View>
-            <ListSectionHeader>Reminder</ListSectionHeader>
-            <Text variant="subhead" className="rounded-group bg-surface p-4">
-              {detail.reminderLine}
-            </Text>
-          </View>
-        ) : null}
         {showsProgress ? (
           <View>
             <ListSectionHeader>Progress</ListSectionHeader>

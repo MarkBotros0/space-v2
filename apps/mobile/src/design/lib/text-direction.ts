@@ -17,4 +17,13 @@ function textDirection(s: string): "rtl" | "ltr" {
   return "ltr";
 }
 
-export { textDirection };
+/**
+ * Style for a line of user-written text in a regular weight: right to left, right aligned and in the
+ * Arabic face when it starts in Arabic; nothing otherwise, so English rows are untouched.
+ */
+function directionStyle(s: string) {
+  if (textDirection(s) !== "rtl") return undefined;
+  return { writingDirection: "rtl", textAlign: "right", fontFamily: "IBMPlexSansArabic_400Regular" } as const;
+}
+
+export { directionStyle, textDirection };

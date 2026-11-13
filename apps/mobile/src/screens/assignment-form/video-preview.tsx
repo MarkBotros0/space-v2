@@ -3,15 +3,15 @@
  * YouTube's own controls, never autoplaying. Reports the length YouTube gives
  * once the player is ready (the part stores it, as `durationSeconds`).
  */
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { View } from "react-native";
 import YoutubePlayer, { type YoutubeIframeRef } from "react-native-youtube-iframe";
 
-/** 16:9 on a 360dp phone inside a card's padding. */
-const PLAYER_HEIGHT = 180;
+import { videoHeight } from "../../design/lib/video-size";
 
 export function VideoPreview({ videoId, onDuration }: { videoId: string; onDuration?: (seconds: number) => void }) {
   const playerRef = useRef<YoutubeIframeRef>(null);
+  const [width, setWidth] = useState(0);
   const onReady = () => {
     if (onDuration === undefined) return;
     void playerRef.current
@@ -26,10 +26,11 @@ export function VideoPreview({ videoId, onDuration }: { videoId: string; onDurat
       testID="part-video-player"
       accessibilityLabel="Video preview"
       className="overflow-hidden rounded-control bg-black"
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       <YoutubePlayer
         ref={playerRef}
-        height={PLAYER_HEIGHT}
+        height={videoHeight(width)}
         videoId={videoId}
         play={false}
         initialPlayerParams={{ modestbranding: true, rel: false }}

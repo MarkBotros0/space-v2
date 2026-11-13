@@ -80,7 +80,7 @@ describe("POST /api/v1/seasons/:id/assignments", () => {
     expect(detail).toMatchObject({
       my: null,
       canManage: true,
-      reminderLine: "Sat 7 Mar, around 6:30 PM — students who haven't finished",
+      reminderLine: "Sat 7 Mar, around 6:30 PM, to students who haven't finished",
     });
     const row = await db.assignment.findUnique({
       where: { id: res.body.data.id },

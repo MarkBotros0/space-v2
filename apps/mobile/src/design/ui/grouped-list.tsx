@@ -18,6 +18,7 @@ import { ChevronRight } from "lucide-react-native";
 import { usePressDim } from "../motion";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
+import { directionStyle } from "../lib/text-direction";
 import { PillButton } from "./pill-button";
 import { Text } from "./text";
 
@@ -145,6 +146,8 @@ function ListRow({
           numberOfLines={titleLines ?? undefined}
           ellipsizeMode="tail"
           className={destructive ? "text-bad" : undefined}
+          // A title written in Arabic (a name, a prompt) reads right to left.
+          style={directionStyle(title)}
         >
           {title}
         </Text>
