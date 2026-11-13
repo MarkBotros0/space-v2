@@ -24,6 +24,7 @@ const assignment = (over: Partial<DashboardDueItem> & { id: number }): Dashboard
   returned: false,
   hasEssay: true,
   staffMarked: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
   ...over,
 });
 
@@ -38,6 +39,7 @@ const quiz = (over: Partial<StudentQuizResult> & { quizId: number }): StudentQui
   sessionDate: null,
   attemptStatus: null,
   answersReleased: true,
+  createdAt: "2099-01-01T00:00:00.000Z",
   adminScore: null,
   ...over,
 });
@@ -261,48 +263,37 @@ describe("isOpenQuiz (P2-4)", () => {
   });
 });
 
-describe("todayWork (P2-5)", () => {
-  const due = (id: number, dueOrgDay: string | null) =>
-    assignment({ id, dueOrgDay, dueAt: dueOrgDay ? `${dueOrgDay}T10:00:00.000Z` : null });
+describe("todayWork: Home's To do (owner, 2026-11-13)", () => {
+  const at = (day: string) => `2099-02-${day}T10:00:00.000Z`;
 
-  it("orders overdue, returned, due within 7 days, then open quizzes", () => {
+  it("lists every open assignment and open quiz, newest created first", () => {
     const rows = todayWork(
       [
-        due(1, "2099-03-02"),
-        assignment({ id: 2, status: "RETURNED", dueOrgDay: "2099-06-01" }),
-        assignment({ id: 3, isOverdue: true, dueOrgDay: "2099-02-20" }),
+        assignment({ id: 1, createdAt: at("01") }),
+        assignment({ id: 2, status: "RETURNED", returned: true, createdAt: at("05") }),
+        assignment({ id: 3, isOverdue: true, createdAt: at("03") }),
       ],
-      [quiz({ quizId: 9 })],
+      [quiz({ quizId: 9, createdAt: at("04") })],
       TODAY,
     );
-    expect(rows.map((r) => r.key)).toEqual(["assignment-3", "assignment-2", "assignment-1", "quiz-ONLINE-9"]);
+    expect(rows.map((r) => r.key)).toEqual(["assignment-2", "quiz-ONLINE-9", "assignment-3", "assignment-1"]);
   });
 
-  it("files a returned row past its due date under returned, matching its chip", () => {
+  it("keeps assignments with no due date or a far one", () => {
     const rows = todayWork(
       [
-        assignment({ id: 1, status: "RETURNED", isOverdue: true, dueOrgDay: "2099-02-20" }),
-        assignment({ id: 2, isOverdue: true, dueOrgDay: "2099-02-25" }),
+        assignment({ id: 1, dueOrgDay: null, dueAt: null, createdAt: at("02") }),
+        assignment({ id: 2, dueOrgDay: "2099-06-01", dueAt: "2099-06-01T10:00:00.000Z", createdAt: at("01") }),
       ],
       [],
       TODAY,
     );
-    expect(rows.map((r) => r.id)).toEqual([2, 1]);
+    expect(rows.map((r) => r.id)).toEqual([1, 2]);
   });
 
-  it("keeps day 7, drops day 8 and undated work", () => {
-    const rows = todayWork([due(1, "2099-03-08"), due(2, "2099-03-09"), due(3, null)], [], TODAY);
-    expect(rows.map((r) => r.id)).toEqual([1]);
-  });
-
-  it("keeps a returned row with no due date", () => {
-    const rows = todayWork([assignment({ id: 1, status: "RETURNED", dueOrgDay: null, dueAt: null })], [], TODAY);
-    expect(rows.map((r) => r.id)).toEqual([1]);
-  });
-
-  it("keeps the server's order inside a bucket", () => {
-    const rows = todayWork([due(2, "2099-03-02"), due(1, "2099-03-03")], [], TODAY);
-    expect(rows.map((r) => r.id)).toEqual([2, 1]);
+  it("an overdue row still says so on its chip", () => {
+    const rows = todayWork([assignment({ id: 1, isOverdue: true })], [], TODAY);
+    expect(rows[0]?.chip).toEqual({ tone: "bad", label: "Overdue" });
   });
 
   it("leaves out quizzes that are not open", () => {

@@ -2,12 +2,12 @@
  * ADMIN and SUPER's Work tab (owner, 2026-11-07): the season's assignments and
  * quizzes in one place, switched by a segmented control, with New assignment
  * and New quiz on top. Each row says its state in words: Overdue / Due …,
- * submitted counts; Draft / Done / Partly graded / Not graded.
+ * submitted counts. Quizzes split into Drafts and Published (`staff-quiz-list.tsx`).
  */
 import { useRouter } from "expo-router";
 import { type ReactNode, useState } from "react";
 import { View } from "react-native";
-import type { QuizSummary, StaffAssignmentListItem } from "@space/shared";
+import type { StaffAssignmentListItem } from "@space/shared";
 
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
@@ -20,8 +20,8 @@ import { StatusChip } from "../../design/ui/status-chip";
 import { useStaffAssignments } from "../../hooks/use-assignments";
 import { useQuizList } from "../../hooks/use-quizzes";
 import { useCurrentSeasonId, useSeasonDetail } from "../../hooks/use-seasons";
-import { formatDate, formatDayKey, formatDistanceOnly } from "../../lib/format";
-import { bySessionDate } from "../../lib/quiz-order";
+import { formatDayKey, formatDistanceOnly } from "../../lib/format";
+import { StaffQuizList } from "./staff-quiz-list";
 
 type Tab = "assignments" | "quizzes";
 
@@ -29,13 +29,6 @@ function assignmentChip(a: StaffAssignmentListItem): ReactNode {
   if (a.dueAt === null || a.dueOrgDay === null) return <StatusChip tone="neutral" label="No due date" />;
   if (a.isOverdue) return <StatusChip tone="warn" label={`Due ${formatDayKey(a.dueOrgDay)}`} />;
   return <StatusChip tone="info" label={`Due in ${formatDistanceOnly(a.dueAt)}`} />;
-}
-
-function quizChip(q: QuizSummary): ReactNode {
-  if (q.kind === "ONLINE" && q.publishedAt === null) return <StatusChip tone="warn" label="Draft" />;
-  if (q.studentCount > 0 && q.gradedCount >= q.studentCount) return <StatusChip tone="ok" label="Graded" />;
-  if (q.gradedCount > 0) return <StatusChip tone="info" label="Partly graded" />;
-  return <StatusChip tone="neutral" label="Not graded" />;
 }
 
 export function StaffWork({ canAuthor }: { canAuthor: boolean }) {
@@ -87,37 +80,12 @@ export function StaffWork({ canAuthor }: { canAuthor: boolean }) {
       </GroupedList>
     );
   } else {
-    const rows = [...(quizzes.data?.items ?? [])].sort(bySessionDate);
     body = quizzes.isPending ? (
       <RouteSkeleton />
     ) : quizzes.isError ? (
       <RouteError onRetry={() => void quizzes.refetch()} />
-    ) : rows.length === 0 ? (
-      <EmptyState icon={NAV_ICONS.quizzes} title="No quizzes yet" description="Add a quiz for a session." />
     ) : (
-      <GroupedList>
-        {rows.map((q) => {
-          const draft = q.kind === "ONLINE" && q.publishedAt === null;
-          return (
-            <ListRow
-              key={q.id}
-              title={q.title}
-              titleLines={2}
-              subtitle={`${q.sessionTitle !== null ? `${q.sessionTitle} · ${formatDate(q.sessionDate)}` : "No session"} · ${q.gradedCount} of ${q.studentCount} graded`}
-              trailing={quizChip(q)}
-              trailingPlacement="below"
-              chevron
-              onPress={() =>
-                router.push(
-                  canAuthor && draft
-                    ? { pathname: "/quiz/[id]/edit", params: { id: String(q.id) } }
-                    : { pathname: "/quiz/[id]/grade", params: { id: String(q.id) } },
-                )
-              }
-            />
-          );
-        })}
-      </GroupedList>
+      <StaffQuizList rows={quizzes.data?.items ?? []} canAuthor={canAuthor} />
     );
   }
 

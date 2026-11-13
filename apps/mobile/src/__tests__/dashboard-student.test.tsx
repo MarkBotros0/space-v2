@@ -91,9 +91,9 @@ describe("DashboardScreen — STUDENT", () => {
     expect(screen.queryByText(/submitted late this season/)).toBeNull();
     expect(screen.getByText("Happening now")).toBeTruthy();
     expect(screen.getByText("Sun, Mar 1 · 6:00 PM · 90 min · Hall")).toBeTruthy();
-    // Overdue from the server's flag; the far-off essay is behind "See all" (P2-5).
+    // Overdue from the server's flag; a far-off essay is listed too (owner, 2026-11-13).
     expect(screen.getByText("Overdue")).toBeTruthy();
-    expect(screen.queryByText("New essay")).toBeNull();
+    expect(screen.getByText("New essay")).toBeTruthy();
     expect(await screen.findByText("Open day")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Join stream"));

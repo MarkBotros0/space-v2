@@ -32,6 +32,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
             id: true,
             title: true,
             maxScore: true,
+            createdAt: true,
             session: { select: { title: true, startsAt: true } },
           },
         },
@@ -43,6 +44,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
         id: true,
         title: true,
         maxScore: true,
+        createdAt: true,
         resultsReleasedAt: true,
         session: { select: { title: true, startsAt: true } },
         attempts: {
@@ -73,6 +75,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
       attemptStatus: null,
       answersReleased: true,
       adminScore: null,
+      createdAt: g.quiz.createdAt,
     })),
     ...onlineQuizzes.map((q) => {
       const latest = q.attempts[0];
@@ -95,6 +98,7 @@ async function listQuizResultsForStudent(studentUserId: number, seasonId: number
         attemptStatus: latest?.status ?? null,
         answersReleased: q.resultsReleasedAt !== null,
         adminScore: byAdmin && counting ? { score: counting.score, notes: admin?.notes ?? null } : null,
+        createdAt: q.createdAt,
       };
     }),
   ];
@@ -152,6 +156,7 @@ export async function listQuizzes(req: Request, res: Response) {
       kind: true,
       publishedAt: true,
       resultsReleasedAt: true,
+      createdAt: true,
       maxScore: true,
       sessionId: true,
       seasonId: true,
@@ -183,6 +188,7 @@ export async function listQuizzes(req: Request, res: Response) {
       gradedCount: gradedBy.get(q.id) ?? 0,
       studentCount: studentIds.length,
       answersReleasedAt: q.resultsReleasedAt,
+      createdAt: q.createdAt,
     })),
     nextCursor: rows.length > limit ? (page[page.length - 1]?.id ?? null) : null,
   });

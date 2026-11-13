@@ -41,6 +41,7 @@ export const quizSchemas = {
       "gradedCount",
       "studentCount",
       "answersReleasedAt",
+      "createdAt",
     ],
     properties: {
       id: { type: "integer" },
@@ -61,6 +62,7 @@ export const quizSchemas = {
         format: "date-time",
         description: "When the answers were released to students; null while they are held back.",
       },
+      createdAt: { type: "string", format: "date-time", description: "When the quiz was created." },
     },
   },
   QuizAuthoringDetail: {
@@ -144,6 +146,7 @@ export const quizSchemas = {
       "readOnly",
       "answersReleased",
       "adminScore",
+      "createdAt",
     ],
     properties: {
       id: { type: "integer" },
@@ -362,6 +365,7 @@ export const quizSchemas = {
       gradedAt: { type: ["string", "null"], format: "date-time" },
       sessionTitle: { type: ["string", "null"] },
       sessionDate: { type: ["string", "null"], format: "date-time" },
+      createdAt: { type: "string", format: "date-time", description: "When the quiz was created." },
       attemptStatus: {
         oneOf: [{ $ref: "#/components/schemas/QuizAttemptStatus" }, { type: "null" }],
         description: "ONLINE only. A graded attempt reads GRADED at once; the answers have their own flag.",

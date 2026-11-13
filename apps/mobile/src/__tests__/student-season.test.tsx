@@ -54,6 +54,7 @@ const handedIn = (id: number, title: string, submittedAt: string, status = "SUBM
   returned: false,
   hasEssay: true,
   staffMarked: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
 });
 const takenQuiz = (quizId: number, title: string, sessionDate: string) => ({
   quizId,
@@ -67,6 +68,7 @@ const takenQuiz = (quizId: number, title: string, sessionDate: string) => ({
   sessionDate,
   attemptStatus: "GRADED",
   answersReleased: true,
+  createdAt: "2099-01-01T00:00:00.000Z",
 });
 
 /** Routes by URL: the season, and the two lists the submissions card reads. */

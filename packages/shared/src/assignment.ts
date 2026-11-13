@@ -73,6 +73,8 @@ export const studentAssignmentListItemSchema = z.object({
   hasEssay: z.boolean(),
   /** Staff marked it submitted ("Marked submitted by your leader"): it counts as done. */
   staffMarked: z.boolean(),
+  /** When it was created; Home's To do lists newest first. */
+  createdAt: z.string(),
 });
 export type StudentAssignmentListItem = z.infer<typeof studentAssignmentListItemSchema>;
 
@@ -98,8 +100,8 @@ export const assignmentDetailSchema = z.object({
   isOverdue: z.boolean(),
   reminder: reminderSchema,
   /**
-   * When the reminder goes out, in words ("Tue 11 Nov, around 9:00 AM — students who haven't finished",
-   * "No session after it was published — no reminder", "Sent Tue 11 Nov, around 9:00 AM"); null when it is off.
+   * When the reminder goes out, in words ("Tue 11 Nov, around 9:00 AM, to students who haven't finished",
+   * "No reminder: no session after it was published", "Sent Tue 11 Nov, around 9:00 AM"); null when it is off.
    */
   reminderLine: z.string().nullable(),
   parts: z.array(assignmentPartSchema),

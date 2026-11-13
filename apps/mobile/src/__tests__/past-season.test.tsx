@@ -31,6 +31,7 @@ const assignment = (id: number, status: string) => ({
   returned: status === "RETURNED",
   hasEssay: true,
   staffMarked: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
 });
 
 const record = {

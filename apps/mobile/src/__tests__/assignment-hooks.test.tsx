@@ -45,7 +45,7 @@ const detail: AssignmentDetail = {
   dueOrgTime: null,
   isOverdue: false,
   reminder,
-  reminderLine: "Tue 11 Nov, around 9:00 AM — students who haven't finished",
+  reminderLine: "Tue 11 Nov, around 9:00 AM, to students who haven't finished",
   parts: [
     { id: 3, position: 0, kind: "FORUM", prompt: "Discuss", minWords: null, postToRead: true, allowComments: true },
   ],
@@ -89,6 +89,7 @@ const studentRow = {
   returned: false,
   hasEssay: true,
   staffMarked: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
 };
 
 beforeEach(() => {

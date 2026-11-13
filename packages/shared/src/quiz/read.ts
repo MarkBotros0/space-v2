@@ -35,6 +35,8 @@ const quizSummarySchema = z.object({
   studentCount: z.number(),
   /** When students were let see the answers; null while they are held back. */
   answersReleasedAt: z.string().nullable(),
+  /** When the quiz was created; the staff list is newest first. */
+  createdAt: z.string(),
 });
 export type QuizSummary = z.infer<typeof quizSummarySchema>;
 
@@ -161,6 +163,8 @@ const studentQuizResultSchema = z.object({
   answersReleased: z.boolean(),
   /** ONLINE only: the admin's score and note, which `score` then carries; null for PAPER and when none. */
   adminScore: studentAdminScoreSchema,
+  /** When the quiz was created; Home's To do lists newest first. */
+  createdAt: z.string(),
 });
 export type StudentQuizResult = z.infer<typeof studentQuizResultSchema>;
 

@@ -150,21 +150,17 @@ export function isOpenQuiz(q: StudentQuizResult): boolean {
 }
 
 /**
- * P2-5: overdue, then returned, then due within 7 org days, then open quizzes;
- * inside a group the server's order holds. `isOverdue` is only about the
- * deadline, so a returned row past it is filed by its status, as its chip says.
+ * Home's To do (owner, 2026-11-13: "shows only the quizzes and doesn't show the assignments. It should
+ * show the most recent first"): every open assignment (not submitted, or returned) and every open quiz,
+ * newest created first. An assignment with no due date or a far one is listed too; its chip still says
+ * Overdue or Returned. My work keeps the grouped view.
  */
 export function todayWork(open: DashboardDueItem[], quizzes: StudentQuizResult[], todayOrgDay: string): WorkRow[] {
-  const returned = open.filter((a) => a.returned || a.status === "RETURNED");
-  const rest = open.filter((a) => !(a.returned || a.status === "RETURNED"));
-  const overdue = rest.filter((a) => a.isOverdue);
-  const dueSoon = rest.filter(
-    (a) => !a.isOverdue && a.dueOrgDay !== null && daysBetween(todayOrgDay, a.dueOrgDay) <= TODAY_WINDOW_DAYS,
-  );
-  return [
-    ...[...overdue, ...returned, ...dueSoon].map((a) => assignmentRow(a, todayOrgDay)),
-    ...quizzes.filter(isOpenQuiz).map(quizRow),
+  const items = [
+    ...open.map((a) => ({ createdAt: a.createdAt, row: assignmentRow(a, todayOrgDay) })),
+    ...quizzes.filter(isOpenQuiz).map((q) => ({ createdAt: q.createdAt, row: quizRow(q) })),
   ];
+  return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt)).map((i) => i.row);
 }
 
 /** A labelled group of rows; an empty group is not shown. */

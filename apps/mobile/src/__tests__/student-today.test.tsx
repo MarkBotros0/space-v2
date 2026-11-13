@@ -72,6 +72,7 @@ const row = (id: number, over: Record<string, unknown> = {}) => ({
   returned: over.status === "RETURNED",
   hasEssay: true,
   staffMarked: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
   ...over,
 });
 const withOpen = (open: unknown[]) => ({
@@ -214,16 +215,14 @@ describe("StudentToday: To do", () => {
     serve(routes({ [DASHBOARD]: withOpen([]), [STUDENT_QUIZZES]: { items: [], nextCursor: null } }));
     renderWithProviders(<StudentToday />);
     expect(await screen.findByText("You're all caught up.")).toBeTruthy();
-    expect(screen.queryByText("Nothing due this week.")).toBeNull();
   });
 
-  it("only later work: nothing due this week, not caught up", async () => {
+  it("work due later is listed too, never hidden behind 'caught up'", async () => {
     const later = row(1, { dueOrgDay: "2099-06-01", dueAt: "2099-06-01T10:00:00.000Z" });
     serve(routes({ [DASHBOARD]: withOpen([later]), [STUDENT_QUIZZES]: { items: [], nextCursor: null } }));
     renderWithProviders(<StudentToday />);
-    expect(await screen.findByText("Nothing due this week.")).toBeTruthy();
+    expect(await screen.findByText("Essay 1")).toBeTruthy();
     expect(screen.queryByText("You're all caught up.")).toBeNull();
-    expect(screen.queryByText("Essay 1")).toBeNull();
   });
 
   it("quiz list failing keeps the assignments, with an InlineError", async () => {

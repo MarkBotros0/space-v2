@@ -166,6 +166,7 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
       returned: false,
       hasEssay: true,
       staffMarked: false,
+      createdAt: expect.any(String),
     });
     expect(res.body.data.assignments[1]).toMatchObject({ status: "PENDING", partsTotal: 1, partsDone: 0 });
   });
@@ -190,7 +191,7 @@ describe("GET /api/v1/assignments/:id", () => {
       dueOrgTime: "02:00",
       reminder: { enabled: true, days: 2, anchor: "NEXT_SESSION", time: "09:00" },
       // The season has no session after the assignment was published.
-      reminderLine: "No session after it was published — no reminder",
+      reminderLine: "No reminder: no session after it was published",
       my: null,
       canManage: true,
       readOnly: false,

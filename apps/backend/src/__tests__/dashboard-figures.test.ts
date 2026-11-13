@@ -36,6 +36,7 @@ describe("progressFrom (D12 — sessions, never weeks)", () => {
 
 const row = (over: Partial<StudentAssignmentStateRow>): StudentAssignmentStateRow => ({
   id: 1,
+  createdAt: new Date("2099-01-01T00:00:00.000Z"),
   title: "A",
   dueAt: null,
   dueOrgDay: null,

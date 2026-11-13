@@ -14,6 +14,10 @@ assignment handed in and the last quiz taken, with See all to My work. Student H
 with the season card, then the next session, then To do; while check-in is open and they
 haven't checked in, the session leads. There is no attendance streak anywhere.
 
+**Home's To do (owner, 2026-11-13):** every open assignment (not submitted, or returned), whatever
+its due date or none, and every open quiz, in one list, newest created first. An overdue or returned
+row still says so on its chip. My work keeps its groups.
+
 An assignment staff marked submitted (owner 2026-11-12, `docs/rules/season-passing.md`) reads Done in My
 work with the line "Marked submitted by your leader"; it has no Submit and is never Overdue.
 

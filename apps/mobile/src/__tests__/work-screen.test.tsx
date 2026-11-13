@@ -28,11 +28,13 @@ const assignment = (id: number, over: Record<string, unknown> = {}) => ({
   returned: over.status === "RETURNED",
   hasEssay: true,
   staffMarked: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
   ...over,
 });
 const quiz = (quizId: number, over: Record<string, unknown> = {}) => ({
   ...quizResult,
   answersReleased: true,
+  createdAt: "2099-01-01T00:00:00.000Z",
   quizId,
   title: `Quiz ${quizId}`,
   ...over,

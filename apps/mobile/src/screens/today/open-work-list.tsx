@@ -9,9 +9,10 @@ import { WORK_HREF, todayWork } from "../work/work-model";
 import { WorkListRow, WorkLoadingRow } from "../work/work-row";
 
 /**
- * "What do I do now": overdue, returned, due this week, open quizzes (P2-5),
- * uncapped. It never says "caught up" until the quiz list has answered: while
- * that loads a placeholder holds the row, and if it fails the failure is shown.
+ * "What do I do now": every open assignment and open quiz, newest first (owner,
+ * 2026-11-13; `todayWork`), uncapped. It never says "caught up" until the quiz
+ * list has answered: while that loads a placeholder holds the row, and if it
+ * fails the failure is shown.
  */
 export function OpenWorkList({
   open,
@@ -29,8 +30,8 @@ export function OpenWorkList({
   if (rows.length === 0) {
     if (quizzes.isPending) {
       empty = <WorkLoadingRow />;
-    } else if (open.length > 0 || quizzes.isError) {
-      empty = <ListRow title="Nothing due this week." />;
+    } else if (quizzes.isError) {
+      empty = <ListRow title="No assignments to do." />;
     } else {
       empty = <ListRow title="You're all caught up." />;
     }

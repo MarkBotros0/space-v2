@@ -25,6 +25,7 @@ export interface StudentAssignmentRow {
   hasEssay: boolean;
   /** Staff marked it submitted: it counts as done whatever the parts say. */
   staffMarked: boolean;
+  createdAt: Date;
 }
 
 /**
@@ -69,6 +70,7 @@ export async function listAssignmentStatesForStudent(
       id: true,
       title: true,
       dueAt: true,
+      createdAt: true,
       parts: { orderBy: { position: "asc" }, select: PART_SELECT },
       submissions: { where: { studentUserId }, select: { submittedAt: true, ...STAFF_MARK_SELECT } },
     },
@@ -95,6 +97,7 @@ export async function listAssignmentStatesForStudent(
       submittedAt,
       ...standingOf(works),
       staffMarked,
+      createdAt: a.createdAt,
     };
   });
 }

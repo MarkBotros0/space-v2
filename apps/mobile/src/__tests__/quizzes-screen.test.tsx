@@ -94,6 +94,7 @@ function staffRow(over: Partial<Record<string, unknown>> = {}) {
     gradedCount: 3,
     studentCount: 8,
     answersReleasedAt: null,
+    createdAt: "2099-02-20T10:00:00.000Z",
     ...over,
   };
 }

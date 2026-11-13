@@ -69,6 +69,7 @@ export const studentDashboard = {
         returned: false,
         hasEssay: true,
         staffMarked: false,
+        createdAt: "2099-01-01T00:00:00.000Z",
       },
       {
         id: 42,
@@ -84,6 +85,7 @@ export const studentDashboard = {
         returned: false,
         hasEssay: true,
         staffMarked: false,
+        createdAt: "2099-01-01T00:00:00.000Z",
       },
     ],
     open: [
@@ -101,6 +103,7 @@ export const studentDashboard = {
         returned: false,
         hasEssay: true,
         staffMarked: false,
+        createdAt: "2099-01-01T00:00:00.000Z",
       },
       {
         id: 42,
@@ -116,6 +119,7 @@ export const studentDashboard = {
         returned: false,
         hasEssay: true,
         staffMarked: false,
+        createdAt: "2099-01-01T00:00:00.000Z",
       },
       {
         id: 43,
@@ -131,6 +135,7 @@ export const studentDashboard = {
         returned: true,
         hasEssay: true,
         staffMarked: false,
+        createdAt: "2099-01-01T00:00:00.000Z",
       },
     ],
   },
@@ -152,6 +157,7 @@ export const quizResult = {
   sessionDate: null,
   attemptStatus: null,
   answersReleased: false,
+  createdAt: "2099-01-01T00:00:00.000Z",
 };
 export const quizPage = { items: [quizResult], nextCursor: null };
 
