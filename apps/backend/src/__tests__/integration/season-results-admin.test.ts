@@ -51,6 +51,8 @@ describe("results after End", () => {
       setByName: "Test end-pass-admin",
       numbers: { assignments: { submitted: 2, total: 2 }, quizzes: { scored: 0.8, max: 1 } },
     });
+    // What the screen shows is End's stored numbers.
+    expect(highRow.figures).toEqual(highRow.numbers);
     expect(typeof highRow.setAt).toBe("string");
 
     // A leader of the season, and a stranger admin, are refused.
@@ -97,6 +99,12 @@ describe("results after End", () => {
         result: "PASSED",
         passScore: null,
         numbers: null,
+        // Read now, so the screen still shows all three (nothing held or set here).
+        figures: {
+          attendance: { attended: 0, total: 0 },
+          assignments: { submitted: 0, total: 0 },
+          quizzes: { scored: 0, max: 0 },
+        },
         againstScore: false,
         setByName: null,
       }),

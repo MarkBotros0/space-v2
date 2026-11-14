@@ -163,6 +163,8 @@ const seasonResultRowSchema = z.object({
   passScore: z.number().nullable().default(null),
   /** The numbers End stored; null for a season ended before weighted passing. */
   numbers: passingNumbersSchema.nullable().default(null),
+  /** The three numbers to show: End's stored ones, or, for a season ended before them, read now. */
+  figures: passingNumbersSchema.nullable().default(null),
   /** The result goes against the stored score (passed below the mark, or did not pass at or above it). */
   againstScore: z.boolean().default(false),
   /** Who set the result (End or a later correction), and when; null when not recorded. */

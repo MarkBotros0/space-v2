@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, within, screen, waitFor } from "@testing-library/react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
@@ -144,7 +144,8 @@ describe("Correcting a result on a graduating season", () => {
     await open(true);
     fireEvent.press(screen.getByText("Nour"));
     expect(screen.queryByText(WILL)).toBeNull();
-    fireEvent.press(screen.getByRole("tab", { name: "Passed" }));
+    // The sheet's choice, not the screen's filter by result.
+    fireEvent.press(within(screen.getByTestId("sheet")).getByRole("tab", { name: "Passed" }));
     expect(screen.getByText(WILL)).toBeTruthy();
   });
 

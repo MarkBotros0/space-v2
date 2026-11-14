@@ -57,7 +57,8 @@ export async function loadSeasonResults(season: {
     unstored.length > 0 ? (await loadPassingNumbers(season.id, unstored)).numbers : new Map<number, PassingNumbers>();
   const results: SeasonResultRow[] = enrollments.map((e) => {
     const numbers = stored.get(e.studentUserId) ?? null;
-    const attendance = (numbers ?? live.get(e.studentUserId))?.attendance;
+    const figures = numbers ?? live.get(e.studentUserId) ?? null;
+    const attendance = figures?.attendance;
     return {
       userId: e.studentUserId,
       name: e.studentUser.name,
@@ -68,6 +69,7 @@ export async function loadSeasonResults(season: {
       reason: e.resultReason,
       passScore: toScore(e.passScore),
       numbers,
+      figures,
       againstScore: e.resultAgainstScore ?? false,
       setByName: e.resultSetBy?.name ?? null,
       setAt: e.resultSetAt?.toISOString() ?? null,

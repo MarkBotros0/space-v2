@@ -128,6 +128,14 @@ graduating season graduates them then; Did not pass never removes alumni status
 (`docs/rules/graduating-seasons.md`). A former admin reaches Results from the Reports header link; the
 season page tile is for current admins and supers.
 
+The screen (owner 2026-11-14: "show the attendance, the quizzes and the assignments"): a summary of
+how many passed, did not pass and have no result, with the criteria End used (or, for a season ended
+before weighted passing, a line saying there is no score); a filter by result once there are two
+kinds; and one card per student with attendance, assignments and quizzes side by side, each a figure
+over a bar, then the score, End's words when the result goes against it, and the reason. The numbers
+are `figures` on each row: End's stored ones, or for an older season read now. A dash with "No
+sessions", "None set" or "None counted" stands for nothing to count, never a 0%.
+
 ## Where it lives
 
 Backend: `lib/passing/` (`numbers.ts`, `criteria.ts`, `outlook.ts`, `student-progress.ts`),

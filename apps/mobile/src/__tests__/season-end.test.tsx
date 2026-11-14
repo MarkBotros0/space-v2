@@ -253,8 +253,8 @@ describe("Results screen", () => {
     patch.mockResolvedValue({ data: { data: { ok: true } } });
     renderStacked(<SeasonResultsScreen />);
     await screen.findByText("Mina");
-    expect(screen.getByText("Passed")).toBeTruthy();
-    expect(screen.getByText("No result")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Mina, .*, Passed$/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Nour, .*, No result$/ })).toBeTruthy();
 
     fireEvent.press(screen.getByText("Nour"));
     fireEvent.press(screen.getByRole("tab", { name: "Did not pass" }));

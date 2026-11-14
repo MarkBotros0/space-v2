@@ -40,6 +40,7 @@ const result = (over: Record<string, unknown>) => ({
   reason: null,
   passScore: 72.5,
   numbers,
+  figures: numbers,
   againstScore: false,
   setByName: "Admin",
   setAt: "2026-06-30T12:00:00.000Z",
@@ -95,13 +96,35 @@ describe("Results after End", () => {
     );
   });
 
-  it('a season ended before reads "Ended before weighted passing"', async () => {
+  it("each card shows attendance, assignments and quizzes (owner 2026-11-14)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
-    serve(response({ criteria: null, results: [result({ passScore: null, numbers: null })] }));
+    serve(response());
     renderStacked(<SeasonResultsScreen />);
     await screen.findByText("Mina");
-    expect(row("Mina")).toContain("Ended before weighted passing");
-    expect(row("Mina")).not.toContain("Score");
+    expect(row("Mina")).toBe("Mina, Group A, Attendance 80%, Assignments 3/4, Quizzes 60%, Score 72.5, Passed");
+    expect(screen.getAllByText("8 of 10 sessions")).toHaveLength(3);
+    expect(screen.getAllByText("6 of 10 marks")).toHaveLength(3);
+    // Two passed, one didn't: the summary counts them and the filter narrows the cards.
+    const summary = screen.getByTestId("results-summary");
+    expect(within(summary).getByText("2")).toBeTruthy();
+    expect(within(summary).getByText(/^Pass mark 60\./)).toBeTruthy();
+    fireEvent.press(screen.getByRole("tab", { name: "Not passed, 1" }));
+    expect(screen.queryByText("Mina")).toBeNull();
+    expect(screen.getByText("Sara")).toBeTruthy();
+  });
+
+  it("a season ended before weighted passing still shows the three numbers, read now", async () => {
+    useSessionStore.setState(makeSession("SUPER"));
+    const none = {
+      attendance: { attended: 0, total: 0 },
+      assignments: { submitted: 2, total: 3 },
+      quizzes: { scored: 0, max: 0 },
+    };
+    serve(response({ criteria: null, results: [result({ passScore: null, numbers: null, figures: none })] }));
+    renderStacked(<SeasonResultsScreen />);
+    await screen.findByText("Mina");
+    expect(screen.getByText(/^Ended before weighted passing/)).toBeTruthy();
+    expect(row("Mina")).toBe("Mina, Group A, Attendance No sessions, Assignments 2/3, Quizzes None counted, Passed");
   });
 
   it("says no score in words for a student End had nothing to count for", async () => {

@@ -5,13 +5,13 @@ import type { SeasonResultRow } from "@space/shared";
 
 import { RouteError, RouteSkeleton, SeasonLinkNotFound } from "../../../../src/design/layout/route-states";
 import { Screen } from "../../../../src/design/layout/screen";
-import { EmptyState, GroupedList, ListRow, StatusChip } from "../../../../src/design/ui";
+import { EmptyState } from "../../../../src/design/ui";
 import { useSeasonResults, useUpdateSeasonResult } from "../../../../src/hooks/use-season-end";
 import { useSeasonRoute } from "../../../../src/hooks/use-season-route";
 import { apiErrorCode, apiErrorMessage, apiErrorStatus } from "../../../../src/lib/api-error";
 import { parsePositiveInt } from "../../../../src/lib/params";
 import { ResultSheet } from "../../../../src/screens/season-end/result-sheet";
-import { resultRowView } from "../../../../src/screens/season-end/results-model";
+import { ResultsList } from "../../../../src/screens/season-end/results-list";
 import { blankToNull } from "../../../../src/lib/form-values";
 import { haptic } from "../../../../src/design/motion";
 
@@ -68,29 +68,14 @@ export default function SeasonResultsScreen() {
   else if (results.data.results.length === 0)
     body = <EmptyState title="No students" description="No student finished this season." />;
   else {
-    const { criteria } = results.data;
     body = (
-      <GroupedList>
-        {results.data.results.map((r) => {
-          const view = resultRowView(r, criteria);
-          return (
-            <ListRow
-              key={r.userId}
-              title={r.name}
-              subtitle={view.lines.join("\n")}
-              subtitleLines={null}
-              trailing={<StatusChip tone={view.chip.tone} label={view.chip.label} />}
-              trailingLabel={view.chip.label}
-              trailingPlacement="below"
-              chevron
-              onPress={() => {
-                setError(null);
-                setEditing(r);
-              }}
-            />
-          );
-        })}
-      </GroupedList>
+      <ResultsList
+        data={results.data}
+        onOpen={(r) => {
+          setError(null);
+          setEditing(r);
+        }}
+      />
     );
   }
 
