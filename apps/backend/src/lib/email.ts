@@ -6,6 +6,7 @@ import { PASSWORD_RESET_TTL_MINUTES } from "../../../../packages/shared/src/inde
 import { config } from "./config";
 import { INLINE_IMAGES } from "./email-assets";
 import { INVITE_SUBJECT, buildInviteHtml, buildPasswordResetHtml, type StoreLinks } from "./email-templates";
+import { buildInviteText, buildPasswordResetText } from "./email-text";
 import { escapeHtml } from "./html";
 import { formatInOrgTime } from "./org-time";
 
@@ -55,13 +56,17 @@ export function inlineAttachments(html: string) {
   }));
 }
 
-/** Every email goes out with the inline images its HTML uses. */
-function sendHtml(to: string, subject: string, html: string) {
+/**
+ * Every email goes out as HTML with a plain-text twin and only the inline images its HTML uses
+ * (owner 2026-11-14: HTML-only mail with unused images went to spam).
+ */
+function sendMail(to: string, subject: string, html: string, text: string) {
   return getTransporter().sendMail({
     from: fromAddress(),
     to,
     subject,
     html,
+    text,
     attachments: inlineAttachments(html),
   });
 }
@@ -101,7 +106,15 @@ export async function sendInviteEmail(email: string, code: string, expiresAt: Da
     return;
   }
 
-  await sendHtml(email, INVITE_SUBJECT, buildInviteHtml(code, formatInOrgTime(expiresAt), storeLinks()));
+  const expires = formatInOrgTime(expiresAt);
+  // The text part takes the links as they are: escaping is for HTML.
+  const rawStores = { appStore: config.appStoreUrl || null, googlePlay: config.playStoreUrl || null };
+  await sendMail(
+    email,
+    INVITE_SUBJECT,
+    buildInviteHtml(code, expires, storeLinks()),
+    buildInviteText(code, expires, rawStores),
+  );
 }
 
 /**
@@ -125,9 +138,11 @@ export async function sendPasswordResetEmail(email: string, code: string, expire
   }
 
   const link = `${config.mobileAppScheme}://reset-password?token=${code}`;
-  await sendHtml(
+  const expires = formatInOrgTime(expiresAt);
+  await sendMail(
     email,
     "JPC Space — Password Reset",
-    buildPasswordResetHtml(link, code, PASSWORD_RESET_TTL_MINUTES, formatInOrgTime(expiresAt), storeLinks()),
+    buildPasswordResetHtml(link, code, PASSWORD_RESET_TTL_MINUTES, expires, storeLinks()),
+    buildPasswordResetText(code, PASSWORD_RESET_TTL_MINUTES, expires),
   );
 }

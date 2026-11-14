@@ -49,6 +49,10 @@ describe("sendInviteEmail", () => {
     // The code is shown in groups of four (spans, no spaces): its text is still the code exactly.
     expect(call.html.replace(/<[^>]+>/g, "")).toContain("CODE-abc_123");
     expect(call.html).toContain("2030");
+    // A plain-text twin rides with the HTML (owner 2026-11-14: HTML-only mail went to spam).
+    expect(call.text).toContain("Your invite code: CODE-abc_123");
+    expect(call.text).toContain("2030");
+    expect(call.text).not.toMatch(/<[a-z]/i);
   });
 
   it("without a transport sends nothing and never logs the code or the address (Decision 2)", async () => {
@@ -81,6 +85,8 @@ describe("sendPasswordResetEmail (Plan 10 Decisions 9–10)", () => {
     expect(call.subject).toBe("JPC Space — Password Reset");
     expect(call.html).toContain(`spacev2://reset-password?token=${CODE}`);
     expect(call.html).toContain("expires in 60 minutes");
+    expect(call.text).toContain(`Your reset code: ${CODE}`);
+    expect(call.text).toContain("expires in 60 minutes");
   });
 
   it("uses MOBILE_APP_SCHEME when set", async () => {

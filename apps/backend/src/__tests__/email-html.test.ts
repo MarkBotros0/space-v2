@@ -29,11 +29,12 @@ describe("email templates", () => {
   });
 
   // Owner 2026-11-07: TestFlight-only for now, so both badges show, unlinked, as coming soon.
-  it("shows both badges unlinked as coming soon while neither store link is set", () => {
+  it("says coming soon in words, with no badge, while neither store link is set (owner 2026-11-14)", () => {
     const html = storeLinksHtml(none);
     expect(html).toContain("coming soon to the App Store and Google Play");
-    expect(html).toContain("cid:app-store-badge");
-    expect(html).toContain("Get it on Google Play");
+    // An image that links nowhere is one more attachment for a spam filter to weigh.
+    expect(html).not.toContain("cid:app-store-badge");
+    expect(html).not.toContain("cid:google-play-badge");
     expect(html).not.toContain("<a ");
     expect(buildInviteHtml("C", "soon", none)).not.toContain("Don't have the app yet?");
   });
@@ -43,7 +44,7 @@ describe("email templates", () => {
     expect(html).toContain("Don't have the app yet?");
     expect(html).toContain('href="https://apps.example.test/jpc"');
     expect(html.match(/<a /g)).toHaveLength(1);
-    expect(html).toContain("Get it on Google Play");
+    expect(html).not.toContain("cid:google-play-badge");
     expect(html).toContain("Coming soon to Google Play.");
   });
 
@@ -74,9 +75,13 @@ describe("the code box", () => {
 });
 
 describe("inline images", () => {
-  it("attach the logo and both store badges, linked or not", () => {
+  it("attach the logo, and a store's badge only once it has a page", () => {
     const attached = inlineAttachments(buildInviteHtml("C", "soon", { appStore: null, googlePlay: null }));
-    expect(attached.map((a) => a.cid)).toEqual(["jpc-logo", "app-store-badge", "google-play-badge"]);
+    expect(attached.map((a) => a.cid)).toEqual(["jpc-logo"]);
+    const withStore = inlineAttachments(
+      buildInviteHtml("C", "soon", { appStore: "https://a.example.test", googlePlay: null }),
+    );
+    expect(withStore.map((a) => a.cid)).toEqual(["jpc-logo", "app-store-badge"]);
     expect(attached[0]!.content.subarray(1, 4).toString()).toBe("PNG");
   });
 });

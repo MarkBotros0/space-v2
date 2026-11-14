@@ -27,5 +27,11 @@
   submissions.
 - **Emails** (`src/lib/email-templates.ts`) are drawn dark with the app's tokens, the logo and the
   stores' official badges as inline cid images (`email-assets.ts`; Gmail shows no SVG or data
-  URLs). The store row shows only once `APP_STORE_URL` / `PLAY_STORE_URL` are set. An email can't
-  copy to the clipboard: a code selects in one tap instead.
+  URLs). A store's badge shows only once its `APP_STORE_URL` / `PLAY_STORE_URL` is set; until then
+  the row says "coming soon" in words. An email can't copy to the clipboard: a code selects in one
+  tap instead.
+- **Inbox, not spam (owner 2026-11-14):** every email carries a plain-text twin
+  (`src/lib/email-text.ts`) beside its HTML, and no image that links nowhere. The sender is a Gmail
+  account over Gmail's SMTP, so SPF, DKIM and DMARC pass for gmail.com; what is left is content and
+  the account's reputation. A sending domain of our own (Resend, Postmark or SES, with SPF, DKIM and
+  DMARC on it) is the lasting fix and is the owner's to decide.

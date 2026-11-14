@@ -54,18 +54,16 @@ export interface StoreLinks {
 }
 
 /**
- * Both stores' official badges (40 tall, side by side, wrapping on a narrow
- * phone), always. A badge with a link opens its store; one without is shown
- * unlinked and the copy says it is coming soon (owner, 2026-11-07: the app is
- * TestFlight-only, so no store page exists yet, and a made-up link would send
- * people to a dead page). Setting APP_STORE_URL / PLAY_STORE_URL turns them on.
+ * The stores' official badges (40 tall, side by side, wrapping on a narrow
+ * phone), each only once its store page exists; the copy says which are coming
+ * soon (owner, 2026-11-07: the app is TestFlight-only, so no store page exists
+ * yet, and a made-up link would send people to a dead page). Setting
+ * APP_STORE_URL / PLAY_STORE_URL turns them on.
  */
 export function storeLinksHtml(links: StoreLinks): string {
-  const badge = (href: string | null, cid: string, alt: string, width: number) => {
+  const badge = (href: string, cid: string, alt: string, width: number) => {
     const img = `<img src="cid:${cid}" alt="${alt}" width="${width}" height="40" style="display:block;border:0;height:40px;width:${width}px;">`;
-    return href
-      ? `<a href="${href}" style="display:inline-block;margin:0 10px 10px 0;text-decoration:none;">${img}</a>`
-      : `<span style="display:inline-block;margin:0 10px 10px 0;">${img}</span>`;
+    return `<a href="${href}" style="display:inline-block;margin:0 10px 10px 0;text-decoration:none;">${img}</a>`;
   };
   const neither = !links.appStore && !links.googlePlay;
   const missing = !links.appStore ? "the App Store" : !links.googlePlay ? "Google Play" : null;
@@ -73,10 +71,16 @@ export function storeLinksHtml(links: StoreLinks): string {
   const lead = neither
     ? "JPC Space is coming soon to the App Store and Google Play."
     : `Get JPC Space on your phone first, then come back to this email.${missing ? ` Coming soon to ${missing}.` : ""}`;
+  // Only a store with a page gets its badge (owner 2026-11-14: the emails went to spam; an
+  // image that links nowhere is one more attachment for a filter to weigh, and says nothing).
+  const badges = [
+    links.appStore ? badge(links.appStore, APP_STORE_BADGE.cid, "Download on the App Store", 120) : "",
+    links.googlePlay ? badge(links.googlePlay, GOOGLE_PLAY_BADGE.cid, "Get it on Google Play", 135) : "",
+  ].join("");
   return `<div class="e-line" style="margin:12px 0 0 0;padding-top:24px;border-top:1px solid ${T.line};">
     <p class="e-text" style="margin:0 0 4px 0;font-size:16px;font-weight:600;line-height:1.4;color:${T.text};">${heading}</p>
-    <p class="e-muted" style="margin:0 0 16px 0;font-size:14px;line-height:1.5;color:${T.muted};">${lead}</p>
-    ${badge(links.appStore, APP_STORE_BADGE.cid, "Download on the App Store", 120)}${badge(links.googlePlay, GOOGLE_PLAY_BADGE.cid, "Get it on Google Play", 135)}
+    <p class="e-muted" style="margin:0 ${badges ? "0 16px" : "0"} 0;font-size:14px;line-height:1.5;color:${T.muted};">${lead}</p>
+    ${badges}
   </div>`;
 }
 
