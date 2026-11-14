@@ -4,7 +4,7 @@
  * the band to its own class (a bar's fill, a ring's stroke). Colour is never the only signal:
  * the figure is always written beside it.
  */
-export type ProgressBand = "ok" | "warn" | "bad";
+type ProgressBand = "ok" | "warn" | "bad";
 
 export function progressBand(pct: number): ProgressBand {
   if (pct >= 75) return "ok";
