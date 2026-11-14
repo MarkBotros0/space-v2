@@ -170,7 +170,7 @@ describe("Announcements card placement on Home", () => {
     expect(at("Camp dates")).toBeLessThan(at("Follow-ups due: 2"));
   });
 
-  it("alumni: the card first, before the events", async () => {
+  it("alumni: the announcements feed first, before the events (owner 2026-11-14)", async () => {
     useSessionStore.setState(
       makeSession("STUDENT", { activeSeasonId: null, graduationYear: 2024 }, { name: "Nour Adel" }),
     );
@@ -178,7 +178,7 @@ describe("Announcements card placement on Home", () => {
       [EVENTS]: events,
       [UNREAD]: { unreadCount: 0 },
       "/api/v1/me/season-history": { seasons: [] },
-      [ANNOUNCEMENTS]: unread,
+      "/api/v1/announcements": { items: [unread.latest], nextCursor: null },
     });
     renderWithProviders(<DashboardScreen />);
     await screen.findByText("Camp dates");
