@@ -13,7 +13,7 @@ import { useUpcomingEvents } from "../../hooks/use-events";
 import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { useStaffToday } from "../../hooks/use-staff-today";
 import { firstName } from "../../lib/format";
-import { joinMeta } from "../../lib/join-meta";
+import { atRiskReason } from "../home/at-risk-reason";
 import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
 import { OverdueCallout } from "../season-end/overdue-callout";
 import { useSessionStore } from "../../store/session";
@@ -46,10 +46,7 @@ function AtRiskPreview({ data }: { data: StaffSeasonDashboard }) {
       people={cohort.atRisk.map((r) => ({
         id: r.studentUserId,
         name: r.studentName,
-        reason: joinMeta([
-          `${r.submissionsCompleted}/${r.submissionsExpected} submitted`,
-          r.attendanceTotal > 0 && `${r.attendancePct}% attendance`,
-        ]),
+        reason: atRiskReason(r),
       }))}
       total={cohort.atRiskTotal}
       onOpen={(id) => router.push({ pathname: "/student/[id]", params: { id: String(id) } })}

@@ -18,7 +18,7 @@ import { useCurrentSeasonId } from "../../hooks/use-seasons";
 import { firstName } from "../../lib/format";
 import { useSessionStore } from "../../store/session";
 import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
-import { atRiskReason } from "./at-risk-reason";
+import { atRiskReason } from "../home/at-risk-reason";
 import { LeaderSessionSection, isOnTheDay } from "./session-section";
 import { useLiveTodayRefresh } from "./use-live-refresh";
 

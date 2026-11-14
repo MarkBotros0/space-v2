@@ -126,7 +126,7 @@ describe("Students at risk", () => {
 
     expect(await screen.findByText("Sara")).toBeTruthy();
     expect(get).toHaveBeenCalledWith("/api/v1/reports/engagement/students?seasonId=7&band=AT_RISK&limit=50");
-    expect(screen.getByText("50% attendance · 1/3 submitted")).toBeTruthy();
+    expect(screen.getByText("Attendance 50% (2 of 4 sessions) · Assignments: 1 of 3 submitted")).toBeTruthy();
     fireEvent.press(screen.getByText("Sara"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
 

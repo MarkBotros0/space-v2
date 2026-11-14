@@ -18,7 +18,7 @@ jest.mock("../design/layout/home-actions", () => {
   return { HomeActions: () => <Text testID="home-actions">home actions</Text> };
 });
 
-import { atRiskReason } from "../screens/leader-today/at-risk-reason";
+import { atRiskReason } from "../screens/home/at-risk-reason";
 import { LeaderToday } from "../screens/leader-today";
 import { deviceTodayKey } from "../lib/calendar-grid";
 import { useSessionStore } from "../store/session";
@@ -51,19 +51,29 @@ const row = (over: Partial<EngagementRow>): EngagementRow =>
     ...over,
   }) as EngagementRow;
 
-describe("atRiskReason (R33): names only what is below the line", () => {
-  it("attendance alone", () => {
-    expect(atRiskReason(row({ attendancePct: 40, attendancePresent: 2 }))).toBe("Attendance 40%");
+describe("atRiskReason (R33): names only what is below the line, each by its area (owner 2026-11-14)", () => {
+  it("attendance alone, with the sessions behind the percent", () => {
+    expect(atRiskReason(row({ attendancePct: 40, attendancePresent: 2, attendanceTotal: 5 }))).toBe(
+      "Attendance 40% (2 of 5 sessions)",
+    );
   });
-  it("submissions alone, never repeating a good attendance value", () => {
-    const reason = atRiskReason(row({ submissionsCompleted: 1, submissionPct: 33 }));
-    expect(reason).toBe("1 of 3 submitted");
+  it("assignments alone, named as assignments, never repeating a good attendance value", () => {
+    const reason = atRiskReason(row({ submissionsCompleted: 0, submissionsExpected: 1, submissionPct: 0 }));
+    expect(reason).toBe("Assignments: 0 of 1 submitted");
     expect(reason).not.toContain("100%");
   });
   it("both low", () => {
-    expect(atRiskReason(row({ attendancePct: 40, submissionsCompleted: 1, submissionPct: 33 }))).toBe(
-      "Attendance 40% · 1 of 3 submitted",
-    );
+    expect(
+      atRiskReason(
+        row({
+          attendancePct: 40,
+          attendancePresent: 2,
+          attendanceTotal: 5,
+          submissionsCompleted: 1,
+          submissionPct: 33,
+        }),
+      ),
+    ).toBe("Attendance 40% (2 of 5 sessions) · Assignments: 1 of 3 submitted");
   });
 });
 
@@ -207,7 +217,7 @@ describe("LeaderToday", () => {
     expect(await screen.findByText("STUDENTS AT RISK")).toBeTruthy();
     expect(screen.queryByText("YOUR STUDENTS AT RISK")).toBeNull();
     expect(screen.getByText("Sara Student")).toBeTruthy();
-    expect(screen.getByText("Attendance 33% · 1 of 3 submitted")).toBeTruthy();
+    expect(screen.getByText("Attendance 33% (1 of 3 sessions) · Assignments: 1 of 3 submitted")).toBeTruthy();
     fireEvent.press(screen.getByText("See all 12"));
     expect(mockPush).toHaveBeenCalledWith("/groups");
     expect(screen.getByLabelText("Students: 3")).toBeTruthy();

@@ -166,7 +166,7 @@ describe("Admin Today", () => {
     expect(screen.queryByText("Quizzes")).toBeNull();
     fireEvent.press(screen.getByText("Sara Student"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });
-    expect(screen.getByText("1/3 submitted · 33% attendance")).toBeTruthy();
+    expect(screen.getByText("Attendance 33% (1 of 3 sessions) · Assignments: 1 of 3 submitted")).toBeTruthy();
     expect(screen.getByText("Open day")).toBeTruthy();
   });
 

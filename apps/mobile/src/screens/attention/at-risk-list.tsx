@@ -7,6 +7,7 @@ import { Screen } from "../../design/layout/screen";
 import { EmptyState, GroupedList, ListRow } from "../../design/ui";
 import { useEngagementStudents } from "../../hooks/use-reports";
 import { joinMeta } from "../../lib/join-meta";
+import { atRiskReason } from "../home/at-risk-reason";
 import { LoadMoreButton } from "../../design/ui/load-more-button";
 
 /**
@@ -38,11 +39,7 @@ export function StudentsAtRisk({ seasonId }: { seasonId: number | undefined }) {
             <ListRow
               key={`${r.studentUserId}:${r.seasonId}`}
               title={r.name}
-              subtitle={joinMeta([
-                seasonId === undefined && r.seasonTitle,
-                r.attendanceTotal > 0 && `${r.attendancePct}% attendance`,
-                `${r.submissionsCompleted}/${r.submissionsExpected} submitted`,
-              ])}
+              subtitle={joinMeta([seasonId === undefined && r.seasonTitle, atRiskReason(r)])}
               chevron
               onPress={() => router.push({ pathname: "/student/[id]", params: { id: String(r.studentUserId) } })}
             />
