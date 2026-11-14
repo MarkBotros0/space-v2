@@ -102,17 +102,19 @@ describe("admin student detail", () => {
   });
 
   // Owner 2026-11-07: Submissions, Attendance, Notes, Seasons; the first opens.
-  it("orders the sections Submissions, Attendance, Notes, Seasons", async () => {
+  it("orders the sections Work, Attendance, Notes, Seasons (owner 2026-11-14)", async () => {
     useSessionStore.setState(makeSession("SUPER"));
     renderWithProviders(<StudentDetailScreen />);
     await screen.findByLabelText("Edit profile");
-    const names = new Set(["Submissions", "Attendance", "Notes", "Seasons"]);
+    const names = new Set(["Work", "Attendance", "Notes", "Seasons"]);
     const tabs = screen
       .getAllByRole("tab")
       .map((b) => b.props.accessibilityLabel as string)
       .filter((label) => names.has(label));
-    expect(tabs).toEqual(["Submissions", "Attendance", "Notes", "Seasons"]);
-    expect(get).toHaveBeenCalledWith("/api/v1/students/21/submissions");
+    expect(tabs).toEqual(["Work", "Attendance", "Notes", "Seasons"]);
+    // Work reads the season progress, not the essay list.
+    expect(get).toHaveBeenCalledWith("/api/v1/students/21/progress");
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/submissions");
   });
 
   it("fetches a section only when it is first opened", async () => {

@@ -13,11 +13,12 @@ import { View } from "react-native";
 
 import type { StudentDetail as StudentDetailData } from "../../hooks/use-students";
 import { StatusChip } from "../../design/ui/status-chip";
-import { GroupedAttendanceTab, GroupedNotesTab, GroupedSeasonsTab, GroupedSubmissionsTab } from "./grouped-tabs";
+import { GroupedAttendanceTab, GroupedNotesTab, GroupedSeasonsTab } from "./grouped-tabs";
 import { NoteSheet } from "./note-sheet";
 import { SeasonProgressCard } from "./season-progress-card";
 import { StudentDetails } from "./student-details";
 import { type StudentSection, StudentSections } from "./student-sections";
+import { StudentWorkTab } from "./work-tab";
 
 export function StudentDetailGrouped({
   student,
@@ -27,14 +28,15 @@ export function StudentDetailGrouped({
 }: {
   student: StudentDetailData;
   canWriteNote: boolean;
-  /** False for a student viewing their own page: no season progress, attendance, submissions or notes. */
+  /** False for a student viewing their own page: no season progress, work, attendance or notes. */
   staffTabs?: boolean;
   /** Who a new note is visible to until the writer changes it. Omitted: NoteSheet's own default. */
   noteDefaultVisibility?: ComponentProps<typeof NoteSheet>["defaultVisibility"];
 }) {
   // Always mounted, so a dismissed note keeps its text.
   const [noteOpen, setNoteOpen] = useState(false);
-  // Owner 2026-11-07: Submissions first, then Attendance, Notes and Seasons; the first opens.
+  // Owner 2026-11-14: Work (assignments and quizzes, the essay inside its assignment) first, then
+  // Attendance, Notes and Seasons; the first opens.
   const seasons: StudentSection = {
     value: "seasons",
     label: "Seasons",
@@ -42,7 +44,11 @@ export function StudentDetailGrouped({
   };
   const sections: StudentSection[] = staffTabs
     ? [
-        { value: "submissions", label: "Submissions", render: () => <GroupedSubmissionsTab studentId={student.id} /> },
+        {
+          value: "work",
+          label: "Work",
+          render: () => <StudentWorkTab studentId={student.id} studentName={student.name} />,
+        },
         { value: "attendance", label: "Attendance", render: () => <GroupedAttendanceTab studentId={student.id} /> },
         {
           value: "notes",

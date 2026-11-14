@@ -19,7 +19,8 @@ import { GraduateStudentSheet } from "./graduate-student-sheet";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
 import { iconWithClassName } from "../../design/lib/icon";
 import { Screen } from "../../design/layout/screen";
-import { GroupedAttendanceTab, GroupedNotesTab, GroupedSubmissionsTab } from "../student-detail/grouped-tabs";
+import { GroupedAttendanceTab, GroupedNotesTab } from "../student-detail/grouped-tabs";
+import { StudentWorkTab } from "../student-detail/work-tab";
 import { NoteSheet } from "../student-detail/note-sheet";
 import { SeasonProgressCard } from "../student-detail/season-progress-card";
 import { studentSubtitle } from "../student-detail/student-detail-grouped";
@@ -97,9 +98,9 @@ export function AdminStudentDetail({ id }: { id: number }) {
   }
 
   const actions = studentActionsFor(user, scopes, data);
-  // Owner 2026-11-07: Submissions first, then Attendance, Notes and Seasons; the first opens.
+  // Owner 2026-11-14: Work (assignments and quizzes) first, then Attendance, Notes and Seasons; the first opens.
   const sections: StudentSection[] = [
-    { value: "submissions", label: "Submissions", render: () => <GroupedSubmissionsTab studentId={data.id} /> },
+    { value: "work", label: "Work", render: () => <StudentWorkTab studentId={data.id} studentName={data.name} /> },
     { value: "attendance", label: "Attendance", render: () => <GroupedAttendanceTab studentId={data.id} /> },
     {
       value: "notes",

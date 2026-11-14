@@ -4,12 +4,10 @@ import {
   studentDetailPrivateSchema,
   studentDetailPublicSchema,
   studentAttendanceHistorySchema,
-  studentSubmissionsSchema,
   type StudentDetailInternal,
   type StudentDetailPrivate,
   type StudentDetailPublic,
   type StudentAttendanceHistory,
-  type StudentSubmissions,
   type UserRole,
 } from "@space/shared";
 
@@ -62,15 +60,6 @@ export function useStudentAttendanceHistory(
   return useQuery({
     queryKey: queryKeys.students.attendance(id),
     queryFn: () => apiGet(`/api/v1/students/${id}/attendance`, studentAttendanceHistorySchema),
-    enabled: enabled && id !== null,
-  });
-}
-
-/** GET /students/:id/submissions — staff only (REG-83); never a DRAFT. */
-export function useStudentSubmissions(id: number | null, enabled: boolean): UseQueryResult<StudentSubmissions> {
-  return useQuery({
-    queryKey: queryKeys.students.submissions(id),
-    queryFn: () => apiGet(`/api/v1/students/${id}/submissions`, studentSubmissionsSchema),
     enabled: enabled && id !== null,
   });
 }

@@ -199,7 +199,7 @@ describe("StudentDetailScreen history (REG-83)", () => {
     });
   }
 
-  it("shows the enrolment percentage, attendance history and submissions to staff", async () => {
+  it("shows the enrolment percentage and attendance history to staff, and Work in place of Submissions", async () => {
     serve(superSession);
     renderWithProviders(<StudentDetailScreen />);
 
@@ -209,10 +209,8 @@ describe("StudentDetailScreen history (REG-83)", () => {
     fireEvent.press(screen.getByText("Attendance"));
     expect(await screen.findByText("Week 4")).toBeTruthy();
     expect(screen.getAllByText("Late").length).toBeGreaterThan(0);
-    fireEvent.press(screen.getByText("Submissions"));
-    fireEvent.press(await screen.findByText("Essay one"));
-    // A history row is the whole Submission, not one essay: it opens the assignment's progress.
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "41" } });
+    expect(screen.getByRole("tab", { name: "Work" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Submissions" })).toBeNull();
   });
 
   it("never asks a student's own record for the staff-only history", async () => {

@@ -1,19 +1,17 @@
 /**
  * The student page's sections as grouped lists (Seasons, Attendance,
- * Submissions, Notes), for the leader's and mentor's page
+ * Notes; Work is work-tab.tsx), for the leader's and mentor's page
  * (StudentDetailGrouped) and the admin's (AdminStudentDetail). The details
  * list is StudentDetails.
  */
 import type { EnrollmentHistoryItem } from "@space/shared";
-import { useRouter } from "expo-router";
 import { Calendar, Flag, MapPin } from "lucide-react-native";
 import { View } from "react-native";
 
 import { flattenNotePages, useStudentNotes } from "../../hooks/use-notes";
-import { useStudentAttendanceHistory, useStudentSubmissions } from "../../hooks/use-students";
+import { useStudentAttendanceHistory } from "../../hooks/use-students";
 import { formatDate, formatDateTime, formatSeasonDay, unbreakable } from "../../lib/format";
 import { VISIBILITY_LABEL } from "../../lib/note-visibility";
-import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { InlineError } from "../../design/layout/route-states";
 import { Button } from "../../design/ui/button";
 import { EmptyState } from "../../design/ui/empty-state";
@@ -114,49 +112,6 @@ export function GroupedAttendanceTab({ studentId, bySeason = false }: { studentI
         </GroupedList>
       ))}
     </View>
-  );
-}
-
-export function GroupedSubmissionsTab({ studentId }: { studentId: number }) {
-  const router = useRouter();
-  const q = useStudentSubmissions(studentId, true);
-  if (q.isPending) return <Loading />;
-  if (!q.data) return <InlineError message="Couldn't load submissions." onRetry={() => void q.refetch()} />;
-  if (q.data.submissions.length === 0) {
-    return (
-      <EmptyState
-        icon={NAV_ICONS.submissions}
-        title="No submissions"
-        description="Submissions visible to you will appear here."
-      />
-    );
-  }
-  return (
-    <GroupedList>
-      {q.data.submissions.map((s) => {
-        const status = statusChip("submission", s.status);
-        return (
-          <ListRow
-            key={s.publicId}
-            title={s.assignmentTitle}
-            titleLines={2}
-            subtitle={caption(s.seasonTitle, s.submittedAt && `submitted ${formatDate(s.submittedAt)}`)}
-            subtitleLines={null}
-            chevron
-            // A history row is the whole Submission, not one essay: the review screen reads an
-            // essay's publicId, so the row opens the assignment, where its progress lists each part.
-            onPress={() => router.push({ pathname: "/assignment/[id]", params: { id: String(s.assignmentId) } })}
-            trailing={
-              <View className="items-end gap-1">
-                {s.isLate ? <StatusChip tone="warn" label="Late" /> : null}
-                <StatusChip {...status} />
-              </View>
-            }
-            trailingLabel={caption(s.isLate && "Late", status.label)}
-          />
-        );
-      })}
-    </GroupedList>
   );
 }
 

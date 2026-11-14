@@ -193,14 +193,11 @@ describe("StudentDetailScreen — LEADER (v1 /leader/students/[id], B3-15)", () 
     serveLeader();
     renderWithProviders(<StudentDetailScreen />);
     expect(await screen.findByText("Group A")).toBeTruthy();
-    // Submissions is the first tab (owner, 2026-11-07), so it opens and fetches at once;
+    // Work is the first tab (owner, 2026-11-14) and reads the season progress the card reads;
     // the others wait until opened.
-    expect(await screen.findByText("Essay one")).toBeTruthy();
-    expect(get).toHaveBeenCalledWith("/api/v1/students/21/submissions");
+    expect(screen.getByRole("tab", { name: "Work" })).toBeTruthy();
+    expect(get).not.toHaveBeenCalledWith("/api/v1/students/21/submissions");
     expect(requested().some((u) => u.endsWith("/attendance") || u.includes("/notes"))).toBe(false);
-    fireEvent.press(screen.getByText("Essay one"));
-    // A history row is the whole Submission, not one essay: it opens the assignment's progress.
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/assignment/[id]", params: { id: "41" } });
 
     fireEvent.press(screen.getByText("Seasons"));
     expect(await screen.findByText(/83% attendance/)).toBeTruthy();
