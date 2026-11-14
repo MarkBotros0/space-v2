@@ -84,13 +84,13 @@ describe("navFor", () => {
       LEADER: [
         "/announcements",
         "/calendar",
+        "/coursework",
         "/dashboard",
         "/groups",
         "/more",
         "/notes",
         "/notifications",
         "/quizzes",
-        "/submissions",
       ],
       MENTOR: ["/announcements", "/dashboard", "/follow-ups", "/more", "/notes", "/notifications", "/students"],
       STUDENT: [
@@ -187,7 +187,7 @@ describe("navFor", () => {
         ["/groups", "My group", "groups"],
         ["/notes", "My notes", "notes"],
         ["/calendar", "Calendar", "calendar"],
-        ["/submissions", "Submissions", "submissions"],
+        ["/coursework", "Work", "assignments"],
         ["/quizzes", "Quizzes", "quizzes"],
         ["/notifications", "Notifications", "notifications"],
       ],
@@ -195,7 +195,7 @@ describe("navFor", () => {
         ["/dashboard", "Home", "home"],
         ["/groups", "My group", "groups"],
         ["/calendar", "Calendar", "calendar"],
-        ["/submissions", "Submissions", "submissions"],
+        ["/coursework", "Work", "assignments"],
         ["/more", "More", "more"],
       ],
     });

@@ -169,7 +169,7 @@ describe("LeaderToday", () => {
     expect(screen.queryByText(/not checked in/)).toBeNull();
   });
 
-  it("waiting for you: assignments and quizzes side by side, opening the same season's queue and the quizzes", async () => {
+  it("waiting for you: assignments and quizzes side by side, both opening Work", async () => {
     serveDash(dash({ nextSession: null, leaderSession: null }));
     renderWithProviders(<LeaderToday />);
     expect(await screen.findByLabelText("Assignments to review: 1")).toBeTruthy();
@@ -178,10 +178,10 @@ describe("LeaderToday", () => {
     // Named in the list below instead of a tile of their own.
     expect(screen.queryByLabelText(/^Students at risk:/)).toBeNull();
     fireEvent.press(screen.getByLabelText("Assignments to review: 1"));
-    // The figures are this season's, so the queue opens on the same season.
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/submissions", params: { seasonId: "7" } });
+    // Both open Work (owner 2026-11-14), on the side the tile counts.
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/coursework", params: { tab: "assignments" } });
     fireEvent.press(screen.getByLabelText("Quizzes to grade: 2"));
-    expect(mockPush).toHaveBeenLastCalledWith("/quizzes");
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/coursework", params: { tab: "quizzes" } });
   });
 
   it("nothing waiting keeps both tiles, each at zero and all clear", async () => {

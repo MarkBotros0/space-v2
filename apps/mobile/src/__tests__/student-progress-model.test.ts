@@ -69,9 +69,9 @@ describe("progressLines", () => {
     const [attendance, assignments] = progressLines(progress());
     expect(progressSpoken(attendance!)).toBe("Attendance 85%, 17 of 20 sessions");
     expect(progressSpoken(assignments!)).toBe("Assignments 78%, 7 of 9 submitted");
-    expect(progressSpoken({ key: "quizzes", label: "Quizzes", pct: null, figure: "None this season", short: "None yet" })).toBe(
-      "Quizzes, None this season",
-    );
+    expect(
+      progressSpoken({ key: "quizzes", label: "Quizzes", pct: null, figure: "None this season", short: "None yet" }),
+    ).toBe("Quizzes, None this season");
   });
 });
 

@@ -122,7 +122,7 @@ export const studentAttendanceHistorySchema = z.object({
 export type StudentAttendanceHistory = z.infer<typeof studentAttendanceHistorySchema>;
 
 /** One row of `GET /students/:id/submissions` (REG-83), newest first, never a DRAFT. */
-const studentSubmissionItemSchema = z.object({
+export const studentSubmissionItemSchema = z.object({
   publicId: z.string(),
   assignmentId: z.number(),
   assignmentTitle: z.string(),
@@ -134,12 +134,6 @@ const studentSubmissionItemSchema = z.object({
   seasonTitle: z.string(),
 });
 export type StudentSubmissionItem = z.infer<typeof studentSubmissionItemSchema>;
-
-/** `GET /students/:id/submissions` — staff only; the 100 most recent. */
-export const studentSubmissionsSchema = z.object({
-  submissions: z.array(studentSubmissionItemSchema),
-});
-export type StudentSubmissions = z.infer<typeof studentSubmissionsSchema>;
 
 export const studentDetailPublicSchema = studentDetailBase.extend({
   profile: studentProfilePublicSchema,

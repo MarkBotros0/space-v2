@@ -7,6 +7,7 @@ import { htmlToPlainText, type AssignmentPart, type StudentProgress } from "@spa
 
 import type { ChipSpec } from "../../design/ui/status-chip";
 import { formatScore } from "../../lib/format";
+import { joinMeta } from "../../lib/join-meta";
 import { partKindLabel } from "../../lib/assignment-labels";
 import { handedInEssays, partChips, type ProgressRow } from "../assignment-detail/progress-model";
 
@@ -15,11 +16,11 @@ type ProgressQuiz = StudentProgress["quizzes"][number];
 /** A quiz's chip: its score as marks and percent, or that it has none yet. */
 export function quizChip(q: ProgressQuiz): ChipSpec {
   if (q.score === null) return { tone: "neutral", label: "No score yet" };
-  const pct = q.maxScore > 0 ? ` · ${Math.round((q.score / q.maxScore) * 100)}%` : "";
-  return { tone: "ok", label: `${formatScore(q.score)} / ${formatScore(q.maxScore)}${pct}` };
+  const pct = q.maxScore > 0 ? `${Math.round((q.score / q.maxScore) * 100)}%` : null;
+  return { tone: "ok", label: joinMeta([`${formatScore(q.score)} / ${formatScore(q.maxScore)}`, pct]) };
 }
 
-export type PartLine = {
+type PartLine = {
   partId: number;
   /** "Part 1 · Video" */
   name: string;
@@ -47,12 +48,11 @@ export function partLines(parts: AssignmentPart[], row: ProgressRow | undefined)
   const chips = partChips(ordered, works);
   const essays = row ? handedInEssays(ordered, row) : [];
   return ordered.map((part, i) => {
-    const essay =
-      part.kind === "ESSAY" ? works.find((w) => w.partId === part.id)?.essay : undefined;
+    const essay = part.kind === "ESSAY" ? works.find((w) => w.partId === part.id)?.essay : undefined;
     const handedIn = essay && essays.some((e) => e.publicId === essay.publicId) ? essay.publicId : null;
     return {
       partId: part.id,
-      name: `Part ${i + 1} · ${partKindLabel(part.kind)}`,
+      name: joinMeta([`Part ${i + 1}`, partKindLabel(part.kind)]),
       title: part.kind === "VIDEO" ? part.title : htmlToPlainText(part.prompt),
       chip: { ...chips[i]!, label: stateOnly(chips[i]!.label) },
       essayPublicId: handedIn,

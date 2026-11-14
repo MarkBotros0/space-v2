@@ -73,6 +73,12 @@
   finished"): one row per student, a mark per part, not-finished students first. Video question
   scores show there ("3 of 4 correct"); they are not a quiz, so `docs/rules/quiz-results.md`'s hold
   does not apply (builder's call).
+- **The essay lives inside its assignment (owner 2026-11-14):** a leader's tab bar has **Work**
+  (Assignments | Quizzes, as the admin's, without New buttons) in place of Submissions; an
+  assignment with essays waiting says "N to review" (their own groups' students) and comes first,
+  and the essay opens from its student on the assignment's page. A student's page has a **Work**
+  section in place of Submissions: each assignment and quiz with what the student did, opening a
+  pop-up with the parts (the handed-in essay opens to review) or the score.
 - **The staff page (owner, 2026-11-13: "messy"):** one overview card (due date, reminder, Edit and
   Delete); parts named by their own words, right to left when Arabic, with "Part N · kind" under
   them; progress as "N of M students finished" with a bar, then Not finished and Finished as two tabs.

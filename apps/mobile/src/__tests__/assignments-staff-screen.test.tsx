@@ -39,6 +39,7 @@ const row = (over: Record<string, unknown> = {}) => ({
   partsCount: 3,
   submissionCount: 1,
   expectedCount: 2,
+  pendingReviewCount: 0,
   seasonCode: "s7",
   ...over,
 });

@@ -47,6 +47,8 @@ export const staffAssignmentListItemSchema = z.object({
   submissionCount: z.number(),
   /** Every participant of the season: an assignment is for the whole season. */
   expectedCount: z.number(),
+  /** Essays handed in and waiting for review, among the students the caller reviews (a leader: their groups). */
+  pendingReviewCount: z.number(),
   seasonCode: z.string(),
 });
 export type StaffAssignmentListItem = z.infer<typeof staffAssignmentListItemSchema>;

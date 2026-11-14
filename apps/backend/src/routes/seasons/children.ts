@@ -4,7 +4,7 @@ import { db } from "../../db/client";
 import { apiOk, apiError, forbidden } from "../../lib/api-response";
 import { bodyErrorMessage, createAssignment } from "../../lib/assignments/writes";
 import { findLiveSeason } from "../../lib/queries/seasons";
-import { canAccessSeason, canManageAssignment } from "../../lib/permissions";
+import { canAccessSeason, canManageAssignment, submissionQueueScopeFor } from "../../lib/permissions";
 import {
   listAssignmentsForSeason,
   listAssignmentsForStudent,
@@ -86,7 +86,7 @@ export async function listSeasonAssignments(req: Request, res: Response) {
   const assignments =
     user.role === "STUDENT"
       ? await listAssignmentsForStudent(user.userId, seasonId)
-      : await listAssignmentsForSeason(seasonId);
+      : await listAssignmentsForSeason(seasonId, await submissionQueueScopeFor(user));
 
   return apiOk(res, { assignments });
 }

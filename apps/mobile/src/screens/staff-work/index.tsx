@@ -1,11 +1,13 @@
 /**
- * ADMIN and SUPER's Work tab (owner, 2026-11-07): the season's assignments and
- * quizzes in one place, switched by a segmented control, with New assignment
- * and New quiz on top. Each row says its state in words: Overdue / Due …,
+ * The staff Work tab (owner, 2026-11-07; the LEADER's too since 2026-11-14): the
+ * season's assignments and quizzes in one place, switched by a segmented control,
+ * with New assignment and New quiz on top for an author. An assignment with essays
+ * waiting says "N to review" and comes first; the essay opens from its student on the
+ * assignment's page, never from a separate list. Each row says its state in words: Overdue / Due …,
  * submitted counts. Quizzes split into Drafts and Published (`staff-quiz-list.tsx`).
  */
 import { useRouter } from "expo-router";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { View } from "react-native";
 import type { StaffAssignmentListItem } from "@space/shared";
 
@@ -25,15 +27,29 @@ import { StaffQuizList } from "./staff-quiz-list";
 
 type Tab = "assignments" | "quizzes";
 
-function assignmentChip(a: StaffAssignmentListItem): ReactNode {
-  if (a.dueAt === null || a.dueOrgDay === null) return <StatusChip tone="neutral" label="No due date" />;
-  if (a.isOverdue) return <StatusChip tone="warn" label={`Due ${formatDayKey(a.dueOrgDay)}`} />;
-  return <StatusChip tone="info" label={`Due in ${formatDistanceOnly(a.dueAt)}`} />;
+function dueWords(a: StaffAssignmentListItem): string {
+  if (a.dueAt === null || a.dueOrgDay === null) return "No due date";
+  if (a.isOverdue) return `Due ${formatDayKey(a.dueOrgDay)}`;
+  return `Due in ${formatDistanceOnly(a.dueAt)}`;
 }
 
-export function StaffWork({ canAuthor }: { canAuthor: boolean }) {
+function assignmentChip(a: StaffAssignmentListItem): ReactNode {
+  const tone = a.dueAt === null ? "neutral" : a.isOverdue ? "warn" : "neutral";
+  return <StatusChip tone={tone} label={dueWords(a)} />;
+}
+
+/** Something waiting on the caller first, then the list's own order (due date). */
+function waitingFirst(rows: StaffAssignmentListItem[]): StaffAssignmentListItem[] {
+  return [...rows.filter((a) => a.pendingReviewCount > 0), ...rows.filter((a) => a.pendingReviewCount === 0)];
+}
+
+export function StaffWork({ canAuthor, initialTab }: { canAuthor: boolean; initialTab?: Tab }) {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("assignments");
+  const [tab, setTab] = useState<Tab>(initialTab ?? "assignments");
+  // A tab already open follows a new link to it (Home's tiles).
+  useEffect(() => {
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
   const current = useCurrentSeasonId();
   const seasonId = current.seasonId;
   const season = useSeasonDetail(seasonId);
@@ -52,7 +68,7 @@ export function StaffWork({ canAuthor }: { canAuthor: boolean }) {
   else if (seasonId === null)
     body = <EmptyState title="No season" description="You aren't attached to a season yet." />;
   else if (tab === "assignments") {
-    const rows = assignments.data ?? [];
+    const rows = waitingFirst(assignments.data ?? []);
     body = assignments.isPending ? (
       <RouteSkeleton />
     ) : assignments.isError ? (
@@ -71,7 +87,17 @@ export function StaffWork({ canAuthor }: { canAuthor: boolean }) {
             title={a.title}
             titleLines={2}
             subtitle={`${a.submissionCount} of ${a.expectedCount} submitted`}
-            trailing={assignmentChip(a)}
+            trailing={
+              <View className="flex-row flex-wrap gap-1.5">
+                {a.pendingReviewCount > 0 ? (
+                  <StatusChip tone="info" label={`${a.pendingReviewCount} to review`} />
+                ) : null}
+                {assignmentChip(a)}
+              </View>
+            }
+            trailingLabel={[a.pendingReviewCount > 0 ? `${a.pendingReviewCount} to review` : null, dueWords(a)]
+              .filter(Boolean)
+              .join(", ")}
             trailingPlacement="below"
             chevron
             onPress={() => router.push({ pathname: "/assignment/[id]", params: { id: String(a.id) } })}

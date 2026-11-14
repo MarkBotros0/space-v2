@@ -119,7 +119,8 @@ const LEADER: RoleNav = {
     { href: "/groups", label: "My group", icon: "groups" },
     { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/submissions", label: "Submissions", icon: "submissions" },
+    // Owner 2026-11-14: one Work tab of assignments and quizzes, the essay inside its assignment.
+    { href: "/coursework", label: "Work", icon: "assignments" },
     { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
   ],
@@ -127,7 +128,7 @@ const LEADER: RoleNav = {
     { href: "/dashboard", label: "Home", icon: "home" },
     { href: "/groups", label: "My group", icon: "groups" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    { href: "/submissions", label: "Submissions", icon: "submissions" },
+    { href: "/coursework", label: "Work", icon: "assignments" },
     { href: "/more", label: "More", icon: "more" },
   ],
 };

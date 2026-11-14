@@ -90,8 +90,9 @@ students list carries `progress: null` and `GET /students/:id/progress` answers 
 
 ## Season progress on the student's page
 
-Staff see a "Season progress" card (attendance, assignments, quizzes, each a labelled bar with the
-exact figure) in place of the old engagement "THIS SEASON" card. It shows **no composite score**
+Staff see a "Season progress" card (attendance, assignments, quizzes as three rings side by side,
+each with its percent inside and a short figure under it, owner 2026-11-14) in place of the old
+engagement "THIS SEASON" card. It shows **no composite score**
 (owner 2026-11-07, "no composite score"): the score appears only in the outlook and at End. Tapping a
 number opens its list. The students list carries the three percentages per row.
 

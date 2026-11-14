@@ -13,8 +13,7 @@ import { apiClient } from "../lib/api-client";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
-import SubmissionsScreen from "../../app/(app)/(tabs)/submissions";
-import { queueSections } from "../screens/leader-submissions/queue-sections";
+import SubmissionsScreen from "../../app/(app)/submissions";
 
 const get = apiClient.get as jest.Mock;
 
@@ -47,7 +46,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockParams = {};
   useSessionStore.setState(useSessionStore.getInitialState(), true);
-  useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { id: 5 }));
+  // The leader has Work instead (owner 2026-11-14); the queue rows are the admin's pending list.
+  useSessionStore.setState(makeSession("ADMIN", { seasonAdminIds: [7] }, { id: 2 }));
 });
 
 it("the queue shows one row per essay with its prompt", async () => {
@@ -70,56 +70,6 @@ it("the queue shows one row per essay with its prompt", async () => {
 
   fireEvent.press(screen.getByRole("button", { name: /What would you change\?/ }));
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/submission/[publicId]", params: { publicId: "essay2bbbb" } });
-});
-
-it("lists every essay handed in (v1, B3-8) and loads the next page from the cursor", async () => {
-  get
-    .mockResolvedValueOnce(
-      page([queueItem("aaa1111111", "Essay one")], { pending: 2, total: 5, late: 0 }, "aaa1111111"),
-    )
-    // A cursor page carries no counts; the header keeps the first page's.
-    .mockResolvedValueOnce({
-      data: { data: { items: [queueItem("bbb2222222", "Essay two")], counts: null, nextCursor: null } },
-    });
-
-  renderWithProviders(<SubmissionsScreen />);
-
-  expect(await screen.findByText("Essay one")).toBeTruthy();
-  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=false&limit=25");
-
-  fireEvent.press(screen.getByText("Load more"));
-  expect(await screen.findByText("Essay two")).toBeTruthy();
-  expect(get).toHaveBeenLastCalledWith("/api/v1/submissions?pendingOnly=false&limit=25&cursor=aaa1111111");
-  expect(screen.queryByText("Load more")).toBeNull();
-  // One fact per line, never a " · " line: the screen's subtitle, then the totals under it.
-  expect(screen.getByText("2 essays waiting review")).toBeTruthy();
-  expect(screen.getByText("5 in all")).toBeTruthy();
-  expect(screen.queryByText(/handed in late/)).toBeNull();
-  expect(screen.queryByText(/ · /)).toBeNull();
-});
-
-it("narrows to the dashboard's season when opened with one, and says so", async () => {
-  mockParams = { seasonId: "7" };
-  get.mockResolvedValue(page([queueItem("aaa1111111", "Essay one")]));
-
-  renderWithProviders(<SubmissionsScreen />);
-
-  expect(await screen.findByText("Essay one")).toBeTruthy();
-  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=false&limit=25&seasonId=7");
-  expect(screen.getByText("Current season only")).toBeTruthy();
-  fireEvent.press(screen.getByText("Show all seasons"));
-  expect(mockSetParams).toHaveBeenCalledWith({ seasonId: undefined });
-});
-
-it("ignores a malformed season param and shows every season", async () => {
-  mockParams = { seasonId: "abc" };
-  get.mockResolvedValue(page([], { pending: 0, total: 0, late: 0 }));
-
-  renderWithProviders(<SubmissionsScreen />);
-
-  expect(await screen.findByText("No essays yet")).toBeTruthy();
-  expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=false&limit=25");
-  expect(screen.queryByText("Show all seasons")).toBeNull();
 });
 
 it("marks a late hand-in from the contract flag, and when it was handed in, as chips the row speaks", async () => {
@@ -151,44 +101,6 @@ it("names an unnamed student as such", async () => {
   expect(await screen.findByText("Unnamed student")).toBeTruthy();
 });
 
-it("groups the queue into waiting and reviewed sections, omitting an empty one", async () => {
-  get.mockResolvedValue(
-    page([queueItem("aaa1111111", "Essay one"), queueItem("bbb2222222", "Essay two", { reviewStatus: "REVIEWED" })], {
-      pending: 1,
-      total: 2,
-      late: 0,
-    }),
-  );
-
-  renderWithProviders(<SubmissionsScreen />);
-
-  expect(await screen.findByText("WAITING FOR REVIEW")).toBeTruthy();
-  expect(screen.getByText("REVIEWED", { exact: true })).toBeTruthy();
-});
-
-it("shows only the waiting section when nothing is reviewed", async () => {
-  get.mockResolvedValue(page([queueItem("aaa1111111", "Essay one")]));
-
-  renderWithProviders(<SubmissionsScreen />);
-
-  expect(await screen.findByText("WAITING FOR REVIEW")).toBeTruthy();
-  expect(screen.queryByText("REVIEWED")).toBeNull();
-});
-
-describe("queueSections", () => {
-  it("splits essays waiting review from the rest and keeps order", () => {
-    const items = [
-      queueItem("a", "A"),
-      queueItem("b", "B", { reviewStatus: "REVIEWED" }),
-      queueItem("c", "C"),
-      queueItem("d", "D", { reviewStatus: "RETURNED" }),
-    ];
-    const { waiting, done } = queueSections(items);
-    expect(waiting.map((i) => i.publicId)).toEqual(["a", "c"]);
-    expect(done.map((i) => i.publicId)).toEqual(["b", "d"]);
-  });
-});
-
 it("opens from anywhere on the row, and starts loading the essay on touch-down", async () => {
   get.mockResolvedValue(page([queueItem("aaa1111111", "Essay one")]));
 
@@ -204,15 +116,6 @@ it("opens from anywhere on the row, and starts loading the essay on touch-down",
   });
 });
 
-it("shows an empty state in words for an empty queue", async () => {
-  get.mockResolvedValue(page([], { pending: 0, total: 0, late: 0 }));
-
-  renderWithProviders(<SubmissionsScreen />);
-
-  expect(await screen.findByText("No essays yet")).toBeTruthy();
-  expect(screen.getByText("Essays from students in your groups appear here once they submit.")).toBeTruthy();
-});
-
 it("keeps the tab an empty state for a student, without a request", async () => {
   useSessionStore.setState(makeSession("STUDENT", { activeSeasonId: 7 }));
 
@@ -220,15 +123,6 @@ it("keeps the tab an empty state for a student, without a request", async () => 
 
   expect(await screen.findByText(/isn't available for your role/i)).toBeTruthy();
   expect(get).not.toHaveBeenCalled();
-});
-
-it("counts the header in words, one fact per line, with late only when there are some", async () => {
-  get.mockResolvedValueOnce(page([queueItem("aaa1111111", "Essay one")], { pending: 1, total: 9, late: 2 }));
-  renderWithProviders(<SubmissionsScreen />);
-  expect(await screen.findByText("1 essay waiting review")).toBeTruthy();
-  expect(screen.getByText("9 in all")).toBeTruthy();
-  expect(screen.getByText("2 handed in late")).toBeTruthy();
-  expect(screen.getByRole("header", { name: "Submissions" })).toBeTruthy();
 });
 
 it("gives an admin the pending queue", async () => {
@@ -239,4 +133,11 @@ it("gives an admin the pending queue", async () => {
 
   expect(await screen.findByText("All caught up")).toBeTruthy();
   expect(get).toHaveBeenCalledWith("/api/v1/submissions?pendingOnly=true&limit=25");
+});
+
+it("a leader's old Submissions link opens their Work (owner 2026-11-14)", async () => {
+  useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3], activeSeasonId: 7 }, { id: 5 }));
+  get.mockResolvedValue({ data: { data: {} } });
+  renderWithProviders(<SubmissionsScreen />);
+  expect(await screen.findByRole("header", { name: "Work" })).toBeTruthy();
 });

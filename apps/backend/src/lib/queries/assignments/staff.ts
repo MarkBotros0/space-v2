@@ -1,3 +1,5 @@
+import type { Prisma } from "../../../generated/prisma/client";
+
 import { db } from "../../../db/client";
 import type { AssignmentProgress } from "../../../../../../packages/shared/src/index";
 import { ApiError } from "../../api-error";
@@ -17,6 +19,8 @@ export interface AssignmentListRow {
   partsCount: number;
   submissionCount: number;
   expectedCount: number;
+  /** Essays handed in and waiting for a verdict, among the students the caller reviews. */
+  pendingReviewCount: number;
   seasonCode: string;
 }
 
@@ -24,11 +28,17 @@ export interface AssignmentListRow {
  * The season's assignments for staff. An assignment is for the whole season,
  * so every row's expected count is the season's participants (one count), and
  * its submission count those of them who have submitted (SUBMITTED_WHERE).
+ * `reviewScope` is the caller's review queue scope (submissionQueueScopeFor): the
+ * essays waiting for review are counted among those students only, so a leader's
+ * "2 to review" is their own groups'; null counts none.
  */
-export async function listAssignmentsForSeason(seasonId: number): Promise<AssignmentListRow[]> {
+export async function listAssignmentsForSeason(
+  seasonId: number,
+  reviewScope: Prisma.SubmissionWhereInput | null = null,
+): Promise<AssignmentListRow[]> {
   // One denominator with the progress roster: live users only.
   const participant = { ...liveUser, seasonEnrollments: { some: { seasonId, ...seasonParticipant } } };
-  const [rows, expectedCount] = await Promise.all([
+  const [rows, expectedCount, waiting] = await Promise.all([
     db.assignment.findMany({
       where: { seasonId, ...liveAssignment },
       orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
@@ -46,7 +56,19 @@ export async function listAssignmentsForSeason(seasonId: number): Promise<Assign
       },
     }),
     db.seasonEnrollment.count({ where: { seasonId, ...seasonParticipant, studentUser: liveUser } }),
+    reviewScope === null
+      ? Promise.resolve([])
+      : db.assignmentPartWork.findMany({
+          where: {
+            status: "SUBMITTED",
+            part: { kind: "ESSAY", assignment: { seasonId, ...liveAssignment } },
+            submission: reviewScope,
+          },
+          select: { part: { select: { assignmentId: true } } },
+        }),
   ]);
+  const waitingBy = new Map<number, number>();
+  for (const w of waiting) waitingBy.set(w.part.assignmentId, (waitingBy.get(w.part.assignmentId) ?? 0) + 1);
 
   const now = new Date();
   return rows.map((a) => ({
@@ -58,6 +80,7 @@ export async function listAssignmentsForSeason(seasonId: number): Promise<Assign
     partsCount: a._count.parts,
     submissionCount: a._count.submissions,
     expectedCount,
+    pendingReviewCount: waitingBy.get(a.id) ?? 0,
     seasonCode: a.season.code,
   }));
 }

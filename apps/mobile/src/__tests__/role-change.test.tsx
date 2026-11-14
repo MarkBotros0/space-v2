@@ -99,7 +99,7 @@ describe("a token that changes role on refresh", () => {
         ),
     );
 
-    expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
+    expect(labels()).toEqual(["Home", "My group", "Calendar", "Work", "More"]);
     await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));
     expect(get).toHaveBeenCalledWith("/api/v1/seasons");
   });
@@ -121,7 +121,7 @@ describe("a token that changes role on refresh", () => {
         ),
     );
 
-    expect(labels()).toEqual(["Home", "My group", "Calendar", "Submissions", "More"]);
+    expect(labels()).toEqual(["Home", "My group", "Calendar", "Work", "More"]);
     await waitFor(() => expect(screen.getByTestId("season").props.children).toBe("9"));
   });
 });

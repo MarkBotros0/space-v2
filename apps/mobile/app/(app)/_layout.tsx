@@ -44,6 +44,9 @@ export const DETAIL_ROUTE_NAMES: readonly string[] = [
   "assignments",
   "group/[id]/index",
   "submission/[publicId]",
+  // No role has it in its nav since the leader's Work took it (2026-11-14); the admin's
+  // needs-action list and old links still open it.
+  "submissions",
   "session/[id]/attendance",
   "session/[id]/index",
   "seasons/[code]/index",

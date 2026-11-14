@@ -140,10 +140,26 @@ describe("GET /api/v1/seasons/:id/assignments", () => {
       submissionCount: 1,
       // All three ACTIVE enrolments: an assignment is for the whole season.
       expectedCount: 3,
+      // The other student's essay is handed in and waits for review.
+      pendingReviewCount: 1,
       seasonCode: expect.any(String),
     });
     const undated = res.body.data.assignments.find((a: { id: number }) => a.id === undatedId);
     expect(undated).toMatchObject({ dueOrgDay: null, partsCount: 1, submissionCount: 0, expectedCount: 3 });
+  });
+
+  it("counts the essays waiting for review among the leader's own groups only", async () => {
+    const leaderOfB = await get(`/seasons/${seasonId}/assignments`, leaderToken);
+    const three = leaderOfB.body.data.assignments.find((a: { id: number }) => a.id === threePartId);
+    expect(three).toMatchObject({ pendingReviewCount: 1 });
+
+    const leaderA = await createTestUser("leader-a", "LEADER");
+    await db.groupLeader.create({ data: { groupId: groupAId, userId: leaderA.id } });
+    const ofA = await get(`/seasons/${seasonId}/assignments`, await login(app, leaderA.email));
+    expect(ofA.status).toBe(200);
+    const threeForA = ofA.body.data.assignments.find((a: { id: number }) => a.id === threePartId);
+    // Group A's student has only a draft: nothing waits for this leader.
+    expect(threeForA).toMatchObject({ pendingReviewCount: 0 });
   });
 
   it("gives a student every assignment of the season with how many parts are done", async () => {

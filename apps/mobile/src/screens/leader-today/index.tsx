@@ -26,10 +26,8 @@ import { useLiveTodayRefresh } from "./use-live-refresh";
 function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
   const router = useRouter();
   const { progress, cohort, submissions, quizzes } = data;
-  // The figures count this season only, so the leader's queue opens on the
-  // same season; otherwise "3 waiting" lands on a cross-season list showing
-  // a different number.
-  const toSubmissions = () => router.push({ pathname: "/submissions", params: { seasonId: String(data.season.id) } });
+  // Work is the current season's, the same season these figures count (owner 2026-11-14).
+  const toAssignments = () => router.push({ pathname: "/coursework", params: { tab: "assignments" } });
   const toGroup = () => router.push("/groups");
   // The students at risk are named in the list right below, so they get no tile of their own.
 
@@ -55,14 +53,14 @@ function Body({ data, card }: { data: StaffSeasonDashboard; card: ReactNode }) {
             value={submissions.pendingReview}
             icon={FileText}
             tone="info"
-            onPress={toSubmissions}
+            onPress={toAssignments}
           />
           <CountTile
             label="Quizzes to grade"
             value={quizzes.pending}
             icon={ClipboardCheck}
             tone="info"
-            onPress={() => router.push("/quizzes")}
+            onPress={() => router.push({ pathname: "/coursework", params: { tab: "quizzes" } })}
           />
         </View>
       </View>
