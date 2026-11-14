@@ -33,7 +33,8 @@ export function ImportResultStep({
           </Text>
           {/* Spec R55: import sends nothing. Invites go from the Community tab. */}
           <Text className="mt-1 text-sm text-success-700 dark:text-success-300">
-            No invites were sent. New accounts can't sign in until they are invited: on the Community tab, the Send invites row sends them.
+            No invites were sent. New accounts can't sign in until they are invited: on the Community tab, the Send
+            invites row sends them.
           </Text>
         </View>
       </View>
