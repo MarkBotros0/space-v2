@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+jest.mock("../design/ui/rich-text-editor", () => require("./helpers/rich-text-editor-mock"));
 import { AxiosError, type AxiosResponse } from "axios";
 
 jest.mock("../lib/api-client", () => ({
@@ -186,7 +187,8 @@ describe("Edit announcement", () => {
     renderWithProviders(<EditAnnouncementScreen />);
     expect(await screen.findByText("To: Test Season")).toBeTruthy();
     expect(screen.queryByText("A season")).toBeNull();
-    expect(screen.getByLabelText("Message").props.value).toBe("Old body");
+    // A plain-text post from before the rich editor opens as a paragraph.
+    expect(screen.getByLabelText("Message").props.value).toBe("<p>Old body</p>");
     fireEvent.changeText(screen.getByLabelText("Message"), "New body");
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(mockBack).toHaveBeenCalled());

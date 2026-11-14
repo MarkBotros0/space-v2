@@ -2,9 +2,13 @@
 import { z } from "zod";
 
 import { announcementAudienceSchema } from "./enums";
+import { htmlToPlainText } from "./html-text";
 import { announcementPollSchema, pollInputSchema, pollInputWithoutIdsSchema } from "./announcement-poll";
 
+/** The message's length as read (its words, not its formatting). */
 export const ANNOUNCEMENT_BODY_MAX = 5000;
+/** The stored body with its formatting tags: room for the markup around 5000 characters of text. */
+const ANNOUNCEMENT_BODY_STORED_MAX = 20000;
 export const ANNOUNCEMENT_EXCERPT_LENGTH = 280;
 export const ANNOUNCEMENT_PUSH_LENGTH = 120;
 export const ANNOUNCEMENT_UNREAD_DAYS = 30;
@@ -64,7 +68,27 @@ export const announcementTargetsResponseSchema = z.object({
 });
 export type AnnouncementTargetsResponse = z.infer<typeof announcementTargetsResponseSchema>;
 
-const bodyField = z.string().trim().min(1).max(ANNOUNCEMENT_BODY_MAX);
+/**
+ * A body written in the rich editor (owner 2026-11-14: as an assignment's instructions, with the
+ * text helpers) is HTML and starts with a tag; a post from before is plain text.
+ */
+export function isHtmlBody(body: string): boolean {
+  return /^\s*</.test(body);
+}
+
+/** What a body says, without formatting: for the list's excerpt, a push, and the length limit. */
+export function announcementPlainText(body: string): string {
+  return isHtmlBody(body) ? htmlToPlainText(body) : body.trim();
+}
+
+const bodyField = z
+  .string()
+  .trim()
+  .max(ANNOUNCEMENT_BODY_STORED_MAX)
+  .refine((b) => {
+    const text = announcementPlainText(b);
+    return text.length >= 1 && text.length <= ANNOUNCEMENT_BODY_MAX;
+  }, `Enter a message (up to ${ANNOUNCEMENT_BODY_MAX} characters).`);
 
 export const createAnnouncementRequestSchema = z.discriminatedUnion("audience", [
   z

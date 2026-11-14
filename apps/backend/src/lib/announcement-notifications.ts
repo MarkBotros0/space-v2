@@ -1,6 +1,6 @@
 import { db } from "../db/client";
 import { liveSeason, liveUser } from "./db/live";
-import { ANNOUNCEMENT_PUSH_LENGTH } from "../../../../packages/shared/src/index";
+import { ANNOUNCEMENT_PUSH_LENGTH, announcementPlainText } from "../../../../packages/shared/src/index";
 import { runInBackground } from "./background";
 import { createNotificationsBulk } from "./notifications";
 import { notificationLink } from "./notification-target";
@@ -58,7 +58,7 @@ export function notifyAnnouncement(post: {
         // A post has no title of its own: the message is the push body.
         title: "New announcement",
         // By code point: a slice would cut an emoji's surrogate pair in half.
-        body: Array.from(post.body).slice(0, ANNOUNCEMENT_PUSH_LENGTH).join(""),
+        body: Array.from(announcementPlainText(post.body)).slice(0, ANNOUNCEMENT_PUSH_LENGTH).join(""),
         link: notificationLink.announcement(post.id),
       });
     })(),

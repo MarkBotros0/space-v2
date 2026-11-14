@@ -4,6 +4,7 @@ import Animated from "react-native-reanimated";
 import type { AnnouncementListItem } from "@space/shared";
 
 import { usePressDim } from "../../design/motion";
+import { directionStyle } from "../../design/lib/text-direction";
 import { StatusChip, Text } from "../../design/ui";
 import { AudienceChip } from "./audience-chip";
 import { announcementMeta } from "./meta";
@@ -35,7 +36,12 @@ export function PostCard({ post, onPress }: { post: AnnouncementListItem; onPres
               </View>
             )}
           </View>
-          <Text variant="body" numberOfLines={4} className={post.isRead ? undefined : "font-semibold"}>
+          <Text
+            variant="body"
+            numberOfLines={4}
+            className={post.isRead ? undefined : "font-semibold"}
+            style={directionStyle(post.excerpt)}
+          >
             {post.excerpt}
           </Text>
           <Text variant="caption" className="text-muted-foreground">

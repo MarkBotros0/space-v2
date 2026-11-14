@@ -3,13 +3,13 @@ import type {
   AnnouncementPoll,
   AnnouncementListItem,
 } from "../../../../../packages/shared/src/index";
-import { ANNOUNCEMENT_EXCERPT_LENGTH } from "../../../../../packages/shared/src/index";
+import { ANNOUNCEMENT_EXCERPT_LENGTH, announcementPlainText } from "../../../../../packages/shared/src/index";
 import { isPollClosed, type AnnouncementFlags } from "../../lib/permissions";
 import type { AnnouncementRow } from "../../lib/queries/announcements";
 
-/** Cut by code point, so an emoji (a surrogate pair) is never split at the limit. */
+/** The words without formatting, cut by code point so an emoji (a surrogate pair) is never split. */
 function excerptOf(body: string): string {
-  const chars = Array.from(body.trim());
+  const chars = Array.from(announcementPlainText(body));
   return chars.length <= ANNOUNCEMENT_EXCERPT_LENGTH
     ? chars.join("")
     : `${chars

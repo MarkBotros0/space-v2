@@ -5,7 +5,27 @@ import {
   pollVoteRequestSchema,
   NOTIFICATION_PREFERENCE_KEY_BY_TYPE,
   shouldPush,
+  announcementPlainText,
+  isHtmlBody,
+  ANNOUNCEMENT_BODY_MAX,
 } from "../index";
+
+describe("a rich body (owner 2026-11-14: the announcement takes the instructions' editor)", () => {
+  it("tells a rich body from an older plain one, and reads both as words", () => {
+    expect(isHtmlBody("<p>Hi</p>")).toBe(true);
+    expect(isHtmlBody("Hi <there>")).toBe(false);
+    expect(announcementPlainText("<p><strong>Hi</strong></p><p>مرحبا</p>")).toBe("Hi\nمرحبا");
+    expect(announcementPlainText("  plain  ")).toBe("plain");
+  });
+
+  it("limits the words, not the formatting, and refuses an empty paragraph", () => {
+    const words = "a".repeat(ANNOUNCEMENT_BODY_MAX);
+    const parse = (body: string) => createAnnouncementRequestSchema.safeParse({ audience: "COMMUNITY", body }).success;
+    expect(parse(`<p><strong>${words}</strong></p>`)).toBe(true);
+    expect(parse(`<p>${words}a</p>`)).toBe(false);
+    expect(parse("<p></p>")).toBe(false);
+  });
+});
 
 describe("announcement contracts", () => {
   const ok = { audience: "COMMUNITY", body: "World" };

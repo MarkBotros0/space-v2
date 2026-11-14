@@ -1,4 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react-native";
+jest.mock("../design/ui/rich-text-editor", () => require("./helpers/rich-text-editor-mock"));
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
@@ -110,7 +111,7 @@ describe("Poll editor on edit", () => {
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(mockBack).toHaveBeenCalled());
     expect(patch).toHaveBeenCalledWith("/api/v1/announcements/7", {
-      body: "Full body https://example.com/x.",
+      body: "<p>Full body https://example.com/x.</p>",
       poll: {
         allowsMultiple: true,
         options: [
@@ -130,7 +131,7 @@ describe("Poll editor on edit", () => {
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalled());
     expect(patch).toHaveBeenCalledWith("/api/v1/announcements/7", {
-      body: "Full body https://example.com/x.",
+      body: "<p>Full body https://example.com/x.</p>",
       poll: null,
     });
   });

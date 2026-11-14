@@ -39,6 +39,26 @@ describe("AnnouncementScreen", () => {
     expect(screen.getByRole("link")).toBeTruthy();
   });
 
+  it("shows a body written in the rich editor with its formatting, Arabic right to left (owner 2026-11-14)", async () => {
+    get.mockReturnValue(
+      ok(detailItem(7, { body: "<p><strong>Bold news</strong></p><p>مرحبا بكم</p><ul><li>One point</li></ul>" })),
+    );
+    renderWithProviders(<AnnouncementScreen />);
+    expect(await screen.findByText("Bold news")).toBeTruthy();
+    expect(screen.queryByText(/<strong>/)).toBeNull();
+    expect(screen.getByText("One point")).toBeTruthy();
+    const arabic = screen.getByText("مرحبا بكم");
+    expect(JSON.stringify(arabic.props.style)).toContain("rtl");
+  });
+
+  it("an older plain-text post reads each Arabic line right to left", async () => {
+    get.mockReturnValue(ok(detailItem(7, { body: "Hello all\nأهلا وسهلا" })));
+    renderWithProviders(<AnnouncementScreen />);
+    const arabic = await screen.findByText("أهلا وسهلا");
+    expect(JSON.stringify(arabic.props.style)).toContain("rtl");
+    expect(JSON.stringify(screen.getByText("Hello all").props.style ?? null)).not.toContain("rtl");
+  });
+
   it("renders the poll card under the message only when the post has a poll", async () => {
     get.mockReturnValue(ok(detailItem(7)));
     const first = renderWithProviders(<AnnouncementScreen />);

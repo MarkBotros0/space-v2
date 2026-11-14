@@ -1,6 +1,7 @@
 import { Fragment } from "react";
-import { Linking } from "react-native";
+import { Linking, View } from "react-native";
 
+import { directionStyle } from "../../design/lib/text-direction";
 import { Text } from "../../design/ui";
 
 type LinkRun = { kind: "text"; value: string } | { kind: "link"; url: string };
@@ -32,11 +33,24 @@ export function linkify(text: string): LinkRun[] {
   return runs;
 }
 
-/** A post body: plain text with its links tappable, in the primary colour and never underlined. */
+/**
+ * A plain-text post body (from before the rich editor): its links tappable, in the primary colour
+ * and never underlined, and each line right to left when it starts in Arabic.
+ */
 export function LinkifiedText({ text }: { text: string }) {
   return (
-    <Text variant="body">
-      {linkify(text).map((run, i) =>
+    <View className="flex-col">
+      {text.split(/\r?\n/).map((line, i) => (
+        <LinkifiedLine key={i} line={line} />
+      ))}
+    </View>
+  );
+}
+
+function LinkifiedLine({ line }: { line: string }) {
+  return (
+    <Text variant="body" style={directionStyle(line)}>
+      {linkify(line).map((run, i) =>
         run.kind === "text" ? (
           <Fragment key={i}>{run.value}</Fragment>
         ) : (
@@ -51,6 +65,7 @@ export function LinkifiedText({ text }: { text: string }) {
           </Text>
         ),
       )}
+      {line === "" ? " " : null}
     </Text>
   );
 }

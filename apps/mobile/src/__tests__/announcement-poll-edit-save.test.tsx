@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+jest.mock("../design/ui/rich-text-editor", () => require("./helpers/rich-text-editor-mock"));
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -44,7 +45,7 @@ const lost = (votes: number) =>
   } as never);
 
 const open = (p: AnnouncementPoll | null) => {
-  get.mockReturnValue(ok(detailItem(7, { canEdit: true, body: "Old body", poll: p })));
+  get.mockReturnValue(ok(detailItem(7, { canEdit: true, body: "<p>Old body</p>", poll: p })));
   renderWithProviders(<EditAnnouncementScreen />);
 };
 
@@ -85,7 +86,7 @@ describe("what an edit sends", () => {
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
     expect(patch.mock.calls[0][1]).toEqual({
-      body: "Old body",
+      body: "<p>Old body</p>",
       poll: {
         allowsMultiple: false,
         options: [
@@ -109,7 +110,7 @@ describe("what an edit sends", () => {
     fireEvent.press(await screen.findByText("Remove poll"));
     fireEvent.press(screen.getByText("Save"));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(1));
-    expect(patch.mock.calls[0][1]).toEqual({ body: "Old body", poll: null });
+    expect(patch.mock.calls[0][1]).toEqual({ body: "<p>Old body</p>", poll: null });
   });
 });
 
@@ -141,7 +142,7 @@ describe("a confirmed loss that failed for another reason", () => {
         pending={false}
         error={props.error}
         initial={{
-          body: "Old body",
+          body: "<p>Old body</p>",
           poll: {
             allowsMultiple: false,
             options: [
@@ -197,7 +198,7 @@ describe("a refetch while the edit screen is open", () => {
         toLabel="Everyone"
         pending={false}
         error={null}
-        initial={{ body: "Old body", poll: initialPoll }}
+        initial={{ body: "<p>Old body</p>", poll: initialPoll }}
         currentPoll={current}
         serverLostVotes={null}
         onSubmit={onSubmit}

@@ -53,6 +53,10 @@ interface RichTextEditorProps {
   disabled?: boolean;
   invalid?: boolean;
   className?: string;
+  /** What a screen reader calls the field ("Message"). */
+  accessibilityLabel?: string;
+  /** Set by FormField to the field's error, so it is read with the field. */
+  accessibilityHint?: string;
 }
 
 export function RichTextEditor({
@@ -62,6 +66,8 @@ export function RichTextEditor({
   disabled,
   invalid,
   className,
+  accessibilityLabel,
+  accessibilityHint,
 }: RichTextEditorProps) {
   const colors = useThemeColors();
   const lastHtml = useRef(value);
@@ -94,6 +100,8 @@ export function RichTextEditor({
 
   return (
     <View
+      accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       className={cn(
         "relative overflow-hidden rounded-md border border-control-border bg-background",
         state.isFocused && "border-ring",

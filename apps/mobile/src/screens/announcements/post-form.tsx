@@ -13,6 +13,7 @@ import {
 import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
 import { Text } from "../../design/ui";
+import { storedTextToHtml } from "../../lib/stored-text";
 import { PillButton } from "../../design/ui/pill-button";
 import { ConfirmEditSheet } from "./confirm-edit-sheet";
 import { AudienceSection, MessageField, type Audience } from "./post-form-sections";
@@ -70,7 +71,8 @@ type Props = {
 export function PostForm(props: Props) {
   const { screenTitle, saveLabel, error, pending, initial } = props;
   const targets = props.mode === "create" ? props.targets : null;
-  const [body, setBody] = useState(initial?.body ?? "");
+  // A post from before the rich editor is plain text: it opens as paragraphs, line by line.
+  const [body, setBody] = useState(initial?.body ? storedTextToHtml(initial.body) : "");
   const draft = usePollDraft(initial?.poll ?? null);
   const { poll } = draft;
   const [errors, setErrors] = useState<Fields>({});

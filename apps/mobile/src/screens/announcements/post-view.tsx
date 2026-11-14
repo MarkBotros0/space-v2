@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { Pencil, Trash2 } from "lucide-react-native";
-import type { AnnouncementDetail } from "@space/shared";
+import { isHtmlBody, type AnnouncementDetail } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
-import { Button, Text } from "../../design/ui";
+import { Button, RichTextView, Text } from "../../design/ui";
 import { useDeleteAnnouncement, useMarkAnnouncementRead } from "../../hooks/use-announcements";
 import { apiErrorMessage } from "../../lib/api-error";
 import { AudienceChip } from "./audience-chip";
@@ -38,7 +38,8 @@ export function PostView({ post }: { post: AnnouncementDetail }) {
       <Text variant="caption" className="text-muted-foreground">
         {announcementMeta(post, true)}
       </Text>
-      <LinkifiedText text={post.body} />
+      {/* Written in the rich editor since 2026-11-14; an older post is plain text with its links. */}
+      {isHtmlBody(post.body) ? <RichTextView html={post.body} /> : <LinkifiedText text={post.body} />}
       {post.poll ? <PollCard postId={id} poll={post.poll} /> : null}
       {post.canEdit || post.canDelete ? (
         <View className="flex-row flex-wrap gap-2">

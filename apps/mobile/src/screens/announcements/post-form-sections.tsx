@@ -1,5 +1,5 @@
 /** The post form's audience and message (refactor FE-080). */
-import { ANNOUNCEMENT_BODY_MAX, type AnnouncementTargetsResponse } from "@space/shared";
+import { ANNOUNCEMENT_BODY_MAX, announcementPlainText, type AnnouncementTargetsResponse } from "@space/shared";
 
 import {
   FormField,
@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
   Text,
-  Textarea,
 } from "../../design/ui";
+import { RichTextEditor } from "../../design/ui/rich-text-editor";
 
 /** The counter shows once the message is this long. */
 const COUNTER_FROM = 4000;
@@ -75,27 +75,35 @@ export function AudienceSection({
   );
 }
 
+/**
+ * The message in the rich editor, the one an assignment's instructions use (owner 2026-11-14): bold,
+ * italic, lists and links, and each paragraph reads right to left when it starts in Arabic. The
+ * counter counts the words, not the formatting.
+ */
 export function MessageField({
   body,
   setBody,
   error,
 }: {
   body: string;
-  setBody: (text: string) => void;
+  setBody: (html: string) => void;
   error?: string;
 }) {
+  const length = announcementPlainText(body).length;
   return (
     <FormField label="Message" error={error}>
-      <Textarea
+      <RichTextEditor
         accessibilityLabel="Message"
         value={body}
-        maxLength={ANNOUNCEMENT_BODY_MAX}
-        onChangeText={setBody}
-        className="min-h-40"
+        onChange={setBody}
+        placeholder="Write your announcement"
       />
-      {body.length > COUNTER_FROM ? (
-        <Text variant="caption" className="text-muted-foreground">
-          {`${body.length} / ${ANNOUNCEMENT_BODY_MAX}`}
+      {length > COUNTER_FROM ? (
+        <Text
+          variant="caption"
+          className={length > ANNOUNCEMENT_BODY_MAX ? "text-destructive" : "text-muted-foreground"}
+        >
+          {`${length} / ${ANNOUNCEMENT_BODY_MAX}`}
         </Text>
       ) : null}
     </FormField>
