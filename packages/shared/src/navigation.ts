@@ -119,9 +119,9 @@ const LEADER: RoleNav = {
     { href: "/groups", label: "My group", icon: "groups" },
     { href: "/notes", label: "My notes", icon: "notes" },
     { href: "/calendar", label: "Calendar", icon: "calendar" },
-    // Owner 2026-11-14: one Work tab of assignments and quizzes, the essay inside its assignment.
+    // Owner 2026-11-14: one Work tab of assignments and quizzes, the essay inside its assignment,
+    // so Quizzes has no entry of its own in More.
     { href: "/coursework", label: "Work", icon: "assignments" },
-    { href: "/quizzes", label: "Quizzes", icon: "quizzes" },
     { href: "/notifications", label: "Notifications", icon: "notifications" },
   ],
   tabs: [

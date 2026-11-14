@@ -90,7 +90,6 @@ describe("navFor", () => {
         "/more",
         "/notes",
         "/notifications",
-        "/quizzes",
       ],
       MENTOR: ["/announcements", "/dashboard", "/follow-ups", "/more", "/notes", "/notifications", "/students"],
       STUDENT: [
@@ -188,7 +187,6 @@ describe("navFor", () => {
         ["/notes", "My notes", "notes"],
         ["/calendar", "Calendar", "calendar"],
         ["/coursework", "Work", "assignments"],
-        ["/quizzes", "Quizzes", "quizzes"],
         ["/notifications", "Notifications", "notifications"],
       ],
       tabs: [

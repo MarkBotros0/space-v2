@@ -41,14 +41,15 @@ describe("MoreScreen", () => {
     expect(screen.queryByText("Quizzes")).toBeNull();
   });
 
-  it("shows the leader's More rows (v1 Quizzes, plus v2's My notes and Notifications, B3-7)", () => {
+  it("shows the leader's More rows: My notes and Notifications; Quizzes lives in Work (owner 2026-11-14)", () => {
     useSessionStore.setState(makeSession("LEADER", { groupLeaderIds: [3] }, { name: "Lina Leader" }));
 
     renderWithProviders(<MoreScreen />);
 
-    for (const label of ["My notes", "Quizzes", "Notifications"]) {
+    for (const label of ["My notes", "Notifications"]) {
       expect(screen.getByText(label)).toBeTruthy();
     }
+    expect(screen.queryByText("Quizzes")).toBeNull();
     expect(screen.queryByText("Submissions")).toBeNull();
     expect(screen.queryByText("Calendar")).toBeNull();
     expect(screen.queryByText("LEADER")).toBeNull();
