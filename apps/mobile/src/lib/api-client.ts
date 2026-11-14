@@ -16,7 +16,9 @@ const baseURL =
   (Constants.expoConfig?.extra?.apiBaseUrl as string | undefined) ??
   "http://localhost:4000";
 
-export const apiClient = axios.create({ baseURL, timeout: 15000 });
+const REQUEST_TIMEOUT_MS = 15000;
+
+export const apiClient = axios.create({ baseURL, timeout: REQUEST_TIMEOUT_MS });
 
 // Paths whose own 401s must never trigger a refresh rotation (see below).
 // Checked with `endsWith` so this matches whether the request's `url` came
@@ -48,7 +50,10 @@ export function __resetRefreshState(): void {
 
 async function rotateViaApi(refreshToken: string): Promise<Session | null | typeof ROTATE_INDETERMINATE> {
   try {
-    const res = await axios.post(`${baseURL}/api/v1/auth/refresh`, { refreshToken });
+    // Bare axios has no timeout: without one a reply lost in transit holds every request queued
+    // behind this rotation until the OS gives up. A timeout is an unknown answer (below), and the
+    // server keeps the presented token good until its successor is used, so the retry works.
+    const res = await axios.post(`${baseURL}/api/v1/auth/refresh`, { refreshToken }, { timeout: REQUEST_TIMEOUT_MS });
     // Enforce the shared contract at the client boundary — if the backend's
     // response shape ever drifts, fail loudly here instead of handing a
     // malformed object to callers. A parse failure isn't proof the refresh

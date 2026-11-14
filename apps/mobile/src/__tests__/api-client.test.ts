@@ -56,6 +56,20 @@ describe("refreshAccessToken", () => {
       expect(useSessionStore.getState().status).toBe("anonymous");
     });
 
+    // 2026-11-14: the refresh call had no timeout, so a reply lost in transit held every request
+    // behind it until the OS gave up. It gives up on its own now, as an unknown answer.
+    it("asks with a time limit, and a timeout keeps the session", async () => {
+      axiosPost.mockRejectedValue(Object.assign(new Error("timeout"), { isAxiosError: true, code: "ECONNABORTED" }));
+      await expect(refreshAccessToken()).resolves.toBeNull();
+      expect(axiosPost).toHaveBeenCalledWith(
+        expect.stringContaining("/api/v1/auth/refresh"),
+        { refreshToken: "old-refresh" },
+        expect.objectContaining({ timeout: 15000 }),
+      );
+      expect(clearSession).not.toHaveBeenCalled();
+      expect(useSessionStore.getState().status).toBe("authenticated");
+    });
+
     it.each([429, 404, 500])("%i says nothing about the token: the session stays", async (status) => {
       axiosPost.mockRejectedValue(answer(status));
       await expect(refreshAccessToken()).resolves.toBeNull();

@@ -53,6 +53,11 @@ and Build 2 (see `docs/rules/roles.md`) and Build 3 (see `docs/rules/community-w
   `BootRetry` (status `retry`) instead of sign-in, with Try again and a Sign out that works with no
   network (it clears the tokens on the phone; the refresh token isn't revoked server-side). Other indeterminate failures (offline, 5xx) still
   land on sign-in with the tokens kept.
+- **A lost refresh reply never signs anyone out** (2026-11-14, "signed out without doing
+  anything"). A refresh keeps the token it was given good, for at most 7 days, until the new one
+  is itself used; a retry with the old token gets a fresh pair and the unused one is deleted.
+  Sign-out and every revocation end both. The phone's refresh call times out after 15 s, as an
+  unknown answer.
 - **`activeSeasonId` is a derived claim.** `lib/auth/scopes.ts` computes it on every token from the
   newest ACTIVE enrolment in an ACTIVE, non-deleted season; `seasonAdminIds` / `groupLeaderIds`
   likewise cover DRAFT or ACTIVE seasons only. The claim keeps its name, so the mobile app and

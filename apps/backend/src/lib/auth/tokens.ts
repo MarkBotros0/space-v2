@@ -11,6 +11,8 @@ import { MS_PER_DAY } from "../org-time";
 
 const ACCESS_TTL_SECONDS = 15 * 60;
 const REFRESH_TTL_MS = 30 * MS_PER_DAY;
+/** How long a refresh token outlives its rotation while its successor is unused (see rotateRefreshToken). */
+const ROTATED_GRACE_MS = 7 * MS_PER_DAY;
 const AUDIENCE = "jpc-mobile";
 
 export interface SessionUser {
@@ -92,15 +94,20 @@ async function issueRefreshToken(userId: number): Promise<{ token: string; expir
 /**
  * A new refresh token replaces every other one the person holds, live or not:
  * one signed-in device per person (owner, refactor DB-007), so signing in on a
- * new phone signs the old one out, and the table holds about one row per
- * person instead of one per refresh forever. Uses the userId index.
+ * new phone signs the old one out, and the table holds at most two rows per
+ * person (the newest and the one it rotated) instead of one per refresh forever.
+ * Uses the userId index.
  */
-async function deleteOtherRefreshTokens(userId: number, keepTokenHash: string): Promise<number> {
-  const { count } = await db.refreshToken.deleteMany({ where: { userId, tokenHash: { not: keepTokenHash } } });
+async function deleteOtherRefreshTokens(userId: number, keepTokenHashes: string[]): Promise<number> {
+  const { count } = await db.refreshToken.deleteMany({ where: { userId, tokenHash: { notIn: keepTokenHashes } } });
   return count;
 }
 
-export async function issueSession(userId: number): Promise<{ session: IssuedSession; user: SessionUser } | null> {
+/** `rotatedTokenHash`: the token a refresh presented, kept until the new one is used. */
+export async function issueSession(
+  userId: number,
+  rotatedTokenHash?: string,
+): Promise<{ session: IssuedSession; user: SessionUser } | null> {
   const dbUser = await db.user.findUnique({
     where: { id: userId },
     select: { id: true, deletedAt: true },
@@ -112,7 +119,7 @@ export async function issueSession(userId: number): Promise<{ session: IssuedSes
   const refresh = await issueRefreshToken(user.userId);
   // Never a reason to fail a sign-in: a row left behind is swept next time.
   await bestEffort("delete other refresh tokens", () =>
-    deleteOtherRefreshTokens(user.userId, hashToken(refresh.token)),
+    deleteOtherRefreshTokens(user.userId, [hashToken(refresh.token), ...(rotatedTokenHash ? [rotatedTokenHash] : [])]),
   );
   return {
     session: {
@@ -124,26 +131,44 @@ export async function issueSession(userId: number): Promise<{ session: IssuedSes
   };
 }
 
+/**
+ * Swap a refresh token for a new session. The presented token is NOT spent here: it stays good
+ * (for at most ROTATED_GRACE_MS) until the new one is itself rotated, or a sign-in replaces both.
+ * Owner report 2026-11-14, "signed out without doing anything": the server rotated, the reply
+ * never reached the phone (backgrounded, network switch), so the phone kept a token that was
+ * already gone and its next refresh signed it out. Now that retry gets a fresh pair and the
+ * successor nobody received is deleted. Logout and every revocation still end both tokens.
+ */
 export async function rotateRefreshToken(rawToken: string): Promise<IssuedSession | null> {
   const record = await db.refreshToken.findUnique({ where: { tokenHash: hashToken(rawToken) } });
   if (!record || record.revokedAt || record.expiresAt < new Date()) return null;
 
-  // The new token replaces the old one, which is deleted, not kept as revoked.
-  // Guarded on still-live, so two concurrent refreshes with the same token
-  // can't both win and fork two sessions from one stolen token.
-  const consumed = await db.refreshToken.deleteMany({ where: { id: record.id, revokedAt: null } });
-  if (consumed.count !== 1) return null;
+  // Guarded on still-live, so a revocation landing between the read and here wins.
+  const graceEnd = new Date(Math.min(record.expiresAt.getTime(), Date.now() + ROTATED_GRACE_MS));
+  const kept = await db.refreshToken.updateMany({
+    where: { id: record.id, revokedAt: null },
+    data: { expiresAt: graceEnd },
+  });
+  if (kept.count !== 1) return null;
 
-  const issued = await issueSession(record.userId);
+  const issued = await issueSession(record.userId, record.tokenHash);
   return issued?.session ?? null;
 }
 
+/**
+ * Sign-out. Ends every live token of the person who holds this one, not just this one: a refresh
+ * keeps the token it rotated alive for a while (rotateRefreshToken), and there is one signed-in
+ * device per person, so this is the same as ending that device's session.
+ */
 export async function revokeRefreshToken(rawToken: string): Promise<void> {
-  await db.refreshToken.updateMany({
-    where: { tokenHash: hashToken(rawToken), revokedAt: null },
-    data: { revokedAt: new Date() },
+  const record = await db.refreshToken.findUnique({
+    where: { tokenHash: hashToken(rawToken) },
+    select: { userId: true },
   });
+  if (!record) return;
+  await revokeAllRefreshTokensForUser(db, record.userId);
 }
+
 /**
  * Revoke every live refresh token a user holds. C7's note — "a role change
  * does not revoke a live token; the mitigation is TTL" — stops being a

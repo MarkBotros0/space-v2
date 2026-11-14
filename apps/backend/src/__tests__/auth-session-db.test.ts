@@ -138,29 +138,58 @@ describe("rotateRefreshToken", () => {
     expect(mockDb.refreshToken.deleteMany).not.toHaveBeenCalled();
   });
 
-  it("returns null when a concurrent refresh already consumed the token", async () => {
-    mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5, revokedAt: null, expiresAt: future });
-    mockDb.refreshToken.deleteMany.mockResolvedValue({ count: 0 });
-    await expect(rotateRefreshToken("raw")).resolves.toBeNull();
-    expect(mockDb.user.findUnique).not.toHaveBeenCalled();
-  });
-
-  it("deletes the old token, then every other token the person holds, and returns a new session", async () => {
+  it("keeps the presented token, shortened to the grace, and deletes every other one the person holds", async () => {
     stubScopes();
-    mockDb.refreshToken.deleteMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 3 });
-    mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5, revokedAt: null, expiresAt: future });
+    const record = { id: 1, userId: 5, tokenHash: hashToken("raw"), revokedAt: null, expiresAt: future };
+    mockDb.refreshToken.findUnique.mockResolvedValue(record);
+    mockDb.refreshToken.updateMany.mockResolvedValue({ count: 1 });
     mockDb.user.findUnique
       .mockResolvedValueOnce({ id: 5, deletedAt: null })
       .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
     const session = await rotateRefreshToken("raw");
     expect(mockDb.refreshToken.findUnique).toHaveBeenCalledWith({ where: { tokenHash: hashToken("raw") } });
-    expect(mockDb.refreshToken.deleteMany).toHaveBeenNthCalledWith(1, { where: { id: 1, revokedAt: null } });
-    // One device per person: everything but the new token goes, live or not.
-    expect(mockDb.refreshToken.deleteMany).toHaveBeenNthCalledWith(2, {
-      where: { userId: 5, tokenHash: { not: hashToken(session!.refreshToken) } },
+    // A lost reply leaves the phone holding this token: it stays good until the new one is used.
+    expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith({
+      where: { id: 1, revokedAt: null },
+      data: { expiresAt: future },
     });
-    expect(mockDb.refreshToken.updateMany).not.toHaveBeenCalled();
+    // One device per person: everything but the new token and the one just presented goes.
+    expect(mockDb.refreshToken.deleteMany).toHaveBeenCalledWith({
+      where: { userId: 5, tokenHash: { notIn: [hashToken(session!.refreshToken), hashToken("raw")] } },
+    });
     expect(session?.refreshToken).toEqual(expect.any(String));
+  });
+
+  it("never lets the kept token outlive the grace", async () => {
+    stubScopes();
+    const far = new Date(Date.now() + 30 * 24 * 3600_000);
+    mockDb.refreshToken.findUnique.mockResolvedValue({
+      id: 1,
+      userId: 5,
+      tokenHash: "h",
+      revokedAt: null,
+      expiresAt: far,
+    });
+    mockDb.user.findUnique
+      .mockResolvedValueOnce({ id: 5, deletedAt: null })
+      .mockResolvedValueOnce({ role: "STUDENT", graduationYear: null });
+    await rotateRefreshToken("raw");
+    const kept: Date = mockDb.refreshToken.updateMany.mock.calls[0][0].data.expiresAt;
+    expect(kept.getTime()).toBeLessThan(far.getTime());
+    expect(kept.getTime()).toBeLessThanOrEqual(Date.now() + 7 * 24 * 3600_000);
+  });
+
+  it("returns null when the token was revoked between the read and the write", async () => {
+    mockDb.refreshToken.findUnique.mockResolvedValue({
+      id: 1,
+      userId: 5,
+      tokenHash: "h",
+      revokedAt: null,
+      expiresAt: future,
+    });
+    mockDb.refreshToken.updateMany.mockResolvedValue({ count: 0 });
+    await expect(rotateRefreshToken("raw")).resolves.toBeNull();
+    expect(mockDb.user.findUnique).not.toHaveBeenCalled();
   });
 
   it("returns null if the user was deleted after the token was issued", async () => {
@@ -171,12 +200,23 @@ describe("rotateRefreshToken", () => {
 });
 
 describe("revoking", () => {
-  it("revokeRefreshToken only touches the still-live row for that hash", async () => {
+  it("revokeRefreshToken ends every live token of the person who holds it (one device per person)", async () => {
+    mockDb.refreshToken.findUnique.mockResolvedValue({ id: 1, userId: 5 });
     await revokeRefreshToken("raw");
+    expect(mockDb.refreshToken.findUnique).toHaveBeenCalledWith({
+      where: { tokenHash: hashToken("raw") },
+      select: { userId: true },
+    });
     expect(mockDb.refreshToken.updateMany).toHaveBeenCalledWith({
-      where: { tokenHash: hashToken("raw"), revokedAt: null },
+      where: { userId: 5, revokedAt: null },
       data: { revokedAt: expect.any(Date) },
     });
+  });
+
+  it("revokeRefreshToken does nothing for a token it doesn't know", async () => {
+    mockDb.refreshToken.findUnique.mockResolvedValue(null);
+    await revokeRefreshToken("raw");
+    expect(mockDb.refreshToken.updateMany).not.toHaveBeenCalled();
   });
 
   it("revokeAllRefreshTokensForUser revokes every live token and returns the count", async () => {

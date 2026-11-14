@@ -88,14 +88,47 @@ describe("POST /api/v1/auth/refresh", () => {
     expect(res.body.data.refreshToken).not.toBe(first);
   });
 
-  it("rejects reuse of an already-rotated token", async () => {
+  // 2026-11-14: the phone that never got the answer to a refresh still holds the old token. It
+  // keeps working until the new one is used, so a lost reply no longer signs the person out.
+  it("a rotated token still works while its successor has never been used", async () => {
     const login = await request(createApp()).post("/api/v1/auth/login").send({ email: EMAIL, password: PASSWORD });
     const first = login.body.data.refreshToken;
 
-    await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
+    const lost = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
+    const retry = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
+
+    expect(retry.status).toBe(200);
+    // The successor nobody received is gone; the retry's token is the one that counts.
+    const orphan = await request(createApp())
+      .post("/api/v1/auth/refresh")
+      .send({ refreshToken: lost.body.data.refreshToken });
+    expect(orphan.status).toBe(401);
+    const next = await request(createApp())
+      .post("/api/v1/auth/refresh")
+      .send({ refreshToken: retry.body.data.refreshToken });
+    expect(next.status).toBe(200);
+  });
+
+  it("rejects an old token once its successor has been used", async () => {
+    const login = await request(createApp()).post("/api/v1/auth/login").send({ email: EMAIL, password: PASSWORD });
+    const first = login.body.data.refreshToken;
+
+    const second = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
+    await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: second.body.data.refreshToken });
     const reuse = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
 
     expect(reuse.status).toBe(401);
     expect(reuse.body.error.code).toBe("invalid_token");
+  });
+
+  it("signing out also ends the token a refresh replaced", async () => {
+    const login = await request(createApp()).post("/api/v1/auth/login").send({ email: EMAIL, password: PASSWORD });
+    const first = login.body.data.refreshToken;
+
+    const second = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
+    await request(createApp()).post("/api/v1/auth/logout").send({ refreshToken: second.body.data.refreshToken });
+    const reuse = await request(createApp()).post("/api/v1/auth/refresh").send({ refreshToken: first });
+
+    expect(reuse.status).toBe(401);
   });
 });
