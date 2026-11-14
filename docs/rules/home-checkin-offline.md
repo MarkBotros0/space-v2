@@ -5,7 +5,8 @@
 
 - **Home order, every role with a season:** the season ring (`SeasonPulse`) first, always; then
   `AnnouncementsHomeCard` (one compact row); then the session (live or next), callouts, work, people,
-  events. Roles without a ring (mentor, alumni, between seasons) lead with the announcements row.
+  events. Roles without a ring lead with announcements: the mentor with the unread row; an alumnus and a
+  student between seasons with a news feed of the newest three posts and See all (owner 2026-11-14).
   Super is the exception: its Community tiles come first, then the overdue End prompt, then one
   Seasons list (a row per running season with a small ring, owner 2026-11-09), then announcements.
   The admin's overdue End prompt sits right under the ring (2026-11-09).
@@ -17,7 +18,8 @@
   sessions held"), and a student's figure is "Absences left" (full absences the budget still
   allows, rounded down). Upcoming events are grouped rows with a chevron. The leader's ring is the
   season's (the header names the group); the alumni Home never lists the "Your last season"
-  season again under Your history; a mentor's note rows name the author only when it is someone else.
+  season again under Your seasons, one list whose rows open each season and whose See all opens
+  History (owner 2026-11-14); a mentor's note rows name the author only when it is someone else.
 - **One session card on every Home** (owner, 2026-11-09): `SessionHomeCard` (`screens/home/session-card.tsx`)
   for the student, leader and admin. The eyebrow carries the day cue, the title opens the session (no
   "Open session" button), and buttons show only for what can be done now (check in, Mark attendance,

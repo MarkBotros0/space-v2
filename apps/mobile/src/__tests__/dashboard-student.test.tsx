@@ -216,12 +216,9 @@ describe("DashboardScreen — ALUMNI", () => {
 
     expect(await screen.findByText("Hi, Nour")).toBeTruthy();
     expect(screen.getByText("JPCS-24")).toBeTruthy();
-    fireEvent.press(await screen.findByText("View my history"));
-    expect(mockPush).toHaveBeenCalledWith("/history");
+    expect(await screen.findByText("No past seasons yet")).toBeTruthy();
     expect(await screen.findByText("Open day")).toBeTruthy();
-    expect(new Set(requested())).toEqual(
-      new Set([EVENTS, "/api/v1/me/season-history", "/api/v1/announcements/unread"]),
-    );
+    expect(new Set(requested())).toEqual(new Set([EVENTS, "/api/v1/me/season-history", "/api/v1/announcements"]));
   });
 });
 

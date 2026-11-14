@@ -15,6 +15,7 @@ import { firstName, formatLongDay } from "../../lib/format";
 import { DEFAULT_STALE_TIME } from "../../lib/query-client";
 import { useSessionStore } from "../../store/session";
 import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
+import { AnnouncementsHomeFeed } from "../announcements/home-feed";
 import { BetweenSeasons } from "./between-seasons";
 import { NextSessionHero } from "./next-session-hero";
 import { OpenWorkList } from "./open-work-list";
@@ -111,7 +112,8 @@ export function StudentToday() {
       ) : (
         <View className="flex-col gap-4">
           {stale}
-          <AnnouncementsHomeCard />
+          {/* Owner 2026-11-14: with no season, announcements are a news feed. */}
+          <AnnouncementsHomeFeed />
           <BetweenSeasons history={history} />
           <UpcomingEventsCard query={events} />
         </View>

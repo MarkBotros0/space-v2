@@ -10,7 +10,7 @@ import { useSeasonHistory } from "../../hooks/use-self-service";
 import { firstName, formatEventWhenShort, formatSeasonDay } from "../../lib/format";
 import { FinishedSeasonCard } from "../today/finished-season-card";
 import { UpcomingEventsGroup } from "../events/upcoming-events-group";
-import { AnnouncementsHomeCard } from "../announcements/announcements-home-card";
+import { AnnouncementsHomeFeed } from "../announcements/home-feed";
 import { useSessionStore } from "../../store/session";
 
 const HISTORY_ROWS = 3;
@@ -37,7 +37,7 @@ function Failed({ header, message, onRetry }: { header: string; message: string;
 /**
  * The alumnus's Today: the next event as the one hero (its title opens it, as the
  * session card's does), the others as rows, then the last few seasons. The season
- * in "Your last season" is not listed again under Your history (owner, 2026-11-09). Its data is the events list and `/me/season-history` —
+ * in "Your last season" is not listed again under Your seasons (owner, 2026-11-09). Its data is the events list and `/me/season-history` —
  * never `/me/dashboard`, which answers an alumnus 403 (spec 19 §7).
  */
 export function AlumniDashboard() {
@@ -71,7 +71,8 @@ export function AlumniDashboard() {
       refreshing={events.isRefetching || history.isRefetching}
     >
       <View className="flex-col gap-6">
-        <AnnouncementsHomeCard />
+        {/* Owner 2026-11-14: announcements as a news feed, first. */}
+        <AnnouncementsHomeFeed />
         {showLatest ? <FinishedSeasonCard row={latest} /> : null}
         {events.isPending ? (
           <Loading />
@@ -90,28 +91,35 @@ export function AlumniDashboard() {
         ) : null}
 
         {history.isPending ? (
-          <Loading header="Your history" />
+          <Loading header="Your seasons" />
         ) : history.isError ? (
-          <Failed header="Your history" message="Couldn't load your history." onRetry={() => void history.refetch()} />
-        ) : (
-          <GroupedList header="Your history">
-            {history.data.length === 0 ? (
-              <ListRow title="No past seasons" />
-            ) : (
-              earlier.map((s) => (
-                <ListRow
-                  key={s.seasonId}
-                  title={s.title}
-                  titleLines={2}
-                  subtitle={`${formatSeasonDay(s.startDate)} – ${formatSeasonDay(s.endDate)}${s.groupName ? ` · ${s.groupName}` : ""}`}
-                  trailing={<StatusChip tone="neutral" label={`${s.attendancePct}% attended`} />}
-                  onPress={() => router.push("/history")}
-                />
-              ))
-            )}
-            <ListRow title="View my history" chevron onPress={() => router.push("/history")} />
+          <Failed header="Your seasons" message="Couldn't load your seasons." onRetry={() => void history.refetch()} />
+        ) : history.data.length === 0 ? (
+          <GroupedList header="Your seasons">
+            <ListRow title="No past seasons yet" subtitle="Seasons you finish show here." />
           </GroupedList>
-        )}
+        ) : earlier.length > 0 ? (
+          // Owner 2026-11-14: one list. Each season opens itself; See all is the full history.
+          <GroupedList
+            header="Your seasons"
+            headerAction={{ label: "See all", onPress: () => router.push("/history") }}
+          >
+            {earlier.map((s) => (
+              <ListRow
+                key={s.seasonId}
+                title={s.title}
+                titleLines={2}
+                subtitle={`${formatSeasonDay(s.startDate)} – ${formatSeasonDay(s.endDate)}${s.groupName ? ` · ${s.groupName}` : ""}`}
+                trailing={<StatusChip tone="neutral" label={`${s.attendancePct}% attended`} />}
+                trailingPlacement="below"
+                chevron
+                onPress={() =>
+                  router.push({ pathname: "/past-season/[seasonId]", params: { seasonId: String(s.seasonId) } })
+                }
+              />
+            ))}
+          </GroupedList>
+        ) : null}
       </View>
     </Screen>
   );

@@ -54,7 +54,7 @@ describe("AlumniDashboard", () => {
     renderWithProviders(<AlumniDashboard />);
     expect(await screen.findByText("Hi, Aya")).toBeTruthy();
     expect(screen.getByText("JPCS-25")).toBeTruthy();
-    await screen.findByText("No past seasons");
+    await screen.findByText("No past seasons yet");
     expect(requested()).not.toContain("/api/v1/me/dashboard");
   });
 
@@ -101,14 +101,14 @@ describe("AlumniDashboard", () => {
   it("shows no events block at all when there are none", async () => {
     serve({ [EVENTS]: { events: [], total: 0 }, [HISTORY]: { seasons: [] } });
     renderWithProviders(<AlumniDashboard />);
-    expect(await screen.findByText("No past seasons")).toBeTruthy();
+    expect(await screen.findByText("No past seasons yet")).toBeTruthy();
     await waitFor(() => expect(screen.queryByLabelText("Loading")).toBeNull());
     expect(screen.queryByText("Upcoming events")).toBeNull();
     expect(screen.queryByText("No upcoming events")).toBeNull();
     expect(screen.queryByText("Next event")).toBeNull();
   });
 
-  it("lists at most three earlier seasons, never the one in Your last season, and opens history", async () => {
+  it("lists at most three earlier seasons in one list, each opening its season, never the one in Your last season", async () => {
     serve({
       [EVENTS]: { events: [], total: 0 },
       [HISTORY]: {
@@ -125,16 +125,16 @@ describe("AlumniDashboard", () => {
     expect(await screen.findByText("Season A")).toBeTruthy();
     expect(screen.getByText("Season Z finished")).toBeTruthy();
     expect(screen.queryByText("Season Z")).toBeNull();
-    expect(screen.getByText("YOUR HISTORY")).toBeTruthy();
+    expect(screen.getByText("YOUR SEASONS")).toBeTruthy();
     expect(screen.queryByText("Season D")).toBeNull();
     expect(screen.getAllByText("85% attended")).toHaveLength(3);
     expect(screen.getByLabelText("Season B, Jan 5, 2025 – Mar 20, 2025, 85% attended")).toBeTruthy();
     expect(screen.getByLabelText("Season A, Jan 5, 2025 – Mar 20, 2025 · Group A, 85% attended")).toBeTruthy();
     fireEvent.press(screen.getByText("Season A"));
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/past-season/[seasonId]", params: { seasonId: "1" } });
+    fireEvent.press(screen.getByText("See all"));
     expect(mockPush).toHaveBeenLastCalledWith("/history");
-    mockPush.mockClear();
-    fireEvent.press(screen.getByText("View my history"));
-    expect(mockPush).toHaveBeenCalledWith("/history");
+    expect(screen.queryByText("View my history")).toBeNull();
   });
 
   it("keeps the events when the history request fails", async () => {
@@ -145,7 +145,7 @@ describe("AlumniDashboard", () => {
     );
     renderWithProviders(<AlumniDashboard />);
     expect(await screen.findByText("Next event")).toBeTruthy();
-    expect(await screen.findByText("Couldn't load your history.")).toBeTruthy();
+    expect(await screen.findByText("Couldn't load your seasons.")).toBeTruthy();
   });
 
   it("shows the finished-season card above the rest, without the next-season line", async () => {
@@ -159,6 +159,44 @@ describe("AlumniDashboard", () => {
     expect(screen.queryByText(/next season here/)).toBeNull();
     fireEvent.press(screen.getByText("View your season"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/past-season/[seasonId]", params: { seasonId: "3" } });
+  });
+
+  it("shows the newest announcements as a news feed, each opening its post (owner 2026-11-14)", async () => {
+    const post = (id: number, excerpt: string, isRead: boolean) => ({
+      id,
+      audience: "COMMUNITY",
+      seasonId: null,
+      seasonTitle: null,
+      excerpt,
+      authorName: "Admin",
+      createdAt: "2026-11-10T10:00:00.000Z",
+      editedAt: null,
+      isRead,
+      hasPoll: false,
+      pollClosed: null,
+    });
+    serve({
+      [EVENTS]: { events: [], total: 0 },
+      [HISTORY]: { seasons: [] },
+      "/api/v1/announcements": {
+        items: [
+          post(1, "Reunion on Friday", false),
+          post(2, "Photos are up", true),
+          post(3, "Welcome", true),
+          post(4, "Old", true),
+        ],
+        nextCursor: null,
+      },
+    });
+    renderWithProviders(<AlumniDashboard />);
+    expect(await screen.findByText("Reunion on Friday")).toBeTruthy();
+    expect(screen.getByText("ANNOUNCEMENTS")).toBeTruthy();
+    expect(screen.getByText("Welcome")).toBeTruthy();
+    expect(screen.queryByText("Old")).toBeNull();
+    fireEvent.press(screen.getByText("Reunion on Friday"));
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/announcements/[id]", params: { id: "1" } });
+    fireEvent.press(screen.getAllByText("See all")[0]!);
+    expect(mockPush).toHaveBeenLastCalledWith("/announcements");
   });
 
   it("shows no finished card when the latest enrolment was a drop", async () => {
