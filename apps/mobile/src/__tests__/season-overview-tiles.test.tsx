@@ -47,7 +47,7 @@ const A = "Assignments: None yet";
 const Q = "Quizzes: None yet";
 const P = "Passing: Who is on track";
 const END = "End season: Results and graduation";
-const RESULTS = "Results";
+const RESULTS = "Results: Who passed";
 
 const cases: Array<[Role, keyof typeof statuses, string[], string | null]> = [
   ["SUPER", "draft", [Q, A, S], "This season is a draft"],

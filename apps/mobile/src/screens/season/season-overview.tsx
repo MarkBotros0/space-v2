@@ -6,7 +6,7 @@
 import type { SeasonAdminItem, SeasonDetail, SeasonRosterRow } from "@space/shared";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Award, CalendarDays, ClipboardList, FileQuestion, Flag, Target, type LucideIcon } from "lucide-react-native";
+import { Award, CalendarDays, ClipboardList, Flag, ListChecks, TrendingUp, type LucideIcon } from "lucide-react-native";
 
 import { EditSeason } from "./edit-season";
 import { NextStepCard } from "./next-step-card";
@@ -62,8 +62,8 @@ export function SeasonOverview({
   const tileTargets: Record<OverviewTileKey, { icon: LucideIcon; onPress: () => void }> = {
     sessions: { icon: CalendarDays, onPress: () => router.push({ pathname: "/seasons/[code]/sessions", params }) },
     assignments: { icon: ClipboardList, onPress: () => router.push({ pathname: "/assignments", params: seasonParam }) },
-    quizzes: { icon: FileQuestion, onPress: () => router.push({ pathname: "/quizzes", params: seasonParam }) },
-    passing: { icon: Target, onPress: () => router.push({ pathname: "/seasons/[code]/passing", params }) },
+    quizzes: { icon: ListChecks, onPress: () => router.push({ pathname: "/quizzes", params: seasonParam }) },
+    passing: { icon: TrendingUp, onPress: () => router.push({ pathname: "/seasons/[code]/passing", params }) },
     end: { icon: Flag, onPress: go.end },
     results: { icon: Award, onPress: () => router.push({ pathname: "/seasons/[code]/results", params }) },
   };

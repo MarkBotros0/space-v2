@@ -20,6 +20,8 @@ export type SeasonAction = {
   onPress: () => void;
 };
 
+const FILL = { flex: 1 } as const;
+
 function ActionTile({ action }: { action: SeasonAction }) {
   const press = usePressDim();
   const Icon = action.icon;
@@ -34,8 +36,9 @@ function ActionTile({ action }: { action: SeasonAction }) {
       onPressOut={press.onPressOut}
       className="min-w-[140px] flex-1 basis-[45%]"
     >
-      <Animated.View style={press.animatedStyle}>
-        <View className="min-h-[92px] flex-col gap-2 rounded-group bg-surface p-4">
+      {/* Fills the row's height, so two tiles side by side match whether or not one has a hint. */}
+      <Animated.View style={[press.animatedStyle, FILL]}>
+        <View className="min-h-[92px] flex-1 flex-col gap-2 rounded-group bg-surface p-4">
           <View className="size-9 items-center justify-center rounded-full bg-info-soft">
             <Icon size={18} className="text-info" />
           </View>
