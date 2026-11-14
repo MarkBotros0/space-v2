@@ -11,6 +11,7 @@ import Animated from "react-native-reanimated";
 import { iconWithClassName } from "../../design/lib/icon";
 import { usePressDim } from "../../design/motion";
 import { StatusChip, Text, type ChipSpec } from "../../design/ui";
+import { MeterBar } from "../../design/ui/meter-bar";
 import { Pressable } from "../../design/ui/pressable";
 
 export type Figure = { key: string; label: string; value: number; icon: LucideIcon; onPress: () => void };
@@ -78,12 +79,7 @@ export function CountBars({ bars }: { bars: CountBar[] }) {
                 {shown}
               </Text>
             </View>
-            <View className="h-1.5 w-full overflow-hidden rounded-full bg-separator">
-              <View
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${max > 0 ? Math.max(2, (b.count / max) * 100) : 0}%` }}
-              />
-            </View>
+            <MeterBar pct={max > 0 ? Math.max(2, (b.count / max) * 100) : 0} fillClassName="rounded-full bg-primary" />
           </View>
         );
       })}

@@ -12,6 +12,7 @@ import { usePressDim } from "../../design/motion";
 import { progressBand } from "../../lib/progress-band";
 import { Pressable } from "../../design/ui/pressable";
 import { StatusChip, Text } from "../../design/ui";
+import { MeterBar } from "../../design/ui/meter-bar";
 import type { Meter, ResultCardView } from "./results-model";
 import { resultCardLabel } from "./results-model";
 
@@ -27,11 +28,7 @@ function MeterCell({ meter }: { meter: Meter }) {
       <Text variant="headline" tabular numberOfLines={1}>
         {meter.value}
       </Text>
-      <View className="h-1.5 w-full overflow-hidden rounded-full bg-separator">
-        {meter.pct === null ? null : (
-          <View className={`h-full ${BAR[progressBand(fill)]}`} style={{ width: `${fill}%` }} />
-        )}
-      </View>
+      <MeterBar pct={meter.pct === null ? null : fill} fillClassName={BAR[progressBand(fill)]} />
       {meter.detail ? (
         <Text variant="caption" className="text-muted-foreground" numberOfLines={2}>
           {meter.detail}
