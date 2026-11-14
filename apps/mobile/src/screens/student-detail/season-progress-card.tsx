@@ -20,16 +20,13 @@ import { Skeleton, StatusChip, Text } from "../../design/ui";
 import { ProgressRing, RingValue } from "../../design/ui/progress-ring";
 import { isNoSeasonError, useStudentEngagement } from "../../hooks/use-engagement";
 import { useStudentProgress } from "../../hooks/use-season-passing";
+import { progressBand } from "../../lib/progress-band";
 import { useRole } from "../../store/session";
 import { ProgressDetailSheet } from "./progress-detail-sheet";
 import { type ProgressLine, progressLines, progressSpoken } from "./progress-model";
 
 /** The ring's colour: teal on track, amber in the middle, red when low; never the only signal. */
-function ringStroke(pct: number): string {
-  if (pct >= 75) return "stroke-primary";
-  if (pct >= 50) return "stroke-warn";
-  return "stroke-bad";
-}
+const RING = { ok: "stroke-primary", warn: "stroke-warn", bad: "stroke-bad" } as const;
 
 /** One number as a ring with its percent inside, the name and a short figure under it. */
 function RingButton({ line, onPress }: { line: ProgressLine; onPress: () => void }) {
@@ -50,7 +47,7 @@ function RingButton({ line, onPress }: { line: ProgressLine; onPress: () => void
             value={line.pct ?? 0}
             size={84}
             strokeWidth={8}
-            indicatorClassName={line.pct === null ? undefined : ringStroke(line.pct)}
+            indicatorClassName={line.pct === null ? undefined : RING[progressBand(line.pct)]}
           >
             <RingValue className="text-lg leading-6">{line.pct === null ? "–" : `${line.pct}%`}</RingValue>
           </ProgressRing>

@@ -20,8 +20,8 @@ motion, accessibility or API change.
 
 ## Steps
 
-- [ ] 1. Characterization: the 75 / 50 band edges (74, 75, 49, 50) for the result bar and the progress ring, passing on the old code — test: `progress-band.test.ts`
-- [ ] 2. One `progressBand(pct)` (`src/lib/progress-band.ts`) for the result card's bar and the student page's ring; each keeps its own class map — test: step 1, `season-end*`, `season-progress*`
+- [x] 1. Characterization: the 75 / 50 band edges (74, 75, 49, 50) for the result bar and the progress ring, passing on the old code — test: `progress-band.test.ts` — 3 pass on the old code (ffed2f06)
+- [x] 2. One `progressBand(pct)` (`src/lib/progress-band.ts`) for the result card's bar and the student page's ring; each keeps its own class map — test: step 1, `season-end*`, `season-progress*` — typecheck, lint clean; 57 tests pass
 - [ ] 3. One thin bar (`src/design/ui/meter-bar.tsx`, the exact `h-1.5 … bg-separator` markup) for the result card's meters and Organisation's count bars — test: `reports-screen*`, `season-results*`, design-consistency, sweep-rules
 - [ ] 4. Full suite + summary → **STOP for review**
 

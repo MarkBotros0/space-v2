@@ -9,16 +9,13 @@ import { View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { usePressDim } from "../../design/motion";
+import { progressBand } from "../../lib/progress-band";
 import { Pressable } from "../../design/ui/pressable";
 import { StatusChip, Text } from "../../design/ui";
 import type { Meter, ResultCardView } from "./results-model";
 import { resultCardLabel } from "./results-model";
 
-function barClass(pct: number): string {
-  if (pct >= 75) return "bg-primary";
-  if (pct >= 50) return "bg-warn";
-  return "bg-bad";
-}
+const BAR = { ok: "bg-primary", warn: "bg-warn", bad: "bg-bad" } as const;
 
 function MeterCell({ meter }: { meter: Meter }) {
   const fill = meter.pct === null ? 0 : Math.max(0, Math.min(100, meter.pct));
@@ -31,7 +28,9 @@ function MeterCell({ meter }: { meter: Meter }) {
         {meter.value}
       </Text>
       <View className="h-1.5 w-full overflow-hidden rounded-full bg-separator">
-        {meter.pct === null ? null : <View className={`h-full ${barClass(fill)}`} style={{ width: `${fill}%` }} />}
+        {meter.pct === null ? null : (
+          <View className={`h-full ${BAR[progressBand(fill)]}`} style={{ width: `${fill}%` }} />
+        )}
       </View>
       {meter.detail ? (
         <Text variant="caption" className="text-muted-foreground" numberOfLines={2}>
