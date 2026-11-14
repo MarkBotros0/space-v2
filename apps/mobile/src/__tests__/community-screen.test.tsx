@@ -198,7 +198,7 @@ describe("CommunityScreen — Plan 10 entry points", () => {
       }),
     );
     await waitFor(() =>
-      expect(alert).toHaveBeenCalledWith("Invites sent", "Sent 2 · failed 1 · skipped 0 · 1 still pending."),
+      expect(alert).toHaveBeenCalledWith("Invites sent", "Sent 2, failed 1, skipped 0. 1 still pending."),
     );
     alert.mockRestore();
   });

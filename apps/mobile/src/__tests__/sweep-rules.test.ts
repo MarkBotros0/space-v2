@@ -63,7 +63,6 @@ const BASELINE: Record<string, Record<string, number>> = {
   // A meta line is built with joinMeta() (src/lib/join-meta.ts) or a src/lib/format.ts helper,
   // never by hand with " · " (at 1.3 a hand-built line wraps apart and leaves a dangling dot).
   separators: {
-    "app/(app)/(tabs)/community.tsx": 1,
     "app/(app)/(tabs)/follow-ups.tsx": 1,
     "app/(app)/(tabs)/groups.tsx": 1,
     "app/(app)/attendance.tsx": 3,

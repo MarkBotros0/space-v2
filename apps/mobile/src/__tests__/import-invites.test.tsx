@@ -45,7 +45,7 @@ describe("ImportInvites — sending invites from the import result", () => {
       expect(post).toHaveBeenCalledWith("/api/v1/users/invites/pending", undefined, expect.anything()),
     );
     expect(
-      await screen.findByText(/Sent 3 · failed 0 · skipped 0 · 0 still pending\. Everyone has an invite now\./),
+      await screen.findByText(/Sent 3, failed 0, skipped 0\. 0 still pending\. Everyone has an invite now\./),
     ).toBeTruthy();
   });
 
