@@ -90,8 +90,8 @@ describe("ReportsScreen — SUPER's organisation roll-up (v1 super/reports)", ()
     fireEvent.press(await screen.findByText("Organisation"));
     expect(await screen.findByText("Students per season")).toBeTruthy();
     expect(screen.getByText("Active seasons")).toBeTruthy();
-    expect(screen.getByText("2098: 12")).toBeTruthy();
-    expect(screen.getAllByText("20 active").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("2098: 12")).toBeTruthy();
+    expect(screen.getAllByText("20\u00a0active").length).toBeGreaterThan(0);
     // The season is a grouped row: its label is the title, then the counts it carries.
     fireEvent.press(screen.getByLabelText(/^Spring 2099, 2 leaders/));
     expect(mockPush).toHaveBeenCalledWith({

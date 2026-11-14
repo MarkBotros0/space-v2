@@ -253,7 +253,6 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/students", params: { show: "alumni" } });
     fireEvent.press(screen.getByLabelText("Active seasons: 2"));
     expect(mockPush).toHaveBeenCalledWith("/seasons");
-    expect(screen.getByTestId("organisation-tiles").props.className).toContain("flex-wrap");
   });
 
   it("switches between Season and Organisation instead of stacking them", async () => {
@@ -286,18 +285,17 @@ describe("ReportsScreen for super — organisation tiles and season rows", () =>
     }
   });
 
-  it("lists students per season as a grouped row with all four counts and a status chip", async () => {
+  it("lists students per season with all four counts as figures and a status chip", async () => {
     useSessionStore.setState(sessionFor("SUPER"));
     mockEndpoints({ withOrg: true });
     renderWithProviders(<ReportsScreen />);
 
     fireEvent.press(await screen.findByText("Organisation"));
     expect(await screen.findByText("Students per season")).toBeTruthy();
-    const meta = screen.getByText("2 leaders · 20 active · 3 completed · 1 dropped");
-    // Each count stays with its noun when the line wraps (sweep R6).
-    expect(meta.props.children).toBe("2\u00a0leaders · 20\u00a0active · 3\u00a0completed · 1\u00a0dropped");
+    // Owner 2026-11-14: the counts are small figures, each over its word.
+    expect(screen.getByLabelText(/^Spring 2099, 2 leaders, 20 active, 3 completed, 1 dropped, /)).toBeTruthy();
     expect(screen.getByText("Active members per season")).toBeTruthy();
-    expect(screen.getByText("2098: 12")).toBeTruthy();
+    expect(screen.getByLabelText("2098: 12")).toBeTruthy();
     fireEvent.press(screen.getByLabelText(/^Spring 2099, 2 leaders/));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: "/seasons/[code]",

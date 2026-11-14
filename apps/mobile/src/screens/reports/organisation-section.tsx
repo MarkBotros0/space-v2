@@ -1,45 +1,37 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
-import { Pressable } from "../../design/ui/pressable";
 import { useRouter } from "expo-router";
 
-import { RankedBars } from "../../design/charts/ranked-bars";
 import { NAV_ICONS } from "../../design/icons/nav-icon";
 import { RouteError, RouteSkeleton } from "../../design/layout/route-states";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  EmptyState,
-  GroupedList,
-  ListRow,
-  StatTile,
-  StatusChip,
-  Text,
-  statusChip,
-} from "../../design/ui";
+import { EmptyState, GroupedList, Text, statusChip } from "../../design/ui";
 import { useOrganisationReport } from "../../hooks/use-reports";
-import { joinMeta } from "../../lib/join-meta";
-import { countOf } from "../../lib/plural";
+import { CountBars, FigureCard, SeasonCountsRow } from "./organisation-parts";
 
-/** A tile that opens its list: the wrapper takes the tile's flex so tiles still wrap in pairs. */
-function TilePress({ onPress, children }: { onPress: () => void; children: ReactNode }) {
+function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} className="min-w-[136px] flex-1">
+    <View className="flex-col gap-2">
+      <View className="flex-col gap-0.5 px-1">
+        <Text variant="headline" accessibilityRole="header">
+          {title}
+        </Text>
+        {hint ? (
+          <Text variant="subhead" className="text-muted-foreground">
+            {hint}
+          </Text>
+        ) : null}
+      </View>
       {children}
-    </Pressable>
+    </View>
   );
 }
 
 /**
- * v1 super/reports/page.tsx (B5-4): three StatCards, "Active members per
- * season" and "Alumni by graduation year" cards, then the "Students per
- * season" table. V2 decisions kept: the first card says "Student accounts"
- * (R51, spec D4 — v1's "Current students" counted accounts never enrolled in
- * anything), and the pies are ranked lists (R60, R93, R97: a pie coloured by
- * palette index implies a severity ranking that does not exist, and labelled
- * slices do not fit 375px).
+ * Reports' Organisation view, for a super (owner 2026-11-14 redesign of v1 super/reports, B5-4):
+ * the community's three figures in one card, each opening its list ("Student accounts", R51 / D4:
+ * v1's "Current students" counted accounts never enrolled); active members per season and alumni
+ * by school year as counts over bars (R60, R93, R97: no pies); then every season with its counts
+ * as figures, opening the season.
  */
 export function OrganisationSection() {
   const router = useRouter();
@@ -48,81 +40,70 @@ export function OrganisationSection() {
   if (isPending) return <RouteSkeleton />;
   if (isError) return <RouteError onRetry={() => void refetch()} />;
 
-  const active = data.seasons.filter((s) => s.activeCount > 0);
-  const maxActive = active.reduce((n, x) => Math.max(n, x.activeCount), 0);
+  const active = data.seasons.filter((s) => s.activeCount > 0).sort((a, b) => b.activeCount - a.activeCount);
 
   return (
-    <View className="flex-col gap-4">
-      <View testID="organisation-tiles" className="flex-row flex-wrap gap-3">
-        <TilePress onPress={() => router.push("/students")}>
-          <StatTile className="flex-none" label="Student accounts" value={data.totalStudentsNotGraduated} />
-        </TilePress>
-        <TilePress onPress={() => router.push({ pathname: "/students", params: { show: "alumni" } })}>
-          <StatTile className="flex-none" label="Alumni" value={data.totalAlumni} />
-        </TilePress>
-        <TilePress onPress={() => router.push("/seasons")}>
-          <StatTile
-            className="flex-none"
-            label={data.activeSeasonCount === 1 ? "Active season" : "Active seasons"}
-            value={data.activeSeasonCount}
+    <View className="flex-col gap-6">
+      <FigureCard
+        figures={[
+          {
+            key: "students",
+            label: "Student accounts",
+            value: data.totalStudentsNotGraduated,
+            icon: NAV_ICONS.students,
+            onPress: () => router.push("/students"),
+          },
+          {
+            key: "alumni",
+            label: "Alumni",
+            value: data.totalAlumni,
+            icon: NAV_ICONS.alumni,
+            onPress: () => router.push({ pathname: "/students", params: { show: "alumni" } }),
+          },
+          {
+            key: "seasons",
+            label: data.activeSeasonCount === 1 ? "Active season" : "Active seasons",
+            value: data.activeSeasonCount,
+            icon: NAV_ICONS.season,
+            onPress: () => router.push("/seasons"),
+          },
+        ]}
+      />
+
+      <Section title="Active members per season" hint="Students studying in each running season">
+        {active.length === 0 ? (
+          <EmptyState
+            icon={NAV_ICONS.students}
+            title="No active members"
+            description="Enroll students in a season to see the breakdown."
           />
-        </TilePress>
-      </View>
+        ) : (
+          <CountBars
+            bars={active.map((s) => ({
+              key: String(s.seasonId),
+              label: s.title,
+              count: s.activeCount,
+              unit: "active",
+            }))}
+          />
+        )}
+      </Section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Active members per season</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {active.length === 0 ? (
-            <EmptyState
-              icon={NAV_ICONS.students}
-              title="No active members"
-              description="Enroll students in a season to see the breakdown."
-            />
-          ) : (
-            <RankedBars
-              bars={[...active]
-                .sort((a, b) => b.activeCount - a.activeCount)
-                .map((s) => ({
-                  key: String(s.seasonId),
-                  label: s.title,
-                  value: Math.round((s.activeCount / maxActive) * 100),
-                  caption: `${s.activeCount} active`,
-                }))}
-            />
-          )}
-        </CardContent>
-      </Card>
+      <Section title="Alumni by school year">
+        {data.alumniByYear.length === 0 ? (
+          <EmptyState
+            icon={NAV_ICONS.alumni}
+            title="No alumni yet"
+            description="Graduated students will be counted here by class year."
+          />
+        ) : (
+          <CountBars
+            bars={data.alumniByYear.map((a) => ({ key: String(a.year), label: String(a.year), count: a.count }))}
+          />
+        )}
+      </Section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Alumni by School year</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {data.alumniByYear.length === 0 ? (
-            <EmptyState
-              icon={NAV_ICONS.alumni}
-              title="No alumni yet"
-              description="Graduated students will be counted here by class year."
-            />
-          ) : (
-            <View className="flex-col gap-1">
-              {data.alumniByYear.map((a) => (
-                <Text key={a.year} className="text-sm">{`${a.year}: ${a.count}`}</Text>
-              ))}
-            </View>
-          )}
-        </CardContent>
-      </Card>
-
-      <View className="flex-col gap-2">
-        <Text variant="headline" accessibilityRole="header">
-          Students per season
-        </Text>
-        <Text variant="subhead" className="text-muted-foreground">
-          Active, completed, and dropped counts
-        </Text>
+      <Section title="Students per season" hint="Active, completed and dropped in each season">
         {data.seasons.length === 0 ? (
           <EmptyState
             icon={NAV_ICONS.season}
@@ -132,24 +113,22 @@ export function OrganisationSection() {
         ) : (
           <GroupedList>
             {data.seasons.map((r) => (
-              <ListRow
+              <SeasonCountsRow
                 key={r.seasonId}
                 title={r.title}
-                subtitle={joinMeta([
-                  countOf(r.leaderCount, "leader"),
-                  `${r.activeCount}\u00a0active`,
-                  `${r.completedCount}\u00a0completed`,
-                  `${r.withdrawnCount}\u00a0dropped`,
-                ])}
-                subtitleLines={3}
-                trailing={<StatusChip {...statusChip("season", r.status)} />}
-                chevron
+                chip={statusChip("season", r.status)}
+                counts={[
+                  { label: r.leaderCount === 1 ? "Leader" : "Leaders", value: r.leaderCount },
+                  { label: "Active", value: r.activeCount },
+                  { label: "Completed", value: r.completedCount },
+                  { label: "Dropped", value: r.withdrawnCount },
+                ]}
                 onPress={() => router.push({ pathname: "/seasons/[code]", params: { code: r.code } })}
               />
             ))}
           </GroupedList>
         )}
-      </View>
+      </Section>
     </View>
   );
 }
