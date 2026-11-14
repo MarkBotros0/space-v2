@@ -7,7 +7,9 @@
   every account (owner 2026-11-08: a row's Invite / Resend is a pill beside it, the status chip under its
   meta line). Search and a filter icon (`FilterButton`) share one row; the sheet narrows by role
   and by account status. Its header button is **New member** (`/users/new`). "Add students in bulk"
-  opens the importer, which takes plain `name, email` lines with no header row.
+  opens the importer, which takes plain `name, email` lines with no header row. An import sends no
+  email by itself; its result offers **Send invites** (owner 2026-11-14), the same batch of 20 per
+  tap as Community's "Send N invites" row, reaching everyone still waiting for an invite.
 - **Students list.** Filter is the icon in the search row, never a chip under it. A Super filters
   by season first, then that season's groups. Alumni and Dropped are a Show choice in the sheet
   (`/students?show=alumni`), not pages. Every row names the active season, else "Last season: …"

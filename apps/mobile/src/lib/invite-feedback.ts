@@ -1,3 +1,5 @@
+import type { BulkInviteResponse } from "@space/shared";
+
 import { apiErrorCode, apiErrorMessage, isNetworkError } from "./api-error";
 
 /**
@@ -26,4 +28,9 @@ export function inviteErrorMessage(err: unknown): string {
 
 export function inviteSentMessage(email: string): string {
   return `Invite sent to ${email}.`;
+}
+
+/** What one "Send invites" batch did: the Community row's alert and the import result's line. */
+export function bulkSummary(r: BulkInviteResponse): string {
+  return `Sent ${r.sent} · failed ${r.failed} · skipped ${r.skipped} · ${r.remaining} still pending.`;
 }

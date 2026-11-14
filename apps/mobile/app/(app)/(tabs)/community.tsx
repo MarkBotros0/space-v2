@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, View } from "react-native";
-import { BULK_INVITE_BATCH_SIZE, type BulkInviteResponse } from "@space/shared";
+import { BULK_INVITE_BATCH_SIZE } from "@space/shared";
 
 import { RouteError, RouteSkeleton } from "../../../src/design/layout/route-states";
 import { Screen } from "../../../src/design/layout/screen";
@@ -10,7 +10,7 @@ import { Button, EmptyState, GroupedList, ListRow, PillButton, SearchFilterRow, 
 import { usePendingInviteCount, useSendInvite, useSendPendingInvites, useUsers } from "../../../src/hooks/use-users";
 import { apiErrorMessage } from "../../../src/lib/api-error";
 import { useDebouncedSearch } from "../../../src/hooks/use-debounced-search";
-import { inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
+import { bulkSummary, inviteErrorMessage, inviteSentMessage } from "../../../src/lib/invite-feedback";
 import {
   CommunityFilterSheet,
   communityFilterCount,
@@ -18,10 +18,6 @@ import {
 } from "../../../src/screens/community/community-filter-sheet";
 import { useRole } from "../../../src/store/session";
 import { LoadMoreButton } from "../../../src/design/ui/load-more-button";
-
-function bulkSummary(r: BulkInviteResponse): string {
-  return `Sent ${r.sent} · failed ${r.failed} · skipped ${r.skipped} · ${r.remaining} still pending.`;
-}
 
 /**
  * v1's SendPendingInvitesButton (invite-buttons.tsx:40-65), drawn as its

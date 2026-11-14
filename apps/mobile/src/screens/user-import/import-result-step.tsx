@@ -5,6 +5,7 @@ import type { StudentImportResult } from "@space/shared";
 
 import { iconWithClassName } from "../../design/lib/icon";
 import { Button, Text } from "../../design/ui";
+import { ImportInvites } from "./import-invites";
 
 iconWithClassName(CheckCircle2);
 
@@ -31,13 +32,13 @@ export function ImportResultStep({
           <Text className="text-sm text-success-700 dark:text-success-300">
             {`${result.created} created · ${result.enrolled} enrolled · ${result.skipped} skipped`}
           </Text>
-          {/* Spec R55: import sends nothing. Invites go from the Community tab. */}
+          {/* Spec R55: import sends nothing by itself; ImportInvites below sends them. */}
           <Text className="mt-1 text-sm text-success-700 dark:text-success-300">
-            No invites were sent. New accounts can't sign in until they are invited: on the Community tab, the Send
-            invites row sends them.
+            No invites were sent yet. New accounts can't sign in until they are invited.
           </Text>
         </View>
       </View>
+      <ImportInvites />
       <Text className="text-xs text-muted-foreground">
         It is safe to run the same paste again — anyone already in the system is skipped, never duplicated.
       </Text>
