@@ -31,9 +31,9 @@ export function ImportResultStep({
           <Text className="text-sm text-success-700 dark:text-success-300">
             {`${result.created} created · ${result.enrolled} enrolled · ${result.skipped} skipped`}
           </Text>
-          {/* Spec R55: import sends nothing. Invites go from the users screen. */}
+          {/* Spec R55: import sends nothing. Invites go from the Community tab. */}
           <Text className="mt-1 text-sm text-success-700 dark:text-success-300">
-            No invites were sent. New accounts have no way to sign in until you invite them from the users screen.
+            No invites were sent. New accounts can't sign in until they are invited: on the Community tab, the Send invites row sends them.
           </Text>
         </View>
       </View>
