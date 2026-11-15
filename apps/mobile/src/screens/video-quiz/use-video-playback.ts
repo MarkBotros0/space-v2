@@ -11,6 +11,7 @@ import type { YoutubeIframeRef } from "react-native-youtube-iframe";
 import type { StudentVideoQuestion, SubmitVideoAnswerResponse } from "@space/shared";
 
 import { apiErrorMessage } from "../../lib/api-error";
+import { clampSeek } from "./player-model";
 import type { AnswerFeedback } from "./video-question-modal";
 
 /**
@@ -70,6 +71,11 @@ export function useVideoPlayback({
   const [playing, setPlayingState] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState<number | null>(null);
+  const [rate, setRate] = useState(1);
+  const [fullScreen, setFullScreenState] = useState(false);
+  // Going in or out of full screen makes the frame again: until it is ready its playhead reads 0.
+  const remakingRef = useRef(false);
+  const fullScreenRef = useRef(false);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
   const [deadlocked, setDeadlocked] = useState(false);
@@ -89,6 +95,8 @@ export function useVideoPlayback({
   const openRef = useRef(open);
   const deadlockedRef = useRef(deadlocked);
   const playingRef = useRef(playing);
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
   barrierRef.current = barrier;
   barrierQuestionRef.current = barrierQuestion;
   openRef.current = open;
@@ -117,10 +125,10 @@ export function useVideoPlayback({
     // A playhead read that lands after unmount (or a clock change) sets nothing.
     let cancelled = false;
     const timer = setInterval(() => {
-      if (openRef.current !== null || deadlockedRef.current) return;
+      if (openRef.current !== null || deadlockedRef.current || remakingRef.current) return;
       void clock()
         .then((t) => {
-          if (cancelled || openRef.current !== null || deadlockedRef.current) return;
+          if (cancelled || openRef.current !== null || deadlockedRef.current || remakingRef.current) return;
           // YouTube's own controls can skip ahead; with a ceiling (skipping blocked) the playhead goes back.
           const ceiling = hooks.current.seekCeiling?.();
           if (ceiling !== undefined && t > Math.max(ceiling, currentRef.current) + SKIP_SECONDS) {
@@ -159,10 +167,21 @@ export function useVideoPlayback({
     return () => clearTimeout(timer);
   }, [ready]);
 
+  const setFullScreen = useCallback((next: boolean | ((now: boolean) => boolean)): void => {
+    const value = typeof next === "function" ? next(fullScreenRef.current) : next;
+    if (value === fullScreenRef.current) return;
+    fullScreenRef.current = value;
+    remakingRef.current = true;
+    setFullScreenState(value);
+  }, []);
+
   const onReady = useCallback((): void => {
+    remakingRef.current = false;
     setReady(true);
     // v1 interactive-video-player.tsx:127-129: reopen where the student got to, never past the barrier.
-    const resumeTo = Math.min(furthestRef.current, barrierRef.current);
+    // A player made again (going in or out of full screen) carries on from the playhead instead.
+    const from = currentRef.current > 0 ? currentRef.current : furthestRef.current;
+    const resumeTo = Math.min(from, barrierRef.current);
     if (resumeTo > 0) {
       playerRef.current?.seekTo(resumeTo, true);
       currentRef.current = resumeTo;
@@ -186,6 +205,26 @@ export function useVideoPlayback({
     },
     [setPlaying],
   );
+
+  /**
+   * A seek from the app's own bar or buttons (`clampSeek`): back is free; forward stops at the next
+   * unanswered question and, with skipping blocked, at the furthest point watched. Returns where it landed.
+   */
+  const seek = useCallback((target: number): number => {
+    if (openRef.current !== null) return currentRef.current;
+    const to = clampSeek(target, {
+      ceiling: hooks.current.seekCeiling?.(),
+      barrier: barrierRef.current,
+      duration: durationRef.current,
+      current: currentRef.current,
+    });
+    playerRef.current?.seekTo(to, true);
+    currentRef.current = to;
+    setCurrent(to);
+    // The stretch the seek crossed never played: the watched count starts a new run.
+    hooks.current.onSeeked?.();
+    return to;
+  }, []);
 
   const onAnswer = (selectedIndex: number): void => {
     if (open === null) return;
@@ -222,6 +261,15 @@ export function useVideoPlayback({
     current,
     currentRef,
     duration,
+    ready,
+    rate,
+    setRate,
+    fullScreen,
+    setFullScreen,
+    seek,
+    /** The skipping limit now (see `seekCeiling`), for the bar's lighter stretch; read after render. */
+    ceilingNow: () => hooks.current.seekCeiling?.(),
+    questions: source.questions,
     failed,
     setFailed,
     deadlocked,

@@ -5,10 +5,11 @@
     "version": "1.0.17",
     "icon": "./assets/icon.png",
     "scheme": "spacev2",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
+      ["expo-screen-orientation", { "initialOrientation": "PORTRAIT_UP" }],
       "expo-secure-store",
       "expo-notifications",
       [

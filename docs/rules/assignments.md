@@ -32,9 +32,14 @@
   furthest point reached. **Watched = watched seconds ≥ 90% of the video's length.** The server
   ignores a report that claims more new watched time than twice the wall-clock time since the last
   one: watching at 2x, YouTube's top speed, counts in full (owner, 2026-11-13).
-  The player shows YouTube's own controls (play, captions, speed, full screen; a timed question that
-  comes up in full screen pauses the video and shows on leaving it); the app has no controls of its
-  own (no Play button, no seek bar: owner, 2026-11-13), and with skipping blocked a skip on YouTube's bar goes back to the furthest point. The live
+  **The player is the app's own (owner, 2026-11-15, replacing 2026-11-13's YouTube-only controls):**
+  YouTube's controls are off and the app's are the only ones: play and pause (also a tap on the
+  picture), back 10 seconds, a seek bar, the time, speed (1, 1.25, 1.5, 2, 0.5, 0.75x) and full screen
+  (landscape; a timed question closes it and shows as usual). No quality setting: YouTube no longer
+  lets an app choose one. The seek bar goes back freely; forward it stops at the next unanswered
+  question and, with skipping blocked, at the furthest point watched. Each unanswered question is a
+  dot on the bar. YouTube's logo stays visible (YouTube's terms); tapping it, or any YouTube link in
+  the frame, first asks "Open YouTube?" and says watching there doesn't count. The live
   count is to the second ("2 min 5 sec of 58 min"). Leave on "Not finished yet" leaves. A
   video is done when it is watched **and** every timed question on it is answered.
 - **Essay (owner):** a question with a **minimum and maximum word count**; the student sees a live

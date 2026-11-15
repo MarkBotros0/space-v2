@@ -2,6 +2,7 @@ import "../global.css";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import * as ScreenOrientation from "expo-screen-orientation";
 import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "nativewind";
 import { useEffect, useState } from "react";
@@ -26,6 +27,9 @@ import { useSessionStore } from "../src/store/session";
 
 // Before anything renders. A no-op unless the build sets EXPO_PUBLIC_SENTRY_DSN.
 initSentry();
+// The app is portrait; only a video's full screen turns it (owner, 2026-11-15). app.json allows every
+// orientation so that full screen can, and this holds the rest of the app upright.
+void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined);
 // The native splash (plain app background, app.json) stays up until fonts and
 // theme are in place, then the LaunchScreen writes the logo on the same colour
 // while the stored session settles underneath.

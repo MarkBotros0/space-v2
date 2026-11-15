@@ -138,8 +138,8 @@ describe("video part screen", () => {
     expect(await screen.findByText("Watched 5 min of 18 min", {}, { timeout: 5000 })).toBeTruthy();
     expect(screen.getByText("Luke 15 talk")).toBeTruthy();
     expect(screen.getByText("It counts once you've watched at least 90% of it.")).toBeTruthy();
-    // YouTube's own controls play it; the app has no Play button of its own.
-    expect(screen.queryByRole("button", { name: "Play" })).toBeNull();
+    // The app's own controls play it (owner, 2026-11-15); YouTube's are off.
+    expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
   });
 
   it("with blockSkipping a forward seek past furthest snaps back", async () => {
