@@ -191,7 +191,6 @@ describe("AppLayout stack", () => {
       "attendance",
       "events",
       "notifications",
-      "quizzes",
       "reports",
       "season",
     ]);
