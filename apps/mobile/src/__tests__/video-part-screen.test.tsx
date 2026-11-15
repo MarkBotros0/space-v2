@@ -154,6 +154,8 @@ describe("video part screen", () => {
     renderStacked(<PartScreen />);
     // The player waits for the part video's own read.
     await screen.findByText(/^Watched/, {}, { timeout: 5000 });
+    // The resume waits for Play.
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
     await waitFor(() => expect(mockSeekTo).toHaveBeenCalledWith(120, true)); // the resume
     mockSeekTo.mockClear();
 
@@ -176,6 +178,8 @@ describe("video part screen", () => {
     );
     renderStacked(<PartScreen />);
     await screen.findByText(/^Watched/, {}, { timeout: 5000 });
+    // The resume waits for Play.
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
     await waitFor(() => expect(mockSeekTo).toHaveBeenCalledWith(100, true)); // the resume
     mockSeekTo.mockClear();
     mockClock.now = 1000;
@@ -187,6 +191,8 @@ describe("video part screen", () => {
     renderStacked(<PartScreen />);
     // The player waits for the part video's own read.
     await screen.findByText(/^Watched/, {}, { timeout: 5000 });
+    // The resume waits for Play.
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
     await waitFor(() => expect(mockSeekTo).toHaveBeenCalled());
     mockSeekTo.mockClear();
     mockClock.now = 540;

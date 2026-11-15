@@ -67,3 +67,16 @@ export function questionMarks(
 export function isYouTubeLink(url: string): boolean {
   return /^https?:\/\/([a-z0-9-]+\.)*(youtube\.com|youtu\.be)\//i.test(url);
 }
+
+/**
+ * Whether an ad is playing after YouTube reports `state` (its names, as react-native-youtube-iframe
+ * gives them). The IFrame API has no ad event; through an ad it reports "unstarted" with the ad's
+ * own playhead, right after buffering (measured 2026-11-15 in Chromium and WebKit: -1, 3, -1, 3, 1).
+ * "unstarted" straight after loading is no ad; buffering between ads keeps it; the video playing,
+ * pausing, ending or being cued ends it.
+ */
+export function adAfterReport(wasAd: boolean, previous: string, state: string): boolean {
+  if (state === "unstarted") return wasAd || previous === "buffering";
+  if (state === "buffering") return wasAd;
+  return false;
+}

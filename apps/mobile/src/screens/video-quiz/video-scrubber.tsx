@@ -21,6 +21,7 @@ export function VideoScrubber({
   reach,
   marks,
   onSeek,
+  disabled: off = false,
 }: {
   current: number;
   duration: number | null;
@@ -30,6 +31,8 @@ export function VideoScrubber({
   marks: { id: number; at: number }[];
   /** A drag or tap settled here; the player clamps it (`clampSeek`). */
   onSeek: (seconds: number) => void;
+  /** Not now (an ad is playing). */
+  disabled?: boolean;
 }) {
   const [width, setWidth] = useState(0);
   // Where the thumb is held while dragging; the playhead otherwise.
@@ -63,7 +66,7 @@ export function VideoScrubber({
 
   const shown = dragAt ?? current;
   const played = pctOf(fractionOf(shown, max));
-  const disabled = max <= 0;
+  const disabled = off || max <= 0;
   return (
     <View
       testID="video-scrubber"
@@ -73,9 +76,10 @@ export function VideoScrubber({
       accessibilityState={{ disabled }}
       accessibilityValue={{ text: `${formatTimestamp(Math.floor(shown))} of ${formatTimestamp(Math.floor(max))}` }}
       accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
-      onAccessibilityAction={(e) =>
-        onSeek(current + (e.nativeEvent.actionName === "increment" ? STEP_SECONDS : -STEP_SECONDS))
-      }
+      onAccessibilityAction={(e) => {
+        if (disabled) return;
+        onSeek(current + (e.nativeEvent.actionName === "increment" ? STEP_SECONDS : -STEP_SECONDS));
+      }}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
       className="h-11 justify-center"
       {...(disabled ? {} : responder.panHandlers)}

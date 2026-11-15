@@ -19,11 +19,23 @@ iconWithClassName(Maximize, Minimize, Pause, Play, RotateCcw);
 
 const BACK_SECONDS = 10;
 
-function ControlButton({ label, onPress, children }: { label: string; onPress: () => void; children: ReactNode }) {
+function ControlButton({
+  label,
+  onPress,
+  disabled = false,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  children: ReactNode;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       className="size-11 items-center justify-center rounded-full active:bg-white/10"
     >
@@ -35,7 +47,10 @@ function ControlButton({ label, onPress, children }: { label: string; onPress: (
 export function VideoControls({ playback }: { playback: VideoPlayback }) {
   const p = playback;
   const limits = { ceiling: p.ceilingNow(), barrier: p.barrier, duration: p.duration, current: p.current };
-  const time = `${formatTimestamp(Math.floor(p.current))} / ${p.duration === null ? "--:--" : formatTimestamp(Math.floor(p.duration))}`;
+  // Through an ad the playhead is the ad's: the bar says so and doesn't seek.
+  const time = p.ad
+    ? "Ad"
+    : `${formatTimestamp(Math.floor(p.current))} / ${p.duration === null ? "--:--" : formatTimestamp(Math.floor(p.duration))}`;
   return (
     <View className="flex-col bg-black px-2 pb-1">
       <View className="px-2">
@@ -45,6 +60,7 @@ export function VideoControls({ playback }: { playback: VideoPlayback }) {
           reach={reachFraction(limits)}
           marks={questionMarks(p.questions, p.duration)}
           onSeek={p.seek}
+          disabled={p.ad}
         />
       </View>
       <View className="flex-row items-center">
@@ -55,7 +71,7 @@ export function VideoControls({ playback }: { playback: VideoPlayback }) {
             <Play size={22} className="text-white" fill="white" />
           )}
         </ControlButton>
-        <ControlButton label="Back 10 seconds" onPress={() => p.seek(p.current - BACK_SECONDS)}>
+        <ControlButton label="Back 10 seconds" disabled={p.ad} onPress={() => p.seek(p.current - BACK_SECONDS)}>
           <RotateCcw size={20} className="text-white" />
         </ControlButton>
         <Text variant="caption" tabular numberOfLines={1} className="ml-1 min-w-0 flex-1 text-white">

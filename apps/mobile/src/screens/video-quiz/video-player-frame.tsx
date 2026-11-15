@@ -7,7 +7,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { InlineError } from "../../design/layout/route-states";
 import { videoHeight } from "../../design/lib/video-size";
 import { Button } from "../../design/ui";
-import { Pressable } from "../../design/ui/pressable";
 import type { VideoPlayback } from "./use-video-playback";
 import { VideoControls } from "./video-controls";
 import { confirmOpenYouTube, PLAYER_BASE_URL, youTubeLinkGuard } from "./youtube-link-guard";
@@ -19,41 +18,11 @@ const YOUTUBE_WARNING = "Watching in YouTube doesn't count toward your progress 
 const YOUTUBE_PLAIN = "This opens the video in the YouTube app.";
 
 /**
- * YouTube's logo stays uncovered, bottom right, as YouTube's terms ask; a tap on it asks first
- * (`youtube-link-guard.ts`).
+ * The YouTube frame with its own controls off. Nothing covers it and nothing of YouTube's is hidden:
+ * YouTube's player terms (Required Minimum Functionality) bar overlays and hidden branding, and the
+ * owner won't risk the videos (2026-11-15). A tap on the picture is YouTube's own play/pause, which
+ * the bar follows (`onChangeState`).
  */
-const LOGO_HOLE = { width: 96, height: 44 };
-
-/**
- * While the video plays, a tap on the picture is the app's and pauses it. While it is stopped the
- * picture is YouTube's: its own big play button starts it, which a phone always allows, where a Play
- * sent from the app can be refused (owner, 2026-11-15: "the video is stuck").
- */
-function TapShield({ playback, height }: { playback: VideoPlayback; height: number }) {
-  const p = playback;
-  if (!p.playing) return null;
-  const pause = () => p.setPlaying(false);
-  return (
-    <>
-      {/* The bar's Pause is the one a screen reader finds; the picture is a second, bigger target. */}
-      <Pressable
-        accessible={false}
-        importantForAccessibility="no-hide-descendants"
-        onPress={pause}
-        className="absolute inset-x-0 top-0"
-        style={{ height: Math.max(0, height - LOGO_HOLE.height) }}
-      />
-      <Pressable
-        accessible={false}
-        onPress={pause}
-        className="absolute bottom-0 left-0"
-        style={{ height: LOGO_HOLE.height, right: LOGO_HOLE.width }}
-      />
-    </>
-  );
-}
-
-/** The YouTube frame with its own controls off, and the shield that keeps taps for the app. */
 function Frame({
   videoId,
   playback,
@@ -75,7 +44,7 @@ function Frame({
     confirmOpenYouTube(url, warnOnYouTube ? YOUTUBE_WARNING : YOUTUBE_PLAIN);
   };
   return (
-    <View style={{ width: width > 0 ? width : undefined, height }} className="bg-black">
+    <View testID="video-frame" style={{ width: width > 0 ? width : undefined, height }} className="bg-black">
       <YoutubePlayer
         ref={p.playerRef}
         width={width > 0 ? width : undefined}
@@ -98,7 +67,6 @@ function Frame({
         onError={() => p.setFailed(true)}
         onChangeState={p.onChangeState}
       />
-      <TapShield playback={p} height={height} />
     </View>
   );
 }

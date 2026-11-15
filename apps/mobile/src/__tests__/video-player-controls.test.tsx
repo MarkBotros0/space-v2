@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, StyleSheet } from "react-native";
 
 jest.mock("../lib/api-client", () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), put: jest.fn() },
@@ -34,7 +34,14 @@ jest.mock("react-native-youtube-iframe", () => {
   return { __esModule: true, default: Player };
 });
 
-import { clampSeek, isYouTubeLink, nextSpeed, questionMarks, reachFraction } from "../screens/video-quiz/player-model";
+import {
+  adAfterReport,
+  clampSeek,
+  isYouTubeLink,
+  nextSpeed,
+  questionMarks,
+  reachFraction,
+} from "../screens/video-quiz/player-model";
 import { VideoQuizPlayer } from "../screens/video-quiz/video-quiz-player";
 import { youTubeLinkGuard } from "../screens/video-quiz/youtube-link-guard";
 import { renderWithProviders } from "./helpers/render";
@@ -139,8 +146,13 @@ describe("the app's own controls", () => {
   it("goes back 10 seconds and steps the speed", async () => {
     renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={{ ...quiz, furthestSeconds: 95 }} />);
     await act(async () => {});
+    // Before the first Play the back step moves where Play will start from.
     fireEvent.press(screen.getByRole("button", { name: "Back 10 seconds" }));
+    expect(mockSeekTo).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
     expect(mockSeekTo).toHaveBeenLastCalledWith(85, true);
+    fireEvent.press(screen.getByRole("button", { name: "Back 10 seconds" }));
+    expect(mockSeekTo).toHaveBeenLastCalledWith(75, true);
     fireEvent.press(screen.getByRole("button", { name: "Speed 1x" }));
     // By command: the hosted player page drops the prop's message (the patch in pnpm-workspace.yaml).
     expect(mockSetRate).toHaveBeenCalledWith(1.25);
@@ -204,5 +216,65 @@ describe("play and pause follow the player", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+// Measured on YouTube's page (Chromium and WebKit): an ad reports -1 after buffering, with its own playhead.
+describe("ads and YouTube's player", () => {
+  const report = (state: string) => act(() => (mockProps.current.onChangeState as (s: string) => void)(state));
+
+  it("knows an ad from YouTube's reports", () => {
+    const run = (states: string[]) => {
+      let ad = false;
+      let prev = "unstarted";
+      return states.map((st) => {
+        ad = adAfterReport(ad, prev, st);
+        prev = st;
+        return ad;
+      });
+    };
+    expect(run(["unstarted", "buffering", "unstarted", "buffering", "playing", "paused"])).toEqual([
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+    ]);
+  });
+
+  it("leaves YouTube's player whole: nothing over it, nothing of it hidden (YouTube's player terms)", async () => {
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quiz} />);
+    await act(async () => {});
+    const frameHeight = () => StyleSheet.flatten(screen.getByTestId("video-frame").props.style).height as number;
+    expect(mockProps.current.height).toBe(frameHeight());
+    expect((mockProps.current.webViewProps as { injectedJavaScript?: string }).injectedJavaScript).toBeUndefined();
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
+    report("playing");
+    expect(screen.queryByTestId("video-tap-shield", { includeHiddenElements: true })).toBeNull();
+    // A tap on the picture is YouTube's own pause; the bar follows its report.
+    report("paused");
+    expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+  });
+
+  it("through an ad: the bar says Ad, and the ad's playhead neither opens a question nor seeks", async () => {
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quiz} />);
+    await act(async () => {});
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
+    report("buffering");
+    report("unstarted");
+    expect(screen.getByText("Ad")).toBeTruthy();
+    mockSeekTo.mockClear();
+    // The ad's own clock passes the question at 300 s: nothing happens.
+    mockNow = 320;
+    await act(() => new Promise((r) => setTimeout(r, 900)));
+    expect(screen.queryByText("Q2")).toBeNull();
+    expect(mockSeekTo).not.toHaveBeenCalled();
+    // The ad was an answer to Play: it is never undone as a refused Play.
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+    // The video starts: the bar shows its time again.
+    mockNow = 12;
+    report("playing");
+    expect(screen.queryByText("Ad")).toBeNull();
   });
 });

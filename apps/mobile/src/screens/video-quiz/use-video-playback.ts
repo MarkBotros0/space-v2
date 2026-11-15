@@ -11,7 +11,7 @@ import type { YoutubeIframeRef } from "react-native-youtube-iframe";
 import type { StudentVideoQuestion, SubmitVideoAnswerResponse } from "@space/shared";
 
 import { apiErrorMessage } from "../../lib/api-error";
-import { clampSeek } from "./player-model";
+import { adAfterReport, clampSeek } from "./player-model";
 import type { AnswerFeedback } from "./video-question-modal";
 
 /**
@@ -83,9 +83,20 @@ export function useVideoPlayback({
   // YouTube's own last reported state, the truth the bar follows (owner, 2026-11-15: the bar showed
   // Pause over a stopped video).
   const ytStateRef = useRef("unstarted");
+  // YouTube says the picture is moving: until then the app's cover hides YouTube's paused screen.
+  const [ytPlaying, setYtPlaying] = useState(false);
+  // An ad is playing (YouTube embeds show them): YouTube reports "unstarted" after buffering, and its
+  // playhead is the ad's, so the poll ignores it and the picture is YouTube's (its Skip button).
+  const [ad, setAd] = useState(false);
+  const adRef = useRef(false);
+  // Any report since the last Play: a Play YouTube answered (an ad, buffering) is never undone.
+  const sawReportRef = useRef(false);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Going into or out of full screen while playing: the new frame plays once it is ready.
   const resumeOnReadyRef = useRef(false);
+  // Where a stopped player resumes on its first Play: a seek on a player that hasn't started yet
+  // starts it (measured 2026-11-15), so it waits for Play instead of autoplaying the video.
+  const pendingSeekRef = useRef<number | null>(null);
   const [fullScreen, setFullScreenState] = useState(false);
   // Going in or out of full screen makes the frame again: until it is ready its playhead reads 0.
   const remakingRef = useRef(false);
@@ -142,13 +153,16 @@ export function useVideoPlayback({
       const value = typeof next === "function" ? next(playingRef.current) : next;
       clearConfirm();
       if (value) {
+        const pending = pendingSeekRef.current;
+        pendingSeekRef.current = null;
+        if (pending !== null) playerRef.current?.seekTo(pending, true);
         playerRef.current?.playVideo();
         setNeedsTap(false);
         if (ytStateRef.current !== "playing") {
+          sawReportRef.current = false;
           confirmTimerRef.current = setTimeout(() => {
             confirmTimerRef.current = null;
-            const s = ytStateRef.current;
-            if (s === "playing" || s === "buffering") return;
+            if (sawReportRef.current || ytStateRef.current === "playing") return;
             applyPlaying(false);
             setNeedsTap(true);
           }, PLAY_CONFIRM_MS);
@@ -180,10 +194,13 @@ export function useVideoPlayback({
     // A playhead read that lands after unmount (or a clock change) sets nothing.
     let cancelled = false;
     const timer = setInterval(() => {
-      if (openRef.current !== null || deadlockedRef.current || remakingRef.current) return;
+      if (openRef.current !== null || deadlockedRef.current || remakingRef.current || adRef.current) return;
+      // Before the first Play the player's playhead is 0, not where the student resumes.
+      if (pendingSeekRef.current !== null) return;
       void clock()
         .then((t) => {
           if (cancelled || openRef.current !== null || deadlockedRef.current || remakingRef.current) return;
+          if (adRef.current || pendingSeekRef.current !== null) return;
           // YouTube's own controls can skip ahead; with a ceiling (skipping blocked) the playhead goes back.
           const ceiling = hooks.current.seekCeiling?.();
           if (ceiling !== undefined && t > Math.max(ceiling, currentRef.current) + SKIP_SECONDS) {
@@ -239,7 +256,8 @@ export function useVideoPlayback({
     const from = currentRef.current > 0 ? currentRef.current : furthestRef.current;
     const resumeTo = Math.min(from, barrierRef.current);
     if (resumeTo > 0) {
-      playerRef.current?.seekTo(resumeTo, true);
+      if (resumeOnReadyRef.current) playerRef.current?.seekTo(resumeTo, true);
+      else pendingSeekRef.current = resumeTo;
       currentRef.current = resumeTo;
       setCurrent(resumeTo);
     }
@@ -262,7 +280,23 @@ export function useVideoPlayback({
   /** YouTube's own reports: the bar follows what the player does, whoever started or stopped it. */
   const onChangeState = useCallback(
     (state: string): void => {
+      const previous = ytStateRef.current;
       ytStateRef.current = state;
+      sawReportRef.current = true;
+      const adNow = adAfterReport(adRef.current, previous, state);
+      if (adNow !== adRef.current) {
+        adRef.current = adNow;
+        setAd(adNow);
+      }
+      if (state === "playing") setYtPlaying(true);
+      if (state === "paused" || state === "ended" || state === "video cued" || state === "unstarted") {
+        setYtPlaying(false);
+      }
+      if (state === "playing" && pendingSeekRef.current !== null) {
+        // Started by YouTube's own play button, from the top: carry on where the student was.
+        playerRef.current?.seekTo(pendingSeekRef.current, true);
+        pendingSeekRef.current = null;
+      }
       if (state === "playing") {
         clearConfirm();
         setNeedsTap(false);
@@ -288,7 +322,8 @@ export function useVideoPlayback({
       duration: durationRef.current,
       current: currentRef.current,
     });
-    playerRef.current?.seekTo(to, true);
+    if (pendingSeekRef.current !== null) pendingSeekRef.current = to;
+    else playerRef.current?.seekTo(to, true);
     currentRef.current = to;
     setCurrent(to);
     // The stretch the seek crossed never played: the watched count starts a new run.
@@ -333,6 +368,8 @@ export function useVideoPlayback({
     duration,
     ready,
     needsTap,
+    ytPlaying,
+    ad,
     rate,
     setRate,
     fullScreen,

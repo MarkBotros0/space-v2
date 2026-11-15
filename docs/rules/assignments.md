@@ -33,14 +33,18 @@
   ignores a report that claims more new watched time than twice the wall-clock time since the last
   one: watching at 2x, YouTube's top speed, counts in full (owner, 2026-11-13).
   **The player is the app's own (owner, 2026-11-15, replacing 2026-11-13's YouTube-only controls):**
-  YouTube's controls are off and the app's are the only ones: play and pause (a tap on a playing
-  picture pauses; a stopped picture shows YouTube's own play button, which a phone always obeys), back 10 seconds, a seek bar, the time, speed (1, 1.25, 1.5, 2, 0.5, 0.75x) and full screen
+  YouTube's controls are off and the app's are the only ones: play and pause (a tap on the
+  picture is YouTube's own play/pause, which a phone always obeys, and the bar follows it), back 10 seconds, a seek bar, the time, speed (1, 1.25, 1.5, 2, 0.5, 0.75x) and full screen
   (landscape; a timed question closes it and shows as usual). No quality setting: YouTube no longer
   lets an app choose one. The seek bar goes back freely; forward it stops at the next unanswered
   question and, with skipping blocked, at the furthest point watched. Each unanswered question is a
   dot on the bar. The bar shows what the player reports, and a Play the player doesn't take up within
   3 s is undone with "Tap the video to start it." Play, pause and speed are injected commands (the
-  library's own messages are dropped by its hosted page; patched, owner 2026-11-15). YouTube's logo stays visible (YouTube's terms); tapping it, or any YouTube link in
+  library's own messages are dropped by its hosted page; patched, owner 2026-11-15). Nothing covers YouTube's player and nothing of it is hidden: its title,
+  logo and paused screen show as YouTube draws them, since YouTube's player terms (Required Minimum
+  Functionality) bar overlays and hidden branding (owner, 2026-11-15: no risk to the videos; this
+  replaced a crop tried the same day). Reopening a video waits for Play before it moves to where the student got to (a seek
+  on a player that hasn't started starts it). Tapping YouTube's logo or title, or any YouTube link in
   the frame, first asks "Open YouTube?" and says watching there doesn't count. The live
   count is to the second ("2 min 5 sec of 58 min"). Leave on "Not finished yet" leaves. A
   video is done when it is watched **and** every timed question on it is answered.
