@@ -12,6 +12,9 @@ export interface YoutubeIframeRef {
   getCurrentTime: () => Promise<number>;
   getDuration: () => Promise<number>;
   seekTo: (seconds: number, allowSeekAhead: boolean) => void;
+  playVideo: () => void;
+  pauseVideo: () => void;
+  setPlaybackRate: (rate: number) => void;
 }
 
 const MockPlayer = forwardRef<YoutubeIframeRef, object>((_props, ref) => {
@@ -19,6 +22,9 @@ const MockPlayer = forwardRef<YoutubeIframeRef, object>((_props, ref) => {
     getCurrentTime: () => Promise.resolve(0),
     getDuration: () => Promise.resolve(600),
     seekTo: () => undefined,
+    playVideo: () => undefined,
+    pauseVideo: () => undefined,
+    setPlaybackRate: () => undefined,
   }));
   return null;
 });

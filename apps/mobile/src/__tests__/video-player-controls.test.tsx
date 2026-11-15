@@ -9,6 +9,9 @@ jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn() }) }));
 // A ready player whose playhead the test sets, recording seeks, speed and the link guard it was given.
 let mockNow = 0;
 const mockSeekTo = jest.fn();
+const mockPlayVideo = jest.fn();
+const mockPauseVideo = jest.fn();
+const mockSetRate = jest.fn();
 const mockProps: { current: Record<string, unknown> } = { current: {} };
 jest.mock("react-native-youtube-iframe", () => {
   const { forwardRef, useEffect, useImperativeHandle } = require("react");
@@ -18,6 +21,9 @@ jest.mock("react-native-youtube-iframe", () => {
       getCurrentTime: () => Promise.resolve(mockNow),
       getDuration: () => Promise.resolve(600),
       seekTo: mockSeekTo,
+      playVideo: mockPlayVideo,
+      pauseVideo: mockPauseVideo,
+      setPlaybackRate: mockSetRate,
     }));
     useEffect(() => {
       props.onReady?.();
@@ -136,7 +142,9 @@ describe("the app's own controls", () => {
     fireEvent.press(screen.getByRole("button", { name: "Back 10 seconds" }));
     expect(mockSeekTo).toHaveBeenLastCalledWith(85, true);
     fireEvent.press(screen.getByRole("button", { name: "Speed 1x" }));
-    expect(mockProps.current.playbackRate).toBe(1.25);
+    // By command: the hosted player page drops the prop's message (the patch in pnpm-workspace.yaml).
+    expect(mockSetRate).toHaveBeenCalledWith(1.25);
+    expect(screen.getByRole("button", { name: "Speed 1.25x" })).toBeTruthy();
   });
 
   it("asks before the YouTube logo opens YouTube, warning that it won't count", async () => {
@@ -152,5 +160,49 @@ describe("the app's own controls", () => {
       expect.stringContaining("doesn't count toward your progress"),
       expect.any(Array),
     );
+  });
+});
+
+// Owner, 2026-11-15: the bar showed Pause over a stopped video and Play did nothing.
+describe("play and pause follow the player", () => {
+  const report = (state: string) => act(() => (mockProps.current.onChangeState as (s: string) => void)(state));
+
+  it("sends Play and Pause to the player as commands", async () => {
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quiz} />);
+    await act(async () => {});
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
+    expect(mockPlayVideo).toHaveBeenCalledTimes(1);
+    report("playing");
+    fireEvent.press(screen.getByRole("button", { name: "Pause" }));
+    expect(mockPauseVideo).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows Play when YouTube stops by itself, and Play starts it again", async () => {
+    renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quiz} />);
+    await act(async () => {});
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
+    report("playing");
+    report("paused");
+    fireEvent.press(screen.getByRole("button", { name: "Play" }));
+    expect(mockPlayVideo).toHaveBeenCalledTimes(2);
+  });
+
+  it("undoes a Play the player never takes up, and asks for a tap on the video", async () => {
+    jest.useFakeTimers();
+    try {
+      renderWithProviders(<VideoQuizPlayer sessionId={12} quiz={quiz} />);
+      await act(async () => {});
+      fireEvent.press(screen.getByRole("button", { name: "Play" }));
+      expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+      act(() => jest.advanceTimersByTime(3100));
+      expect(screen.getByRole("button", { name: "Play" })).toBeTruthy();
+      expect(screen.getByText("Tap the video to start it.")).toBeTruthy();
+      // A tap on YouTube's own play button: the player reports it, and the bar follows.
+      report("playing");
+      expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+      expect(screen.queryByText("Tap the video to start it.")).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

@@ -7,6 +7,9 @@ jest.mock("expo-router", () => ({ useRouter: () => ({ back: jest.fn() }) }));
 
 // A player that reports ready on mount and records the seeks the component asks for.
 const mockSeekTo = jest.fn();
+const mockPlayVideo = jest.fn();
+const mockPauseVideo = jest.fn();
+const mockSetRate = jest.fn();
 jest.mock("react-native-youtube-iframe", () => {
   const { forwardRef, useEffect, useImperativeHandle } = require("react");
   const Player = forwardRef(({ onReady }: { onReady?: () => void }, ref: unknown) => {
@@ -14,6 +17,9 @@ jest.mock("react-native-youtube-iframe", () => {
       getCurrentTime: () => Promise.resolve(0),
       getDuration: () => Promise.resolve(600),
       seekTo: mockSeekTo,
+      playVideo: mockPlayVideo,
+      pauseVideo: mockPauseVideo,
+      setPlaybackRate: mockSetRate,
     }));
     useEffect(() => {
       onReady?.();

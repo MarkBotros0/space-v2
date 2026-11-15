@@ -8,6 +8,11 @@ overrides:
   '@expo/metro-config>postcss': ^8.5.18
   exceljs>uuid: ^11.1.1
 
+patchedDependencies:
+  react-native-youtube-iframe@2.4.1:
+    hash: 52a08887b0f8dd1774f2ef3698dbc6dba36754d0ead0462007b36c3effa48a4c
+    path: patches/react-native-youtube-iframe@2.4.1.patch
+
 importers:
 
   .:
@@ -123,7 +128,7 @@ importers:
         version: 7.2.2
       ts-jest:
         specifier: ^29.1.4
-        version: 29.4.12(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(jest-util@30.5.1)(jest@29.7.0(@types/node@24.13.3)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.12(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(jest-util@30.5.1)(jest@29.7.0)(typescript@5.9.3)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@24.13.3)(typescript@5.9.3)
@@ -273,7 +278,7 @@ importers:
         version: 0.13.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
       react-native-youtube-iframe:
         specifier: 2.4.1
-        version: 2.4.1(react-native-webview@14.0.1(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
+        version: 2.4.1(patch_hash=52a08887b0f8dd1774f2ef3698dbc6dba36754d0ead0462007b36c3effa48a4c)(react-native-webview@14.0.1(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
       sonner-native:
         specifier: ^0.24.0
         version: 0.24.0(00389ccfa5c114238757f358f183ad34)
@@ -371,7 +376,7 @@ importers:
         version: 29.7.0(@types/node@24.13.3)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3))
       ts-jest:
         specifier: ^29.1.4
-        version: 29.4.12(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(jest-util@30.5.1)(jest@29.7.0(@types/node@24.13.3)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3)))(typescript@5.9.3)
+        version: 29.4.12(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(jest-util@30.5.1)(jest@29.7.0)(typescript@5.9.3)
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -14988,7 +14993,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  react-native-youtube-iframe@2.4.1(react-native-webview@14.0.1(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0):
+  react-native-youtube-iframe@2.4.1(patch_hash=52a08887b0f8dd1774f2ef3698dbc6dba36754d0ead0462007b36c3effa48a4c)(react-native-webview@14.0.1(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0):
     dependencies:
       events: 3.3.0
       react: 19.3.0
@@ -15776,7 +15781,7 @@ snapshots:
 
   ts-interface-checker@0.1.13: {}
 
-  ts-jest@29.4.12(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(jest-util@30.5.1)(jest@29.7.0(@types/node@24.13.3)(ts-node@10.9.2(@types/node@24.13.3)(typescript@5.9.3)))(typescript@5.9.3):
+  ts-jest@29.4.12(@babel/core@7.29.7)(@jest/transform@30.5.2)(@jest/types@30.5.1)(babel-jest@30.5.2(@babel/core@7.29.7))(jest-util@30.5.1)(jest@29.7.0)(typescript@5.9.3):
     dependencies:
       bs-logger: 0.2.6
       fast-json-stable-stringify: 2.1.0

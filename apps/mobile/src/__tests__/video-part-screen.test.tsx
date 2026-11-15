@@ -31,6 +31,9 @@ jest.mock("expo-router", () => ({
 // A player that is ready on mount, reads the playhead from `mockClock`, records seeks and hands
 // out its state callback: YouTube's own controls play and pause it.
 const mockSeekTo = jest.fn();
+const mockPlayVideo = jest.fn();
+const mockPauseVideo = jest.fn();
+const mockSetRate = jest.fn();
 const mockClock = { now: 0 };
 const mockPlayer: { change: ((state: string) => void) | null } = { change: null };
 const playerState = (state: string) => act(() => mockPlayer.change?.(state));
@@ -43,6 +46,9 @@ jest.mock("react-native-youtube-iframe", () => {
         getCurrentTime: () => Promise.resolve(mockClock.now),
         getDuration: () => Promise.resolve(1080),
         seekTo: mockSeekTo,
+        playVideo: mockPlayVideo,
+        pauseVideo: mockPauseVideo,
+        setPlaybackRate: mockSetRate,
       }));
       useEffect(() => {
         onReady?.();

@@ -1,20 +1,16 @@
 import * as ScreenOrientation from "expo-screen-orientation";
-import { Play } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Modal, View } from "react-native";
 import YoutubePlayer from "react-native-youtube-iframe";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { InlineError } from "../../design/layout/route-states";
-import { iconWithClassName } from "../../design/lib/icon";
 import { videoHeight } from "../../design/lib/video-size";
 import { Button } from "../../design/ui";
 import { Pressable } from "../../design/ui/pressable";
 import type { VideoPlayback } from "./use-video-playback";
 import { VideoControls } from "./video-controls";
 import { confirmOpenYouTube, PLAYER_BASE_URL, youTubeLinkGuard } from "./youtube-link-guard";
-
-iconWithClassName(Play);
 
 const DEADLOCK = "A question on this video is set past the end of the recording. Ask your leader to fix it.";
 
@@ -24,32 +20,32 @@ const YOUTUBE_PLAIN = "This opens the video in the YouTube app.";
 
 /**
  * YouTube's logo stays uncovered, bottom right, as YouTube's terms ask; a tap on it asks first
- * (`youtube-link-guard.ts`). Everything else on the frame is the app's: a tap plays or pauses.
+ * (`youtube-link-guard.ts`).
  */
 const LOGO_HOLE = { width: 96, height: 44 };
 
+/**
+ * While the video plays, a tap on the picture is the app's and pauses it. While it is stopped the
+ * picture is YouTube's: its own big play button starts it, which a phone always allows, where a Play
+ * sent from the app can be refused (owner, 2026-11-15: "the video is stuck").
+ */
 function TapShield({ playback, height }: { playback: VideoPlayback; height: number }) {
   const p = playback;
-  const toggle = () => p.setPlaying((now) => !now);
+  if (!p.playing) return null;
+  const pause = () => p.setPlaying(false);
   return (
     <>
-      {/* The bar's Play is the one a screen reader finds; the picture is a second, bigger target. */}
+      {/* The bar's Pause is the one a screen reader finds; the picture is a second, bigger target. */}
       <Pressable
         accessible={false}
         importantForAccessibility="no-hide-descendants"
-        onPress={toggle}
-        className="absolute inset-x-0 top-0 items-center justify-center"
+        onPress={pause}
+        className="absolute inset-x-0 top-0"
         style={{ height: Math.max(0, height - LOGO_HOLE.height) }}
-      >
-        {!p.playing && p.ready ? (
-          <View className="size-14 items-center justify-center rounded-full bg-black/60">
-            <Play size={26} className="text-white" fill="white" />
-          </View>
-        ) : null}
-      </Pressable>
+      />
       <Pressable
         accessible={false}
-        onPress={toggle}
+        onPress={pause}
         className="absolute bottom-0 left-0"
         style={{ height: LOGO_HOLE.height, right: LOGO_HOLE.width }}
       />
@@ -85,8 +81,9 @@ function Frame({
         width={width > 0 ? width : undefined}
         height={height}
         videoId={videoId}
-        play={p.playing}
-        playbackRate={p.rate}
+        // Play, pause and speed go by command (`playback.setPlaying`, `setRate`): the hosted page
+        // drops the props' messages.
+        play={false}
         baseUrlOverride={PLAYER_BASE_URL}
         webViewProps={youTubeLinkGuard(onYouTubeLink)}
         initialPlayerParams={{

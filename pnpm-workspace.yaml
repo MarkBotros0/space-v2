@@ -10,3 +10,9 @@ packages:
 overrides:
   '@expo/metro-config>postcss': ^8.5.18
   'exceljs>uuid': ^11.1.1
+
+# react-native-youtube-iframe 2.4.1 posts play/pause/rate as JSON, which its hosted player page
+# (iframe_v2.html) doesn't parse, so they were dropped. The patch adds playVideo, pauseVideo and
+# setPlaybackRate to the ref, injected like seekTo (owner, 2026-11-15: "the video is stuck").
+patchedDependencies:
+  react-native-youtube-iframe@2.4.1: patches/react-native-youtube-iframe@2.4.1.patch

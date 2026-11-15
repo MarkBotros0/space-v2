@@ -26,6 +26,11 @@ const LOAD_TIMEOUT_MS = 15_000;
  * 400 ms at 2x is 0.8 s, so 3 s leaves room for a slow bridge.
  */
 const SKIP_SECONDS = 3;
+/**
+ * A Play the player hasn't taken up (no "playing" or "buffering") within this long is undone, so the
+ * bar never shows Pause over a stopped video, and the student is asked to tap the video itself.
+ */
+const PLAY_CONFIRM_MS = 3000;
 
 /** What the barrier and the resume need: the session quiz and the part video both carry it. */
 interface PlaybackSource {
@@ -71,7 +76,16 @@ export function useVideoPlayback({
   const [playing, setPlayingState] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState<number | null>(null);
-  const [rate, setRate] = useState(1);
+  const [rate, setRateState] = useState(1);
+  const rateRef = useRef(1);
+  // A Play the player didn't take up: the student taps the picture, which YouTube always obeys.
+  const [needsTap, setNeedsTap] = useState(false);
+  // YouTube's own last reported state, the truth the bar follows (owner, 2026-11-15: the bar showed
+  // Pause over a stopped video).
+  const ytStateRef = useRef("unstarted");
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Going into or out of full screen while playing: the new frame plays once it is ready.
+  const resumeOnReadyRef = useRef(false);
   const [fullScreen, setFullScreenState] = useState(false);
   // Going in or out of full screen makes the frame again: until it is ready its playhead reads 0.
   const remakingRef = useRef(false);
@@ -107,11 +121,52 @@ export function useVideoPlayback({
   hooks.current = { onPoll, onStop, onSeeked, seekCeiling, onAnswered };
 
   /** Every stop goes through here, so the player's own bookkeeping never misses one. */
-  const setPlaying = useCallback((next: boolean | ((p: boolean) => boolean)): void => {
-    const value = typeof next === "function" ? next(playingRef.current) : next;
+  const applyPlaying = useCallback((value: boolean): void => {
     if (!value && playingRef.current) hooks.current.onStop?.();
     playingRef.current = value;
     setPlayingState(value);
+  }, []);
+
+  const clearConfirm = useCallback((): void => {
+    if (confirmTimerRef.current !== null) clearTimeout(confirmTimerRef.current);
+    confirmTimerRef.current = null;
+  }, []);
+
+  /**
+   * The app's Play or Pause: the command goes to the player (injected, see the patch in
+   * pnpm-workspace.yaml) and the bar follows at once. A Play the player doesn't take up is undone
+   * after PLAY_CONFIRM_MS; YouTube's own reports (`onChangeState`) correct the bar either way.
+   */
+  const setPlaying = useCallback(
+    (next: boolean | ((p: boolean) => boolean)): void => {
+      const value = typeof next === "function" ? next(playingRef.current) : next;
+      clearConfirm();
+      if (value) {
+        playerRef.current?.playVideo();
+        setNeedsTap(false);
+        if (ytStateRef.current !== "playing") {
+          confirmTimerRef.current = setTimeout(() => {
+            confirmTimerRef.current = null;
+            const s = ytStateRef.current;
+            if (s === "playing" || s === "buffering") return;
+            applyPlaying(false);
+            setNeedsTap(true);
+          }, PLAY_CONFIRM_MS);
+        }
+      } else {
+        playerRef.current?.pauseVideo();
+      }
+      applyPlaying(value);
+    },
+    [applyPlaying, clearConfirm],
+  );
+
+  useEffect(() => clearConfirm, [clearConfirm]);
+
+  const setRate = useCallback((next: number): void => {
+    rateRef.current = next;
+    setRateState(next);
+    playerRef.current?.setPlaybackRate(next);
   }, []);
 
   const clock = useCallback(
@@ -172,6 +227,7 @@ export function useVideoPlayback({
     if (value === fullScreenRef.current) return;
     fullScreenRef.current = value;
     remakingRef.current = true;
+    resumeOnReadyRef.current = playingRef.current;
     setFullScreenState(value);
   }, []);
 
@@ -196,14 +252,28 @@ export function useVideoPlayback({
         if (Number.isFinite(barrierRef.current) && barrierRef.current > d + 1) setDeadlocked(true);
       })
       .catch(() => undefined);
-  }, []);
+    if (rateRef.current !== 1) playerRef.current?.setPlaybackRate(rateRef.current);
+    if (resumeOnReadyRef.current) {
+      resumeOnReadyRef.current = false;
+      setPlaying(true);
+    }
+  }, [setPlaying]);
 
+  /** YouTube's own reports: the bar follows what the player does, whoever started or stopped it. */
   const onChangeState = useCallback(
     (state: string): void => {
-      if (state === "playing") setPlaying(true);
-      if (state === "paused" || state === "ended") setPlaying(false);
+      ytStateRef.current = state;
+      if (state === "playing") {
+        clearConfirm();
+        setNeedsTap(false);
+        applyPlaying(true);
+      }
+      if (state === "paused" || state === "ended" || state === "video cued") {
+        clearConfirm();
+        applyPlaying(false);
+      }
     },
-    [setPlaying],
+    [applyPlaying, clearConfirm],
   );
 
   /**
@@ -262,6 +332,7 @@ export function useVideoPlayback({
     currentRef,
     duration,
     ready,
+    needsTap,
     rate,
     setRate,
     fullScreen,

@@ -1,0 +1,57 @@
+diff --git a/index.d.ts b/index.d.ts
+index 5e00e8017d5610756edb6d47576e874dd2e2db60..9ac5029a99179e8645db54742c3198702a57826d 100644
+--- a/index.d.ts
++++ b/index.d.ts
+@@ -27,6 +27,10 @@ export interface YoutubeIframeRef {
+   getPlaybackRate: () => Promise<number>;
+   getAvailablePlaybackRates: () => Promise<number[]>;
+   seekTo: (seconds: number, allowSeekAhead: boolean) => void;
++  /** Patched in (space-v2): injected, since the hosted page drops postMessage commands. */
++  playVideo: () => void;
++  pauseVideo: () => void;
++  setPlaybackRate: (rate: number) => void;
+ }
+ 
+ export interface InitialPlayerParams {
+diff --git a/lib/commonjs/YoutubeIframe.js b/lib/commonjs/YoutubeIframe.js
+index 0be2dad8ab785444d08e7a166d2fe83d2c14a4f0..16a69d283b2c71994d8c4ba463f5f7c432122868 100644
+--- a/lib/commonjs/YoutubeIframe.js
++++ b/lib/commonjs/YoutubeIframe.js
+@@ -101,6 +101,15 @@ const YoutubeIframe = (props, ref) => {
+     },
+     seekTo: (seconds, allowSeekAhead) => {
+       webViewRef.current.injectJavaScript(_PlayerScripts.PLAYER_FUNCTIONS.seekToScript(seconds, allowSeekAhead));
++    },
++    playVideo: () => {
++      webViewRef.current.injectJavaScript(_PlayerScripts.PLAYER_FUNCTIONS.playVideo);
++    },
++    pauseVideo: () => {
++      webViewRef.current.injectJavaScript(_PlayerScripts.PLAYER_FUNCTIONS.pauseVideo);
++    },
++    setPlaybackRate: rate => {
++      webViewRef.current.injectJavaScript(_PlayerScripts.PLAYER_FUNCTIONS.setPlaybackRate(rate));
+     }
+   }), []);
+   (0, _react.useEffect)(() => {
+diff --git a/src/YoutubeIframe.js b/src/YoutubeIframe.js
+index 4bbf487eece51aa2811d922ac710f1637816d758..cc3dbc66930041f1f065aff82f3836de800fccc4 100644
+--- a/src/YoutubeIframe.js
++++ b/src/YoutubeIframe.js
+@@ -121,6 +121,17 @@ const YoutubeIframe = (props, ref) => {
+           PLAYER_FUNCTIONS.seekToScript(seconds, allowSeekAhead),
+         );
+       },
++      playVideo: () => {
++        webViewRef.current.injectJavaScript(PLAYER_FUNCTIONS.playVideo);
++      },
++      pauseVideo: () => {
++        webViewRef.current.injectJavaScript(PLAYER_FUNCTIONS.pauseVideo);
++      },
++      setPlaybackRate: rate => {
++        webViewRef.current.injectJavaScript(
++          PLAYER_FUNCTIONS.setPlaybackRate(rate),
++        );
++      },
+     }),
+     [],
+   );

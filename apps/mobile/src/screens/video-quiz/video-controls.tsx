@@ -79,6 +79,11 @@ export function VideoControls({ playback }: { playback: VideoPlayback }) {
           {p.fullScreen ? <Minimize size={20} className="text-white" /> : <Maximize size={20} className="text-white" />}
         </ControlButton>
       </View>
+      {p.needsTap ? (
+        <Text variant="caption" accessibilityLiveRegion="polite" className="px-2 pb-2 text-white/80">
+          Tap the video to start it.
+        </Text>
+      ) : null}
     </View>
   );
 }
