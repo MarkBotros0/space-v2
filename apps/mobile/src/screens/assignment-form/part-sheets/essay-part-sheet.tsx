@@ -12,6 +12,7 @@ import { Input } from "../../../design/ui/input";
 import { MultiSelect } from "../../../design/ui/multi-select";
 import { Sheet, SheetSaveBar } from "../../../design/ui/sheet";
 import { Textarea } from "../../../design/ui/textarea";
+import { FILE_UPLOADS_AVAILABLE } from "../../../lib/app-config";
 import { MIME_CATEGORY_LABELS } from "../../../lib/assignment-labels";
 import { firstErrorByField } from "../../../lib/form-errors";
 import { SwitchRow } from "../switch-row";
@@ -112,31 +113,36 @@ export function EssayPartSheet({ open, onClose, initial, onSave }: PartSheetProp
             </FormField>
           </FieldCell>
         </FieldRow>
-        <SwitchRow
-          label="Allow file uploads"
-          description="Students can attach files to their answer."
-          checked={files}
-          onChange={setFiles}
-        />
-        {files ? (
+        {/* Off until real storage exists (FILE_UPLOADS_AVAILABLE); a saved essay keeps its setting. */}
+        {FILE_UPLOADS_AVAILABLE ? (
           <>
-            <FormField label="Max file size (MB)" error={errors.maxFileSizeMb}>
-              <Input
-                accessibilityLabel="Max file size (MB)"
-                value={fileMb}
-                onChangeText={setFileMb}
-                keyboardType="number-pad"
-              />
-            </FormField>
-            <FormField label="Allowed types">
-              <MultiSelect
-                accessibilityLabel="Allowed types"
-                options={MIME_OPTIONS}
-                value={types}
-                onChange={(v) => setTypes(v as MimeCategory[])}
-                placeholder="Any type"
-              />
-            </FormField>
+            <SwitchRow
+              label="Allow file uploads"
+              description="Students can attach files to their answer."
+              checked={files}
+              onChange={setFiles}
+            />
+            {files ? (
+              <>
+                <FormField label="Max file size (MB)" error={errors.maxFileSizeMb}>
+                  <Input
+                    accessibilityLabel="Max file size (MB)"
+                    value={fileMb}
+                    onChangeText={setFileMb}
+                    keyboardType="number-pad"
+                  />
+                </FormField>
+                <FormField label="Allowed types">
+                  <MultiSelect
+                    accessibilityLabel="Allowed types"
+                    options={MIME_OPTIONS}
+                    value={types}
+                    onChange={(v) => setTypes(v as MimeCategory[])}
+                    placeholder="Any type"
+                  />
+                </FormField>
+              </>
+            ) : null}
           </>
         ) : null}
       </View>

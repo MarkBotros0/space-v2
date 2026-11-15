@@ -55,7 +55,11 @@
   leaving asks nothing. Switching it on or off resets nothing but settles the submitted students
   again, as adding a question does: one who only opened a video that is now tracked is reopened.
 - **Essay (owner):** a question with a **minimum and maximum word count**; the student sees a live
-  count. Optional file uploads, as before. **Each essay is reviewed on its own by the leader, who can
+  count. File uploads are **off everywhere in the app until real storage is set up** (owner,
+  2026-11-16: "disable the upload option in the whole app until we add a real storage to it"):
+  `FILE_UPLOADS_AVAILABLE` in `apps/mobile/src/lib/app-config.ts` hides the essay's "Allow file
+  uploads" switch, its "Files up to" line and the student's Files section; a saved essay keeps its
+  setting and files already attached still show. **Each essay is reviewed on its own by the leader, who can
   return just that one essay (owner).** An essay needs typed words to be done; files are extras
   (builder's call).
 - **Forum:** what FORUM assignments did before: minimum words, "post before reading others", allow

@@ -14,6 +14,14 @@ export function easProjectId(): string | null {
 }
 
 /**
+ * File uploads (an essay's attachments) are off everywhere in the app until real storage is set up
+ * (owner, 2026-11-16: "disable the upload option in the whole app until we add a real storage"):
+ * the essay sheet hides "Allow file uploads", the part card says nothing of files and the student's
+ * essay shows no Files section. Turn this on in the build that ships the storage.
+ */
+export const FILE_UPLOADS_AVAILABLE = false;
+
+/**
  * True in a build made with EXPO_PUBLIC_SWEEP_BUILD=1 (the UI sweep's APK):
  * it unlocks the hidden design catalogue in a release bundle.
  */

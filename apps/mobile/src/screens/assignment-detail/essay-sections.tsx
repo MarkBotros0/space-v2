@@ -6,6 +6,7 @@ import { plainTextToHtml, type SubmissionDetail } from "@space/shared";
 import { iconWithClassName } from "../../design/lib/icon";
 import { GroupedList, ListRow, RichTextView, Text } from "../../design/ui";
 import { ListSectionHeader } from "../../design/ui/grouped-list";
+import { FILE_UPLOADS_AVAILABLE } from "../../lib/app-config";
 import { formatKb } from "../../lib/format";
 
 iconWithClassName(FileIcon);
@@ -55,9 +56,11 @@ export function LeaderFeedback({ feedback }: { feedback: string }) {
  */
 export function EssayFiles({ essay, readOnly }: { essay: SubmissionDetail; readOnly: boolean }) {
   if (essay.maxFileSizeMb === null) return null;
+  // Uploads are off app-wide (FILE_UPLOADS_AVAILABLE); files already attached still show.
+  if (!FILE_UPLOADS_AVAILABLE && essay.files.length === 0) return null;
   const header = `Files (max ${essay.maxFileSizeMb} MB each)`;
   // A finished season can't attach anything, so the upload note would only mislead.
-  const note = !essay.canUploadFiles && !readOnly;
+  const note = FILE_UPLOADS_AVAILABLE && !essay.canUploadFiles && !readOnly;
   return (
     <View className="gap-2">
       {essay.files.length > 0 ? (

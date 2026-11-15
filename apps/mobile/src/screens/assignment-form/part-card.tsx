@@ -13,6 +13,7 @@ import { Button } from "../../design/ui/button";
 import { PillButton } from "../../design/ui/pill-button";
 import { StatusChip, type ChipSpec } from "../../design/ui/status-chip";
 import { Text } from "../../design/ui/text";
+import { FILE_UPLOADS_AVAILABLE } from "../../lib/app-config";
 import type { PartDraft } from "../../lib/assignment-form-values";
 import { plural } from "../../lib/plural";
 import { PART_KIND_NAMES } from "./part-sheets/part-fields";
@@ -50,7 +51,9 @@ function partFacts(part: PartDraft): string[] {
     case "ESSAY":
       return [
         wordRangeLine(part.minWords, part.maxWords),
-        part.maxFileSizeMb === null ? "No file uploads" : `Files up to ${part.maxFileSizeMb} MB`,
+        ...(FILE_UPLOADS_AVAILABLE
+          ? [part.maxFileSizeMb === null ? "No file uploads" : `Files up to ${part.maxFileSizeMb} MB`]
+          : []),
       ];
     case "FORUM":
       return [
