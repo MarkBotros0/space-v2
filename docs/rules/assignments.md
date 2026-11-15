@@ -42,6 +42,12 @@
   the frame, first asks "Open YouTube?" and says watching there doesn't count. The live
   count is to the second ("2 min 5 sec of 58 min"). Leave on "Not finished yet" leaves. A
   video is done when it is watched **and** every timed question on it is answered.
+- **Track watching (owner, 2026-11-15):** each video part has an admin switch **"Track watching"**,
+  on by default (every video made before it stays tracked). Off: opening the video counts as done
+  (the screen's first report makes the student's work on it), its timed questions still pause the
+  video and score but are optional, skipping is free (the skip switch hides and saves off), and
+  leaving asks nothing. Switching it on or off resets nothing but settles the submitted students
+  again, as adding a question does: one who only opened a video that is now tracked is reopened.
 - **Essay (owner):** a question with a **minimum and maximum word count**; the student sees a live
   count. Optional file uploads, as before. **Each essay is reviewed on its own by the leader, who can
   return just that one essay (owner).** An essay needs typed words to be done; files are extras

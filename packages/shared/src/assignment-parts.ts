@@ -24,6 +24,11 @@ const videoFields = {
   title: z.string().trim().min(1).max(200),
   youtubeUrl: z.string().refine((v) => parseYouTubeId(v) !== null, "That isn't a YouTube link"),
   blockSkipping: z.boolean(),
+  /**
+   * Off (owner, 2026-11-15): opening the video counts as done and its questions are optional.
+   * Defaults on, so an older app's write keeps tracking.
+   */
+  trackWatching: z.boolean().default(true),
   durationSeconds: z.number().int().min(1).max(MAX_PART_VIDEO_SECONDS),
 };
 
@@ -89,6 +94,8 @@ export const partWorkSchema = z.object({
       answered: z.number(),
       questionCount: z.number(),
       correct: z.number(),
+      /** The student has opened it: all an untracked video asks. */
+      opened: z.boolean().optional(),
     })
     .optional(),
   forum: z.object({ posted: z.boolean() }).optional(),

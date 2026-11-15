@@ -341,6 +341,7 @@ erDiagram
     String youtubeUrl "nullable"
     Int durationSeconds "nullable"
     Boolean blockSkipping
+    Boolean trackWatching
     String prompt "nullable"
     Int minWords "nullable"
     Int maxWords "nullable"

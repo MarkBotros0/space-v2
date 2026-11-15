@@ -12,6 +12,7 @@ interface PartRow {
   id: number;
   kind: AssignmentPartKind;
   youtubeId: string | null;
+  trackWatching: boolean;
   minWords: number | null;
   maxWords: number | null;
 }
@@ -25,6 +26,11 @@ export interface PartChangePlan {
   remove: number[];
   /** Kept videos whose link now names another video: their progress and answers are reset. */
   resetVideo: number[];
+  /**
+   * Kept videos switched between tracked and not (owner, 2026-11-15): nothing is reset, but what
+   * counts as done changes, so the submitted students are settled again, as for a question added.
+   */
+  trackingChanged: number[];
   /** Kept essays whose word range changed: asked about, but handed-in essays stay handed in. */
   wordRangeChanged: number[];
   /** A part was added, so whoever had submitted has something left to do. */
@@ -50,6 +56,7 @@ export function planPartChanges(existing: PartRow[], incoming: AssignmentPartInp
     update: [],
     remove: [],
     resetVideo: [],
+    trackingChanged: [],
     wordRangeChanged: [],
     reopensSubmitted: false,
   };
@@ -71,6 +78,9 @@ export function planPartChanges(existing: PartRow[], incoming: AssignmentPartInp
     plan.update.push({ id: input.id, position, input });
     if (input.kind === "VIDEO" && parseYouTubeId(input.youtubeUrl) !== row.youtubeId) {
       plan.resetVideo.push(input.id);
+    }
+    if (input.kind === "VIDEO" && (input.trackWatching ?? true) !== row.trackWatching) {
+      plan.trackingChanged.push(input.id);
     }
     if (input.kind === "ESSAY" && (input.minWords !== row.minWords || input.maxWords !== row.maxWords)) {
       plan.wordRangeChanged.push(input.id);

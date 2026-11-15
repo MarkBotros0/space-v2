@@ -1,7 +1,7 @@
 /**
  * A video part's editor: the YouTube link (checked as it is typed, with the
  * player once it parses), the title (YouTube's until the author changes it),
- * skip blocking, and the timed questions, which hang off a saved part and so
+ * whether watching is tracked, skip blocking, and the timed questions, which hang off a saved part and so
  * wait until the assignment is saved.
  */
 import { useEffect, useState } from "react";
@@ -65,6 +65,7 @@ export function VideoPartSheet({
   // A new part takes YouTube's title until the author types one.
   const [autoTitle, setAutoTitle] = useState(true);
   const [blockSkipping, setBlockSkipping] = useState(false);
+  const [trackWatching, setTrackWatching] = useState(true);
   const [duration, setDuration] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // While a question is open its own player shows the video; this one steps aside (one player at a time).
@@ -76,6 +77,7 @@ export function VideoPartSheet({
     setTitle(initial?.title ?? "");
     setAutoTitle(initial === null);
     setBlockSkipping(initial?.blockSkipping ?? false);
+    setTrackWatching(initial?.trackWatching ?? true);
     setDuration(initial?.durationSeconds ?? null);
     setErrors({});
     setAsking(false);
@@ -104,7 +106,15 @@ export function VideoPartSheet({
     else if (name.length > 200) next.title = "Keep the title to 200 characters";
     setErrors(next);
     if (Object.keys(next).length > 0 || duration === null) return;
-    onSave({ kind: "VIDEO", title: name, youtubeUrl: link.trim(), blockSkipping, durationSeconds: duration });
+    onSave({
+      kind: "VIDEO",
+      title: name,
+      youtubeUrl: link.trim(),
+      // Skipping only matters while watching is tracked.
+      blockSkipping: trackWatching && blockSkipping,
+      trackWatching,
+      durationSeconds: duration,
+    });
     onClose();
   };
 
@@ -154,12 +164,25 @@ export function VideoPartSheet({
             }}
           />
         </FormField>
+        {/* Owner, 2026-11-15: an admin may not need the video watched at all. */}
         <SwitchRow
-          label="Don't let students skip ahead"
-          description="They can go back, but not past what they've watched."
-          checked={blockSkipping}
-          onChange={setBlockSkipping}
+          label="Track watching"
+          description={
+            trackWatching
+              ? "Students must watch 90% of it and answer its questions."
+              : "Opening the video counts as done. Its questions are optional."
+          }
+          checked={trackWatching}
+          onChange={setTrackWatching}
         />
+        {trackWatching ? (
+          <SwitchRow
+            label="Don't let students skip ahead"
+            description="They can go back, but not past what they've watched."
+            checked={blockSkipping}
+            onChange={setBlockSkipping}
+          />
+        ) : null}
         <TimedQuestions
           assignmentId={assignmentId}
           partId={initial?.id}

@@ -157,6 +157,8 @@ export const studentVideoPartSchema = studentVideoQuizSchema.extend({
   title: z.string(),
   durationSeconds: z.number(),
   blockSkipping: z.boolean(),
+  // A server from before the switch sends none: it tracks every video.
+  trackWatching: z.boolean().default(true),
   watchedSeconds: z.number(),
   watchedIntervals: z.array(z.tuple([z.number(), z.number()])),
 });

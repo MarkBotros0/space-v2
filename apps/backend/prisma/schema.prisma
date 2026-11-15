@@ -654,6 +654,8 @@ model AssignmentPart {
   youtubeUrl      String?
   durationSeconds Int?
   blockSkipping   Boolean @default(false)
+  // Off: opening the video counts as done and its questions are optional (owner, 2026-11-15).
+  trackWatching   Boolean @default(true)
 
   // ESSAY and FORUM (minWords); ESSAY only (maxWords, files). No file limit means no uploads.
   prompt                String?

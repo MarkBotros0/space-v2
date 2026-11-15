@@ -20,6 +20,7 @@ interface VideoPartFields {
   title: string;
   durationSeconds: number;
   blockSkipping: boolean;
+  trackWatching: boolean;
   watchedSeconds: number;
   watchedIntervals: [number, number][];
 }
@@ -81,6 +82,7 @@ async function partHeader(partId: number, studentUserId: number): Promise<QuizHe
         youtubeUrl: true,
         durationSeconds: true,
         blockSkipping: true,
+        trackWatching: true,
         assignment: { select: { seasonId: true } },
       },
     }),
@@ -99,6 +101,7 @@ async function partHeader(partId: number, studentUserId: number): Promise<QuizHe
       title: part.title ?? "",
       durationSeconds: part.durationSeconds ?? 0,
       blockSkipping: part.blockSkipping,
+      trackWatching: part.trackWatching,
       watchedSeconds: work?.watchedSeconds ?? 0,
       watchedIntervals: (work?.watchedIntervals ?? []) as [number, number][],
     },

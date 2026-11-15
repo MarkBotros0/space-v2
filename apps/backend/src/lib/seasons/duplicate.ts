@@ -49,6 +49,7 @@ const SOURCE_SELECT = {
           youtubeUrl: true,
           durationSeconds: true,
           blockSkipping: true,
+          trackWatching: true,
           prompt: true,
           minWords: true,
           maxWords: true,

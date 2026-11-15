@@ -325,6 +325,11 @@ export const sessionsAssignmentsSchemas = {
           title: { type: "string", minLength: 1, maxLength: 200 },
           youtubeUrl: { type: "string", description: "Must parse as a YouTube video; its id is stored." },
           blockSkipping: { type: "boolean" },
+          trackWatching: {
+            type: "boolean",
+            default: true,
+            description: "Off: opening the video counts as done and its timed questions are optional.",
+          },
           durationSeconds: {
             type: "integer",
             minimum: 1,

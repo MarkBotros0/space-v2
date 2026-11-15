@@ -73,9 +73,24 @@ describe("VideoPartSheet", () => {
       title: "The prodigal son, a talk",
       youtubeUrl: LINK,
       blockSkipping: true,
+      trackWatching: true,
       durationSeconds: 600,
     });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it("turning tracking off hides the skip switch and saves an untracked video (owner, 2026-11-15)", async () => {
+    const { onSave } = open();
+    fireEvent.changeText(screen.getByLabelText("YouTube link"), LINK);
+    await screen.findByText("Length 10:00");
+    fireEvent.press(screen.getByLabelText("Don't let students skip ahead"));
+    fireEvent.press(screen.getByLabelText("Track watching"));
+    expect(screen.queryByLabelText("Don't let students skip ahead")).toBeNull();
+    expect(screen.getByLabelText("Track watching").props.accessibilityHint).toBe(
+      "Opening the video counts as done. Its questions are optional.",
+    );
+    fireEvent.press(bar().getByText("Add video"));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ trackWatching: false, blockSkipping: false }));
   });
 
   it("switching the link from one video to another reads the new video's length, and saves it", async () => {

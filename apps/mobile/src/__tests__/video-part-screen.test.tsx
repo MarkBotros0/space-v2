@@ -81,6 +81,7 @@ function partVideo(over: Record<string, unknown> = {}) {
     title: videoPart.title,
     durationSeconds: 1080,
     blockSkipping: false,
+    trackWatching: true,
     watchedSeconds: 300,
     watchedIntervals: [[0, 300]],
     ...over,

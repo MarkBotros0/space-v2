@@ -19,7 +19,7 @@ import {
   Text,
 } from "../../design/ui";
 import { usePullRefresh } from "../../hooks/use-pull-refresh";
-import { usePartVideo, useSubmitPartVideoAnswer } from "../../hooks/use-video-quiz";
+import { usePartVideo, useSavePartVideoProgress, useSubmitPartVideoAnswer } from "../../hooks/use-video-quiz";
 import { plural } from "../../lib/plural";
 import { useVideoPlayback } from "../video-quiz/use-video-playback";
 import { VideoPlayerFrame } from "../video-quiz/video-player-frame";
@@ -93,9 +93,73 @@ function blockedSource(video: PartVideo): PartVideo {
   return { ...video, furthestSeconds: Math.min(video.furthestSeconds, end) };
 }
 
+/**
+ * A video whose watching isn't tracked (owner, 2026-11-15) counts once opened: the screen reports an
+ * empty stretch on opening, which makes the student's work on it and so marks it done.
+ */
+function useReportOpened(assignmentId: number, partId: number, active: boolean): void {
+  const { report } = useSavePartVideoProgress(assignmentId, partId);
+  useEffect(() => {
+    if (active) void report([], 0);
+  }, [active, report]);
+}
+
+/** The student's progress on a tracked video: time watched to the second, and the questions answered. */
+function TrackedNote(p: {
+  watched: number;
+  duration: number;
+  answered: number;
+  questions: number;
+  blockSkipping: boolean;
+}) {
+  const counts = isWatched(p.watched, p.duration);
+  return (
+    <>
+      <Text variant="subhead" accessibilityLiveRegion="polite">
+        {counts ? "Watched" : `Watched ${watchedRun(p.watched, p.duration)}`}
+      </Text>
+      {p.questions > 0 ? (
+        <Text variant="caption" className="text-muted-foreground">
+          {`${p.answered} of ${plural(p.questions, "question")} answered`}
+        </Text>
+      ) : null}
+      {counts ? null : (
+        <Text variant="caption" className="text-muted-foreground">
+          It counts once you've watched at least 90% of it.
+        </Text>
+      )}
+      {p.blockSkipping ? (
+        <Text variant="caption" className="text-muted-foreground">
+          You can't skip ahead in this video.
+        </Text>
+      ) : null}
+    </>
+  );
+}
+
+/** What an untracked video says instead of the watched count. */
+function UntrackedNote({ answered, questions }: { answered: number; questions: number }) {
+  return (
+    <>
+      <Text variant="subhead">Opening this video counts</Text>
+      <Text variant="caption" className="text-muted-foreground">
+        Your watching isn't tracked, so watch as much as you need.
+      </Text>
+      {questions > 0 ? (
+        <Text variant="caption" className="text-muted-foreground">
+          {`${answered} of ${plural(questions, "question")} answered. The questions are optional.`}
+        </Text>
+      ) : null}
+    </>
+  );
+}
+
 function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: VideoPart; video: PartVideo }) {
   const router = useRouter();
+  // An older server sends no flag: it tracks every video.
+  const tracked = video.trackWatching !== false;
   const record = !detail.readOnly;
+  useReportOpened(detail.id, part.id, record && !tracked);
   const answer = useSubmitPartVideoAnswer(detail.id, part.id);
   // The watching hook needs `playing` from the playback, and the playback reports to it.
   const watchingRef = useRef<ReturnType<typeof usePartWatching> | null>(null);
@@ -106,14 +170,15 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
     onStop: () => watchingRef.current?.onStop(),
     onSeeked: () => watchingRef.current?.onSeeked(),
     // With skipping blocked, a forward seek stops at the furthest point reached; rewinding is free.
-    seekCeiling: video.blockSkipping ? () => playback.furthestRef.current : undefined,
+    seekCeiling: tracked && video.blockSkipping ? () => playback.furthestRef.current : undefined,
   });
   const watching = usePartWatching({
     assignmentId: detail.id,
     partId: part.id,
     initialRanges: video.watchedIntervals,
     playing: playback.playing,
-    record,
+    // Not tracked: nothing to count.
+    record: record && tracked,
   });
   watchingRef.current = watching;
 
@@ -128,7 +193,6 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
 
   const duration = video.durationSeconds;
   const watched = watching.watchedSeconds;
-  const counts = isWatched(watched, duration);
   const notice = leaveVideoNotice({
     watchedSeconds: watched,
     durationSeconds: duration,
@@ -143,7 +207,7 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
   const leaveFromSheet = useRef(false);
   // Nothing to watch in the app (no video, a failed player, an unreachable question): nothing to warn about.
   const playable = video.videoId !== null && !playback.failed && !playback.deadlocked;
-  usePreventRemove(record && playable && notice !== null, ({ repeat }) => {
+  usePreventRemove(record && tracked && playable && notice !== null, ({ repeat }) => {
     if (leaveFromSheet.current) {
       repeat();
       return;
@@ -159,27 +223,20 @@ function PartPlayer({ detail, part, video }: { detail: AssignmentDetail; part: V
       {video.videoId === null || playback.failed ? (
         <VideoFallback youtubeUrl={part.youtubeUrl} />
       ) : (
-        <VideoPlayerFrame videoId={video.videoId} playback={playback} />
+        <VideoPlayerFrame videoId={video.videoId} playback={playback} warnOnYouTube={tracked} />
       )}
       <View className="gap-1">
-        <Text variant="subhead" accessibilityLiveRegion="polite">
-          {counts ? "Watched" : `Watched ${watchedRun(watched, duration)}`}
-        </Text>
-        {questions > 0 ? (
-          <Text variant="caption" className="text-muted-foreground">
-            {`${video.answeredCount} of ${plural(questions, "question")} answered`}
-          </Text>
-        ) : null}
-        {counts ? null : (
-          <Text variant="caption" className="text-muted-foreground">
-            It counts once you've watched at least 90% of it.
-          </Text>
+        {tracked ? (
+          <TrackedNote
+            watched={watched}
+            duration={duration}
+            answered={video.answeredCount}
+            questions={questions}
+            blockSkipping={video.blockSkipping}
+          />
+        ) : (
+          <UntrackedNote answered={video.answeredCount} questions={questions} />
         )}
-        {video.blockSkipping ? (
-          <Text variant="caption" className="text-muted-foreground">
-            You can't skip ahead in this video.
-          </Text>
-        ) : null}
         {record ? null : (
           <Text variant="caption" className="text-muted-foreground">
             This season has finished, so watching now isn't recorded.

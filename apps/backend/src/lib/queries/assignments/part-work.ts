@@ -28,6 +28,7 @@ export const PART_SELECT = {
   youtubeUrl: true,
   durationSeconds: true,
   blockSkipping: true,
+  trackWatching: true,
   prompt: true,
   minWords: true,
   maxWords: true,
@@ -51,6 +52,7 @@ export function toAssignmentPart(p: PartRow): AssignmentPart {
       title: p.title ?? "",
       youtubeUrl,
       blockSkipping: p.blockSkipping,
+      trackWatching: p.trackWatching,
       durationSeconds: p.durationSeconds ?? 0,
       videoId: p.youtubeId ?? parseYouTubeId(youtubeUrl),
     };
@@ -169,6 +171,8 @@ function videoWork(p: PartRow, row: WorkRow | undefined, tally: AnswerTally): Pa
     answered: tally.answered,
     questionCount: p._count.videoQuestions,
     correct: tally.correct,
+    // A work row is made the first time the student's player reports, which an untracked video's does on opening.
+    opened: row !== undefined,
   };
   const work: PartWork = { partId: p.id, kind: p.kind, status: "NOT_STARTED", video };
   if (partDone(toAssignmentPart(p), work)) return { ...work, status: "DONE" };

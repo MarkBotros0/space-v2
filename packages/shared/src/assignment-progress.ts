@@ -62,7 +62,7 @@ function workFor(part: AssignmentPart, works: PartWork[]): PartWork | undefined 
 }
 
 /**
- * Done: video 90% watched with every question answered; essay handed in, or a
+ * Done: video 90% watched with every question answered (or, not tracked, opened); essay handed in, or a
  * draft within range; forum posted.
  */
 export function partDone(part: AssignmentPart, work: PartWork | undefined): boolean {
@@ -70,6 +70,8 @@ export function partDone(part: AssignmentPart, work: PartWork | undefined): bool
   switch (part.kind) {
     case "VIDEO": {
       const v = work.video;
+      // Not tracked: opening it is enough, and its questions are optional (owner, 2026-11-15).
+      if (!part.trackWatching) return v?.opened === true;
       return v !== undefined && isWatched(v.watchedSeconds, v.durationSeconds) && v.answered >= v.questionCount;
     }
     case "ESSAY": {
@@ -100,6 +102,7 @@ export function canSubmit(parts: AssignmentPart[], works: PartWork[]): boolean {
 function leftName(part: AssignmentPart, work: PartWork | undefined): string {
   if (part.kind === "FORUM") return "the forum post";
   if (part.kind === "ESSAY") return "the essay";
+  if (!part.trackWatching) return `${part.title} (open it)`;
   const v = work?.video;
   const duration = v?.durationSeconds ?? part.durationSeconds;
   const minutes = Math.max(0, Math.ceil((WATCHED_FRACTION * duration - (v?.watchedSeconds ?? 0)) / 60));

@@ -35,7 +35,12 @@ async function lockVideoWork(tx: Tx, partId: number, studentUserId: number) {
   // Re-read under the lock: an edit that landed first wins.
   const part = await tx.assignmentPart.findFirst({
     where: { id: partId, kind: "VIDEO", assignment: liveAssignment },
-    select: { durationSeconds: true, blockSkipping: true, _count: { select: { videoQuestions: true } } },
+    select: {
+      durationSeconds: true,
+      blockSkipping: true,
+      trackWatching: true,
+      _count: { select: { videoQuestions: true } },
+    },
   });
   if (!part) throw partGone();
 
@@ -60,6 +65,7 @@ async function lockVideoWork(tx: Tx, partId: number, studentUserId: number) {
     work,
     durationSeconds: part.durationSeconds ?? 0,
     blockSkipping: part.blockSkipping,
+    trackWatching: part.trackWatching,
     questionCount: part._count.videoQuestions,
   };
 }
@@ -76,7 +82,8 @@ async function answerTally(tx: Tx, partId: number, studentUserId: number) {
 
 /**
  * Writes the watching and stamps `doneAt` the first time the part counts as
- * done: watched (90%) and every timed question answered. Once stamped it stays
+ * done: watched (90%) and every timed question answered, or, for a video that
+ * isn't tracked, opened (this write is its first report). Once stamped it stays
  * until the video is reset.
  */
 async function finish(
@@ -88,7 +95,9 @@ async function finish(
   now: Date,
 ): Promise<PartVideoProgress> {
   const tally = await answerTally(tx, partId, studentUserId);
-  const done = isWatched(watch.watchedSeconds, locked.durationSeconds) && tally.answered >= locked.questionCount;
+  const done =
+    !locked.trackWatching ||
+    (isWatched(watch.watchedSeconds, locked.durationSeconds) && tally.answered >= locked.questionCount);
   const doneAt = locked.work.doneAt ?? (done ? now : null);
   await tx.assignmentPartWork.update({
     where: { id: locked.work.id },

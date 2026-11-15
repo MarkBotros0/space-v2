@@ -47,6 +47,7 @@ function partColumns(input: AssignmentPartInput) {
     youtubeId: null,
     durationSeconds: null,
     blockSkipping: false,
+    trackWatching: true,
     prompt: null,
     minWords: null,
     maxWords: null,
@@ -56,7 +57,7 @@ function partColumns(input: AssignmentPartInput) {
     allowComments: false,
   };
   if (input.kind === "VIDEO") {
-    const { title, youtubeUrl, durationSeconds, blockSkipping } = input;
+    const { title, youtubeUrl, durationSeconds, blockSkipping, trackWatching = true } = input;
     return {
       ...blank,
       kind: input.kind,
@@ -65,6 +66,7 @@ function partColumns(input: AssignmentPartInput) {
       youtubeId: parseYouTubeId(youtubeUrl),
       durationSeconds,
       blockSkipping,
+      trackWatching,
     };
   }
   if (input.kind === "ESSAY") {
@@ -160,7 +162,8 @@ async function removedPartBlobs(tx: Tx, assignmentId: number, partIds: number[])
 }
 
 async function applyPartRows(tx: Tx, assignmentId: number, plan: PartChangePlan, now: Date): Promise<number> {
-  const changesStanding = plan.resetVideo.length > 0 || plan.remove.length > 0 || plan.create.length > 0;
+  const changesStanding =
+    plan.resetVideo.length > 0 || plan.trackingChanged.length > 0 || plan.remove.length > 0 || plan.create.length > 0;
   // Lock order (lib/assignments/essay.ts): this edit holds the Assignment FOR
   // UPDATE; the students' Submissions come next, before any work row goes.
   if (changesStanding) {
@@ -195,7 +198,7 @@ async function applyPartRows(tx: Tx, assignmentId: number, plan: PartChangePlan,
     await tx.assignmentPart.update({ where: { id }, data: { position, ...partColumns(input) } });
   }
   if (plan.create.length === 0) {
-    // A reset can reopen a submitted student; a removal can leave one complete.
+    // A reset or tracking switched on can reopen a submitted student; a removal or tracking off can leave one complete.
     return changesStanding ? settleSubmitted(tx, assignmentId, now) : 0;
   }
   await tx.assignmentPart.createMany({
@@ -234,7 +237,9 @@ export async function replaceAssignment(
         createdAt: true,
         remindAt: true,
         remindedAt: true,
-        parts: { select: { id: true, kind: true, youtubeId: true, minWords: true, maxWords: true } },
+        parts: {
+          select: { id: true, kind: true, youtubeId: true, trackWatching: true, minWords: true, maxWords: true },
+        },
       },
     });
     if (!current) throw new ApiError("not_found", "Assignment not found.", 404);

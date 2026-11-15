@@ -9,6 +9,7 @@ export const videoPart = {
   title: "Luke 15 talk",
   youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   blockSkipping: false,
+  trackWatching: true,
   durationSeconds: 1080,
   videoId: "dQw4w9WgXcQ",
 };

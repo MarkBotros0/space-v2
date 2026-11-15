@@ -16,6 +16,7 @@ const video = (id: number, durationSeconds = 1080): AssignmentPart => ({
   youtubeUrl: "https://youtu.be/dQw4w9WgXcQ",
   videoId: "dQw4w9WgXcQ",
   blockSkipping: false,
+  trackWatching: true,
   durationSeconds,
 });
 const essay = (id: number): AssignmentPart => ({

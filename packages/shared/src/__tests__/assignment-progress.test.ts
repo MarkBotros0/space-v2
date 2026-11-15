@@ -20,6 +20,7 @@ const parts: AssignmentPart[] = [
     title: "Luke 15 talk",
     youtubeUrl: "dQw4w9WgXcQ",
     blockSkipping: true,
+    trackWatching: true,
     durationSeconds: 1080,
     videoId: "dQw4w9WgXcQ",
   },
@@ -170,5 +171,18 @@ describe("essayWordCount", () => {
   it("is the count wordRangeIssue checks", () => {
     expect(wordRangeIssue("Tom &amp; Jerry", 3, null)).toBeNull();
     expect(wordRangeIssue("un<i>believ</i>able", 2, null)).toEqual({ kind: "short", by: 1 });
+  });
+});
+
+describe("a video that isn't tracked (owner, 2026-11-15)", () => {
+  const untracked = { ...parts[0], trackWatching: false } as AssignmentPart;
+  it("is done once opened, watched or not, its questions optional", () => {
+    expect(partDone(untracked, undefined)).toBe(false);
+    expect(partDone(untracked, video(0, 0))).toBe(false);
+    const opened = video(0, 0);
+    expect(partDone(untracked, { ...opened, video: { ...opened.video!, opened: true } })).toBe(true);
+  });
+  it("asks the student to open it", () => {
+    expect(submitBlockerLine([untracked], [])).toBe("Finish Luke 15 talk (open it) to submit");
   });
 });

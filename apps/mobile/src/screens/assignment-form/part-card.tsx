@@ -41,7 +41,11 @@ function partFacts(part: PartDraft): string[] {
     case "VIDEO":
       return [
         `Length ${formatTimestamp(part.durationSeconds)}`,
-        part.blockSkipping ? "Students can't skip ahead" : "Students can skip ahead",
+        part.trackWatching === false
+          ? "Watching isn't tracked"
+          : part.blockSkipping
+            ? "Students can't skip ahead"
+            : "Students can skip ahead",
       ];
     case "ESSAY":
       return [

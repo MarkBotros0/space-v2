@@ -58,6 +58,7 @@ const detail: AssignmentDetail = {
       youtubeUrl: "https://youtu.be/dQw4w9WgXcQ",
       videoId: "dQw4w9WgXcQ",
       blockSkipping: false,
+      trackWatching: true,
       durationSeconds: 600,
     },
     {
