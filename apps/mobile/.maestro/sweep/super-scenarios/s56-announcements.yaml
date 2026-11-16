@@ -72,14 +72,20 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s56-06-new
-- tapOn: 'Message'
+# Message is a rich-text editor in a WebView (2026-11): its placeholder is not in the tree, but its
+# wrapper is labelled "Message" like the field label above it, so take the second match (the editor,
+# lower on the screen; its centre is the writing area). No hideKeyboard after: with no keyboard up it
+# acts as Back and leaves the form; the pinned Post bar rides above the keyboard.
+- tapOn:
+    text: 'Message'
+    index: 1
 - inputText: 'Sweep test message, never posted.'
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: s56-07-new-message-kbd
-- hideKeyboard
-- waitForAnimationToEnd:
-    timeout: 3000
+- extendedWaitUntil:
+    visible: 'New announcement'
+    timeout: 5000
 # Post only opens the confirm sheet; the sheet's Post is never tapped.
 - tapOn: 'Post'
 - extendedWaitUntil:

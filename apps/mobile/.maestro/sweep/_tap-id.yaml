@@ -8,5 +8,13 @@ appId: com.jpc.space
     centerElement: true
     timeout: 10000
     optional: true
+# Not below: the page may sit past it after an earlier bottom shot (2026-11-16).
+- scrollUntilVisible:
+    element:
+      id: ${TARGET_ID}
+    direction: UP
+    centerElement: true
+    timeout: 10000
+    optional: true
 - tapOn:
     id: ${TARGET_ID}

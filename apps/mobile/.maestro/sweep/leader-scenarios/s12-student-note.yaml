@@ -20,20 +20,19 @@ appId: com.jpc.space
       TARGET: 'Samir Student'
 - waitForAnimationToEnd:
     timeout: 5000
-# The page shows no email any more (owner, 2026-11-07): wait on the This season card's
-# first figure ("Attendance: N%, x of y"), the top of the page.
+# The page opens on the Season progress card (spec 2026-11-12 "Progress for staff"), its top.
 - extendedWaitUntil:
-    visible: 'Attendance: \d+%.*'
+    visible: 'Season progress'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s12-01-student
-# The sections are one segmented control now (Submissions, Attendance, Notes, Seasons;
-# Submissions opens first), so nothing is swiped. Each section loads its data the first
-# time it opens. Attendance is matched right of Submissions: the This season card above
-# also carries an "Attendance" label.
+# The sections are one segmented control (Work, Attendance, Notes, Seasons; Work opens
+# first), so nothing is swiped. Each section loads its data the first time it opens.
+# Attendance is matched right of Work: the Season progress card above also carries an
+# "Attendance" label.
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -43,14 +42,14 @@ appId: com.jpc.space
 - takeScreenshot: s12-02-tab-seasons
 - tapOn:
     text: 'Attendance'
-    rightOf: 'Submissions'
+    rightOf: 'Work'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s12-03-tab-attendance
-- tapOn: 'Submissions'
+- tapOn: 'Work'
 - waitForAnimationToEnd:
     timeout: 5000
-- takeScreenshot: s12-04-tab-submissions
+- takeScreenshot: s12-04-tab-work
 - tapOn: 'Notes'
 - waitForAnimationToEnd:
     timeout: 5000

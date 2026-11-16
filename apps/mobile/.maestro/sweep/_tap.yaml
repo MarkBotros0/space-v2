@@ -17,6 +17,17 @@ appId: com.jpc.space
           start: 4%, 70%
           end: 4%, 35%
           duration: 500
+# Not below: the page may sit past it after an earlier bottom shot (s26, s54, s58 on 2026-11-16),
+# so swipe back up the same margin.
+- repeat:
+    while:
+      notVisible: ${TARGET}
+    times: 12
+    commands:
+      - swipe:
+          start: 4%, 35%
+          end: 4%, 70%
+          duration: 500
 - scrollUntilVisible:
     element: ${TARGET}
     direction: DOWN

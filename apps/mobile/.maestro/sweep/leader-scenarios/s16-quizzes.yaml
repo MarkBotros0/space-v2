@@ -101,11 +101,17 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s16-10-attempt-sheet
-# Right / Wrong is local until Save marks, which is never tapped. One essay: one toggle.
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Right'
+# An essay is marked in points now (0 to its max; this one is out of 1), local until Save marks,
+# which is never tapped. One essay: one tap.
+- scrollUntilVisible:
+    element:
+      text: 'Points, out of \d+'
+    direction: DOWN
+    centerElement: true
+    timeout: 15000
+- tapOn:
+    text: '1'
+    below: 'Points, out of \d+'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s16-11-essay-marked
@@ -151,10 +157,12 @@ appId: com.jpc.space
     timeout: 5000
 - takeScreenshot: s16-15-types-sheet-blanks
 # Marks the first blank right and the second wrong: local until Save marks.
-# Relative to each blank's caption: the matching rows above also carry the words Right and Wrong.
+# Relative to Blank 2's caption: the matching rows above also carry the words Right and Wrong, and
+# with Blank 2 centred the Blank 1 caption can sit off the top (iphone), so blank 1's Right is the
+# nearest Right above Blank 2.
 - tapOn:
     text: 'Right'
-    below: 'Blank 1'
+    above: 'Blank 2'
 - tapOn:
     text: 'Wrong'
     below: 'Blank 2'

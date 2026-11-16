@@ -63,10 +63,10 @@ appId: com.jpc.space
     timeout: 3000
 
 # ── Reset password ──
-- runFlow:
-    file: _tap.yaml
-    env:
-      TARGET: 'I have a reset code'
+# By deep link, not the "I have a reset code" link (in s01-05): on the gesture cells Back can leave
+# Gboard up with the link under it, and the tap lands on Gboard's clipboard key. The link only
+# pushes /reset-password, so the route is the same screen.
+- openLink: spacev2://reset-password
 - extendedWaitUntil:
     visible: 'Reset password'
     timeout: 20000

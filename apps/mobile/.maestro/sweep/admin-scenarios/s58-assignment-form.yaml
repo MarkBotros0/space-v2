@@ -58,10 +58,8 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s58-06-video-sheet
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'YouTube link'
+# In a sheet: a plain tap (_tap's centring scroll drags the sheet closed).
+- tapOn: 'YouTube link'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s58-07-video-link-kbd
@@ -82,18 +80,14 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s58-08-essay-sheet
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Question'
+# In a sheet: a plain tap (_tap's centring scroll drags the sheet closed).
+- tapOn: 'Question'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s58-09-essay-question-kbd
 - hideKeyboard
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Maximum words'
+# In a sheet: a plain tap (_tap's centring scroll drags the sheet closed).
+- tapOn: 'Maximum words'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s58-10-essay-words-kbd
@@ -114,10 +108,8 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s58-11-forum-sheet
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'Prompt'
+# In a sheet: a plain tap (_tap's centring scroll drags the sheet closed).
+- tapOn: 'Prompt'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s58-12-forum-prompt-kbd

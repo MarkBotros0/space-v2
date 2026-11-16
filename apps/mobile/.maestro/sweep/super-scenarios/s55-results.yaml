@@ -25,7 +25,7 @@ appId: com.jpc.space
 # each row says so (a season ended with weighted passing shows "Score 72.5" and, against it, "Passed
 # below the mark" instead).
 - extendedWaitUntil:
-    visible: 'Ended before weighted passing'
+    visible: 'Ended before weighted passing.*'
     timeout: 40000
 - takeScreenshot: s55-02a-results-score-labels
 - runFlow:
@@ -38,6 +38,11 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s55-03-result-sheet
+# Reason shows only for Did not pass (local until Save result, which is never tapped).
+- tapOn: 'Did not pass'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s55-03b-result-sheet-not-passed
 - tapOn: 'Reason'
 - waitForAnimationToEnd:
     timeout: 5000

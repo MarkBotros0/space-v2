@@ -55,7 +55,7 @@ appId: com.jpc.space
     env:
       TARGET: '(?s)\[Sweep\] .*everyone in the community.*'
 - extendedWaitUntil:
-    visible: '(?s)\[Sweep\] This is fake text.*to check line breaks\.'
+    visible: '(?s)\[Sweep\] This is fake text.*community\.'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000

@@ -10,7 +10,7 @@ appId: com.jpc.space
 - openLink: spacev2://reports
 # The season card's History pill sits at the top and stays put.
 - extendedWaitUntil:
-    visible: 'Choose another season'
+    visible: 'Choose another season.*'
     timeout: 40000
 - waitForAnimationToEnd:
     timeout: 5000
@@ -30,10 +30,10 @@ appId: com.jpc.space
 - takeScreenshot: s39-03-reports-bottom
 # Picking a season is a read. Export is never tapped (it opens the share sheet).
 - scrollUntilVisible:
-    element: 'Choose another season'
+    element: 'Choose another season.*'
     direction: UP
     timeout: 60000
-- tapOn: 'Choose another season'
+- tapOn: 'Choose another season.*'
 - extendedWaitUntil:
     visible: 'Every season together'
     timeout: 20000

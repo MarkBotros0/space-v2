@@ -37,7 +37,15 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s25-04-assignment-detail-bottom
-# Progress per student: Salma's row opens her handed-in essay; opening does not change it.
+# Progress per student is split Not finished / Finished (2026-11-14); Salma finished, so her row
+# is under Finished and opens her handed-in essay. Opening does not change it.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Finished \(\d+\)'
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s25-04b-progress-finished
 - runFlow:
     file: ../_tap.yaml
     env:
@@ -60,10 +68,8 @@ appId: com.jpc.space
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s25-06-return-sheet
-- runFlow:
-    file: ../_tap.yaml
-    env:
-      TARGET: 'What to change'
+# A plain tap: the field is on screen, and _tap's centring scroll drags the sheet closed.
+- tapOn: 'What to change'
 - waitForAnimationToEnd:
     timeout: 5000
 - takeScreenshot: s25-07-return-note-kbd
