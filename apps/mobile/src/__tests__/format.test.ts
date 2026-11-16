@@ -134,7 +134,7 @@ describe("batch-2 formatters", () => {
     expect(formatDistanceOnly(inThreeDays)).toBe("3 days");
     expect(formatDistanceOnly(null)).toBe("—");
     expect(formatStampAgo(new Date(Date.now() - 2 * 3_600_000).toISOString())).toMatch(
-      /^\w{3}\u00A0\d{1,2},\u00A0\d{4} · \d{1,2}:\d{2}\u00A0(AM|PM) · 2 hours ago$/,
+      /^\w{3}\u00A0\d{1,2},\u00A0\d{4}\u00A0· \d{1,2}:\d{2}\u00A0(AM|PM)\u00A0· 2\u00A0hours\u00A0ago$/,
     );
   });
 });

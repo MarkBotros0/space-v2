@@ -52,6 +52,7 @@ export function LocalStudentList<T extends LocalStudentRow>({
   onPress,
   trailing,
   trailingLabel,
+  trailingPlacement,
   header,
   emptyTitle = "No students",
   emptyDescription,
@@ -63,6 +64,8 @@ export function LocalStudentList<T extends LocalStudentRow>({
   trailing?: (item: T) => ReactNode;
   /** What the trailing slot says, for screen readers, when it isn't a chip. */
   trailingLabel?: (item: T) => string | undefined;
+  /** "below" puts the trailing chip under the name, so a long chip never squeezes the name at 1.3 (check-in rows). */
+  trailingPlacement?: "side" | "below";
   /** A header over the whole list when the rows have no groups. */
   header?: string;
   emptyTitle?: string;
@@ -120,6 +123,7 @@ export function LocalStudentList<T extends LocalStudentRow>({
                 leading={<Initials name={item.name} />}
                 trailing={trailing?.(item)}
                 trailingLabel={trailingLabel?.(item)}
+                trailingPlacement={trailingPlacement}
                 chevron={!!onPress}
                 onPress={onPress ? () => onPress(item) : undefined}
               />

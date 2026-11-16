@@ -43,7 +43,13 @@ function ActionTile({ action }: { action: SeasonAction }) {
             <Icon size={18} className="text-info" />
           </View>
           <View className="flex-col">
-            <Text variant="headline" numberOfLines={2}>
+            {/* One word ("Assignments") shrinks to fit rather than breaking as "Assignment / s" at 1.3. */}
+            <Text
+              variant="headline"
+              numberOfLines={action.label.includes(" ") ? 2 : 1}
+              adjustsFontSizeToFit={!action.label.includes(" ")}
+              minimumFontScale={0.7}
+            >
               {action.label}
             </Text>
             {action.hint ? (

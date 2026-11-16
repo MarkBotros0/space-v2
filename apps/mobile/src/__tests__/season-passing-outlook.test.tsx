@@ -17,6 +17,7 @@ import { makeSession } from "./helpers/session";
 import SeasonDetailScreen from "../../app/(app)/seasons/[code]/index";
 import SeasonPassingScreen from "../../app/(app)/seasons/[code]/passing";
 import { expectQuietSuccess } from "./helpers/quiet-success";
+import { plain } from "./helpers/plain-text";
 
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
@@ -91,10 +92,10 @@ describe("Passing outlook", () => {
       "Ann Ontrack",
     ]);
     const sara = screen.getByRole("button", { name: /^Sara Short/ });
-    expect(sara.props.accessibilityLabel).toContain("Score 52.0");
-    expect(sara.props.accessibilityLabel).toContain("8 points short");
-    expect(sara.props.accessibilityLabel).toContain("Quizzes 45%");
-    expect(sara.props.accessibilityLabel).toContain("Below the mark");
+    expect(plain(sara.props.accessibilityLabel)).toContain("Score 52.0");
+    expect(plain(sara.props.accessibilityLabel)).toContain("8 points short");
+    expect(plain(sara.props.accessibilityLabel)).toContain("Quizzes 45%");
+    expect(plain(sara.props.accessibilityLabel)).toContain("Below the mark");
     expect(screen.getByRole("button", { name: /^Ann Ontrack/ }).props.accessibilityLabel).toContain("On track");
     fireEvent.press(sara);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/student/[id]", params: { id: "21" } });

@@ -1,6 +1,7 @@
 import type { QuizLiveRow } from "@space/shared";
 
 import { liveRowView, liveSummary } from "../screens/quiz-live/live-model";
+import { plain } from "./helpers/plain-text";
 
 const NOW = Date.parse("2099-03-02T10:00:00.000Z");
 
@@ -50,7 +51,7 @@ describe("liveRowView", () => {
     const deadlineAt = new Date(NOW + 5 * 60_000 + 12.5 * 60_000).toISOString();
     const view = liveRowView(row({ state: "in_progress", deadlineAt, exits: 1 }), 5 * 60_000, NOW, true);
     expect(view.stateChip).toEqual({ tone: "info", label: "In progress" });
-    expect(view.detail).toBe("12:30 left · 1 exit");
+    expect(plain(view.detail)).toBe("12:30 left · 1 exit");
     // A screen reader hears whole minutes, not every second.
     expect(view.spoken).toBe("13 minutes left, 1 exit");
   });
@@ -58,7 +59,7 @@ describe("liveRowView", () => {
   it("in progress past its deadline but not closed yet", () => {
     const deadlineAt = new Date(NOW - 5_000).toISOString();
     const view = liveRowView(row({ state: "in_progress", deadlineAt, exits: 1 }), 0, NOW, true);
-    expect(view.detail).toBe("Time up · closing");
+    expect(plain(view.detail)).toBe("Time up · closing");
     expect(view.spoken).toBe("Time up, closing");
   });
 
@@ -68,7 +69,9 @@ describe("liveRowView", () => {
   });
 
   it("in progress, untimed", () => {
-    expect(liveRowView(row({ state: "in_progress", exits: 2 }), 0, NOW, false).detail).toBe("No time limit · 2 exits");
+    expect(plain(liveRowView(row({ state: "in_progress", exits: 2 }), 0, NOW, false).detail)).toBe(
+      "No time limit · 2 exits",
+    );
   });
 
   it("in progress, timed but no deadline yet: a reopened retake not started", () => {
@@ -91,7 +94,9 @@ describe("liveRowView", () => {
       stateChip: { tone: "warn", label: "Timed out" },
       detail: "Time ran out",
     });
-    expect(liveRowView(row({ state: "timed_out", exits: 2 }), 0, NOW, true).detail).toBe("Time ran out · 2 exits");
+    expect(plain(liveRowView(row({ state: "timed_out", exits: 2 }), 0, NOW, true).detail)).toBe(
+      "Time ran out · 2 exits",
+    );
   });
 
   it("ended by exits", () => {

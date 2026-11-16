@@ -51,10 +51,25 @@ function RingButton({ line, onPress }: { line: ProgressLine; onPress: () => void
           >
             <RingValue className="text-lg leading-6">{line.pct === null ? "–" : `${line.pct}%`}</RingValue>
           </ProgressRing>
-          <Text variant="subhead" numberOfLines={1} className="font-semibold" maxFontSizeMultiplier={1.3}>
+          {/* Shrinks to fit a third of the card: it read "Attendan…" at 1.3 (sweep F2). */}
+          <Text
+            variant="subhead"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+            className="font-semibold"
+            maxFontSizeMultiplier={1.3}
+          >
             {line.label}
           </Text>
-          <Text variant="caption" numberOfLines={1} className="text-muted-foreground" maxFontSizeMultiplier={1.3}>
+          <Text
+            variant="caption"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+            className="text-muted-foreground"
+            maxFontSizeMultiplier={1.3}
+          >
             {line.short}
           </Text>
         </View>

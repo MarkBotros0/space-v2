@@ -84,12 +84,27 @@ export function AgendaView({
   sessions,
   events,
   today,
+  days,
   ...handlers
-}: { sessions: SessionListItem[]; events: JpcEventListItem[]; today: string } & Handlers) {
+}: {
+  sessions: SessionListItem[];
+  events: JpcEventListItem[];
+  today: string;
+  /** Only these days, past ones too (the Week view's list under its grid); nothing is said when empty. */
+  days?: readonly string[];
+} & Handlers) {
+  const keep = (dayKey: string) => (days ? days.includes(dayKey) : dayKey >= today);
   const groups = groupCalendarByDay(
-    sessions.filter((s) => s.dayKey >= today),
-    events.filter((e) => e.dayKey >= today),
+    sessions.filter((s) => keep(s.dayKey)),
+    events.filter((e) => keep(e.dayKey)),
   );
+  if (groups.length === 0 && days) {
+    return (
+      <Text variant="subhead" className="text-muted-foreground">
+        Nothing this week.
+      </Text>
+    );
+  }
   if (groups.length === 0) {
     return (
       <EmptyState

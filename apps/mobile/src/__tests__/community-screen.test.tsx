@@ -281,7 +281,7 @@ describe("CommunityScreen — status filter and rows", () => {
     const meta = screen.getByText(/^Admin · Last login/);
     expect(meta.props.numberOfLines).toBeGreaterThanOrEqual(3);
     // the date never splits across lines
-    expect(meta.props.children).toMatch(/Last login \w{3}\u00a0\d{1,2},\u00a0\d{4}$/);
+    expect(meta.props.children).toMatch(/Last\u00a0login\u00a0\w{3}\u00a0\d{1,2},\u00a0\d{4}$/);
   });
 
   it("shows the email once, as the title, for a user with no name", async () => {

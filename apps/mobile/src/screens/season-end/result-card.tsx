@@ -22,7 +22,14 @@ function MeterCell({ meter }: { meter: Meter }) {
   const fill = meter.pct === null ? 0 : Math.max(0, Math.min(100, meter.pct));
   return (
     <View className="min-w-0 flex-1 flex-col gap-1">
-      <Text variant="caption" className="text-muted-foreground" numberOfLines={1}>
+      {/* Shrinks rather than ellipsising "Assignme…" in a third of a 360dp card at 1.3 (sweep 2026-11-16, M2). */}
+      <Text
+        variant="caption"
+        className="text-muted-foreground"
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
         {meter.label}
       </Text>
       <Text variant="headline" tabular numberOfLines={1}>

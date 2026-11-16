@@ -174,6 +174,7 @@ export function NotificationPreferences() {
                 <ListRow
                   key={key}
                   title={LABELS[key].label}
+                  titleLines={2}
                   subtitle={LABELS[key].help}
                   subtitleLines={3}
                   trailing={

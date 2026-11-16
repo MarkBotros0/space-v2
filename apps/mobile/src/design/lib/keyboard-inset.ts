@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaInsetsContext } from "react-native-safe-area-context";
 
+import { focusTarget, subscribeFocusTarget } from "./focus-target";
 import { subscribeKeyboard, useKeyboardHeight } from "./keyboard-events";
 import { keyboardBottomOffset, keyboardTopInWindow } from "./keyboard-offset";
 
@@ -23,8 +24,12 @@ import { keyboardBottomOffset, keyboardTopInWindow } from "./keyboard-offset";
  * the padding (offset + 16) provides.
  */
 const FIELD_GAP = 96;
-/** Breathing room kept between a clamped field's top and the scroll view's top. */
-const VIEWPORT_MARGIN = 12;
+/**
+ * Room kept between a clamped field's top and the scroll view's top: enough for the field's label, or
+ * the choice just above it, to stay in view (at 12 a sheet's "What to change" label and the Passed /
+ * Did not pass control sat under the sheet title while typing; whole-app sweep 2026-11-16, M6).
+ */
+const VIEWPORT_MARGIN = 36;
 /** Retries after the keyboard opens: the padding below lands a layout pass or two later. */
 const RETRY_MS = [0, 150, 400];
 
@@ -103,7 +108,8 @@ export function useKeyboardInset(options?: {
   const ensureVisible = useCallback(() => {
     const top = keyboardTop.current;
     if (top === null) return;
-    const input = TextInput.State.currentlyFocusedInput() as unknown as Measurable | null;
+    // A WebView field (the rich-text editor) is no TextInput; it registers itself instead.
+    const input = (TextInput.State.currentlyFocusedInput() as unknown as Measurable | null) ?? focusTarget();
     input?.measureInWindow?.((_x, y, _w, h) => {
       const overlap = y + h + FIELD_GAP + (getBarHeight.current?.() ?? 0) - top;
       const from = getOffset.current ? getOffset.current() : offset.current;
@@ -143,9 +149,15 @@ export function useKeyboardInset(options?: {
         setInset(0);
       },
     );
+    // The editor can take focus with the keyboard already up (from the Title field): no keyboard event comes.
+    const unsubscribeFocus = subscribeFocusTarget(() => {
+      timers.forEach(clearTimeout);
+      timers = RETRY_MS.map((ms) => setTimeout(ensureVisible, ms));
+    });
     return () => {
       timers.forEach(clearTimeout);
       unsubscribe();
+      unsubscribeFocus();
     };
   }, [ensureVisible]);
 

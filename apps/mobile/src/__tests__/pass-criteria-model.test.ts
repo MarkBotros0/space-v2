@@ -9,6 +9,7 @@ import {
   stepDraft,
 } from "../screens/season-passing/criteria-model";
 import { criteriaNotes, outlookHeader, outlookRowView, outlookSections } from "../screens/season-passing/outlook-model";
+import { plain } from "./helpers/plain-text";
 
 const all = { attendance: true, assignments: true, quizzes: true };
 const noQuizzes = { attendance: true, assignments: true, quizzes: false };
@@ -143,7 +144,7 @@ describe("outlook model", () => {
   });
 
   it("a row below the mark says how far short and its weakest number", () => {
-    expect(outlookRowView(row(), outlook())).toEqual({
+    expect(plain(outlookRowView(row(), outlook()))).toEqual({
       userId: 1,
       name: "Sara",
       standing: "below",
@@ -151,8 +152,10 @@ describe("outlook model", () => {
       chip: { tone: "bad", label: "Below the mark" },
       lines: ["8 points short · Quizzes 45%", "Group A"],
     });
-    expect(outlookRowView(row({ pointsShort: 0.5, score: 59.5 }), outlook()).lines[0]).toMatch(/^0.5 points short/);
-    expect(outlookRowView(row({ pointsShort: 1, score: 59 }), outlook()).lines[0]).toMatch(/^1 point short /);
+    expect(plain(outlookRowView(row({ pointsShort: 0.5, score: 59.5 }), outlook()).lines[0])).toMatch(
+      /^0.5 points short/,
+    );
+    expect(plain(outlookRowView(row({ pointsShort: 1, score: 59 }), outlook()).lines[0])).toMatch(/^1 point short /);
   });
 
   it("a row on track says how far above the mark; a row with no score says so", () => {

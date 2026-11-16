@@ -31,7 +31,7 @@ function open(
   const scrollTo = jest.fn();
   const proto = ScrollView.prototype as unknown as Record<string, unknown>;
   proto.scrollTo = scrollTo;
-  // Scroll view top at 200: only 88 of room above the field once 12 of margin is kept.
+  // Scroll view top at 200: only 64 of room above the field once 36 of margin is kept (its label's room).
   proto.measureInWindow = (cb: (x: number, y: number, w: number, h: number) => void) => cb(0, 200, 360, 400);
   const view = render(<Harness clamp={clamp} cover={cover} />);
   if (from) view.UNSAFE_getByType(ScrollView).props.onScroll({ nativeEvent: { contentOffset: { y: from } } });
@@ -54,23 +54,23 @@ describe("useKeyboardInset clampToViewport", () => {
 
   it("with the clamp never scrolls the field's top above the viewport top", () => {
     const scrollTo = open(true);
-    expect(scrollTo).toHaveBeenCalledWith({ y: 88, animated: false });
+    expect(scrollTo).toHaveBeenCalledWith({ y: 64, animated: false });
     expect(scrollTo).not.toHaveBeenCalledWith({ y: 116, animated: false });
   });
 
   it("clamps by default (every Screen form, not only sheets)", () => {
-    expect(open(undefined)).toHaveBeenCalledWith({ y: 88, animated: false });
+    expect(open(undefined)).toHaveBeenCalledWith({ y: 64, animated: false });
   });
 
   // A tab's collapsed title is drawn over the scroll view's top (sweep: search fields behind it).
   it("keeps the field below a header drawn over the scroll view (getTopCover)", () => {
-    // Visible top = 200 + 44: room = 300 - 244 - 12 = 44.
-    expect(open(undefined, { cover: 44 })).toHaveBeenCalledWith({ y: 44, animated: false });
+    // Visible top = 200 + 44: room = 300 - 244 - 36 = 20.
+    expect(open(undefined, { cover: 44 })).toHaveBeenCalledWith({ y: 20, animated: false });
   });
 
   // Android's own focus scroll can leave the field under that header: bring it back down.
   it("scrolls back down when the field already sits under the header", () => {
-    // Field top 210, visible top 244: room = 210 - 244 - 12 = -46, from 100 -> 54.
-    expect(open(undefined, { fieldTop: 210, cover: 44, from: 100 })).toHaveBeenCalledWith({ y: 54, animated: false });
+    // Field top 210, visible top 244: room = 210 - 244 - 36 = -70, from 100 -> 30.
+    expect(open(undefined, { fieldTop: 210, cover: 44, from: 100 })).toHaveBeenCalledWith({ y: 30, animated: false });
   });
 });

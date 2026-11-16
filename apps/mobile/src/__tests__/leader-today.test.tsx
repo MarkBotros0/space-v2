@@ -35,6 +35,7 @@ import {
   serve,
   staffDashboard,
 } from "./helpers/dashboard-fixtures";
+import { plain } from "./helpers/plain-text";
 
 const row = (over: Partial<EngagementRow>): EngagementRow =>
   ({
@@ -64,14 +65,16 @@ describe("atRiskReason (R33): names only what is below the line, each by its are
   });
   it("both low", () => {
     expect(
-      atRiskReason(
-        row({
-          attendancePct: 40,
-          attendancePresent: 2,
-          attendanceTotal: 5,
-          submissionsCompleted: 1,
-          submissionPct: 33,
-        }),
+      plain(
+        atRiskReason(
+          row({
+            attendancePct: 40,
+            attendancePresent: 2,
+            attendanceTotal: 5,
+            submissionsCompleted: 1,
+            submissionPct: 33,
+          }),
+        ),
       ),
     ).toBe("Attendance 40% (2 of 5 sessions) · Assignments: 1 of 3 submitted");
   });

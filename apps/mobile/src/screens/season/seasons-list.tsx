@@ -58,8 +58,12 @@ export function SeasonsList({
                 `${keepTogether(formatSeasonDay(row.startDate))} – ${keepTogether(formatSeasonDay(row.endDate))}`,
               ])}
               subtitleLines={3}
+              titleLines={2}
+              // Under the text: beside it the chips cut the name to "Spring Intensive 2…" and broke the
+              // code mid-word at 1.3 (whole-app sweep 2026-11-16, M2).
+              trailingPlacement="below"
               trailing={
-                <View className="flex-col items-end gap-1">
+                <View className="flex-row flex-wrap gap-1">
                   <StatusChip {...statusChip("season", row.status)} />
                   {row.isCommunityWide ? <StatusChip tone="info" label="Community-wide" /> : null}
                 </View>

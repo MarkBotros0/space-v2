@@ -21,8 +21,9 @@ import {
 } from "@10play/tentap-editor";
 import { Bold, Italic, Link as LinkIcon, List, ListOrdered, Redo2, Strikethrough, Undo2 } from "lucide-react-native";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView, View, type ViewInstance } from "react-native";
 
+import { clearFocusTarget, setFocusTarget } from "../lib/focus-target";
 import { iconWithClassName } from "../lib/icon";
 import { cn } from "../lib/cn";
 import { useThemeColors } from "../theme/use-theme-colors";
@@ -88,6 +89,15 @@ export function RichTextEditor({
   });
   const state = useBridgeState(editor);
   const [linkOpen, setLinkOpen] = useState(false);
+  const box = useRef<ViewInstance>(null);
+
+  // The keyboard inset only sees native TextInputs; while the WebView has focus it scrolls this box instead.
+  useEffect(() => {
+    const target = box.current;
+    if (!state.isFocused || !target) return;
+    setFocusTarget(target);
+    return () => clearFocusTarget(target);
+  }, [state.isFocused]);
   const [linkUrl, setLinkUrl] = useState("https://");
 
   // Follow outside value changes without echoing our own edits back.
@@ -100,6 +110,7 @@ export function RichTextEditor({
 
   return (
     <View
+      ref={box}
       accessibilityLabel={accessibilityLabel}
       accessibilityHint={accessibilityHint}
       className={cn(

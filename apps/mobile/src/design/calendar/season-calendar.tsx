@@ -13,7 +13,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import type { JpcEventListItem, SessionListItem } from "@space/shared";
 
-import { rangeLabel, stepAnchor, type CalendarView } from "../../lib/calendar-grid";
+import { rangeLabel, stepAnchor, weekKeys, type CalendarView } from "../../lib/calendar-grid";
 import { cn } from "../lib/cn";
 import { iconWithClassName } from "../lib/icon";
 import { Button } from "../ui/button";
@@ -38,8 +38,10 @@ function SeasonLegend({ colors }: { colors: SeasonColors }) {
   return (
     <View className="flex-row flex-wrap gap-2">
       {Object.entries(colors).map(([code, c]) => (
-        <View key={code} className={cn("rounded px-2 py-0.5", c.box)}>
-          <Text className={cn("text-xs", c.text)}>{code}</Text>
+        <View key={code} className={cn("rounded-control px-2 py-1", c.box)}>
+          <Text variant="caption" className={cn("font-medium", c.text)}>
+            {code}
+          </Text>
         </View>
       ))}
     </View>
@@ -112,6 +114,11 @@ export function SeasonCalendar({
           {...handlers}
         />
       )}
+      {/* A 7-column week holds no title on a phone ("Week …", whole-app sweep 2026-11-16, M7): the
+          week's sessions are listed in full under it. */}
+      {view === "week" ? (
+        <AgendaView sessions={sessions} events={events} today={today} days={weekKeys(anchor)} {...handlers} />
+      ) : null}
       <DaySheet
         day={day}
         sessions={sessions}

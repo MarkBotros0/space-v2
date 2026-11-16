@@ -107,7 +107,8 @@ export function formatTimeAgo(iso: string | null): string {
   if (iso == null) return PLACEHOLDER;
   const date = parseISO(iso);
   if (!isValid(date)) return PLACEHOLDER;
-  return formatDistanceToNowStrict(date, { addSuffix: true });
+  // One unbreakable run: "2 / hours ago" split across lines at 1.3 (whole-app sweep 2026-11-16).
+  return formatDistanceToNowStrict(date, { addSuffix: true }).replace(/ /g, "\u00A0");
 }
 
 function formatDayKeyAs(dayKey: string | null, pattern: string): string {
@@ -175,7 +176,7 @@ export function formatStampAgo(iso: string | null): string {
   if (iso == null) return PLACEHOLDER;
   const date = parseISO(iso);
   if (!isValid(date)) return PLACEHOLDER;
-  return `${format(date, "MMM\u00A0d,\u00A0yyyy · h:mm\u00A0a")} · ${formatDistanceToNowStrict(date, { addSuffix: true })}`;
+  return `${format(date, "MMM\u00A0d,\u00A0yyyy\u00A0· h:mm\u00A0a")}\u00A0· ${formatTimeAgo(iso)}`;
 }
 
 /** e.g. "Jul 1, 6:13 PM" — v1's submissions stamp for an instant (device zone; no org fields on those payloads). */

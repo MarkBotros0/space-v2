@@ -125,7 +125,13 @@ export function SeasonCountsRow({
                 <Text variant="headline" tabular>
                   {String(c.value)}
                 </Text>
-                <Text variant="caption" numberOfLines={1} className="text-muted-foreground">
+                <Text
+                  variant="caption"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.7}
+                  className="text-muted-foreground"
+                >
                   {c.label}
                 </Text>
               </View>

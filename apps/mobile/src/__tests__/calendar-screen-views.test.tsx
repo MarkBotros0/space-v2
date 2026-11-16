@@ -179,7 +179,8 @@ describe("calendar — Upcoming / Week / Month and visual cues (REG-75, REG-76)"
 
     fireEvent.press(screen.getByLabelText("Week"));
     expect(screen.getByText("Feb 23 – Mar 1")).toBeTruthy();
-    expect(screen.getByText("Kickoff")).toBeTruthy();
+    // Once as the grid's chip and once in full in the week's list under it (sweep 2026-11-16, M7).
+    expect(screen.getAllByText("Kickoff")).toHaveLength(2);
 
     fireEvent.press(screen.getByLabelText("Next week"));
     expect(screen.getByText("Mar 2 – 8")).toBeTruthy();
@@ -222,6 +223,7 @@ describe("calendar — Week chips", () => {
     renderWithProviders(<CalendarScreen />);
     await screen.findByText("Opening night");
     fireEvent.press(screen.getByLabelText("Week"));
-    expect(screen.getByText("Opening night").props.numberOfLines).toBe(1);
+    // The grid's chip (the first; the week's list under it gives the title two lines).
+    expect(screen.getAllByText("Opening night")[0]!.props.numberOfLines).toBe(1);
   });
 });

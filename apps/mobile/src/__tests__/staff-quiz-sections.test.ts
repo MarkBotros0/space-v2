@@ -1,6 +1,7 @@
 import type { QuizSummary } from "@space/shared";
 
 import { quizSections, quizSubtitle } from "../screens/staff-work/quiz-sections";
+import { plain } from "./helpers/plain-text";
 
 function quiz(over: Partial<QuizSummary>): QuizSummary {
   return {
@@ -38,7 +39,9 @@ describe("staff Work: quiz sections", () => {
   });
 
   it("says the kind, the session and when it was added", () => {
-    expect(quizSubtitle(quiz({ questionCount: 1 }))).toBe("Online · 1 question · Week 1 · Added Feb 20, 2099");
-    expect(quizSubtitle(quiz({ kind: "PAPER", sessionTitle: null }))).toBe("Paper · No session · Added Feb 20, 2099");
+    expect(plain(quizSubtitle(quiz({ questionCount: 1 })))).toBe("Online · 1 question · Week 1 · Added Feb 20, 2099");
+    expect(plain(quizSubtitle(quiz({ kind: "PAPER", sessionTitle: null })))).toBe(
+      "Paper · No session · Added Feb 20, 2099",
+    );
   });
 });

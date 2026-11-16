@@ -58,6 +58,9 @@ export function CheckInAttendanceList({
           group: r.groupName,
           row: r,
         }))}
+        // Under the name: beside it, "Not recorded" left a 360dp phone at 1.3 a few letters per line
+        // and broke names mid-word (whole-app sweep 2026-11-16, M1).
+        trailingPlacement="below"
         trailing={({ row: r }) =>
           r.status !== null ? (
             <StatusChip {...statusChip("attendance", r.status)} />

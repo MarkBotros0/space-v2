@@ -12,6 +12,7 @@ import { quizChip, stateOnly } from "../screens/student-detail/work-model";
 import { useSessionStore } from "../store/session";
 import { renderWithProviders } from "./helpers/render";
 import { makeSession } from "./helpers/session";
+import { plain } from "./helpers/plain-text";
 
 const get = apiClient.get as jest.Mock;
 
@@ -126,7 +127,7 @@ describe("work-model", () => {
   });
 
   it("a quiz says its marks and percent, or that it has no score yet", () => {
-    expect(quizChip(progress.quizzes[0]!)).toEqual({ tone: "ok", label: "7 / 10 · 70%" });
+    expect(plain(quizChip(progress.quizzes[0]!))).toEqual({ tone: "ok", label: "7 / 10 · 70%" });
     expect(quizChip(progress.quizzes[1]!)).toEqual({ tone: "neutral", label: "No score yet" });
   });
 });

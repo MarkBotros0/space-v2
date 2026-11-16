@@ -70,9 +70,14 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "Locked" }).props.accessibilityState).toMatchObject({ disabled: true });
   });
 
-  it("keeps a long label on one line", () => {
+  // Two lines, never an ellipsis: "Move students between …", "Undo, not sub…" (whole-app sweep 2026-11-16).
+  it("wraps a long label to two lines and shrinks a single long word instead of breaking it", () => {
     render(<Button>A very long button label that would wrap on a phone</Button>);
-    expect(screen.getByText(/very long button/).props.numberOfLines).toBe(1);
+    expect(screen.getByText(/very long button/).props.numberOfLines).toBe(2);
+    render(<Button>Community</Button>);
+    const word = screen.getByText("Community");
+    expect(word.props.numberOfLines).toBe(1);
+    expect(word.props.adjustsFontSizeToFit).toBe(true);
   });
 });
 

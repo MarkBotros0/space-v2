@@ -90,8 +90,10 @@ export function QuestionRow({
   const summary = questionSummary(question);
 
   return (
-    <View className="flex-row items-start justify-between gap-3 rounded-group bg-surface p-4">
-      <View className="min-w-0 flex-1">
+    // The actions sit under the question, not beside it: four buttons beside it squeezed the
+    // prompt into a narrow column and cut the type chip ("Single ch…"; whole-app sweep 2026-11-16, M5).
+    <View className="flex-col gap-1 rounded-group bg-surface p-4">
+      <View className="min-w-0">
         <View className="flex-row flex-wrap items-center gap-2">
           <Text variant="caption" className="font-bold text-muted-foreground">{`Q${n}`}</Text>
           <StatusChip tone={question.type === "ESSAY" ? "neutral" : "info"} label={summary.type} />
@@ -114,7 +116,7 @@ export function QuestionRow({
         ) : null}
       </View>
       {editable ? (
-        <View className="shrink-0 flex-row flex-wrap justify-end">
+        <View className="-mb-2 -mr-2 flex-row flex-wrap justify-end">
           {/* V2-ONLY: reorder (v1 had none; PATCH /quizzes/:id/order, spec 12). Only when the
               questions keep their order: a shuffled quiz has none to set (owner, 2026-11-13). */}
           {quiz.shuffleQuestions ? null : (

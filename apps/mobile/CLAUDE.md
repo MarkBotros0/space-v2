@@ -255,6 +255,13 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
   is never resized.
 - **A surface that is dark in both themes uses fixed colours, not theme tokens.** `bg-primary` is
   navy in light mode and vanished on the video bar's black (s61, Nov 2026); use white/alpha there.
+- **A field that is not a TextInput registers its focus.** The keyboard inset only sees native TextInputs; a
+  WebView field (the rich-text editor) calls `setFocusTarget` (`design/lib/focus-target.ts`) while focused, or
+  it stays under the keyboard and a pinned bar (announcement Message on 360×640, Nov 2026 sweep F5).
+- **Labels shrink or wrap between words; they never ellipsise or break mid-word.** A Button label takes two
+  lines; a one-word label (a Button, a tile, a stat) shrinks to fit (`adjustsFontSizeToFit`); a chip beside a
+  name goes under it (`trailingPlacement="below"`). Meta lines come from `joinMeta`, which holds each short fact
+  on one line with no-break spaces (Nov 2026 sweep M1–M4).
 - **A drag control inside a scroll view lets vertical drags go.** Claim only sideways moves and
   grant the scroll view's termination request when `|dy| > |dx|`, or a page scroll that starts on
   it seeks (the video bar, s61, Nov 2026).

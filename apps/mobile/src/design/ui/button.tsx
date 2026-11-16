@@ -1,7 +1,7 @@
 /**
  * Redesign Button: variants primary | secondary | destructive (soft red) | danger
  * (solid red, for the one irreversible step of a confirm) | plain | onHero,
- * sizes md (min-height 46) | sm (min-height 44) | icon (a 44pt square), radius
+ * sizes md (min-height 46) | sm (min-height 44) | icon (a 44pt square); a label wraps to two lines, radius
  * 14, dims while pressed. No underlines anywhere (owner 2026-11-07); a light
  * link-like action is a PillButton.
  * The outer Pressable takes the caller's layout classes (self-start, flex-1,
@@ -31,20 +31,23 @@ import { Text } from "./text";
 type Variant = "primary" | "secondary" | "destructive" | "danger" | "plain" | "onHero";
 type Size = "md" | "sm" | "icon";
 
-const base = cva("shrink-0 flex-row items-center justify-center gap-2 rounded-control border border-transparent px-4", {
-  variants: {
-    variant: {
-      primary: "bg-primary",
-      secondary: "border-control-border bg-surface",
-      destructive: "bg-bad-soft",
-      danger: "bg-bad",
-      plain: "bg-transparent",
-      onHero: "bg-on-hero",
+const base = cva(
+  "shrink-0 flex-row items-center justify-center gap-2 rounded-control border border-transparent px-4 py-2",
+  {
+    variants: {
+      variant: {
+        primary: "bg-primary",
+        secondary: "border-control-border bg-surface",
+        destructive: "bg-bad-soft",
+        danger: "bg-bad",
+        plain: "bg-transparent",
+        onHero: "bg-on-hero",
+      },
+      size: { md: "min-h-[46px]", sm: "min-h-[44px]", icon: "min-h-[44px] min-w-[44px] px-0" },
     },
-    size: { md: "min-h-[46px]", sm: "min-h-[44px]", icon: "min-h-[44px] min-w-[44px] px-0" },
+    defaultVariants: { variant: "primary", size: "md" },
   },
-  defaultVariants: { variant: "primary", size: "md" },
-});
+);
 
 const baseText = cva("", {
   variants: {
@@ -152,8 +155,18 @@ function Button({
             <Text
               key={key}
               variant="headline"
-              numberOfLines={1}
-              className={cn(buttonTextVariants({ variant }), textClassName, dimmed && DISABLED_TEXT)}
+              // Two lines, centred: one line ellipsised "Move students between …" and a sheet's
+              // "Undo, not sub…" on a 360dp phone at 1.3 (whole-app sweep 2026-11-16, M2/M3). One word
+              // ("Community") shrinks instead, since a second line would break it mid-word.
+              numberOfLines={/\s/.test(text.trim()) ? 2 : 1}
+              adjustsFontSizeToFit={!/\s/.test(text.trim())}
+              minimumFontScale={0.7}
+              className={cn(
+                "shrink text-center",
+                buttonTextVariants({ variant }),
+                textClassName,
+                dimmed && DISABLED_TEXT,
+              )}
             >
               {text}
             </Text>

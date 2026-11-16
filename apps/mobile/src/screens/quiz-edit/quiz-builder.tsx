@@ -10,6 +10,7 @@ import { InlineError, RouteError, RouteSkeleton } from "../../design/layout/rout
 import { SaveBar } from "../../design/layout/save-bar";
 import { Screen } from "../../design/layout/screen";
 import { iconWithClassName } from "../../design/lib/icon";
+import { useKeyboardHeight } from "../../design/lib/keyboard-events";
 import { haptic } from "../../design/motion";
 import { Button, EmptyState, ListSectionHeader, PillButton, StatusChip, Text } from "../../design/ui";
 import { useAddQuestion, usePublishQuiz } from "../../hooks/use-quiz-authoring";
@@ -98,6 +99,7 @@ function QuizForm({
   const [addError, setAddError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const keyboardUp = useKeyboardHeight() > 0;
 
   const isPaper = data.kind === "PAPER";
   const published = data.publishedAt !== null;
@@ -118,8 +120,10 @@ function QuizForm({
   // the details save from their sheet, so there is nothing else to save here.
   const publishBlocked =
     count === 0 ? "Add a question to publish." : questionOpen ? "Finish the question first." : undefined;
+  // While a question form is being typed in, the bar (Publish is blocked then anyway) rode the keyboard
+  // over that form's own Save and Cancel on a 360×640 phone (whole-app sweep 2026-11-16, M6).
   const footer =
-    isPaper || published ? undefined : (
+    isPaper || published || (questionOpen && keyboardUp) ? undefined : (
       <SaveBar
         label="Publish quiz"
         onPress={() => setPublished(true)}
