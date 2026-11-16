@@ -27,4 +27,12 @@ describe("swipe guard (owner 2026-11-14: a swipe across a row changes tab, never
     fireEvent.press(screen.getByText("Row"));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it("a touch that never became a swipe leaves the next tap alone (sweep 2026-11-16)", () => {
+    // The tab pan's onFinalize runs for every touch, a plain tap included, without onStart.
+    swipeEnded(Date.now() - SWIPE_TAP_GRACE_MS - 1);
+    const now = Date.now();
+    swipeEnded(now);
+    expect(swipeBlocksTap(now + 1)).toBe(false);
+  });
 });

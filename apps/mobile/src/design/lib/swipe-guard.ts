@@ -18,6 +18,10 @@ export function swipeStarted(): void {
 }
 
 export function swipeEnded(now: number = Date.now()): void {
+  // The pan's onFinalize runs for every touch, a plain tap included (it never reached onStart):
+  // only a real swipe opens the grace, or every tap on a tab screen could be dropped (UI sweep
+  // 2026-11-16: the avatar and a group's student row didn't open).
+  if (!swiping) return;
   swiping = false;
   until = now + SWIPE_TAP_GRACE_MS;
 }
