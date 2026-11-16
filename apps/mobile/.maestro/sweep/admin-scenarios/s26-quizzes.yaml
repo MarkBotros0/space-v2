@@ -241,8 +241,9 @@ appId: com.jpc.space
 # under the pinned footer), so hideKeyboard can act as Back and Cancel can sit out of reach. Reloading
 # drops the unsaved editor; nothing was saved. Home first: a link to the open route keeps it as it is.
 - openLink: spacev2://dashboard
+# The Home tab, not 'User menu': Home can come back scrolled, with the avatar in the fading compact header.
 - extendedWaitUntil:
-    visible: 'User menu'
+    visible: 'Home'
     timeout: 40000
 - openLink: spacev2://quiz/7/edit
 - extendedWaitUntil:

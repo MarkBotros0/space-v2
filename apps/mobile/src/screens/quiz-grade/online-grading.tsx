@@ -64,6 +64,10 @@ export function OnlineGrading({ id, detail }: { id: number; detail: QuizAuthorin
                   titleLines={2}
                   {...(a.adminScore ? { detail: adminScoreLabel(a.adminScore.score, first.maxScore) } : {})}
                   subtitle={attemptSubtitle(a, first.maxScore)}
+                  // Whole, with the chip under it: beside the chip the line lost its date at 1.3
+                  // ("Awaiting grading · N…", whole-app sweep 2026-11-16, M4).
+                  subtitleLines={null}
+                  trailingPlacement="below"
                   trailing={<StatusChip {...statusChip("quizAttempt", a.status)} />}
                   chevron
                   onPress={() => {
