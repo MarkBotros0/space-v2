@@ -1,4 +1,5 @@
 import * as ScreenOrientation from "expo-screen-orientation";
+import { setStatusBarHidden, StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Modal, View } from "react-native";
 import YoutubePlayer from "react-native-youtube-iframe";
@@ -88,7 +89,10 @@ function FullScreenPlayer({
   const [size, setSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
     void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => undefined);
+    // The <StatusBar hidden /> below alone didn't always take in the modal's window (UI sweep s61).
+    setStatusBarHidden(true, "fade");
     return () => {
+      setStatusBarHidden(false, "fade");
       void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => undefined);
     };
   }, []);
@@ -103,6 +107,8 @@ function FullScreenPlayer({
       onRequestClose={() => p.setFullScreen(false)}
       statusBarTranslucent
     >
+      {/* The clock and icons would sit on the picture (UI sweep s61, 2026-11-16). */}
+      <StatusBar hidden />
       <SafeAreaView className="flex-1 bg-black" edges={["left", "right", "bottom"]}>
         <View
           className="flex-1 items-center justify-center"

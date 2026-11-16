@@ -13,6 +13,13 @@ import { fractionOf } from "../../design/lib/scrub";
 /** The bar's screen-reader steps, and the back button's. */
 const STEP_SECONDS = 10;
 
+/** Movement under this many points is a tap, whichever way it drifted. */
+const TAP_SLOP = 10;
+
+/** A gesture that moved mostly up or down, past a tap's drift. */
+export const isVerticalSwipe = (dx: number, dy: number): boolean =>
+  Math.abs(dy) > TAP_SLOP && Math.abs(dy) > Math.abs(dx);
+
 const pctOf = (f: number) => `${Math.min(1, Math.max(0, f)) * 100}%` as const;
 
 export function VideoScrubber({
@@ -51,13 +58,18 @@ export function VideoScrubber({
   const responder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      // Inside a scroll view, a drag on the bar stays the bar's.
-      onPanResponderTerminationRequest: () => false,
+      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > Math.abs(g.dy),
+      // A sideways drag stays the bar's; an up-and-down one is the page scrolling, which takes it
+      // over and seeks nothing (onPanResponderTerminate). UI sweep s61, 2026-11-16: a scroll that
+      // started on the bar moved the video.
+      onPanResponderTerminationRequest: (_e, g) => Math.abs(g.dy) > Math.abs(g.dx),
       onPanResponderGrant: (e) => setDragAt(at(e.nativeEvent.locationX)),
       onPanResponderMove: (e) => setDragAt(at(e.nativeEvent.locationX)),
-      onPanResponderRelease: (e) => {
+      onPanResponderRelease: (e, g) => {
         setDragAt(null);
+        // An up-and-down swipe that began on the bar was meant for the page, even where the page
+        // has nothing to scroll: it seeks nothing (UI sweep s61, 2026-11-16).
+        if (isVerticalSwipe(g.dx, g.dy)) return;
         latest.current.onSeek(at(e.nativeEvent.locationX));
       },
       onPanResponderTerminate: () => setDragAt(null),
@@ -86,7 +98,9 @@ export function VideoScrubber({
     >
       <View pointerEvents="none" className="h-1 w-full overflow-hidden rounded-full bg-white/20">
         <View className="absolute inset-y-0 left-0 bg-white/40" style={{ width: pctOf(reach) }} />
-        <View className="absolute inset-y-0 left-0 bg-primary" style={{ width: played }} />
+        {/* The bar is black in either theme, so the played part is white, not the theme's primary
+            (navy in light, which vanished on the black: UI sweep s61, 2026-11-16). */}
+        <View className="absolute inset-y-0 left-0 bg-white" style={{ width: played }} />
       </View>
       {marks.map((m) => (
         <View

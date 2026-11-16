@@ -253,3 +253,8 @@ One line per class of bug the sweep has found, so the next screen doesn't repeat
 - **Offsets above the keyboard come from `keyboardBottomOffset`** (`design/lib/keyboard-offset.ts`).
   Android reports the keyboard height without the nav bar, and an edge-to-edge `Modal` window
   is never resized.
+- **A surface that is dark in both themes uses fixed colours, not theme tokens.** `bg-primary` is
+  navy in light mode and vanished on the video bar's black (s61, Nov 2026); use white/alpha there.
+- **A drag control inside a scroll view lets vertical drags go.** Claim only sideways moves and
+  grant the scroll view's termination request when `|dy| > |dx|`, or a page scroll that starts on
+  it seeks (the video bar, s61, Nov 2026).

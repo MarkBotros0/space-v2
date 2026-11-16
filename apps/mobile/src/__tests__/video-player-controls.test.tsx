@@ -43,6 +43,7 @@ import {
   reachFraction,
 } from "../screens/video-quiz/player-model";
 import { VideoQuizPlayer } from "../screens/video-quiz/video-quiz-player";
+import { isVerticalSwipe } from "../screens/video-quiz/video-scrubber";
 import { youTubeLinkGuard } from "../screens/video-quiz/youtube-link-guard";
 import { renderWithProviders } from "./helpers/render";
 
@@ -276,5 +277,14 @@ describe("ads and YouTube's player", () => {
     mockNow = 12;
     report("playing");
     expect(screen.queryByText("Ad")).toBeNull();
+  });
+});
+
+describe("the seek bar inside a scrolling page", () => {
+  it("leaves an up-and-down swipe to the page, and seeks on a tap or a sideways drag", () => {
+    expect(isVerticalSwipe(2, 120)).toBe(true);
+    expect(isVerticalSwipe(30, 60)).toBe(true);
+    expect(isVerticalSwipe(3, 4)).toBe(false); // a tap that drifted
+    expect(isVerticalSwipe(80, 20)).toBe(false); // a drag along the bar
   });
 });

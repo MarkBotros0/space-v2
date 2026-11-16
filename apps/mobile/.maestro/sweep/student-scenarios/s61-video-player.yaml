@@ -1,0 +1,56 @@
+# UI sweep s61 — the app's own video player on an assignment's video part, as a student: the
+# stopped player with its bar, full screen (landscape), and a timed question over the player. The
+# seed (apps/backend/scripts/seed-sweep/three-part.ts) has the student past the part's one question
+# (1:00, unanswered), so reopening waits at 1:00 and Play opens the question at once: the video never
+# plays on, and nothing is answered. Play does report the playhead, which only re-sends where the
+# student already is.
+appId: com.jpc.space
+---
+- runFlow:
+    file: ../_sign-in.yaml
+    env:
+      EMAIL: ${STUDENT_EMAIL}
+# Assignment 3, part 3 is "Placeholder video".
+- openLink: spacev2://assignment/3/part/3
+- extendedWaitUntil:
+    visible: 'Watched .*'
+    timeout: 40000
+# The player loads YouTube's page: give it time to draw.
+- extendedWaitUntil:
+    visible: 'Full screen'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: s61-01-player-stopped
+- scroll
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s61-02-player-bottom
+# Full screen turns the phone landscape; the bar sits under the picture.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Full screen'
+- extendedWaitUntil:
+    visible: 'Exit full screen'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: s61-03-full-screen
+- tapOn: 'Exit full screen'
+- extendedWaitUntil:
+    visible: 'Full screen'
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 8000
+# Play resumes at the unanswered question, which opens over the player. Not answered.
+- runFlow:
+    file: ../_tap.yaml
+    env:
+      TARGET: 'Play'
+- extendedWaitUntil:
+    visible: 'Who tells this story\?'
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: s61-04-question
